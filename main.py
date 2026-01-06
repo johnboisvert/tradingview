@@ -4299,6 +4299,8 @@ def check_route_permission(username: str, route: str) -> bool:
         fallback = {
             "free": free_routes,
             "premium": premium_routes,
+            "advanced": premium_routes,
+            "pro": premium_routes,
             "elite": elite_routes,
         }
 
@@ -19381,10 +19383,28 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 async def pricing_complete():
     """Page de pricing (générée server-side) + support codes promo."""
     prices = get_all_plan_pricing()
-    premium_price = float(prices.get("premium_1m", 20.0) or 0)
-    advanced_price = float(prices.get("advanced_3m", 50.0) or 0)
-    pro_price = float(prices.get("pro_6m", 80.0) or 0)
-    elite_price = float(prices.get("elite_1y", 150.0) or 0)
+    def _get_price(plan_key: str, default: float) -> float:
+        try:
+            v = prices.get(plan_key, {})
+            if isinstance(v, dict):
+                pc = v.get("price_cents")
+                if pc is not None:
+                    return round(int(pc) / 100.0, 2)
+                p = v.get("price")
+                if p is not None:
+                    return float(p)
+            if isinstance(v, (int, float)):
+                return float(v)
+            if isinstance(v, str) and v.strip():
+                return float(v.strip().replace(",", "."))
+        except Exception:
+            pass
+        return float(default)
+
+    premium_price = _get_price("premium", 20.0)
+    advanced_price = _get_price("advanced", 50.0)
+    pro_price = _get_price("pro", 80.0)
+    elite_price = _get_price("elite", 150.0)
 
     def _fmt(x: float) -> str:
         try:
@@ -23517,45 +23537,85 @@ def get_total_revenue() -> float:
 
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request, _admin_user: str = Depends(require_admin)):
-    """Admin Dashboard (stable): gestion prix + accès par forfait."""
-    # Accès admin géré par require_admin (session facultative)
+    """Admin Dashboard: prix, accès, + raccourcis outils admin."""
+    # Accès admin géré par require_admin (cookie session_token)
 
-    # Load pricing
-    prices = get_all_plan_pricing()
-    premium_price = float(prices.get("premium_1m", 20.0) or 0)
-    advanced_price = float(prices.get("advanced_3m", 50.0) or 0)
-    pro_price = float(prices.get("pro_6m", 80.0) or 0)
-    elite_price = float(prices.get("elite_1y", 150.0) or 0)
+    # Prix (CAD)
+    prices = get_all_plan_pricing() or {}
 
-    # All routes list (doit correspondre à vos pages protégées)
+    def _get_price(plan_key: str, default: float) -> float:
+        try:
+            v = prices.get(plan_key, {})
+            if isinstance(v, dict):
+                pc = v.get("price_cents")
+                if pc is not None:
+                    return round(int(pc) / 100.0, 2)
+                p = v.get("price")
+                if p is not None:
+                    return float(p)
+            if isinstance(v, (int, float)):
+                return float(v)
+            if isinstance(v, str) and v.strip():
+                return float(v.strip().replace(",", "."))
+        except Exception:
+            pass
+        return float(default)
+
+    premium_price = _get_price("premium", 20.0)
+    advanced_price = _get_price("advanced", 50.0)
+    pro_price = _get_price("pro", 80.0)
+    elite_price = _get_price("elite", 150.0)
+
+    # KPI
+    total_users = get_total_users_count()
+    active_subs = get_active_subscriptions_count()
+    total_revenue = get_total_revenue()
+
+    # Routes (valeurs = chemins réels, comme check_route_permission)
     all_routes = [
-        ("dashboard", "Dashboard"),
-        ("stats", "Stats Dashboard"),
-        ("trades", "Trades"),
-        ("strategies", "Strategie"),
-        ("spot-trading", "Spot Trading"),
-        ("watchlist", "Watchlist"),
-        ("risk-management", "Risk Management"),
-        ("backtesting", "Backtesting"),
-        ("ai-opportunity-scanner", "Ai Opportunity Scanner"),
-        ("ai-market-regime", "Ai Market Regime"),
-        ("ai-whale-watcher", "Ai Whale Watcher"),
-        ("ai-assistant", "Ai Assistant"),
-        ("ai-signals", "Ai Signals"),
-        ("ai-news", "Ai News"),
-        ("ai-predictor", "Ai Predictor"),
-        ("ai-patterns", "Ai Patterns"),
-        ("ai-sentiment", "Ai Sentiment"),
-        ("ai-sizer", "Ai Sizer"),
-        ("ai-exit", "Ai Exit"),
-        ("ai-timeframe", "Ai Timeframe"),
-        ("ai-liquidity", "Ai Liquidity"),
-        ("ai-alerts", "Ai Alerts"),
-        ("ai-gem-hunter", "Ai Gem Hunter"),
-        ("ai-technical-analysis", "Ai Technical Analysis"),
-        ("narrative-radar", "Narrative Radar"),
-        ("ai-crypto-coach", "Ai Crypto Coach"),
-        ("ai-swarm-agents", "Ai Swarm Agents"),
+        ("/dashboard", "Dashboard Principal"),
+        ("/stats-dashboard", "Stats Dashboard"),
+        ("/trades", "Mes Trades"),
+        ("/strategie", "Stratégies"),
+        ("/spot-trading", "Spot Trading"),
+        ("/watchlist", "Watchlist"),
+        ("/risk-management", "Gestion Risques"),
+        ("/backtesting", "Backtesting"),
+
+        ("/ai-opportunity-scanner", "Opportunity Scanner"),
+        ("/ai-market-regime", "AI Market Regime"),
+        ("/ai-whale-watcher", "AI Whale Watcher"),
+        ("/ai-assistant", "AI Assistant"),
+        ("/ai-signals", "AI Signals"),
+        ("/ai-news", "AI News"),
+        ("/ai-predictor", "AI Predictor"),
+        ("/ai-patterns", "AI Patterns"),
+        ("/ai-sentiment", "AI Sentiment"),
+        ("/ai-sizer", "Position Sizer"),
+        ("/ai-exit", "Exit Strategy"),
+        ("/ai-timeframe", "Timeframe Analysis"),
+        ("/ai-liquidity", "AI Liquidity"),
+        ("/ai-alerts", "AI Alerts"),
+        ("/ai-gem-hunter", "Gem Hunter"),
+        ("/ai-technical-analysis", "Technical Analysis Pro"),
+        ("/narrative-radar", "Narrative Radar"),
+        ("/ai-crypto-coach", "AI Crypto Coach"),
+        ("/ai-swarm-agents", "AI Swarm Agents"),
+
+        ("/fear-greed", "Fear & Greed Index"),
+        ("/fear-greed-chart", "F&G Graphique"),
+        ("/dominance", "Bitcoin Dominance"),
+        ("/altcoin-season", "Altcoin Season"),
+        ("/heatmap", "Market Heatmap"),
+        ("/bullrun-phase", "Bull Run Phase"),
+        ("/graphiques", "Graphiques Avancés"),
+        ("/onchain-metrics", "On-Chain Metrics"),
+        ("/nouvelles", "Actualités Crypto"),
+        ("/convertisseur", "Convertisseur"),
+        ("/calendrier", "Calendrier Économique"),
+
+        ("/pricing-complete", "Abonnements"),
+        ("/contact", "Contact"),
     ]
 
     # UI
@@ -23584,6 +23644,21 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
     }}
     .top h1 {{ margin:0; font-size:34px; }}
     .top p {{ margin:8px 0 0 0; opacity:.7; }}
+
+    .kpis {{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }}
+    .kpi {{
+      background:#0b1220;
+      color:#fff;
+      border-radius:999px;
+      padding:8px 12px;
+      font-weight:900;
+      font-size:12px;
+    }}
 
     .card {{
       background:#fff;
@@ -23618,6 +23693,15 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
       font-weight:900;
       cursor:pointer;
       margin-top:12px;
+      display:inline-block;
+      text-decoration:none;
+    }}
+    .btn.secondary {{
+      background:#0b1220;
+    }}
+    .btn.orange {{
+      background:#f59e0b;
+      color:#111827;
     }}
     .pill {{
       display:inline-block;
@@ -23635,12 +23719,20 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
       display:grid;
       grid-template-columns: 1fr 1fr;
       gap:8px;
-      max-height: 320px;
+      max-height: 340px;
       overflow:auto;
       border:1px solid #e5e7eb;
       padding:10px;
       border-radius:12px;
       background:#f9fafb;
+    }}
+    .tools {{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:10px;
+    }}
+    @media (max-width: 850px) {{
+      .tools {{ grid-template-columns: 1fr; }}
     }}
     .toast {{
       display:none;
@@ -23654,10 +23746,29 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
   </style>
 </head>
 <body>
+
+  {SIDEBAR}
+
   <div class="container">
     <div class="top">
       <h1>👑 Admin Dashboard</h1>
-      <p>Gestion des prix & accès par forfait (les modifications s'appliquent automatiquement sur /pricing-complete).</p>
+      <p>Gestion des prix & accès par forfait. + raccourcis vers les autres outils admin.</p>
+      <div class="kpis">
+        <span class="kpi">👥 Utilisateurs: {total_users}</span>
+        <span class="kpi">✅ Abonnés actifs: {active_subs}</span>
+        <span class="kpi">💰 Revenus (best effort): ${total_revenue:.2f}</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px 0;">⚡ Outils Admin</h2>
+      <div style="opacity:.75; margin-bottom:10px;">Accès rapide aux sections avancées.</div>
+      <div class="tools">
+        <a class="btn orange" href="/admin-dashboard/list-promos">🎟️ Codes Promo</a>
+        <a class="btn orange" href="/admin-dashboard/ebooks">📚 Ebooks</a>
+        <a class="btn secondary" href="/admin-dashboard/update-plan-features">🧩 Plan Features (toggles)</a>
+        <a class="btn secondary" href="/admin-dashboard/create-launch-promos">🚀 Créer promos lancement</a>
+      </div>
     </div>
 
     <div class="row">
@@ -23805,452 +23916,6 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
 """
     return HTMLResponse(html)
 
-@app.post("/admin/pricing/update")
-@app.post("/admin-dashboard/pricing/update")
-async def admin_pricing_update(request: Request):
-    """Update plan"""
-    session_token = request.cookies.get("session_token")
-    if not session_token:
-        return RedirectResponse("/login", status_code=303)
-    
-    user = get_user_from_token(session_token)
-    if not user or user.get("role") != "admin":
-        return HTMLResponse(SIDEBAR + "<h1>403</h1>", status_code=403)
-    
-    try:
-        form = await request.form()
-        plan_id = form.get("plan_id")
-        name = form.get("name")
-        price = float(form.get("price", 0))
-        duration = form.get("duration")
-        routes = form.getlist("routes")
-        
-        import json, os
-        config_file = "/data/pricing_config.json"
-        
-        if os.path.exists(config_file):
-            with open(config_file, 'r') as f:
-                config = json.load(f)
-        else:
-            config = {}
-        
-        config[plan_id] = {
-            'name': name,
-            'price': price,
-            'duration': duration,
-            'routes': routes,
-            'updated_at': str(datetime.now())
-        }
-        
-        os.makedirs("/data", exist_ok=True)
-        with open(config_file, 'w') as f:
-            json.dump(config, f, indent=2)
-        
-        return RedirectResponse("/admin/pricing?success=1", status_code=303)
-    except Exception as e:
-        print(f"Erreur: {e}")
-        return RedirectResponse("/admin/pricing?error=1", status_code=303)
-
-
-@app.post("/admin/pricing/update")
-@app.post("/admin-dashboard/pricing/update")
-async def admin_pricing_update(request: Request):
-    """Mise à jour d'un plan"""
-    session_token = request.cookies.get("session_token")
-    if not session_token:
-        return RedirectResponse("/login", status_code=303)
-    
-    user = get_user_from_token(session_token)
-    if not user or user.get("role") != "admin":
-        return HTMLResponse(SIDEBAR + "<h1>403</h1>", status_code=403)
-    
-    try:
-        form = await request.form()
-        plan_id = form.get("plan_id")
-        name = form.get("name")
-        price = float(form.get("price", 0))
-        duration = form.get("duration")
-        routes = form.getlist("routes")
-        
-        # Save to file
-        import json
-        import os
-        
-        config_file = "/data/pricing_config.json"
-        
-        # Load existing
-        if os.path.exists(config_file):
-            with open(config_file, 'r') as f:
-                config = json.load(f)
-        else:
-            config = {}
-        
-        # Update
-        config[plan_id] = {
-            'name': name,
-            'price': price,
-            'duration': duration,
-            'routes': routes,
-            'updated_at': str(datetime.now())
-        }
-        
-        # Save
-        os.makedirs("/data", exist_ok=True)
-        with open(config_file, 'w') as f:
-            json.dump(config, f, indent=2)
-        
-        return RedirectResponse("/admin/pricing?success=1", status_code=303)
-        
-    except Exception as e:
-        print(f"Erreur pricing update: {e}")
-        return RedirectResponse("/admin/pricing?error=1", status_code=303)
-@app.get("/admin/init-promo-table")
-@app.get("/admin-dashboard/init-promo-table")
-async def admin_init_promo_table(session_token: Optional[str] = Cookie(None)):
-    """Initialise la table promo_codes (à exécuter une seule fois)"""
-    user = get_user_from_token(session_token)
-    if not user:
-        return JSONResponse({"error": "Non authentifié"}, status_code=401)
-    
-    if not PROMO_CODES_AVAILABLE:
-        return JSONResponse({
-            "success": False,
-            "message": "❌ Module promo_codes non disponible"
-        }, status_code=500)
-    
-    try:
-        conn = get_db_connection()
-        create_promo_codes_table(conn)
-        conn.close()
-        return JSONResponse({
-            "success": True,
-            "message": "✅ Table promo_codes créée avec succès!"
-        })
-    except Exception as e:
-        return JSONResponse({
-            "success": False,
-            "message": f"❌ Erreur: {str(e)}"
-        }, status_code=500)
-
-
-@app.get("/admin/create-launch-promos")
-@app.get("/admin-dashboard/create-launch-promos")
-async def admin_create_launch_promos(session_token: Optional[str] = Cookie(None)):
-    """Crée automatiquement 5 codes promo de lancement"""
-    user = get_user_from_token(session_token)
-    if not user:
-        return JSONResponse({"error": "Non authentifié"}, status_code=401)
-    
-    if not PROMO_CODES_AVAILABLE:
-        return JSONResponse({
-            "success": False,
-            "message": "❌ Module promo_codes non disponible"
-        }, status_code=500)
-    
-    try:
-        conn = get_db_connection()
-        create_promo_codes_table(conn)
-        
-        codes_created = []
-        
-        # Code 1: LAUNCH20 - 20% pour tous
-        success, msg = PromoCodeManager.create_promo_code(
-            conn, "LAUNCH20", "percent", 20,
-            description="Lancement: 20% de réduction"
-        )
-        if success: codes_created.append("LAUNCH20 (20% off)")
-        
-        # Code 2: WELCOME10 - $10 de rduction
-        success, msg = PromoCodeManager.create_promo_code(
-            conn, "WELCOME10", "fixed", 10.00,
-            description="Bienvenue: $10 de réduction"
-        )
-        if success: codes_created.append("WELCOME10 ($10 off)")
-        
-        # Code 3: FIRSTBUY - 25% premier achat, 50 max
-        success, msg = PromoCodeManager.create_promo_code(
-            conn, "FIRSTBUY", "percent", 25,
-            max_uses=50,
-            description="Premier achat: 25% off (50 max)"
-        )
-        if success: codes_created.append("FIRSTBUY (25% off, 50 max)")
-        
-        # Code 4: LONGTERM30 - 30% pour plans longs
-        success, msg = PromoCodeManager.create_promo_code(
-            conn, "LONGTERM30", "percent", 30,
-            plans="6_months,1_year",
-            description="Plans longs: 30% off"
-        )
-        if success: codes_created.append("LONGTERM30 (30% off plans 6m+)")
-        
-        # Code 5: FLASH50 - Flash sale 7 jours
-        success, msg = PromoCodeManager.create_promo_code(
-            conn, "FLASH50", "percent", 50,
-            expires_at=datetime.now() + timedelta(days=7),
-            min_amount=50.00,
-            description="Flash Sale: 50% off (min $50, 7 jours)"
-        )
-        if success: codes_created.append("FLASH50 (50% off, min $50, 7j)")
-        
-        conn.close()
-        
-        return JSONResponse({
-            "success": True,
-            "message": "✅ Codes de lancement créés!",
-            "codes": codes_created,
-            "total": len(codes_created)
-        })
-    except Exception as e:
-        return JSONResponse({
-            "success": False,
-            "message": f"❌ Erreur: {str(e)}"
-        }, status_code=500)
-
-
-@app.get("/admin/create-promo")
-@app.get("/admin-dashboard/create-promo")
-async def admin_create_promo(
-    code: str,
-    discount_type: str,
-    discount_value: float,
-    max_uses: Optional[int] = None,
-    expires_days: Optional[int] = None,
-    min_amount: Optional[float] = None,
-    plans: Optional[str] = None,
-    description: str = "",
-    session_token: Optional[str] = Cookie(None)
-):
-    """Crée un code promo personnalisé via URL"""
-    user = get_user_from_token(session_token)
-    if not user:
-        return JSONResponse({"error": "Non authentifié"}, status_code=401)
-    
-    if not PROMO_CODES_AVAILABLE:
-        return JSONResponse({
-            "success": False,
-            "message": "❌ Module promo_codes non disponible"
-        }, status_code=500)
-    
-    try:
-        conn = get_db_connection()
-        
-        expires_at = None
-        if expires_days:
-            expires_at = datetime.now() + timedelta(days=expires_days)
-        
-        success, message = PromoCodeManager.create_promo_code(
-            conn, code, discount_type, discount_value,
-            max_uses, expires_at, min_amount, plans, description
-        )
-        
-        conn.close()
-        
-        if success:
-            symbol = '%' if discount_type == 'percent' else '$'
-            return JSONResponse({
-                "success": True,
-                "message": f"✅ Code {code.upper()} créé!",
-                "code": code.upper(),
-                "discount": f"{discount_value}{symbol}"
-            })
-        else:
-            return JSONResponse({
-                "success": False,
-                "message": f"❌ {message}"
-            }, status_code=400)
-    except Exception as e:
-        return JSONResponse({
-            "success": False,
-            "message": f"❌ Erreur: {str(e)}"
-        }, status_code=500)
-
-
-@app.get("/admin/list-promos", response_class=HTMLResponse)
-@app.get("/admin-dashboard/list-promos", response_class=HTMLResponse)
-async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
-    """Page admin: liste tous les codes promo avec stats"""
-    user = get_user_from_token(session_token)
-    if not user:
-        return RedirectResponse("/login")
-    
-    if not PROMO_CODES_AVAILABLE:
-        return HTMLResponse(SIDEBAR + "<h1>❌ Module promo_codes non disponible</h1>")
-    
-    try:
-        conn = get_db_connection()
-        codes = PromoCodeManager.get_all_promo_codes(conn)
-        
-        # Get stats directly
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                SELECT 
-                    COUNT(*) as total,
-                    COUNT(CASE WHEN is_active = 1 THEN 1 END) as active,
-                    COALESCE(SUM(current_usage), 0) as usage
-                FROM promo_codes
-            """)
-            stats_row = cursor.fetchone()
-            stats = {
-                'total': stats_row[0] if stats_row else 0,
-                'active': stats_row[1] if stats_row else 0,
-                'total_usage': stats_row[2] if stats_row else 0
-            }
-        except:
-            stats = {'total': 0, 'active': 0, 'total_usage': 0}
-        finally:
-            cursor.close()
-        
-        conn.close()
-        
-        codes_html = ""
-        for code_data in codes:
-            (code, dtype, value, max_u, curr_u, expires, min_amt, 
-             plans, desc, is_active, created, last_used) = code_data
-            
-            symbol = '%' if dtype == 'percent' else '$'
-            uses_str = f"{curr_u}/{max_u if max_u else '∞'}"
-            status = "✅" if is_active else "❌"
-            expires_str = expires[:10] if expires else "Jamais"
-            
-            codes_html += f"""
-            <tr>
-                <td><strong>{code}</strong></td>
-                <td><span style="color: #10b981; font-weight: bold;">{value}{symbol}</span></td>
-                <td>{uses_str}</td>
-                <td>{status}</td>
-                <td>{expires_str}</td>
-                <td style="font-size: 12px;">{plans or 'Tous'}</td>
-                <td style="font-size: 12px;">{desc}</td>
-            </tr>
-            """
-        
-        html = SIDEBAR + f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>💰 Codes Promo - Admin</title>
-            <style>
-                * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                body {{ font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }}
-                .container {{ max-width: 1400px; margin: 0 auto; }}
-                h1 {{ color: #60a5fa; margin-bottom: 30px; }}
-                .stats {{
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 15px;
-                    margin: 20px 0;
-                }}
-                .stat-card {{
-                    background: #1e293b;
-                    padding: 20px;
-                    border-radius: 8px;
-                    border-left: 4px solid #60a5fa;
-                }}
-                .stat-card h3 {{ margin: 0 0 10px 0; font-size: 14px; color: #94a3b8; }}
-                .stat-card p {{ margin: 0; font-size: 28px; font-weight: bold; color: #10b981; }}
-                .buttons {{ margin: 20px 0; }}
-                .btn {{
-                    display: inline-block;
-                    padding: 12px 24px;
-                    background: #3b82f6;
-                    color: white;
-                    text-decoration: none;
-                    border-radius: 8px;
-                    margin: 5px;
-                    font-weight: 600;
-                }}
-                .btn:hover {{ background: #2563eb; }}
-                .btn-back {{ background: #6b7280; }}
-                table {{
-                    width: 100%;
-                    border-collapse: collapse;
-                    background: #1e293b;
-                    border-radius: 8px;
-                    overflow: hidden;
-                    margin-top: 20px;
-                }}
-                th {{
-                    background: #334155;
-                    padding: 12px;
-                    text-align: left;
-                    font-weight: 600;
-                    font-size: 14px;
-                }}
-                td {{
-                    padding: 12px;
-                    border-bottom: 1px solid #334155;
-                }}
-                tr:hover {{ background: #334155; }}
-            </style>
-        </head>
-        <body>
-<style>
-.universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
-.universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
-.universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
-.universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
-.universal-nav-btn.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}}
-.universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
-.universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
-</style>
-
-            <div class="container">
-                
-                
-                <h1>💰 Gestion des Codes Promo</h1>
-                
-                <div class="stats">
-                    <div class="stat-card">
-                        <h3>Total Codes</h3>
-                        <p>{stats.get('total', 0)}</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Codes Actifs</h3>
-                        <p>{stats.get('active', 0)}</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Total Utilisations</h3>
-                        <p>{stats.get('total_usage', 0)}</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Plus Utilisé</h3>
-                        <p style="font-size: 20px;">N/A</p>
-                    </div>
-                </div>
-                
-                <div class="buttons">
-                    <a href="/admin/create-launch-promos" class="btn">
-                        ✨ Créer Codes de Lancement
-                    </a>
-                    <a href="/admin-dashboard" class="btn btn-back">
-                        ← Retour Admin
-                    </a>
-                </div>
-                
-                <h2 style="color: #94a3b8; margin-top: 30px;">📋 Liste des Codes</h2>
-                <table>
-                    <tr>
-                        <th>Code</th>
-                        <th>Réduction</th>
-                        <th>Utilisations</th>
-                        <th>Actif</th>
-                        <th>Expire</th>
-                        <th>Plans</th>
-                        <th>Description</th>
-                    </tr>
-                    {codes_html if codes_html else '<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 30px;">Aucun code promo créé</td></tr>'}
-                </table>
-            </div>
-        </body>
-        </html>
-        """
-        
-        return HTMLResponse(html)
-    except Exception as e:
-        return HTMLResponse(f"<h1>❌ Erreur: {str(e)}</h1>")
-
 
 @app.get("/admin/test-promo")
 @app.get("/admin-dashboard/test-promo")
@@ -24300,40 +23965,133 @@ async def admin_test_promo(
 
 @app.get("/admin/get-plan-access/{plan}")
 async def admin_get_plan_access(plan: str, _admin: str = Depends(require_admin)):
-    """Retourne les routes autorisées pour un plan."""
+    """Retourne les routes (chemins) autorisées pour un plan (table plan_access.routes_json)."""
     try:
-        plan_key = normalize_plan_key(plan)
-        routes = get_plan_access_routes(plan_key)
-        return JSONResponse(
-            {
-                "success": True,
-                "plan": plan_key,
-                "routes": routes,
-                "possible_routes": PLAN_ROUTE_OPTIONS,
+        plan_key = normalize_plan(plan)
+
+        def _ensure_plan_access_table():
+            conn = db_manager.get_connection()
+            c = conn.cursor()
+            try:
+                if db_manager.use_postgresql:
+                    c.execute("""
+                        CREATE TABLE IF NOT EXISTS plan_access (
+                            plan TEXT PRIMARY KEY,
+                            routes_json TEXT,
+                            routes TEXT
+                        )
+                    """)
+                else:
+                    c.execute("""
+                        CREATE TABLE IF NOT EXISTS plan_access (
+                            plan TEXT PRIMARY KEY,
+                            routes_json TEXT,
+                            routes TEXT
+                        )
+                    """)
+                conn.commit()
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+        def _default_routes_for_plan(pk: str) -> list:
+            free_routes = ["/dashboard", "/mon-compte"]
+            premium_routes = sorted(set(free_routes) | {
+                "/ai-market-regime",
+                "/ai-whale-watcher",
+                "/fear-greed",
+                "/fear-greed-chart",
+                "/dominance",
+                "/heatmap",
+                "/strategie",
+                "/spot-trading",
+                "/altcoin-season",
+                "/nouvelles",
+                "/convertisseur",
+                "/calendrier",
+                "/graphiques",
+                "/bullrun-phase",
+                "/onchain-metrics",
+            })
+            elite_routes = sorted(set(premium_routes) | {"/ai-predictor"})
+
+            # Par défaut: Advanced/Pro = premium (si pas de config DB)
+            defaults = {
+                "free": free_routes,
+                "premium": premium_routes,
+                "advanced": premium_routes,
+                "pro": premium_routes,
+                "elite": elite_routes,
             }
-        )
+            return defaults.get(pk, free_routes)
+
+        _ensure_plan_access_table()
+
+        # Lire routes_json
+        conn = db_manager.get_connection()
+        c = conn.cursor()
+        try:
+            if db_manager.use_postgresql:
+                c.execute("SELECT COALESCE(routes_json, routes) FROM plan_access WHERE plan = %s", (plan_key,))
+            else:
+                c.execute("SELECT COALESCE(routes_json, routes) FROM plan_access WHERE plan = ?", (plan_key,))
+            row = c.fetchone()
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+        routes = None
+        if row and row[0]:
+            try:
+                routes = json.loads(row[0])
+            except Exception:
+                # fallback: comma separated
+                routes = [r.strip() for r in str(row[0]).split(",") if r.strip()]
+
+        if not isinstance(routes, list):
+            routes = _default_routes_for_plan(plan_key)
+
+        # Construire liste "possible_routes" (union des defaults)
+        possible_routes = sorted(set(
+            _default_routes_for_plan("free")
+            + _default_routes_for_plan("premium")
+            + _default_routes_for_plan("elite")
+        ))
+
+        return JSONResponse({"success": True, "plan": plan_key, "routes": routes, "possible_routes": possible_routes}, status_code=200)
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e), "routes": []}, status_code=200)
 
+
 @app.post("/admin/save-plan-access")
 async def admin_save_plan_access(request: Request, _admin: str = Depends(require_admin)):
-    """Enregistre les routes autorisées pour un plan."""
+    """Enregistre les routes (chemins) autorisées pour un plan (table plan_access.routes_json)."""
     try:
         payload = {}
-        try:
-            payload = await request.json()
-        except Exception:
+        ct = (request.headers.get("content-type") or "").lower()
+        if "application/json" in ct:
+            try:
+                payload = await request.json()
+            except Exception:
+                payload = {}
+        else:
             try:
                 form = await request.form()
                 payload = dict(form)
             except Exception:
                 payload = {}
 
-        plan = payload.get("plan") if isinstance(payload, dict) else None
+        plan_raw = payload.get("plan") if isinstance(payload, dict) else None
         routes = payload.get("routes") if isinstance(payload, dict) else None
 
-        if not plan:
+        if not plan_raw:
             return JSONResponse({"success": False, "error": "Plan manquant"}, status_code=200)
+
+        plan_key = normalize_plan(plan_raw)
 
         if routes is None:
             routes = []
@@ -24341,11 +24099,64 @@ async def admin_save_plan_access(request: Request, _admin: str = Depends(require
             # allow comma-separated
             routes = [r.strip() for r in routes.split(",") if r.strip()]
 
-        ok, err = save_plan_access_routes(plan, routes)
-        if not ok:
-            return JSONResponse({"success": False, "error": err or "Erreur inconnue"}, status_code=200)
+        # Sanitize
+        clean = []
+        for r in (routes or []):
+            rs = str(r).strip()
+            if not rs:
+                continue
+            if not rs.startswith("/"):
+                rs = "/" + rs.lstrip("/")
+            clean.append(rs)
+        # unique
+        clean = sorted(set(clean))
 
-        return JSONResponse({"success": True, "plan": normalized_plan, "routes": routes, "message": "Accès du plan sauvegardés ✅"}, status_code=200)
+        conn = db_manager.get_connection()
+        c = conn.cursor()
+        try:
+            if db_manager.use_postgresql:
+                c.execute("""
+                    CREATE TABLE IF NOT EXISTS plan_access (
+                        plan TEXT PRIMARY KEY,
+                        routes_json TEXT,
+                        routes TEXT
+                    )
+                """)
+                j = json.dumps(clean, ensure_ascii=False)
+                c.execute("""
+                    INSERT INTO plan_access (plan, routes_json, routes)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (plan) DO UPDATE
+                    SET routes_json = EXCLUDED.routes_json,
+                        routes = EXCLUDED.routes
+                """, (plan_key, j, j))
+            else:
+                c.execute("""
+                    CREATE TABLE IF NOT EXISTS plan_access (
+                        plan TEXT PRIMARY KEY,
+                        routes_json TEXT,
+                        routes TEXT
+                    )
+                """)
+                j = json.dumps(clean, ensure_ascii=False)
+                try:
+                    c.execute("""
+                        INSERT INTO plan_access (plan, routes_json, routes)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(plan) DO UPDATE SET routes_json=excluded.routes_json, routes=excluded.routes
+                    """, (plan_key, j, j))
+                except Exception:
+                    # fallback for older SQLite
+                    c.execute("DELETE FROM plan_access WHERE plan = ?", (plan_key,))
+                    c.execute("INSERT INTO plan_access (plan, routes_json, routes) VALUES (?, ?, ?)", (plan_key, j, j))
+            conn.commit()
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+        return JSONResponse({"success": True, "plan": plan_key, "routes": clean, "message": "Accès du plan sauvegardés ✅"}, status_code=200)
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=200)
 
@@ -24390,10 +24201,10 @@ async def admin_save_plan_prices(request: Request, _admin: str = Depends(require
             plans = payload if isinstance(payload, dict) else {}
 
         key_map = {
-            "premium": ("premium_1m", 30, "Premium"),
-            "advanced": ("advanced_3m", 90, "Advanced"),
-            "pro": ("pro_6m", 180, "Pro"),
-            "elite": ("elite_12m", 365, "Elite"),
+            "premium": ("premium", 30, "Premium"),
+            "advanced": ("advanced", 90, "Advanced"),
+            "pro": ("pro", 180, "Pro"),
+            "elite": ("elite", 365, "Elite"),
         }
 
         def parse_price_to_cents(v) -> int:

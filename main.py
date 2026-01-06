@@ -5554,12 +5554,12 @@ async def add_user(request: Request, _admin_user: str = Depends(require_admin)):
 
         if USE_POSTGRESQL:
             cursor.execute("""
-                INSERT INTO users (username, password, role, subscription_plan, subscription_end, created_at)
+                INSERT INTO users (username, password_hash, role, subscription_plan, subscription_end, created_at)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, (username, hashed_password, role, plan_key, expiration_date, created_at))
         else:
             cursor.execute("""
-                INSERT INTO users (username, password, role, subscription_plan, subscription_end, created_at)
+                INSERT INTO users (username, password_hash, role, subscription_plan, subscription_end, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (username, hashed_password, role, plan_key, expiration_date.isoformat() if expiration_date else None, created_at))
 
@@ -23025,7 +23025,7 @@ async def stripe_permissions_webhook(request: Request):
                 
                 if DB_CONFIG["type"] == "postgres":
                     c.execute("""
-                        INSERT INTO users (username, password, email, subscription_plan, 
+                        INSERT INTO users (username, password_hash, email, subscription_plan, 
                                          subscription_start, subscription_end, 
                                          stripe_customer_id, payment_method, last_payment_date)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, 'stripe', %s)
@@ -23033,7 +23033,7 @@ async def stripe_permissions_webhook(request: Request):
                          start_date, end_date, session.get("customer"), start_date))
                 else:
                     c.execute("""
-                        INSERT INTO users (username, password, email, subscription_plan, 
+                        INSERT INTO users (username, password_hash, email, subscription_plan, 
                                          subscription_start, subscription_end, 
                                          stripe_customer_id, payment_method, last_payment_date)
                         VALUES (?, ?, ?, ?, ?, ?, ?, 'stripe', ?)
@@ -23192,7 +23192,7 @@ async def coinbase_permissions_webhook(request: Request):
                 
                 if DB_CONFIG["type"] == "postgres":
                     c.execute("""
-                        INSERT INTO users (username, password, email, subscription_plan, 
+                        INSERT INTO users (username, password_hash, email, subscription_plan, 
                                          subscription_start, subscription_end, 
                                          coinbase_customer_id, payment_method, last_payment_date)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, 'coinbase', %s)
@@ -23200,7 +23200,7 @@ async def coinbase_permissions_webhook(request: Request):
                          start_date, end_date, charge["id"], start_date))
                 else:
                     c.execute("""
-                        INSERT INTO users (username, password, email, subscription_plan, 
+                        INSERT INTO users (username, password_hash, email, subscription_plan, 
                                          subscription_start, subscription_end, 
                                          coinbase_customer_id, payment_method, last_payment_date)
                         VALUES (?, ?, ?, ?, ?, ?, ?, 'coinbase', ?)
@@ -24241,15 +24241,26 @@ async def admin_create_promo_post(request: Request, session_token: Optional[str]
         # Crer la table si elle n'existe pas
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS promo_codes (
-                code TEXT PRIMARY KEY,
-                discount REAL,
-                type TEXT,
-                valid_until TEXT,
-                max_uses INTEGER,
-                uses INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+
+                            code TEXT PRIMARY KEY,
+
+                            discount_percent INTEGER DEFAULT 0,
+
+                            discount_amount REAL DEFAULT 0,
+
+                            max_redemptions INTEGER DEFAULT 0,
+
+                            redeemed_count INTEGER DEFAULT 0,
+
+                            active INTEGER DEFAULT 1,
+
+                            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+                            expires_at TEXT,
+
+                            notes TEXT
+
+                        )""")
         
         # Vrifier si le code existe dj
         cursor.execute("SELECT code FROM promo_codes WHERE code = ?", (code,))
@@ -24258,11 +24269,24 @@ async def admin_create_promo_post(request: Request, session_token: Optional[str]
             conn.close()
             return JSONResponse({"success": False, "message": f"Le code {code} existe déjà"}, status_code=400)
         
-        # Insrer le nouveau code
+        # Insérer le nouveau code (schéma promo_codes historique)
+        try:
+            disc_pct = 0
+            disc_amt = 0.0
+            if str(promo_type).lower() in ["percentage", "percent", "%", "pourcentage"]:
+                disc_pct = int(float(discount))
+            else:
+                disc_amt = float(discount)
+            max_red = int(max_uses) if (max_uses is not None and str(max_uses).strip() != "") else 0
+        except Exception:
+            disc_pct = 0
+            disc_amt = 0.0
+            max_red = 0
+
         cursor.execute("""
-            INSERT INTO promo_codes (code, discount, type, valid_until, max_uses)
-            VALUES (?, ?, ?, ?, ?)
-        """, (code, discount, promo_type, valid_until, max_uses))
+            INSERT INTO promo_codes (code, discount_percent, discount_amount, max_redemptions, redeemed_count, active, expires_at)
+            VALUES (?, ?, ?, ?, 0, 1, ?)
+        """, (code, disc_pct, disc_amt, max_red, valid_until))
         
         conn.commit()
         cursor.close()
@@ -24333,20 +24357,31 @@ async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
         # Crer la table si elle n'existe pas
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS promo_codes (
-                code TEXT PRIMARY KEY,
-                discount REAL,
-                type TEXT,
-                valid_until TEXT,
-                max_uses INTEGER,
-                uses INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+
+                            code TEXT PRIMARY KEY,
+
+                            discount_percent INTEGER DEFAULT 0,
+
+                            discount_amount REAL DEFAULT 0,
+
+                            max_redemptions INTEGER DEFAULT 0,
+
+                            redeemed_count INTEGER DEFAULT 0,
+
+                            active INTEGER DEFAULT 1,
+
+                            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+                            expires_at TEXT,
+
+                            notes TEXT
+
+                        )""")
         conn.commit()
         
         # Rcuprer tous les codes
         cursor.execute("""
-            SELECT code, discount, type, valid_until, max_uses, uses
+            SELECT code, discount_percent, discount_amount, max_redemptions, redeemed_count, active, expires_at
             FROM promo_codes
             ORDER BY created_at DESC
         """)
@@ -24357,13 +24392,25 @@ async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
         
         promos = []
         for row in rows:
+            code_v = row[0]
+            disc_pct = row[1] or 0
+            disc_amt = row[2] or 0.0
+            max_red = row[3] or 0
+            used = row[4] or 0
+            active = 1 if (row[5] is None or int(row[5]) != 0) else 0
+            expires_at = row[6] if len(row) > 6 else None
+
+            promo_type = "percentage" if int(disc_pct) > 0 else "fixed"
+            discount = int(disc_pct) if promo_type == "percentage" else float(disc_amt)
+
             promos.append({
-                "code": row[0],
-                "discount": row[1],
-                "type": row[2],
-                "valid_until": row[3],
-                "max_uses": row[4],
-                "uses": row[5] or 0
+                "code": code_v,
+                "discount": discount,
+                "type": promo_type,
+                "valid_until": expires_at,
+                "max_uses": int(max_red) if max_red is not None else 0,
+                "uses": int(used) if used is not None else 0,
+                "active": bool(active)
             })
         
         print(f"✅ Liste promos renvoyée: {len(promos)} codes")
@@ -24742,15 +24789,26 @@ async def admin_create_launch_promos_post(request: Request, _admin_user: str = D
         cur = conn.cursor()
         cur.execute("""
             CREATE TABLE IF NOT EXISTS promo_codes (
-                code TEXT PRIMARY KEY,
-                discount REAL NOT NULL,
-                type TEXT DEFAULT 'percentage',
-                valid_until TEXT,
-                max_uses INTEGER DEFAULT NULL,
-                uses INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+
+                            code TEXT PRIMARY KEY,
+
+                            discount_percent INTEGER DEFAULT 0,
+
+                            discount_amount REAL DEFAULT 0,
+
+                            max_redemptions INTEGER DEFAULT 0,
+
+                            redeemed_count INTEGER DEFAULT 0,
+
+                            active INTEGER DEFAULT 1,
+
+                            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+                            expires_at TEXT,
+
+                            notes TEXT
+
+                        )""")
 
         created = 0
         skipped = 0
@@ -24765,14 +24823,20 @@ async def admin_create_launch_promos_post(request: Request, _admin_user: str = D
                 skipped += 1
                 continue
             if db_manager.use_postgresql:
+                # Insert launch promo (schéma historique)
+                disc_pct = int(p["discount"]) if str(p.get("type","percentage")).lower() == "percentage" else 0
+                disc_amt = float(p["discount"]) if str(p.get("type","percentage")).lower() != "percentage" else 0.0
                 cur.execute(
-                    "INSERT INTO promo_codes (code, discount, type, valid_until, max_uses) VALUES (%s,%s,%s,%s,%s)",
-                    (code, p["discount"], p["type"], valid_until, max_uses)
+                    "INSERT INTO promo_codes (code, discount_percent, discount_amount, max_redemptions, redeemed_count, active, expires_at) VALUES (%s,%s,%s,%s,0,1,%s)",
+                    (code, disc_pct, disc_amt, max_uses, valid_until)
                 )
             else:
+                # Insert launch promo (schéma historique)
+                disc_pct = int(p["discount"]) if str(p.get("type","percentage")).lower() == "percentage" else 0
+                disc_amt = float(p["discount"]) if str(p.get("type","percentage")).lower() != "percentage" else 0.0
                 cur.execute(
-                    "INSERT INTO promo_codes (code, discount, type, valid_until, max_uses) VALUES (?,?,?,?,?)",
-                    (code, p["discount"], p["type"], valid_until, max_uses)
+                    "INSERT INTO promo_codes (code, discount_percent, discount_amount, max_redemptions, redeemed_count, active, expires_at) VALUES (?,?,?, ?,0,1,?)",
+                    (code, disc_pct, disc_amt, max_uses, valid_until)
                 )
             created += 1
 
@@ -25686,15 +25750,26 @@ async def api_validate_promo(
         # Crer la table si elle n'existe pas
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS promo_codes (
-                code TEXT PRIMARY KEY,
-                discount REAL,
-                type TEXT,
-                valid_until TEXT,
-                max_uses INTEGER,
-                uses INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+
+                            code TEXT PRIMARY KEY,
+
+                            discount_percent INTEGER DEFAULT 0,
+
+                            discount_amount REAL DEFAULT 0,
+
+                            max_redemptions INTEGER DEFAULT 0,
+
+                            redeemed_count INTEGER DEFAULT 0,
+
+                            active INTEGER DEFAULT 1,
+
+                            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+                            expires_at TEXT,
+
+                            notes TEXT
+
+                        )""")
         conn.commit()
         
         # Chercher le code promo

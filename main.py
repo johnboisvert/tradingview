@@ -825,71 +825,197 @@ def init_plan_access_db():
     except Exception as e:
         print(f"⚠️ init_plan_access_db (sqlite) erreur: {e}")
 def get_plan_access_routes(plan: str) -> list:
-    """Retourne la liste des routes (route_key) activées pour un plan."""
-    plan = normalize_plan(plan)
-    try:
-        cfg_type = (DB_CONFIG.get("type") or "sqlite").lower()
+    """
+    Retourne la liste des routes autorisées pour un plan.
+    IMPORTANT: on renvoie des routes *avec* "/" (ex: "/dashboard") pour matcher les checkbox value côté admin.
+    Stockage: essaye d'abord le schéma "routes_json" (plan_access(plan, routes_json, updated_at)),
+    puis fallback vers l'ancien schéma par-ligne (plan_access(plan, route_key, enabled...)).
+    """
+    plan_key = normalize_plan(plan)
+    # fallback default
+    default_raw = DEFAULT_PLAN_ACCESS.get(plan_key, [])
+    default_routes = []
+    for r in (default_raw or []):
+        s = str(r).strip()
+        if not s:
+            continue
+        if not s.startswith("/"):
+            s = "/" + s.lstrip("/")
+        default_routes.append(s)
 
-        if cfg_type == "postgres":
-            conn = get_db_connection()
-            cur = conn.cursor()
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        mode = get_db_mode()
+
+        # 1) Nouveau schéma: routes_json
+        try:
+            if mode == "postgres":
+                cur.execute("SELECT routes_json FROM plan_access WHERE plan=%s", (plan_key,))
+            else:
+                cur.execute("SELECT routes_json FROM plan_access WHERE plan=?", (plan_key,))
+            row = cur.fetchone()
+            if row:
+                routes_json = row[0]
+                if routes_json is None or str(routes_json).strip() == "":
+                    return []
+                if isinstance(routes_json, (list, tuple)):
+                    routes = list(routes_json)
+                else:
+                    routes = json.loads(routes_json)
+                cleaned = []
+                for r in routes:
+                    s = str(r).strip()
+                    if not s:
+                        continue
+                    if not s.startswith("/"):
+                        s = "/" + s.lstrip("/")
+                    cleaned.append(s)
+                # unique + stable order
+                out = []
+                seen = set()
+                for s in cleaned:
+                    if s not in seen:
+                        seen.add(s)
+                        out.append(s)
+                return out
+        except Exception:
+            # routes_json colonne/table pas dispo -> fallback ancien schéma
+            pass
+
+        # 2) Ancien schéma: une ligne par route (route_key + enabled)
+        if mode == "postgres":
             cur.execute(
-                "SELECT route_key FROM plan_access WHERE plan=%s AND enabled=TRUE ORDER BY route_key;",
-                (plan,),
+                "SELECT route_key, enabled FROM plan_access WHERE plan=%s",
+                (plan_key,),
             )
             rows = cur.fetchall() or []
-            cur.close()
-            conn.close()
-            return [r[0] for r in rows]
-
-        conn = get_settings_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT route_key FROM plan_access WHERE plan=? AND enabled=1 ORDER BY route_key;",
-            (plan,),
-        )
-        rows = cur.fetchall() or []
-        conn.close()
-        return [r[0] for r in rows]
+            enabled_routes = []
+            for route_key, enabled in rows:
+                if not enabled:
+                    continue
+                s = str(route_key or "").strip()
+                if not s:
+                    continue
+                if not s.startswith("/"):
+                    s = "/" + s.lstrip("/")
+                enabled_routes.append(s)
+            return enabled_routes if enabled_routes else default_routes
+        else:
+            cur.execute(
+                "SELECT route_key, enabled FROM plan_access WHERE plan=?",
+                (plan_key,),
+            )
+            rows = cur.fetchall() or []
+            enabled_routes = []
+            for route_key, enabled in rows:
+                if not enabled:
+                    continue
+                s = str(route_key or "").strip()
+                if not s:
+                    continue
+                if not s.startswith("/"):
+                    s = "/" + s.lstrip("/")
+                enabled_routes.append(s)
+            return enabled_routes if enabled_routes else default_routes
     except Exception as e:
-        print(f"⚠️ get_plan_access_routes({plan}): {e}")
-        return DEFAULT_PLAN_ACCESS.get(plan, [])
-def save_plan_access_routes(plan: str, routes: list) -> bool:
-    """Enregistre la liste des routes autorisées pour un plan."""
-    plan = normalize_plan(plan)
-    routes = [str(r).strip() for r in (routes or []) if str(r).strip()]
-    try:
-        init_plan_access_db()
-        cfg_type = (DB_CONFIG.get("type") or "sqlite").lower()
+        print(f"⚠️ get_plan_access_routes error: {e}")
+        return default_routes
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
-        if cfg_type == "postgres":
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("DELETE FROM plan_access WHERE plan=%s;", (plan,))
-            for rk in routes:
+
+def save_plan_access_routes(plan: str, routes: list) -> bool:
+    """
+    Sauvegarde la liste des routes autorisées pour un plan.
+    IMPORTANT: on stocke les routes avec "/" (ex: "/dashboard") pour rester cohérent partout.
+    Stockage: essaye d'abord le schéma "routes_json", puis fallback ancien schéma par-ligne.
+    """
+    plan_key = normalize_plan(plan)
+
+    cleaned = []
+    seen = set()
+    for r in (routes or []):
+        s = str(r).strip()
+        if not s:
+            continue
+        # Canonique: commence par "/"
+        if not s.startswith("/"):
+            s = "/" + s.lstrip("/")
+        # on garde la casse stable (routes du catalogue sont déjà en minuscule)
+        s = s.strip()
+        if s and s not in seen:
+            seen.add(s)
+            cleaned.append(s)
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        mode = get_db_mode()
+        now = dt.datetime.utcnow().isoformat()
+
+        # 1) Nouveau schéma routes_json
+        try:
+            routes_json = json.dumps(cleaned, ensure_ascii=False)
+            if mode == "postgres":
                 cur.execute(
-                    "INSERT INTO plan_access (plan, route_key, enabled) VALUES (%s, %s, TRUE) ON CONFLICT (plan, route_key) DO UPDATE SET enabled=TRUE;",
-                    (plan, rk),
+                    """
+                    INSERT INTO plan_access (plan, routes_json, updated_at)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (plan)
+                    DO UPDATE SET routes_json = EXCLUDED.routes_json, updated_at = EXCLUDED.updated_at
+                    """,
+                    (plan_key, routes_json, now),
+                )
+            else:
+                cur.execute(
+                    "INSERT OR REPLACE INTO plan_access (plan, routes_json, updated_at) VALUES (?, ?, ?)",
+                    (plan_key, routes_json, now),
                 )
             conn.commit()
-            cur.close()
-            conn.close()
+            return True
+        except Exception:
+            # pas de routes_json -> fallback ancien schéma
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
+        # 2) Ancien schéma par-ligne: delete + insert enabled
+        if mode == "postgres":
+            cur.execute("DELETE FROM plan_access WHERE plan=%s", (plan_key,))
+            for rk in cleaned:
+                cur.execute(
+                    "INSERT INTO plan_access (plan, route_key, display_name, enabled) VALUES (%s, %s, %s, %s)",
+                    (plan_key, rk, rk, True),
+                )
+            conn.commit()
+            return True
+        else:
+            cur.execute("DELETE FROM plan_access WHERE plan=?", (plan_key,))
+            for rk in cleaned:
+                cur.execute(
+                    "INSERT INTO plan_access (plan, route_key, display_name, enabled) VALUES (?, ?, ?, ?)",
+                    (plan_key, rk, rk, 1),
+                )
+            conn.commit()
             return True
 
-        conn = get_settings_db_connection()
-        cur = conn.cursor()
-        cur.execute("DELETE FROM plan_access WHERE plan=?;", (plan,))
-        for rk in routes:
-            cur.execute(
-                "INSERT OR REPLACE INTO plan_access (plan, route_key, enabled) VALUES (?, ?, 1);",
-                (plan, rk),
-            )
-        conn.commit()
-        conn.close()
-        return True
     except Exception as e:
-        print(f"⚠️ save_plan_access_routes({plan}): {e}")
+        print(f"⚠️ save_plan_access_routes error: {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         return False
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 def init_trades_db():
     """Crée la table trades"""
     try:
@@ -24106,7 +24232,7 @@ async def admin_save_plan_access(request: Request, _admin: str = Depends(require
         if not isinstance(routes, list):
             routes = []
 
-        # Normalisation route_key (pas de slash, lower)
+        # Normalisation route_key (canonique avec '/', ex: /dashboard)
         cleaned = []
         for r in routes:
             if not isinstance(r, str):
@@ -24114,8 +24240,11 @@ async def admin_save_plan_access(request: Request, _admin: str = Depends(require
             rk = r.strip()
             if not rk:
                 continue
-            rk = rk.lstrip('/').strip().lower()
-            if not rk:
+            # Canonique: commence par '/'
+            if not rk.startswith('/'):
+                rk = '/' + rk.lstrip('/')
+            rk = rk.strip().lower()
+            if not rk or rk == '/':
                 continue
             cleaned.append(rk)
 

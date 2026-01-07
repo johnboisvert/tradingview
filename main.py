@@ -665,7 +665,7 @@ def init_plan_pricing_db():
         row = cur.fetchone()
         count = row[0] if row else 0
         if count == 0:
-            now = datetime.utcnow().isoformat()
+            now = dt.datetime.utcnow().isoformat()
             for k, v in DEFAULT_PLAN_PRICES.items():
                 cur.execute(
                     "INSERT OR REPLACE INTO plan_pricing (plan_key, display_name, duration_days, price_cents, currency, updated_at) VALUES (?,?,?,?,?,?)",
@@ -702,7 +702,7 @@ def set_plan_pricing(plan_key: str, display_name: str, duration_days: int, price
         init_plan_pricing_db()
         conn = get_settings_db_connection()
         cur = conn.cursor()
-        now = datetime.utcnow().isoformat()
+        now = dt.datetime.utcnow().isoformat()
         cur.execute(
             "INSERT OR REPLACE INTO plan_pricing (plan_key, display_name, duration_days, price_cents, currency, updated_at) VALUES (?,?,?,?,?,?)",
             (plan_key, display_name, int(duration_days), int(price_cents), (currency or "cad").lower(), now)
@@ -5675,7 +5675,7 @@ async def admin_list_users(q: str = "", limit: int = 200, _admin_user: str = Dep
                 except Exception:
                     return None
 
-        now = datetime.utcnow()
+        now = dt.datetime.utcnow()
         users = []
         for r in rows:
             username, role, plan, sub_end, created_at = r[0], r[1], r[2], r[3], r[4]
@@ -19503,23 +19503,51 @@ async def pricing_complete_page(request: Request, session_token: Optional[str] =
     HIDDEN_ROUTES = {"/", "/contact", "/pricing", "/pricing-complete", "/login", "/logout"}
 
     def _routes_summary(plan_key: str) -> str:
-        try:
-            # Lit les accès réellement configurés dans l'Admin (table plan_access: route_key/enabled)
-            routes = list(get_plan_access_routes(plan_key) or [])
-            routes = [r for r in routes if r and r.startswith("/") and r not in HIDDEN_ROUTES]
-            routes.sort(key=lambda x: ROUTE_LABELS.get(x, x))
-            if not routes:
-                return "(à définir dans l'Admin)"
-            labels = [ROUTE_LABELS.get(r, r.replace("/", "").replace("-", " ").title()) for r in routes]
-            show = labels[:5]
-            extra = len(labels) - len(show)
-            if extra > 0:
-                return ", ".join(show) + f" +{extra}"
-            return ", ".join(show)
-        except Exception as e:
-            print(f"⚠️ pricing-complete: erreur routes_summary({plan_key}): {e}")
-            return "(erreur)"
+        """Résumé des pages accessibles (gère paths ET libellés).
 
+        Selon les versions, la DB peut contenir:
+        - des chemins (ex: /ai-market-regime)
+        - des libellés (ex: Gem Hunter, Abonnements)
+        On accepte les deux pour afficher quelque chose de cohérent sur la page Abonnements.
+        """
+        try:
+            routes = list(get_plan_access_routes(plan_key) or [])
+            routes = [str(r or "").strip() for r in routes]
+            routes = [r for r in routes if r]
+
+            # retire uniquement les routes cachées si ce sont des paths
+            cleaned = []
+            for r in routes:
+                if r.startswith("/") and r in HIDDEN_ROUTES:
+                    continue
+                cleaned.append(r)
+
+            if not cleaned:
+                return "(à définir dans l'Admin)"
+
+            labels = []
+            for r in cleaned:
+                if r.startswith("/"):
+                    labels.append(ROUTE_LABELS.get(r, r.replace("/", "").replace("-", " ").replace("_", " ").title()))
+                else:
+                    # déjà un libellé lisible
+                    labels.append(r)
+
+            # déduplique + tri stable
+            uniq = []
+            seen = set()
+            for x in labels:
+                if x in seen:
+                    continue
+                seen.add(x)
+                uniq.append(x)
+            uniq.sort(key=lambda s: s.lower())
+
+            show = uniq[:5]
+            extra = len(uniq) - len(show)
+            return ", ".join(show) + (f" +{extra}" if extra > 0 else "")
+        except Exception:
+            return "(à définir dans l'Admin)"
 
     feat_labels = {k: v for k, v in PLAN_FEATURE_DEFS}
 
@@ -28030,7 +28058,7 @@ def init_plan_features_db():
         cur.execute("SELECT COUNT(1) FROM plan_features")
         count = (cur.fetchone() or [0])[0]
         if count == 0:
-            now = datetime.utcnow().isoformat()
+            now = dt.datetime.utcnow().isoformat()
             for plan_key, feats in DEFAULT_PLAN_FEATURES.items():
                 cur.execute(
                     "INSERT OR REPLACE INTO plan_features (plan_key, features_json, updated_at) VALUES (?,?,?)",
@@ -28063,7 +28091,7 @@ def set_plan_features(plan_key: str, features: list) -> None:
         init_plan_features_db()
         plan_key = normalize_plan(plan_key)
         feats = [str(x) for x in (features or [])]
-        now = datetime.utcnow().isoformat()
+        now = dt.datetime.utcnow().isoformat()
         conn = get_settings_db_connection()
         cur = conn.cursor()
         cur.execute(

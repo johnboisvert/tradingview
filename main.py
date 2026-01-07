@@ -41079,3 +41079,222 @@ async def toggle_ebook(ebook_id: int, request: Request):
 # ============================================================================
 # FIN DES ROUTES EBOOKS/CONTACT - TOUT EST PRT!
 # ============================================================================
+
+# ============================================================================
+# HOTFIX v20 — PERSISTANCE + UNIFICATION PLAN ACCESS (ADMIN <-> PRICING)
+# - Corrige le cas où les accès semblent "sauvegardés" mais disparaissent
+#   (DB dans /tmp) ou ne se reflètent pas sur /pricing-complete.
+# - Rend le schéma plan_access tolérant (plan vs plan_key) et supprime
+#   les effets de cache.
+# ============================================================================
+
+import glob as _glob
+
+_PLAN_ACCESS_CACHE_V2 = {}
+
+def _is_writable_dir(path: str) -> bool:
+    try:
+        os.makedirs(path, exist_ok=True)
+        testfile = os.path.join(path, ".write_test")
+        with open(testfile, "w", encoding="utf-8") as f:
+            f.write("ok")
+        os.remove(testfile)
+        return True
+    except Exception:
+        return False
+
+def _detect_railway_volume_dir() -> str | None:
+    """
+    Railway log montre souvent:
+      Mounting volume on: /var/lib/containers/railwayapp/bind-mounts/<uuid>/vol_xxx
+    Selon la config, ce chemin peut exister DANS le container.
+    """
+    patterns = [
+        "/var/lib/containers/railwayapp/bind-mounts/*/vol_*",
+        "/var/lib/containers/railwayapp/bind-mounts/*/*",
+        "/var/lib/containers/*/bind-mounts/*/vol_*",
+    ]
+    candidates = []
+    for pat in patterns:
+        try:
+            candidates.extend(_glob.glob(pat))
+        except Exception:
+            continue
+    # Trier "le plus récent" d'abord (best-effort)
+    def _mtime(p):
+        try:
+            return os.path.getmtime(p)
+        except Exception:
+            return 0
+    for p in sorted(set(candidates), key=_mtime, reverse=True):
+        if os.path.isdir(p) and _is_writable_dir(p):
+            return p
+    return None
+
+def _resolve_persistent_app_dir() -> str:
+    """
+    Choisit un répertoire stable pour les DB (settings/users),
+    en priorité : DB_DIR env, /data, /mnt/data, volume Railway détecté,
+    sinon fallback sur DB_CONFIG.dir, sinon /tmp/ai_trader.
+    """
+    env_dir = (os.getenv("DB_DIR") or "").strip()
+    if env_dir and _is_writable_dir(env_dir):
+        return env_dir
+
+    # chemins standards
+    for p in ("/data", "/mnt/data"):
+        if os.path.isdir(p) and _is_writable_dir(p):
+            return os.path.join(p, "ai_trader")
+
+    # volume Railway auto-détecté
+    rv = _detect_railway_volume_dir()
+    if rv:
+        return os.path.join(rv, "ai_trader")
+
+    # fallback (peut être /tmp => non persistant après restart)
+    fallback = (DB_CONFIG.get("dir") if isinstance(DB_CONFIG, dict) else "") or "/tmp/ai_trader"
+    return fallback
+
+def _settings_db_path_v2() -> str:
+    base = _resolve_persistent_app_dir()
+    os.makedirs(base, exist_ok=True)
+    return os.path.join(base, "settings.db")
+
+def get_settings_db_connection():
+    """Override: connexion settings.db dans un répertoire persistant si possible."""
+    db_path = _settings_db_path_v2()
+    conn = sqlite3.connect(db_path, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def _ensure_plan_access_schema_v2(conn: sqlite3.Connection) -> None:
+    """
+    Tolère les anciennes variantes:
+      - plan_access(plan_key, routes_json, ...)
+      - plan_access(plan, routes_json, ...)
+    Et ajoute updated_at.
+    """
+    c = conn.cursor()
+    # créer une table minimaliste si absente
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS plan_access (
+            plan TEXT PRIMARY KEY,
+            routes_json TEXT,
+            updated_at TEXT
+        )
+    """)
+    conn.commit()
+
+    # inspecter colonnes
+    cols = [r["name"] if isinstance(r, sqlite3.Row) else r[1] for r in c.execute("PRAGMA table_info(plan_access)")]
+    # migration douce si "plan_key" existe mais pas "plan"
+    if "plan_key" in cols and "plan" not in cols:
+        try:
+            c.execute("ALTER TABLE plan_access ADD COLUMN plan TEXT")
+            c.execute("UPDATE plan_access SET plan = plan_key WHERE plan IS NULL OR plan = ''")
+            conn.commit()
+        except Exception:
+            pass
+
+    # s'assurer que routes_json existe
+    cols = [r["name"] if isinstance(r, sqlite3.Row) else r[1] for r in c.execute("PRAGMA table_info(plan_access)")]
+    if "routes_json" not in cols:
+        try:
+            c.execute("ALTER TABLE plan_access ADD COLUMN routes_json TEXT")
+            conn.commit()
+        except Exception:
+            pass
+
+    # s'assurer que updated_at existe
+    cols = [r["name"] if isinstance(r, sqlite3.Row) else r[1] for r in c.execute("PRAGMA table_info(plan_access)")]
+    if "updated_at" not in cols:
+        try:
+            c.execute("ALTER TABLE plan_access ADD COLUMN updated_at TEXT")
+            conn.commit()
+        except Exception:
+            pass
+
+def _plan_access_plan_col(conn: sqlite3.Connection) -> str:
+    c = conn.cursor()
+    cols = [r["name"] if isinstance(r, sqlite3.Row) else r[1] for r in c.execute("PRAGMA table_info(plan_access)")]
+    return "plan" if "plan" in cols else ("plan_key" if "plan_key" in cols else "plan")
+
+def normalize_route_key(route: str) -> str:
+    """Override: normalisation stable des routes (toujours '/xxx')."""
+    if not route:
+        return ""
+    r = str(route).strip()
+    # supporter 'dashboard' => '/dashboard'
+    if not r.startswith("/"):
+        r = "/" + r
+    # enlever query/hash
+    r = r.split("?", 1)[0].split("#", 1)[0]
+    # nettoyer espaces
+    r = re.sub(r"\s+", "", r)
+    return r
+
+def get_plan_access_routes(plan: str):
+    """Override: lit toujours depuis settings.db (sans cache agressif)."""
+    plan = (plan or "").strip().lower()
+    if not plan:
+        return []
+    try:
+        conn = get_settings_db_connection()
+        _ensure_plan_access_schema_v2(conn)
+        col = _plan_access_plan_col(conn)
+        cur = conn.cursor()
+        cur.execute(f"SELECT routes_json FROM plan_access WHERE {col}=?", (plan,))
+        row = cur.fetchone()
+        conn.close()
+        if not row:
+            return []
+        routes_json = row[0] if not isinstance(row, sqlite3.Row) else row["routes_json"]
+        routes = json.loads(routes_json) if routes_json else []
+        routes = [normalize_route_key(r) for r in routes if normalize_route_key(r)]
+        return sorted(set(routes))
+    except Exception as e:
+        print(f"❌ get_plan_access_routes(v2) error plan={plan}: {e}")
+        return []
+
+def save_plan_access_routes(plan: str, routes: list[str]):
+    """Override: écrit dans settings.db persistant + commit robuste."""
+    plan = (plan or "").strip().lower()
+    if plan not in ("free", "premium", "advanced", "pro", "elite"):
+        raise ValueError("Plan invalide")
+    routes = routes or []
+    routes = [normalize_route_key(r) for r in routes]
+    routes = sorted({r for r in routes if r})
+    now = datetime.datetime.utcnow().isoformat()
+
+    conn = get_settings_db_connection()
+    _ensure_plan_access_schema_v2(conn)
+    col = _plan_access_plan_col(conn)
+    c = conn.cursor()
+    # stratégie ultra-compatible : delete + insert
+    c.execute(f"DELETE FROM plan_access WHERE {col}=?", (plan,))
+    c.execute(f"INSERT INTO plan_access ({col}, routes_json, updated_at) VALUES (?,?,?)", (plan, json.dumps(routes), now))
+    conn.commit()
+    conn.close()
+
+    # cache léger optionnel
+    _PLAN_ACCESS_CACHE_V2[plan] = routes
+    try:
+        # si l'ancien cache existe dans d'autres sections, tenter de l'invalider
+        if "PLAN_ACCESS_CACHE" in globals() and isinstance(globals().get("PLAN_ACCESS_CACHE"), dict):
+            globals()["PLAN_ACCESS_CACHE"].pop(plan, None)
+    except Exception:
+        pass
+
+    print(f"✅ plan_access saved(v2): plan={plan} routes={len(routes)} dir={_resolve_persistent_app_dir()}")
+    return routes
+
+# --- Compat: si tu as une fonction init_plan_access_db appelée ailleurs, on la redirige ---
+def init_plan_access_db():
+    try:
+        conn = get_settings_db_connection()
+        _ensure_plan_access_schema_v2(conn)
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"❌ init_plan_access_db(v2) error: {e}")
+        return False

@@ -728,65 +728,102 @@ DEFAULT_PLAN_ACCESS = {
     "elite": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist"],
 }
 def init_plan_access_db():
-    """DB des accès par forfait (persistant)."""
+    """
+    Initialise / migre la table `plan_access` (SQLite) pour la gestion des accès par forfait.
+
+    ⚠️ Historique:
+    - Une ancienne version utilisait une table plan_access "row-based" (plan, route_key, enabled).
+    - La version actuelle utilise une table "json-based" (plan, routes_json, updated_at).
+    Cette fonction détecte l'ancien schéma et migre automatiquement vers le nouveau.
+    """
+    if DB_CONFIG.get("type") != "sqlite":
+        return
+
     try:
-        cfg_type = (DB_CONFIG.get("type") or "sqlite").lower()
-
-        if cfg_type == "postgres":
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute('''
-                CREATE TABLE IF NOT EXISTS plan_access (
-                    plan TEXT NOT NULL,
-                    route_key TEXT NOT NULL,
-                    enabled BOOLEAN NOT NULL DEFAULT TRUE,
-                    PRIMARY KEY (plan, route_key)
-                );
-            ''')
-            conn.commit()
-
-            cur.execute("SELECT COUNT(*) FROM plan_access;")
-            count = (cur.fetchone() or [0])[0] or 0
-            if count == 0:
-                for plan, routes in DEFAULT_PLAN_ACCESS.items():
-                    for rk in routes:
-                        cur.execute(
-                            "INSERT INTO plan_access (plan, route_key, enabled) VALUES (%s, %s, TRUE) ON CONFLICT (plan, route_key) DO NOTHING;",
-                            (plan, rk),
-                        )
-                conn.commit()
-            cur.close()
-            conn.close()
-            return True
-
         conn = get_settings_db_connection()
         cur = conn.cursor()
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS plan_access (
-                plan TEXT NOT NULL,
-                route_key TEXT NOT NULL,
-                enabled INTEGER NOT NULL DEFAULT 1,
-                PRIMARY KEY (plan, route_key)
-            );
-        ''')
-        conn.commit()
 
-        cur.execute("SELECT COUNT(*) FROM plan_access;")
-        count = (cur.fetchone() or [0])[0] or 0
-        if count == 0:
-            for plan, routes in DEFAULT_PLAN_ACCESS.items():
-                for rk in routes:
-                    cur.execute(
-                        "INSERT OR IGNORE INTO plan_access (plan, route_key, enabled) VALUES (?, ?, 1);",
-                        (plan, rk),
-                    )
+        # Table existe ?
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='plan_access'")
+        exists = cur.fetchone() is not None
+
+        if not exists:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS plan_access (
+                    plan TEXT PRIMARY KEY,
+                    routes_json TEXT NOT NULL,
+                    updated_at TEXT
+                )
+            """)
             conn.commit()
+        else:
+            # Détecter schéma
+            cur.execute("PRAGMA table_info(plan_access)")
+            cols = [r[1] for r in cur.fetchall()]
 
+            # Migration ancien schéma -> nouveau
+            if "routes_json" not in cols:
+                if "route_key" in cols and "enabled" in cols:
+                    cur.execute("SELECT plan, route_key FROM plan_access WHERE enabled=1")
+                    rows = cur.fetchall()
+
+                    plan_to_routes = {}
+                    for p, rk in rows:
+                        p2 = normalize_plan(p or "")
+                        rk2 = (rk or "").strip().lstrip("/")
+                        if rk2:
+                            plan_to_routes.setdefault(p2, set()).add(rk2)
+
+                    # Renommer l'ancienne table puis recréer le nouveau schéma
+                    cur.execute("ALTER TABLE plan_access RENAME TO plan_access_old")
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS plan_access (
+                            plan TEXT PRIMARY KEY,
+                            routes_json TEXT NOT NULL,
+                            updated_at TEXT
+                        )
+                    """)
+
+                    now = dt.datetime.utcnow().isoformat()
+                    for p2, routes in plan_to_routes.items():
+                        cur.execute(
+                            "INSERT OR REPLACE INTO plan_access (plan, routes_json, updated_at) VALUES (?, ?, ?)",
+                            (p2, json.dumps(sorted(routes)), now),
+                        )
+
+                    # Supprimer l'ancienne table
+                    cur.execute("DROP TABLE plan_access_old")
+                    conn.commit()
+                else:
+                    # Schéma inconnu: on tente d'ajouter les colonnes manquantes
+                    try:
+                        cur.execute("ALTER TABLE plan_access ADD COLUMN routes_json TEXT")
+                    except Exception:
+                        pass
+                    try:
+                        cur.execute("ALTER TABLE plan_access ADD COLUMN updated_at TEXT")
+                    except Exception:
+                        pass
+                    conn.commit()
+
+        # Assurer la présence des forfaits par défaut
+        now = dt.datetime.utcnow().isoformat()
+        for p, routes in DEFAULT_PLAN_ACCESS.items():
+            p2 = normalize_plan(p)
+            routes_clean = sorted({(r or "").strip().lstrip("/") for r in (routes or []) if (r or "").strip()})
+            cur.execute("SELECT routes_json FROM plan_access WHERE plan=?", (p2,))
+            row = cur.fetchone()
+            if (row is None) or (not row[0]):
+                cur.execute(
+                    "INSERT OR REPLACE INTO plan_access (plan, routes_json, updated_at) VALUES (?, ?, ?)",
+                    (p2, json.dumps(routes_clean), now),
+                )
+
+        conn.commit()
         conn.close()
-        return True
+        print("✅ Table plan_access OK (sqlite)")
     except Exception as e:
-        print(f"⚠️ init_plan_access_db: {e}")
-        return False
+        print(f"⚠️ init_plan_access_db (sqlite) erreur: {e}")
 def get_plan_access_routes(plan: str) -> list:
     """Retourne la liste des routes (route_key) activées pour un plan."""
     plan = normalize_plan(plan)

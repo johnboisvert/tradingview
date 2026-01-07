@@ -116,7 +116,7 @@ import time
 import threading
 # ===================== PLAN ACCESS CACHE =====================
 PLAN_ACCESS_CACHE = {}  # {plan_key: {'ts': float, 'routes': list[str]}}
-PLAN_ACCESS_CACHE_TTL_SEC = 15
+PLAN_ACCESS_CACHE_TTL_SEC = 1
 PLAN_ACCESS_CACHE_LOCK = threading.Lock()
 from urllib.parse import urlencode
 
@@ -720,7 +720,7 @@ def init_plan_pricing_db():
         row = cur.fetchone()
         count = row[0] if row else 0
         if count == 0:
-            now = dt.datetime.utcnow().isoformat()
+            now = datetime.utcnow().isoformat()
             for k, v in DEFAULT_PLAN_PRICES.items():
                 cur.execute(
                     "INSERT OR REPLACE INTO plan_pricing (plan_key, display_name, duration_days, price_cents, currency, updated_at) VALUES (?,?,?,?,?,?)",
@@ -757,7 +757,7 @@ def set_plan_pricing(plan_key: str, display_name: str, duration_days: int, price
         init_plan_pricing_db()
         conn = get_settings_db_connection()
         cur = conn.cursor()
-        now = dt.datetime.utcnow().isoformat()
+        now = datetime.utcnow().isoformat()
         cur.execute(
             "INSERT OR REPLACE INTO plan_pricing (plan_key, display_name, duration_days, price_cents, currency, updated_at) VALUES (?,?,?,?,?,?)",
             (plan_key, display_name, int(duration_days), int(price_cents), (currency or "cad").lower(), now)
@@ -838,7 +838,7 @@ def init_plan_access_db():
                         )
                     """)
 
-                    now = dt.datetime.utcnow().isoformat()
+                    now = datetime.utcnow().isoformat()
                     for p2, routes in plan_to_routes.items():
                         cur.execute(
                             "INSERT OR REPLACE INTO plan_access (plan, routes_json, updated_at) VALUES (?, ?, ?)",
@@ -861,7 +861,7 @@ def init_plan_access_db():
                     conn.commit()
 
         # Assurer la présence des forfaits par défaut
-        now = dt.datetime.utcnow().isoformat()
+        now = datetime.utcnow().isoformat()
         for p, routes in DEFAULT_PLAN_ACCESS.items():
             p2 = normalize_plan(p)
             routes_clean = sorted({(r or "").strip().lstrip("/") for r in (routes or []) if (r or "").strip()})
@@ -1033,7 +1033,7 @@ def save_plan_access_routes(plan: str, routes: list) -> bool:
         conn = get_db_connection()
         cur = conn.cursor()
         mode = get_db_mode()
-        now = dt.datetime.utcnow().isoformat()
+        now = datetime.utcnow().isoformat()
 
         # 1) Nouveau schéma routes_json
         try:
@@ -1173,7 +1173,7 @@ def get_plan_access_routes(plan_key: str):
     except Exception as e:
         print(f"❌ get_plan_access_routes error plan={plan_key}: {e}")
 
-    PLAN_ACCESS_CACHE[plan_key] = {"routes": routes, "updated_at": dt.datetime.utcnow().isoformat()}
+    PLAN_ACCESS_CACHE[plan_key] = {"routes": routes, "updated_at": datetime.utcnow().isoformat()}
     return routes
 
 
@@ -1197,7 +1197,7 @@ def save_plan_access_routes(plan_key: str, routes: list[str]):
         ensure_plan_access_schema(conn)
 
         plan_col = _plan_access_plan_column(conn)
-        now = dt.datetime.utcnow().isoformat()
+        now = datetime.utcnow().isoformat()
         conn.execute(
             f"INSERT OR REPLACE INTO plan_access({plan_col}, routes_json, updated_at) VALUES (?,?,?)",
             (plan_key, json.dumps(norm, ensure_ascii=False), now),
@@ -2767,6 +2767,42 @@ BADGES_DATA = {
 
 
 app = FastAPI()
+# --- Static logo convenience (évite 404 sur /static/logo.png) ---
+@app.get("/static/logo.png")
+async def static_logo_png():
+    url = os.getenv("SITE_LOGO_URL") or "https://github.com/johnboisvert/tradingview/blob/main/static/cryptoia_logo.png?raw=true"
+    return RedirectResponse(url=url, status_code=307)
+
+def has_feature(feature: str, plan: str | None = None, request: Request | None = None) -> bool:
+    """
+    Helper utilisé dans les templates Jinja.
+    Retourne True si le plan (ou le plan de l'utilisateur connecté) a accès à la page/feature.
+
+    NOTE: si la feature n'est pas reconnue, on retourne True (le backend bloque déjà l'accès aux routes).
+    """
+    try:
+        effective_plan = (plan or "").strip().lower() if plan else ""
+        if not effective_plan and request is not None:
+            try:
+                effective_plan = (request.session.get("plan") or request.session.get("subscription_plan") or "").strip().lower()
+            except Exception:
+                effective_plan = ""
+        if not effective_plan:
+            effective_plan = "free"
+
+        # Normaliser feature -> route path
+        f = (feature or "").strip()
+        if not f:
+            return True
+        if not f.startswith("/"):
+            f = "/" + f
+        f = _canonicalize_route_path(f)
+
+        allowed = set(get_plan_access_routes(effective_plan))
+        return (f in allowed) if allowed else True
+    except Exception:
+        return True
+
 # --- Sessions (required for request.session) ---
 try:
     from starlette.middleware.sessions import SessionMiddleware
@@ -6036,7 +6072,7 @@ async def admin_list_users(q: str = "", limit: int = 200, _admin_user: str = Dep
                 except Exception:
                     return None
 
-        now = dt.datetime.utcnow()
+        now = datetime.utcnow()
         users = []
         for r in rows:
             username, role, plan, sub_end, created_at = r[0], r[1], r[2], r[3], r[4]
@@ -20063,7 +20099,7 @@ async def pricing_complete_page(request: Request, session_token: Optional[str] =
     # Fix double-curly braces in inline CSS/HTML blocks
     html = html.replace("{{", "{").replace("}}", "}")
 
-    return HTMLResponse(html)
+    return HTMLResponse(html, headers={"Cache-Control":"no-store, no-cache, must-revalidate, max-age=0", "Pragma":"no-cache"})
 
 
 @app.get("/pricing-new")
@@ -28268,28 +28304,60 @@ DEFAULT_PLAN_FEATURES = {
 }
 
 def init_plan_features_db():
-    """Ensure plan_features table exists (settings.db) + defaults."""
+    """
+    Initialise / migre la table plan_features dans settings.db.
+
+    - Crée la table si elle n'existe pas
+    - Ajoute les colonnes manquantes (ex: features_json) si une ancienne table existe
+    - Pré-remplit les lignes par défaut pour free/premium/advanced/pro/elite si absent
+    """
     try:
         conn = get_settings_db_connection()
         cur = conn.cursor()
-        cur.execute(
-            """
+
+        # Table
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS plan_features (
-                plan_key TEXT PRIMARY KEY,
-                features_json TEXT,
+                plan TEXT PRIMARY KEY,
+                features_json TEXT NOT NULL DEFAULT '[]',
                 updated_at TEXT
             )
-            """
-        )
-        cur.execute("SELECT COUNT(1) FROM plan_features")
-        count = (cur.fetchone() or [0])[0]
-        if count == 0:
-            now = dt.datetime.utcnow().isoformat()
-            for plan_key, feats in DEFAULT_PLAN_FEATURES.items():
+        """)
+
+        # Migration douce: ajout des colonnes si elles manquent
+        cur.execute("PRAGMA table_info(plan_features)")
+        cols = {row[1] for row in cur.fetchall()}  # row[1] = name
+        if "features_json" not in cols:
+            try:
+                cur.execute("ALTER TABLE plan_features ADD COLUMN features_json TEXT NOT NULL DEFAULT '[]'")
+            except Exception:
+                pass
+        if "updated_at" not in cols:
+            try:
+                cur.execute("ALTER TABLE plan_features ADD COLUMN updated_at TEXT")
+            except Exception:
+                pass
+
+        # Defaults
+        now = datetime.utcnow().isoformat()
+        for plan, feats in DEFAULT_PLAN_FEATURES.items():
+            feats_json = json.dumps(feats, ensure_ascii=False)
+            cur.execute(
+                "INSERT OR IGNORE INTO plan_features(plan, features_json, updated_at) VALUES(?,?,?)",
+                (plan, feats_json, now),
+            )
+
+        # Backfill si null/empty
+        cur.execute("SELECT plan, features_json FROM plan_features")
+        rows = cur.fetchall()
+        for plan, feats_json in rows:
+            if feats_json is None or str(feats_json).strip() == "":
+                default_feats = DEFAULT_PLAN_FEATURES.get(plan, [])
                 cur.execute(
-                    "INSERT OR REPLACE INTO plan_features (plan_key, features_json, updated_at) VALUES (?,?,?)",
-                    (plan_key, json.dumps(list(feats)), now),
+                    "UPDATE plan_features SET features_json=?, updated_at=? WHERE plan=?",
+                    (json.dumps(default_feats, ensure_ascii=False), now, plan),
                 )
+
         conn.commit()
         conn.close()
     except Exception as e:
@@ -28317,7 +28385,7 @@ def set_plan_features(plan_key: str, features: list) -> None:
         init_plan_features_db()
         plan_key = normalize_plan(plan_key)
         feats = [str(x) for x in (features or [])]
-        now = dt.datetime.utcnow().isoformat()
+        now = datetime.utcnow().isoformat()
         conn = get_settings_db_connection()
         cur = conn.cursor()
         cur.execute(
@@ -41291,7 +41359,7 @@ def save_plan_access_routes(plan: str, routes: list[str]):
     routes = routes or []
     routes = [normalize_route_key(r) for r in routes]
     routes = sorted({r for r in routes if r})
-    now = dt.datetime.utcnow().isoformat()
+    now = datetime.utcnow().isoformat()
 
     conn = get_settings_db_connection()
     _ensure_plan_access_schema_v2(conn)

@@ -29,6 +29,7 @@ from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
+import datetime as dt
 try:
     import ccxt
 except ImportError:
@@ -24035,200 +24036,75 @@ async def admin_test_promo(
 
 @app.get("/admin/get-plan-access/{plan}")
 async def admin_get_plan_access(plan: str, _admin: str = Depends(require_admin)):
-    """Retourne les routes (chemins) autorisées pour un plan (table plan_access.routes_json)."""
+    """Retourne les pages autorisées (route_keys) pour un plan.
+
+    IMPORTANT : on stocke des *route_keys* (ex: "dashboard", "spot-trading")
+    car le système de permissions compare ces clés à nos routes internes.
+    """
     try:
-        plan_key = normalize_plan(plan)
-
-        def _ensure_plan_access_table():
-            conn = db_manager.get_connection()
-            c = conn.cursor()
-            try:
-                if db_manager.use_postgresql:
-                    c.execute("""
-                        CREATE TABLE IF NOT EXISTS plan_access (
-                            plan TEXT PRIMARY KEY,
-                            routes_json TEXT,
-                            routes TEXT
-                        )
-                    """)
-                else:
-                    c.execute("""
-                        CREATE TABLE IF NOT EXISTS plan_access (
-                            plan TEXT PRIMARY KEY,
-                            routes_json TEXT,
-                            routes TEXT
-                        )
-                    """)
-                conn.commit()
-            finally:
-                try:
-                    conn.close()
-                except Exception:
-                    pass
-
-        def _default_routes_for_plan(pk: str) -> list:
-            free_routes = ["/dashboard", "/mon-compte"]
-            premium_routes = sorted(set(free_routes) | {
-                "/ai-market-regime",
-                "/ai-whale-watcher",
-                "/fear-greed",
-                "/fear-greed-chart",
-                "/dominance",
-                "/heatmap",
-                "/strategie",
-                "/spot-trading",
-                "/altcoin-season",
-                "/nouvelles",
-                "/convertisseur",
-                "/calendrier",
-                "/graphiques",
-                "/bullrun-phase",
-                "/onchain-metrics",
-            })
-            elite_routes = sorted(set(premium_routes) | {"/ai-predictor"})
-
-            # Par défaut: Advanced/Pro = premium (si pas de config DB)
-            defaults = {
-                "free": free_routes,
-                "premium": premium_routes,
-                "advanced": premium_routes,
-                "pro": premium_routes,
-                "elite": elite_routes,
-            }
-            return defaults.get(pk, free_routes)
-
-        _ensure_plan_access_table()
-
-        # Lire routes_json
-        conn = db_manager.get_connection()
-        c = conn.cursor()
-        try:
-            if db_manager.use_postgresql:
-                c.execute("SELECT COALESCE(routes_json, routes) FROM plan_access WHERE plan = %s", (plan_key,))
-            else:
-                c.execute("SELECT COALESCE(routes_json, routes) FROM plan_access WHERE plan = ?", (plan_key,))
-            row = c.fetchone()
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-        routes = None
-        if row and row[0]:
-            try:
-                routes = json.loads(row[0])
-            except Exception:
-                # fallback: comma separated
-                routes = [r.strip() for r in str(row[0]).split(",") if r.strip()]
-
-        if not isinstance(routes, list):
-            routes = _default_routes_for_plan(plan_key)
-
-        # Construire liste "possible_routes" (union des defaults)
-        possible_routes = sorted(set(
-            _default_routes_for_plan("free")
-            + _default_routes_for_plan("premium")
-            + _default_routes_for_plan("elite")
-        ))
-
-        return JSONResponse({"success": True, "plan": plan_key, "routes": routes, "possible_routes": possible_routes}, status_code=200)
+        plan_key = (plan or "free").strip().lower()
+        routes = get_plan_access_routes(plan_key)  # liste de route_keys
+        return JSONResponse({"plan": plan_key, "routes": routes}, status_code=200)
     except Exception as e:
-        return JSONResponse({"success": False, "error": str(e), "routes": []}, status_code=200)
-
+        return JSONResponse({"plan": (plan or "free"), "routes": [], "error": str(e)}, status_code=200)
 
 @app.post("/admin/save-plan-access")
 async def admin_save_plan_access(request: Request, _admin: str = Depends(require_admin)):
-    """Enregistre les routes (chemins) autorisées pour un plan (table plan_access.routes_json)."""
+    """Sauvegarde les pages autorisées (route_keys) pour un plan.
+
+    Payload attendu:
+    {
+      "plan": "free|premium|advanced|pro|elite",
+      "routes": ["dashboard", "spot-trading", ...]
+    }
+    """
     try:
-        payload = {}
-        ct = (request.headers.get("content-type") or "").lower()
-        if "application/json" in ct:
-            try:
-                payload = await request.json()
-            except Exception:
-                payload = {}
-        else:
-            try:
-                form = await request.form()
-                payload = dict(form)
-            except Exception:
-                payload = {}
-
-        plan_raw = payload.get("plan") if isinstance(payload, dict) else None
-        routes = payload.get("routes") if isinstance(payload, dict) else None
-
-        if not plan_raw:
-            return JSONResponse({"success": False, "error": "Plan manquant"}, status_code=200)
-
-        plan_key = normalize_plan(plan_raw)
-
-        if routes is None:
-            routes = []
-        if isinstance(routes, str):
-            # allow comma-separated
-            routes = [r.strip() for r in routes.split(",") if r.strip()]
-
-        # Sanitize
-        clean = []
-        for r in (routes or []):
-            rs = str(r).strip()
-            if not rs:
-                continue
-            if not rs.startswith("/"):
-                rs = "/" + rs.lstrip("/")
-            clean.append(rs)
-        # unique
-        clean = sorted(set(clean))
-
-        conn = db_manager.get_connection()
-        c = conn.cursor()
         try:
-            if db_manager.use_postgresql:
-                c.execute("""
-                    CREATE TABLE IF NOT EXISTS plan_access (
-                        plan TEXT PRIMARY KEY,
-                        routes_json TEXT,
-                        routes TEXT
-                    )
-                """)
-                j = json.dumps(clean, ensure_ascii=False)
-                c.execute("""
-                    INSERT INTO plan_access (plan, routes_json, routes)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (plan) DO UPDATE
-                    SET routes_json = EXCLUDED.routes_json,
-                        routes = EXCLUDED.routes
-                """, (plan_key, j, j))
-            else:
-                c.execute("""
-                    CREATE TABLE IF NOT EXISTS plan_access (
-                        plan TEXT PRIMARY KEY,
-                        routes_json TEXT,
-                        routes TEXT
-                    )
-                """)
-                j = json.dumps(clean, ensure_ascii=False)
-                try:
-                    c.execute("""
-                        INSERT INTO plan_access (plan, routes_json, routes)
-                        VALUES (?, ?, ?)
-                        ON CONFLICT(plan) DO UPDATE SET routes_json=excluded.routes_json, routes=excluded.routes
-                    """, (plan_key, j, j))
-                except Exception:
-                    # fallback for older SQLite
-                    c.execute("DELETE FROM plan_access WHERE plan = ?", (plan_key,))
-                    c.execute("INSERT INTO plan_access (plan, routes_json, routes) VALUES (?, ?, ?)", (plan_key, j, j))
-            conn.commit()
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
+            payload = await request.json()
+        except Exception:
+            payload = {}
 
-        return JSONResponse({"success": True, "plan": plan_key, "routes": clean, "message": "Accès du plan sauvegardés ✅"}, status_code=200)
+        plan_key = (payload.get("plan") or "free").strip().lower()
+        routes = payload.get("routes") or []
+        if not isinstance(routes, list):
+            routes = []
+
+        # Normalisation route_key (pas de slash, lower)
+        cleaned = []
+        for r in routes:
+            if not isinstance(r, str):
+                continue
+            rk = r.strip()
+            if not rk:
+                continue
+            rk = rk.lstrip('/').strip().lower()
+            if not rk:
+                continue
+            cleaned.append(rk)
+
+        # Déduplication en conservant l'ordre
+        seen = set()
+        final_routes = []
+        for rk in cleaned:
+            if rk in seen:
+                continue
+            seen.add(rk)
+            final_routes.append(rk)
+
+        save_plan_access_routes(plan_key, final_routes)
+
+        return JSONResponse(
+            {
+                "success": True,
+                "plan": plan_key,
+                "routes": final_routes,
+                "message": "Accès du plan sauvegardés ✅",
+            },
+            status_code=200,
+        )
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=200)
+
 
 @app.get("/admin/api/plan-prices")
 async def admin_get_plan_prices(user=Depends(require_admin)):

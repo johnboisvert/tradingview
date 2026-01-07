@@ -64,6 +64,11 @@ import secrets
 import hmac
 import requests  # Pour API externe (Fear & Greed, etc.)
 import time
+import threading
+# ===================== PLAN ACCESS CACHE =====================
+PLAN_ACCESS_CACHE = {}  # {plan_key: {'ts': float, 'routes': list[str]}}
+PLAN_ACCESS_CACHE_TTL_SEC = 15
+PLAN_ACCESS_CACHE_LOCK = threading.Lock()
 from urllib.parse import urlencode
 
 #  ANALYSE TECHNIQUE AVANCE - IMPORT
@@ -1175,6 +1180,13 @@ def save_plan_access_routes(plan_key: str, routes):
         PLAN_ACCESS_CACHE.pop(plan_key, None)
 
         print(f"✅ plan_access saved: plan={plan_key} routes={len(uniq)}")
+        # refresh in-memory cache (so UI reflects immediately)
+        try:
+            with PLAN_ACCESS_CACHE_LOCK:
+                PLAN_ACCESS_CACHE[plan_key] = {'ts': time.time(), 'routes': list(routes)}
+        except Exception:
+            pass
+
         return True
     except Exception as e:
         print(f"❌ save_plan_access_routes error plan={plan_key}: {e}")

@@ -1052,151 +1052,115 @@ def save_plan_access_routes(plan: str, routes: list) -> bool:
 # Ces fonctions écrasent les anciennes et garantissent la persistance.
 # =============================================================================
 
-def get_plan_access_routes(plan_key: str):
-    """Retourne la liste de *route_keys* autorisés pour un plan (ex: ['dashboard', 'spot-trading'])."""
-    plan_key = normalize_plan(plan_key)
+def _canonicalize_route_path(value: str) -> Optional[str]:
+    """Normalise une route en chemin canonique (ex: '/dashboard').
 
-    now_ts = time.time()
-    cached = PLAN_ACCESS_CACHE.get(plan_key)
-    if cached and (now_ts - cached.get("ts", 0) < PLAN_ACCESS_CACHE_TTL_SEC):
-        return cached.get("routes", [])
+    - Accepte '/dashboard' ou 'dashboard'
+    - Force lowercase, retire les trailing slashes
+    - Remplace '_' par '-' pour matcher les URLs
+    """
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    # si on reçoit une "clé" (sans /), on la convertit en URL
+    if not s.startswith("/"):
+        s = "/" + s.lstrip("/")
+    # normalisations
+    s = s.replace("_", "-")
+    s = re.sub(r"/{2,}", "/", s)
+    if len(s) > 1 and s.endswith("/"):
+        s = s[:-1]
+    return s.lower()
 
-    conn = get_settings_db_connection()
-    ensure_plan_access_schema(conn)
+
+def _plan_access_plan_column(conn) -> str:
+    """Compat: selon les versions, la PK peut être 'plan_key' ou 'plan'."""
     try:
-        cur = conn.cursor()
-        cur.execute("SELECT routes_json FROM plan_access WHERE plan_key = ?", (plan_key,))
-        row = cur.fetchone()
-        if not row:
-            PLAN_ACCESS_CACHE[plan_key] = {"routes": [], "ts": now_ts}
-            return []
-        raw = row[0] or "[]"
-        try:
-            routes = json.loads(raw)
-        except Exception:
-            routes = []
-        if not isinstance(routes, list):
-            routes = []
+        cols = [r["name"] for r in conn.execute("PRAGMA table_info(plan_access)").fetchall()]
+        if "plan_key" in cols:
+            return "plan_key"
+        if "plan" in cols:
+            return "plan"
+    except Exception:
+        pass
+    return "plan_key"
 
-        # Normalise en route_keys
-        route_keys = []
-        for r in routes:
-            if not isinstance(r, str):
-                continue
-            r = r.strip()
-            if not r:
-                continue
 
-            if r.startswith("/"):
-                # c'est un PATH, on map vers la clé
-                matched = None
-                for k, meta in ROUTE_REGISTRY.items():
-                    if meta.get("path") == r:
-                        matched = k
-                        break
-                if matched:
-                    route_keys.append(matched)
-            else:
-                # c'est déjà une clé
-                route_keys.append(r)
+def get_plan_access_routes(plan_key: str):
+    """Retourne la liste des chemins autorisés (ex: ['/dashboard','/trades']) pour un plan."""
+    plan_key = (plan_key or "").strip().lower()
+    if not plan_key:
+        return []
 
-        # unique, stable
-        uniq = []
-        seen = set()
-        for k in route_keys:
-            if k not in seen:
-                seen.add(k)
-                uniq.append(k)
+    # cache in-memory (évite trop de hits DB)
+    cached = PLAN_ACCESS_CACHE.get(plan_key)
+    if isinstance(cached, dict) and isinstance(cached.get("routes"), list):
+        return cached["routes"]
 
-        PLAN_ACCESS_CACHE[plan_key] = {"routes": uniq, "ts": now_ts}
-        return uniq
-    finally:
+    routes: list[str] = []
+    try:
+        conn = get_settings_db_connection()
+        ensure_plan_access_schema(conn)
+
+        plan_col = _plan_access_plan_column(conn)
+        row = conn.execute(f"SELECT routes_json FROM plan_access WHERE {plan_col} = ?", (plan_key,)).fetchone()
         conn.close()
 
+        if row and row["routes_json"]:
+            try:
+                raw = json.loads(row["routes_json"])
+            except Exception:
+                raw = []
 
-def save_plan_access_routes(plan_key: str, routes):
-    """
-    Sauvegarde les accès d'un plan.
-    Accepte une liste de route_keys (ex: 'dashboard') et/ou de paths (ex: '/dashboard').
-    Persiste dans settings.db / table plan_access.
-    """
-    plan_key = normalize_plan(plan_key)
+            if isinstance(raw, list):
+                seen = set()
+                for r in raw:
+                    p = _canonicalize_route_path(r)
+                    if p and p not in seen:
+                        seen.add(p)
+                        routes.append(p)
+    except Exception as e:
+        print(f"❌ get_plan_access_routes error plan={plan_key}: {e}")
 
-    if not isinstance(routes, list):
-        try:
-            routes = list(routes)
-        except Exception:
-            routes = []
+    PLAN_ACCESS_CACHE[plan_key] = {"routes": routes, "updated_at": dt.datetime.utcnow().isoformat()}
+    return routes
 
-    # Convertit en PATHS pour stockage
-    paths = []
-    for r in routes:
-        if not isinstance(r, str):
-            continue
-        r = r.strip()
-        if not r:
-            continue
-        if r.startswith("/"):
-            paths.append(r)
-            continue
-        meta = ROUTE_REGISTRY.get(r)
-        if meta and meta.get("path"):
-            paths.append(meta["path"])
-        else:
-            # fallback: on ignore les clés inconnues
-            pass
 
-    # unique stable
-    uniq = []
+def save_plan_access_routes(plan_key: str, routes: list[str]):
+    """Sauvegarde les routes (chemins) d'un plan dans settings.db."""
+    plan_key = (plan_key or "").strip().lower()
+    if not plan_key:
+        raise ValueError("plan_key invalide")
+
+    # Normaliser routes en chemins
+    norm: list[str] = []
     seen = set()
-    for pth in paths:
-        if pth not in seen:
-            seen.add(pth)
-            uniq.append(pth)
+    for r in (routes or []):
+        p = _canonicalize_route_path(r)
+        if p and p not in seen:
+            seen.add(p)
+            norm.append(p)
 
-    conn = get_settings_db_connection()
-    ensure_plan_access_schema(conn)
     try:
-        cur = conn.cursor()
+        conn = get_settings_db_connection()
+        ensure_plan_access_schema(conn)
+
+        plan_col = _plan_access_plan_column(conn)
         now = dt.datetime.utcnow().isoformat()
-        cur.execute("SELECT plan_key FROM plan_access WHERE plan_key = ?", (plan_key,))
-        exists = cur.fetchone() is not None
-        payload = json.dumps(uniq, ensure_ascii=False)
-
-        if exists:
-            cur.execute(
-                "UPDATE plan_access SET routes_json = ?, updated_at = ? WHERE plan_key = ?",
-                (payload, now, plan_key),
-            )
-        else:
-            cur.execute(
-                "INSERT INTO plan_access (plan_key, routes_json, updated_at) VALUES (?, ?, ?)",
-                (plan_key, payload, now),
-            )
-
+        conn.execute(
+            f"INSERT OR REPLACE INTO plan_access({plan_col}, routes_json, updated_at) VALUES (?,?,?)",
+            (plan_key, json.dumps(norm, ensure_ascii=False), now),
+        )
         conn.commit()
+        conn.close()
 
-        # Invalide cache
-        PLAN_ACCESS_CACHE.pop(plan_key, None)
-
-        print(f"✅ plan_access saved: plan={plan_key} routes={len(uniq)}")
-        # refresh in-memory cache (so UI reflects immediately)
-        try:
-            with PLAN_ACCESS_CACHE_LOCK:
-                PLAN_ACCESS_CACHE[plan_key] = {'ts': time.time(), 'routes': list(routes)}
-        except Exception:
-            pass
-
-        return True
+        PLAN_ACCESS_CACHE[plan_key] = {"routes": norm, "updated_at": now}
+        return norm
     except Exception as e:
         print(f"❌ save_plan_access_routes error plan={plan_key}: {e}")
-        try:
-            conn.rollback()
-        except Exception:
-            pass
-        return False
-    finally:
-        conn.close()
+        raise
 
 def init_trades_db():
     """Crée la table trades"""
@@ -5998,6 +5962,8 @@ async def admin_list_users(q: str = "", limit: int = 200, _admin_user: str = Dep
 
         rows = c.fetchall()
         conn.close()
+
+        import datetime as dt
 
         def _to_dt(v):
             import datetime as dt

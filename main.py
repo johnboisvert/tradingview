@@ -1,3 +1,51 @@
+# =======================
+# ROUTE LABELS (forfaits)
+# =======================
+# Clé = route_key sans '/', Valeur = libellé affiché (Admin + Pricing)
+ROUTE_LABELS = {
+    "dashboard": "Dashboard Principal",
+    "stats-dashboard": "Stats Dashboard",
+    "trades": "Mes Trades",
+    "strategies": "Stratégies",
+    "spot-trading": "Spot Trading",
+    "watchlist": "Watchlist",
+    "risk-management": "Gestion Risques",
+    "backtesting": "Backtesting",
+    "opportunity-scanner": "Opportunity Scanner",
+    "ai-market-regime": "AI Market Regime",
+    "ai-whale-watcher": "AI Whale Watcher",
+    "ai-assistant": "AI Assistant",
+    "ai-signals": "AI Signals",
+    "ai-news": "AI News",
+    "ai-predictor": "AI Predictor",
+    "ai-patterns": "AI Patterns",
+    "ai-sentiment": "AI Sentiment",
+    "position-sizer": "Position Sizer",
+    "exit-strategy": "Exit Strategy",
+    "timeframe-analysis": "Timeframe Analysis",
+    "ai-liquidity": "AI Liquidity",
+    "ai-alerts": "AI Alerts",
+    "gem-hunter": "Gem Hunter",
+    "narrative-radar": "Narrative Radar",
+    "ai-swarm-agents": "AI Swarm Agents",
+    "fear-greed": "Fear & Greed",
+    "fear-greed-chart": "Fear & Greed Chart",
+    "altcoin-season": "Altcoin Season",
+    "bull-run-phase": "Bull Run Phase",
+    "onchain-metrics": "Onchain Metrics",
+    "convertisseur": "Convertisseur",
+    "technical-analysis-pro": "Technical Analysis Pro",
+    "crypto-coach": "Crypto Coach",
+    "bitcoin-dominance": "Bitcoin Dominance",
+    "market-heatmap": "Market Heatmap",
+    "graph-advanced": "Graph Advanced",
+    "calendar-economic": "Calendar Economic",
+    "actualites-crypto": "Actualités Crypto",
+    "success-stories": "Success Stories",
+    "contact": "Contact",
+    "downloads": "Downloads",
+}
+
 # -*- coding: utf-8 -*-
 # NOTE: Railway/uvicorn safe. Python comments use '#', not '//'.
 from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie
@@ -19790,29 +19838,7 @@ async def pricing_complete_page(request: Request, session_token: Optional[str] =
         return plan_map[plan_key]["default_dur"]
 
     # Route labels for summaries
-    ROUTE_LABELS = {
-        "/dashboard": "Dashboard Principal",
-        "/stats-dashboard": "Stats Dashboard",
-        "/trades": "Mes Trades",
-        "/spot-trading": "Spot Trading",
-        "/strategie": "Stratégies",
-        "/watchlist": "Watchlist",
-        "/risk-management": "Gestion Risques",
-        "/backtesting": "Backtesting",
-        "/ai-opportunity-scanner": "Opportunity Scanner",
-        "/ai-market-regime": "AI Market Regime",
-        "/ai-whale-watcher": "AI Whale Watcher",
-        "/ai-assistant": "AI Assistant",
-        "/ai-signals": "AI Signals",
-        "/ai-news": "AI News",
-        "/ai-predictor": "AI Predictor",
-        "/ai-patterns": "AI Patterns",
-        "/ai-sentiment": "AI Sentiment",
-        "/ai-sizer": "Position Sizer",
-        "/pricing-complete": "Plans & Tarifs",
-        "/contact": "Contact",
-        "/": "Accueil",
-    }
+    # ROUTE_LABELS est défini globalement (utilisé aussi par l’Admin)
     HIDDEN_ROUTES = {"/", "/contact", "/pricing", "/pricing-complete", "/login", "/logout"}
 
     def _routes_summary(plan_key: str) -> str:
@@ -19841,10 +19867,10 @@ async def pricing_complete_page(request: Request, session_token: Optional[str] =
             labels = []
             for r in cleaned:
                 if r.startswith("/"):
-                    labels.append(ROUTE_LABELS.get(r, r.replace("/", "").replace("-", " ").replace("_", " ").title()))
+                    labels.append(ROUTE_LABELS.get(r.lstrip("/"), r.replace("/", "").replace("-", " ").replace("_", " ").title()))
                 else:
-                    # déjà un libellé lisible
-                    labels.append(r)
+                    # route_key sans "/" (ou déjà un libellé)
+                    labels.append(ROUTE_LABELS.get(r, r.replace("-", " ").replace("_", " ").title()))
 
             # déduplique + tri stable
             uniq = []
@@ -24355,8 +24381,9 @@ async def admin_get_plan_access(plan: str, _admin: str = Depends(require_admin))
     """
     try:
         plan_key = (plan or "free").strip().lower()
-        routes = get_plan_access_routes(plan_key)  # liste de route_keys
-        return JSONResponse({"plan": plan_key, "routes": routes}, status_code=200)
+        routes_keys = [str(r).lstrip("/") for r in (get_plan_access_routes(plan_key) or [])]
+        routes_ui = ["/" + rk for rk in routes_keys]
+        return JSONResponse({"plan": plan_key, "routes": routes_ui}, status_code=200)
     except Exception as e:
         return JSONResponse({"plan": (plan or "free"), "routes": [], "error": str(e)}, status_code=200)
 
@@ -41264,7 +41291,7 @@ def save_plan_access_routes(plan: str, routes: list[str]):
     routes = routes or []
     routes = [normalize_route_key(r) for r in routes]
     routes = sorted({r for r in routes if r})
-    now = datetime.datetime.utcnow().isoformat()
+    now = dt.datetime.utcnow().isoformat()
 
     conn = get_settings_db_connection()
     _ensure_plan_access_schema_v2(conn)

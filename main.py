@@ -57,6 +57,7 @@ import os
 import math
 import asyncio
 import json
+import re
 import sqlite3
 import hashlib
 import bcrypt  # 🔐 CORRECTION 1: Sécurité mots de passe

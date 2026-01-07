@@ -824,6 +824,30 @@ def init_plan_access_db():
         print("✅ Table plan_access OK (sqlite)")
     except Exception as e:
         print(f"⚠️ init_plan_access_db (sqlite) erreur: {e}")
+def ensure_plan_access_schema(conn):
+    """Assure que les tables plan_access/plan_features existent (robuste si startup ne les a pas créées)."""
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS plan_access (
+                plan_key TEXT PRIMARY KEY,
+                routes_json TEXT NOT NULL DEFAULT '[]',
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS plan_features (
+                plan_key TEXT,
+                feature_key TEXT,
+                enabled INTEGER DEFAULT 1,
+                PRIMARY KEY(plan_key, feature_key)
+            )
+        """)
+        conn.commit()
+    except Exception as e:
+        # Ne pas bloquer le site pour ça, mais on log pour debug
+        print(f"⚠️ ensure_plan_access_schema: {e}")
+
 def get_plan_access_routes(plan: str) -> list:
     """
     Retourne la liste des routes autorisées pour un plan.
@@ -1016,6 +1040,152 @@ def save_plan_access_routes(plan: str, routes: list) -> bool:
             conn.close()
         except Exception:
             pass
+# =============================================================================
+# ✅ PLAN ACCESS (SOURCE DE VÉRITÉ = settings.db)
+# Fix: dans certaines versions, la lecture/écriture utilisait un autre DB ou une
+# autre table → "ça semble sauvegardé" mais au retour rien n'apparaît.
+# Ces fonctions écrasent les anciennes et garantissent la persistance.
+# =============================================================================
+
+def get_plan_access_routes(plan_key: str):
+    """Retourne la liste de *route_keys* autorisés pour un plan (ex: ['dashboard', 'spot-trading'])."""
+    plan_key = normalize_plan(plan_key)
+
+    now_ts = time.time()
+    cached = PLAN_ACCESS_CACHE.get(plan_key)
+    if cached and (now_ts - cached.get("ts", 0) < PLAN_ACCESS_CACHE_TTL_SEC):
+        return cached.get("routes", [])
+
+    conn = get_settings_db_connection()
+    ensure_plan_access_schema(conn)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT routes_json FROM plan_access WHERE plan_key = ?", (plan_key,))
+        row = cur.fetchone()
+        if not row:
+            PLAN_ACCESS_CACHE[plan_key] = {"routes": [], "ts": now_ts}
+            return []
+        raw = row[0] or "[]"
+        try:
+            routes = json.loads(raw)
+        except Exception:
+            routes = []
+        if not isinstance(routes, list):
+            routes = []
+
+        # Normalise en route_keys
+        route_keys = []
+        for r in routes:
+            if not isinstance(r, str):
+                continue
+            r = r.strip()
+            if not r:
+                continue
+
+            if r.startswith("/"):
+                # c'est un PATH, on map vers la clé
+                matched = None
+                for k, meta in ROUTE_REGISTRY.items():
+                    if meta.get("path") == r:
+                        matched = k
+                        break
+                if matched:
+                    route_keys.append(matched)
+            else:
+                # c'est déjà une clé
+                route_keys.append(r)
+
+        # unique, stable
+        uniq = []
+        seen = set()
+        for k in route_keys:
+            if k not in seen:
+                seen.add(k)
+                uniq.append(k)
+
+        PLAN_ACCESS_CACHE[plan_key] = {"routes": uniq, "ts": now_ts}
+        return uniq
+    finally:
+        conn.close()
+
+
+def save_plan_access_routes(plan_key: str, routes):
+    """
+    Sauvegarde les accès d'un plan.
+    Accepte une liste de route_keys (ex: 'dashboard') et/ou de paths (ex: '/dashboard').
+    Persiste dans settings.db / table plan_access.
+    """
+    plan_key = normalize_plan(plan_key)
+
+    if not isinstance(routes, list):
+        try:
+            routes = list(routes)
+        except Exception:
+            routes = []
+
+    # Convertit en PATHS pour stockage
+    paths = []
+    for r in routes:
+        if not isinstance(r, str):
+            continue
+        r = r.strip()
+        if not r:
+            continue
+        if r.startswith("/"):
+            paths.append(r)
+            continue
+        meta = ROUTE_REGISTRY.get(r)
+        if meta and meta.get("path"):
+            paths.append(meta["path"])
+        else:
+            # fallback: on ignore les clés inconnues
+            pass
+
+    # unique stable
+    uniq = []
+    seen = set()
+    for pth in paths:
+        if pth not in seen:
+            seen.add(pth)
+            uniq.append(pth)
+
+    conn = get_settings_db_connection()
+    ensure_plan_access_schema(conn)
+    try:
+        cur = conn.cursor()
+        now = dt.datetime.utcnow().isoformat()
+        cur.execute("SELECT plan_key FROM plan_access WHERE plan_key = ?", (plan_key,))
+        exists = cur.fetchone() is not None
+        payload = json.dumps(uniq, ensure_ascii=False)
+
+        if exists:
+            cur.execute(
+                "UPDATE plan_access SET routes_json = ?, updated_at = ? WHERE plan_key = ?",
+                (payload, now, plan_key),
+            )
+        else:
+            cur.execute(
+                "INSERT INTO plan_access (plan_key, routes_json, updated_at) VALUES (?, ?, ?)",
+                (plan_key, payload, now),
+            )
+
+        conn.commit()
+
+        # Invalide cache
+        PLAN_ACCESS_CACHE.pop(plan_key, None)
+
+        print(f"✅ plan_access saved: plan={plan_key} routes={len(uniq)}")
+        return True
+    except Exception as e:
+        print(f"❌ save_plan_access_routes error plan={plan_key}: {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return False
+    finally:
+        conn.close()
+
 def init_trades_db():
     """Crée la table trades"""
     try:
@@ -24257,13 +24427,21 @@ async def admin_save_plan_access(request: Request, _admin: str = Depends(require
             seen.add(rk)
             final_routes.append(rk)
 
-        save_plan_access_routes(plan_key, final_routes)
+        ok = save_plan_access_routes(plan_key, final_routes)
+        if not ok:
+            return JSONResponse({"success": False, "plan": plan_key, "error": "Échec sauvegarde (voir logs serveur)"}, status_code=500)
+        # Vérifie ce qui est réellement stocké
+        try:
+            stored = get_plan_access_routes(plan_key)
+        except Exception:
+            stored = []
 
         return JSONResponse(
             {
                 "success": True,
                 "plan": plan_key,
                 "routes": final_routes,
+                "stored_routes": stored,
                 "message": "Accès du plan sauvegardés ✅",
             },
             status_code=200,

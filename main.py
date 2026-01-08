@@ -717,15 +717,145 @@ def set_plan_pricing(plan_key: str, display_name: str, duration_days: int, price
 
 # ================= PLAN ACCESS DB (ADMIN) =================
 
+# Route keys = slugs des chemins (ex: "/ai-market-regime" -> "ai-market-regime")
+# Ces valeurs servent de défaut et peuvent être modifiées via l'admin-dashboard.
 DEFAULT_PLAN_ACCESS = {
-    # Par défaut, on garde simple: tu peux tout gérer dans l'admin.
-    # (Si un plan n'a rien, il ne voit que les pages publiques.)
-    "free": ["dashboard", "pricing-complete", "contact"],
-    "premium": ["dashboard", "trades", "spot-trading", "strategie"],
-    "advanced": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed"],
-    "pro": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist"],
-    "elite": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist"],
+    # Pages publiques/essentielles
+    "free": [
+        "dashboard",
+        "mon-compte",
+        "pricing-complete",
+        "contact",
+    ],
+    # Premium: la plupart des dashboards/indicateurs
+    "premium": [
+        "dashboard",
+        "mon-compte",
+        "trades",
+        "spot-trading",
+        "strategie",
+        "ai-market-regime",
+        "ai-whale-watcher",
+        "fear-greed",
+        "fear-greed-chart",
+        "dominance",
+        "heatmap",
+        "ai-news",
+        "altcoin-season",
+        "nouvelles",
+        "convertisseur",
+        "calendrier",
+        "graphiques",
+    ],
+    # Advanced: ajout data/metrics + gestion risque
+    "advanced": [
+        "dashboard",
+        "mon-compte",
+        "trades",
+        "spot-trading",
+        "strategie",
+        "ai-market-regime",
+        "ai-whale-watcher",
+        "fear-greed",
+        "fear-greed-chart",
+        "dominance",
+        "heatmap",
+        "ai-news",
+        "altcoin-season",
+        "nouvelles",
+        "convertisseur",
+        "calendrier",
+        "graphiques",
+        "bullrun-phase",
+        "onchain-metrics",
+        "risk-management",
+    ],
+    # Pro: backtests + watchlist
+    "pro": [
+        "dashboard",
+        "mon-compte",
+        "trades",
+        "spot-trading",
+        "strategie",
+        "ai-market-regime",
+        "ai-whale-watcher",
+        "fear-greed",
+        "fear-greed-chart",
+        "dominance",
+        "heatmap",
+        "ai-news",
+        "altcoin-season",
+        "nouvelles",
+        "convertisseur",
+        "calendrier",
+        "graphiques",
+        "bullrun-phase",
+        "onchain-metrics",
+        "risk-management",
+        "backtesting",
+        "watchlist",
+    ],
+    # Elite: Pro + AI Predictor
+    "elite": [
+        "dashboard",
+        "mon-compte",
+        "trades",
+        "spot-trading",
+        "strategie",
+        "ai-market-regime",
+        "ai-whale-watcher",
+        "fear-greed",
+        "fear-greed-chart",
+        "dominance",
+        "heatmap",
+        "ai-news",
+        "altcoin-season",
+        "nouvelles",
+        "convertisseur",
+        "calendrier",
+        "graphiques",
+        "bullrun-phase",
+        "onchain-metrics",
+        "risk-management",
+        "backtesting",
+        "watchlist",
+        "ai-predictor",
+    ],
 }
+
+# Options affichées dans l'admin pour cocher/décocher les pages par forfait
+PLAN_ROUTE_OPTIONS = {
+    "dashboard": {"label": "Dashboard", "path": "/dashboard"},
+    "mon-compte": {"label": "Mon compte", "path": "/mon-compte"},
+    "pricing-complete": {"label": "Plans & Tarifs", "path": "/pricing-complete"},
+    "contact": {"label": "Contact", "path": "/contact"},
+
+    "ai-market-regime": {"label": "AI Market Regime", "path": "/ai-market-regime"},
+    "ai-whale-watcher": {"label": "AI Whale Watcher", "path": "/ai-whale-watcher"},
+    "ai-news": {"label": "AI News", "path": "/ai-news"},
+    "ai-predictor": {"label": "AI Predictor", "path": "/ai-predictor"},
+
+    "fear-greed": {"label": "Fear & Greed", "path": "/fear-greed"},
+    "fear-greed-chart": {"label": "Fear & Greed Chart", "path": "/fear-greed-chart"},
+    "dominance": {"label": "Dominance", "path": "/dominance"},
+    "heatmap": {"label": "Heatmap", "path": "/heatmap"},
+
+    "strategie": {"label": "Stratégie", "path": "/strategie"},
+    "spot-trading": {"label": "Spot Trading", "path": "/spot-trading"},
+    "trades": {"label": "Trades", "path": "/trades"},
+    "watchlist": {"label": "Watchlist", "path": "/watchlist"},
+    "backtesting": {"label": "Backtesting", "path": "/backtesting"},
+    "risk-management": {"label": "Risk Management", "path": "/risk-management"},
+
+    "altcoin-season": {"label": "Altcoin Season", "path": "/altcoin-season"},
+    "nouvelles": {"label": "Nouvelles", "path": "/nouvelles"},
+    "convertisseur": {"label": "Convertisseur", "path": "/convertisseur"},
+    "calendrier": {"label": "Calendrier", "path": "/calendrier"},
+    "graphiques": {"label": "Graphiques", "path": "/graphiques"},
+    "bullrun-phase": {"label": "Bullrun Phase", "path": "/bullrun-phase"},
+    "onchain-metrics": {"label": "On-chain Metrics", "path": "/onchain-metrics"},
+}
+
 def init_plan_access_db():
     """DB des accès par forfait (persistant)."""
     try:
@@ -760,8 +890,22 @@ def init_plan_access_db():
 
         conn = get_settings_db_connection()
         cur = conn.cursor()
+
+        # 🔄 Migration (SQLite) : si une ancienne table plan_access existe sans colonne "route_key"
+        # (ex: ancienne colonne routes_json/routes), on la renomme pour éviter les erreurs.
+        try:
+            cur.execute("PRAGMA table_info(plan_access);")
+            cols = [r[1] for r in (cur.fetchall() or [])]
+            if cols and "route_key" not in cols:
+                legacy_name = f"plan_access_legacy_{int(datetime.now().timestamp())}"
+                cur.execute(f"ALTER TABLE plan_access RENAME TO {legacy_name};")
+                conn.commit()
+        except Exception:
+            pass
+
         cur.execute('''
             CREATE TABLE IF NOT EXISTS plan_access (
+
                 plan TEXT NOT NULL,
                 route_key TEXT NOT NULL,
                 enabled INTEGER NOT NULL DEFAULT 1,
@@ -817,84 +961,65 @@ def get_plan_access_routes(plan: str) -> list:
         print(f"⚠️ get_plan_access_routes({plan}): {e}")
         return DEFAULT_PLAN_ACCESS.get(plan, [])
 def save_plan_access_routes(plan: str, routes):
-    """Enregistre les routes autorisées pour un plan.
-
-    Retourne (ok, err). Jamais une simple bool (évite les unpack errors).
+    """
+    Enregistre les routes (route_key) autorisées pour un plan.
+    Retourne (ok, err).
     """
     conn = None
     try:
-        plan_norm = normalize_plan(plan or "free")
-        if plan_norm not in ("free", "premium", "advanced", "pro", "elite"):
-            plan_norm = "free"
+        plan_key = normalize_plan(plan or "free")
 
-        # Normaliser routes
+        # Normaliser la liste reçue (string/list/set)
         if routes is None:
             routes_list = []
-        elif isinstance(routes, (set, tuple)):
-            routes_list = list(routes)
+        elif isinstance(routes, str):
+            routes_list = [routes]
         else:
-            routes_list = routes
+            try:
+                routes_list = list(routes)
+            except Exception:
+                routes_list = []
 
-        if isinstance(routes_list, str):
-            raw = routes_list.strip()
-            # supporte JSON string "[...]" ou "a,b,c"
-            if raw.startswith("[") and raw.endswith("]"):
-                try:
-                    routes_list = json.loads(raw)
-                except Exception:
-                    routes_list = [x.strip().strip('"').strip("'") for x in raw.strip("[]").split(",") if x.strip()]
-            else:
-                routes_list = [x.strip() for x in raw.split(",") if x.strip()]
-        elif isinstance(routes_list, dict):
-            # payload type {"dashboard": true, ...}
-            tmp = []
-            for k, v in routes_list.items():
-                if str(v).lower() in ("1", "true", "yes", "on"):
-                    tmp.append(str(k))
-            routes_list = tmp
-        elif not isinstance(routes_list, list):
-            routes_list = []
+        # Nettoyage + validation
+        routes_list = [r for r in routes_list if isinstance(r, str) and r.strip()]
+        routes_list = [r.strip() for r in routes_list]
 
-        routes_list = [str(r).strip() for r in routes_list if str(r).strip()]
-        routes_list = sorted(set(routes_list))
+        valid_keys = set(PLAN_ROUTE_OPTIONS.keys()) if isinstance(PLAN_ROUTE_OPTIONS, dict) else None
+        if valid_keys:
+            routes_list = [r for r in routes_list if r in valid_keys]
 
-        # Valider contre PLAN_ROUTE_OPTIONS si dispo
-        try:
-            if isinstance(PLAN_ROUTE_OPTIONS, dict) and PLAN_ROUTE_OPTIONS:
-                allowed = set(PLAN_ROUTE_OPTIONS.keys())
-                routes_list = [r for r in routes_list if r in allowed]
-        except Exception:
-            pass
+        cfg_type = (DB_CONFIG.get("type") or "sqlite").lower()
 
-        conn = get_settings_db_connection()
-        cur = conn.cursor()
-
-        if DB_CONFIG.get("type") == "postgres":
-            cur.execute("DELETE FROM plan_access WHERE plan = %s", (plan_norm,))
-            if routes_list:
-                for r in routes_list:
-                    cur.execute(
-                        "INSERT INTO plan_access (plan, route_key, allowed) VALUES (%s, %s, TRUE)",
-                        (plan_norm, r),
-                    )
-        else:
-            cur.execute("DELETE FROM plan_access WHERE plan = ?", (plan_norm,))
-            if routes_list:
-                cur.executemany(
-                    "INSERT OR REPLACE INTO plan_access (plan, route_key, allowed) VALUES (?, ?, 1)",
-                    [(plan_norm, r) for r in routes_list],
+        if cfg_type == "postgres":
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("DELETE FROM plan_access WHERE plan = %s", (plan_key,))
+            for rk in routes_list:
+                # enabled par défaut
+                cur.execute(
+                    """
+                    INSERT INTO plan_access (plan, route_key, enabled)
+                    VALUES (%s, %s, TRUE)
+                    ON CONFLICT (plan, route_key)
+                    DO UPDATE SET enabled = EXCLUDED.enabled
+                    """,
+                    (plan_key, rk),
                 )
+        else:
+            conn = get_settings_db_connection()
+            cur = conn.cursor()
+            cur.execute("DELETE FROM plan_access WHERE plan = ?", (plan_key,))
+            cur.executemany(
+                "INSERT OR REPLACE INTO plan_access (plan, route_key, enabled) VALUES (?, ?, 1)",
+                [(plan_key, rk) for rk in routes_list],
+            )
 
         conn.commit()
 
-        # Mettre à jour un cache mémoire si utilisé
-        try:
-            if isinstance(DEFAULT_PLAN_ACCESS, dict):
-                DEFAULT_PLAN_ACCESS[plan_norm] = routes_list
-        except Exception:
-            pass
-
+        # Sync en mémoire (utile pour fallback)
+        DEFAULT_PLAN_ACCESS[plan_key] = routes_list
         return True, None
+
     except Exception as e:
         try:
             if conn:
@@ -902,13 +1027,14 @@ def save_plan_access_routes(plan: str, routes):
         except Exception:
             pass
         return False, str(e)
+
     finally:
         try:
             if conn:
                 conn.close()
         except Exception:
             pass
-        return False
+
 def init_trades_db():
     """Crée la table trades"""
     try:
@@ -4192,56 +4318,75 @@ def give_default_permissions(username: str) -> bool:
 
 def check_route_permission(username: str, route: str) -> bool:
     """
-    ✅ Vérifie si un utilisateur peut accéder à une route.
+    ✅ Vérifie si un utilisateur peut accéder à une route (path) selon son forfait.
 
     Source de vérité:
     - ADMIN: accès total
-    - Sinon: routes autorisées par le plan (table plan_access)
-    - Fallback intégré si la table n'est pas configurée (évite de "briser" le site)
-
-    Note:
-    - Les permissions individuelles (user_permissions) sont volontairement IGNORÉES ici,
-      pour éviter qu'un ancien "default grant" donne accès Premium sans abonnement.
-      Si tu veux offrir un accès spécial, ajoute la route dans plan_access du plan voulu.
+    - Sinon: routes autorisées par le plan via la table plan_access (plan, route_key, enabled)
+    - Fallback: DEFAULT_PLAN_ACCESS si la DB n'est pas initialisée
     """
     try:
-        # Routes toujours autorisées une fois connecté (même plan free)
-        ALWAYS_ALLOW = {"/dashboard", "/mon-compte"}
-
-        if route in ALWAYS_ALLOW:
+        # ---------- Public / non restreint ----------
+        if not route:
             return True
 
-        conn = db_manager.get_connection()
-        c = conn.cursor()
+        # Nettoyage
+        route_path = (route.split("?", 1)[0] or "").strip()
+        if not route_path:
+            return True
+        if route_path != "/" and route_path.endswith("/"):
+            route_path = route_path.rstrip("/")
 
-        # 1) Récupérer rôle + plan + fin d'abonnement
-        if db_manager.use_postgresql:
-            c.execute(
-                "SELECT role, subscription_plan, subscription_end FROM users WHERE username = %s",
-                (username,)
-            )
-        else:
-            c.execute(
-                "SELECT role, subscription_plan, subscription_end FROM users WHERE username = ?",
-                (username,)
-            )
+        # Toujours autoriser les assets
+        if route_path.startswith("/static") or route_path.startswith("/favicon") or route_path.startswith("/robots"):
+            return True
 
-        row = c.fetchone()
-        if not row:
-            conn.close()
-            return False
+        public_paths = {
+            "/", "/login", "/register", "/logout", "/forgot-password", "/reset-password",
+            "/pricing-complete", "/contact"
+        }
+        if route_path in public_paths:
+            return True
 
-        role = row[0]
-        subscription_plan = (row[1] or "free") if len(row) > 1 else "free"
-        subscription_end = row[2] if len(row) > 2 else None
+        # Autoriser les endpoints techniques (ils gèrent déjà leurs propres contrôles)
+        if route_path.startswith("/api/") or route_path.startswith("/tv-webhook"):
+            return True
+
+        # ---------- Charger rôle + plan ----------
+        conn = None
+        role = "user"
+        subscription_plan = "free"
+        subscription_end = None
+
+        try:
+            conn = db_manager.get_connection()
+            c = conn.cursor()
+            if db_manager.use_postgresql:
+                c.execute(
+                    "SELECT role, subscription_plan, subscription_end FROM users WHERE username = %s",
+                    (username,),
+                )
+            else:
+                c.execute(
+                    "SELECT role, subscription_plan, subscription_end FROM users WHERE username = ?",
+                    (username,),
+                )
+            row = c.fetchone()
+            if row:
+                role = row[0] or "user"
+                subscription_plan = row[1] or "free"
+                subscription_end = row[2]
+        finally:
+            try:
+                if conn:
+                    conn.close()
+            except Exception:
+                pass
 
         if role == "admin":
-            conn.close()
             return True
 
-        # 2) Déterminer le "tier" (free / premium / elite), en tenant compte de l'expiration
-        from datetime import datetime
-
+        # Expiration: si abonnement fini -> free
         def _to_dt(v):
             if not v:
                 return None
@@ -4258,115 +4403,24 @@ def check_route_permission(username: str, route: str) -> bool:
         if end_dt and datetime.now() > end_dt:
             subscription_plan = "free"
 
-        plan_raw = str(subscription_plan).strip().lower()
+        plan_key = normalize_plan(subscription_plan or "free")
 
-        def normalize_plan_key(p: str) -> str:
-            """Normalise le plan utilisateur (free/premium/advanced/pro/elite)."""
-            return normalize_plan(p)
+        # ---------- Route -> route_key ----------
+        # route_key = slug sans "/"
+        route_key = route_path.lstrip("/")
+        if route_key == "":
+            return True
 
-        plan_key = normalize_plan_key(plan_raw)
+        # Toujours autoriser mon compte
+        if route_key in ("mon-compte", "account", "compte"):
+            return True
 
-        # 3) Assurer l'existence de la table plan_access (SQLite/Postgres)
-        try:
-            if db_manager.use_postgresql:
-                c.execute("""
-                    CREATE TABLE IF NOT EXISTS plan_access (
-                        plan TEXT PRIMARY KEY,
-                        routes_json TEXT,
-                        routes TEXT
-                    )
-                """)
-                # Migration / compat: if older DB used `routes` only, copy it to routes_json
-                try:
-                    cols = [r[1] for r in c.execute("PRAGMA table_info(plan_access)").fetchall()]
-                    if "routes_json" not in cols:
-                        c.execute("ALTER TABLE plan_access ADD COLUMN routes_json TEXT")
-                        c.execute("UPDATE plan_access SET routes_json = routes WHERE routes_json IS NULL AND routes IS NOT NULL")
-                    if "routes" not in cols:
-                        c.execute("ALTER TABLE plan_access ADD COLUMN routes TEXT")
-                    c.execute("UPDATE plan_access SET routes_json = COALESCE(routes_json, '[]')")
-                except Exception as _e:
-                    print("⚠️ plan_access schema check:", _e)
-            else:
-                c.execute("""
-                    CREATE TABLE IF NOT EXISTS plan_access (
-                        plan TEXT PRIMARY KEY,
-                        routes_json TEXT,
-                        routes TEXT
-                    )
-                """)
-                # Migration / compat: if older DB used `routes` only, copy it to routes_json
-                try:
-                    cols = [r[1] for r in c.execute("PRAGMA table_info(plan_access)").fetchall()]
-                    if "routes_json" not in cols:
-                        c.execute("ALTER TABLE plan_access ADD COLUMN routes_json TEXT")
-                        c.execute("UPDATE plan_access SET routes_json = routes WHERE routes_json IS NULL AND routes IS NOT NULL")
-                    if "routes" not in cols:
-                        c.execute("ALTER TABLE plan_access ADD COLUMN routes TEXT")
-                    c.execute("UPDATE plan_access SET routes_json = COALESCE(routes_json, '[]')")
-                except Exception as _e:
-                    print("⚠️ plan_access schema check:", _e)
-            conn.commit()
-        except Exception:
-            # si CREATE TABLE échoue (permissions, etc), on continue avec le fallback
-            pass
+        # ---------- Règle d'accès ----------
+        allowed_keys = set(get_plan_access_routes(plan_key) or [])
+        if not allowed_keys:
+            allowed_keys = set(DEFAULT_PLAN_ACCESS.get(plan_key, []))
 
-        # 4) Charger les routes autorisées depuis plan_access (essais: plan exact puis plan_key)
-        plan_routes = None
-
-        def _fetch_plan_routes(plan_name: str):
-            if not plan_name:
-                return None
-            try:
-                if db_manager.use_postgresql:
-                    c.execute("SELECT COALESCE(routes_json, routes) FROM plan_access WHERE plan = %s", (plan_name,))
-                else:
-                    c.execute("SELECT COALESCE(routes_json, routes) FROM plan_access WHERE plan = ?", (plan_name,))
-                r = c.fetchone()
-                if r and r[0]:
-                    import json
-                    return set(json.loads(r[0]))
-            except Exception:
-                return None
-            return None
-
-        plan_routes = _fetch_plan_routes(subscription_plan) or _fetch_plan_routes(plan_raw) or _fetch_plan_routes(plan_key)
-
-        # 5) Fallback (si pas configuré en DB)
-        free_routes = {"/dashboard", "/mon-compte"}
-
-        premium_routes = set(free_routes) | {
-            "/ai-market-regime",
-            "/ai-whale-watcher",
-            "/fear-greed",
-            "/fear-greed-chart",
-            "/dominance",
-            "/heatmap",
-            "/strategie",
-            "/spot-trading",
-            "/altcoin-season",
-            "/nouvelles",
-            "/convertisseur",
-            "/calendrier",
-            "/graphiques",
-            "/bullrun-phase",
-            "/onchain-metrics",
-        }
-
-        elite_routes = set(premium_routes) | {
-            "/ai-predictor",
-        }
-
-        fallback = {
-            "free": free_routes,
-            "premium": premium_routes,
-            "elite": elite_routes,
-        }
-
-        allowed = plan_routes if plan_routes is not None else fallback.get(plan_key, free_routes)
-
-        conn.close()
-        return route in allowed
+        return route_key in allowed_keys
 
     except Exception as e:
         try:
@@ -4374,6 +4428,7 @@ def check_route_permission(username: str, route: str) -> bool:
         except Exception:
             pass
         return False
+
 def normalize_username(user_obj):
     """Accepte str/dict (session payload) et retourne un username string ou None."""
     if user_obj is None:
@@ -19442,10 +19497,19 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 async def pricing_complete():
     """Page de pricing (générée server-side) + support codes promo."""
     prices = get_all_plan_pricing()
-    premium_price = float(prices.get("premium_1m", 20.0) or 0)
-    advanced_price = float(prices.get("advanced_3m", 50.0) or 0)
-    pro_price = float(prices.get("pro_6m", 80.0) or 0)
-    elite_price = float(prices.get("elite_1y", 150.0) or 0)
+
+    def _price(plan_key: str, default: float) -> float:
+        try:
+            info = prices.get(plan_key) or {}
+            cents = int(info.get("price_cents", int(default * 100)) or 0)
+            return round(cents / 100.0, 2)
+        except Exception:
+            return float(default)
+
+    premium_price = _price("premium", 20.0)
+    advanced_price = _price("advanced", 50.0)
+    pro_price = _price("pro", 80.0)
+    elite_price = _price("elite", 150.0)
 
     def _fmt(x: float) -> str:
         try:
@@ -19464,6 +19528,7 @@ async def pricing_complete():
   <style>
     body {{
       margin:0;
+      margin-left: 260px;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height:100vh;
@@ -19587,7 +19652,10 @@ async def pricing_complete():
       margin-top:16px;
       font-size:13px;
     }}
-  </style>
+  
+
+    @media (max-width: 900px) {{ body {{ margin-left: 0; }} }}
+</style>
 </head>
 <body>
   <div class="wrap">
@@ -19683,7 +19751,7 @@ async def pricing_complete():
 </body>
 </html>
 """
-    return HTMLResponse(html)
+    return HTMLResponse(SIDEBAR + html)
 
 @app.get("/pricing-new")
 async def pricing_page_new(request: Request):
@@ -23583,41 +23651,22 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
 
     # Load pricing
     prices = get_all_plan_pricing()
-    premium_price = float(prices.get("premium_1m", 20.0) or 0)
-    advanced_price = float(prices.get("advanced_3m", 50.0) or 0)
-    pro_price = float(prices.get("pro_6m", 80.0) or 0)
-    elite_price = float(prices.get("elite_1y", 150.0) or 0)
+
+    def _price(plan_key: str, default: float) -> float:
+        try:
+            info = prices.get(plan_key) or {}
+            cents = int(info.get("price_cents", int(default * 100)) or 0)
+            return round(cents / 100.0, 2)
+        except Exception:
+            return float(default)
+
+    premium_price = _price("premium", 20.0)
+    advanced_price = _price("advanced", 50.0)
+    pro_price = _price("pro", 80.0)
+    elite_price = _price("elite", 150.0)
 
     # All routes list (doit correspondre à vos pages protégées)
-    all_routes = [
-        ("dashboard", "Dashboard"),
-        ("stats", "Stats Dashboard"),
-        ("trades", "Trades"),
-        ("strategies", "Strategie"),
-        ("spot-trading", "Spot Trading"),
-        ("watchlist", "Watchlist"),
-        ("risk-management", "Risk Management"),
-        ("backtesting", "Backtesting"),
-        ("ai-opportunity-scanner", "Ai Opportunity Scanner"),
-        ("ai-market-regime", "Ai Market Regime"),
-        ("ai-whale-watcher", "Ai Whale Watcher"),
-        ("ai-assistant", "Ai Assistant"),
-        ("ai-signals", "Ai Signals"),
-        ("ai-news", "Ai News"),
-        ("ai-predictor", "Ai Predictor"),
-        ("ai-patterns", "Ai Patterns"),
-        ("ai-sentiment", "Ai Sentiment"),
-        ("ai-sizer", "Ai Sizer"),
-        ("ai-exit", "Ai Exit"),
-        ("ai-timeframe", "Ai Timeframe"),
-        ("ai-liquidity", "Ai Liquidity"),
-        ("ai-alerts", "Ai Alerts"),
-        ("ai-gem-hunter", "Ai Gem Hunter"),
-        ("ai-technical-analysis", "Ai Technical Analysis"),
-        ("narrative-radar", "Narrative Radar"),
-        ("ai-crypto-coach", "Ai Crypto Coach"),
-        ("ai-swarm-agents", "Ai Swarm Agents"),
-    ]
+    all_routes = [(k, (v.get('label') if isinstance(v, dict) else str(v))) for k, v in PLAN_ROUTE_OPTIONS.items()]
 
     # UI
     html = f"""
@@ -23630,6 +23679,7 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
   <style>
     body {{
       margin:0;
+      margin-left: 260px;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height:100vh;
@@ -23712,7 +23762,12 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
     }}
     .toast.ok {{ background:#dcfce7; color:#065f46; }}
     .toast.err {{ background:#fee2e2; color:#991b1b; }}
-  </style>
+  
+
+    @media (max-width: 900px) {{
+      body {{ margin-left: 0; }}
+    }}
+</style>
 </head>
 <body>
   <div class="container">
@@ -23864,7 +23919,7 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
 </body>
 </html>
 """
-    return HTMLResponse(html)
+    return HTMLResponse(SIDEBAR + html)
 
 @app.post("/admin/pricing/update")
 @app.post("/admin-dashboard/pricing/update")
@@ -24308,7 +24363,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
         </html>
         """
         
-        return HTMLResponse(html)
+        return HTMLResponse(SIDEBAR + html)
     except Exception as e:
         return HTMLResponse(f"<h1>❌ Erreur: {str(e)}</h1>")
 
@@ -24377,7 +24432,7 @@ async def admin_get_plan_access(plan: str, _admin: str = Depends(require_admin))
         return JSONResponse({"success": False, "error": str(e), "routes": []}, status_code=200)
 
 @app.post("/admin/save-plan-access")
-async def admin_save_plan_access(request: Request):
+async def admin_save_plan_access(request: Request, _admin: str = Depends(require_admin)):
     """Sauvegarde les permissions (routes) d'un plan depuis l'admin-dashboard."""
     try:
         payload = {}

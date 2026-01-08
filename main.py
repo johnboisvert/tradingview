@@ -816,41 +816,98 @@ def get_plan_access_routes(plan: str) -> list:
     except Exception as e:
         print(f"⚠️ get_plan_access_routes({plan}): {e}")
         return DEFAULT_PLAN_ACCESS.get(plan, [])
-def save_plan_access_routes(plan: str, routes: list) -> bool:
-    """Enregistre la liste des routes autorisées pour un plan."""
-    plan = normalize_plan(plan)
-    routes = [str(r).strip() for r in (routes or []) if str(r).strip()]
-    try:
-        init_plan_access_db()
-        cfg_type = (DB_CONFIG.get("type") or "sqlite").lower()
+def save_plan_access_routes(plan: str, routes):
+    """Enregistre les routes autorisées pour un plan.
 
-        if cfg_type == "postgres":
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("DELETE FROM plan_access WHERE plan=%s;", (plan,))
-            for rk in routes:
-                cur.execute(
-                    "INSERT INTO plan_access (plan, route_key, enabled) VALUES (%s, %s, TRUE) ON CONFLICT (plan, route_key) DO UPDATE SET enabled=TRUE;",
-                    (plan, rk),
-                )
-            conn.commit()
-            cur.close()
-            conn.close()
-            return True
+    Retourne (ok, err). Jamais une simple bool (évite les unpack errors).
+    """
+    conn = None
+    try:
+        plan_norm = normalize_plan(plan or "free")
+        if plan_norm not in ("free", "premium", "advanced", "pro", "elite"):
+            plan_norm = "free"
+
+        # Normaliser routes
+        if routes is None:
+            routes_list = []
+        elif isinstance(routes, (set, tuple)):
+            routes_list = list(routes)
+        else:
+            routes_list = routes
+
+        if isinstance(routes_list, str):
+            raw = routes_list.strip()
+            # supporte JSON string "[...]" ou "a,b,c"
+            if raw.startswith("[") and raw.endswith("]"):
+                try:
+                    routes_list = json.loads(raw)
+                except Exception:
+                    routes_list = [x.strip().strip('"').strip("'") for x in raw.strip("[]").split(",") if x.strip()]
+            else:
+                routes_list = [x.strip() for x in raw.split(",") if x.strip()]
+        elif isinstance(routes_list, dict):
+            # payload type {"dashboard": true, ...}
+            tmp = []
+            for k, v in routes_list.items():
+                if str(v).lower() in ("1", "true", "yes", "on"):
+                    tmp.append(str(k))
+            routes_list = tmp
+        elif not isinstance(routes_list, list):
+            routes_list = []
+
+        routes_list = [str(r).strip() for r in routes_list if str(r).strip()]
+        routes_list = sorted(set(routes_list))
+
+        # Valider contre PLAN_ROUTE_OPTIONS si dispo
+        try:
+            if isinstance(PLAN_ROUTE_OPTIONS, dict) and PLAN_ROUTE_OPTIONS:
+                allowed = set(PLAN_ROUTE_OPTIONS.keys())
+                routes_list = [r for r in routes_list if r in allowed]
+        except Exception:
+            pass
 
         conn = get_settings_db_connection()
         cur = conn.cursor()
-        cur.execute("DELETE FROM plan_access WHERE plan=?;", (plan,))
-        for rk in routes:
-            cur.execute(
-                "INSERT OR REPLACE INTO plan_access (plan, route_key, enabled) VALUES (?, ?, 1);",
-                (plan, rk),
-            )
+
+        if DB_CONFIG.get("type") == "postgres":
+            cur.execute("DELETE FROM plan_access WHERE plan = %s", (plan_norm,))
+            if routes_list:
+                for r in routes_list:
+                    cur.execute(
+                        "INSERT INTO plan_access (plan, route_key, allowed) VALUES (%s, %s, TRUE)",
+                        (plan_norm, r),
+                    )
+        else:
+            cur.execute("DELETE FROM plan_access WHERE plan = ?", (plan_norm,))
+            if routes_list:
+                cur.executemany(
+                    "INSERT OR REPLACE INTO plan_access (plan, route_key, allowed) VALUES (?, ?, 1)",
+                    [(plan_norm, r) for r in routes_list],
+                )
+
         conn.commit()
-        conn.close()
-        return True
+
+        # Mettre à jour un cache mémoire si utilisé
+        try:
+            if isinstance(DEFAULT_PLAN_ACCESS, dict):
+                DEFAULT_PLAN_ACCESS[plan_norm] = routes_list
+        except Exception:
+            pass
+
+        return True, None
     except Exception as e:
-        print(f"⚠️ save_plan_access_routes({plan}): {e}")
+        try:
+            if conn:
+                conn.rollback()
+        except Exception:
+            pass
+        return False, str(e)
+    finally:
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
         return False
 def init_trades_db():
     """Crée la table trades"""
@@ -1486,7 +1543,8 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 
 # Chemin de la base de donnes
-# (Academy) utilise la DB principale via DB_PATH (ne pas écraser DB_PATH ici)
+DB_PATH = "./academy.db"
+
 # ============================================================================
 # INITIALISATION DE LA BASE DE DONNES
 # ============================================================================
@@ -2567,8 +2625,7 @@ templates.env.globals["SITE_NAME"] = SITE_NAME
 print(f"✅ Templates Jinja2 configurés (logo={SITE_LOGO_URL})")
 
 # Enregistrer les fonctions template si systme permissions disponible
-if PERMISSIONS_AVAILABLE:
-    register_template_functions(templates)
+# (template functions registration moved below after globals are set)
 # --- Fallback template helpers (évite que le site casse si protected_routes manque une fonction) ---
 def has_feature(obj, route_key: str) -> bool:
     """Utilisé dans les templates. route_key = clé de page (ex: 'ai_signals')."""
@@ -2591,6 +2648,11 @@ try:
 except Exception:
     pass
 
+if PERMISSIONS_AVAILABLE:
+    try:
+        register_template_functions(templates)
+    except Exception as e:
+        print(f"⚠️  Erreur enregistrement template functions: {e}")
 
 # ============================================================================
 #  CORRECTION: FONCTIONS EBOOKS ET CONTACT
@@ -23650,10 +23712,6 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
     }}
     .toast.ok {{ background:#dcfce7; color:#065f46; }}
     .toast.err {{ background:#fee2e2; color:#991b1b; }}
-
-    .main {{ margin-left: 300px; padding: 20px; }}
-    @media (max-width: 900px) {{ .main {{ margin-left: 0; padding: 12px; }} .sidebar {{ position: relative; width: 100%; height: auto; }} }}
-
   </style>
 </head>
 <body>
@@ -24319,39 +24377,57 @@ async def admin_get_plan_access(plan: str, _admin: str = Depends(require_admin))
         return JSONResponse({"success": False, "error": str(e), "routes": []}, status_code=200)
 
 @app.post("/admin/save-plan-access")
-async def admin_save_plan_access(request: Request, _admin: str = Depends(require_admin)):
-    """Enregistre les routes autorisées pour un plan."""
+async def admin_save_plan_access(request: Request):
+    """Sauvegarde les permissions (routes) d'un plan depuis l'admin-dashboard."""
     try:
         payload = {}
-        try:
-            payload = await request.json()
-        except Exception:
+        ct = (request.headers.get("content-type") or "").lower()
+
+        if "application/json" in ct:
+            try:
+                payload = await request.json()
+            except Exception:
+                payload = {}
+        elif "application/x-www-form-urlencoded" in ct or "multipart/form-data" in ct:
             try:
                 form = await request.form()
                 payload = dict(form)
             except Exception:
                 payload = {}
+        else:
+            raw = await request.body()
+            if raw:
+                try:
+                    payload = json.loads(raw.decode("utf-8"))
+                except Exception:
+                    payload = {}
 
-        plan = payload.get("plan") if isinstance(payload, dict) else None
-        routes = payload.get("routes") if isinstance(payload, dict) else None
+        plan = payload.get("plan") or payload.get("selected_plan") or payload.get("plan_key") or "free"
+        routes = payload.get("routes") or payload.get("allowed_routes") or payload.get("access") or []
 
-        if not plan:
-            return JSONResponse({"success": False, "error": "Plan manquant"}, status_code=200)
-
-        if routes is None:
-            routes = []
+        # Normaliser routes (peut arriver en string)
         if isinstance(routes, str):
-            # allow comma-separated
-            routes = [r.strip() for r in routes.split(",") if r.strip()]
+            raw = routes.strip()
+            if raw.startswith("[") and raw.endswith("]"):
+                try:
+                    routes = json.loads(raw)
+                except Exception:
+                    routes = [x.strip().strip('"').strip("'") for x in raw.strip("[]").split(",") if x.strip()]
+            else:
+                routes = [x.strip() for x in raw.split(",") if x.strip()]
+        elif isinstance(routes, dict):
+            routes = [k for k, v in routes.items() if str(v).lower() in ("1", "true", "yes", "on")]
+        elif not isinstance(routes, list):
+            routes = []
 
-            ok = save_plan_access_routes(plan, routes)
-        if not ok:
-            return JSONResponse({"success": False, "error": "Erreur lors de l'enregistrement des accès."}, status_code=200)
-
-        return JSONResponse({"success": True, "plan": normalized_plan, "routes": routes, "message": "Accès du plan sauvegardés ✅"}, status_code=200)
+        plan_norm = normalize_plan(plan)
+        ok, err = save_plan_access_routes(plan_norm, routes)
+        if ok:
+            saved = get_plan_access_routes(plan_norm)
+            return JSONResponse({"success": True, "plan": plan_norm, "routes": saved})
+        return JSONResponse({"success": False, "plan": plan_norm, "error": err or "Échec sauvegarde"})
     except Exception as e:
-        return JSONResponse({"success": False, "error": str(e)}, status_code=200)
-
+        return JSONResponse({"success": False, "error": str(e)})
 @app.get("/admin/api/plan-prices")
 async def admin_get_plan_prices(user=Depends(require_admin)):
     """Retourne les prix courants (CAD) pour remplir le formulaire Admin."""

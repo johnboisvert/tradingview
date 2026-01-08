@@ -24344,9 +24344,9 @@ async def admin_save_plan_access(request: Request, _admin: str = Depends(require
             # allow comma-separated
             routes = [r.strip() for r in routes.split(",") if r.strip()]
 
-        ok, err = save_plan_access_routes(plan, routes)
+            ok = save_plan_access_routes(plan, routes)
         if not ok:
-            return JSONResponse({"success": False, "error": err or "Erreur inconnue"}, status_code=200)
+            return JSONResponse({"success": False, "error": "Erreur lors de l'enregistrement des accès."}, status_code=200)
 
         return JSONResponse({"success": True, "plan": normalized_plan, "routes": routes, "message": "Accès du plan sauvegardés ✅"}, status_code=200)
     except Exception as e:

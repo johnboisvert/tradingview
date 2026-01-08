@@ -1486,8 +1486,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 
 # Chemin de la base de donnes
-DB_PATH = "./academy.db"
-
+# (Academy) utilise la DB principale via DB_PATH (ne pas écraser DB_PATH ici)
 # ============================================================================
 # INITIALISATION DE LA BASE DE DONNES
 # ============================================================================
@@ -19257,13 +19256,6 @@ async def monitor_trades_background():
 @app.on_event("startup")
 async def startup_event():
     """Démarre la tâche de fond au lancement de l'application"""
-
-# --- Ensure plan access DB schema exists (needed for sidebar + pricing) ---
-try:
-    init_plan_access_db_v2()
-except Exception as _e:
-    print("⚠️ init_plan_access_db_v2 failed:", _e)
-
     # Initialiser la DB Portfolio
     init_portfolio_db()
     
@@ -19536,8 +19528,6 @@ async def pricing_complete():
   </style>
 </head>
 <body>
-{SIDEBAR}
-
   <div class="wrap">
     <div class="hero">
       {f'<img src="{site_logo}" alt="CryptoIA"/>' if site_logo else ''}
@@ -19631,7 +19621,8 @@ async def pricing_complete():
 </body>
 </html>
 """
-    return HTMLResponse(html.replace("{SIDEBAR}", SIDEBAR))
+    return HTMLResponse(html)
+
 @app.get("/pricing-new")
 async def pricing_page_new(request: Request):
     # Page legacy → redirige vers la version complète
@@ -23659,11 +23650,13 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
     }}
     .toast.ok {{ background:#dcfce7; color:#065f46; }}
     .toast.err {{ background:#fee2e2; color:#991b1b; }}
+
+    .main {{ margin-left: 300px; padding: 20px; }}
+    @media (max-width: 900px) {{ .main {{ margin-left: 0; padding: 12px; }} .sidebar {{ position: relative; width: 100%; height: auto; }} }}
+
   </style>
 </head>
 <body>
-{SIDEBAR}
-
   <div class="container">
     <div class="top">
       <h1>👑 Admin Dashboard</h1>
@@ -23813,7 +23806,8 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
 </body>
 </html>
 """
-    return HTMLResponse(html.replace("{SIDEBAR}", SIDEBAR))
+    return HTMLResponse(html)
+
 @app.post("/admin/pricing/update")
 @app.post("/admin-dashboard/pricing/update")
 async def admin_pricing_update(request: Request):

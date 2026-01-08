@@ -539,38 +539,66 @@ def _choose_writable_sqlite_path(candidates: list, fallback_dir: str = "/tmp/ai_
 
 
 def get_db_config():
-    # Railway/Render/containers: ne fais pas confiance à DB_PATH si le dossier n'est pas writable.
-    postgres_url = (os.getenv("DATABASE_URL") or "").strip()
-    if postgres_url:
-        return {"type": "postgres", "url": postgres_url}
+    """Configure la DB principale (SQLite ou Postgres).
+
+    Objectif: utiliser un répertoire *persistant* si possible (ex: /data sur Railway),
+    sinon fallback propre vers /tmp.
+    """
+    db_url = os.getenv("DATABASE_URL", "").strip()
+    if db_url:
+        return {"type": "postgres", "url": db_url}
 
     db_dir_env = (os.getenv("DB_DIR") or "").strip()
+
+    # Préférer un volume persistant si disponible
+    preferred_dir = None
+    if db_dir_env:
+        preferred_dir = db_dir_env
+    elif os.path.isdir("/data") and os.access("/data", os.W_OK):
+        preferred_dir = "/data"
+    elif os.path.isdir("/app/data") and os.access("/app/data", os.W_OK):
+        preferred_dir = "/app/data"
+    else:
+        preferred_dir = "/tmp/ai_trader"
+
+    os.makedirs(preferred_dir, exist_ok=True)
+
     db_path_env = (os.getenv("DB_PATH") or "").strip()
-    data_dir_env = (os.getenv("DATA_DIR") or os.getenv("DATA_FOLDER") or "").strip()
 
-    db_dir = db_dir_env or "/tmp/ai_trader"
-
+    # Construire une liste de candidats (le 1er writable gagne)
     candidates = []
-    # 1) DB_PATH explicite
     if db_path_env:
         candidates.append(db_path_env)
-    # 2) DB_DIR -> ai_trader.db
-    if db_dir:
-        candidates.append(os.path.join(db_dir, "ai_trader.db"))
-    # 3) DATA_DIR -> ai_trader.db
-    if data_dir_env:
-        candidates.append(os.path.join(data_dir_env, "ai_trader.db"))
-    # 4) chemins communs
-    candidates.append("/data/ai_trader.db")
-    candidates.append("/tmp/ai_trader/ai_trader.db")
+    # si DB_DIR existe, on met d'abord ai_trader.db dans ce dir
+    candidates.append(os.path.join(preferred_dir, "ai_trader.db"))
+    # autres fallbacks
+    candidates.extend([
+        "/data/ai_trader.db",
+        "/app/data/ai_trader.db",
+        "/tmp/ai_trader/ai_trader.db",
+        "/tmp/ai_trader.db",
+    ])
 
-    chosen_path, chosen_dir = _choose_writable_sqlite_path(candidates, fallback_dir="/tmp/ai_trader")
+    chosen_path = None
+    for c in candidates:
+        try:
+            d = os.path.dirname(c)
+            if d:
+                os.makedirs(d, exist_ok=True)
+            # test write
+            with open(c + ".__wtest__", "w", encoding="utf-8") as f:
+                f.write("ok")
+            os.remove(c + ".__wtest__")
+            chosen_path = c
+            break
+        except Exception:
+            continue
 
-    # log utile
-    if db_path_env and os.path.abspath(db_path_env) != os.path.abspath(chosen_path):
-        print(f"⚠️  DB_PATH non writable: {db_path_env} → fallback: {chosen_path}")
+    if not chosen_path:
+        chosen_path = "/tmp/ai_trader/ai_trader.db"
+        os.makedirs(os.path.dirname(chosen_path), exist_ok=True)
 
-    return {"type": "sqlite", "path": chosen_path, "dir": chosen_dir}
+    return {"type": "sqlite", "path": chosen_path, "dir": os.path.dirname(chosen_path)}
 def get_db_connection():
     """Retourne une connexion selon le type de DB"""
     if DB_CONFIG["type"] == "postgres":
@@ -787,71 +815,113 @@ def init_plan_access_db():
         print(f"⚠️ init_plan_access_db: {e}")
         return False
 def get_plan_access_routes(plan: str) -> list:
-    """Retourne la liste des routes (route_key) activées pour un plan."""
-    plan = normalize_plan(plan)
-    try:
-        cfg_type = (DB_CONFIG.get("type") or "sqlite").lower()
+    """Retourne la liste des route-keys accessibles pour un plan."""
+    plan = (plan or "").strip().lower()
 
-        if cfg_type == "postgres":
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT route_key FROM plan_access WHERE plan=%s AND enabled=TRUE ORDER BY route_key;",
-                (plan,),
-            )
-            rows = cur.fetchall() or []
-            cur.close()
-            conn.close()
-            return [r[0] for r in rows]
-
-        conn = get_settings_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT route_key FROM plan_access WHERE plan=? AND enabled=1 ORDER BY route_key;",
-            (plan,),
-        )
-        rows = cur.fetchall() or []
-        conn.close()
-        return [r[0] for r in rows]
-    except Exception as e:
-        print(f"⚠️ get_plan_access_routes({plan}): {e}")
-        return DEFAULT_PLAN_ACCESS.get(plan, [])
-def save_plan_access_routes(plan: str, routes: list) -> bool:
-    """Enregistre la liste des routes autorisées pour un plan."""
-    plan = normalize_plan(plan)
-    routes = [str(r).strip() for r in (routes or []) if str(r).strip()]
     try:
         init_plan_access_db()
-        cfg_type = (DB_CONFIG.get("type") or "sqlite").lower()
+    except Exception as e:
+        try:
+            print(f"⚠️ init_plan_access_db: {e}")
+        except Exception:
+            pass
 
-        if cfg_type == "postgres":
-            conn = get_db_connection()
+    conn = get_settings_db_connection()
+    if conn is None:
+        return []
+
+    try:
+        if DB_CONFIG.get("type") == "postgres":
             cur = conn.cursor()
-            cur.execute("DELETE FROM plan_access WHERE plan=%s;", (plan,))
-            for rk in routes:
-                cur.execute(
-                    "INSERT INTO plan_access (plan, route_key, enabled) VALUES (%s, %s, TRUE) ON CONFLICT (plan, route_key) DO UPDATE SET enabled=TRUE;",
-                    (plan, rk),
-                )
-            conn.commit()
+            cur.execute("SELECT routes_json FROM plan_access WHERE plan=%s", (plan,))
+            row = cur.fetchone()
             cur.close()
-            conn.close()
-            return True
+        else:
+            cur = conn.cursor()
+            cur.execute("SELECT routes_json FROM plan_access WHERE plan=?", (plan,))
+            row = cur.fetchone()
+            cur.close()
+
+        if not row:
+            return []
+        routes_json = row[0]
+        try:
+            routes = json.loads(routes_json) if routes_json else []
+        except Exception:
+            routes = []
+        if isinstance(routes, list):
+            # normaliser vers strings
+            return [str(r) for r in routes if r]
+        return []
+
+    except Exception as e:
+        try:
+            print(f"⚠️ get_plan_access_routes({plan}): {e}")
+        except Exception:
+            pass
+        return []
+def save_plan_access_routes(plan: str, routes: list):
+    """Sauvegarde la liste de routes accessibles pour un plan.
+
+    Retourne: (ok: bool, error: str|None)
+    """
+    try:
+        init_plan_access_db()
+
+        plan = (plan or "").strip().lower()
+        routes = routes or []
+
+        # normaliser
+        norm_routes = []
+        for r in routes:
+            if not r:
+                continue
+            rr = str(r).strip()
+            if rr:
+                norm_routes.append(rr)
 
         conn = get_settings_db_connection()
-        cur = conn.cursor()
-        cur.execute("DELETE FROM plan_access WHERE plan=?;", (plan,))
-        for rk in routes:
+        if conn is None:
+            return False, "DB indisponible"
+
+        if DB_CONFIG.get("type") == "postgres":
+            cur = conn.cursor()
             cur.execute(
-                "INSERT OR REPLACE INTO plan_access (plan, route_key, enabled) VALUES (?, ?, 1);",
-                (plan, rk),
+                """INSERT INTO plan_access (plan, routes_json, updated_at)
+                   VALUES (%s, %s, NOW())
+                   ON CONFLICT (plan) DO UPDATE SET
+                     routes_json = EXCLUDED.routes_json,
+                     updated_at = NOW()""",
+                (plan, json.dumps(norm_routes, ensure_ascii=False)),
             )
-        conn.commit()
-        conn.close()
-        return True
+            conn.commit()
+            cur.close()
+        else:
+            cur = conn.cursor()
+            cur.execute(
+                """INSERT INTO plan_access (plan, routes_json, updated_at)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(plan) DO UPDATE SET
+                     routes_json = excluded.routes_json,
+                     updated_at = excluded.updated_at""",
+                (plan, json.dumps(norm_routes, ensure_ascii=False), datetime.utcnow().isoformat()),
+            )
+            conn.commit()
+            cur.close()
+
+        try:
+            print(f"✅ plan_access saved: plan={plan} routes={len(norm_routes)}")
+        except Exception:
+            pass
+
+        return True, None
+
     except Exception as e:
-        print(f"⚠️ save_plan_access_routes({plan}): {e}")
-        return False
+        try:
+            print(f"❌ save_plan_access_routes error: {e}")
+        except Exception:
+            pass
+        return False, str(e)
 def init_trades_db():
     """Crée la table trades"""
     try:
@@ -19256,6 +19326,15 @@ async def monitor_trades_background():
 
 @app.on_event("startup")
 async def startup_event():
+    # Init DB tables (plan access/pricing)
+    try:
+        init_plan_access_db()
+    except Exception as e:
+        try:
+            print(f"⚠️ init_plan_access_db au startup: {e}")
+        except Exception:
+            pass
+
     """Démarre la tâche de fond au lancement de l'application"""
     # Initialiser la DB Portfolio
     init_portfolio_db()
@@ -19393,54 +19472,6 @@ async def pricing_complete():
             return "0.00"
 
     site_logo = os.getenv("SITE_LOGO_URL", globals().get("SITE_LOGO_URL", ""))
-
-    # --- Pages incluses (dynamiques) depuis plan_access (admin) ---
-    # Doit correspondre aux route_keys utilisés dans /admin-dashboard.
-    all_routes = [
-        ("dashboard", "Dashboard"),
-        ("stats", "Stats Dashboard"),
-        ("trades", "Trades"),
-        ("strategies", "Stratégie"),
-        ("spot-trading", "Spot Trading"),
-        ("watchlist", "Watchlist"),
-        ("risk-management", "Risk Management"),
-        ("backtesting", "Backtesting"),
-        ("ai-opportunity-scanner", "AI Opportunity Scanner"),
-        ("ai-market-regime", "AI Market Regime"),
-        ("ai-whale-watcher", "AI Whale Watcher"),
-        ("fear-greed", "Fear & Greed"),
-        ("fear-greed-chart", "Fear & Greed (Chart)"),
-        ("dominance", "Dominance"),
-        ("heatmap", "Heatmap"),
-        ("ai-predictor", "AI Predictor"),
-        ("ai-news", "AI News"),
-        ("ai-signals", "AI Signals"),
-        ("journal", "Journal"),
-        ("academy", "Academy"),
-        ("ebooks", "Ebooks"),
-    ]
-    label_map = {k: v for k, v in all_routes}
-
-    def _render_included_chips(plan_key: str) -> str:
-        plan_key = normalize_plan(plan_key)
-        try:
-            allowed = set(get_plan_access_routes(plan_key) or [])
-        except Exception:
-            allowed = set()
-        # Afficher dans l'ordre de all_routes
-        ordered = [k for k, _ in all_routes if k in allowed]
-        # inclure les clés inconnues à la fin (si jamais)
-        for k in sorted(allowed):
-            if k not in ordered:
-                ordered.append(k)
-        if not ordered:
-            return "<span class=\"chip muted\">Aucune page premium</span>"
-        chips = []
-        for k in ordered:
-            lab = label_map.get(k) or k.replace("-", " ").title()
-            chips.append(f"<span class=\"chip\">{_html.escape(lab)}</span>")
-        return "".join(chips)
-
     html = f"""
 <!doctype html>
 <html lang="fr">
@@ -19602,10 +19633,6 @@ async def pricing_complete():
           <li>Signaux de trading</li>
           <li>Support prioritaire</li>
         </ul>
-        <div class="included">
-          <div class="title">Pages incluses</div>
-          <div class="chips">{_render_included_chips('premium')}</div>
-        </div>
         <button class="cta" onclick="selectPlan('premium')">Passer à Premium</button>
       </div>
 
@@ -19621,10 +19648,6 @@ async def pricing_complete():
           <li>Alertes Telegram</li>
           <li>Support 24/7</li>
         </ul>
-        <div class="included">
-          <div class="title">Pages incluses</div>
-          <div class="chips">{_render_included_chips('advanced')}</div>
-        </div>
         <button class="cta" onclick="selectPlan('advanced')">Passer à Advanced</button>
       </div>
 
@@ -19639,10 +19662,6 @@ async def pricing_complete():
           <li>Backtesting illimité</li>
           <li>Support VIP</li>
         </ul>
-        <div class="included">
-          <div class="title">Pages incluses</div>
-          <div class="chips">{_render_included_chips('pro')}</div>
-        </div>
         <button class="cta" onclick="selectPlan('pro')">Passer à Pro</button>
       </div>
 
@@ -19657,10 +19676,6 @@ async def pricing_complete():
           <li>Formation exclusive</li>
           <li>Support dédié</li>
         </ul>
-        <div class="included">
-          <div class="title">Pages incluses</div>
-          <div class="chips">{_render_included_chips('elite')}</div>
-        </div>
         <button class="cta" onclick="selectPlan('elite')">Passer à Elite</button>
       </div>
     </div>
@@ -19687,6 +19702,7 @@ async def pricing_complete():
 </html>
 """
     return HTMLResponse(html)
+
 @app.get("/pricing-new")
 async def pricing_page_new(request: Request):
     # Page legacy → redirige vers la version complète
@@ -40096,3 +40112,20 @@ async def toggle_ebook(ebook_id: int, request: Request):
 # ============================================================================
 # FIN DES ROUTES EBOOKS/CONTACT - TOUT EST PRT!
 # ============================================================================
+
+
+# --- Force /pricing-complete to use the last defined handler (avoid router conflicts)
+def _prioritize_pricing_complete_route():
+    try:
+        target = None
+        for r in list(getattr(app, "router").routes):
+            if getattr(r, "path", None) == "/pricing-complete" and "GET" in getattr(r, "methods", set()):
+                if getattr(getattr(r, "endpoint", None), "__name__", "") == "pricing_complete":
+                    target = r
+        if target:
+            app.router.routes.remove(target)
+            app.router.routes.insert(0, target)
+    except Exception:
+        pass
+
+_prioritize_pricing_complete_route()

@@ -598,19 +598,15 @@ def get_db_config():
     return {"type": "sqlite", "path": chosen_path}
 
 
-DB_CONFIG = get_db_config()
-print(f"✅ DB_CONFIG utilisé: {DB_CONFIG}")
-except Exception as _e:
-    print(f"⚠️ get_db_config() a échoué, fallback /tmp: {_e}")
-    DB_CONFIG = {"type": "sqlite", "path": "/tmp/cryptoia.db", "dir": "/tmp"}
-
-# Compatibilité: certains modules utilisent DB_DIR/DB_PATH
 try:
+    DB_CONFIG = get_db_config()
+    print(f"✅ DB_CONFIG utilisé: {DB_CONFIG}")
     DB_DIR = (DB_CONFIG.get("dir") or os.path.dirname(DB_CONFIG.get("path", "/tmp/cryptoia.db")))
     DB_PATH = DB_CONFIG.get("path", "/tmp/cryptoia.db")
     os.makedirs(DB_DIR, exist_ok=True)
 except Exception as _e:
-    print(f"⚠️  Impossible de créer DB_DIR, fallback /tmp: {_e}")
+    print(f"⚠️ get_db_config/DB_DIR a échoué, fallback /tmp: {_e}")
+    DB_CONFIG = {"type": "sqlite", "path": "/tmp/cryptoia.db", "dir": "/tmp"}
     DB_DIR = "/tmp"
     DB_PATH = "/tmp/cryptoia.db"
 

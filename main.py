@@ -3212,11 +3212,11 @@ SIDEBAR = """<style>
 .sidebar-toggle{display:block}
 }
 /* Décalage du contenu pour éviter superposition avec sidebar */
-body{margin-left:280px;transition:margin-left 0.3s}
+body{margin:0 !important;padding-left:280px !important;transition:padding-left 0.3s}
 .container,.main-content,body>div:not(.sidebar){margin-left:0!important}
 @media (max-width: 768px){
-body{margin-left:0}
-body.sidebar-open{margin-left:280px}
+body{padding-left:0 !important}
+body.sidebar-open{padding-left:280px !important}
 }
 </style>
     <!-- SIDEBAR TOGGLE MOBILE -->

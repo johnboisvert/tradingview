@@ -8,12 +8,11 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-COPY *.py /app/
+# ✅ Copie TOUT (html/css/js/images/templates/etc.)
+COPY . /app/
 
-RUN useradd -m appuser
+# user non-root + permissions
+RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Ne PAS forcer PORT ici. Railway le fournit.
-# ENV PORT=8000  <-- à enlever
-
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips=*"]

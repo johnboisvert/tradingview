@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # NOTE: Railway/uvicorn safe. Python comments use '#', not '//'.
-from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie
+from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie, Body
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -3750,7 +3750,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 USE_POSTGRESQL = POSTGRESQL_AVAILABLE and DATABASE_URL is not None
 
 # Base de donnes des utilisateurs et sessions
-USERS_DB = "/tmp/users.db"  # Force /tmp pour Railway
+USERS_DB = os.path.join(DB_CONFIG["dir"], "users.db")  # Persistant si /data est monté
 active_sessions = {}  # 🆕 {token: {"username": str, "subscription_plan": str, ...}}
 
 class DatabaseManager:
@@ -4383,7 +4383,11 @@ def load_trades_from_file():
     try:
         if os.path.exists(TRADES_FILE):
             with open(TRADES_FILE, 'r', encoding='utf-8') as f:
-                trades_db = json.load(f)
+                raw = f.read().strip()
+                if not raw:
+                    trades_db = []
+                else:
+                    trades_db = json.loads(raw)
                 print(f"✅ {len(trades_db)} trades chargés depuis {TRADES_FILE}")
         else:
             trades_db = []

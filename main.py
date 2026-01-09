@@ -24842,6 +24842,24 @@ async def admin_save_prices(prices: dict = Body(...)):
     """Alias rétro-compatible: /admin/save-prices -> /admin/save-plan-prices."""
     return await admin_save_plan_prices(prices)
 
+# --- Compat routes (anciens frontends / URLs legacy) ---
+@app.post("/admin/pricing/save")
+async def admin_pricing_save_compat(payload: dict = Body(...)):
+    return await admin_save_prices(payload)
+
+@app.post("/admin/api/save-prices")
+async def admin_api_save_prices(payload: dict = Body(...)):
+    return await admin_save_prices(payload)
+
+@app.post("/api/admin/save-prices")
+async def api_admin_save_prices(payload: dict = Body(...)):
+    return await admin_save_prices(payload)
+
+@app.get("/api/admin/plan-prices")
+async def api_admin_get_plan_prices():
+    return await admin_get_plan_prices()
+
+
 @app.post("/admin/create-promo")
 @app.post("/admin-dashboard/create-promo")
 async def admin_create_promo_post(request: Request, session_token: Optional[str] = Cookie(None)):

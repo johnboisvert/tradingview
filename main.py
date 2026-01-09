@@ -23585,6 +23585,7 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
   <style>
     body {{
       margin:0;
+      margin-left:260px;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height:100vh;
@@ -23614,6 +23615,7 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
       gap:16px;
     }}
     @media (max-width: 850px) {{
+      body {{ margin-left:0; }}
       .row {{ grid-template-columns: 1fr; }}
     }}
     label {{ display:block; font-weight:800; margin-top:10px; }}

@@ -816,6 +816,13 @@ def get_plan_access_routes(plan: str) -> list:
     except Exception as e:
         print(f"⚠️ get_plan_access_routes({plan}): {e}")
         return DEFAULT_PLAN_ACCESS.get(plan, [])
+
+
+# Alias used by pages/templates (e.g., /pricing-complete)
+def get_plan_access(plan_key: str):
+    """Return list of allowed route slugs for a plan (free/premium/advanced/pro/elite)."""
+    return get_plan_access_routes(plan_key)
+
 def save_plan_access_routes(plan: str, routes):
     """Enregistre les routes autorisées pour un plan (table plan_access).
 
@@ -4333,6 +4340,32 @@ def get_user_role(username):
         return db_manager.get_user_role(uname)
     except Exception:
         return "user"
+
+def get_logged_user(request: Request):
+    """Return user dict from session cookie, or None."""
+    try:
+        token = (request.cookies.get("session_token") or request.cookies.get("session") or "").strip()
+    except Exception:
+        token = ""
+    if not token:
+        return None
+    try:
+        return get_user_from_token(token)
+    except Exception:
+        return None
+
+def is_logged_in(request: Request) -> bool:
+    return get_logged_user(request) is not None
+
+def is_admin_request(request: Request) -> bool:
+    u = get_logged_user(request)
+    if not u:
+        return False
+    username = normalize_username(u.get("username") or "")
+    try:
+        return get_user_role(username) == "admin"
+    except Exception:
+        return False
 
 def require_admin(session_token: str = Cookie(None)):
     """Dépendance FastAPI: assure que l'utilisateur connecté est admin."""
@@ -23711,10 +23744,27 @@ async def admin_dashboard(request: Request):
     """
     import html as html_lib
     # Auth admin
-    if not is_logged_in(request):
+    # page admin : doit être connecté + admin
+    user = get_logged_user(request)
+    if not user:
         return RedirectResponse("/login", status_code=303)
-    if not is_admin_user(request):
-        return HTMLResponse("<h2>Accès refusé</h2><p>Admin requis.</p>", status_code=403)
+    username = normalize_username(user.get("username") or "")
+    if get_user_role(username) != "admin":
+        page = html_doc(
+            "Accès refusé",
+            SIDEBAR_HTML + """
+            <div class="container" style="max-width:900px;margin:40px auto;">
+              <div class="card" style="padding:22px;">
+                <h2 style="margin:0 0 8px 0;">⛔ Accès réservé à l’admin</h2>
+                <p style="margin:0;color:#334155;">Cette page est disponible uniquement pour le compte administrateur.</p>
+                <div style="margin-top:16px;">
+                  <a class="btn" href="/" style="text-decoration:none;display:inline-block;">Retour au site</a>
+                </div>
+              </div>
+            </div>
+            """,
+        )
+        return HTMLResponse(page, status_code=403)
 
     _sb_style = ""
     _sb_html = SIDEBAR

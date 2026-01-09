@@ -19410,6 +19410,8 @@ async def pricing_complete():
         "ai-assistant": "AI Assistant",
     }
 
+    import html as html_lib
+
     def _label_for_route(rk: str) -> str:
         rk = str(rk or "").strip()
         if not rk:
@@ -19423,7 +19425,7 @@ async def pricing_complete():
         show = [r for r in routes if r not in hidden]
         if not show:
             show = ["dashboard"]
-        items = "".join(f"<li>{html.escape(_label_for_route(r))}</li>" for r in show[:12])
+        items = "".join(f"<li>{html_lib.escape(_label_for_route(r))}</li>" for r in show[:12])
         extra = ""
         if len(show) > 12:
             extra = f"<li>+ {len(show)-12} autres pages</li>"
@@ -19441,7 +19443,7 @@ async def pricing_complete():
             return "0.00"
 
     site_logo = os.getenv("SITE_LOGO_URL", globals().get("SITE_LOGO_URL", ""))
-    html = f"""
+    page_html = SIDEBAR + f"""
 <!doctype html>
 <html lang="fr">
 <head>
@@ -19634,7 +19636,7 @@ async def pricing_complete():
 </body>
 </html>
 """
-    return HTMLResponse(html)
+    return HTMLResponse(page_html)
 
 
 
@@ -23573,7 +23575,7 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
     ]
 
     # UI
-    html = f"""
+    page_html = SIDEBAR + f"""
 <!doctype html>
 <html lang="fr">
 <head>
@@ -23817,7 +23819,7 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
 </body>
 </html>
 """
-    return HTMLResponse(html)
+    return HTMLResponse(page_html)
 
 @app.post("/admin/pricing/update")
 @app.post("/admin-dashboard/pricing/update")

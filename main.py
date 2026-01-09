@@ -19377,20 +19377,41 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 
 
 @app.get("/pricing-complete", response_class=HTMLResponse)
-async def pricing_complete():
-    """Page de pricing (générée server-side) + support codes promo."""
-    prices = get_all_plan_pricing()
-    premium_price = float(prices.get("premium_1m", 20.0) or 0)
-    advanced_price = float(prices.get("advanced_3m", 50.0) or 0)
-    pro_price = float(prices.get("pro_6m", 80.0) or 0)
-    elite_price = float(prices.get("elite_1y", 150.0) or 0)
+async def pricing_complete(request: Request):
+    """
+    Page publique Plans & Tarifs (avec sidebar). Les accès affichés proviennent de la DB des permissions
+    et doivent concorder avec /admin-dashboard.
+    """
+    import html as html_lib
+    # Split SIDEBAR in <style> + HTML so the DOCTYPE stays first (évite Quirks Mode)
+    _sb_style = ""
+    _sb_html = SIDEBAR
+    if "</style>" in SIDEBAR:
+        _sb_style, _sb_html = SIDEBAR.split("</style>", 1)
+        _sb_style = _sb_style + "</style>"
+        _sb_html = _sb_html  # reste du HTML
 
-    # ✅ Liste des pages accessibles (sync avec /admin-dashboard)
+    # Prices
+    try:
+        premium_price = float(get_plan_price("premium"))
+    except Exception:
+        premium_price = 20.0
+    try:
+        advanced_price = float(get_plan_price("advanced"))
+    except Exception:
+        advanced_price = 50.0
+    try:
+        pro_price = float(get_plan_price("pro"))
+    except Exception:
+        pro_price = 80.0
+    try:
+        elite_price = float(get_plan_price("elite"))
+    except Exception:
+        elite_price = 150.0
+
+    # Label mapping (same source of truth as admin)
     route_labels = {
         "dashboard": "Dashboard",
-        "pricing-complete": "Plans & Tarifs",
-        "contact": "Contact",
-        "mon-compte": "Mon compte",
         "stats-dashboard": "Stats Dashboard",
         "trades": "Trades",
         "strategie": "Stratégie",
@@ -19398,246 +19419,397 @@ async def pricing_complete():
         "watchlist": "Watchlist",
         "risk-management": "Gestion Risques",
         "backtesting": "Backtesting",
+        "ai-opportunity-scanner": "Opportunity Scanner",
         "ai-market-regime": "AI Market Regime",
-        "ai-whale-watcher": "AI Whale Watcher",
+        "ai-whale-watcher": "Whale Watcher",
+        "ai-assistant": "AI Assistant",
+        "ai-signals": "AI Signals",
+        "ai-news": "AI News",
+        "ai-predictor": "AI Predictor",
+        "ai-patterns": "AI Patterns",
         "fear-greed": "Fear & Greed",
         "fear-greed-chart": "Fear & Greed Chart",
         "dominance": "Dominance",
         "heatmap": "Heatmap",
-        "ai-predictor": "AI Predictor",
-        "ai-news": "AI News",
-        "ai-signals": "AI Signals",
-        "ai-assistant": "AI Assistant",
+        "pricing-complete": "Plans & Tarifs",
+        "contact": "Contact",
+        "admin-dashboard": "Admin Dashboard",
     }
 
-    import html as html_lib
+    def _label_for_route(route_key: str) -> str:
+        return route_labels.get(route_key, route_key.replace("-", " ").title())
 
-    def _label_for_route(rk: str) -> str:
-        rk = str(rk or "").strip()
-        if not rk:
-            return ""
-        return route_labels.get(rk, rk.replace("-", " ").title())
-
-    def _render_access_ul(plan_key: str) -> str:
-        routes = get_plan_access_routes(plan_key) or []
-        # éviter de spammer avec pages "utilitaires"
-        hidden = {"pricing-complete", "contact", "mon-compte"}
-        show = [r for r in routes if r not in hidden]
-        if not show:
-            show = ["dashboard"]
-        items = "".join(f"<li>{html_lib.escape(_label_for_route(r))}</li>" for r in show[:12])
-        extra = ""
-        if len(show) > 12:
-            extra = f"<li>+ {len(show)-12} autres pages</li>"
-        return f"<ul>{items}{extra}</ul>"
-
-    premium_ul = _render_access_ul("premium")
-    advanced_ul = _render_access_ul("advanced")
-    pro_ul = _render_access_ul("pro")
-    elite_ul = _render_access_ul("elite")
-
-    def _fmt(x: float) -> str:
+    def _render_access_ul(plan_key: str, limit: int = 10) -> str:
+        """
+        Lit les accès du plan depuis la DB (même source que /admin-dashboard)
+        et rend une liste de features.
+        """
         try:
-            return f"{x:.2f}"
+            raw = get_plan_access(plan_key) or []
         except Exception:
-            return "0.00"
+            raw = []
+        # normaliser + trier selon l'ordre défini (route_labels) puis alphabet
+        raw = [str(x).strip() for x in raw if str(x).strip()]
+        order = {k: i for i, k in enumerate(route_labels.keys())}
+        raw.sort(key=lambda k: (order.get(k, 10_000), k))
+        show = raw[:limit]
+        items = "".join(f"<li>{html_lib.escape(_label_for_route(r))}</li>" for r in show)
+        more = ""
+        if len(raw) > limit:
+            more = f"<li class='more'>+ {len(raw) - limit} autres…</li>"
+        return f"<ul class='features'>{items}{more}</ul>"
 
-    site_logo = os.getenv("SITE_LOGO_URL", globals().get("SITE_LOGO_URL", ""))
-    page_html = SIDEBAR + f"""
-<!doctype html>
+    plans = [
+        {
+            "key": "free",
+            "name": "Gratuit",
+            "period": "Accès de base",
+            "price": 0.0,
+            "badge": "",
+            "cta": "Choisir Gratuit",
+        },
+        {
+            "key": "premium",
+            "name": "Premium",
+            "period": "1 mois",
+            "price": premium_price,
+            "badge": "",
+            "cta": "Passer à Premium",
+        },
+        {
+            "key": "advanced",
+            "name": "Advanced",
+            "period": "3 mois",
+            "price": advanced_price,
+            "badge": "Populaire",
+            "cta": "Passer à Advanced",
+        },
+        {
+            "key": "pro",
+            "name": "Pro",
+            "period": "6 mois",
+            "price": pro_price,
+            "badge": "",
+            "cta": "Passer à Pro",
+        },
+        {
+            "key": "elite",
+            "name": "Elite",
+            "period": "1 an",
+            "price": elite_price,
+            "badge": "",
+            "cta": "Passer à Elite",
+        },
+    ]
+
+    cards_html = []
+    for p in plans:
+        badge_html = ""
+        if p["badge"]:
+            badge_html = f"<div class='badge'>{html_lib.escape(p['badge'])}</div>"
+        price_html = "0$"
+        if p["price"] and float(p["price"]) > 0:
+            price_html = f"{float(p['price']):.2f}$"
+        cards_html.append(f"""
+            <div class="plan-card {'popular' if p['badge'] else ''}">
+                {badge_html}
+                <div class="plan-head">
+                    <div class="plan-name">{html_lib.escape(p['name'])}</div>
+                    <div class="plan-period">{html_lib.escape(p['period'])}</div>
+                </div>
+                <div class="plan-price">
+                    <span class="amount">{price_html}</span>
+                    <span class="currency">CAD</span>
+                </div>
+                {_render_access_ul(p['key'], limit=10)}
+                <button class="btn-primary" onclick="startCheckout('{p['key']}')">{html_lib.escape(p['cta'])}</button>
+            </div>
+        """)
+
+    page_html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Plans & Tarifs — Crypto IA</title>
+  {_sb_style}
   <style>
     body {{
-      margin:0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height:100vh;
-      padding:20px;
+      min-height: 100vh;
     }}
-    .wrap {{ max-width:1100px; margin:0 auto; }}
+
+    .page-wrap {{
+      max-width: 1200px;
+      margin: 30px auto;
+      padding: 0 20px 40px 20px;
+    }}
+
     .hero {{
-      background: rgba(20, 24, 40, 0.75);
+      background: rgba(20, 24, 50, 0.75);
       border-radius: 18px;
-      padding: 22px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
-      color:#fff;
-      text-align:center;
-      margin-bottom:18px;
+      padding: 26px 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      text-align: center;
+      margin-bottom: 18px;
+      position: relative;
+      overflow: hidden;
     }}
-    .hero img {{ max-height:70px; border-radius:10px; }}
-    .hero h1 {{ margin:10px 0 6px 0; font-size:42px; }}
-    .hero p {{ margin:0; opacity:.85; }}
+
+    .hero h1 {{
+      margin: 10px 0 6px 0;
+      font-size: 44px;
+      color: #fff;
+      letter-spacing: .2px;
+    }}
+
+    .hero p {{
+      margin: 0;
+      color: rgba(255,255,255,0.85);
+    }}
 
     .promo {{
-      background:#fff;
-      border-radius:16px;
-      padding:18px;
-      display:flex;
-      gap:12px;
-      align-items:center;
-      justify-content:center;
-      margin:18px auto 22px auto;
-      max-width:780px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.15);
+      margin: 18px auto 22px auto;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: rgba(255,255,255,0.96);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+      max-width: 900px;
     }}
+
+    .promo label {{
+      font-weight: 700;
+      color: #0f172a;
+      white-space: nowrap;
+    }}
+
     .promo input {{
-      flex:1;
-      padding:14px;
-      border-radius:10px;
-      border:1px solid #d6d6d6;
-      font-size:14px;
-      background:#0b1220;
-      color:#fff;
+      flex: 1;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px 12px;
+      font-size: 14px;
+      outline: none;
+      background: #0b1220;
+      color: #fff;
     }}
+
     .promo button {{
-      padding:14px 18px;
-      border:none;
-      border-radius:10px;
-      background:#667eea;
-      color:#fff;
-      font-weight:700;
-      cursor:pointer;
+      border: none;
+      cursor: pointer;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: #667eea;
+      color: #fff;
+      font-weight: 700;
     }}
-    .promo small {{ display:block; opacity:.7; margin-top:6px; }}
 
     .grid {{
-      display:grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap:18px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 18px;
     }}
-    @media (max-width: 1100px) {{
-      .grid {{ grid-template-columns: repeat(2, 1fr); }}
+
+    @media (max-width: 1280px) {{
+      .grid {{ grid-template-columns: repeat(3, minmax(0, 1fr)); }}
     }}
-    @media (max-width: 650px) {{
+
+    @media (max-width: 880px) {{
       .grid {{ grid-template-columns: 1fr; }}
-      .promo {{ flex-direction:column; }}
+      .hero h1 {{ font-size: 34px; }}
     }}
-    .card {{
-      background:#fff;
-      border-radius:18px;
-      padding:18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.12);
-      position:relative;
-      overflow:hidden;
-      min-height: 340px;
+
+    .plan-card {{
+      background: rgba(255,255,255,0.98);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+      border: 2px solid rgba(255,255,255,0.2);
+      position: relative;
+      min-height: 420px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }}
+
+    .plan-card.popular {{
+      border-color: #f59e0b;
+      box-shadow: 0 12px 28px rgba(245, 158, 11, 0.25);
+    }}
+
     .badge {{
-      position:absolute;
-      right:-40px;
-      top:18px;
+      position: absolute;
+      top: 14px;
+      right: -42px;
       transform: rotate(45deg);
-      background:#f59e0b;
-      color:#fff;
-      padding:8px 50px;
-      font-weight:800;
-      font-size:12px;
+      background: #f59e0b;
+      color: #111827;
+      font-weight: 900;
+      padding: 8px 48px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }}
-    .card h3 {{ margin:0; font-size:22px; }}
-    .pill {{
-      display:inline-block;
-      margin-top:8px;
-      background:#10b981;
-      color:#fff;
-      border-radius:999px;
-      padding:6px 10px;
-      font-size:12px;
-      font-weight:800;
+
+    .plan-head {{
+      padding-top: 6px;
     }}
-    .price {{
-      font-size:44px;
-      font-weight:900;
-      color:#4f67d6;
-      margin:18px 0 8px 0;
+
+    .plan-name {{
+      font-size: 20px;
+      font-weight: 900;
+      color: #0f172a;
     }}
-    .per {{ opacity:.6; font-weight:700; font-size:14px; }}
-    ul {{ margin:12px 0 0 18px; padding:0; }}
-    li {{ margin:10px 0; }}
-    .cta {{
-      margin-top:16px;
-      width:100%;
-      padding:12px 12px;
-      border-radius:12px;
-      border:none;
-      background:#6b5bd6;
-      color:#fff;
-      font-weight:900;
-      cursor:pointer;
-      font-size:14px;
+
+    .plan-period {{
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 700;
+      margin-top: 2px;
     }}
-    .cta.secondary {{ background:#0b1220; }}
-    .note {{
-      text-align:center;
-      color:#fff;
-      opacity:.85;
-      margin-top:16px;
-      font-size:13px;
+
+    .plan-price {{
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-top: 4px;
+      margin-bottom: 2px;
+    }}
+
+    .plan-price .amount {{
+      font-size: 28px;
+      font-weight: 900;
+      color: #111827;
+    }}
+
+    .plan-price .currency {{
+      color: #64748b;
+      font-weight: 800;
+    }}
+
+    ul.features {{
+      margin: 6px 0 0 0;
+      padding-left: 18px;
+      color: #0f172a;
+      font-size: 14px;
+      line-height: 1.55;
+      flex: 1;
+    }}
+
+    ul.features li.more {{
+      color: #64748b;
+      font-style: italic;
+      margin-top: 6px;
+    }}
+
+    .btn-primary {{
+      width: 100%;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 12px;
+      background: #667eea;
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 0.08s ease-in-out;
+    }}
+
+    .btn-primary:active {{
+      transform: scale(0.98);
+    }}
+
+    .footnote {{
+      margin-top: 14px;
+      text-align: center;
+      color: rgba(255,255,255,0.85);
+      font-size: 12px;
     }}
   </style>
 </head>
 <body>
-  <div class="wrap">
+  {_sb_html}
+  <div class="page-wrap">
     <div class="hero">
-      {f'<img src="{site_logo}" alt="CryptoIA"/>' if site_logo else ''}
-      <h1>💎 Plans & Tarifs</h1>
-      <p>Choisissez le plan qui vous convient</p>
+      <img src="{SITE_LOGO_URL}" alt="logo" style="width:64px;height:64px;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,0.22);"/>
+      <h1>Plans &amp; Tarifs</h1>
+      <p>Choisissez le plan qui vous convient (les accès affichés proviennent de l’Admin).</p>
     </div>
 
     <div class="promo">
-      <div style="min-width:210px; font-weight:900;">🎁 Vous avez un code promo?</div>
+      <label>🎁 Code promo?</label>
       <input id="promoCode" placeholder="ENTREZ VOTRE CODE PROMO" />
-      <button onclick="applyPromo()">Appliquer</button>
+      <button type="button" onclick="applyPromo()">Appliquer</button>
     </div>
 
     <div class="grid">
-      <div class="card">
-        \1{premium_ul}
-        <button class="cta" onclick="selectPlan('premium')">Passer à Premium</button>
-      </div>
-
-      <div class="card" style="border:3px solid #f59e0b;">
-        <div class="badge">POPULAIRE</div>
-        \1{advanced_ul}
-        <button class="cta" onclick="selectPlan('advanced')">Passer à Advanced</button>
-      </div>
-
-      <div class="card">
-        \1{pro_ul}
-        <button class="cta" onclick="selectPlan('pro')">Passer à Pro</button>
-      </div>
-
-      <div class="card">
-        \1{elite_ul}
-        <button class="cta" onclick="selectPlan('elite')">Passer à Elite</button>
-      </div>
+      {''.join(cards_html)}
     </div>
 
-    <div class="note">Les prix sont en CAD. Les accès aux pages sont gérés par votre plan dans l’Admin.</div>
+    <div class="footnote">Les prix sont en CAD. Les accès aux pages sont gérés par votre plan dans l’Admin.</div>
   </div>
 
   <script>
+    let ACTIVE_PROMO = "";
+
     function applyPromo() {{
-      const code = (document.getElementById('promoCode').value || '').trim();
-      if(!code) {{
-        alert('Entrez un code promo.');
+      const code = (document.getElementById('promoCode')?.value || '').trim();
+      ACTIVE_PROMO = code;
+      if (!code) {{
+        alert("Veuillez entrer un code promo.");
         return;
       }}
-      alert('Code promo reçu: ' + code + '\n(Support promo à intégrer selon votre logique.)');
+      // IMPORTANT: \\n (pas un vrai retour à la ligne), sinon JS casse.
+      alert("Code promo reçu: " + code + "\\n(Support promo à intégrer selon votre logique.)");
     }}
-    function selectPlan(plan) {{
-      // Redirige vers la page de paiement existante si vous en avez une.
-      // Vous pouvez aussi ouvrir un modal Stripe/Coinbase ici.
-      window.location.href = '/checkout?plan=' + encodeURIComponent(plan);
+
+    async function startCheckout(plan) {{
+      // Gratuit = pas de paiement, on peut rediriger vers login / dashboard
+      if (plan === "free") {{
+        window.location.href = "/login";
+        return;
+      }}
+
+      // demander email (le backend en a besoin)
+      let email = prompt("Entrez votre email pour le paiement:");
+      if (!email) return;
+      email = email.trim();
+
+      // Choix paiement: OK = Stripe, Annuler = Crypto (Coinbase)
+      const useStripe = confirm("Payer par carte (Stripe) ?\\nOK = Stripe\\nAnnuler = Crypto (Coinbase)");
+      const endpoint = useStripe ? "/api/stripe-checkout" : "/api/coinbase-checkout";
+
+      try {{
+        const resp = await fetch(endpoint, {{
+          method: "POST",
+          headers: {{ "Content-Type": "application/json" }},
+          body: JSON.stringify({{
+            plan: plan,
+            email: email,
+            promo_code: ACTIVE_PROMO || null
+          }})
+        }});
+        const data = await resp.json().catch(() => ({{}}));
+        if (!resp.ok) {{
+          alert("Erreur: " + (data.detail || data.message || "checkout impossible"));
+          return;
+        }}
+        if (data.url) {{
+          window.location.href = data.url;
+          return;
+        }}
+        alert("Checkout OK mais URL manquante.");
+      }} catch (e) {{
+        alert("Erreur réseau: " + e);
+      }}
     }}
   </script>
 </body>
-</html>
-"""
+</html>"""
     return HTMLResponse(page_html)
-
 
 
 @app.get("/pricing-new")
@@ -23532,26 +23704,52 @@ def get_total_revenue() -> float:
         return 0.0
 
 @app.get("/admin-dashboard", response_class=HTMLResponse)
-async def admin_dashboard(request: Request, _admin_user: str = Depends(require_admin)):
-    """Admin Dashboard (stable): gestion prix + accès par forfait."""
-    # Accès admin géré par require_admin (session facultative)
+async def admin_dashboard(request: Request):
+    """
+    Dashboard Admin — gestion des prix et accès par forfait.
+    IMPORTANT: DOCTYPE doit être en premier (sinon Quirks Mode + layout cassé).
+    """
+    import html as html_lib
+    # Auth admin
+    if not is_logged_in(request):
+        return RedirectResponse("/login", status_code=303)
+    if not is_admin_user(request):
+        return HTMLResponse("<h2>Accès refusé</h2><p>Admin requis.</p>", status_code=403)
 
-    # Load pricing
-    prices = get_all_plan_pricing()
-    premium_price = float(prices.get("premium_1m", 20.0) or 0)
-    advanced_price = float(prices.get("advanced_3m", 50.0) or 0)
-    pro_price = float(prices.get("pro_6m", 80.0) or 0)
-    elite_price = float(prices.get("elite_1y", 150.0) or 0)
+    _sb_style = ""
+    _sb_html = SIDEBAR
+    if "</style>" in SIDEBAR:
+        _sb_style, _sb_html = SIDEBAR.split("</style>", 1)
+        _sb_style = _sb_style + "</style>"
+        _sb_html = _sb_html
 
-    # All routes list (doit correspondre à vos pages protégées)
-    all_routes = [
+    # Prices from DB
+    try:
+        premium_price = float(get_plan_price("premium"))
+    except Exception:
+        premium_price = 20.0
+    try:
+        advanced_price = float(get_plan_price("advanced"))
+    except Exception:
+        advanced_price = 50.0
+    try:
+        pro_price = float(get_plan_price("pro"))
+    except Exception:
+        pro_price = 80.0
+    try:
+        elite_price = float(get_plan_price("elite"))
+    except Exception:
+        elite_price = 150.0
+
+    # Routes list must match pricing-complete labels
+    routes = [
         ("dashboard", "Dashboard"),
         ("stats-dashboard", "Stats Dashboard"),
         ("trades", "Trades"),
         ("strategie", "Stratégie"),
         ("spot-trading", "Spot Trading"),
         ("watchlist", "Watchlist"),
-        ("risk-management", "Risk Management"),
+        ("risk-management", "Gestion Risques"),
         ("backtesting", "Backtesting"),
         ("ai-opportunity-scanner", "Ai Opportunity Scanner"),
         ("ai-market-regime", "Ai Market Regime"),
@@ -23561,267 +23759,360 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
         ("ai-news", "Ai News"),
         ("ai-predictor", "Ai Predictor"),
         ("ai-patterns", "Ai Patterns"),
-        ("ai-sentiment", "Ai Sentiment"),
-        ("ai-sizer", "Ai Sizer"),
-        ("ai-exit", "Ai Exit"),
-        ("ai-timeframe", "Ai Timeframe"),
-        ("ai-liquidity", "Ai Liquidity"),
-        ("ai-alerts", "Ai Alerts"),
-        ("ai-gem-hunter", "Ai Gem Hunter"),
-        ("ai-technical-analysis", "Ai Technical Analysis"),
-        ("narrative-radar", "Narrative Radar"),
-        ("ai-crypto-coach", "Ai Crypto Coach"),
-        ("ai-swarm-agents", "Ai Swarm Agents"),
+        ("fear-greed", "Fear & Greed"),
+        ("fear-greed-chart", "Fear & Greed Chart"),
+        ("dominance", "Dominance"),
+        ("heatmap", "Heatmap"),
+        ("pricing-complete", "Plans & Tarifs"),
+        ("contact", "Contact"),
+        ("admin-dashboard", "Admin Dashboard"),
     ]
 
-    # UI
-    page_html = SIDEBAR + f"""
-<!doctype html>
+    # Build checkbox list HTML
+    routes_html = ""
+    for route, label in routes:
+        safe_route = html_lib.escape(route)
+        safe_label = html_lib.escape(label)
+        routes_html += f"""
+          <div class="route-item">
+            <label>
+              <input type="checkbox" class="route-checkbox" value="{safe_route}"/>
+              <span>{safe_label}</span>
+            </label>
+          </div>
+        """
+
+    page_html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Admin Dashboard — Crypto IA</title>
+  <title>Admin Dashboard</title>
+  {_sb_style}
   <style>
     body {{
-      margin:0;
-      margin-left:260px;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height:100vh;
-      padding:20px;
+      min-height: 100vh;
     }}
-    .container {{ max-width:1100px; margin:0 auto; }}
-    .top {{
-      background:#fff;
-      border-radius:18px;
-      padding:18px 18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.12);
-      margin-bottom:16px;
+
+    .page-wrap {{
+      max-width: 1200px;
+      margin: 30px auto;
+      padding: 0 20px 40px 20px;
     }}
-    .top h1 {{ margin:0; font-size:34px; }}
-    .top p {{ margin:8px 0 0 0; opacity:.7; }}
+
+    .header-card {{
+      background: rgba(255,255,255,0.98);
+      border-radius: 16px;
+      padding: 18px 20px;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+      margin-bottom: 18px;
+    }}
+
+    .header-card h1 {{
+      margin: 0;
+      font-size: 36px;
+    }}
+
+    .header-card p {{
+      margin: 6px 0 0 0;
+      color: #475569;
+    }}
+
+    .grid {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }}
+
+    @media (max-width: 980px) {{
+      .grid {{ grid-template-columns: 1fr; }}
+      .header-card h1 {{ font-size: 28px; }}
+    }}
 
     .card {{
-      background:#fff;
-      border-radius:18px;
-      padding:18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.12);
-      margin-bottom:16px;
+      background: rgba(255,255,255,0.98);
+      border-radius: 16px;
+      padding: 18px 18px 16px 18px;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
     }}
-    .row {{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:16px;
+
+    .card h2 {{
+      margin: 0 0 8px 0;
+      font-size: 22px;
     }}
-    @media (max-width: 850px) {{
-      body {{ margin-left:0; }}
-      .row {{ grid-template-columns: 1fr; }}
+
+    .help {{
+      margin: 0 0 12px 0;
+      color: #475569;
+      font-size: 13px;
     }}
-    label {{ display:block; font-weight:800; margin-top:10px; }}
-    input[type="number"] {{
-      width: 180px;
-      padding:10px;
-      border-radius:10px;
-      border:1px solid #d6d6d6;
-      margin-top:6px;
-      font-size:14px;
+
+    .field {{
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }}
+
+    .field label {{
+      width: 170px;
+      font-weight: 800;
+    }}
+
+    .field input {{
+      flex: 1;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 10px;
+      font-size: 14px;
+    }}
+
     .btn {{
-      padding:12px 14px;
-      border:none;
-      border-radius:12px;
-      background:#6b5bd6;
-      color:#fff;
-      font-weight:900;
-      cursor:pointer;
-      margin-top:12px;
+      border: none;
+      cursor: pointer;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #667eea;
+      color: #fff;
+      font-weight: 900;
     }}
-    .pill {{
-      display:inline-block;
-      padding:8px 10px;
-      border-radius:999px;
-      background:#0b1220;
-      color:#fff;
-      font-weight:900;
-      font-size:12px;
-      margin-right:8px;
-      cursor:pointer;
+
+    .plan-tabs {{
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 10px 0 12px 0;
     }}
-    .pill.active {{ background:#10b981; }}
-    .gridRoutes {{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:8px;
-      max-height: 320px;
-      overflow:auto;
-      border:1px solid #e5e7eb;
-      padding:10px;
-      border-radius:12px;
-      background:#f9fafb;
+
+    .tab {{
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-weight: 800;
+      background: #111827;
+      color: #fff;
+      opacity: .85;
     }}
-    .toast {{
-      display:none;
-      margin-top:12px;
-      padding:10px 12px;
-      border-radius:12px;
-      font-weight:800;
+
+    .tab.active {{
+      background: #10b981;
+      color: #052e1b;
+      opacity: 1;
     }}
-    .toast.ok {{ background:#dcfce7; color:#065f46; }}
-    .toast.err {{ background:#fee2e2; color:#991b1b; }}
+
+    .routes-box {{
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      max-height: 360px;
+      overflow: auto;
+      background: #f8fafc;
+    }}
+
+    .route-item {{
+      padding: 8px 6px;
+      border-bottom: 1px solid #e2e8f0;
+    }}
+
+    .route-item:last-child {{
+      border-bottom: none;
+    }}
+
+    .route-item label {{
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      font-weight: 700;
+      color: #0f172a;
+    }}
+
+    .actions {{
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }}
+
+    .btn-green {{
+      background: #10b981;
+      color: #052e1b;
+    }}
+    .btn-red {{
+      background: #ef4444;
+    }}
+
+    .status {{
+      margin-top: 12px;
+      background: #dcfce7;
+      color: #14532d;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-weight: 800;
+      display: none;
+    }}
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="top">
+  {_sb_html}
+  <div class="page-wrap">
+    <div class="header-card">
       <h1>👑 Admin Dashboard</h1>
-      <p>Gestion des prix & accès par forfait (les modifications s'appliquent automatiquement sur /pricing-complete).</p>
+      <p>Gestion des prix &amp; accès par forfait (les modifications s'appliquent automatiquement sur <b>/pricing-complete</b>).</p>
     </div>
 
-    <div class="row">
+    <div class="grid">
       <div class="card">
-        <h2 style="margin:0 0 8px 0;">💰 Gestion des Prix des Abonnements</h2>
-        <div style="opacity:.75; margin-bottom:10px;">Modifiez les prix ici (CAD). Puis cliquez sur <b>Sauvegarder</b>.</div>
+        <h2>💰 Gestion des Prix des Abonnements</h2>
+        <p class="help">Modifiez les prix ici (CAD). Puis cliquez sur <b>Sauvegarder</b>.</p>
 
-        <label>Premium (1 mois)</label>
-        <input id="price_premium" type="number" min="0" step="0.01" value="{premium_price}"/> CAD
-
-        <label>Advanced (3 mois)</label>
-        <input id="price_advanced" type="number" min="0" step="0.01" value="{advanced_price}"/> CAD
-
-        <label>Pro (6 mois)</label>
-        <input id="price_pro" type="number" min="0" step="0.01" value="{pro_price}"/> CAD
-
-        <label>Elite (1 an)</label>
-        <input id="price_elite" type="number" min="0" step="0.01" value="{elite_price}"/> CAD
+        <div class="field">
+          <label>Premium (1 mois)</label>
+          <input id="price_premium" type="number" step="0.01" value="{premium_price:.2f}" />
+          <span>CAD</span>
+        </div>
+        <div class="field">
+          <label>Advanced (3 mois)</label>
+          <input id="price_advanced" type="number" step="0.01" value="{advanced_price:.2f}" />
+          <span>CAD</span>
+        </div>
+        <div class="field">
+          <label>Pro (6 mois)</label>
+          <input id="price_pro" type="number" step="0.01" value="{pro_price:.2f}" />
+          <span>CAD</span>
+        </div>
+        <div class="field">
+          <label>Elite (1 an)</label>
+          <input id="price_elite" type="number" step="0.01" value="{elite_price:.2f}" />
+          <span>CAD</span>
+        </div>
 
         <button class="btn" onclick="savePrices()">💾 Sauvegarder les prix</button>
-        <div id="toastPrices" class="toast"></div>
+        <div id="statusPrices" class="status"></div>
       </div>
 
       <div class="card">
-        <h2 style="margin:0 0 8px 0;">🎯 Gestion des Accès par Forfait</h2>
-        <div style="opacity:.75; margin-bottom:10px;">Clique un plan, coche/décoche les pages, puis <b>Enregistrer</b>.</div>
+        <h2>🎯 Gestion des Accès par Forfait</h2>
+        <p class="help">Clique un plan, coche/décoche les pages, puis <b>Enregistrer</b>.</p>
 
-        <div style="margin-bottom:10px;">
-          <span class="pill active" data-plan="free" onclick="selectPlan('free')">Gratuit</span>
-          <span class="pill" data-plan="premium" onclick="selectPlan('premium')">Premium</span>
-          <span class="pill" data-plan="advanced" onclick="selectPlan('advanced')">Advanced</span>
-          <span class="pill" data-plan="pro" onclick="selectPlan('pro')">Pro</span>
-          <span class="pill" data-plan="elite" onclick="selectPlan('elite')">Elite</span>
+        <div class="plan-tabs">
+          <button class="tab active" data-plan="free" onclick="selectPlan('free', this)">Gratuit</button>
+          <button class="tab" data-plan="premium" onclick="selectPlan('premium', this)">Premium</button>
+          <button class="tab" data-plan="advanced" onclick="selectPlan('advanced', this)">Advanced</button>
+          <button class="tab" data-plan="pro" onclick="selectPlan('pro', this)">Pro</button>
+          <button class="tab" data-plan="elite" onclick="selectPlan('elite', this)">Elite</button>
         </div>
 
-        <div class="gridRoutes" id="routesGrid">
-          {"".join([f'<label><input type="checkbox" class="routeCk" value="{r[0]}"> {r[1]}</label>' for r in all_routes])}
+        <div class="routes-box" id="routesBox">
+          {routes_html}
         </div>
 
-        <div style="margin-top:10px;">
-          <button class="btn" style="background:#10b981;" onclick="selectAll(true)">✅ Tout sélectionner</button>
-          <button class="btn" style="background:#ef4444;" onclick="selectAll(false)">❌ Tout désélectionner</button>
+        <div class="actions">
+          <button class="btn btn-green" onclick="selectAll()">✅ Tout sélectionner</button>
+          <button class="btn btn-red" onclick="selectNone()">❌ Tout désélectionner</button>
+          <button class="btn" onclick="saveAccess()">💾 Enregistrer Accès du Plan</button>
         </div>
 
-        <button class="btn" onclick="saveAccess()">💾 Enregistrer Accès du Plan</button>
-        <div id="toastAccess" class="toast"></div>
+        <div id="statusAccess" class="status"></div>
       </div>
     </div>
   </div>
 
-<script>
-  let currentPlan = "free";
+  <script>
+    let CURRENT_PLAN = "free";
 
-  function toast(id, ok, msg) {{
-    const el = document.getElementById(id);
-    if(!el) return;
-    el.className = "toast " + (ok ? "ok" : "err");
-    el.textContent = msg || (ok ? "OK" : "Erreur");
-    el.style.display = "block";
-    setTimeout(() => {{ el.style.display = "none"; }}, 3500);
-  }}
-
-  function selectPlan(plan) {{
-    currentPlan = plan;
-    document.querySelectorAll(".pill").forEach(p => {{
-      p.classList.toggle("active", p.getAttribute("data-plan") === plan);
-    }});
-    loadAccess(plan);
-  }}
-
-  function getSelectedRoutes() {{
-    return Array.from(document.querySelectorAll(".routeCk"))
-      .filter(x => x.checked)
-      .map(x => x.value);
-  }}
-
-  function selectAll(v) {{
-    document.querySelectorAll(".routeCk").forEach(x => x.checked = !!v);
-  }}
-
-  async function loadAccess(plan) {{
-    try {{
-      const res = await fetch("/admin/get-plan-access/" + encodeURIComponent(plan));
-      const data = await res.json();
-      const allowed = new Set((data && data.routes) ? data.routes : []);
-      document.querySelectorAll(".routeCk").forEach(x => {{
-        x.checked = allowed.has(x.value);
-      }});
-    }} catch(e) {{
-      toast("toastAccess", false, "Erreur chargement accès: " + e);
+    function setStatus(id, msg, ok=true) {{
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.display = "block";
+      el.textContent = msg;
+      el.style.background = ok ? "#dcfce7" : "#fee2e2";
+      el.style.color = ok ? "#14532d" : "#7f1d1d";
     }}
-  }}
 
-  async function saveAccess() {{
-    try {{
-      const routes = getSelectedRoutes();
-      const res = await fetch("/admin/save-plan-access", {{
-        method: "POST",
-        headers: {{ "Content-Type": "application/json" }},
-        body: JSON.stringify({{ plan: currentPlan, routes }})
-      }});
-      const data = await res.json();
-      const ok = !!(data && (data.success || data.status === "ok"));
-      toast("toastAccess", ok, data.message || data.error || (ok ? "Accès enregistrés." : "Erreur inconnue"));
-    }} catch(e) {{
-      toast("toastAccess", false, "Erreur enregistrement: " + e);
+    async function selectPlan(plan, btn) {{
+      CURRENT_PLAN = plan;
+      document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      await loadAccess();
     }}
-  }}
 
-  async function savePrices() {{
-    try {{
-      const premium = parseFloat(document.getElementById("price_premium").value || "0") || 0;
-      const advanced = parseFloat(document.getElementById("price_advanced").value || "0") || 0;
-      const pro = parseFloat(document.getElementById("price_pro").value || "0") || 0;
-      const elite = parseFloat(document.getElementById("price_elite").value || "0") || 0;
+    function selectAll() {{
+      document.querySelectorAll(".route-checkbox").forEach(cb => cb.checked = true);
+    }}
+    function selectNone() {{
+      document.querySelectorAll(".route-checkbox").forEach(cb => cb.checked = false);
+    }}
 
-      const payload = {{
-        plans: {{
-          premium: {{ price: premium, label: "Premium (1 mois)", duration: "1 mois" }},
-          advanced: {{ price: advanced, label: "Advanced (3 mois)", duration: "3 mois" }},
-          pro: {{ price: pro, label: "Pro (6 mois)", duration: "6 mois" }},
-          elite: {{ price: elite, label: "Elite (1 an)", duration: "1 an" }}
+    async function loadAccess() {{
+      try {{
+        const resp = await fetch(`/admin/get-plan-access/${{CURRENT_PLAN}}`);
+        const data = await resp.json();
+        const allowed = new Set((data.allowed || []).map(String));
+        document.querySelectorAll(".route-checkbox").forEach(cb => {{
+          cb.checked = allowed.has(cb.value);
+        }});
+      }} catch (e) {{
+        setStatus("statusAccess", "Erreur chargement accès: " + e, false);
+      }}
+    }}
+
+    async function saveAccess() {{
+      const selected = Array.from(document.querySelectorAll(".route-checkbox"))
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+
+      try {{
+        const resp = await fetch("/admin/save-plan-access", {{
+          method: "POST",
+          headers: {{ "Content-Type": "application/json" }},
+          body: JSON.stringify({{ plan: CURRENT_PLAN, allowed: selected }})
+        }});
+        const data = await resp.json().catch(() => ({{}}));
+        if (!resp.ok) {{
+          setStatus("statusAccess", "Erreur: " + (data.detail || data.message || "impossible"), false);
+          return;
         }}
+        setStatus("statusAccess", "Accès enregistrés.");
+      }} catch (e) {{
+        setStatus("statusAccess", "Erreur réseau: " + e, false);
+      }}
+    }}
+
+    async function savePrices() {{
+      const payload = {{
+        premium: parseFloat(document.getElementById("price_premium").value || "0"),
+        advanced: parseFloat(document.getElementById("price_advanced").value || "0"),
+        pro: parseFloat(document.getElementById("price_pro").value || "0"),
+        elite: parseFloat(document.getElementById("price_elite").value || "0"),
       }};
 
-      const res = await fetch("/admin/save-plan-prices", {{
-        method: "POST",
-        headers: {{ "Content-Type": "application/json" }},
-        body: JSON.stringify(payload)
-      }});
-      const data = await res.json();
-      const ok = !!(data && (data.success || data.status === "ok"));
-      toast("toastPrices", ok, data.message || data.error || (ok ? "Prix sauvegardés." : "Erreur inconnue"));
-    }} catch(e) {{
-      toast("toastPrices", false, "Erreur sauvegarde: " + e);
+      try {{
+        const resp = await fetch("/admin/save-prices", {{
+          method: "POST",
+          headers: {{ "Content-Type": "application/json" }},
+          body: JSON.stringify(payload)
+        }});
+        const data = await resp.json().catch(() => ({{}}));
+        if (!resp.ok) {{
+          setStatus("statusPrices", "Erreur: " + (data.detail || data.message || "impossible"), false);
+          return;
+        }}
+        setStatus("statusPrices", "Prix enregistrés.");
+      }} catch (e) {{
+        setStatus("statusPrices", "Erreur réseau: " + e, false);
+      }}
     }}
-  }}
 
-  // init
-  loadAccess(currentPlan);
-</script>
-
+    // init
+    loadAccess();
+  </script>
 </body>
-</html>
-"""
+</html>"""
     return HTMLResponse(page_html)
+
 
 @app.post("/admin/pricing/update")
 @app.post("/admin-dashboard/pricing/update")

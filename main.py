@@ -24096,10 +24096,14 @@ async def admin_dashboard(request: Request):
       document.querySelectorAll(".route-checkbox").forEach(cb => cb.checked = false);
     }}
 
+    let _loadAccessToken = 0;
+
     async function loadAccess() {{
+      const myToken = ++_loadAccessToken;
       try {{
         const resp = await fetch(`/admin/get-plan-access/${{CURRENT_PLAN}}`);
         const data = await resp.json();
+        if (myToken !== _loadAccessToken) {{ return; }}
         const allowed = new Set((data.allowed || []).map(String));
         document.querySelectorAll(".route-checkbox").forEach(cb => {{
           cb.checked = allowed.has(cb.value);
@@ -24668,6 +24672,7 @@ async def admin_get_plan_access(plan: str, _admin: str = Depends(require_admin))
                 "success": True,
                 "plan": plan_key,
                 "routes": routes,
+                "allowed": routes,
                 "possible_routes": PLAN_ROUTE_OPTIONS,
             }
         )
@@ -24825,6 +24830,13 @@ async def admin_save_plan_prices(request: Request, _admin: str = Depends(require
         return JSONResponse({"success": True, "updated": updated})
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=200)
+
+
+
+@app.post("/admin/save-prices")
+async def admin_save_prices(prices: dict = Body(...)):
+    """Alias rétro-compatible: /admin/save-prices -> /admin/save-plan-prices."""
+    return await admin_save_plan_prices(prices)
 
 @app.post("/admin/create-promo")
 @app.post("/admin-dashboard/create-promo")

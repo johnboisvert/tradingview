@@ -1,0 +1,318 @@
+<!-- templates/support/ticket_detail.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket {{ ticket.ticket_id }} - Trading Dashboard Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .ticket-id {
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .ticket-subject {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .ticket-meta {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .status-badge {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .status-open {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-in-progress {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status-waiting-user {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-resolved {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-closed {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        
+        .messages-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .message {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            position: relative;
+        }
+        
+        .message-user {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+        }
+        
+        .message-admin {
+            background: #e7f3ff;
+            border-left: 4px solid #0066cc;
+        }
+        
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .message-sender {
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .admin-badge {
+            background: #0066cc;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        
+        .message-time {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .message-content {
+            color: #333;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        
+        .reply-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .reply-container h3 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 15px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="ticket-id">{{ ticket.ticket_id }}</div>
+            <h1 class="ticket-subject">{{ ticket.subject }}</h1>
+            
+            <div class="ticket-meta">
+                <div class="meta-item">
+                    <span>📅</span>
+                    <span>Créé le {{ ticket.created_at.strftime('%d/%m/%Y à %H:%M') }}</span>
+                </div>
+                <div class="meta-item">
+                    <span>🔄</span>
+                    <span>Mis à jour {{ ticket.updated_at.strftime('%d/%m/%Y à %H:%M') }}</span>
+                </div>
+                <div class="meta-item">
+                    <span>💬</span>
+                    <span>{{ ticket.messages|length }} message(s)</span>
+                </div>
+            </div>
+            
+            <div>
+                <span class="status-badge status-{{ ticket.status.value }}">
+                    {% if ticket.status.value == 'open' %}🟡 Ouvert
+                    {% elif ticket.status.value == 'in_progress' %}🔵 En cours de traitement
+                    {% elif ticket.status.value == 'waiting_user' %}🔴 En attente de votre réponse
+                    {% elif ticket.status.value == 'resolved' %}🟢 Résolu
+                    {% elif ticket.status.value == 'closed' %}⚫ Fermé
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        
+        {% if ticket.status.value == 'resolved' %}
+        <div class="alert alert-success">
+            ✅ <strong>Ticket résolu !</strong> Ce ticket a été marqué comme résolu le {{ ticket.resolved_at.strftime('%d/%m/%Y à %H:%M') }}. 
+            Si vous avez besoin d'aide supplémentaire, vous pouvez répondre ci-dessous.
+        </div>
+        {% elif ticket.status.value == 'waiting_user' %}
+        <div class="alert alert-info">
+            💬 <strong>En attente de votre réponse</strong> - Notre équipe a répondu à votre message. 
+            Veuillez consulter la réponse ci-dessous et répondre si nécessaire.
+        </div>
+        {% endif %}
+        
+        <div class="messages-container">
+            <h2 style="margin-bottom: 30px; color: #333;">💬 Conversation</h2>
+            
+            {% for message in ticket.messages %}
+            <div class="message {% if message.is_admin %}message-admin{% else %}message-user{% endif %}">
+                <div class="message-header">
+                    <div class="message-sender">
+                        {% if message.is_admin %}
+                        <span>👤 {{ message.sender_name }}</span>
+                        <span class="admin-badge">ADMIN</span>
+                        {% else %}
+                        <span>👤 {{ message.sender_name }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="message-time">
+                        {{ message.created_at.strftime('%d/%m/%Y à %H:%M') }}
+                    </div>
+                </div>
+                <div class="message-content">{{ message.message }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        {% if ticket.status.value != 'closed' %}
+        <div class="reply-container">
+            <h3>✉️ Répondre au ticket</h3>
+            <form method="POST" action="/support/ticket/{{ ticket.id }}/reply">
+                <textarea name="message" placeholder="Écrivez votre message ici..." required></textarea>
+                <button type="submit" class="btn">📤 Envoyer la réponse</button>
+            </form>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            ℹ️ Ce ticket est fermé. Si vous avez besoin d'aide supplémentaire, veuillez créer un nouveau ticket.
+        </div>
+        {% endif %}
+        
+        <a href="/support" class="back-link">← Retour à mes tickets</a>
+    </div>
+</body>
+</html>

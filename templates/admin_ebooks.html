@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Ebooks - Trading Dashboard Pro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 {
+            color: #667eea;
+            font-size: 28px;
+        }
+        .add-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .btn-warning {
+            background: #ffc107;
+        }
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        .ebooks-table {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background: #f8f9fa;
+        }
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+        }
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .plan-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        .back-link {
+            display: inline-block;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Gestion des Ebooks</h1>
+            <a href="/admin-dashboard" class="btn btn-small">← Admin Dashboard</a>
+        </div>
+        
+        <div class="add-section">
+            <h2 style="margin-bottom: 20px; color: #333;">➕ Ajouter un ebook</h2>
+            <form action="/admin/ebooks/add" method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Titre *</label>
+                    <input type="text" name="title" required placeholder="Guide du Trading Crypto">
+                </div>
+                
+                <div class="form-group">
+                    <label>Description *</label>
+                    <textarea name="description" required placeholder="Description complète de l'ebook..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Plan minimum requis *</label>
+                    <select name="min_plan" required>
+                        <option value="Free">Free (tous)</option>
+                        <option value="Premium">Premium</option>
+                        <option value="Advanced">Advanced</option>
+                        <option value="Pro">Pro</option>
+                        <option value="Elite">Elite</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Fichier PDF *</label>
+                    <input type="file" name="file" accept=".pdf" required>
+                </div>
+                
+                <button type="submit" class="btn">✅ Ajouter l'ebook</button>
+            </form>
+        </div>
+        
+        <div class="ebooks-table">
+            <h2 style="margin-bottom: 20px; color: #333;">📚 Liste des ebooks</h2>
+            
+            {% if ebooks %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Titre</th>
+                        <th>Plan requis</th>
+                        <th>Téléchargements</th>
+                        <th>Taille</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ebook in ebooks %}
+                    <tr>
+                        <td>{{ ebook[0] }}</td>
+                        <td><strong>{{ ebook[1] }}</strong><br><small style="color: #999;">{{ ebook[2][:50] }}...</small></td>
+                        <td><span class="plan-badge">{{ ebook[5] }}</span></td>
+                        <td>📥 {{ ebook[6] }}</td>
+                        <td>{{ (ebook[4] / 1024 / 1024)|round(2) }} MB</td>
+                        <td>
+                            {% if ebook[7] %}
+                            <span class="status-badge status-active">✅ Actif</span>
+                            {% else %}
+                            <span class="status-badge status-inactive">⛔ Inactif</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="actions">
+                                <form action="/admin/ebooks/toggle/{{ ebook[0] }}" method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-warning btn-small">
+                                        {% if ebook[7] %}⛔ Désactiver{% else %}✅ Activer{% endif %}
+                                    </button>
+                                </form>
+                                <form action="/admin/ebooks/delete/{{ ebook[0] }}" method="POST" style="display: inline;" onsubmit="return confirm('Supprimer cet ebook ?');">
+                                    <button type="submit" class="btn btn-danger btn-small">🗑️ Supprimer</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <div style="font-size: 64px; margin-bottom: 20px;">📚</div>
+                <h3>Aucun ebook</h3>
+                <p>Ajoutez votre premier ebook ci-dessus !</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <a href="/admin-dashboard" class="back-link">← Retour au dashboard admin</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!-- templates/support/contact_success.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message envoyé - Trading Dashboard Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .success-container {
+            max-width: 600px;
+            background: white;
+            border-radius: 20px;
+            padding: 60px 40px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .success-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+        
+        .ticket-id {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: 600;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        
+        .message {
+            color: #666;
+            line-height: 1.6;
+            margin: 20px 0;
+            font-size: 16px;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            text-align: left;
+        }
+        
+        .info-box h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .info-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .info-box li {
+            padding: 8px 0;
+            color: #666;
+        }
+        
+        .info-box li::before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-icon">✅</div>
+        
+        <h1>Message envoyé avec succès !</h1>
+        
+        <p class="message">
+            Nous avons bien reçu votre demande de support.<br>
+            Voici votre numéro de ticket :
+        </p>
+        
+        <div class="ticket-id">{{ ticket_id }}</div>
+        
+        <p class="message">
+            Nous vous répondrons par email dans les meilleurs délais.<br>
+            Un email de confirmation vous a été envoyé.
+        </p>
+        
+        <div class="info-box">
+            <h3>📋 Prochaines étapes</h3>
+            <ul>
+                <li>Vous allez recevoir un email de confirmation</li>
+                <li>Notre équipe va traiter votre demande</li>
+                <li>Vous recevrez une réponse selon votre forfait</li>
+                <li>Vous pouvez consulter vos tickets à tout moment</li>
+            </ul>
+        </div>
+        
+        {% if user %}
+        <a href="/support" class="btn">📋 Voir mes tickets</a>
+        {% endif %}
+        
+        <a href="/" class="btn btn-secondary">← Retour au dashboard</a>
+    </div>
+</body>
+</html>

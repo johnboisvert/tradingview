@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline';">
+    <title>Trading Academy Pro MEGA</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    color: #fff;
+    margin-left: 280px;
+    padding: 20px;
+}
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 280px;
+    height: 100vh;
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+    padding: 20px 0;
+    overflow-y: auto;
+    z-index: 99999;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+    border-right: 2px solid rgba(6,182,212,0.3);
+}
+.sidebar-header { padding: 0 20px 20px; border-bottom: 2px solid rgba(6,182,212,0.3); margin-bottom: 15px; }
+.sidebar-title { color: #06b6d4; font-size: 20px; font-weight: 700; text-align: center; text-transform: uppercase; }
+.menu-section { margin-bottom: 10px; }
+.section-title { color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 600; text-transform: uppercase; padding: 10px 20px 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.menu-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: #e2e8f0; text-decoration: none; font-size: 14px; transition: all 0.3s; border-left: 3px solid transparent; }
+.menu-item:hover { background: rgba(6,182,212,0.15); border-left-color: #06b6d4; }
+.menu-item.active { background: rgba(6,182,212,0.2); border-left-color: #06b6d4; font-weight: 600; }
+.menu-item.ai-feature { background: linear-gradient(90deg, rgba(6,182,212,0.15), transparent); border-left: 3px solid #06b6d4; }
+.hero {
+    text-align: center;
+    padding: 60px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    margin-bottom: 40px;
+}
+.hero h1 { font-size: 3em; margin-bottom: 20px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 30px; }
+.stat { background: rgba(255,255,255,0.2); padding: 20px; border-radius: 15px; }
+.stat-num { font-size: 3em; font-weight: bold; }
+.progress-bar { width: 100%; height: 12px; background: rgba(255,255,255,0.2); border-radius: 10px; margin-top: 25px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #22c55e, #10b981); transition: width 0.5s; }
+.level-header { background: linear-gradient(135deg, #2d3561, #1f2544); padding: 30px; border-radius: 15px; margin-bottom: 30px; border-left: 5px solid #22c55e; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-top: 30px; }
+.card {
+    background: linear-gradient(135deg, #2d3561, #1f2544);
+    border-radius: 20px;
+    padding: 30px;
+    cursor: pointer;
+    transition: all 0.4s;
+    border: 2px solid transparent;
+}
+.card:hover { transform: translateY(-10px); border-color: #667eea; }
+.card-icon { font-size: 4em; margin-bottom: 20px; }
+.card-title { font-size: 1.8em; margin-bottom: 15px; font-weight: bold; }
+.card-desc { color: #cbd5e1; line-height: 1.6; margin-bottom: 20px; }
+.badge { background: rgba(102,126,234,0.2); padding: 8px 15px; border-radius: 20px; font-size: 0.9em; display: inline-block; margin: 5px; }
+.formation-detail { display: none; }
+.back-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 15px 35px; border-radius: 10px; cursor: pointer; font-size: 1.1em; margin-bottom: 30px; }
+.module { background: linear-gradient(135deg, #2d3561, #1f2544); padding: 40px; border-radius: 15px; margin-bottom: 30px; border-left: 4px solid #667eea; }
+.module h3 { font-size: 2em; color: #667eea; margin-bottom: 20px; }
+.module h4 { font-size: 1.5em; color: #a5b4fc; margin: 20px 0 10px; }
+.module p { line-height: 1.8; color: #cbd5e1; margin-bottom: 15px; }
+table { width: 100%; border-collapse: collapse; margin: 20px 0; background: rgba(15,23,42,0.5); border-radius: 10px; overflow: hidden; }
+th { background: rgba(102,126,234,0.3); padding: 15px; text-align: left; }
+td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.important { background: rgba(251,191,36,0.1); border-left: 4px solid #fbbf24; padding: 20px; border-radius: 10px; margin: 20px 0; }
+.quiz-section { background: linear-gradient(135deg, #2d3561, #1f2544); padding: 40px; border-radius: 20px; margin-top: 40px; }
+.quiz-question { background: rgba(102,126,234,0.1); padding: 25px; border-radius: 15px; margin-bottom: 20px; }
+.quiz-options label { display: block; padding: 15px; margin: 10px 0; background: rgba(255,255,255,0.05); border-radius: 10px; cursor: pointer; }
+.submit-quiz { background: linear-gradient(135deg, #22c55e, #10b981); color: white; border: none; padding: 15px 40px; border-radius: 10px; cursor: pointer; font-size: 1.1em; margin-top: 20px; }
+.quiz-result { padding: 30px; border-radius: 15px; margin-top: 30px; text-align: center; font-size: 1.2em; }
+.quiz-result.pass { background: rgba(34,197,94,0.2); border: 2px solid #22c55e; }
+.quiz-result.fail { background: rgba(239,68,68,0.2); border: 2px solid #ef4444; }
+.certificate { background: linear-gradient(135deg, #667eea, #764ba2); padding: 50px; border-radius: 20px; margin-top: 30px; text-align: center; }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+    <div class="sidebar-header"><div class="sidebar-title">🚀 Trading Pro</div></div>
+    <div class="menu-section">
+        <div class="section-title">🆕 NEW FEATURES</div>
+        <a href="/academy" class="menu-item ai-feature active">🎓 Academy Pro</a>
+        <a href="/dashboard" class="menu-item">🏠 Dashboard</a>
+    </div>
+</nav>
+
+<div class="main-content">
+    <div id="list-view">
+        <div class="hero">
+            <h1>🏆 Trading Academy Pro MEGA</h1>
+            <p>Formation complète du débutant au trader professionnel</p>
+            <div class="stats">
+                <div class="stat"><div class="stat-num">22</div><div>Formations</div></div>
+                <div class="stat"><div class="stat-num">114h</div><div>Heures</div></div>
+                <div class="stat"><div class="stat-num">220+</div><div>Quiz</div></div>
+                <div class="stat"><div class="stat-num" id="progress-percent">0%</div><div>Progression</div></div>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="progress-bar" style="width:0%"></div></div>
+        </div>
+        
+        <div class="level-header">
+            <h2>● Niveau 1: Débutant</h2>
+            <p>Comprendre les bases - 16 heures</p>
+        </div>
+        
+        <div class="grid">
+            <div class="card" onclick="showFormation(1)">
+                <div class="card-icon">🎯</div>
+                <div class="card-title">1. Les Fondamentaux Absolus</div>
+                <div class="card-desc">Qu'est-ce que le trading? Types de marchés, risques, capital, outils.</div>
+                <div class="badge">⏱️ 4h</div><div class="badge">📚 6 modules</div>
+            </div>
+            <div class="card" onclick="showFormation(2)">
+                <div class="card-icon">₿</div>
+                <div class="card-title">2. Comprendre les Cryptos</div>
+                <div class="card-desc">Bitcoin, Ethereum, altcoins, blockchain, tokenomics.</div>
+                <div class="badge">⏱️ 4h</div><div class="badge">📚 3 modules</div>
+            </div>
+            <div class="card" onclick="showFormation(3)">
+                <div class="card-icon">🔐</div>
+                <div class="card-title">3. Sécurité Crypto</div>
+                <div class="card-desc">Wallets, seed phrases, 2FA, éviter les scams.</div>
+                <div class="badge">⏱️ 4h</div><div class="badge">📚 5 modules</div>
+            </div>
+            <div class="card" onclick="showFormation(4)">
+                <div class="card-icon">🧠</div>
+                <div class="card-title">4. Psychologie du Trading</div>
+                <div class="card-desc">Émotions, FOMO, discipline, mindset gagnant.</div>
+                <div class="badge">⏱️ 4h</div><div class="badge">📚 6 modules</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="formation-view" class="formation-detail">
+        <button class="back-btn" onclick="backToList()">← Retour</button>
+        <div id="formation-content"></div>
+    </div>
+</div>
+
+<script>
+// ===== CONSOLE LOG POUR DEBUG =====
+console.log('🚀 Academy JavaScript loading...');
+
+// ===== DONNÉES DES FORMATIONS =====
+var formations = {
+    1: {
+        title: "🎯 Les Fondamentaux Absolus",
+        modules_content: [
+            {
+                title: "Module 1: Qu'est-ce que le Trading?",
+                content: "<p><strong>Le trading</strong> est l'acte d'acheter et vendre des actifs pour réaliser un profit.</p><div class='important'><strong>Règle d'Or:</strong> Acheter BAS + Vendre HAUT = PROFIT</p></div><h4>Types de Marchés</h4><table><tr><th>Marché</th><th>Description</th></tr><tr><td>Spot</td><td>Achat immédiat, vous possédez l'actif</td></tr><tr><td>Futures</td><td>Contrat avec levier possible</td></tr></table>"
+            },
+            {
+                title: "Module 2: Comment Gagner de l'Argent",
+                content: "<p>Il existe plusieurs façons de générer des revenus en crypto:</p><h4>1. Trading Actif</h4><p>Acheter bas, vendre haut. Profits de 5-20% par mois possible.</p><h4>2. Investissement Long Terme (HODL)</h4><p>Acheter et garder pendant des mois/années. Bitcoin: +885% de 2020 à 2021.</p><h4>3. Staking</h4><p>Gagner des intérêts (4-18% APY) en sécurisant le réseau.</p>"
+            },
+            {
+                title: "Module 3: Les Risques",
+                content: "<p>Le trading comporte des risques importants.</p><div class='important'><strong>Statistiques:</strong><ul><li>90% des traders débutants perdent de l'argent</li><li>Seulement 5-10% sont profitables long terme</li></ul></div><h4>Causes de Pertes</h4><table><tr><th>Cause</th><th>Solution</th></tr><tr><td>Pas de Stop Loss</td><td>TOUJOURS utiliser un SL</td></tr><tr><td>Over-trading</td><td>Max 3-5 trades/jour</td></tr></table>"
+            }
+        ],
+        quiz: [
+            {question: "Règle d'or du trading?", options: ["Acheter haut vendre bas", "Acheter bas vendre haut", "Acheter au hasard"], correct: 1},
+            {question: "Quel % de traders gagnent?", options: ["90%", "50%", "5-10%"], correct: 2}
+        ]
+    },
+    2: {
+        title: "₿ Comprendre les Cryptos",
+        modules_content: [
+            {title: "Module 1: Bitcoin", content: "<p><strong>Bitcoin</strong> est la première crypto (2009). Supply fixe: 21M max.</p>"},
+            {title: "Module 2: Ethereum", content: "<p><strong>Ethereum</strong> permet les Smart Contracts - programmes automatiques.</p>"},
+            {title: "Module 3: Altcoins", content: "<p><strong>Altcoins</strong> = toutes les cryptos sauf Bitcoin. 20,000+ existent!</p>"}
+        ],
+        quiz: [{question: "Supply max Bitcoin?", options: ["100M", "21M", "Illimité"], correct: 1}]
+    },
+    3: {
+        title: "🔐 Sécurité Crypto",
+        modules_content: [
+            {title: "Module 1: Wallets", content: "<p><strong>Hot Wallet:</strong> Online, pratique. <strong>Cold Wallet:</strong> Offline, ultra-sécurisé.</p>"},
+            {title: "Module 2: Seed Phrase", content: "<p><strong>12-24 mots</strong> qui contrôlent vos fonds. JAMAIS partager!</p>"}
+        ],
+        quiz: [{question: "Où stocker grosse somme?", options: ["Hot wallet", "Cold wallet", "Exchange"], correct: 1}]
+    },
+    4: {
+        title: "🧠 Psychologie",
+        modules_content: [
+            {title: "Module 1: Émotions", content: "<p>Peur, Cupidité, FOMO, Vengeance - les 4 émotions destructrices.</p>"},
+            {title: "Module 2: Discipline", content: "<p>Suivre un plan, tenir un journal, pas de revenge trading.</p>"}
+        ],
+        quiz: [{question: "FOMO signifie?", options: ["Fear Of Missing Out", "For Money Only", "Fast Options"], correct: 0}]
+    }
+};
+
+console.log('✅ Données chargées:', Object.keys(formations).length, 'formations');
+
+// ===== FONCTION: AFFICHER FORMATION =====
+function showFormation(id) {
+    console.log('📖 Ouverture formation', id);
+    
+    var formation = formations[id];
+    if (!formation) {
+        alert('Formation non disponible');
+        return;
+    }
+    
+    // Cacher liste, montrer détail
+    document.getElementById('list-view').style.display = 'none';
+    document.getElementById('formation-view').style.display = 'block';
+    
+    // Construire HTML
+    var html = '<div class="module"><h2>' + formation.title + '</h2></div>';
+    
+    // Ajouter modules
+    for (var i = 0; i < formation.modules_content.length; i++) {
+        var mod = formation.modules_content[i];
+        html += '<div class="module">';
+        html += '<h3>' + mod.title + '</h3>';
+        html += mod.content;
+        html += '</div>';
+    }
+    
+    // Ajouter quiz
+    if (formation.quiz && formation.quiz.length > 0) {
+        html += '<div class="quiz-section"><h2>📝 Quiz</h2>';
+        for (var q = 0; q < formation.quiz.length; q++) {
+            var quiz = formation.quiz[q];
+            html += '<div class="quiz-question"><h4>Question ' + (q+1) + ': ' + quiz.question + '</h4>';
+            html += '<div class="quiz-options">';
+            for (var o = 0; o < quiz.options.length; o++) {
+                html += '<label><input type="radio" name="q' + q + '" value="' + o + '"> ' + quiz.options[o] + '</label>';
+            }
+            html += '</div></div>';
+        }
+        html += '<button class="submit-quiz" onclick="checkQuiz(' + id + ')">Soumettre</button>';
+        html += '<div id="quiz-result"></div>';
+        html += '</div>';
+    }
+    
+    document.getElementById('formation-content').innerHTML = html;
+    window.scrollTo(0, 0);
+    console.log('✅ Formation affichée!');
+}
+
+// ===== FONCTION: VÉRIFIER QUIZ =====
+function checkQuiz(formationId) {
+    console.log('🎯 Vérification quiz', formationId);
+    
+    var formation = formations[formationId];
+    var questions = formation.quiz;
+    var correct = 0;
+    
+    for (var i = 0; i < questions.length; i++) {
+        var selected = document.querySelector('input[name="q' + i + '"]:checked');
+        if (selected && parseInt(selected.value) === questions[i].correct) {
+            correct++;
+        }
+    }
+    
+    var percentage = (correct / questions.length) * 100;
+    var resultDiv = document.getElementById('quiz-result');
+    
+    if (percentage >= 70) {
+        resultDiv.innerHTML = '<div class="quiz-result pass"><h3>🎉 Réussi!</h3><p>Score: ' + correct + '/' + questions.length + '</p></div>';
+        resultDiv.innerHTML += '<div class="certificate"><h2>🏆 Certificat</h2><p>' + formation.title + '</p><p>Score: ' + Math.round(percentage) + '%</p></div>';
+        saveCompletion(formationId);
+    } else {
+        resultDiv.innerHTML = '<div class="quiz-result fail"><h3>❌ Échec</h3><p>Score: ' + correct + '/' + questions.length + ' - Minimum 70%</p></div>';
+    }
+    
+    resultDiv.scrollIntoView({behavior: 'smooth'});
+}
+
+// ===== FONCTION: SAUVEGARDER COMPLETION =====
+function saveCompletion(id) {
+    try {
+        var completed = JSON.parse(localStorage.getItem('completed') || '[]');
+        if (completed.indexOf(id) === -1) {
+            completed.push(id);
+            localStorage.setItem('completed', JSON.stringify(completed));
+            updateProgress();
+        }
+    } catch(e) {
+        console.log('LocalStorage non disponible');
+    }
+}
+
+// ===== FONCTION: METTRE À JOUR PROGRESSION =====
+function updateProgress() {
+    try {
+        var completed = JSON.parse(localStorage.getItem('completed') || '[]');
+        var percentage = (completed.length / 4) * 100;
+        document.getElementById('progress-bar').style.width = percentage + '%';
+        document.getElementById('progress-percent').textContent = Math.round(percentage) + '%';
+    } catch(e) {
+        console.log('LocalStorage non disponible');
+    }
+}
+
+// ===== FONCTION: RETOUR LISTE =====
+function backToList() {
+    document.getElementById('list-view').style.display = 'block';
+    document.getElementById('formation-view').style.display = 'none';
+    window.scrollTo(0, 0);
+}
+
+// ===== INITIALISATION =====
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ Academy initialisée!');
+    updateProgress();
+});
+
+console.log('✅ JavaScript Academy chargé avec succès!');
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Altseason — Widget</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; max-width: 520px; box-shadow: 0 4px 16px rgba(0,0,0,0.05); }
+    .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #e5e7eb; }
+    .row:last-child { border-bottom: none; }
+    .name { font-weight: 600; }
+    .muted { color: #6b7280; }
+    .dot { width: 10px; height: 10px; border-radius: 10px; display: inline-block; vertical-align: middle; margin-left: 8px; }
+    .green { background: #10b981; }
+    .orange { background: #fb923c; }
+    .title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+    .footer { margin-top: 10px; font-size: 12px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">Altseason — État rapide</div>
+    <div id="asof" class="muted">...</div>
+
+    <div class="row"><div><span class="name">BTC Dominance</span></div><div><span id="btcVal">...</span> <span class="muted">&lt; 55%</span> <span id="btcDot" class="dot"></span></div></div>
+    <div class="row"><div><span class="name">ETH/BTC</span></div><div><span id="ethVal">...</span> <span class="muted">&gt; 0.045</span> <span id="ethDot" class="dot"></span></div></div>
+    <div class="row"><div><span class="name">Altseason Index</span></div><div><span id="asiVal">N/A</span> <span class="muted">&ge; 75</span> <span id="asiDot" class="dot"></span></div></div>
+    <div class="row"><div><span class="name">TOTAL2</span></div><div><span id="t2Val">...</span> <span class="muted">&gt; 1.78 T$</span> <span id="t2Dot" class="dot"></span></div></div>
+
+    <div class="footer">Passe au vert quand au moins 2 conditions sont validées.</div>
+  </div>
+
+  <script>
+    const green = 'green', orange = 'orange';
+    const dot = (ok) => ok ? 'dot green' : 'dot orange';
+    const fmtT = (usd) => (usd/1e12).toFixed(2) + ' T$';
+
+    async function load() {
+      try {
+        const res = await fetch('/altseason/check'); // même domaine
+        const s = await res.json();
+        document.getElementById('asof').textContent = 'As of ' + s.asof;
+        document.getElementById('btcVal').textContent = s.btc_dominance.toFixed(2) + ' %';
+        document.getElementById('ethVal').textContent = s.eth_btc.toFixed(5);
+        document.getElementById('asiVal').textContent = s.altseason_index === null ? 'N/A' : s.altseason_index;
+        document.getElementById('t2Val').textContent  = fmtT(s.total2_usd);
+
+        document.getElementById('btcDot').className = dot(s.triggers.btc_dominance_ok);
+        document.getElementById('ethDot').className = dot(s.triggers.eth_btc_ok);
+        document.getElementById('asiDot').className = dot(s.triggers.altseason_index_ok);
+        document.getElementById('t2Dot').className  = dot(s.triggers.total2_ok);
+      } catch(e) {
+        document.querySelector('.card').innerHTML = '<b>Erreur:</b> ' + e;
+      }
+    }
+    load();
+  </script>
+</body>
+</html>

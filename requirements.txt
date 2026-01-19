@@ -1,0 +1,48 @@
+# 🔐 SÉCURITÉ - CRITIQUE
+bcrypt==4.1.2
+slowapi==0.1.9
+
+# Core FastAPI
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+httpx==0.25.1
+jinja2
+psycopg2-binary==2.9.9
+
+# Paiements
+stripe==7.4.0
+coinbase-commerce==1.0.1
+
+# APIs & Communication
+requests==2.31.0
+python-telegram-bot==20.6
+aiohttp==3.9.1
+httpcore==1.0.5
+
+# Utilities
+python-dotenv==1.0.1
+pytz==2023.3
+pydantic==2.5.0
+apscheduler
+
+# Emails & PDF
+sendgrid==6.10.0
+reportlab==4.0.7
+
+# OpenAI
+openai==1.51.0
+
+# Data Parsing
+beautifulsoup4==4.12.3
+
+# Trading & Crypto
+ccxt==4.0.96
+cryptography==41.0.7
+
+# 📊 NOUVELLE SECTION: ANALYSE TECHNIQUE AVANCÉE
+pandas==2.1.4
+numpy==1.26.2
+ta==0.11.0
+scipy==1.11.4
+itsdangerous==2.2.0

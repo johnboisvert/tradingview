@@ -1,0 +1,297 @@
+<!-- templates/support/contact.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact & Support - Trading Dashboard Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .plan-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .plan-info h3 {
+            margin-bottom: 10px;
+        }
+        
+        .plan-info .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 150px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .response-times {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+        
+        .response-times h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .response-time-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .response-time-item:last-child {
+            border-bottom: none;
+        }
+        
+        .plan-name {
+            font-weight: 600;
+        }
+        
+        .time {
+            color: #666;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💬 Contact & Support</h1>
+        <p class="subtitle">Nous sommes là pour vous aider !</p>
+        
+        {% if user %}
+        <div class="plan-info">
+            <h3>👤 {{ user.name }}</h3>
+            <p>Email: {{ user.email }}</p>
+            <div class="badge">Forfait: {{ user.subscription_tier }}</div>
+        </div>
+        {% endif %}
+        
+        {% if user and user.subscription_tier == "Free" %}
+        <div class="alert alert-warning">
+            ⚠️ <strong>Attention:</strong> Le support n'est pas disponible pour les comptes gratuits.
+            <a href="/pricing">Upgrader votre forfait</a> pour accéder au support.
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            ℹ️ Remplissez le formulaire ci-dessous et nous vous répondrons dans les meilleurs délais.
+        </div>
+        
+        <form method="POST" action="/contact">
+            <div class="form-group">
+                <label for="name">Nom complet *</label>
+                <input type="text" id="name" name="name" 
+                       value="{% if user %}{{ user.name }}{% endif %}" 
+                       required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" 
+                       value="{% if user %}{{ user.email }}{% endif %}" 
+                       required>
+            </div>
+            
+            <div class="form-group">
+                <label for="subject">Sujet *</label>
+                <input type="text" id="subject" name="subject" 
+                       placeholder="Ex: Problème avec les signaux de trading"
+                       required>
+            </div>
+            
+            <div class="form-group">
+                <label for="type">Type de demande *</label>
+                <select id="type" name="type" required>
+                    <option value="support">Support technique</option>
+                    <option value="bug">Signaler un bug</option>
+                    <option value="feature">Demande de fonctionnalité</option>
+                    <option value="billing">Facturation / Paiement</option>
+                    <option value="other">Autre</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="message">Message *</label>
+                <textarea id="message" name="message" 
+                          placeholder="Décrivez votre problème ou votre question en détail..."
+                          required></textarea>
+            </div>
+            
+            {% if user %}
+            <div class="alert alert-info">
+                ⏱️ <strong>Temps de réponse estimé pour votre forfait {{ user.subscription_tier }}:</strong>
+                {% if user.subscription_tier == "Premium" %}
+                48 heures ouvrables
+                {% elif user.subscription_tier == "Advanced" %}
+                24 heures ouvrables
+                {% elif user.subscription_tier == "Pro" %}
+                12 heures
+                {% elif user.subscription_tier == "Elite" %}
+                2 heures (prioritaire 24/7)
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <button type="submit" class="btn">📤 Envoyer le message</button>
+        </form>
+        {% endif %}
+        
+        <div class="response-times">
+            <h3>⏱️ Temps de réponse par forfait</h3>
+            <div class="response-time-item">
+                <span class="plan-name">🆓 Free</span>
+                <span class="time">Pas de support (upgrade requis)</span>
+            </div>
+            <div class="response-time-item">
+                <span class="plan-name">💎 Premium</span>
+                <span class="time">48 heures ouvrables</span>
+            </div>
+            <div class="response-time-item">
+                <span class="plan-name">🚀 Advanced</span>
+                <span class="time">24 heures ouvrables</span>
+            </div>
+            <div class="response-time-item">
+                <span class="plan-name">🏆 Pro</span>
+                <span class="time">12 heures</span>
+            </div>
+            <div class="response-time-item">
+                <span class="plan-name">👑 Elite</span>
+                <span class="time">2 heures (prioritaire 24/7)</span>
+            </div>
+        </div>
+        
+        <a href="/" class="back-link">← Retour au dashboard</a>
+        
+        {% if user %}
+        <a href="/support" class="back-link" style="margin-left: 20px;">📋 Mes tickets</a>
+        {% endif %}
+    </div>
+</body>
+</html>

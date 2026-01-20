@@ -1,27 +1,24 @@
 # -*- coding: utf-8 -*-
 # NOTE: Railway/uvicorn safe. Python comments use '#', not '//'.
 from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie, Body
-
-# ==========================================================
-# Railway / Prod debug (affiche le fichier réellement exécuté)
-# IMPORTANT: ceci n'affecte pas le fonctionnement; c'est juste
-# pour confirmer dans les logs quel main.py tourne sur Railway.
-# ==========================================================
-import os, hashlib, pathlib
-
-_running_file = pathlib.Path(__file__)
-try:
-    _running_sha1 = hashlib.sha1(_running_file.read_bytes()).hexdigest()
-except Exception as _e:
-    _running_sha1 = f"error:{_e}"
-
-print("RUNNING_FILE:", str(_running_file))
-print("RUNNING_SHA1:", _running_sha1)
-print("PORT_ENV:", os.getenv("PORT"))
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response, PlainTextResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
+
+# === Railway debug fingerprint (temp) ===
+import os, hashlib, pathlib
+_p = pathlib.Path(__file__)
+try:
+    _sha1 = hashlib.sha1(_p.read_bytes()).hexdigest()
+except Exception as e:
+    _sha1 = f'ERR:{e}'
+print('RUNNING_FILE:', str(_p.resolve()))
+print('RUNNING_SHA1:', _sha1)
+print('PORT_ENV:', os.getenv('PORT'))
+print('HAS_BODY:', 'Body' in globals())
+# === /Railway debug fingerprint ===
+
 
 #  CORRECTION 2: Rate Limiting pour scurit
 # slowapi est optionnel: si le paquet n'est pas install, on dsactive le rate limiting

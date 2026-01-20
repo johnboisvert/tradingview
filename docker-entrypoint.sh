@@ -1,23 +1,21 @@
-#!/usr/bin/env sh
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Si Railway/une autre plateforme fournit PORT, on le prend, sinon 8080
-PORT_VALUE="${PORT:-8080}"
+# Railway donne PORT automatiquement (souvent 8080)
+PORT="${PORT:-8080}"
 
-# DB_DIR (ton volume est /app/data)
-export DB_DIR="${DB_DIR:-/app/data}"
+# DB_DIR: si tu l'as mis dans Railway -> Variables, on le respecte
+DB_DIR="${DB_DIR:-/app/data}"
 
-# Assure que les dossiers existent
-mkdir -p "$DB_DIR" /tmp/ai_trader || true
-
-echo "PORT=$PORT_VALUE"
+echo "PORT=$PORT"
 echo "DB_DIR=$DB_DIR"
-echo "Starting Uvicorn..."
 
-# Si on passe une commande custom au container, on l’exécute
-if [ "$#" -gt 0 ]; then
-  exec "$@"
-fi
+mkdir -p "$DB_DIR" /tmp/ai_trader /tmp/ebooks || true
+chmod -R 777 "$DB_DIR" /tmp/ai_trader /tmp/ebooks || true
 
-# IMPORTANT: exec pour que le process soit PID 1 correctement (Railway)
-exec python -m uvicorn main:app --host 0.0.0.0 --port "$PORT_VALUE"
+# Important: exec pour que Uvicorn soit PID1 (meilleure stabilité Railway)
+exec python -m uvicorn main:app \
+  --host 0.0.0.0 \
+  --port "$PORT" \
+  --proxy-headers \
+  --forwarded-allow-ips="*"

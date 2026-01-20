@@ -76,6 +76,12 @@ except ImportError:
             return None
     analyzer = _DummyAnalyzer()
 
+import os, hashlib, pathlib
+p = pathlib.Path(__file__)
+print("RUNNING_FILE:", str(p))
+print("RUNNING_SHA1:", hashlib.sha1(p.read_bytes()).hexdigest())
+print("PORT_ENV:", os.getenv("PORT"))
+
 # ============================================================================
 
 # ============================================================================

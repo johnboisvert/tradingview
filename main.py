@@ -4448,14 +4448,28 @@ def is_admin_request(request: Request) -> bool:
         return False
 
 def require_admin(session_token: str = Cookie(None)):
-    """Dépendance FastAPI: assure que l'utilisateur connecté est admin."""
+    """Dépendance FastAPI: assure que l'utilisateur connecté est admin.
+
+    Note: Les sessions stockent généralement un dict (user_info).
+    Cette dépendance accepte donc un dict ou une string."""
     user = get_user_from_token(session_token)
-    uname = normalize_username(user)
+
+    # user peut être un dict (user_info) ou une string (compat)
+    if isinstance(user, dict):
+        uname = normalize_username(user.get("username") or user.get("email") or "")
+        # si le role est déjà présent dans la session, on peut s'en servir en fallback
+        session_role = (user.get("role") or "").strip().lower()
+    else:
+        uname = normalize_username(user)
+        session_role = ""
+
     if not uname:
         raise HTTPException(status_code=401, detail="Non authentifié")
-    role = get_user_role(uname)
+
+    role = (get_user_role(uname) or session_role or "").strip().lower()
     if role != "admin":
         raise HTTPException(status_code=403, detail="Accès admin requis")
+
     return uname
 def load_trades_from_file():
     """📂 Charger les trades depuis le fichier JSON"""
@@ -24814,6 +24828,7 @@ async def admin_get_plan_access(plan: str, _admin: str = Depends(require_admin))
                 "plan": plan_key,
                 "routes": routes,
                 "allowed": routes,
+                "allowed_pages": routes,
                 "possible_routes": PLAN_ROUTE_OPTIONS,
             }
         )
@@ -24836,6 +24851,7 @@ async def admin_get_plan_access(plan: str, _admin: str = Depends(require_admin))
                 "error": str(e),
                 "routes": routes,
                 "allowed": routes,
+                "allowed_pages": routes,
                 "possible_routes": PLAN_ROUTE_OPTIONS,
             },
             status_code=200,

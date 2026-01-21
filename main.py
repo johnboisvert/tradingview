@@ -24220,10 +24220,10 @@ async def admin_dashboard(request: Request):
         if (myToken !== _loadAccessToken) {{ return; }}
         const raw = (data.allowed || data.routes || []);
         const allowed = new Set(raw.map(x => String(x || '').replace(/^\//,'').trim()).filter(Boolean));
-        document.querySelectorAll(".route-checkbox").forEach(cb => {
+        document.querySelectorAll(".route-checkbox").forEach(cb => {{
           const v = String(cb.value || '').replace(/^\//,'').trim();
           cb.checked = allowed.has(v);
-        });
+        }});
       }} catch (e) {{
         setStatus("statusAccess", "Erreur chargement accès: " + e, false);
       }}

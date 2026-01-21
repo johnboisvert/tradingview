@@ -5284,20 +5284,11 @@ async def login(request: Request, response: Response):
         return RedirectResponse(url=error_url, status_code=303)
 
 @app.get("/logout")
-async def logout(response: Response, session_token: Optional[str] = Cookie(None)):
-    """Déconnexion"""
-    if session_token and session_token in active_sessions:
-        del active_sessions[session_token]
-    
-    redirect = RedirectResponse(url="/login", status_code=303)
-    # Supprime le cookie sur le bon domaine aussi (sinon logout partiel entre www et root)
-    host = (request.url.hostname or "").lower()
-    cookie_domain = ".cryptoia.ca" if host.endswith("cryptoia.ca") else None
-    if cookie_domain:
-        redirect.delete_cookie("session_token", domain=cookie_domain, path="/")
-    else:
-        redirect.delete_cookie("session_token", path="/")
-    return redirect
+async def logout(request: Request):
+    # Déconnexion simple
+    resp = RedirectResponse(url="/login", status_code=303)
+    resp.delete_cookie("session_token")
+    return resp
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel(request: Request):
@@ -5645,209 +5636,348 @@ async def admin_panel(request: Request):
 </body>
 </html>""")
 
+@app.get("/admin-users", response_class=HTMLResponse)
+async def admin_users_page(request: Request, admin: dict = Depends(require_admin)):
+    """Liste / gestion simple des utilisateurs (admin seulement)."""
+    # Récupérer les utilisateurs
+    conn = db_manager.get_connection()
+    cur = conn.cursor()
+    try:
+        # username = email (identifiant)
+        if getattr(db_manager, "use_postgresql", False):
+            cur.execute("""
+                SELECT username, role, subscription_plan, subscription_end, created_at
+                FROM users
+                ORDER BY created_at DESC
+            """)
+        else:
+            cur.execute("""
+                SELECT username, role, subscription_plan, subscription_end, created_at
+                FROM users
+                ORDER BY created_at DESC
+            """)
+        rows = cur.fetchall() or []
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    # Normaliser l'affichage
+    def fmt_dt(v):
+        if v is None:
+            return "-"
+        try:
+            # psycopg2 peut renvoyer datetime
+            if hasattr(v, "isoformat"):
+                return v.isoformat(sep=" ", timespec="seconds")
+            return str(v)
+        except Exception:
+            return str(v)
+
+    html_rows = ""
+    for r in rows:
+        # (username, role, subscription_plan, subscription_end, created_at)
+        username = (r[0] or "")
+        role = (r[1] or "")
+        plan = (r[2] or "")
+        sub_end = fmt_dt(r[3])
+        created = fmt_dt(r[4])
+        html_rows += f"""
+          <tr>
+            <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>{username}</td>
+            <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>{role}</td>
+            <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>
+              <select data-username="{username}" class="planSel" style="padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:#0f172a;color:#fff;">
+                <option value="free" {"selected" if plan=="free" else ""}>free</option>
+                <option value="premium" {"selected" if plan=="premium" else ""}>premium</option>
+                <option value="advanced" {"selected" if plan=="advanced" else ""}>advanced</option>
+                <option value="pro" {"selected" if plan=="pro" else ""}>pro</option>
+                <option value="elite" {"selected" if plan=="elite" else ""}>elite</option>
+              </select>
+              <button class="btnSavePlan" data-username="{username}" style="margin-left:10px;padding:7px 10px;border-radius:10px;border:0;background:#3b82f6;color:#fff;cursor:pointer;">Enregistrer</button>
+            </td>
+            <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>{sub_end}</td>
+            <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>{created}</td>
+            <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:right;'>
+              <button class="btnDelete" data-username="{username}" style="padding:7px 10px;border-radius:10px;border:0;background:#ef4444;color:#fff;cursor:pointer;">Supprimer</button>
+            </td>
+          </tr>
+        """
+
+    return HTMLResponse(f"""
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Admin — Gestion des utilisateurs</title>
+  <style>
+    body{{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;background:linear-gradient(135deg,#0b1220,#0f172a);color:#e5e7eb;}}
+    .wrap{{max-width:1200px;margin:24px auto;padding:0 16px;}}
+    .card{{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,0.35);overflow:hidden;}}
+    .head{{display:flex;align-items:center;justify-content:space-between;padding:18px 18px;border-bottom:1px solid rgba(255,255,255,0.10);}}
+    .head h1{{margin:0;font-size:18px;}}
+    .btn{{padding:10px 12px;border-radius:12px;border:0;background:#6366f1;color:#fff;cursor:pointer;text-decoration:none;display:inline-flex;gap:8px;align-items:center;}}
+    table{{width:100%;border-collapse:collapse;font-size:14px;}}
+    th{{text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,0.10);color:#cbd5e1;font-weight:600;}}
+    .notice{{margin:14px 0 0;padding:12px 14px;border-radius:12px;background:rgba(34,197,94,0.14);border:1px solid rgba(34,197,94,0.22);display:none;}}
+    .error{{margin:14px 0 0;padding:12px 14px;border-radius:12px;background:rgba(239,68,68,0.14);border:1px solid rgba(239,68,68,0.22);display:none;}}
+    .toplinks{{display:flex;gap:10px;}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="head">
+        <h1>Gestion des utilisateurs</h1>
+        <div class="toplinks">
+          <a class="btn" href="/admin-dashboard">← Retour Admin</a>
+        </div>
+      </div>
+
+      <div style="padding:14px 18px;">
+        <div id="ok" class="notice"></div>
+        <div id="err" class="error"></div>
+
+        <div style="overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Email / Username</th>
+                <th>Rôle</th>
+                <th>Plan</th>
+                <th>Fin abonnement</th>
+                <th>Créé</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {html_rows if html_rows else "<tr><td colspan='6' style='padding:14px;'>Aucun utilisateur trouvé.</td></tr>"}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const ok = document.getElementById("ok");
+const err = document.getElementById("err");
+
+function show(el, msg){ el.textContent = msg; el.style.display = "block"; setTimeout(()=> el.style.display="none", 6000); }
+function showOk(msg){ show(ok, msg); }
+function showErr(msg){ show(err, msg); }
+
+document.addEventListener("click", async (e) => {
+  const del = e.target.closest(".btnDelete");
+  if(del){
+    const username = del.dataset.username;
+    if(!confirm("Supprimer " + username + " ?")) return;
+    try{
+      const res = await fetch("/admin/delete-user", {
+        method:"POST",
+        headers: {"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"},
+        body: JSON.stringify({username})
+      });
+      const data = await res.json().catch(async ()=>({success:false, message: await res.text()}));
+      if(data.success){
+        showOk(data.message || "Supprimé.");
+        location.reload();
+      }else{
+        showErr(data.message || "Erreur.");
+      }
+    }catch(ex){
+      showErr("Erreur réseau.");
+    }
+  }
+
+  const save = e.target.closest(".btnSavePlan");
+  if(save){
+    const username = save.dataset.username;
+    const sel = document.querySelector(`.planSel[data-username="${username}"]`);
+    const new_plan = sel ? sel.value : "free";
+    try{
+      const res = await fetch("/admin/update-user-plan", {
+        method:"POST",
+        headers: {"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"},
+        body: JSON.stringify({username, new_plan})
+      });
+      const data = await res.json().catch(async ()=>({success:false, message: await res.text()}));
+      if(data.success){
+        showOk(data.message || "Plan mis à jour.");
+      }else{
+        showErr(data.message || "Erreur.");
+      }
+    }catch(ex){
+      showErr("Erreur réseau.");
+    }
+  }
+});
+</script>
+</body>
+</html>
+""")
+
 @app.post("/admin/add-user")
 async def admin_add_user(request: Request):
-    """Ajout d'utilisateur (admin) — supporte email-only et password auto.
-
-    JSON attendu:
-      - email: str (recommandé)
-      - username: str (optionnel; défaut = email)
-      - password: str (optionnel; si vide => généré)
-      - role: str (free/premium/advanced/pro/elite/admin)
+    """Créer un utilisateur depuis l'admin.
+    - Identifiant = email (stocké dans username)
+    - Plan: free/premium/advanced/pro/elite
+    - Mot de passe: optionnel (si vide → généré)
     """
-    if not is_admin(request):
-        raise HTTPException(status_code=403, detail="Accès admin requis")
-
     try:
-        data = await request.json()
-        username = (data.get("username") or "").strip()
-        email = (data.get("email") or "").strip()
-        password = (data.get("password") or "").strip()
-        role = (data.get("role") or "free").strip().lower()
-
-        # Email-only: si username vide, utiliser l'email
-        if not username and email:
-            username = email
-
-        # Si l'email est dans username (cas courant), recopier
-        if not email and "@" in username:
-            email = username
-
-        if not username:
-            return {"success": False, "message": "Email requis (ou identifiant)"}
-
-        if role not in {"free", "premium", "advanced", "pro", "elite", "admin"}:
-            return {"success": False, "message": "Rôle/plan invalide"}
-
-        # Password optionnel: si vide => générer un mot de passe temporaire
-        temp_password = None
-        if not password:
-            temp_password = secrets.token_urlsafe(12)
-            password = temp_password
-
-        # En mode non-admin, imposer un email valide
-        if role != "admin":
-            if not email or "@" not in email:
-                return {"success": False, "message": "Email invalide"}
-
-        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-        conn = db_manager.get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
-        if cursor.fetchone():
-            conn.close()
-            return {"success": False, "message": "Utilisateur existe déjà"}
-
-        if email:
-            cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
-            if cursor.fetchone():
-                conn.close()
-                return {"success": False, "message": "Email déjà utilisé"}
-
-        subscription_start = None
-        subscription_end = None
-        if role in ["premium", "advanced", "pro", "elite"]:
-            subscription_start = datetime.now().isoformat()
-            if role == "premium":
-                subscription_end = (datetime.now() + timedelta(days=30)).isoformat()
-            elif role == "advanced":
-                subscription_end = (datetime.now() + timedelta(days=90)).isoformat()
-            elif role == "pro":
-                subscription_end = (datetime.now() + timedelta(days=180)).isoformat()
-            elif role == "elite":
-                subscription_end = (datetime.now() + timedelta(days=365)).isoformat()
-
-        created_at = datetime.now().isoformat()
-
-        cursor.execute("""
-            INSERT INTO users (username, password_hash, role, email, subscription_start, subscription_end, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (username, hashed_password, role, email, subscription_start, subscription_end, created_at))
-
-        conn.commit()
-        conn.close()
-
-        resp = {"success": True, "message": "Utilisateur ajouté"}
-        if temp_password:
-            resp["temp_password"] = temp_password
-        return resp
-
-    except Exception as e:
-        return {"success": False, "message": str(e)}
-@app.post("/admin-dashboard/add-user")
-async def add_user(request: Request):
-    """Ajouter un nouvel utilisateur avec permissions par défaut ou plan d'abonnement"""
-    try:
-        data = await request.json()
-        new_username = (data.get("username") or "").strip()
-        password = data.get("password")
-        role = data.get("role", "user")
-        # Email-only (recommandé): on accepte encore un identifiant non-email pour les comptes admin existants.
-        if role != "admin":
-            if "@" not in new_username or "." not in new_username.split("@")[-1]:
-                return {"success": False, "message": "Veuillez entrer une adresse email valide."}
-        # Canonicaliser les emails en minuscules (mais garder les anciens usernames admin possibles)
-        if "@" in new_username:
-            new_username = new_username.lower()
-        
-        # Validation
-        if not new_username or len(new_username) < 3:
-            return {"success": False, "message": "Email invalide."}
-        
-        if not password or len(password) < 6:
-            return {"success": False, "message": "Mot de passe invalide (minimum 6 caractères)."}
-        
-        # Dterminer si c'est un plan d'abonnement ou un rle normal
-        subscription_plans = ['free', 'premium', 'advanced', 'pro', 'elite', '1_month', '3_months', '6_months', '1_year']
-        is_subscription_plan = role in subscription_plans
-        
-        # Crer l'utilisateur
-        actual_role = "user" if is_subscription_plan else role
-        
-        if db_manager.add_user(new_username, password, actual_role):
-            # Si c'est un plan d'abonnement, assigner le plan et les dates
-            if is_subscription_plan:
-                from datetime import datetime, timedelta
-                
-                conn = db_manager.get_connection()
-                cursor = conn.cursor()
-                
-                # Calculer les dates d'abonnement
-                start_date = datetime.now()
-                duration_days = {
-                    "free": 36500,  # 100 ans (permanent)
-                    "premium": 30,
-                    "advanced": 90,
-                    "pro": 180,
-                    "elite": 365,
-                    "1_month": 30,
-                    "3_months": 90,
-                    "6_months": 180,
-                    "1_year": 365,
-                }
-                end_date = start_date + timedelta(days=duration_days.get(role, 30))
-                
-                # Mettre  jour le plan d'abonnement
-                if db_manager.use_postgresql:
-                    cursor.execute("""
-                        UPDATE users 
-                        SET subscription_plan = %s,
-                            subscription_start = %s,
-                            subscription_end = %s
-                        WHERE LOWER(username) = LOWER(%s)
-                    """, (role, start_date, end_date, new_username))
-                else:
-                    cursor.execute("""
-                        UPDATE users 
-                        SET subscription_plan = ?,
-                            subscription_start = ?,
-                            subscription_end = ?
-                        WHERE LOWER(username) = LOWER(?)
-                    """, (role, start_date.isoformat(), end_date.isoformat(), new_username))
-                
-                conn.commit()
-                cursor.close()
-                conn.close()
-                
-                plan_names = {
-                    'free': '🆓 Free',
-                    'premium': '💎 Premium (1 mois)',
-                    'advanced': '🚀 Advanced (3 mois)',
-                    'pro': '⭐ Pro (6 mois)',
-                    'elite': '👑 Elite (1 an)',
-                    '1_month': '💎 Premium (1 mois)',
-                    '3_months': '🚀 Advanced (3 mois)',
-                    '6_months': '⭐ Pro (6 mois)',
-                    '1_year': '👑 Elite (1 an)'
-                }
-                
-                print(f"✅ Utilisateur {new_username} créé avec plan {plan_names[role]}")
-                
-                return {
-                    "success": True, 
-                    "message": f"Utilisateur '{new_username}' créé avec plan {plan_names[role]} (hérite automatiquement des permissions du plan)"
-                }
-            
-            # Si c'est admin
-            elif role == "admin":
-                return {"success": True, "message": f"Administrateur '{new_username}' créé avec accès complet"}
-            
-            # Si c'est user normal
-            else:
-                give_default_permissions(new_username)
-                return {
-                    "success": True, 
-                    "message": f"Utilisateur '{new_username}' créé avec {len(DEFAULT_USER_PERMISSIONS)} permissions par défaut"
-                }
+        # Lire payload JSON ou form
+        data = {}
+        ctype = (request.headers.get("content-type") or "").lower()
+        if "application/json" in ctype:
+            try:
+                data = await request.json()
+            except Exception:
+                data = {}
         else:
-            return {"success": False, "message": "Utilisateur déjà existant ou erreur de création"}
+            try:
+                form = await request.form()
+                data = dict(form)
+            except Exception:
+                data = {}
+
+        email = (data.get("email") or data.get("username") or "").strip().lower()
+        plan = (data.get("plan") or data.get("role") or "free").strip().lower()
+        password = (data.get("password") or "").strip()
+
+        if not email:
+            return JSONResponse({"success": False, "message": "Email requis."}, status_code=400)
+
+        allowed_plans = {"free", "premium", "advanced", "pro", "elite"}
+        if plan not in allowed_plans:
+            plan = "free"
+
+        # Mot de passe temporaire si vide
+        generated_pw = False
+        if not password:
+            import string as _string
+            alphabet = _string.ascii_letters + _string.digits
+            password = "".join(random.choice(alphabet) for _ in range(12))
+            generated_pw = True
+
+        password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        created_at = datetime.utcnow()
+
+        # Durées
+        days_map = {"premium": 30, "advanced": 90, "pro": 180, "elite": 365}
+        sub_start = created_at
+        sub_end = None
+        if plan in days_map:
+            sub_end = created_at + timedelta(days=days_map[plan])
+
+        # Insérer dans la table users existante (schema db_manager.init_users_table)
+        conn = db_manager.get_connection()
+        cur = conn.cursor()
+        try:
+            if getattr(db_manager, "use_postgresql", False):
+                cur.execute(
+                    """
+                    INSERT INTO users (username, password_hash, role, created_at, subscription_plan, subscription_start, subscription_end)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (email, password_hash, "user", created_at, plan, sub_start, sub_end),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO users (username, password_hash, role, created_at, subscription_plan, subscription_start, subscription_end)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (email, password_hash, "user", created_at.isoformat(), plan, sub_start.isoformat(), sub_end.isoformat() if sub_end else None),
+                )
+            conn.commit()
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+        plan_names = {
+            "free": "Gratuit",
+            "premium": "Premium (1 mois)",
+            "advanced": "Advanced (3 mois)",
+            "pro": "Pro (6 mois)",
+            "elite": "Elite (12 mois)",
+        }
+
+        msg = f"Utilisateur créé: {email} — Plan: {plan_names.get(plan, plan)}."
+        if generated_pw:
+            msg += f" Mot de passe temporaire: {password}"
+
+        return JSONResponse({"success": True, "message": msg}, status_code=200)
+
     except Exception as e:
-        print(f"❌ Erreur add_user: {e}")
-        import traceback
-        traceback.print_exc()
-        return {"success": False, "message": f"Erreur: {str(e)}"}
+        # Toujours renvoyer du JSON pour éviter les erreurs 'not valid JSON' côté navigateur
+        return JSONResponse({"success": False, "message": f"Erreur serveur: {str(e)}"}, status_code=500)
+
+
+@app.post("/admin/update-user-plan")
+async def admin_update_user_plan(request: Request):
+    """Mettre à jour le plan d'un utilisateur (admin)."""
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    username = (data.get("username") or "").strip().lower()
+    new_plan = (data.get("new_plan") or "").strip().lower()
+
+    if not username:
+        return JSONResponse({"success": False, "message": "Utilisateur requis."}, status_code=400)
+
+    allowed_plans = {"free", "premium", "advanced", "pro", "elite"}
+    if new_plan not in allowed_plans:
+        new_plan = "free"
+
+    now = datetime.utcnow()
+    days_map = {"premium": 30, "advanced": 90, "pro": 180, "elite": 365}
+    sub_start = now
+    sub_end = None
+    if new_plan in days_map:
+        sub_end = now + timedelta(days=days_map[new_plan])
+
+    conn = db_manager.get_connection()
+    cur = conn.cursor()
+    try:
+        if getattr(db_manager, "use_postgresql", False):
+            cur.execute(
+                """
+                UPDATE users
+                SET subscription_plan=%s, subscription_start=%s, subscription_end=%s
+                WHERE LOWER(username)=LOWER(%s)
+                """,
+                (new_plan, sub_start, sub_end, username),
+            )
+        else:
+            cur.execute(
+                """
+                UPDATE users
+                SET subscription_plan=?, subscription_start=?, subscription_end=?
+                WHERE LOWER(username)=LOWER(?)
+                """,
+                (new_plan, sub_start.isoformat(), sub_end.isoformat() if sub_end else None, username),
+            )
+        conn.commit()
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    plan_names = {
+        "free": "Gratuit",
+        "premium": "Premium (1 mois)",
+        "advanced": "Advanced (3 mois)",
+        "pro": "Pro (6 mois)",
+        "elite": "Elite (12 mois)",
+    }
+    return JSONResponse({"success": True, "message": f"Plan mis à jour: {username} → {plan_names.get(new_plan, new_plan)}."}, status_code=200)
 
 @app.post("/admin/delete-user")
 @app.post("/admin-dashboard/delete-user")
@@ -5860,7 +5990,7 @@ async def delete_user(request: Request):
         raise HTTPException(status_code=400, detail="Impossible de supprimer l'admin principal")
     
     db_manager.delete_user(user_to_delete)
-    return {"status": "success", "message": "Utilisateur supprimé"}
+    return JSONResponse({"success": True, "message": "Utilisateur supprimé."}, status_code=200)
 
 @app.get("/admin/get-user/{username}")
 @app.get("/admin-dashboard/get-user/{username}")
@@ -24531,7 +24661,7 @@ async def admin_dashboard(request: Request):
     try{{
       const res = await fetch("/admin/add-user", {{
         method: "POST",
-        headers: {{"Content-Type":"application/json"}},
+        headers: {{"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"}},
         body: JSON.stringify({{ email, username: email, password, role }})
       }});
       const data = await res.json();

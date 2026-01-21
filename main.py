@@ -855,7 +855,73 @@ def get_plan_access_routes(plan: str) -> list:
 # Alias used by pages/templates (e.g., /pricing-complete)
 def get_plan_access(plan_key: str):
     """Return list of allowed route slugs for a plan (free/premium/advanced/pro/elite)."""
-    return get_plan_access_routes(plan_key)
+    return get_plan_access_routes(plan_key)# ================= MENU ACCESS API =================
+@app.get("/api/menu-access")
+async def api_menu_access(request: Request, session_token: Optional[str] = Cookie(None)):
+    """Retourne les permissions pour construire le menu (sidebar) côté client.
+    - Si non connecté: on utilise le plan 'free' (et donc les pages cochées dans Gratuit deviennent publiques).
+    - Si connecté: on utilise le plan réel du compte.
+    """
+    # Déterminer utilisateur + plan
+    user = None
+    try:
+        user = get_user_from_token(session_token) if "get_user_from_token" in globals() else None
+    except Exception:
+        user = None
+
+    logged_in = bool(user)
+
+    plan = "free"
+    try:
+        if isinstance(user, dict):
+            plan = (user.get("subscription_plan") or user.get("plan") or "free")
+        elif isinstance(user, str):
+            # ancien format: username seulement -> fallback free
+            plan = "free"
+    except Exception:
+        plan = "free"
+
+    try:
+        plan = normalize_plan(str(plan or "free"))
+    except Exception:
+        plan = "free"
+
+    effective_plan = plan if logged_in else "free"
+
+    # routes autorisées pour le plan effectif
+    try:
+        allowed = get_plan_access_routes(effective_plan)
+    except Exception:
+        allowed = []
+
+    # Calcul plan minimal requis par route (pour afficher 🔒 Premium/Pro...)
+    PLAN_ORDER = ["free", "premium", "advanced", "pro", "elite"]
+    plan_sets = {}
+    all_routes = set()
+    for p in PLAN_ORDER:
+        try:
+            rs = set(get_plan_access_routes(p))
+        except Exception:
+            rs = set()
+        plan_sets[p] = rs
+        all_routes |= rs
+
+    min_required = {}
+    for r in all_routes:
+        for p in PLAN_ORDER:
+            if r in plan_sets[p]:
+                min_required[r] = p
+                break
+
+    return {
+        "logged_in": logged_in,
+        "plan": plan,
+        "effective_plan": effective_plan,
+        "allowed": sorted(list(set(allowed))),
+        "min_required": min_required,
+        "pricing_url": "/pricing-complete",
+        "login_url": "/login",
+    }
 
 def save_plan_access_routes(plan: str, routes):
     """Enregistre les routes autorisées pour un plan (table plan_access).
@@ -3597,7 +3663,76 @@ body.sidebar-open{padding-left:280px !important}
         document.getElementById('sidebar').classList.toggle('active');
         document.body.classList.toggle('sidebar-open');
     }
-    </script>"""
+    async function applyMenuAccess() {
+    try {
+        const resp = await fetch("/api/menu-access", { cache: "no-store" });
+        const data = await resp.json();
+        const allowed = new Set((data.allowed || []).map(String));
+        const minReq = data.min_required || {};
+
+        const currentPath = window.location.pathname || "/";
+        const menuLinks = document.querySelectorAll(".sidebar a.menu-item[href]");
+        menuLinks.forEach(a => {
+            try {
+                const href = a.getAttribute("href") || "";
+                if (!href.startsWith("/")) return;
+
+                // route key: "/dashboard" -> "dashboard", "/" -> "dashboard"
+                const path = href.split("?")[0];
+                let key = path.replace(/^\/+|\/+$/g, "");
+                if (!key) key = "dashboard";
+
+                // active state
+                if (path === currentPath) {
+                    a.classList.add("active");
+                } else {
+                    a.classList.remove("active");
+                }
+
+                const isAllowed = allowed.has(key);
+
+                // badge helper
+                const ensureBadge = (txt) => {
+                    let b = a.querySelector(".plan-badge");
+                    if (!b) {
+                        b = document.createElement("span");
+                        b.className = "plan-badge";
+                        a.appendChild(b);
+                    }
+                    b.textContent = txt;
+                };
+
+                if (isAllowed) {
+                    a.classList.remove("locked");
+                    // remove badge if exists
+                    const b = a.querySelector(".plan-badge");
+                    if (b) b.remove();
+                    // keep href as-is
+                    a.setAttribute("data-locked", "0");
+                } else {
+                    a.classList.add("locked");
+                    a.setAttribute("data-locked", "1");
+                    const req = String(minReq[key] || "premium");
+                    const reqNice = req.charAt(0).toUpperCase() + req.slice(1);
+                    ensureBadge("🔒 " + reqNice);
+
+                    const target = encodeURIComponent(path);
+                    const url = data.logged_in
+                      ? (data.pricing_url + "?upgrade=1&to=" + target)
+                      : (data.login_url + "?redirect=" + target);
+
+                    a.setAttribute("href", url);
+                    a.setAttribute("title", "Accès requis: " + reqNice);
+                }
+            } catch (e) {}
+        });
+    } catch (e) {
+        // silent
+    }
+}
+
+document.addEventListener("DOMContentLoaded", applyMenuAccess);
+</script>"""
 
 # Appliquer les placeholders (logo + nom) dans la sidebar
 try:
@@ -3664,6 +3799,25 @@ NAV_MENU = """
         background: rgba(239,68,68,0.8);
         border: none;
     }
+
+/* === Menu intelligent (verrouillage/upgrade) === */
+.menu-item { display: flex; align-items: center; gap: 10px; }
+.menu-item .label { flex: 1; }
+.menu-item.locked { opacity: 0.55; cursor: pointer; }
+.menu-item.locked:hover { opacity: 0.80; }
+.plan-badge {
+    margin-left: auto;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: rgba(255,255,255,0.90);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
 </style>
 
 

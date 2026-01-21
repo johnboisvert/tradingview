@@ -754,12 +754,72 @@ def get_plan_price(plan_key: str) -> float:
 DEFAULT_PLAN_ACCESS = {
     # Par défaut, on garde simple: tu peux tout gérer dans l'admin.
     # (Si un plan n'a rien, il ne voit que les pages publiques.)
-    "free": ["dashboard", "pricing-complete", "contact"],
-    "premium": ["dashboard", "trades", "spot-trading", "strategie"],
-    "advanced": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed"],
-    "pro": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist"],
-    "elite": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist"],
+    "free": [
+        "dashboard",
+        "pricing-complete",
+        "contact",
+    ],
+    "premium": [
+        "dashboard",
+        "stats-dashboard",
+        "trades",
+        "spot-trading",
+        "strategie",
+    ],
+    "advanced": [
+        "dashboard",
+        "stats-dashboard",
+        "trades",
+        "spot-trading",
+        "strategie",
+        "watchlist",
+        "risk-management",
+        "ai-market-regime",
+        "ai-whale-watcher",
+        "fear-greed",
+    ],
+    "pro": [
+        "dashboard",
+        "stats-dashboard",
+        "trades",
+        "spot-trading",
+        "strategie",
+        "watchlist",
+        "risk-management",
+        "ai-market-regime",
+        "ai-whale-watcher",
+        "fear-greed",
+        "fear-greed-chart",
+        "dominance",
+        "heatmap",
+        "ai-predictor",
+        "backtesting",
+    ],
+    "elite": [
+        "dashboard",
+        "stats-dashboard",
+        "trades",
+        "spot-trading",
+        "strategie",
+        "watchlist",
+        "risk-management",
+        "backtesting",
+        "ai-opportunity-scanner",
+        "ai-market-regime",
+        "ai-whale-watcher",
+        "ai-assistant",
+        "ai-signals",
+        "ai-news",
+        "ai-predictor",
+        "ai-patterns",
+        "fear-greed",
+        "fear-greed-chart",
+        "dominance",
+        "heatmap",
+        "telechargements",
+    ],
 }
+
 def init_plan_access_db():
     """DB des accès par forfait (persistant)."""
     try:
@@ -944,6 +1004,128 @@ def save_plan_access_routes(plan: str, routes):
                 conn.close()
         except Exception:
             pass
+
+# ============================================================================
+#  ROUTE ACCESS GUARD (PLAN) — bloque l'accès direct via URL
+#  Utilise la table plan_access (admin) + DEFAULT_PLAN_ACCESS (fallback).
+#  Plans canoniques: free / premium / advanced / pro / elite
+# ============================================================================
+PLAN_ORDER = ["free", "premium", "advanced", "pro", "elite"]
+
+def _get_min_plan_for_route(route_key: str) -> str:
+    """Retourne le plan minimal (selon la config actuelle) qui donne accès à route_key."""
+    try:
+        rk = (route_key or "").strip()
+        if not rk:
+            return "elite"
+        for p in PLAN_ORDER:
+            try:
+                routes = set(get_plan_access_routes(p))
+            except Exception:
+                routes = set(DEFAULT_PLAN_ACCESS.get(p, []))
+            if rk in routes:
+                return p
+        return "elite"
+    except Exception:
+        return "elite"
+
+def require_route_access(route_key: str, *, require_login: bool = True):
+    """Dépendance FastAPI: exige un login (optionnel) + vérifie l'accès par forfait."""
+    async def _dep(request: Request, session_token: Optional[str] = Cookie(None)):
+        # 1) user (session cookie)
+        user = None
+        try:
+            user = get_user_from_token(session_token)
+        except Exception:
+            user = None
+
+        if require_login and not user:
+            # le handler global 401 fera une redirection /login pour les pages HTML
+            raise HTTPException(status_code=401, detail={"code": "login_required", "next": str(request.url.path)})
+
+        # 2) déterminer le plan
+        plan = None
+        username = None
+        try:
+            if isinstance(user, dict):
+                username = user.get("username") or user.get("email")
+                plan = user.get("subscription_plan") or user.get("plan")
+            elif isinstance(user, str):
+                username = user
+        except Exception:
+            pass
+
+        if not plan and username:
+            try:
+                ui = db_manager.get_user_info(username)
+                if isinstance(ui, dict):
+                    plan = ui.get("subscription_plan") or ui.get("plan")
+            except Exception:
+                plan = None
+
+        plan_key = normalize_plan(plan or "free")
+
+        # 3) vérifier l'accès
+        try:
+            allowed = set(get_plan_access_routes(plan_key))
+        except Exception:
+            allowed = set(DEFAULT_PLAN_ACCESS.get(plan_key, []))
+
+        rk = (route_key or "").strip()
+        if rk and rk not in allowed:
+            required_plan = _get_min_plan_for_route(rk)
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "upgrade_required",
+                    "route": rk,
+                    "current_plan": plan_key,
+                    "required_plan": required_plan,
+                },
+            )
+
+        # (Optionnel) retourner des infos si besoin
+        return {"username": username, "plan": plan_key}
+
+    return _dep
+
+def ensure_plan_access_defaults():
+    """Ajoute (sans écraser) les accès par défaut manquants dans plan_access.
+
+    Utile quand de nouvelles pages apparaissent: on les insère avec enabled=1
+    pour les plans concernés, sans modifier les routes déjà configurées.
+    """
+    try:
+        cfg_type = (DB_CONFIG.get("type") or "sqlite").lower()
+        if cfg_type == "postgres":
+            conn = get_db_connection()
+            cur = conn.cursor()
+            for plan, routes in DEFAULT_PLAN_ACCESS.items():
+                for rk in routes:
+                    if not rk:
+                        continue
+                    cur.execute(
+                        "INSERT INTO plan_access (plan, route_key, enabled) VALUES (%s, %s, TRUE) "
+                        "ON CONFLICT (plan, route_key) DO NOTHING;",
+                        (plan, rk),
+                    )
+            conn.commit()
+            conn.close()
+        else:
+            conn = get_settings_db_connection()
+            cur = conn.cursor()
+            for plan, routes in DEFAULT_PLAN_ACCESS.items():
+                for rk in routes:
+                    if not rk:
+                        continue
+                    cur.execute(
+                        "INSERT OR IGNORE INTO plan_access (plan, route_key, enabled) VALUES (?, ?, 1);",
+                        (plan, rk),
+                    )
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        print(f"⚠️ ensure_plan_access_defaults: {e}")
 
 def init_trades_db():
     """Crée la table trades"""
@@ -2894,9 +3076,93 @@ async def _http_exception_handler(request: Request, exc: _FastAPIHTTPException):
             or path.startswith("/api/")
             or "application/json" in accept
         )
+        detail_obj = exc.detail if isinstance(exc.detail, dict) else None
+
         if wants_json:
+            if detail_obj and detail_obj.get("code") == "upgrade_required":
+                return JSONResponse(
+                    {
+                        "success": False,
+                        "error": "upgrade_required",
+                        "route": detail_obj.get("route"),
+                        "current_plan": detail_obj.get("current_plan"),
+                        "required_plan": detail_obj.get("required_plan"),
+                        "pricing_url": "/pricing-complete",
+                    },
+                    status_code=exc.status_code,
+                )
+            if detail_obj and detail_obj.get("code") == "login_required":
+                return JSONResponse(
+                    {
+                        "success": False,
+                        "error": "login_required",
+                        "next": detail_obj.get("next") or path,
+                        "login_url": "/login",
+                    },
+                    status_code=exc.status_code,
+                )
             return JSONResponse({"success": False, "error": str(exc.detail)}, status_code=exc.status_code)
+
+        # Pages HTML: redirection login / page upgrade propre
+        if detail_obj and detail_obj.get("code") == "login_required":
+            next_path = str(detail_obj.get("next") or path or "/")
+            return RedirectResponse(url="/login?" + urlencode({"next": next_path}), status_code=303)
+
+        if detail_obj and detail_obj.get("code") == "upgrade_required":
+            required_plan = _html.escape(str(detail_obj.get("required_plan") or "premium"))
+            current_plan = _html.escape(str(detail_obj.get("current_plan") or "free"))
+            rk = _html.escape(str(detail_obj.get("route") or ""))
+            return HTMLResponse(
+                content=f"""<!doctype html>
+<html lang='fr'>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Accès refusé — CryptoIA</title>
+  <style>
+    body {{ margin:0; font-family: Arial, sans-serif; background:#0b1220; color:#e7eaf3; }}
+    .wrap {{ max-width: 920px; margin: 42px auto; padding: 0 18px; }}
+    .card {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 20px; box-shadow: 0 12px 28px rgba(0,0,0,0.28); }}
+    h1 {{ margin: 0 0 10px 0; font-size: 26px; }}
+    p {{ margin: 8px 0; line-height: 1.55; opacity: 0.95; }}
+    .row {{ display:flex; gap:12px; flex-wrap:wrap; margin-top: 12px; }}
+    .pill {{ padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); }}
+    .label {{ font-size: 12px; opacity: 0.75; display:block; margin-bottom: 4px; }}
+    .value {{ font-weight: 800; }}
+    a.cta {{ display:inline-block; margin-top: 16px; padding: 12px 16px; border-radius: 12px; background:#e7eaf3; color:#0b1220; text-decoration:none; font-weight: 800; }}
+    a.cta:hover {{ opacity: 0.92; }}
+    .muted {{ margin-top: 14px; font-size: 12px; opacity: 0.75; }}
+    .badge {{ display:inline-block; margin: 6px 6px 0 0; padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); font-size: 12px; }}
+  </style>
+</head>
+<body>
+  <div class='wrap'>
+    <div class='card'>
+      <h1>Accès refusé</h1>
+      <p>Cette page est réservée aux membres ayant le forfait requis.</p>
+      <div class='row'>
+        <div class='pill'><span class='label'>Ton forfait actuel</span><span class='value'>{current_plan}</span></div>
+        <div class='pill'><span class='label'>Forfait requis</span><span class='value'>{required_plan}</span></div>
+        <div class='pill'><span class='label'>Section</span><span class='value'>{rk}</span></div>
+      </div>
+      <a class='cta' href='/pricing-complete'>Voir les plans et rehausser</a>
+      <div class='muted'>
+        Plans disponibles :
+        <span class='badge'>free</span>
+        <span class='badge'>premium</span>
+        <span class='badge'>advanced</span>
+        <span class='badge'>pro</span>
+        <span class='badge'>elite</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>""",
+                status_code=exc.status_code,
+            )
+
         detail = _html.escape(str(exc.detail))
+
         return HTMLResponse(
             content=f"""<!doctype html>
 <html lang='fr'>
@@ -3018,55 +3284,6 @@ LEGAL_FOOTER_HTML = """
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-
-def path_to_route_key(path: str) -> str:
-    """Convertit /chemin -> 'chemin' (sans /, sans query). """
-    try:
-        path = (path or "").split("?")[0]
-    except Exception:
-        path = path or ""
-    return str(path).strip().lstrip("/").rstrip("/")
-
-def render_public_free_placeholder(route_key: str, path: str) -> str:
-    """Fallback: si une page 'gratuite' redirige encore vers /login, on affiche un mode public."""
-    safe_path = (path or "/")
-    title = "Accès gratuit"
-    return f"""<!doctype html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{title} - Crypto IA</title>
-  <style>
-    body {{ font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin:0; background:#0a0e27; color:#fff; }}
-    .wrap {{ max-width: 980px; margin: 0 auto; padding: 60px 24px; }}
-    .card {{ background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.10); border-radius: 18px; padding: 28px; }}
-    h1 {{ margin:0 0 10px; font-size: 34px; }}
-    p {{ margin: 10px 0; color: rgba(255,255,255,0.75); line-height: 1.6; }}
-    .btns {{ display:flex; gap:12px; flex-wrap:wrap; margin-top: 18px; }}
-    a.btn {{ display:inline-block; padding: 12px 16px; border-radius: 12px; text-decoration:none; font-weight: 700; }}
-    a.primary {{ background: linear-gradient(135deg, #667eea, #764ba2); color:#fff; }}
-    a.ghost {{ background: rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.12); }}
-    .note {{ margin-top: 18px; font-size: 13px; color: rgba(255,255,255,0.6); }}
-    code {{ background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 8px; }}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="card">
-      <h1>🔓 Cette page est en accès gratuit</h1>
-      <p>Tu peux consulter <code>/{route_key}</code> sans compte. Certaines fonctions (personnalisation, sauvegarde, trades) demandent une connexion.</p>
-      <div class="btns">
-        <a class="btn primary" href="/login?redirect={safe_path}">Se connecter</a>
-        <a class="btn ghost" href="/pricing-complete">Voir les abonnements</a>
-        <a class="btn ghost" href="/">Retour accueil</a>
-      </div>
-      <div class="note">Astuce: dans <strong>Admin → Gestion des Accès</strong>, coche les pages "Gratuit" pour les rendre publiques.</div>
-    </div>
-  </div>
-</body>
-</html>"""
-
 class PermissionMiddleware(BaseHTTPMiddleware):
     """
     Middleware qui vérifie automatiquement les permissions pour TOUTES les routes.
@@ -3105,7 +3322,6 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             "/api/stripe-checkout",
             "/api/coinbase-checkout",
             "/api/payment-",
-            "/api/sidebar-access",
         ]
 
         # Public = accessible sans authentification
@@ -3115,32 +3331,10 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         #  Vérifier si l'utilisateur est connecté
         session_token = request.cookies.get("session_token")
         if not session_token:
-            # 🔓 PUBLIC SANS LOGIN: toutes les pages cochées dans "Gratuit" (plan_access free)
-            # (On n'ouvre pas les /api/ sans login, sauf celles déjà listées en public_paths/public_prefixes)
-            if not path.startswith("/api/"):
-                try:
-                    route_key = path_to_route_key(path)
-                    free_routes = set(get_plan_access_routes("free") or [])
-                except Exception:
-                    route_key = path_to_route_key(path)
-                    free_routes = set()
-
-                if route_key in free_routes:
-                    resp = await call_next(request)
-                    # Si la page redirige encore vers /login, on affiche un fallback public
-                    try:
-                        loc = (resp.headers.get("location") or "") if hasattr(resp, "headers") else ""
-                        if isinstance(resp, RedirectResponse) and loc.startswith("/login"):
-                            return HTMLResponse(render_public_free_placeholder(route_key, path), status_code=200)
-                    except Exception:
-                        pass
-                    return resp
-
             # Pas connecté : API -> 401 | Pages -> redirect login
             if path.startswith("/api/"):
                 return JSONResponse({"success": False, "message": "Non authentifié"}, status_code=401)
             return RedirectResponse("/login", status_code=303)
-
 
         user = get_user_from_token(session_token)
         if not user:
@@ -3148,23 +3342,8 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             if path.startswith("/api/"):
                 return JSONResponse({"success": False, "message": "Non authentifié"}, status_code=401)
             return RedirectResponse("/login", status_code=303)
-        # Support dict/str (compatibilité anciens formats)
-        username = normalize_username(user) or ""
-        role = ""
-        try:
-            if isinstance(user, dict):
-                role = str(user.get("role") or user.get("user_role") or user.get("is_admin") or "").lower()
-        except Exception:
-            role = ""
-
-        # ✅ Admin bypass (ne doit pas être bloqué par la matrice d'accès)
-        try:
-            if role == "admin" or str(get_user_role(username)).lower() == "admin" or str(username).lower() == "admin":
-                return await call_next(request)
-        except Exception:
-            if str(username).lower() == "admin":
-                return await call_next(request)
-
+        username = user.get('username', '')
+        
         #  Routes protégées : accès selon abonnement (plan_access)
         # (API -> on map vers la page logique)
         route_to_check = path
@@ -3341,9 +3520,6 @@ SIDEBAR = """<style>
 .menu-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:#e2e8f0;text-decoration:none;font-size:14px;font-weight:500;transition:all 0.3s ease;border-left:3px solid transparent}
 .menu-item:hover{background:rgba(6,182,212,0.15);border-left-color:#06b6d4;color:#fff;padding-left:25px}
 .menu-item .badge{background:rgba(6,182,212,0.2);color:#06b6d4;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:auto;font-weight:600}
-        .menu-item.locked{opacity:0.55; filter:saturate(0.8);}
-        .menu-item .lock-badge{background:rgba(245,158,11,0.18);color:#f59e0b;border:1px solid rgba(245,158,11,0.35);}
-
 .menu-item.ai-feature{background:linear-gradient(90deg,rgba(6,182,212,0.15) 0%,transparent 100%);border-left:3px solid #06b6d4;font-weight:600}
 .menu-item.v5-feature{background:linear-gradient(90deg,rgba(139,92,246,0.2) 0%,transparent 100%);border-left:3px solid #8b5cf6;font-weight:600}
 .menu-item.premium{background:linear-gradient(90deg,rgba(139,92,246,0.2) 0%,transparent 100%);border-left:3px solid #8b5cf6;font-weight:600}
@@ -3657,70 +3833,7 @@ body.sidebar-open{padding-left:280px !important}
         document.getElementById('sidebar').classList.toggle('active');
         document.body.classList.toggle('sidebar-open');
     }
-    </script>
-    <script>
-    (async function(){
-      try{
-        const resp = await fetch('/api/sidebar-access', {credentials:'include'});
-        const data = await resp.json();
-        const isAdmin = !!data.is_admin;
-        const isLogged = !!data.is_logged;
-        const allowed = new Set((data.allowed || []).map(String));
-        const publicRoutes = new Set((data.public_routes || []).map(String));
-        const required = data.required || {};
-
-        function routeKeyFromHref(href){
-          if(!href || !href.startsWith('/')) return null;
-          if(href === '/') return 'dashboard';
-          return href.replace(/^\//,'').split('?')[0].split('#')[0];
-        }
-        function titlePlan(p){
-          if(!p) return 'Premium';
-          return (p.charAt(0).toUpperCase() + p.slice(1));
-        }
-
-        document.querySelectorAll('.sidebar a.menu-item').forEach((a)=>{
-          const href = a.getAttribute('href') || '';
-          const rk = routeKeyFromHref(href);
-          if(!rk) return;
-
-          // Admin = tout ouvert
-          if(isAdmin){
-            a.classList.remove('locked');
-            a.querySelectorAll('.lock-badge').forEach(b=>b.remove());
-            return;
-          }
-
-          const ok = allowed.has(rk) || allowed.has(href) || publicRoutes.has(rk);
-          if(ok){
-            a.classList.remove('locked');
-            a.querySelectorAll('.lock-badge').forEach(b=>b.remove());
-            return;
-          }
-
-          const req = required[rk] || required[href] || 'premium';
-          if(!a.querySelector('.lock-badge')){
-            const badge = document.createElement('span');
-            badge.className = 'badge lock-badge';
-            badge.textContent = '🔒 ' + titlePlan(req);
-            a.appendChild(badge);
-          }
-          a.classList.add('locked');
-
-          a.addEventListener('click', (ev)=>{
-            if(ev.ctrlKey || ev.metaKey) return;
-            ev.preventDefault();
-            if(!isLogged){
-              window.location.href = '/login?redirect=' + encodeURIComponent(href);
-            } else {
-              window.location.href = '/pricing-complete';
-            }
-          }, {once:true});
-        });
-      }catch(e){/* silent */}
-    })();
-    </script>
-"""
+    </script>"""
 
 # Appliquer les placeholders (logo + nom) dans la sidebar
 try:
@@ -4324,176 +4437,29 @@ def verify_user(username: str, password: str) -> bool:
 
     return False
 
-def init_sessions_db():
-    """Créer la table des sessions (persistant) pour éviter de perdre les sessions lors d'un redéploiement."""
-    try:
-        conn = db_manager.get_connection()
-        cur = conn.cursor()
-        if getattr(db_manager, "use_postgresql", False):
-            cur.execute('''
-                CREATE TABLE IF NOT EXISTS sessions (
-                    token VARCHAR(255) PRIMARY KEY,
-                    username VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP NOT NULL,
-                    expires_at TIMESTAMP NOT NULL
-                );
-            ''')
-        else:
-            cur.execute('''
-                CREATE TABLE IF NOT EXISTS sessions (
-                    token TEXT PRIMARY KEY,
-                    username TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    expires_at TEXT NOT NULL
-                );
-            ''')
-        conn.commit()
-        try:
-            conn.close()
-        except Exception:
-            pass
-    except Exception as e:
-        print(f"⚠️ init_sessions_db: {e}")
-
-
-def _save_session_db(token: str, username: str, expires_at_iso: str):
-    try:
-        conn = db_manager.get_connection()
-        cur = conn.cursor()
-        if getattr(db_manager, "use_postgresql", False):
-            cur.execute(
-                '''
-                INSERT INTO sessions (token, username, created_at, expires_at)
-                VALUES (%s, %s, NOW(), %s::timestamp)
-                ON CONFLICT (token) DO UPDATE SET username = EXCLUDED.username, expires_at = EXCLUDED.expires_at;
-                ''',
-                (token, username, expires_at_iso),
-            )
-        else:
-            cur.execute(
-                '''
-                INSERT OR REPLACE INTO sessions (token, username, created_at, expires_at)
-                VALUES (?, ?, ?, ?)
-                ''',
-                (token, username, datetime.now().isoformat(), expires_at_iso),
-            )
-        conn.commit()
-        try:
-            conn.close()
-        except Exception:
-            pass
-    except Exception as e:
-        print(f"⚠️ _save_session_db: {e}")
-
-
-def _delete_session_db(token: str):
-    try:
-        conn = db_manager.get_connection()
-        cur = conn.cursor()
-        if getattr(db_manager, "use_postgresql", False):
-            cur.execute("DELETE FROM sessions WHERE token = %s;", (token,))
-        else:
-            cur.execute("DELETE FROM sessions WHERE token = ?;", (token,))
-        conn.commit()
-        try:
-            conn.close()
-        except Exception:
-            pass
-    except Exception as e:
-        print(f"⚠️ _delete_session_db: {e}")
-
-
-def _load_session_username(token: str):
-    try:
-        conn = db_manager.get_connection()
-        cur = conn.cursor()
-        if getattr(db_manager, "use_postgresql", False):
-            cur.execute("SELECT username, expires_at FROM sessions WHERE token = %s;", (token,))
-        else:
-            cur.execute("SELECT username, expires_at FROM sessions WHERE token = ?;", (token,))
-        row = cur.fetchone()
-        try:
-            conn.close()
-        except Exception:
-            pass
-
-        if not row:
-            return None
-
-        username, expires_at = row[0], row[1]
-        # expires_at peut être str (sqlite) ou datetime (pg)
-        try:
-            if isinstance(expires_at, str):
-                exp_dt = _to_dt(expires_at) if "_to_dt" in globals() else datetime.fromisoformat(expires_at)
-            else:
-                exp_dt = expires_at
-        except Exception:
-            exp_dt = None
-
-        if exp_dt and exp_dt < datetime.now():
-            _delete_session_db(token)
-            return None
-        return username
-    except Exception as e:
-        print(f"⚠️ _load_session_username: {e}")
-        return None
-
-
 def create_session(username: str, user_info: dict = None) -> str:
-    """Créer une session (cookie) pour un utilisateur + persistance DB."""
+    """Créer une session pour un utilisateur avec infos d'abonnement"""
     token = secrets.token_urlsafe(32)
-
-    # Normaliser le username (support dict/str)
-    uname = normalize_username(username) or str(username)
-
-    if user_info and isinstance(user_info, dict):
+    
+    if user_info:
+        # Stocker toutes les infos de l'utilisateur
         active_sessions[token] = user_info
-        uname = normalize_username(user_info) or user_info.get("username") or uname
     else:
-        try:
-            user_data = db_manager.get_user_info(uname) or {}
-        except Exception:
-            user_data = {}
+        # Rcuprer les infos depuis la DB
+        user_data = db_manager.get_user_info(username)
         active_sessions[token] = user_data
-
-    # Persister 7 jours (même TTL que cookie)
-    try:
-        expires_at = (datetime.now() + timedelta(days=7)).isoformat()
-        _save_session_db(token, uname, expires_at)
-    except Exception as e:
-        print(f"⚠️ create_session persist: {e}")
-
+    
     return token
 
-
 def get_user_from_token(token: Optional[str]):
-    """Récupérer l'utilisateur depuis un token de session.
-    - D'abord mémoire (active_sessions)
-    - Sinon DB (sessions) -> recharge user_info
-    """
-    if not token:
-        return None
-
-    user_data = active_sessions.get(token)
-    if isinstance(user_data, dict):
+    """Récupérer l'utilisateur depuis un token de session"""
+    if token:
+        user_data = active_sessions.get(token)
+        # Compatibilit: si c'est juste un string (ancien format), retourner tel quel
+        if isinstance(user_data, str):
+            return user_data
         return user_data
-    if isinstance(user_data, str):
-        # ancien format: juste le username
-        try:
-            return db_manager.get_user_info(user_data) or {"username": user_data}
-        except Exception:
-            return {"username": user_data}
-
-    # Fallback persistant: sessions table
-    uname = _load_session_username(token)
-    if not uname:
-        return None
-    try:
-        user_info = db_manager.get_user_info(uname) or {"username": uname}
-    except Exception:
-        user_info = {"username": uname}
-    active_sessions[token] = user_info
-    return user_info
+    return None
 
 def get_current_user(session_token: Optional[str] = Cookie(None)) -> Optional[str]:
     """Dépendance FastAPI pour récupérer l'utilisateur actuel"""
@@ -4684,90 +4650,6 @@ def check_route_permission(username: str, route: str) -> bool:
     except Exception as e:
         print(f"⚠️ check_route_permission: {e}")
         return False
-
-@app.get("/api/sidebar-access")
-async def api_sidebar_access(session_token: Optional[str] = Cookie(None)):
-    """Retourne la liste des routes autorisées + le plan requis (pour afficher les 🔒 dans le menu)."""
-    user = get_user_from_token(session_token)
-    is_logged = bool(user)
-
-    # public routes (toujours accessibles)
-    public_routes = set()
-    try:
-        public_routes.update([str(r) for r in (get_plan_access_routes("free") or []) if isinstance(r, str)])
-    except Exception:
-        pass
-    public_routes.update({"login", "logout", "pricing-complete", "contact", "health", ""})
-
-    username = normalize_username(user) if user else ""
-    role = ""
-    if isinstance(user, dict):
-        role = str(user.get("role") or user.get("user_role") or "").lower()
-    if username and not role:
-        try:
-            role = str(get_user_role(username) or "").lower()
-        except Exception:
-            role = ""
-
-    is_admin = (role == "admin") or (str(username).lower() == "admin")
-
-    # plan utilisateur
-    plan = "free"
-    if is_logged:
-        try:
-            info = user if isinstance(user, dict) else (db_manager.get_user_info(username) or {})
-            plan = str(info.get("subscription_plan") or info.get("plan") or "free").lower()
-        except Exception:
-            plan = "free"
-    if plan not in PLAN_ORDER:
-        plan = "free"
-
-    # allowed routes
-    allowed = set(public_routes)
-    if is_admin:
-        for p in PLAN_ORDER:
-            try:
-                allowed.update([str(r) for r in (get_plan_access_routes(p) or []) if isinstance(r, str)])
-            except Exception:
-                pass
-    else:
-        max_i = PLAN_ORDER.index(plan)
-        for p in PLAN_ORDER[:max_i+1]:
-            try:
-                allowed.update([str(r) for r in (get_plan_access_routes(p) or []) if isinstance(r, str)])
-            except Exception:
-                pass
-
-    # required plan mapping (plan minimal)
-    required = {}
-    try:
-        all_routes = set(public_routes)
-        for p in PLAN_ORDER:
-            all_routes.update([str(r) for r in (get_plan_access_routes(p) or []) if isinstance(r, str)])
-
-        for rk in all_routes:
-            if rk in public_routes or rk == "":
-                required[rk] = "free"
-                continue
-            found = None
-            for p in PLAN_ORDER:
-                routes = get_plan_access_routes(p) or []
-                if rk in routes:
-                    found = p
-                    break
-            required[rk] = found or "premium"
-    except Exception as e:
-        print(f"⚠️ api_sidebar_access required map: {e}")
-
-    return {
-        "is_logged": is_logged,
-        "is_admin": is_admin,
-        "role": role,
-        "plan": plan,
-        "allowed": sorted(allowed),
-        "public_routes": sorted(public_routes),
-        "required": required,
-    }
 
 def normalize_username(user_obj):
     """Accepte str/dict (session payload) et retourne un username string ou None."""
@@ -5625,19 +5507,13 @@ async def login(request: Request, response: Response):
 
 @app.get("/logout")
 async def logout(response: Response, session_token: Optional[str] = Cookie(None)):
-    """Déconnexion (supprime la session mémoire + DB)"""
-    try:
-        if session_token:
-            if session_token in active_sessions:
-                del active_sessions[session_token]
-            _delete_session_db(session_token)
-    except Exception as e:
-        print(f"⚠️ logout cleanup: {e}")
-
+    """Déconnexion"""
+    if session_token and session_token in active_sessions:
+        del active_sessions[session_token]
+    
     redirect = RedirectResponse(url="/login", status_code=303)
     redirect.delete_cookie("session_token")
     return redirect
-
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel(request: Request):
@@ -6256,7 +6132,7 @@ async def change_password(request: Request):
     db_manager.change_password(username, new_password)
     return {"success": True, "message": "Mot de passe changé"}
 #  ROUTE STRATGIE MAGIC MIKE COMPLTE (tous les 5 niveaux)
-@app.get("/strategie", response_class=HTMLResponse)
+@app.get("/strategie", response_class=HTMLResponse, dependencies=[Depends(require_route_access("strategie", require_login=True))])
 async def strategie_page():
     html_content = SIDEBAR + """
     <!DOCTYPE html>
@@ -7792,28 +7668,15 @@ async def health_check():
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request, session_token: Optional[str] = Cookie(None)):
-    """
-    Dashboard principal.
-    - Si l'utilisateur est connecté: dashboard complet.
-    - Si pas connecté ET la page est cochée dans "Gratuit" (plan_access free): dashboard en mode invité (public sans login).
-    """
-    user = get_user_from_token(session_token) if session_token else None
-
+async def dashboard(session_token: Optional[str] = Cookie(None)):
+    user = get_user_from_token(session_token)
     if not user:
-        # Autoriser sans login uniquement si la route est activée pour le plan gratuit
-        try:
-            free_routes = set(get_plan_access_routes("free") or [])
-        except Exception:
-            free_routes = set()
+        return RedirectResponse("/login")
+    
+    username = user.get('username', 'Utilisateur')
+    
+        # Accès au dashboard: gratuit après login (pas de paywall ici)
 
-        if "dashboard" not in free_routes:
-            return RedirectResponse("/login?redirect=/dashboard", status_code=303)
-
-        # Mode invité (public)
-        user = {"username": "Invité", "plan": "free", "role": "guest"}
-
-    username = (user.get("username") if isinstance(user, dict) else None) or "Utilisateur"
 
     html = """<!DOCTYPE html>
 <html lang="fr">
@@ -9199,7 +9062,7 @@ window.addEventListener('DOMContentLoaded', () => {
     return HTMLResponse(SIDEBAR + html)
 
 
-@app.get("/spot-trading", response_class=HTMLResponse)
+@app.get("/spot-trading", response_class=HTMLResponse, dependencies=[Depends(require_route_access("spot-trading", require_login=True))])
 async def spot_trading_page():
     """Page complète et professionnelle sur le trading SPOT"""
     html_content = SIDEBAR + """
@@ -10872,7 +10735,7 @@ async def spot_trading_page():
     return HTMLResponse(content=html_content)
 
 # ============= AI OPPORTUNITY SCANNER =============
-@app.get("/ai-opportunity-scanner", response_class=HTMLResponse)
+@app.get("/ai-opportunity-scanner", response_class=HTMLResponse, dependencies=[Depends(require_route_access("ai-opportunity-scanner", require_login=True))])
 async def ai_opportunity_scanner():
     """
     Scanner IA des meilleures opportunités de trading en temps réel
@@ -11431,7 +11294,7 @@ async def ai_opportunity_scanner():
     return HTMLResponse(content=html_content)
 
 # ============= AI MARKET REGIME DETECTOR =============
-@app.get("/ai-market-regime", response_class=HTMLResponse)
+@app.get("/ai-market-regime", response_class=HTMLResponse, dependencies=[Depends(require_route_access("ai-market-regime", require_login=True))])
 async def ai_market_regime():
     """
     Détecteur IA du régime de marché actuel
@@ -12214,7 +12077,7 @@ async def get_real_ethereum_whales():
         print(f"⚠️ Erreur récupération whales Ethereum: {e}")
         return None
 
-@app.get("/ai-whale-watcher", response_class=HTMLResponse)
+@app.get("/ai-whale-watcher", response_class=HTMLResponse, dependencies=[Depends(require_route_access("ai-whale-watcher", require_login=True))])
 async def ai_whale_watcher():
     """
     🐋 WHALE WATCHER - DONNÉES VRAIES OU DÉMO AVEC PRIX LIVE
@@ -14605,12 +14468,12 @@ async def telegram_test():
 
 # =====================================================
 # FIN SECTION ALTCOIN SEASON
-@app.get("/fear-greed", response_class=HTMLResponse)
+@app.get("/fear-greed", response_class=HTMLResponse, dependencies=[Depends(require_route_access("fear-greed", require_login=True))])
 async def fear_greed_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script><div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Fear & Greed Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce que c'est ?</h3><p style="line-height: 1.8; color: #666;">Le <strong>Fear & Greed Index</strong> mesure les émotions du marché crypto. Varie de <strong>0 (Fear extrême)</strong> à <strong>100 (Greed extrême)</strong>.</p><ul style="line-height: 2; color: #555; list-style: none; padding: 0;"><li>😱 <strong>0-25:</strong> Extreme Fear - Opportunité</li><li>😟 <strong>25-45:</strong> Fear - Marché prudent</li><li>⚖️ <strong>45-55:</strong> Neutral - Équilibré</li><li>😃 <strong>55-75:</strong> Greed - Optimisme</li><li>🤑 <strong>75-100:</strong> Extreme Greed - Attention!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Comment c'est calculé ?</h3><p style="line-height: 1.8; color: #666;">6 facteurs analysés:</p><ul style="line-height: 1.8; color: #555;"><li><strong>Volatilité (25%):</strong> Fluctuations prix</li><li><strong>Momentum (25%):</strong> Volume trading</li><li><strong>Social (15%):</strong> Twitter/Reddit</li><li><strong>Sondages (15%):</strong> Avis traders</li><li><strong>Dominance (10%):</strong> Part BTC</li><li><strong>Trends (10%):</strong> Google recherches</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Comment l'utiliser ?</h3><p style="line-height: 1.8; color: #666;"><strong>Stratégie contrarian:</strong> Acheter dans la Fear, vendre dans la Greed.</p><ul style="line-height: 1.8; color: #555;"><li>✅ <strong>&lt; 25:</strong> Zone d'achat potentielle</li><li>⚠️ <strong>&gt; 75:</strong> Envisager prendre profits</li><li>⏸️ <strong>45-55:</strong> Attendre signal clair</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Ne tradez jamais sur UN seul indicateur!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique 30 jours</li><li>📉 Moyennes 7j/30j</li><li>🕒 Historique complet</li></ul><p style="color: #666; margin-top: 15px; font-style: italic;">💡 <strong>Astuce:</strong> Les extremes (&lt;20 ou &gt;80) sont rares mais puissants!</p></div></div></div></body></html>"""
     return HTMLResponse(SIDEBAR + html)
 
-@app.get("/dominance", response_class=HTMLResponse)
+@app.get("/dominance", response_class=HTMLResponse, dependencies=[Depends(require_route_access("dominance", require_login=True))])
 async def dominance_page():
     html = SIDEBAR + """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body><div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div><div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
 let mainChart=null;
@@ -14784,7 +14647,7 @@ setInterval(loadData,60000);
 </body></html>"""
     return HTMLResponse(html)
 
-@app.get("/heatmap", response_class=HTMLResponse)
+@app.get("/heatmap", response_class=HTMLResponse, dependencies=[Depends(require_route_access("heatmap", require_login=True))])
 async def heatmap_page():
     html = SIDEBAR + """<!DOCTYPE html>
 <html>
@@ -17836,7 +17699,7 @@ async def telegram_page():
     return HTMLResponse(SIDEBAR + html)
 
 
-@app.get("/trades", response_class=HTMLResponse)
+@app.get("/trades", response_class=HTMLResponse, dependencies=[Depends(require_route_access("trades", require_login=True))])
 async def trades_page():
     html = SIDEBAR + """<!DOCTYPE html>
 <html lang="fr">
@@ -19784,11 +19647,11 @@ async def startup_event():
     except Exception as e:
         print(f"⚠️ init_plan_access_db (startup): {e}")
     
-    # ✅ Initialiser la table des sessions (persistant)
+    # ✅ Synchroniser les routes par défaut (n'ajoute que ce qui manque)
     try:
-        init_sessions_db()
+        ensure_plan_access_defaults()
     except Exception as e:
-        print(f"⚠️ init_sessions_db (startup): {e}")
+        print(f"⚠️ ensure_plan_access_defaults (startup): {e}")
 
     #  CORRECTION: Initialiser la table ebooks
     init_ebooks_table()
@@ -20973,7 +20836,7 @@ async def reset_weekly_pnl_manual():
 # ============================================================================
 # 4 DASHBOARD STATISTIQUES AVANCES  (NOUVELLE FONCTIONNALIT)
 # ============================================================================
-@app.get("/stats-dashboard", response_class=HTMLResponse)
+@app.get("/stats-dashboard", response_class=HTMLResponse, dependencies=[Depends(require_route_access("stats-dashboard", require_login=True))])
 async def stats_dashboard():
     """$ DASHBOARD STATISTIQUES - TOUTES DONNÉES RÉELLES 100% $"""
     
@@ -22280,7 +22143,7 @@ async def success_stories():
 </body>
 </html>""")
 
-@app.get("/risk-management", response_class=HTMLResponse)
+@app.get("/risk-management", response_class=HTMLResponse, dependencies=[Depends(require_route_access("risk-management", require_login=True))])
 async def risk_management_page():
     return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
@@ -22453,7 +22316,7 @@ loadSettings();
 
 
 # ============= PAGE WATCHLIST & ALERTES =============
-@app.get("/watchlist", response_class=HTMLResponse)
+@app.get("/watchlist", response_class=HTMLResponse, dependencies=[Depends(require_route_access("watchlist", require_login=True))])
 async def watchlist_page():
     return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
@@ -22593,7 +22456,7 @@ loadWatchlist();
 
 
 # ============= PAGE AI TRADING ASSISTANT =============
-@app.get("/ai-assistant", response_class=HTMLResponse)
+@app.get("/ai-assistant", response_class=HTMLResponse, dependencies=[Depends(require_route_access("ai-assistant", require_login=True))])
 async def ai_assistant_page():
     return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
@@ -24624,11 +24487,12 @@ async def admin_dashboard(request: Request):
         const resp = await fetch(`/admin/get-plan-access/${{CURRENT_PLAN}}`);
         const data = await resp.json();
         if (myToken !== _loadAccessToken) {{ return; }}
-        const allowed = new Set((data.allowed || []).map(String));
+        const norm = (v) => String(v || "").trim().replace(/^\/+/, "").replace(/\/+$/, "");
+        const allowed = new Set(((data.allowed || data.routes || [])).map(norm));
         document.querySelectorAll(".route-checkbox").forEach(cb => {{
-          cb.checked = allowed.has(cb.value);
+          cb.checked = allowed.has(norm(cb.value));
         }});
-      }} catch (e) {{
+        }} catch (e) {{
         setStatus("statusAccess", "Erreur chargement accès: " + e, false);
       }}
     }}
@@ -24653,6 +24517,12 @@ async def admin_dashboard(request: Request):
           setStatus("statusAccess", "Erreur: " + (data.error || data.message || "impossible"), false);
           return;
         }}
+        const norm = (v) => String(v || "").trim().replace(/^\/+/, "").replace(/\/+$/, "");
+        const savedList = ((data.routes || data.allowed || selected || [])).map(norm);
+        const saved = new Set(savedList);
+        document.querySelectorAll(".route-checkbox").forEach(cb => {{
+          cb.checked = saved.has(norm(cb.value));
+        }});
         setStatus("statusAccess", "Accès enregistrés.");
       }} catch (e) {{
         setStatus("statusAccess", "Erreur réseau: " + e, false);
@@ -26624,7 +26494,7 @@ async def fear_greed_history():
         return {'success': False, 'message': str(e)}
 
 
-@app.get("/fear-greed-chart", response_class=HTMLResponse)
+@app.get("/fear-greed-chart", response_class=HTMLResponse, dependencies=[Depends(require_route_access("fear-greed-chart", require_login=True))])
 async def fear_greed_chart():
     """Page graphique Fear & Greed 12 mois"""
     return HTMLResponse(SIDEBAR + f"""
@@ -26814,7 +26684,7 @@ async def live_stats():
 # ============================================================================
 
 # Page Backtesting
-@app.get("/backtesting", response_class=HTMLResponse)
+@app.get("/backtesting", response_class=HTMLResponse, dependencies=[Depends(require_route_access("backtesting", require_login=True))])
 async def backtesting_page(request: Request):
     """Page de backtesting professionnelle avec graphiques et statistiques avancées"""
     return HTMLResponse(SIDEBAR + f"""
@@ -28606,7 +28476,7 @@ async def get_top_50_cryptos():
 
 # ========== 1. AI SIGNALS - SIGNAUX DE TRADING ==========
 
-@app.get("/ai-signals", response_class=HTMLResponse)
+@app.get("/ai-signals", response_class=HTMLResponse, dependencies=[Depends(require_route_access("ai-signals", require_login=True))])
 async def ai_signals():
     """Signaux de trading basés sur analyse technique - TOP 50"""
     
@@ -28863,7 +28733,7 @@ async def ai_signals():
 print("Route 1/12 créée: AI Signals")
 
 
-@app.get("/ai-news", response_class=HTMLResponse)
+@app.get("/ai-news", response_class=HTMLResponse, dependencies=[Depends(require_route_access("ai-news", require_login=True))])
 async def ai_news():
     """Actualités crypto - TOP 50"""
     cryptos = await get_top_50_cryptos()
@@ -29063,7 +28933,7 @@ async def ai_news():
 
 print("Routes 2-3 créées: AI News, AI Predictor")
 
-@app.get("/ai-predictor", response_class=HTMLResponse)
+@app.get("/ai-predictor", response_class=HTMLResponse, dependencies=[Depends(require_route_access("ai-predictor", require_login=True))])
 async def ai_predictor():
     """Prédictions de prix - TOP 50"""
     cryptos = await get_top_50_cryptos()
@@ -29591,7 +29461,7 @@ async def ai_whale():
 
 print("Routes 4-7 créées")
 
-@app.get("/ai-patterns", response_class=HTMLResponse)
+@app.get("/ai-patterns", response_class=HTMLResponse, dependencies=[Depends(require_route_access("ai-patterns", require_login=True))])
 async def ai_patterns():
     """Reconnaissance patterns - TOP 50"""
     cryptos = await get_top_50_cryptos()
@@ -40648,7 +40518,7 @@ async def submit_contact(request: Request):
         return RedirectResponse(url="/contact?error=1", status_code=303)
 
 # Route 3: GET /telechargements - Liste ebooks
-@app.get("/telechargements")
+@app.get("/telechargements", dependencies=[Depends(require_route_access("telechargements", require_login=True))])
 async def telechargements(request: Request):
     """Page de téléchargements ebooks avec sidebar"""
     user_data = get_user_from_request(request)

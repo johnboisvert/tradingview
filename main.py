@@ -3936,13 +3936,15 @@ class DatabaseManager:
     
     def verify_user(self, username: str, password: str) -> bool:
         """Vérifier les identifiants d'un utilisateur"""
+        username = (username or "").strip()
+        username_lookup = username.lower() if "@" in username else username
         conn = self.get_connection()
         c = conn.cursor()
         
         if self.use_postgresql:
-            c.execute("SELECT password_hash FROM users WHERE username = %s", (username,))
+            c.execute("SELECT password_hash FROM users WHERE LOWER(username) = LOWER(%s)", (username_lookup,))
         else:
-            c.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
+            c.execute("SELECT password_hash FROM users WHERE LOWER(username) = LOWER(?)", (username_lookup,))
         
         result = c.fetchone()
         conn.close()
@@ -3973,14 +3975,16 @@ class DatabaseManager:
             username = str(username)
         except Exception:
             username = str(username)
+        username = (username or "").strip()
+        username_lookup = username.lower() if "@" in username else username
         """Obtenir le rôle d'un utilisateur"""
         conn = self.get_connection()
         c = conn.cursor()
         
         if self.use_postgresql:
-            c.execute("SELECT role FROM users WHERE username = %s", (username,))
+            c.execute("SELECT role FROM users WHERE LOWER(username) = LOWER(%s)", (username_lookup,))
         else:
-            c.execute("SELECT role FROM users WHERE username = ?", (username,))
+            c.execute("SELECT role FROM users WHERE LOWER(username) = LOWER(?)", (username_lookup,))
         
         result = c.fetchone()
         conn.close()
@@ -3998,6 +4002,8 @@ class DatabaseManager:
     
     def get_user_info(self, username: str) -> dict:
         """🆕 Récupérer toutes les infos d'un utilisateur incluant l'abonnement"""
+        username = (username or "").strip()
+        username_lookup = username.lower() if "@" in username else username
         conn = self.get_connection()
         c = conn.cursor()
         
@@ -4006,15 +4012,15 @@ class DatabaseManager:
                 SELECT username, role, created_at, 
                        subscription_plan, subscription_start, subscription_end,
                        stripe_customer_id, stripe_subscription_id, payment_method
-                FROM users WHERE username = %s
-            """, (username,))
+                FROM users WHERE LOWER(username) = LOWER(%s)
+            """, (username_lookup,))
         else:
             c.execute("""
                 SELECT username, role, created_at,
                        subscription_plan, subscription_start, subscription_end,
                        stripe_customer_id, stripe_subscription_id, payment_method
-                FROM users WHERE username = ?
-            """, (username,))
+                FROM users WHERE LOWER(username) = LOWER(?)
+            """, (username_lookup,))
         
         row = c.fetchone()
         conn.close()
@@ -4063,6 +4069,8 @@ class DatabaseManager:
     
     def add_user(self, username: str, password: str, role: str = "user"):
         """Ajouter un nouvel utilisateur"""
+        username = (username or "").strip()
+        username = username.lower() if "@" in username else username
         conn = self.get_connection()
         c = conn.cursor()
         
@@ -4098,19 +4106,23 @@ class DatabaseManager:
     
     def delete_user(self, username: str):
         """Supprimer un utilisateur"""
+        username = (username or "").strip()
+        username_lookup = username.lower() if "@" in username else username
         conn = self.get_connection()
         c = conn.cursor()
         
         if self.use_postgresql:
-            c.execute("DELETE FROM users WHERE username = %s", (username,))
+            c.execute("DELETE FROM users WHERE LOWER(username) = LOWER(%s)", (username_lookup,))
         else:
-            c.execute("DELETE FROM users WHERE username = ?", (username,))
+            c.execute("DELETE FROM users WHERE LOWER(username) = LOWER(?)", (username_lookup,))
         
         conn.commit()
         conn.close()
     
     def change_password(self, username: str, new_password: str):
         """Changer le mot de passe d'un utilisateur"""
+        username = (username or "").strip()
+        username_lookup = username.lower() if "@" in username else username
         conn = self.get_connection()
         c = conn.cursor()
         
@@ -4118,11 +4130,9 @@ class DatabaseManager:
         password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
         if self.use_postgresql:
-            c.execute("UPDATE users SET password_hash = %s WHERE username = %s", 
-                      (password_hash, username))
+            c.execute("UPDATE users SET password_hash = %s WHERE LOWER(username) = LOWER(%s)", (password_hash, username_lookup))
         else:
-            c.execute("UPDATE users SET password_hash = ? WHERE username = ?", 
-                      (password_hash, username))
+            c.execute("UPDATE users SET password_hash = ? WHERE LOWER(username) = LOWER(?)", (password_hash, username_lookup))
         
         conn.commit()
         conn.close()
@@ -5211,8 +5221,8 @@ async def login_page(request: Request, error: str = None, redirect: str = None):
         <form method="POST" action="/login">
             {redirect_field}
             <div class="form-group">
-                <label for="username">👤 Nom d'utilisateur</label>
-                <input type="text" id="username" name="username" required autocomplete="username">
+                <label class="form-label">📧 Email</label>
+                <input type="text" class="form-input" id="email" name="email" placeholder="Adresse email (ex: toi@email.com)" autocomplete="email" required>
             </div>
             
             <div class="form-group">
@@ -5239,7 +5249,8 @@ async def login_page(request: Request, error: str = None, redirect: str = None):
 async def login(request: Request, response: Response):
     """Traiter la connexion avec gestion des permissions"""
     form_data = await request.form()
-    username = form_data.get("username")
+    identifier = (form_data.get("email") or form_data.get("username") or "").strip()
+    username = identifier
     password = form_data.get("password")
     redirect_url = form_data.get("redirect", "/")  # Redirection après login
     
@@ -5423,8 +5434,8 @@ async def admin_panel(request: Request):
             <h2>➕ Ajouter un utilisateur</h2>
             <form id="addUserForm" class="form-inline">
                 <div>
-                    <label>Nom d&#39;utilisateur</label>
-                    <input type="text" id="newUsername" required>
+                    <label>Email</label>
+                    <input type="text" id="newUsername" placeholder="Adresse email" required>
                 </div>
                 <div>
                     <label>Mot de passe</label>
@@ -5640,16 +5651,23 @@ async def add_user(request: Request):
     """Ajouter un nouvel utilisateur avec permissions par défaut ou plan d'abonnement"""
     try:
         data = await request.json()
-        new_username = data.get("username")
+        new_username = (data.get("username") or "").strip()
         password = data.get("password")
         role = data.get("role", "user")
+        # Email-only (recommandé): on accepte encore un identifiant non-email pour les comptes admin existants.
+        if role != "admin":
+            if "@" not in new_username or "." not in new_username.split("@")[-1]:
+                return {"success": False, "message": "Veuillez entrer une adresse email valide."}
+        # Canonicaliser les emails en minuscules (mais garder les anciens usernames admin possibles)
+        if "@" in new_username:
+            new_username = new_username.lower()
         
         # Validation
         if not new_username or len(new_username) < 3:
-            return {"success": False, "message": "Nom d'utilisateur trop court (min 3 caractères)"}
+            return {"success": False, "message": "Email invalide."}
         
         if not password or len(password) < 6:
-            return {"success": False, "message": "Mot de passe trop court (min 6 caractères)"}
+            return {"success": False, "message": "Mot de passe invalide (minimum 6 caractères)."}
         
         # Dterminer si c'est un plan d'abonnement ou un rle normal
         subscription_plans = ['free', 'premium', 'advanced', 'pro', 'elite', '1_month', '3_months', '6_months', '1_year']
@@ -5688,7 +5706,7 @@ async def add_user(request: Request):
                         SET subscription_plan = %s,
                             subscription_start = %s,
                             subscription_end = %s
-                        WHERE username = %s
+                        WHERE LOWER(username) = LOWER(%s)
                     """, (role, start_date, end_date, new_username))
                 else:
                     cursor.execute("""
@@ -5696,7 +5714,7 @@ async def add_user(request: Request):
                         SET subscription_plan = ?,
                             subscription_start = ?,
                             subscription_end = ?
-                        WHERE username = ?
+                        WHERE LOWER(username) = LOWER(?)
                     """, (role, start_date.isoformat(), end_date.isoformat(), new_username))
                 
                 conn.commit()
@@ -5763,9 +5781,9 @@ async def get_user_info(username: str):
         c = conn.cursor()
         
         if db_manager.use_postgresql:
-            c.execute("SELECT username, role, subscription_plan, created_at FROM users WHERE username = %s", (username,))
+            c.execute("SELECT username, role, subscription_plan, created_at FROM users WHERE LOWER(username) = LOWER(%s)", (username,))
         else:
-            c.execute("SELECT username, role, subscription_plan, created_at FROM users WHERE username = ?", (username,))
+            c.execute("SELECT username, role, subscription_plan, created_at FROM users WHERE LOWER(username) = LOWER(?)", (username,))
         
         result = c.fetchone()
         conn.close()
@@ -5805,12 +5823,12 @@ async def edit_user(request: Request):
                 #  CORRECTION 1: Hash scuris avec bcrypt
                 hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 c.execute(
-                    "UPDATE users SET username = %s, password_hash = %s, role = %s WHERE username = %s",
+                    "UPDATE users SET username = %s, password_hash = %s, role = %s WHERE LOWER(username) = LOWER(%s)",
                     (new_username, hashed_password, role, original_username)
                 )
             else:  # Pas de changement de mot de passe
                 c.execute(
-                    "UPDATE users SET username = %s, role = %s WHERE username = %s",
+                    "UPDATE users SET username = %s, role = %s WHERE LOWER(username) = LOWER(%s)",
                     (new_username, role, original_username)
                 )
         else:
@@ -5818,12 +5836,12 @@ async def edit_user(request: Request):
                 #  CORRECTION 1: Hash scuris avec bcrypt
                 hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 c.execute(
-                    "UPDATE users SET username = ?, password_hash = ?, role = ? WHERE username = ?",
+                    "UPDATE users SET username = ?, password_hash = ?, role = ? WHERE LOWER(username) = LOWER(?)",
                     (new_username, hashed_password, role, original_username)
                 )
             else:
                 c.execute(
-                    "UPDATE users SET username = ?, role = ? WHERE username = ?",
+                    "UPDATE users SET username = ?, role = ? WHERE LOWER(username) = LOWER(?)",
                     (new_username, role, original_username)
                 )
         
@@ -5849,9 +5867,9 @@ async def update_permissions(request: Request):
         
         # Supprimer les anciennes permissions
         if db_manager.use_postgresql:
-            c.execute("DELETE FROM user_permissions WHERE username = %s", (username,))
+            c.execute("DELETE FROM user_permissions WHERE LOWER(username) = LOWER(%s)", (username,))
         else:
-            c.execute("DELETE FROM user_permissions WHERE username = ?", (username,))
+            c.execute("DELETE FROM user_permissions WHERE LOWER(username) = LOWER(?)", (username,))
         
         # Ajouter les nouvelles permissions
         for route in routes:
@@ -5876,7 +5894,7 @@ async def get_permissions(username: str):
         c = conn.cursor()
         
         if db_manager.use_postgresql:
-            c.execute("SELECT route FROM user_permissions WHERE username = %s", (username,))
+            c.execute("SELECT route FROM user_permissions WHERE LOWER(username) = LOWER(%s)", (username,))
         else:
             c.execute("SELECT route FROM user_permissions WHERE username = ?", (username,))
         
@@ -23451,10 +23469,10 @@ async def stripe_permissions_webhook(request: Request):
         if row:
             username = row[0]
             if DB_CONFIG["type"] == "postgres":
-                c.execute("UPDATE users SET subscription_plan = 'free', subscription_end = %s WHERE username = %s",
+                c.execute("UPDATE users SET subscription_plan = 'free', subscription_end = %s WHERE LOWER(username) = LOWER(%s)",
                          (datetime.now(), username))
             else:
-                c.execute("UPDATE users SET subscription_plan = 'free', subscription_end = ? WHERE username = ?",
+                c.execute("UPDATE users SET subscription_plan = 'free', subscription_end = ? WHERE LOWER(username) = LOWER(?)",
                          (datetime.now().isoformat(), username))
             conn.commit()
             print(f"⚠️  Abonnement annulé: {username} → FREE")
@@ -23652,9 +23670,9 @@ if PERMISSIONS_AVAILABLE:
                 old_plan = row[1]
                 
                 if DB_CONFIG["type"] == "postgres":
-                    c.execute("UPDATE users SET subscription_plan = 'free' WHERE username = %s", (username,))
+                    c.execute("UPDATE users SET subscription_plan = 'free' WHERE LOWER(username) = LOWER(%s)", (username,))
                 else:
-                    c.execute("UPDATE users SET subscription_plan = 'free' WHERE username = ?", (username,))
+                    c.execute("UPDATE users SET subscription_plan = 'free' WHERE LOWER(username) = LOWER(?)", (username,))
                 
                 print(f"⚠️  Expiration: {username} ({old_plan} → free)")
             
@@ -26068,14 +26086,14 @@ async def mon_compte(request: Request):
         try:
             c.execute("""
                 SELECT subscription_plan, subscription_end, payment_method, created_at 
-                FROM users WHERE username = ?
+                FROM users WHERE LOWER(username) = LOWER(?)
             """, (username,))
             result = c.fetchone()
         except:
             # Si payment_method n'existe pas, essayer sans
             c.execute("""
                 SELECT subscription_plan, subscription_end, created_at 
-                FROM users WHERE username = ?
+                FROM users WHERE LOWER(username) = LOWER(?)
             """, (username,))
             result = c.fetchone()
             if result:

@@ -3100,135 +3100,58 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             route_to_check = api_map.get(path, path)
 
         if not check_route_permission(username, route_to_check):
-            if path.startswith("/api/"):
-                return JSONResponse({"success": False, "message": "Accès premium requis"}, status_code=403)
-
-                #  PAS DE PERMISSION  Page d'upgrade
-
-                upgrade_page = f"""
-                <!DOCTYPE html>
-                <html><head>
-                    <meta charset="UTF-8">
-                    <title>🔒 Accès Premium Requis</title>
-                    <style>
-                        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                        body {{
-                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-                            min-height: 100vh;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            padding: 20px;
-                        }}
-                        .upgrade-box {{
-                            max-width: 600px;
-                            width: 100%;
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            border-radius: 20px;
-                            padding: 50px;
-                            text-align: center;
-                            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-                        }}
-                        .upgrade-icon {{
-                            font-size: 80px;
-                            margin-bottom: 20px;
-                            animation: pulse 2s infinite;
-                        }}
-                        @keyframes pulse {{
-                            0%, 100% {{ transform: scale(1); }}
-                            50% {{ transform: scale(1.1); }}
-                        }}
-                        .upgrade-title {{
-                            color: white;
-                            font-size: 36px;
-                            font-weight: 700;
-                            margin-bottom: 15px;
-                        }}
-                        .upgrade-text {{
-                            color: #e0e7ff;
-                            font-size: 18px;
-                            margin-bottom: 30px;
-                            line-height: 1.6;
-                        }}
-                        .upgrade-btn {{
-                            display: inline-block;
-                            background: white;
-                            color: #667eea;
-                            padding: 18px 40px;
-                            border-radius: 50px;
-                            text-decoration: none;
-                            font-weight: 700;
-                            font-size: 18px;
-                            transition: all 0.3s;
-                            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                        }}
-                        .upgrade-btn:hover {{
-                            transform: translateY(-3px);
-                            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-                        }}
-                        .features-list {{
-                            text-align: left;
-                            margin: 30px auto 0;
-                            max-width: 400px;
-                            color: white;
-                        }}
-                        .feature-item {{
-                            margin: 12px 0;
-                            font-size: 16px;
-                        }}
-                        .feature-item::before {{
-                            content: "✨ ";
-                            margin-right: 10px;
-                        }}
-                        .back-btn {{
-                            display: inline-block;
-                            color: white;
-                            text-decoration: none;
-                            margin-top: 20px;
-                            font-size: 14px;
-                            opacity: 0.8;
-                        }}
-                        .back-btn:hover {{
-                            opacity: 1;
-                        }}
-                    </style>
-                </head>
-                <body>
-                    <div class="upgrade-box">
-                        <div class="upgrade-icon">🔒</div>
-                        <h1 class="upgrade-title">Fonctionnalité Premium</h1>
-                        <p class="upgrade-text">
-                            Cette page fait partie de nos outils avancés réservés aux membres Premium.<br>
-                            Débloquez l'accès complet dès maintenant!
-                        </p>
-                        
-                        <div class="features-list">
-                            <div class="feature-item">16 Outils d'Intelligence Artificielle</div>
-                            <div class="feature-item">Academy complète (22 modules)</div>
-                            <div class="feature-item">Portfolio Tracker avancé</div>
-                            <div class="feature-item">Tous les indicateurs de marché</div>
-                            <div class="feature-item">Support prioritaire</div>
-                        </div>
-                        
-                        <div style="margin-top: 40px;">
-                            <a href="/pricing-complete" class="upgrade-btn">
-                                🚀 Voir les Plans & Prix
-                            </a>
-                        </div>
-                        
-                        <p style="color: #c7d2fe; font-size: 14px; margin-top: 30px;">
-                            À partir de 29.99$/mois • Annulez à tout moment
-                        </p>
-                        
-                        <a href="/mon-compte" class="back-btn">← Retour à mon compte</a>
-                    </div>
-                </body>
-                </html>
-                """
-                return Response(content=upgrade_page, status_code=403, media_type="text/html")
+            # API/JSON requests: renvoyer du JSON, sinon page HTML d'upgrade
+            required_plan = get_min_plan_for_route(route_to_check)
+            current_plan = (get_user_plan(username) or "free")
+            accept = (request.headers.get("accept") or "").lower()
+            is_api = request.url.path.startswith("/api/") or ("application/json" in accept) or ((request.headers.get("x-requested-with") or "").lower() == "xmlhttprequest")
+            if is_api:
+                return JSONResponse({
+                    "status": "forbidden",
+                    "message": "Accès refusé — abonnement requis",
+                    "required_plan": required_plan,
+                    "current_plan": current_plan,
+                    "route": route_to_check,
+                }, status_code=403)
         
-        #  Permission OK  Continuer normalement
+            required_label = PLAN_LABELS.get(required_plan, required_plan.title())
+            current_label = PLAN_LABELS.get(current_plan, current_plan.title())
+            route_label = ROUTE_LABELS.get(route_to_check, route_to_check)
+            page = f"""<!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Accès refusé</title>
+          <style>
+            body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#0b1220; color:#e2e8f0; margin:0;}
+            .wrap{max-width:920px; margin:60px auto; padding:0 16px;}
+            .card{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); border-radius:18px; padding:26px; box-shadow:0 10px 30px rgba(0,0,0,.35);}
+            .title{font-size:28px; margin:0 0 10px 0;}
+            .p{color:#cbd5e1; margin:6px 0; line-height:1.5;}
+            .pill{display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.12); font-size:13px;}
+            .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;}
+            .btn{display:inline-block; padding:12px 14px; border-radius:12px; text-decoration:none; font-weight:700;}
+            .btn-primary{background:#22c55e; color:#071018;}
+            .btn-ghost{background:transparent; color:#e2e8f0; border:1px solid rgba(255,255,255,.18);}
+          </style>
+        </head>
+        <body>
+          <div class="wrap">
+            <div class="card">
+              <div class="pill">🔒 Page verrouillée</div>
+              <h1 class="title">Accès refusé</h1>
+              <p class="p">Tu essaies d'ouvrir <b>{route_label}</b>.</p>
+              <p class="p">Ton forfait actuel : <b>{current_label}</b> • Requis : <b>{required_label}</b> (ou plus).</p>
+              <div class="row">
+                <a class="btn btn-primary" href="/pricing-complete">Voir les forfaits / Upgrader</a>
+                <a class="btn btn-ghost" href="/">Retour au dashboard</a>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>"""
+            return HTMLResponse(page, status_code=403)
         return await call_next(request)
 
 # Activer le middleware
@@ -4279,6 +4202,24 @@ def give_default_permissions(username: str) -> bool:
     except Exception as e:
         print(f"❌ Erreur attribution permissions par défaut pour {username}: {e}")
         return False
+
+
+# ===== Helpers: plan requis pour une route (UX page bloquée) =====
+PLAN_LABELS = {"free": "Gratuit", "premium": "Premium", "advanced": "Advanced", "pro": "Pro", "elite": "Elite"}
+
+def get_min_plan_for_route(route_key: str) -> str:
+    """Retourne le plan minimal (le plus bas) qui donne accès à route_key, selon la config admin."""
+    plan_order = ["free", "premium", "advanced", "pro", "elite"]
+    rk = (route_key or "").strip().lstrip("/")
+    if rk == "":
+        rk = "dashboard"
+    for plan in plan_order:
+        try:
+            if rk in get_plan_access_routes(plan):
+                return plan
+        except Exception:
+            continue
+    return "elite"
 
 def check_route_permission(username: str, route: str) -> bool:
     """

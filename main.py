@@ -3306,6 +3306,7 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             "/", "/login", "/register", "/logout", "/health",
             "/pricing", "/pricing-new", "/pricing-complete",
             "/contact",
+            "/ai-market-regime",
             "/manifest.json", "/favicon.ico", "/robots.txt", "/sitemap.xml",
             "/tv-webhook"
         ]
@@ -11294,7 +11295,7 @@ async def ai_opportunity_scanner():
     return HTMLResponse(content=html_content)
 
 # ============= AI MARKET REGIME DETECTOR =============
-@app.get("/ai-market-regime", response_class=HTMLResponse, dependencies=[Depends(require_route_access("ai-market-regime", require_login=True))])
+@app.get("/ai-market-regime", response_class=HTMLResponse, dependencies=[Depends(require_route_access("ai-market-regime", require_login=False))])
 async def ai_market_regime():
     """
     Détecteur IA du régime de marché actuel

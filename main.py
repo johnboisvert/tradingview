@@ -3072,22 +3072,40 @@ class PermissionMiddleware(BaseHTTPMiddleware):
 
         #  Vérifier si l'utilisateur est connecté
         session_token = request.cookies.get("session_token")
-        if not session_token:
-            # Pas connecté : API -> 401 | Pages -> redirect login
-            if path.startswith("/api/"):
-                return JSONResponse({"success": False, "message": "Non authentifié"}, status_code=401)
-            return RedirectResponse("/login", status_code=303)
+        user = None
+        username = ""
 
-        user = get_user_from_token(session_token)
-        if not user:
-            # Token invalide : API -> 401 | Pages -> redirect login
-            if path.startswith("/api/"):
-                return JSONResponse({"success": False, "message": "Non authentifié"}, status_code=401)
-            return RedirectResponse("/login", status_code=303)
-        username = user.get('username', '')
-        
-        #  Routes protégées : accès selon abonnement (plan_access)
-        # (API -> on map vers la page logique)
+        # Endpoints POST publics (webhooks / auth / contact)
+        public_write_paths = (
+            "/login",
+            "/register",
+            "/forgot-password",
+            "/reset-password",
+            "/contact",
+            "/api/contact",
+        )
+        public_write_prefixes = ("/tv-webhook", "/stripe", "/coinbase", "/webhook")
+
+        if session_token:
+            user = get_user_from_token(session_token)
+            if not user:
+                session_token = None
+            else:
+                username = user.get("username") or ""
+                request.state.user = user
+
+        if not session_token:
+            # Bloquer les requêtes d'écriture si non connecté (sauf exceptions)
+            if request.method not in ("GET", "HEAD", "OPTIONS"):
+                if (path not in public_write_paths) and (not path.startswith(public_write_prefixes)):
+                    if path.startswith("/api/"):
+                        return JSONResponse({"success": False, "message": "Non authentifié"}, status_code=401)
+                    return RedirectResponse("/login", status_code=303)
+
+            # Mode visiteur: on traite l'utilisateur comme "free"
+            request.state.user = {"username": "", "plan": "free", "is_guest": True}
+            username = ""
+
         route_to_check = path
         if path.startswith("/api/"):
             api_map = {
@@ -7381,11 +7399,14 @@ async def health_check():
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(session_token: Optional[str] = Cookie(None)):
     user = get_user_from_token(session_token)
+
+    # Autoriser l'accès en "visiteur" (Gratuit) même si pas connecté
     if not user:
-        return RedirectResponse("/login")
-    
-    username = user.get('username', 'Utilisateur')
-    
+        username = "Invité"
+        is_guest = True
+    else:
+        username = user.get("username") or "Utilisateur"
+        is_guest = False
         # Accès au dashboard: gratuit après login (pas de paywall ici)
 
 
@@ -8110,6 +8131,20 @@ window.addEventListener('DOMContentLoaded', () => {
                              f'</span>')
     except Exception:
         pass
+
+    if is_guest:
+        banner = (
+            '<div style="max-width:1100px;margin:18px auto 0;padding:12px 16px;border-radius:14px;'
+            'background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:#e9ffe9;">'
+            '<b>Mode visiteur (Gratuit)</b> — Vous pouvez explorer les pages gratuites sans compte. '
+            'Pour enregistrer/sauvegarder et accéder aux fonctions liées à un compte, '
+            '<a href="/login" style="color:#7dd3fc;text-decoration:underline;">connectez-vous</a>.'
+            '</div>'
+        )
+        try:
+            html = html.replace("<body>", "<body>" + banner, 1)
+        except Exception:
+            pass
 
     return HTMLResponse(SIDEBAR + html)
 

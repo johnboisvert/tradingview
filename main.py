@@ -3026,6 +3026,27 @@ LEGAL_FOOTER_HTML = """
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
+# NOTE: certaines versions du projet n'ont pas la fonction get_user_plan().
+# Si elle est absente, un appel direct provoque un NameError (500).
+# On encapsule donc l'accès au plan dans une fonction sûre.
+
+def _safe_get_user_plan(username, default: str = "free") -> str:
+    try:
+        if 'get_user_plan' in globals():
+            func = globals().get('get_user_plan')
+            if callable(func):
+                try:
+                    p = func(username)
+                except TypeError:
+                    # certaines implémentations attendent une string non-nulle
+                    p = func(str(username) if username is not None else "")
+                if p:
+                    return str(p).strip().lower()
+        return default
+    except Exception:
+        return default
+
+
 class PermissionMiddleware(BaseHTTPMiddleware):
     """
     Middleware qui vérifie automatiquement les permissions pour TOUTES les routes.
@@ -3120,7 +3141,7 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         if not check_route_permission(username, route_to_check):
             # API/JSON requests: renvoyer du JSON, sinon page HTML d'upgrade
             required_plan = get_min_plan_for_route(route_to_check)
-            current_plan = (get_user_plan(username) or "free")
+            current_plan = (_safe_get_user_plan(username, "free") or "free")
             accept = (request.headers.get("accept") or "").lower()
             is_api = request.url.path.startswith("/api/") or ("application/json" in accept) or ((request.headers.get("x-requested-with") or "").lower() == "xmlhttprequest")
             if is_api:

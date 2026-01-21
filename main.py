@@ -7792,15 +7792,28 @@ async def health_check():
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(session_token: Optional[str] = Cookie(None)):
-    user = get_user_from_token(session_token)
-    if not user:
-        return RedirectResponse("/login")
-    
-    username = user.get('username', 'Utilisateur')
-    
-        # Accès au dashboard: gratuit après login (pas de paywall ici)
+async def dashboard(request: Request, session_token: Optional[str] = Cookie(None)):
+    """
+    Dashboard principal.
+    - Si l'utilisateur est connecté: dashboard complet.
+    - Si pas connecté ET la page est cochée dans "Gratuit" (plan_access free): dashboard en mode invité (public sans login).
+    """
+    user = get_user_from_token(session_token) if session_token else None
 
+    if not user:
+        # Autoriser sans login uniquement si la route est activée pour le plan gratuit
+        try:
+            free_routes = set(get_plan_access_routes("free") or [])
+        except Exception:
+            free_routes = set()
+
+        if "dashboard" not in free_routes:
+            return RedirectResponse("/login?redirect=/dashboard", status_code=303)
+
+        # Mode invité (public)
+        user = {"username": "Invité", "plan": "free", "role": "guest"}
+
+    username = (user.get("username") if isinstance(user, dict) else None) or "Utilisateur"
 
     html = """<!DOCTYPE html>
 <html lang="fr">

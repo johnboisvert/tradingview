@@ -19833,7 +19833,7 @@ async def pricing_complete(request: Request):
     def _label_for_route(route_key: str) -> str:
         return route_labels.get(route_key, route_key.replace("-", " ").title())
 
-    def _render_access_ul(plan_key: str, limit: int = 10) -> str:
+    def _render_access_ul(plan_key: str) -> str:
         """
         Lit les accès du plan depuis la DB (même source que /admin-dashboard)
         et rend une liste de features.
@@ -19842,7 +19842,6 @@ async def pricing_complete(request: Request):
             raw = get_plan_access(plan_key) or []
         except Exception:
             raw = []
-        # normaliser + trier selon l'ordre défini (route_labels) puis alphabet
         raw = [str(x).strip() for x in raw if str(x).strip()]
         order = {k: i for i, k in enumerate(route_labels.keys())}
         raw.sort(key=lambda k: (order.get(k, 10_000), k))
@@ -19911,7 +19910,7 @@ async def pricing_complete(request: Request):
                     <span class="amount">{price_html}</span>
                     <span class="currency">CAD</span>
                 </div>
-                {_render_access_ul(p['key'], limit=10)}
+                {_render_access_ul(p['key'])}
                 <button class="btn-primary" onclick="startCheckout('{p['key']}')">{html_lib.escape(p['cta'])}</button>
             </div>
         """)
@@ -19979,9 +19978,6 @@ async def pricing_complete(request: Request):
 
     .promo input {{
       flex: 1;
-      max-height: 220px;
-      overflow: auto;
-      padding-right: 6px;
       border: 1px solid #e2e8f0;
       border-radius: 10px;
       padding: 12px 12px;
@@ -20091,6 +20087,15 @@ async def pricing_complete(request: Request):
       font-size: 14px;
       line-height: 1.55;
       flex: 1;
+      max-height: 260px;
+      overflow: auto;
+      padding-right: 6px;
+    }}
+
+    ul.features li.more {{
+      color: #64748b;
+      font-style: italic;
+      margin-top: 6px;
     }}
 
     .btn-primary {{
@@ -24448,17 +24453,6 @@ async def admin_dashboard(request: Request):
 
   <script>
     let CURRENT_PLAN = "free";
-
-        // Charger automatiquement les accès sauvegardés du plan actif au chargement
-        document.addEventListener("DOMContentLoaded", () => {{
-          const active = document.querySelector(".plan-tabs .tab.active") || document.querySelector(".plan-tabs .tab");
-          if (active) {{
-            const dp = active.getAttribute("data-plan");
-            if (dp) CURRENT_PLAN = dp;
-          }}
-          loadAccess();
-        }});
-
 
     function setStatus(id, msg, ok=true) {{
       const el = document.getElementById(id);

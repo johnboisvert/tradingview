@@ -5646,6 +5646,96 @@ async def admin_panel(request: Request):
 </html>""")
 
 @app.post("/admin/add-user")
+async def admin_add_user(request: Request):
+    """Ajout d'utilisateur (admin) — supporte email-only et password auto.
+
+    JSON attendu:
+      - email: str (recommandé)
+      - username: str (optionnel; défaut = email)
+      - password: str (optionnel; si vide => généré)
+      - role: str (free/premium/advanced/pro/elite/admin)
+    """
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+
+    try:
+        data = await request.json()
+        username = (data.get("username") or "").strip()
+        email = (data.get("email") or "").strip()
+        password = (data.get("password") or "").strip()
+        role = (data.get("role") or "free").strip().lower()
+
+        # Email-only: si username vide, utiliser l'email
+        if not username and email:
+            username = email
+
+        # Si l'email est dans username (cas courant), recopier
+        if not email and "@" in username:
+            email = username
+
+        if not username:
+            return {"success": False, "message": "Email requis (ou identifiant)"}
+
+        if role not in {"free", "premium", "advanced", "pro", "elite", "admin"}:
+            return {"success": False, "message": "Rôle/plan invalide"}
+
+        # Password optionnel: si vide => générer un mot de passe temporaire
+        temp_password = None
+        if not password:
+            temp_password = secrets.token_urlsafe(12)
+            password = temp_password
+
+        # En mode non-admin, imposer un email valide
+        if role != "admin":
+            if not email or "@" not in email:
+                return {"success": False, "message": "Email invalide"}
+
+        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+        if cursor.fetchone():
+            conn.close()
+            return {"success": False, "message": "Utilisateur existe déjà"}
+
+        if email:
+            cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+            if cursor.fetchone():
+                conn.close()
+                return {"success": False, "message": "Email déjà utilisé"}
+
+        subscription_start = None
+        subscription_end = None
+        if role in ["premium", "advanced", "pro", "elite"]:
+            subscription_start = datetime.now().isoformat()
+            if role == "premium":
+                subscription_end = (datetime.now() + timedelta(days=30)).isoformat()
+            elif role == "advanced":
+                subscription_end = (datetime.now() + timedelta(days=90)).isoformat()
+            elif role == "pro":
+                subscription_end = (datetime.now() + timedelta(days=180)).isoformat()
+            elif role == "elite":
+                subscription_end = (datetime.now() + timedelta(days=365)).isoformat()
+
+        created_at = datetime.now().isoformat()
+
+        cursor.execute("""
+            INSERT INTO users (username, password_hash, role, email, subscription_start, subscription_end, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (username, hashed_password, role, email, subscription_start, subscription_end, created_at))
+
+        conn.commit()
+        conn.close()
+
+        resp = {"success": True, "message": "Utilisateur ajouté"}
+        if temp_password:
+            resp["temp_password"] = temp_password
+        return resp
+
+    except Exception as e:
+        return {"success": False, "message": str(e)}
 @app.post("/admin-dashboard/add-user")
 async def add_user(request: Request):
     """Ajouter un nouvel utilisateur avec permissions par défaut ou plan d'abonnement"""
@@ -24264,6 +24354,39 @@ async def admin_dashboard(request: Request):
         </div>
         <p class="help" style="margin-top:12px;">Si tu vois une erreur sur les promos: lance <b>/admin-dashboard/init-promo-table</b> une fois, puis recharge.</p>
       </div>
+
+<hr style="margin:16px 0; border:none; border-top:1px solid #e5e7eb;">
+<h3 style="margin:0 0 10px 0;">➕ Ajouter un utilisateur</h3>
+<div style="display:grid; grid-template-columns:1fr; gap:10px;">
+  <div>
+    <label style="display:block; font-weight:800; margin-bottom:6px;">Email (identifiant)</label>
+    <input id="newUserEmail" type="email" placeholder="ex: client@gmail.com" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;">
+  </div>
+
+  <div>
+    <label style="display:block; font-weight:800; margin-bottom:6px;">Plan</label>
+    <select id="newUserPlan" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;">
+      <option value="free">Gratuit</option>
+      <option value="premium">Premium</option>
+      <option value="advanced">Advanced</option>
+      <option value="pro">Pro</option>
+      <option value="elite">Elite</option>
+    </select>
+  </div>
+
+  <div>
+    <label style="display:block; font-weight:800; margin-bottom:6px;">Mot de passe (optionnel)</label>
+    <input id="newUserPassword" type="text" placeholder="laisser vide = mot de passe temporaire" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;">
+  </div>
+
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+    <button class="btn" id="btnCreateUser" type="button">Créer l'utilisateur</button>
+    <a href="/admin" style="text-decoration:none; padding:12px 14px; border-radius:12px; background:#111827; color:#fff; font-weight:900;">Gestion complète</a>
+  </div>
+
+  <div id="createUserMsg"></div>
+</div>
+
     </div>
 
     </div>
@@ -24381,7 +24504,55 @@ async def admin_dashboard(request: Request):
 
     // init
     loadAccess();
-  </script>
+  
+
+// ===== Admin: Ajouter utilisateur (email-only) =====
+(function(){{
+  const btn = document.getElementById("btnCreateUser");
+  if(!btn) return;
+
+  btn.addEventListener("click", async () => {{
+    const emailEl = document.getElementById("newUserEmail");
+    const planEl  = document.getElementById("newUserPlan");
+    const passEl  = document.getElementById("newUserPassword");
+    const msgEl   = document.getElementById("createUserMsg");
+
+    const email = (emailEl?.value || "").trim();
+    const role  = (planEl?.value || "free").trim();
+    const password = (passEl?.value || "").trim();
+
+    if(msgEl){{ msgEl.innerHTML = ""; }}
+
+    if(!email || !email.includes("@")){{
+      if(msgEl){{ msgEl.innerHTML = '<div style="padding:12px; border-radius:12px; background:#fee2e2; color:#991b1b; font-weight:800;">❌ Email invalide</div>'; }}
+      return;
+    }}
+
+    try{{
+      const res = await fetch("/admin/add-user", {{
+        method: "POST",
+        headers: {{"Content-Type":"application/json"}},
+        body: JSON.stringify({{ email, username: email, password, role }})
+      }});
+      const data = await res.json();
+
+      if(data?.success){{
+        const pw = data?.temp_password ? ` Mot de passe temporaire: <b>${{data.temp_password}}</b>` : "";
+        if(msgEl){{ msgEl.innerHTML = `<div style="padding:12px; border-radius:12px; background:#dcfce7; color:#166534; font-weight:800;">✅ Utilisateur créé.${{pw}}</div>`; }}
+        if(emailEl) emailEl.value = "";
+        if(passEl) passEl.value = "";
+        if(planEl) planEl.value = "free";
+      }} else {{
+        const m = (data && data.message) ? data.message : "Erreur";
+        if(msgEl){{ msgEl.innerHTML = `<div style="padding:12px; border-radius:12px; background:#fee2e2; color:#991b1b; font-weight:800;">❌ ${{m}}</div>`; }}
+      }}
+    }} catch(e){{
+      if(msgEl){{ msgEl.innerHTML = `<div style="padding:12px; border-radius:12px; background:#fee2e2; color:#991b1b; font-weight:800;">❌ ${{e}}</div>`; }}
+    }}
+  }});
+}})();
+
+</script>
 </body>
 </html>"""
     return HTMLResponse(page_html)

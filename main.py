@@ -19846,12 +19846,8 @@ async def pricing_complete(request: Request):
         raw = [str(x).strip() for x in raw if str(x).strip()]
         order = {k: i for i, k in enumerate(route_labels.keys())}
         raw.sort(key=lambda k: (order.get(k, 10_000), k))
-        show = raw[:limit]
-        items = "".join(f"<li>{html_lib.escape(_label_for_route(r))}</li>" for r in show)
-        more = ""
-        if len(raw) > limit:
-            more = f"<li class='more'>+ {len(raw) - limit} autres…</li>"
-        return f"<ul class='features'>{items}{more}</ul>"
+        items = "".join(f"<li>{html_lib.escape(_label_for_route(r))}</li>" for r in raw)
+        return f"<ul class='features'>{items}</ul>"
 
     plans = [
         {
@@ -19983,6 +19979,9 @@ async def pricing_complete(request: Request):
 
     .promo input {{
       flex: 1;
+      max-height: 220px;
+      overflow: auto;
+      padding-right: 6px;
       border: 1px solid #e2e8f0;
       border-radius: 10px;
       padding: 12px 12px;
@@ -20092,12 +20091,6 @@ async def pricing_complete(request: Request):
       font-size: 14px;
       line-height: 1.55;
       flex: 1;
-    }}
-
-    ul.features li.more {{
-      color: #64748b;
-      font-style: italic;
-      margin-top: 6px;
     }}
 
     .btn-primary {{
@@ -24456,6 +24449,17 @@ async def admin_dashboard(request: Request):
   <script>
     let CURRENT_PLAN = "free";
 
+        // Charger automatiquement les accès sauvegardés du plan actif au chargement
+        document.addEventListener("DOMContentLoaded", () => {{
+          const active = document.querySelector(".plan-tabs .tab.active") || document.querySelector(".plan-tabs .tab");
+          if (active) {{
+            const dp = active.getAttribute("data-plan");
+            if (dp) CURRENT_PLAN = dp;
+          }}
+          loadAccess();
+        }});
+
+
     function setStatus(id, msg, ok=true) {{
       const el = document.getElementById(id);
       if (!el) return;
@@ -24487,12 +24491,11 @@ async def admin_dashboard(request: Request):
         const resp = await fetch(`/admin/get-plan-access/${{CURRENT_PLAN}}`);
         const data = await resp.json();
         if (myToken !== _loadAccessToken) {{ return; }}
-        const norm = (v) => String(v || "").trim().replace(/^\/+/, "").replace(/\/+$/, "");
-        const allowed = new Set(((data.allowed || data.routes || [])).map(norm));
+        const allowed = new Set((data.allowed || []).map(String));
         document.querySelectorAll(".route-checkbox").forEach(cb => {{
-          cb.checked = allowed.has(norm(cb.value));
+          cb.checked = allowed.has(cb.value);
         }});
-        }} catch (e) {{
+      }} catch (e) {{
         setStatus("statusAccess", "Erreur chargement accès: " + e, false);
       }}
     }}
@@ -24517,12 +24520,6 @@ async def admin_dashboard(request: Request):
           setStatus("statusAccess", "Erreur: " + (data.error || data.message || "impossible"), false);
           return;
         }}
-        const norm = (v) => String(v || "").trim().replace(/^\/+/, "").replace(/\/+$/, "");
-        const savedList = ((data.routes || data.allowed || selected || [])).map(norm);
-        const saved = new Set(savedList);
-        document.querySelectorAll(".route-checkbox").forEach(cb => {{
-          cb.checked = saved.has(norm(cb.value));
-        }});
         setStatus("statusAccess", "Accès enregistrés.");
       }} catch (e) {{
         setStatus("statusAccess", "Erreur réseau: " + e, false);

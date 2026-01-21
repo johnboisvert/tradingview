@@ -3163,16 +3163,16 @@ class PermissionMiddleware(BaseHTTPMiddleware):
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <title>Accès refusé</title>
           <style>
-            body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#0b1220; color:#e2e8f0; margin:0;}
-            .wrap{max-width:920px; margin:60px auto; padding:0 16px;}
-            .card{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); border-radius:18px; padding:26px; box-shadow:0 10px 30px rgba(0,0,0,.35);}
-            .title{font-size:28px; margin:0 0 10px 0;}
-            .p{color:#cbd5e1; margin:6px 0; line-height:1.5;}
-            .pill{display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.12); font-size:13px;}
-            .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;}
-            .btn{display:inline-block; padding:12px 14px; border-radius:12px; text-decoration:none; font-weight:700;}
-            .btn-primary{background:#22c55e; color:#071018;}
-            .btn-ghost{background:transparent; color:#e2e8f0; border:1px solid rgba(255,255,255,.18);}
+            body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#0b1220; color:#e2e8f0; margin:0;}}
+            .wrap{{max-width:920px; margin:60px auto; padding:0 16px;}}
+            .card{{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); border-radius:18px; padding:26px; box-shadow:0 10px 30px rgba(0,0,0,.35);}}
+            .title{{font-size:28px; margin:0 0 10px 0;}}
+            .p{{color:#cbd5e1; margin:6px 0; line-height:1.5;}}
+            .pill{{display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.12); font-size:13px;}}
+            .row{{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;}}
+            .btn{{display:inline-block; padding:12px 14px; border-radius:12px; text-decoration:none; font-weight:700;}}
+            .btn-primary{{background:#22c55e; color:#071018;}}
+            .btn-ghost{{background:transparent; color:#e2e8f0; border:1px solid rgba(255,255,255,.18);}}
           </style>
         </head>
         <body>
@@ -4271,6 +4271,29 @@ def check_route_permission(username: str, route: str) -> bool:
     try:
         uname = normalize_username(username)
         if not uname:
+            # Invité (pas logué) -> traité comme plan FREE
+            try:
+                allowed = set(get_plan_access_routes('free') or [])
+            except Exception:
+                allowed = set()
+            if not allowed:
+                try:
+                    allowed = set((DEFAULT_PLAN_ACCESS or {}).get('free', []) or [])
+                except Exception:
+                    allowed = set()
+            if route in ('/', ''):
+                route_key_guest = 'dashboard'
+            else:
+                route_key_guest = str(route or '').lstrip('/').split('?')[0].split('#')[0].strip() or 'dashboard'
+            # Alias pricing -> pricing-complete
+            if route_key_guest in ('pricing', 'plans', 'plans-et-tarifs'):
+                route_key_guest = 'pricing-complete'
+            # Autoriser si route exact ou préfixe (ex: 'academy/*')
+            if route_key_guest in allowed:
+                return True
+            for a in allowed:
+                if a and route_key_guest.startswith(a + '/'):  # sous-pages
+                    return True
             return False
 
         # Admin = full access
@@ -6848,7 +6871,7 @@ last_telegram_message_time = 0
 TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 
-CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
+CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
@@ -23884,6 +23907,20 @@ PLAN_ROUTES = [
     ("dominance", "Dominance"),
     ("heatmap", "Heatmap"),
 ]
+
+# Labels humains pour affichage (utilisé par le middleware d'accès)
+# Clés = chemins (ex: '/risk-management'), valeurs = titres (ex: 'Gestion Risques')
+ROUTE_LABELS = {
+    '/': 'Accueil',
+}
+try:
+    for _k, _label in PLAN_ROUTES:
+        _path = _k if _k.startswith('/') else '/' + _k
+        ROUTE_LABELS[_path] = _label
+except Exception:
+    # Si PLAN_ROUTES change, on garde au moins '/'
+    pass
+
 PLAN_ROUTE_OPTIONS = [r for r, _ in PLAN_ROUTES]
 
 @app.get("/admin-dashboard", response_class=HTMLResponse)

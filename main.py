@@ -4334,54 +4334,7 @@ def check_route_permission(username: str, route: str) -> bool:
         print(f"⚠️ check_route_permission: {e}")
         return False
 
-
-def check_route_permission_for_plan(plan_key: str, route: str) -> bool:
-    """Permission check based only on a plan (no user/session required).
-    Used to allow anonymous visitors to access the FREE tier pages.
-    """
-    try:
-        plan_key = (plan_key or "").strip().lower()
-        route = (route or "").strip() or "/"
-
-        # Always-public routes (same philosophy as check_route_permission)
-        public_prefixes = (
-            "/login", "/register", "/logout",
-            "/static", "/health",
-            "/pricing", "/pricing-complete", "/contact",
-        )
-        if route == "/" or any(route.startswith(p) for p in public_prefixes):
-            return True
-
-        # Admin always requires login
-        if route.startswith("/admin"):
-            return False
-
-        # Normalize plan and build allowed routes (monotone tiers)
-        plan_key = normalize_plan(plan_key)
-        tier_order = ["free", "premium", "advanced", "pro", "elite"]
-        if plan_key not in tier_order:
-            plan_key = "free"
-
-        idx = tier_order.index(plan_key)
-        allowed = set()
-        for p in tier_order[: idx + 1]:
-            allowed.update(get_plan_access_routes(p))
-
-        # Direct match
-        if route in allowed:
-            return True
-
-        # Allow nested paths if base route is allowed
-        for base in allowed:
-            if base != "/" and route.startswith(base.rstrip("/") + "/"):
-                return True
-
-        return False
-    except Exception:
-        return False
-
-
-user_obj):
+def normalize_username(user_obj):
     """Accepte str/dict (session payload) et retourne un username string ou None."""
     if user_obj is None:
         return None
@@ -5236,13 +5189,21 @@ async def login(request: Request, response: Response):
         token = create_session(username, user_info)
         
         redirect = RedirectResponse(url=redirect_url, status_code=303)
-        redirect.set_cookie(
+        # Cookie valable sur www + root (évite de "perdre" la session entre cryptoia.ca et www.cryptoia.ca)
+        host = (request.url.hostname or "").lower()
+        cookie_domain = ".cryptoia.ca" if host.endswith("cryptoia.ca") else None
+        cookie_kwargs = dict(
             key="session_token",
             value=token,
             max_age=86400 * 7,  # 7 jours
             httponly=True,
-            samesite="lax"
+            samesite="lax",
+            path="/",
+            secure=(request.url.scheme == "https"),
         )
+        if cookie_domain:
+            cookie_kwargs["domain"] = cookie_domain
+        redirect.set_cookie(**cookie_kwargs)
         return redirect
     else:
         # Garder le redirect dans l'URL en cas d'erreur
@@ -5256,7 +5217,13 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
         del active_sessions[session_token]
     
     redirect = RedirectResponse(url="/login", status_code=303)
-    redirect.delete_cookie("session_token")
+    # Supprime le cookie sur le bon domaine aussi (sinon logout partiel entre www et root)
+    host = (request.url.hostname or "").lower()
+    cookie_domain = ".cryptoia.ca" if host.endswith("cryptoia.ca") else None
+    if cookie_domain:
+        redirect.delete_cookie("session_token", domain=cookie_domain, path="/")
+    else:
+        redirect.delete_cookie("session_token", path="/")
     return redirect
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -23874,9 +23841,6 @@ async def admin_dashboard(request: Request):
     # page admin : doit être connecté + admin
     user = get_logged_user(request)
     if not user:
-        # Anonymous visitor => treat as FREE tier
-        if check_route_permission_for_plan("free", route_to_check):
-            return await call_next(request)
         return RedirectResponse("/login", status_code=303)
     username = normalize_username(user.get("username") or "")
     if get_user_role(username) != "admin":

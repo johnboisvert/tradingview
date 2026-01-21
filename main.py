@@ -857,90 +857,6 @@ def get_plan_access(plan_key: str):
     """Return list of allowed route slugs for a plan (free/premium/advanced/pro/elite)."""
     return get_plan_access_routes(plan_key)
 
-# ================= NAV / MENU HELPERS =================
-
-PLAN_ORDER = ["free", "premium", "advanced", "pro", "elite"]
-
-def path_to_route_key(path: str) -> str:
-    """Convert URL path like '/stats-dashboard' to route_key 'stats-dashboard'."""
-    try:
-        p = (path or "").split("?")[0]
-        p = p.strip()
-        p = p.lstrip("/")
-        p = p.rstrip("/")
-        if not p:
-            return "dashboard"
-        return p
-    except Exception:
-        return "dashboard"
-
-def compute_required_plan_by_route() -> dict:
-    """
-    Derive the minimal required plan for each route_key using current plan_access config.
-    If a route appears in multiple plans, the minimal plan (in PLAN_ORDER) is chosen.
-    """
-    try:
-        routes_by_plan = {p: set(get_plan_access_routes(p) or []) for p in PLAN_ORDER}
-        all_routes = set()
-        for s in routes_by_plan.values():
-            all_routes |= set(s or [])
-        required = {}
-        for r in all_routes:
-            req = "elite"
-            for p in PLAN_ORDER:
-                if r in routes_by_plan.get(p, set()):
-                    req = p
-                    break
-            required[r] = req
-        return required
-    except Exception as e:
-        print(f"⚠️ compute_required_plan_by_route: {e}")
-        return {}
-
-def render_public_free_placeholder(route_key: str, original_path: str = "") -> str:
-    """Simple public page when a 'free' route still redirects to /login (guest mode)."""
-    title = (route_key or "page").replace("-", " ").title()
-    target = original_path or ("/" + (route_key or "dashboard"))
-    return f"""
-    <!doctype html>
-    <html lang="fr">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>{title} — Accès gratuit</title>
-        <style>
-          body {{ font-family: Arial, sans-serif; background:#0b0f19; color:#e7eaf3; margin:0; }}
-          .wrap {{ max-width: 860px; margin: 56px auto; padding: 0 18px; }}
-          .card {{ background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10);
-                   border-radius: 16px; padding: 22px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }}
-          h1 {{ margin:0 0 10px 0; font-size: 28px; }}
-          p {{ line-height: 1.5; opacity: 0.92; }}
-          .cta {{ display:inline-block; margin-top: 16px; padding: 12px 16px; border-radius: 12px;
-                 text-decoration:none; color:#0b0f19; background:#e7eaf3; font-weight:700; }}
-          .row {{ display:flex; gap:12px; flex-wrap:wrap; margin-top: 8px; }}
-          .ghost {{ display:inline-block; margin-top: 16px; padding: 12px 16px; border-radius: 12px;
-                   text-decoration:none; color:#e7eaf3; border:1px solid rgba(255,255,255,0.18); }}
-          .muted {{ margin-top: 14px; opacity: 0.72; font-size: 13px; }}
-        </style>
-      </head>
-      <body>
-        <div class="wrap">
-          <div class="card">
-            <h1>{title}</h1>
-            <p>Cette page est bien incluse dans le forfait <b>Gratuit</b> et peut être consultée sans connexion.</p>
-            <p class="muted">Certaines fonctions avancées peuvent demander un compte pour personnaliser tes données.</p>
-            <div class="row">
-              <a class="cta" href="/register">Créer un compte gratuit</a>
-              <a class="ghost" href="/login?redirect={target}">Se connecter</a>
-              <a class="ghost" href="/pricing-complete">Voir les plans</a>
-            </div>
-          </div>
-        </div>
-      </body>
-    </html>
-    """
-
-
 def save_plan_access_routes(plan: str, routes):
     """Enregistre les routes autorisées pour un plan (table plan_access).
 
@@ -3124,8 +3040,8 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             "/", "/login", "/register", "/logout", "/health",
             "/pricing", "/pricing-new", "/pricing-complete",
             "/contact",
-            "/manifest.json", "/favicon.ico", "/robots.txt", "/sitemap.xml",            "/tv-webhook",
-            "/api/nav-access"
+            "/manifest.json", "/favicon.ico", "/robots.txt", "/sitemap.xml",
+            "/tv-webhook"
         ]
 
         public_prefixes = [
@@ -3140,6 +3056,7 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             "/api/stripe-checkout",
             "/api/coinbase-checkout",
             "/api/payment-",
+            "/api/sidebar-access",
         ]
 
         # Public = accessible sans authentification
@@ -3149,25 +3066,6 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         #  Vérifier si l'utilisateur est connecté
         session_token = request.cookies.get("session_token")
         if not session_token:
-            # 🔓 PUBLIC SANS LOGIN: toutes les pages cochées dans "Gratuit" (plan_access free)
-            try:
-                route_key = path_to_route_key(path)
-                free_routes = set(get_plan_access_routes("free") or [])
-            except Exception:
-                route_key = path_to_route_key(path)
-                free_routes = set()
-
-            if route_key in free_routes:
-                # Laisser la route répondre (certaines pages redirigent encore vers /login: on affiche un mode invité)
-                resp = await call_next(request)
-                try:
-                    loc = (resp.headers.get("location") or "") if hasattr(resp, "headers") else ""
-                    if isinstance(resp, RedirectResponse) and loc.startswith("/login"):
-                        return HTMLResponse(render_public_free_placeholder(route_key, path), status_code=200)
-                except Exception:
-                    pass
-                return resp
-
             # Pas connecté : API -> 401 | Pages -> redirect login
             if path.startswith("/api/"):
                 return JSONResponse({"success": False, "message": "Non authentifié"}, status_code=401)
@@ -3179,8 +3077,23 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             if path.startswith("/api/"):
                 return JSONResponse({"success": False, "message": "Non authentifié"}, status_code=401)
             return RedirectResponse("/login", status_code=303)
-        username = user.get('username', '')
-        
+        # Support dict/str (compatibilité anciens formats)
+        username = normalize_username(user) or ""
+        role = ""
+        try:
+            if isinstance(user, dict):
+                role = str(user.get("role") or user.get("user_role") or user.get("is_admin") or "").lower()
+        except Exception:
+            role = ""
+
+        # ✅ Admin bypass (ne doit pas être bloqué par la matrice d'accès)
+        try:
+            if role == "admin" or str(get_user_role(username)).lower() == "admin" or str(username).lower() == "admin":
+                return await call_next(request)
+        except Exception:
+            if str(username).lower() == "admin":
+                return await call_next(request)
+
         #  Routes protégées : accès selon abonnement (plan_access)
         # (API -> on map vers la page logique)
         route_to_check = path
@@ -3357,6 +3270,9 @@ SIDEBAR = """<style>
 .menu-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:#e2e8f0;text-decoration:none;font-size:14px;font-weight:500;transition:all 0.3s ease;border-left:3px solid transparent}
 .menu-item:hover{background:rgba(6,182,212,0.15);border-left-color:#06b6d4;color:#fff;padding-left:25px}
 .menu-item .badge{background:rgba(6,182,212,0.2);color:#06b6d4;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:auto;font-weight:600}
+        .menu-item.locked{opacity:0.55; filter:saturate(0.8);}
+        .menu-item .lock-badge{background:rgba(245,158,11,0.18);color:#f59e0b;border:1px solid rgba(245,158,11,0.35);}
+
 .menu-item.ai-feature{background:linear-gradient(90deg,rgba(6,182,212,0.15) 0%,transparent 100%);border-left:3px solid #06b6d4;font-weight:600}
 .menu-item.v5-feature{background:linear-gradient(90deg,rgba(139,92,246,0.2) 0%,transparent 100%);border-left:3px solid #8b5cf6;font-weight:600}
 .menu-item.premium{background:linear-gradient(90deg,rgba(139,92,246,0.2) 0%,transparent 100%);border-left:3px solid #8b5cf6;font-weight:600}
@@ -3671,81 +3587,66 @@ body.sidebar-open{padding-left:280px !important}
         document.body.classList.toggle('sidebar-open');
     }
     </script>
-
-    <!-- MENU INTELLIGENT (plans) -->
-    <style>
-      a.menu-item { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-      a.menu-item.locked { opacity:0.45; cursor:not-allowed; }
-      a.menu-item.locked:hover { transform:none !important; }
-      .plan-badge {
-        margin-left:auto;
-        font-size:11px;
-        padding:4px 8px;
-        border-radius:999px;
-        background: rgba(255,255,255,0.10);
-        border: 1px solid rgba(255,255,255,0.12);
-        white-space: nowrap;
-      }
-    </style>
-
     <script>
     (async function(){
       try{
-        const res = await fetch('/api/nav-access', { credentials: 'include' });
-        if(!res.ok) return;
-        const data = await res.json();
+        const resp = await fetch('/api/sidebar-access', {credentials:'include'});
+        const data = await resp.json();
+        const isAdmin = !!data.is_admin;
+        const isLogged = !!data.is_logged;
+        const allowed = new Set((data.allowed || []).map(String));
+        const publicRoutes = new Set((data.public_routes || []).map(String));
+        const required = data.required || {};
 
-        const allowed = new Set((data.allowed_routes || []).map(v => String(v).toLowerCase()));
-        const required = data.required_plan_by_route || {};
-        const isAuth = !!data.is_authenticated;
-
-        function keyFromHref(href){
-          try{
-            const u = new URL(href, window.location.origin);
-            let p = (u.pathname || '').replace(/^\/+/, '').replace(/\/+$/, '');
-            return p || 'dashboard';
-          }catch(e){
-            let p = String(href || '').split('?')[0].replace(/^\/+/, '').replace(/\/+$/, '');
-            return p || 'dashboard';
-          }
+        function routeKeyFromHref(href){
+          if(!href || !href.startsWith('/')) return null;
+          if(href === '/') return 'dashboard';
+          return href.replace(/^\//,'').split('?')[0].split('#')[0];
+        }
+        function titlePlan(p){
+          if(!p) return 'Premium';
+          return (p.charAt(0).toUpperCase() + p.slice(1));
         }
 
-        document.querySelectorAll('a.menu-item').forEach(a => {
-          const href = a.getAttribute('href') || '#';
-          const key = (a.dataset.routeKey || keyFromHref(href)).toLowerCase();
+        document.querySelectorAll('.sidebar a.menu-item').forEach((a)=>{
+          const href = a.getAttribute('href') || '';
+          const rk = routeKeyFromHref(href);
+          if(!rk) return;
 
-          if(allowed.has(key)){
+          // Admin = tout ouvert
+          if(isAdmin){
             a.classList.remove('locked');
-            a.removeAttribute('aria-disabled');
-            const b = a.querySelector('.plan-badge');
-            if(b) b.remove();
+            a.querySelectorAll('.lock-badge').forEach(b=>b.remove());
             return;
           }
 
-          a.classList.add('locked');
-          a.setAttribute('aria-disabled', 'true');
+          const ok = allowed.has(rk) || allowed.has(href) || publicRoutes.has(rk);
+          if(ok){
+            a.classList.remove('locked');
+            a.querySelectorAll('.lock-badge').forEach(b=>b.remove());
+            return;
+          }
 
-          const req = String(required[key] || 'premium');
-          let badge = a.querySelector('.plan-badge');
-          if(!badge){
-            badge = document.createElement('span');
-            badge.className = 'plan-badge';
+          const req = required[rk] || required[href] || 'premium';
+          if(!a.querySelector('.lock-badge')){
+            const badge = document.createElement('span');
+            badge.className = 'badge lock-badge';
+            badge.textContent = '🔒 ' + titlePlan(req);
             a.appendChild(badge);
           }
-          badge.textContent = '🔒 ' + (req.charAt(0).toUpperCase() + req.slice(1));
+          a.classList.add('locked');
 
-          // one click handler
-          a.addEventListener('click', function(ev){
+          a.addEventListener('click', (ev)=>{
+            if(ev.ctrlKey || ev.metaKey) return;
             ev.preventDefault();
-            const target = '/' + key;
-            if(!isAuth){
-              window.location.href = '/login?redirect=' + encodeURIComponent(target);
-            }else{
-              window.location.href = '/pricing-complete?upgrade=1&to=' + encodeURIComponent(target);
+            if(!isLogged){
+              window.location.href = '/login?redirect=' + encodeURIComponent(href);
+            } else {
+              window.location.href = '/pricing-complete';
             }
-          }, { once: true });
+          }, {once:true});
         });
-      }catch(e){}
+      }catch(e){/* silent */}
     })();
     </script>
 """
@@ -4352,29 +4253,176 @@ def verify_user(username: str, password: str) -> bool:
 
     return False
 
+def init_sessions_db():
+    """Créer la table des sessions (persistant) pour éviter de perdre les sessions lors d'un redéploiement."""
+    try:
+        conn = db_manager.get_connection()
+        cur = conn.cursor()
+        if getattr(db_manager, "use_postgresql", False):
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS sessions (
+                    token VARCHAR(255) PRIMARY KEY,
+                    username VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP NOT NULL,
+                    expires_at TIMESTAMP NOT NULL
+                );
+            ''')
+        else:
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS sessions (
+                    token TEXT PRIMARY KEY,
+                    username TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL
+                );
+            ''')
+        conn.commit()
+        try:
+            conn.close()
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"⚠️ init_sessions_db: {e}")
+
+
+def _save_session_db(token: str, username: str, expires_at_iso: str):
+    try:
+        conn = db_manager.get_connection()
+        cur = conn.cursor()
+        if getattr(db_manager, "use_postgresql", False):
+            cur.execute(
+                '''
+                INSERT INTO sessions (token, username, created_at, expires_at)
+                VALUES (%s, %s, NOW(), %s::timestamp)
+                ON CONFLICT (token) DO UPDATE SET username = EXCLUDED.username, expires_at = EXCLUDED.expires_at;
+                ''',
+                (token, username, expires_at_iso),
+            )
+        else:
+            cur.execute(
+                '''
+                INSERT OR REPLACE INTO sessions (token, username, created_at, expires_at)
+                VALUES (?, ?, ?, ?)
+                ''',
+                (token, username, datetime.now().isoformat(), expires_at_iso),
+            )
+        conn.commit()
+        try:
+            conn.close()
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"⚠️ _save_session_db: {e}")
+
+
+def _delete_session_db(token: str):
+    try:
+        conn = db_manager.get_connection()
+        cur = conn.cursor()
+        if getattr(db_manager, "use_postgresql", False):
+            cur.execute("DELETE FROM sessions WHERE token = %s;", (token,))
+        else:
+            cur.execute("DELETE FROM sessions WHERE token = ?;", (token,))
+        conn.commit()
+        try:
+            conn.close()
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"⚠️ _delete_session_db: {e}")
+
+
+def _load_session_username(token: str):
+    try:
+        conn = db_manager.get_connection()
+        cur = conn.cursor()
+        if getattr(db_manager, "use_postgresql", False):
+            cur.execute("SELECT username, expires_at FROM sessions WHERE token = %s;", (token,))
+        else:
+            cur.execute("SELECT username, expires_at FROM sessions WHERE token = ?;", (token,))
+        row = cur.fetchone()
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+        if not row:
+            return None
+
+        username, expires_at = row[0], row[1]
+        # expires_at peut être str (sqlite) ou datetime (pg)
+        try:
+            if isinstance(expires_at, str):
+                exp_dt = _to_dt(expires_at) if "_to_dt" in globals() else datetime.fromisoformat(expires_at)
+            else:
+                exp_dt = expires_at
+        except Exception:
+            exp_dt = None
+
+        if exp_dt and exp_dt < datetime.now():
+            _delete_session_db(token)
+            return None
+        return username
+    except Exception as e:
+        print(f"⚠️ _load_session_username: {e}")
+        return None
+
+
 def create_session(username: str, user_info: dict = None) -> str:
-    """Créer une session pour un utilisateur avec infos d'abonnement"""
+    """Créer une session (cookie) pour un utilisateur + persistance DB."""
     token = secrets.token_urlsafe(32)
-    
-    if user_info:
-        # Stocker toutes les infos de l'utilisateur
+
+    # Normaliser le username (support dict/str)
+    uname = normalize_username(username) or str(username)
+
+    if user_info and isinstance(user_info, dict):
         active_sessions[token] = user_info
+        uname = normalize_username(user_info) or user_info.get("username") or uname
     else:
-        # Rcuprer les infos depuis la DB
-        user_data = db_manager.get_user_info(username)
+        try:
+            user_data = db_manager.get_user_info(uname) or {}
+        except Exception:
+            user_data = {}
         active_sessions[token] = user_data
-    
+
+    # Persister 7 jours (même TTL que cookie)
+    try:
+        expires_at = (datetime.now() + timedelta(days=7)).isoformat()
+        _save_session_db(token, uname, expires_at)
+    except Exception as e:
+        print(f"⚠️ create_session persist: {e}")
+
     return token
 
+
 def get_user_from_token(token: Optional[str]):
-    """Récupérer l'utilisateur depuis un token de session"""
-    if token:
-        user_data = active_sessions.get(token)
-        # Compatibilit: si c'est juste un string (ancien format), retourner tel quel
-        if isinstance(user_data, str):
-            return user_data
+    """Récupérer l'utilisateur depuis un token de session.
+    - D'abord mémoire (active_sessions)
+    - Sinon DB (sessions) -> recharge user_info
+    """
+    if not token:
+        return None
+
+    user_data = active_sessions.get(token)
+    if isinstance(user_data, dict):
         return user_data
-    return None
+    if isinstance(user_data, str):
+        # ancien format: juste le username
+        try:
+            return db_manager.get_user_info(user_data) or {"username": user_data}
+        except Exception:
+            return {"username": user_data}
+
+    # Fallback persistant: sessions table
+    uname = _load_session_username(token)
+    if not uname:
+        return None
+    try:
+        user_info = db_manager.get_user_info(uname) or {"username": uname}
+    except Exception:
+        user_info = {"username": uname}
+    active_sessions[token] = user_info
+    return user_info
 
 def get_current_user(session_token: Optional[str] = Cookie(None)) -> Optional[str]:
     """Dépendance FastAPI pour récupérer l'utilisateur actuel"""
@@ -4565,6 +4613,90 @@ def check_route_permission(username: str, route: str) -> bool:
     except Exception as e:
         print(f"⚠️ check_route_permission: {e}")
         return False
+
+@app.get("/api/sidebar-access")
+async def api_sidebar_access(session_token: Optional[str] = Cookie(None)):
+    """Retourne la liste des routes autorisées + le plan requis (pour afficher les 🔒 dans le menu)."""
+    user = get_user_from_token(session_token)
+    is_logged = bool(user)
+
+    # public routes (toujours accessibles)
+    public_routes = set()
+    try:
+        public_routes.update([str(r) for r in (get_plan_access_routes("free") or []) if isinstance(r, str)])
+    except Exception:
+        pass
+    public_routes.update({"login", "logout", "pricing-complete", "contact", "health", ""})
+
+    username = normalize_username(user) if user else ""
+    role = ""
+    if isinstance(user, dict):
+        role = str(user.get("role") or user.get("user_role") or "").lower()
+    if username and not role:
+        try:
+            role = str(get_user_role(username) or "").lower()
+        except Exception:
+            role = ""
+
+    is_admin = (role == "admin") or (str(username).lower() == "admin")
+
+    # plan utilisateur
+    plan = "free"
+    if is_logged:
+        try:
+            info = user if isinstance(user, dict) else (db_manager.get_user_info(username) or {})
+            plan = str(info.get("subscription_plan") or info.get("plan") or "free").lower()
+        except Exception:
+            plan = "free"
+    if plan not in PLAN_ORDER:
+        plan = "free"
+
+    # allowed routes
+    allowed = set(public_routes)
+    if is_admin:
+        for p in PLAN_ORDER:
+            try:
+                allowed.update([str(r) for r in (get_plan_access_routes(p) or []) if isinstance(r, str)])
+            except Exception:
+                pass
+    else:
+        max_i = PLAN_ORDER.index(plan)
+        for p in PLAN_ORDER[:max_i+1]:
+            try:
+                allowed.update([str(r) for r in (get_plan_access_routes(p) or []) if isinstance(r, str)])
+            except Exception:
+                pass
+
+    # required plan mapping (plan minimal)
+    required = {}
+    try:
+        all_routes = set(public_routes)
+        for p in PLAN_ORDER:
+            all_routes.update([str(r) for r in (get_plan_access_routes(p) or []) if isinstance(r, str)])
+
+        for rk in all_routes:
+            if rk in public_routes or rk == "":
+                required[rk] = "free"
+                continue
+            found = None
+            for p in PLAN_ORDER:
+                routes = get_plan_access_routes(p) or []
+                if rk in routes:
+                    found = p
+                    break
+            required[rk] = found or "premium"
+    except Exception as e:
+        print(f"⚠️ api_sidebar_access required map: {e}")
+
+    return {
+        "is_logged": is_logged,
+        "is_admin": is_admin,
+        "role": role,
+        "plan": plan,
+        "allowed": sorted(allowed),
+        "public_routes": sorted(public_routes),
+        "required": required,
+    }
 
 def normalize_username(user_obj):
     """Accepte str/dict (session payload) et retourne un username string ou None."""
@@ -5422,13 +5554,19 @@ async def login(request: Request, response: Response):
 
 @app.get("/logout")
 async def logout(response: Response, session_token: Optional[str] = Cookie(None)):
-    """Déconnexion"""
-    if session_token and session_token in active_sessions:
-        del active_sessions[session_token]
-    
+    """Déconnexion (supprime la session mémoire + DB)"""
+    try:
+        if session_token:
+            if session_token in active_sessions:
+                del active_sessions[session_token]
+            _delete_session_db(session_token)
+    except Exception as e:
+        print(f"⚠️ logout cleanup: {e}")
+
     redirect = RedirectResponse(url="/login", status_code=303)
     redirect.delete_cookie("session_token")
     return redirect
+
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel(request: Request):
@@ -7581,36 +7719,6 @@ async def health_check():
     """Endpoint pour garder le serveur éveillé (UptimeRobot) - Supporte GET et HEAD"""
     return {"status": "alive", "timestamp": datetime.now().isoformat()}
 
-
-
-# ================= MENU INTELLIGENT API =================
-@app.get("/api/nav-access")
-async def api_nav_access(request: Request, session_token: Optional[str] = Cookie(None)):
-    """
-    Retourne les permissions nécessaires pour rendre le menu intelligent côté client.
-    - allowed_routes: routes autorisées pour le plan courant
-    - required_plan_by_route: plan minimal requis par route (dérivé de plan_access)
-    """
-    try:
-        user = get_user_from_token(session_token) if session_token else None
-        plan = normalize_plan((user or {}).get("plan") or (user or {}).get("subscription_plan") or "free")
-        allowed = get_plan_access_routes(plan) or []
-        required = compute_required_plan_by_route() or {}
-        return JSONResponse({
-            "is_authenticated": bool(user),
-            "plan": plan,
-            "allowed_routes": allowed,
-            "required_plan_by_route": required,
-        })
-    except Exception as e:
-        # Ne jamais casser la page si l'API plante
-        return JSONResponse({
-            "is_authenticated": False,
-            "plan": "free",
-            "allowed_routes": get_plan_access_routes("free") or [],
-            "required_plan_by_route": compute_required_plan_by_route() or {},
-            "error": str(e),
-        })
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(session_token: Optional[str] = Cookie(None)):
@@ -19592,6 +19700,12 @@ async def startup_event():
     except Exception as e:
         print(f"⚠️ init_plan_access_db (startup): {e}")
     
+    # ✅ Initialiser la table des sessions (persistant)
+    try:
+        init_sessions_db()
+    except Exception as e:
+        print(f"⚠️ init_sessions_db (startup): {e}")
+
     #  CORRECTION: Initialiser la table ebooks
     init_ebooks_table()
     

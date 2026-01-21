@@ -855,73 +855,91 @@ def get_plan_access_routes(plan: str) -> list:
 # Alias used by pages/templates (e.g., /pricing-complete)
 def get_plan_access(plan_key: str):
     """Return list of allowed route slugs for a plan (free/premium/advanced/pro/elite)."""
-    return get_plan_access_routes(plan_key)# ================= MENU ACCESS API =================
-@app.get("/api/menu-access")
-async def api_menu_access(request: Request, session_token: Optional[str] = Cookie(None)):
-    """Retourne les permissions pour construire le menu (sidebar) côté client.
-    - Si non connecté: on utilise le plan 'free' (et donc les pages cochées dans Gratuit deviennent publiques).
-    - Si connecté: on utilise le plan réel du compte.
+    return get_plan_access_routes(plan_key)
+
+# ================= NAV / MENU HELPERS =================
+
+PLAN_ORDER = ["free", "premium", "advanced", "pro", "elite"]
+
+def path_to_route_key(path: str) -> str:
+    """Convert URL path like '/stats-dashboard' to route_key 'stats-dashboard'."""
+    try:
+        p = (path or "").split("?")[0]
+        p = p.strip()
+        p = p.lstrip("/")
+        p = p.rstrip("/")
+        if not p:
+            return "dashboard"
+        return p
+    except Exception:
+        return "dashboard"
+
+def compute_required_plan_by_route() -> dict:
     """
-    # Déterminer utilisateur + plan
-    user = None
+    Derive the minimal required plan for each route_key using current plan_access config.
+    If a route appears in multiple plans, the minimal plan (in PLAN_ORDER) is chosen.
+    """
     try:
-        user = get_user_from_token(session_token) if "get_user_from_token" in globals() else None
-    except Exception:
-        user = None
+        routes_by_plan = {p: set(get_plan_access_routes(p) or []) for p in PLAN_ORDER}
+        all_routes = set()
+        for s in routes_by_plan.values():
+            all_routes |= set(s or [])
+        required = {}
+        for r in all_routes:
+            req = "elite"
+            for p in PLAN_ORDER:
+                if r in routes_by_plan.get(p, set()):
+                    req = p
+                    break
+            required[r] = req
+        return required
+    except Exception as e:
+        print(f"⚠️ compute_required_plan_by_route: {e}")
+        return {}
 
-    logged_in = bool(user)
+def render_public_free_placeholder(route_key: str, original_path: str = "") -> str:
+    """Simple public page when a 'free' route still redirects to /login (guest mode)."""
+    title = (route_key or "page").replace("-", " ").title()
+    target = original_path or ("/" + (route_key or "dashboard"))
+    return f"""
+    <!doctype html>
+    <html lang="fr">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{title} — Accès gratuit</title>
+        <style>
+          body {{ font-family: Arial, sans-serif; background:#0b0f19; color:#e7eaf3; margin:0; }}
+          .wrap {{ max-width: 860px; margin: 56px auto; padding: 0 18px; }}
+          .card {{ background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10);
+                   border-radius: 16px; padding: 22px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }}
+          h1 {{ margin:0 0 10px 0; font-size: 28px; }}
+          p {{ line-height: 1.5; opacity: 0.92; }}
+          .cta {{ display:inline-block; margin-top: 16px; padding: 12px 16px; border-radius: 12px;
+                 text-decoration:none; color:#0b0f19; background:#e7eaf3; font-weight:700; }}
+          .row {{ display:flex; gap:12px; flex-wrap:wrap; margin-top: 8px; }}
+          .ghost {{ display:inline-block; margin-top: 16px; padding: 12px 16px; border-radius: 12px;
+                   text-decoration:none; color:#e7eaf3; border:1px solid rgba(255,255,255,0.18); }}
+          .muted {{ margin-top: 14px; opacity: 0.72; font-size: 13px; }}
+        </style>
+      </head>
+      <body>
+        <div class="wrap">
+          <div class="card">
+            <h1>{title}</h1>
+            <p>Cette page est bien incluse dans le forfait <b>Gratuit</b> et peut être consultée sans connexion.</p>
+            <p class="muted">Certaines fonctions avancées peuvent demander un compte pour personnaliser tes données.</p>
+            <div class="row">
+              <a class="cta" href="/register">Créer un compte gratuit</a>
+              <a class="ghost" href="/login?redirect={target}">Se connecter</a>
+              <a class="ghost" href="/pricing-complete">Voir les plans</a>
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
 
-    plan = "free"
-    try:
-        if isinstance(user, dict):
-            plan = (user.get("subscription_plan") or user.get("plan") or "free")
-        elif isinstance(user, str):
-            # ancien format: username seulement -> fallback free
-            plan = "free"
-    except Exception:
-        plan = "free"
-
-    try:
-        plan = normalize_plan(str(plan or "free"))
-    except Exception:
-        plan = "free"
-
-    effective_plan = plan if logged_in else "free"
-
-    # routes autorisées pour le plan effectif
-    try:
-        allowed = get_plan_access_routes(effective_plan)
-    except Exception:
-        allowed = []
-
-    # Calcul plan minimal requis par route (pour afficher 🔒 Premium/Pro...)
-    PLAN_ORDER = ["free", "premium", "advanced", "pro", "elite"]
-    plan_sets = {}
-    all_routes = set()
-    for p in PLAN_ORDER:
-        try:
-            rs = set(get_plan_access_routes(p))
-        except Exception:
-            rs = set()
-        plan_sets[p] = rs
-        all_routes |= rs
-
-    min_required = {}
-    for r in all_routes:
-        for p in PLAN_ORDER:
-            if r in plan_sets[p]:
-                min_required[r] = p
-                break
-
-    return {
-        "logged_in": logged_in,
-        "plan": plan,
-        "effective_plan": effective_plan,
-        "allowed": sorted(list(set(allowed))),
-        "min_required": min_required,
-        "pricing_url": "/pricing-complete",
-        "login_url": "/login",
-    }
 
 def save_plan_access_routes(plan: str, routes):
     """Enregistre les routes autorisées pour un plan (table plan_access).
@@ -3084,8 +3102,6 @@ LEGAL_FOOTER_HTML = """
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-_FREE_PUBLIC_CACHE = {'ts': 0.0, 'routes': set()}
-
 class PermissionMiddleware(BaseHTTPMiddleware):
     """
     Middleware qui vérifie automatiquement les permissions pour TOUTES les routes.
@@ -3108,8 +3124,8 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             "/", "/login", "/register", "/logout", "/health",
             "/pricing", "/pricing-new", "/pricing-complete",
             "/contact",
-            "/manifest.json", "/favicon.ico", "/robots.txt", "/sitemap.xml",
-            "/tv-webhook"
+            "/manifest.json", "/favicon.ico", "/robots.txt", "/sitemap.xml",            "/tv-webhook",
+            "/api/nav-access"
         ]
 
         public_prefixes = [
@@ -3130,37 +3146,28 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         if path in public_paths or any(path.startswith(p) for p in public_prefixes):
             return await call_next(request)
 
-        #  PUBLIC DYNAMIQUE : tout ce qui est coché dans "Gratuit" ne demande aucun login
-        #  (Ne s'applique pas aux /api/*)
-        if not path.startswith("/api/"):
-            try:
-                # Normaliser path -> route_key (slug)
-                if path == "/" or path.strip() == "":
-                    route_key = "dashboard"
-                else:
-                    route_key = path.lstrip("/").split("?")[0].split("#")[0].strip()
-                if route_key in ("pricing", "plans", "plans-et-tarifs"):
-                    route_key = "pricing-complete"
-                if route_key == "":
-                    route_key = "dashboard"
-
-                # Cache court (évite de taper la DB à chaque requête)
-                import time
-                global _FREE_PUBLIC_CACHE
-                now_ts = time.time()
-                if (not isinstance(_FREE_PUBLIC_CACHE, dict)) or (now_ts - float(_FREE_PUBLIC_CACHE.get("ts", 0.0)) > 10):
-                    _FREE_PUBLIC_CACHE = {"ts": now_ts, "routes": set(get_plan_access_routes("free") or [])}
-
-                if route_key in _FREE_PUBLIC_CACHE.get("routes", set()):
-                    request.state.public_free_route = True
-                    request.state.public_route_key = route_key
-                    return await call_next(request)
-            except Exception:
-                pass
-
         #  Vérifier si l'utilisateur est connecté
         session_token = request.cookies.get("session_token")
         if not session_token:
+            # 🔓 PUBLIC SANS LOGIN: toutes les pages cochées dans "Gratuit" (plan_access free)
+            try:
+                route_key = path_to_route_key(path)
+                free_routes = set(get_plan_access_routes("free") or [])
+            except Exception:
+                route_key = path_to_route_key(path)
+                free_routes = set()
+
+            if route_key in free_routes:
+                # Laisser la route répondre (certaines pages redirigent encore vers /login: on affiche un mode invité)
+                resp = await call_next(request)
+                try:
+                    loc = (resp.headers.get("location") or "") if hasattr(resp, "headers") else ""
+                    if isinstance(resp, RedirectResponse) and loc.startswith("/login"):
+                        return HTMLResponse(render_public_free_placeholder(route_key, path), status_code=200)
+                except Exception:
+                    pass
+                return resp
+
             # Pas connecté : API -> 401 | Pages -> redirect login
             if path.startswith("/api/"):
                 return JSONResponse({"success": False, "message": "Non authentifié"}, status_code=401)
@@ -3663,76 +3670,85 @@ body.sidebar-open{padding-left:280px !important}
         document.getElementById('sidebar').classList.toggle('active');
         document.body.classList.toggle('sidebar-open');
     }
-    async function applyMenuAccess() {
-    try {
-        const resp = await fetch("/api/menu-access", { cache: "no-store" });
-        const data = await resp.json();
-        const allowed = new Set((data.allowed || []).map(String));
-        const minReq = data.min_required || {};
+    </script>
 
-        const currentPath = window.location.pathname || "/";
-        const menuLinks = document.querySelectorAll(".sidebar a.menu-item[href]");
-        menuLinks.forEach(a => {
-            try {
-                const href = a.getAttribute("href") || "";
-                if (!href.startsWith("/")) return;
+    <!-- MENU INTELLIGENT (plans) -->
+    <style>
+      a.menu-item { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+      a.menu-item.locked { opacity:0.45; cursor:not-allowed; }
+      a.menu-item.locked:hover { transform:none !important; }
+      .plan-badge {
+        margin-left:auto;
+        font-size:11px;
+        padding:4px 8px;
+        border-radius:999px;
+        background: rgba(255,255,255,0.10);
+        border: 1px solid rgba(255,255,255,0.12);
+        white-space: nowrap;
+      }
+    </style>
 
-                // route key: "/dashboard" -> "dashboard", "/" -> "dashboard"
-                const path = href.split("?")[0];
-                let key = path.replace(/^\/+|\/+$/g, "");
-                if (!key) key = "dashboard";
+    <script>
+    (async function(){
+      try{
+        const res = await fetch('/api/nav-access', { credentials: 'include' });
+        if(!res.ok) return;
+        const data = await res.json();
 
-                // active state
-                if (path === currentPath) {
-                    a.classList.add("active");
-                } else {
-                    a.classList.remove("active");
-                }
+        const allowed = new Set((data.allowed_routes || []).map(v => String(v).toLowerCase()));
+        const required = data.required_plan_by_route || {};
+        const isAuth = !!data.is_authenticated;
 
-                const isAllowed = allowed.has(key);
+        function keyFromHref(href){
+          try{
+            const u = new URL(href, window.location.origin);
+            let p = (u.pathname || '').replace(/^\/+/, '').replace(/\/+$/, '');
+            return p || 'dashboard';
+          }catch(e){
+            let p = String(href || '').split('?')[0].replace(/^\/+/, '').replace(/\/+$/, '');
+            return p || 'dashboard';
+          }
+        }
 
-                // badge helper
-                const ensureBadge = (txt) => {
-                    let b = a.querySelector(".plan-badge");
-                    if (!b) {
-                        b = document.createElement("span");
-                        b.className = "plan-badge";
-                        a.appendChild(b);
-                    }
-                    b.textContent = txt;
-                };
+        document.querySelectorAll('a.menu-item').forEach(a => {
+          const href = a.getAttribute('href') || '#';
+          const key = (a.dataset.routeKey || keyFromHref(href)).toLowerCase();
 
-                if (isAllowed) {
-                    a.classList.remove("locked");
-                    // remove badge if exists
-                    const b = a.querySelector(".plan-badge");
-                    if (b) b.remove();
-                    // keep href as-is
-                    a.setAttribute("data-locked", "0");
-                } else {
-                    a.classList.add("locked");
-                    a.setAttribute("data-locked", "1");
-                    const req = String(minReq[key] || "premium");
-                    const reqNice = req.charAt(0).toUpperCase() + req.slice(1);
-                    ensureBadge("🔒 " + reqNice);
+          if(allowed.has(key)){
+            a.classList.remove('locked');
+            a.removeAttribute('aria-disabled');
+            const b = a.querySelector('.plan-badge');
+            if(b) b.remove();
+            return;
+          }
 
-                    const target = encodeURIComponent(path);
-                    const url = data.logged_in
-                      ? (data.pricing_url + "?upgrade=1&to=" + target)
-                      : (data.login_url + "?redirect=" + target);
+          a.classList.add('locked');
+          a.setAttribute('aria-disabled', 'true');
 
-                    a.setAttribute("href", url);
-                    a.setAttribute("title", "Accès requis: " + reqNice);
-                }
-            } catch (e) {}
+          const req = String(required[key] || 'premium');
+          let badge = a.querySelector('.plan-badge');
+          if(!badge){
+            badge = document.createElement('span');
+            badge.className = 'plan-badge';
+            a.appendChild(badge);
+          }
+          badge.textContent = '🔒 ' + (req.charAt(0).toUpperCase() + req.slice(1));
+
+          // one click handler
+          a.addEventListener('click', function(ev){
+            ev.preventDefault();
+            const target = '/' + key;
+            if(!isAuth){
+              window.location.href = '/login?redirect=' + encodeURIComponent(target);
+            }else{
+              window.location.href = '/pricing-complete?upgrade=1&to=' + encodeURIComponent(target);
+            }
+          }, { once: true });
         });
-    } catch (e) {
-        // silent
-    }
-}
-
-document.addEventListener("DOMContentLoaded", applyMenuAccess);
-</script>"""
+      }catch(e){}
+    })();
+    </script>
+"""
 
 # Appliquer les placeholders (logo + nom) dans la sidebar
 try:
@@ -3799,25 +3815,6 @@ NAV_MENU = """
         background: rgba(239,68,68,0.8);
         border: none;
     }
-
-/* === Menu intelligent (verrouillage/upgrade) === */
-.menu-item { display: flex; align-items: center; gap: 10px; }
-.menu-item .label { flex: 1; }
-.menu-item.locked { opacity: 0.55; cursor: pointer; }
-.menu-item.locked:hover { opacity: 0.80; }
-.plan-badge {
-    margin-left: auto;
-    font-size: 11px;
-    padding: 3px 8px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.14);
-    color: rgba(255,255,255,0.90);
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-}
 </style>
 
 
@@ -7585,20 +7582,47 @@ async def health_check():
     return {"status": "alive", "timestamp": datetime.now().isoformat()}
 
 
+
+# ================= MENU INTELLIGENT API =================
+@app.get("/api/nav-access")
+async def api_nav_access(request: Request, session_token: Optional[str] = Cookie(None)):
+    """
+    Retourne les permissions nécessaires pour rendre le menu intelligent côté client.
+    - allowed_routes: routes autorisées pour le plan courant
+    - required_plan_by_route: plan minimal requis par route (dérivé de plan_access)
+    """
+    try:
+        user = get_user_from_token(session_token) if session_token else None
+        plan = normalize_plan((user or {}).get("plan") or (user or {}).get("subscription_plan") or "free")
+        allowed = get_plan_access_routes(plan) or []
+        required = compute_required_plan_by_route() or {}
+        return JSONResponse({
+            "is_authenticated": bool(user),
+            "plan": plan,
+            "allowed_routes": allowed,
+            "required_plan_by_route": required,
+        })
+    except Exception as e:
+        # Ne jamais casser la page si l'API plante
+        return JSONResponse({
+            "is_authenticated": False,
+            "plan": "free",
+            "allowed_routes": get_plan_access_routes("free") or [],
+            "required_plan_by_route": compute_required_plan_by_route() or {},
+            "error": str(e),
+        })
+
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request, session_token: Optional[str] = Cookie(None)):
+async def dashboard(session_token: Optional[str] = Cookie(None)):
     user = get_user_from_token(session_token)
-
-    # Autoriser l'accès SANS login si la route est cochée dans "Gratuit"
     if not user:
-        if getattr(request.state, "public_free_route", False) and getattr(request.state, "public_route_key", "") in ("dashboard",):
-            username = "Invité"
-        else:
-            return RedirectResponse("/login", status_code=303)
-    else:
-        username = user.get('username', 'Utilisateur')
+        return RedirectResponse("/login")
+    
+    username = user.get('username', 'Utilisateur')
+    
+        # Accès au dashboard: gratuit après login (pas de paywall ici)
 
-    # Accès au dashboard: gratuit (et potentiellement public si configuré)
+
     html = """<!DOCTYPE html>
 <html lang="fr">
 <head>

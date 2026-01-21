@@ -23844,6 +23844,37 @@ def get_total_revenue() -> float:
         print(f"⚠️ get_total_revenue: {e}")
         return 0.0
 
+
+# =============================================================================
+# PLAN ACCESS: ROUTES CATALOG
+# - Single source of truth for the Admin "Gestion des Accès par Forfait"
+# - Must match the route keys used in the sidebar + pricing-complete.
+# =============================================================================
+PLAN_ROUTES = [
+    ("dashboard", "Dashboard"),
+    ("stats-dashboard", "Stats Dashboard"),
+    ("trades", "Trades"),
+    ("strategie", "Stratégie"),
+    ("spot-trading", "Spot Trading"),
+    ("watchlist", "Watchlist"),
+    ("risk-management", "Gestion Risques"),
+    ("backtesting", "Backtesting"),
+    ("ai-opportunity-scanner", "AI Opportunity Scanner"),
+    ("ai-market-regime", "AI Market Regime"),
+    ("ai-whale-watcher", "AI Whale Watcher"),
+    ("ai-assistant", "AI Assistant"),
+    ("ai-signals", "AI Signals"),
+    ("ai-news", "AI News"),
+    ("ai-predictor", "AI Predictor"),
+    ("ai-token-scanner", "AI Token Scanner"),
+    ("ai-patterns", "AI Patterns"),
+    ("fear-greed", "Fear & Greed"),
+    ("fear-greed-chart", "Fear & Greed Chart"),
+    ("dominance", "Dominance"),
+    ("heatmap", "Heatmap"),
+]
+PLAN_ROUTE_OPTIONS = [r for r, _ in PLAN_ROUTES]
+
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
     """
@@ -23900,33 +23931,7 @@ async def admin_dashboard(request: Request):
         elite_price = 150.0
 
     # Routes list must match pricing-complete labels
-    routes = [
-        ("dashboard", "Dashboard"),
-        ("stats-dashboard", "Stats Dashboard"),
-        ("trades", "Trades"),
-        ("strategie", "Stratégie"),
-        ("spot-trading", "Spot Trading"),
-        ("watchlist", "Watchlist"),
-        ("risk-management", "Gestion Risques"),
-        ("backtesting", "Backtesting"),
-        ("ai-opportunity-scanner", "Ai Opportunity Scanner"),
-        ("ai-market-regime", "Ai Market Regime"),
-        ("ai-whale-watcher", "Ai Whale Watcher"),
-        ("ai-assistant", "Ai Assistant"),
-        ("ai-signals", "Ai Signals"),
-        ("ai-news", "Ai News"),
-        ("ai-predictor", "Ai Predictor"),
-        ("ai-patterns", "Ai Patterns"),
-        ("fear-greed", "Fear & Greed"),
-        ("fear-greed-chart", "Fear & Greed Chart"),
-        ("dominance", "Dominance"),
-        ("heatmap", "Heatmap"),
-        ("pricing-complete", "Plans & Tarifs"),
-        ("contact", "Contact"),
-        ("telechargements", "Téléchargements"),
-        ("admin-dashboard", "Admin Dashboard"),
-    ]
-
+    routes = PLAN_ROUTES
     # Build checkbox list HTML
     routes_html = ""
     for route, label in routes:

@@ -3062,26 +3062,29 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         if path in public_paths or any(path.startswith(p) for p in public_prefixes):
             return await call_next(request)
 
-# ✅ PUBLIC DYNAMIQUE: si une route est cochée pour le plan GRATUIT (plan_access),
-# alors elle est accessible SANS login (pages seulement).
-# Attention: à utiliser seulement pour des pages "vitrine/démo" (pas de données perso).
-try:
-    if not path.startswith("/api/"):
-        # Normaliser -> route_key (même logique que check_route_permission)
-        if path == "/" or path.strip() == "":
-            route_key_public = "dashboard"
-        else:
-            route_key_public = path.lstrip("/").split("?")[0].split("#")[0].strip()
-        if route_key_public.startswith("pricing"):
-            route_key_public = "pricing-complete"
-        if route_key_public == "":
-            route_key_public = "dashboard"
+        # ✅ PUBLIC DYNAMIQUE (plan "free") :
+        # Si une route est cochée dans "Gratuit" (table plan_access),
+        # alors elle devient accessible SANS login (pages seulement, pas /api/*).
+        # ⚠️ Important: ne coche "Gratuit" que pour des pages vitrine/démo (pas de données personnelles).
+        try:
+            if not path.startswith("/api/"):
+                # Normaliser -> route_key (même logique que check_route_permission)
+                if path == "/" or path.strip() == "":
+                    route_key_public = "dashboard"
+                else:
+                    route_key_public = path.lstrip("/").split("?")[0].split("#")[0].strip()
 
-        free_allowed = set(get_plan_access_routes("free") or [])
-        if route_key_public in free_allowed:
-            return await call_next(request)
-except Exception:
-    pass
+                # Harmoniser quelques alias
+                if route_key_public in ("pricing", "plans", "plans-et-tarifs"):
+                    route_key_public = "pricing-complete"
+                if route_key_public == "":
+                    route_key_public = "dashboard"
+
+                free_allowed = set(get_plan_access_routes("free") or [])
+                if route_key_public in free_allowed:
+                    return await call_next(request)
+        except Exception:
+            pass
 
         #  Vérifier si l'utilisateur est connecté
         session_token = request.cookies.get("session_token")

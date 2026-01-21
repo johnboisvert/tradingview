@@ -3018,6 +3018,8 @@ LEGAL_FOOTER_HTML = """
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
+_FREE_PUBLIC_CACHE = {'ts': 0.0, 'routes': set()}
+
 class PermissionMiddleware(BaseHTTPMiddleware):
     """
     Middleware qui vérifie automatiquement les permissions pour TOUTES les routes.
@@ -3062,29 +3064,33 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         if path in public_paths or any(path.startswith(p) for p in public_prefixes):
             return await call_next(request)
 
-        # ✅ PUBLIC DYNAMIQUE (plan "free") :
-        # Si une route est cochée dans "Gratuit" (table plan_access),
-        # alors elle devient accessible SANS login (pages seulement, pas /api/*).
-        # ⚠️ Important: ne coche "Gratuit" que pour des pages vitrine/démo (pas de données personnelles).
-        try:
-            if not path.startswith("/api/"):
-                # Normaliser -> route_key (même logique que check_route_permission)
+        #  PUBLIC DYNAMIQUE : tout ce qui est coché dans "Gratuit" ne demande aucun login
+        #  (Ne s'applique pas aux /api/*)
+        if not path.startswith("/api/"):
+            try:
+                # Normaliser path -> route_key (slug)
                 if path == "/" or path.strip() == "":
-                    route_key_public = "dashboard"
+                    route_key = "dashboard"
                 else:
-                    route_key_public = path.lstrip("/").split("?")[0].split("#")[0].strip()
+                    route_key = path.lstrip("/").split("?")[0].split("#")[0].strip()
+                if route_key in ("pricing", "plans", "plans-et-tarifs"):
+                    route_key = "pricing-complete"
+                if route_key == "":
+                    route_key = "dashboard"
 
-                # Harmoniser quelques alias
-                if route_key_public in ("pricing", "plans", "plans-et-tarifs"):
-                    route_key_public = "pricing-complete"
-                if route_key_public == "":
-                    route_key_public = "dashboard"
+                # Cache court (évite de taper la DB à chaque requête)
+                import time
+                global _FREE_PUBLIC_CACHE
+                now_ts = time.time()
+                if (not isinstance(_FREE_PUBLIC_CACHE, dict)) or (now_ts - float(_FREE_PUBLIC_CACHE.get("ts", 0.0)) > 10):
+                    _FREE_PUBLIC_CACHE = {"ts": now_ts, "routes": set(get_plan_access_routes("free") or [])}
 
-                free_allowed = set(get_plan_access_routes("free") or [])
-                if route_key_public in free_allowed:
+                if route_key in _FREE_PUBLIC_CACHE.get("routes", set()):
+                    request.state.public_free_route = True
+                    request.state.public_route_key = route_key
                     return await call_next(request)
-        except Exception:
-            pass
+            except Exception:
+                pass
 
         #  Vérifier si l'utilisateur est connecté
         session_token = request.cookies.get("session_token")
@@ -7426,16 +7432,19 @@ async def health_check():
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(session_token: Optional[str] = Cookie(None)):
+async def dashboard(request: Request, session_token: Optional[str] = Cookie(None)):
     user = get_user_from_token(session_token)
+
+    # Autoriser l'accès SANS login si la route est cochée dans "Gratuit"
     if not user:
-        return RedirectResponse("/login")
-    
-    username = user.get('username', 'Utilisateur')
-    
-        # Accès au dashboard: gratuit après login (pas de paywall ici)
+        if getattr(request.state, "public_free_route", False) and getattr(request.state, "public_route_key", "") in ("dashboard",):
+            username = "Invité"
+        else:
+            return RedirectResponse("/login", status_code=303)
+    else:
+        username = user.get('username', 'Utilisateur')
 
-
+    # Accès au dashboard: gratuit (et potentiellement public si configuré)
     html = """<!DOCTYPE html>
 <html lang="fr">
 <head>

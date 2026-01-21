@@ -5765,55 +5765,55 @@ async def admin_users_page(request: Request, admin: dict = Depends(require_admin
 const ok = document.getElementById("ok");
 const err = document.getElementById("err");
 
-function show(el, msg){ el.textContent = msg; el.style.display = "block"; setTimeout(()=> el.style.display="none", 6000); }
-function showOk(msg){ show(ok, msg); }
-function showErr(msg){ show(err, msg); }
+function show(el, msg){{ el.textContent = msg; el.style.display = "block"; setTimeout(()=> el.style.display="none", 6000); }}
+function showOk(msg){{ show(ok, msg); }}
+function showErr(msg){{ show(err, msg); }}
 
-document.addEventListener("click", async (e) => {
+document.addEventListener("click", async (e) => {{
   const del = e.target.closest(".btnDelete");
-  if(del){
+  if(del){{
     const username = del.dataset.username;
     if(!confirm("Supprimer " + username + " ?")) return;
-    try{
-      const res = await fetch("/admin/delete-user", {
+    try{{
+      const res = await fetch("/admin/delete-user", {{
         method:"POST",
-        headers: {"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"},
-        body: JSON.stringify({username})
-      });
-      const data = await res.json().catch(async ()=>({success:false, message: await res.text()}));
-      if(data.success){
+        headers: {{"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"}},
+        body: JSON.stringify({{username}})
+      }});
+      const data = await res.json().catch(async ()=>({{success:false, message: await res.text()}}));
+      if(data.success){{
         showOk(data.message || "Supprimé.");
         location.reload();
-      }else{
+      }}else{{
         showErr(data.message || "Erreur.");
-      }
-    }catch(ex){
+      }}
+    }}catch(ex){{
       showErr("Erreur réseau.");
-    }
-  }
+    }}
+  }}
 
   const save = e.target.closest(".btnSavePlan");
-  if(save){
+  if(save){{
     const username = save.dataset.username;
-    const sel = document.querySelector(`.planSel[data-username="${username}"]`);
+    const sel = document.querySelector(`.planSel[data-username="${{username}}"]`);
     const new_plan = sel ? sel.value : "free";
-    try{
-      const res = await fetch("/admin/update-user-plan", {
+    try{{
+      const res = await fetch("/admin/update-user-plan", {{
         method:"POST",
-        headers: {"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"},
-        body: JSON.stringify({username, new_plan})
-      });
-      const data = await res.json().catch(async ()=>({success:false, message: await res.text()}));
-      if(data.success){
+        headers: {{"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"}},
+        body: JSON.stringify({{username, new_plan}})
+      }});
+      const data = await res.json().catch(async ()=>({{success:false, message: await res.text()}}));
+      if(data.success){{
         showOk(data.message || "Plan mis à jour.");
-      }else{
+      }}else{{
         showErr(data.message || "Erreur.");
-      }
-    }catch(ex){
+      }}
+    }}catch(ex){{
       showErr("Erreur réseau.");
-    }
-  }
-});
+    }}
+  }}
+}});
 </script>
 </body>
 </html>

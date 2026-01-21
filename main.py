@@ -3018,6 +3018,55 @@ LEGAL_FOOTER_HTML = """
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
+
+def path_to_route_key(path: str) -> str:
+    """Convertit /chemin -> 'chemin' (sans /, sans query). """
+    try:
+        path = (path or "").split("?")[0]
+    except Exception:
+        path = path or ""
+    return str(path).strip().lstrip("/").rstrip("/")
+
+def render_public_free_placeholder(route_key: str, path: str) -> str:
+    """Fallback: si une page 'gratuite' redirige encore vers /login, on affiche un mode public."""
+    safe_path = (path or "/")
+    title = "Accès gratuit"
+    return f"""<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title} - Crypto IA</title>
+  <style>
+    body {{ font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin:0; background:#0a0e27; color:#fff; }}
+    .wrap {{ max-width: 980px; margin: 0 auto; padding: 60px 24px; }}
+    .card {{ background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.10); border-radius: 18px; padding: 28px; }}
+    h1 {{ margin:0 0 10px; font-size: 34px; }}
+    p {{ margin: 10px 0; color: rgba(255,255,255,0.75); line-height: 1.6; }}
+    .btns {{ display:flex; gap:12px; flex-wrap:wrap; margin-top: 18px; }}
+    a.btn {{ display:inline-block; padding: 12px 16px; border-radius: 12px; text-decoration:none; font-weight: 700; }}
+    a.primary {{ background: linear-gradient(135deg, #667eea, #764ba2); color:#fff; }}
+    a.ghost {{ background: rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.12); }}
+    .note {{ margin-top: 18px; font-size: 13px; color: rgba(255,255,255,0.6); }}
+    code {{ background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 8px; }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>🔓 Cette page est en accès gratuit</h1>
+      <p>Tu peux consulter <code>/{route_key}</code> sans compte. Certaines fonctions (personnalisation, sauvegarde, trades) demandent une connexion.</p>
+      <div class="btns">
+        <a class="btn primary" href="/login?redirect={safe_path}">Se connecter</a>
+        <a class="btn ghost" href="/pricing-complete">Voir les abonnements</a>
+        <a class="btn ghost" href="/">Retour accueil</a>
+      </div>
+      <div class="note">Astuce: dans <strong>Admin → Gestion des Accès</strong>, coche les pages "Gratuit" pour les rendre publiques.</div>
+    </div>
+  </div>
+</body>
+</html>"""
+
 class PermissionMiddleware(BaseHTTPMiddleware):
     """
     Middleware qui vérifie automatiquement les permissions pour TOUTES les routes.
@@ -3066,10 +3115,32 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         #  Vérifier si l'utilisateur est connecté
         session_token = request.cookies.get("session_token")
         if not session_token:
+            # 🔓 PUBLIC SANS LOGIN: toutes les pages cochées dans "Gratuit" (plan_access free)
+            # (On n'ouvre pas les /api/ sans login, sauf celles déjà listées en public_paths/public_prefixes)
+            if not path.startswith("/api/"):
+                try:
+                    route_key = path_to_route_key(path)
+                    free_routes = set(get_plan_access_routes("free") or [])
+                except Exception:
+                    route_key = path_to_route_key(path)
+                    free_routes = set()
+
+                if route_key in free_routes:
+                    resp = await call_next(request)
+                    # Si la page redirige encore vers /login, on affiche un fallback public
+                    try:
+                        loc = (resp.headers.get("location") or "") if hasattr(resp, "headers") else ""
+                        if isinstance(resp, RedirectResponse) and loc.startswith("/login"):
+                            return HTMLResponse(render_public_free_placeholder(route_key, path), status_code=200)
+                    except Exception:
+                        pass
+                    return resp
+
             # Pas connecté : API -> 401 | Pages -> redirect login
             if path.startswith("/api/"):
                 return JSONResponse({"success": False, "message": "Non authentifié"}, status_code=401)
             return RedirectResponse("/login", status_code=303)
+
 
         user = get_user_from_token(session_token)
         if not user:

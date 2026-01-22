@@ -24589,33 +24589,23 @@ def get_total_revenue() -> float:
 # - Must match the route keys used in the sidebar + pricing-complete.
 # =============================================================================
 PLAN_ROUTES = [
-    # Core / Public
-    ("", "Accueil"),
-    ("dashboard", "Dashboard"),
-    ("pricing-complete", "Abonnements / Tarifs"),
-    ("contact", "Contact"),
-    ("telechargements", "Téléchargements"),
-
-    # COMPTE
-    ("mon-compte", "Mon Compte"),
-    ("logout", "Déconnexion"),
-    ("admin-dashboard", "Admin Dashboard"),
-    ("admin-users", "Gestion des utilisateurs"),
-
-    # AI / Tools (existants)
-    ("ai-news", "Actualités Crypto"),
-    ("ai-predictor", "Prédictions IA"),
-    ("ai-market-regime", "Market Regime IA"),
-    ("ai-whale-watcher", "Whale Watcher IA"),
-    ("fear-greed", "Fear & Greed"),
-    ("fear-greed-chart", "Fear & Greed Chart"),
-    ("dominance", "Dominance"),
-    ("heatmap", "Heatmap"),
+    ("dashboard", "Dashboard Principal"),
+    ("stats-dashboard", "Stats Dashboard"),
+    ("trades", "Mes Trades"),
+    ("strategie", "Stratégies"),
     ("spot-trading", "Spot Trading"),
-    ("strategie", "Stratégie"),
+    ("watchlist", "Watchlist"),
+    ("risk-management", "Gestion Risques"),
+    ("backtesting", "Backtesting"),
+    ("ai-opportunity-scanner", "Opportunity Scanner"),
+    ("ai-market-regime", "Market Regime"),
+    ("ai-whale-watcher", "Whale Watcher"),
+    ("ai-assistant", "AI Assistant"),
     ("ai-signals", "AI Signals"),
-
-    # Pages existantes mais manquantes dans la gestion d'accès
+    ("ai-news", "AI News"),
+    ("ai-predictor", "AI Predictor"),
+    ("prediction-ia", "Prédictions IA"),
+    ("ai-patterns", "Patterns IA"),
     ("ai-sentiment", "Sentiment IA"),
     ("ai-sizer", "Position Sizer"),
     ("ai-exit", "Exit Strategy"),
@@ -24629,29 +24619,35 @@ PLAN_ROUTES = [
     ("ai-swarm-agents", "AI Swarm Agents"),
     ("altseason-copilot-pro", "Altseason Copilot Pro"),
     ("rug-scam-shield", "Rug & Scam Shield"),
+    ("fear-greed", "Fear & Greed Index"),
+    ("fear-greed-chart", "F&G Graphique"),
+    ("dominance", "Bitcoin Dominance"),
     ("altcoin-season", "Altcoin Season"),
+    ("heatmap", "Market Heatmap"),
     ("bullrun-phase", "Bull Run Phase"),
     ("graphiques", "Graphiques Avancés"),
     ("onchain-metrics", "On-Chain Metrics"),
     ("portfolio-tracker", "Portfolio Tracker"),
     ("defi-yield", "DeFi Yield"),
     ("crypto-pepites", "Pépites Crypto"),
-    ("market-simulation", "Simulation Marché"),
-    ("calendrier", "Calendrier Économique"),
-    ("success-stories", "Success Stories"),
+    ("academy", "Trading Academy"),
+    ("crypto-academy", "Crypto Academy"),
+    ("academy-progress", "Ma Progression"),
     ("calculatrice", "Calculatrice"),
     ("convertisseur", "Convertisseur"),
-
-    # Academy
-    ("crypto-academy", "Crypto Academy"),
-    ("academy", "Trading Academy"),
-    ("academy-progress", "Ma Progression"),
-
-    # Placeholder / future (crée une page simple pour éviter confusion)
-    ("ai-token-scanner", "AI Token Scanner"),
+    ("market-simulation", "Simulation Marché"),
+    ("calendrier", "Calendrier Économique"),
+    ("nouvelles", "Actualités Crypto"),
+    ("success-stories", "Success Stories"),
+    ("contact", "Contact"),
+    ("telechargements", "Téléchargements"),
+    ("mon-compte", "Mon Compte"),
+    ("pricing-complete", "Abonnements"),
+    ("admin-dashboard", "Admin Dashboard"),
+    ("logout", "Déconnexion"),
+    ("admin-users", "Gestion des utilisateurs (Admin)"),
+    ("ai-token-scanner", "AI Token Scanner")
 ]
-
-
 # Labels humains pour affichage (utilisé par le middleware d'accès)
 # Clés = chemins (ex: '/risk-management'), valeurs = titres (ex: 'Gestion Risques')
 ROUTE_LABELS = {

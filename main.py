@@ -1587,7 +1587,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 
 # Chemin de la base de donnes
-DB_PATH = "./academy.db"
+ACADEMY_DB_PATH = "./academy.db"  # separate DB for academy module (do not override main DB_PATH)
 
 # ============================================================================
 # INITIALISATION DE LA BASE DE DONNES
@@ -1597,7 +1597,7 @@ def init_academy_db():
     """Initialise toutes les tables Academy"""
     # Crer le dossier parent si ncessaire
     import os
-    db_dir = os.path.dirname(DB_PATH)
+    db_dir = os.path.dirname(ACADEMY_DB_PATH)
     if db_dir and not os.path.exists(db_dir):
         try:
             os.makedirs(db_dir, exist_ok=True)
@@ -1605,7 +1605,7 @@ def init_academy_db():
         except Exception as e:
             print(f"⚠️ Impossible de créer {db_dir}: {e}")
     
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(ACADEMY_DB_PATH)
     cursor = conn.cursor()
     
     # Table: Progression des leons
@@ -1667,7 +1667,7 @@ def init_academy_db():
 
 def get_user_progress(username: str) -> Dict:
     """Récupère la progression complète d'un utilisateur"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(ACADEMY_DB_PATH)
     cursor = conn.cursor()
     
     # Progression gnrale
@@ -1720,7 +1720,7 @@ def get_user_progress(username: str) -> Dict:
 
 def complete_lesson(username: str, lesson_id: str, quiz_score: int = 0, quiz_total: int = 0) -> Dict:
     """Marque une leçon comme complétée et met à jour la progression"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(ACADEMY_DB_PATH)
     cursor = conn.cursor()
     
     # Vrifier si dj complte
@@ -1894,7 +1894,7 @@ def check_and_unlock_badges(cursor, username: str):
 
 def get_user_badges(username: str) -> List[Dict]:
     """Récupère tous les badges de l'utilisateur"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(ACADEMY_DB_PATH)
     cursor = conn.cursor()
     
     cursor.execute("""
@@ -1915,7 +1915,7 @@ def get_user_badges(username: str) -> List[Dict]:
 
 def get_lesson_status(username: str, lesson_id: str) -> Dict:
     """Récupère le statut d'une leçon spécifique"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(ACADEMY_DB_PATH)
     cursor = conn.cursor()
     
     cursor.execute("""
@@ -7365,7 +7365,8 @@ ALTSEASON_POLL_SECONDS = int(os.getenv("ALTSEASON_POLL_SECONDS", "300"))
 # Configuration Gnrale
 CONFIDENCE_MIN = float(os.getenv("CONFIDENCE_MIN", "0.70"))
 COOLDOWN_SEC = int(os.getenv("COOLDOWN_SEC", "28800"))
-DB_PATH = os.getenv("DB_PATH", "/tmp/ai_trader/data.db")
+# NOTE: DB_PATH is defined once above from DB_CONFIG (and DB_DIR). Do not override it here.
+TRADER_DB_PATH = os.getenv("TRADER_DB_PATH", DB_PATH)  # optional separate DB for trader/ai features
 MIN_CONFLUENCE = int(os.getenv("MIN_CONFLUENCE", "0"))
 NEAR_SR_ATR = float(os.getenv("NEAR_SR_ATR", "0.0"))
 RR_MIN = float(os.getenv("RR_MIN", "2.0"))
@@ -24950,7 +24951,7 @@ async def admin_dashboard(request: Request):
         const isPwd = passEl.type === "password";
         passEl.type = isPwd ? "text" : "password";
         toggleBtn.textContent = isPwd ? "Masquer" : "Afficher";
-      });
+      }});
     }}
 
     const msgEl   = document.getElementById("createUserMsg");

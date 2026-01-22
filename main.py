@@ -24589,28 +24589,68 @@ def get_total_revenue() -> float:
 # - Must match the route keys used in the sidebar + pricing-complete.
 # =============================================================================
 PLAN_ROUTES = [
+    # Core / Public
+    ("", "Accueil"),
     ("dashboard", "Dashboard"),
-    ("stats-dashboard", "Stats Dashboard"),
-    ("trades", "Trades"),
-    ("strategie", "Stratégie"),
-    ("spot-trading", "Spot Trading"),
-    ("watchlist", "Watchlist"),
-    ("risk-management", "Gestion Risques"),
-    ("backtesting", "Backtesting"),
-    ("ai-opportunity-scanner", "AI Opportunity Scanner"),
-    ("ai-market-regime", "AI Market Regime"),
-    ("ai-whale-watcher", "AI Whale Watcher"),
-    ("ai-assistant", "AI Assistant"),
-    ("ai-signals", "AI Signals"),
-    ("ai-news", "AI News"),
-    ("ai-predictor", "AI Predictor"),
-    ("ai-token-scanner", "AI Token Scanner"),
-    ("ai-patterns", "AI Patterns"),
+    ("pricing-complete", "Abonnements / Tarifs"),
+    ("contact", "Contact"),
+    ("telechargements", "Téléchargements"),
+
+    # COMPTE
+    ("mon-compte", "Mon Compte"),
+    ("logout", "Déconnexion"),
+    ("admin-dashboard", "Admin Dashboard"),
+    ("admin-users", "Gestion des utilisateurs"),
+
+    # AI / Tools (existants)
+    ("ai-news", "Actualités Crypto"),
+    ("ai-predictor", "Prédictions IA"),
+    ("ai-market-regime", "Market Regime IA"),
+    ("ai-whale-watcher", "Whale Watcher IA"),
     ("fear-greed", "Fear & Greed"),
     ("fear-greed-chart", "Fear & Greed Chart"),
     ("dominance", "Dominance"),
     ("heatmap", "Heatmap"),
+    ("spot-trading", "Spot Trading"),
+    ("strategie", "Stratégie"),
+    ("ai-signals", "AI Signals"),
+
+    # Pages existantes mais manquantes dans la gestion d'accès
+    ("ai-sentiment", "Sentiment IA"),
+    ("ai-sizer", "Position Sizer"),
+    ("ai-exit", "Exit Strategy"),
+    ("ai-timeframe", "Timeframe Analysis"),
+    ("ai-liquidity", "Liquidité IA"),
+    ("ai-alerts", "Alertes IA"),
+    ("ai-gem-hunter", "Gem Hunter"),
+    ("ai-technical-analysis", "Technical Analysis Pro"),
+    ("narrative-radar", "Narrative Radar"),
+    ("ai-crypto-coach", "AI Crypto Coach"),
+    ("ai-swarm-agents", "AI Swarm Agents"),
+    ("altseason-copilot-pro", "Altseason Copilot Pro"),
+    ("rug-scam-shield", "Rug & Scam Shield"),
+    ("altcoin-season", "Altcoin Season"),
+    ("bullrun-phase", "Bull Run Phase"),
+    ("graphiques", "Graphiques Avancés"),
+    ("onchain-metrics", "On-Chain Metrics"),
+    ("portfolio-tracker", "Portfolio Tracker"),
+    ("defi-yield", "DeFi Yield"),
+    ("crypto-pepites", "Pépites Crypto"),
+    ("market-simulation", "Simulation Marché"),
+    ("calendrier", "Calendrier Économique"),
+    ("success-stories", "Success Stories"),
+    ("calculatrice", "Calculatrice"),
+    ("convertisseur", "Convertisseur"),
+
+    # Academy
+    ("crypto-academy", "Crypto Academy"),
+    ("academy", "Trading Academy"),
+    ("academy-progress", "Ma Progression"),
+
+    # Placeholder / future (crée une page simple pour éviter confusion)
+    ("ai-token-scanner", "AI Token Scanner"),
 ]
+
 
 # Labels humains pour affichage (utilisé par le middleware d'accès)
 # Clés = chemins (ex: '/risk-management'), valeurs = titres (ex: 'Gestion Risques')
@@ -30526,6 +30566,41 @@ async def ai_sentiment():
     """)
 
 print("Routes 4-7 créées")
+
+
+@app.get("/ai-token-scanner")
+async def ai_token_scanner_page(request: Request):
+    """AI Token Scanner (placeholder).
+
+    Cette route existait dans la gestion des accès, mais aucune page n'était définie.
+    On ajoute une page simple "à venir" pour éviter la confusion et permettre de gérer l'accès.
+    """
+    # La protection d'accès est gérée par le middleware de permissions (plan_access).
+    html = f"""<!doctype html>
+<html lang='fr'>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>AI Token Scanner — CryptoIA</title>
+  <link rel='stylesheet' href='/static/styles.css'>
+</head>
+<body>
+  <div style='max-width: 980px; margin: 40px auto; padding: 0 16px;'>
+    <div class='card' style='padding: 24px; border-radius: 16px;'>
+      <h1 style='margin: 0 0 8px 0;'>AI Token Scanner</h1>
+      <p style='opacity: .85; margin: 0 0 18px 0;'>
+        Cette fonctionnalité est en préparation. La page a été ajoutée pour que la
+        <b>Gestion des Accès par Forfait</b> puisse la contrôler correctement.
+      </p>
+      <div style='display:flex; gap:10px; flex-wrap:wrap;'>
+        <a class='btn' href='/dashboard'>Retour au dashboard</a>
+        <a class='btn btn-secondary' href='/pricing-complete'>Voir les forfaits</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(html)
 
 @app.get("/ai-sizer", response_class=HTMLResponse)
 async def ai_sizer():

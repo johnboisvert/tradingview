@@ -6005,102 +6005,161 @@ async def admin_users_page(request: Request, admin=Depends(require_admin)):
 
 @app.post("/admin/add-user")
 async def admin_add_user(request: Request):
-    """Créer un utilisateur depuis l'admin.
-    - Identifiant = email (stocké dans username)
-    - Plan: free/premium/advanced/pro/elite
-    - Mot de passe: optionnel (si vide → généré)
+    """Crée un utilisateur (ou met à jour s'il existe déjà).
+
+    Entrées JSON:
+      - username (email/identifiant) [obligatoire]
+      - plan: free/premium/advanced/pro/elite [optionnel]
+      - role: user/admin [optionnel] (par défaut user)
+      - password [optionnel] : si vide lors d'une création, un mot de passe temporaire est généré.
     """
     try:
-        # Lire payload JSON ou form
-        data = {}
-        ctype = (request.headers.get("content-type") or "").lower()
-        if "application/json" in ctype:
-            try:
-                data = await request.json()
-            except Exception:
-                data = {}
-        else:
-            try:
-                form = await request.form()
-                data = dict(form)
-            except Exception:
-                data = {}
+        data = await request.json()
 
-        email = (data.get("email") or data.get("username") or "").strip().lower()
-        plan = (data.get("plan") or data.get("role") or "free").strip().lower()
-        password = (data.get("password") or "").strip()
+        username = (data.get("username") or "").strip().lower()
+        raw_password = (data.get("password") or "").strip()
 
-        if not email:
-            return JSONResponse({"success": False, "message": "Email requis."}, status_code=400)
+        requested_role = (data.get("role") or "user").strip().lower()
+        plan = (data.get("plan") or data.get("subscription_plan") or "").strip().lower()
 
-        allowed_plans = {"free", "premium", "advanced", "pro", "elite"}
-        if plan not in allowed_plans:
+        plan_names = {"free", "premium", "advanced", "pro", "elite"}
+
+        # Backward compat: certains anciens JS envoyaient le plan dans "role"
+        if not plan and requested_role in plan_names:
+            plan = requested_role
+            requested_role = "user"
+
+        if requested_role not in {"user", "admin"}:
+            requested_role = "user"
+
+        if not plan:
+            plan = "free"
+        if plan not in plan_names:
             plan = "free"
 
-        # Mot de passe temporaire si vide
-        generated_pw = False
-        if not password:
-            import string as _string
-            alphabet = _string.ascii_letters + _string.digits
-            password = "".join(random.choice(alphabet) for _ in range(12))
-            generated_pw = True
+        if not username:
+            return JSONResponse({"success": False, "detail": "Email / identifiant manquant."}, status_code=400)
 
-        password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-        created_at = datetime.utcnow()
-
-        # Durées
-        days_map = {"premium": 30, "advanced": 90, "pro": 180, "elite": 365}
-        sub_start = created_at
-        sub_end = None
-        if plan in days_map:
-            sub_end = created_at + timedelta(days=days_map[plan])
-
-        # Insérer dans la table users existante (schema db_manager.init_users_table)
-        conn = db_manager.get_connection()
-        cur = conn.cursor()
-        try:
-            if getattr(db_manager, "use_postgresql", False):
-                cur.execute(
-                    """
-                    INSERT INTO users (username, password_hash, role, created_at, subscription_plan, subscription_start, subscription_end)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    (email, password_hash, "user", created_at, plan, sub_start, sub_end),
-                )
-            else:
-                cur.execute(
-                    """
-                    INSERT INTO users (username, password_hash, role, created_at, subscription_plan, subscription_start, subscription_end)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (email, password_hash, "user", created_at.isoformat(), plan, sub_start.isoformat(), sub_end.isoformat() if sub_end else None),
-                )
-            conn.commit()
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-        plan_names = {
-            "free": "Gratuit",
-            "premium": "Premium (1 mois)",
-            "advanced": "Advanced (3 mois)",
-            "pro": "Pro (6 mois)",
-            "elite": "Elite (12 mois)",
+        # Durées par plan (cohérent avec /admin/update-user-plan)
+        days_map = {
+            "free": 0,
+            "premium": 30,
+            "advanced": 90,
+            "pro": 180,
+            "elite": 365,
         }
 
-        msg = f"Utilisateur créé: {email} — Plan: {plan_names.get(plan, plan)}."
-        if generated_pw:
-            msg += f" Mot de passe temporaire: {password}"
+        now = datetime.utcnow()
+        duration_days = days_map.get(plan, 0)
 
-        return JSONResponse({"success": True, "message": msg}, status_code=200)
+        subscription_start = now.isoformat() if (plan != "free" and duration_days > 0) else None
+        subscription_end = (now + timedelta(days=duration_days)).isoformat() if (plan != "free" and duration_days > 0) else None
+
+        users_db_path = os.path.join(DB_DIR, "users.db")
+        conn = sqlite3.connect(users_db_path)
+        cur = conn.cursor()
+
+        # Colonnes existantes (compat avec anciens schémas)
+        cur.execute("PRAGMA table_info(users)")
+        cols = {row[1] for row in cur.fetchall()}
+
+        # Mot de passe: si vide ET création, on génère un temporaire.
+        user_provided_password = bool(raw_password)
+        generated_password = None
+
+        password_for_insert = raw_password
+        if not user_provided_password:
+            generated_password = secrets.token_urlsafe(12)[:12]
+            password_for_insert = generated_password
+
+        # Hash (pour INSERT)
+        pwd_hash_for_insert = None
+        if password_for_insert and "password_hash" in cols:
+            try:
+                pwd_hash_for_insert = bcrypt.hashpw(password_for_insert.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            except Exception:
+                pwd_hash_for_insert = None
+
+        # Hash (pour UPDATE) -> seulement si l'admin a fourni un mot de passe
+        pwd_hash_for_update = None
+        if user_provided_password and raw_password and "password_hash" in cols:
+            try:
+                pwd_hash_for_update = bcrypt.hashpw(raw_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            except Exception:
+                pwd_hash_for_update = None
+
+        def _do_insert():
+            fields = ["username"]
+            values = [username]
+            placeholders = ["?"]
+
+            if "role" in cols:
+                fields.append("role"); values.append(requested_role); placeholders.append("?")
+            if "created_at" in cols:
+                fields.append("created_at"); values.append(now.isoformat()); placeholders.append("?")
+
+            if pwd_hash_for_insert and "password_hash" in cols:
+                fields.append("password_hash"); values.append(pwd_hash_for_insert); placeholders.append("?")
+
+            # Legacy: si une colonne "password" existe (vieux schéma), on la rempli aussi
+            if password_for_insert and "password" in cols:
+                fields.append("password"); values.append(password_for_insert); placeholders.append("?")
+
+            if "subscription_plan" in cols:
+                fields.append("subscription_plan"); values.append(plan); placeholders.append("?")
+            if "subscription_start" in cols:
+                fields.append("subscription_start"); values.append(subscription_start); placeholders.append("?")
+            if "subscription_end" in cols:
+                fields.append("subscription_end"); values.append(subscription_end); placeholders.append("?")
+
+            sql = f"INSERT INTO users ({', '.join(fields)}) VALUES ({', '.join(placeholders)})"
+            cur.execute(sql, values)
+
+        try:
+            _do_insert()
+            conn.commit()
+            conn.close()
+
+            resp = {"success": True, "message": "Utilisateur créé.", "username": username}
+            if generated_password and not user_provided_password:
+                resp["message"] = "Utilisateur créé. Mot de passe temporaire généré."
+                resp["temp_password"] = generated_password
+            return JSONResponse(resp, status_code=200)
+
+        except sqlite3.IntegrityError:
+            # Existe déjà -> update (plan + dates). Mot de passe seulement si fourni.
+            set_parts = []
+            set_vals = []
+
+            if "role" in cols:
+                set_parts.append("role = ?"); set_vals.append(requested_role)
+
+            if "subscription_plan" in cols:
+                set_parts.append("subscription_plan = ?"); set_vals.append(plan)
+            if "subscription_start" in cols:
+                set_parts.append("subscription_start = ?"); set_vals.append(subscription_start)
+            if "subscription_end" in cols:
+                set_parts.append("subscription_end = ?"); set_vals.append(subscription_end)
+
+            if user_provided_password and pwd_hash_for_update and "password_hash" in cols:
+                set_parts.append("password_hash = ?"); set_vals.append(pwd_hash_for_update)
+            if user_provided_password and raw_password and "password" in cols:
+                set_parts.append("password = ?"); set_vals.append(raw_password)
+
+            if set_parts:
+                set_vals.append(username)
+                cur.execute(f"UPDATE users SET {', '.join(set_parts)} WHERE username = ?", set_vals)
+                conn.commit()
+
+            conn.close()
+            return JSONResponse(
+                {"success": True, "message": "Utilisateur déjà existant — informations mises à jour.", "username": username},
+                status_code=200,
+            )
 
     except Exception as e:
-        # Toujours renvoyer du JSON pour éviter les erreurs 'not valid JSON' côté navigateur
-        return JSONResponse({"success": False, "message": f"Erreur serveur: {str(e)}"}, status_code=500)
-
-
+        print("Erreur serveur add-user:", e)
+        return JSONResponse({"success": False, "detail": str(e)}, status_code=500)
 @app.post("/admin/update-user-plan")
 async def admin_update_user_plan(request: Request):
     """Mettre à jour le plan d'un utilisateur (admin)."""
@@ -10820,7 +10879,7 @@ async def spot_trading_page():
                         }
                     }
                 }
-            });
+            }});
         }
         
         // FONCTION HEATMAP CALENDRIER - TIMELINE INTERACTIVE
@@ -24739,7 +24798,13 @@ async def admin_dashboard(request: Request):
 
   <div>
     <label style="display:block; font-weight:800; margin-bottom:6px;">Mot de passe (optionnel)</label>
-    <input id="newUserPassword" type="text" placeholder="laisser vide = mot de passe temporaire" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;">
+    <div style="display:flex; gap:8px; align-items:center;">
+                <input id="newUserPassword" type="password" placeholder="laisser vide = mot de passe temporaire" style="flex:1; width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;">
+                <button type="button" id="toggleNewUserPassword" style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; cursor:pointer; font-weight:700;">Afficher</button>
+              </div>
+              <div style="margin-top:6px; font-size:12px; color:#6b7280;">
+                (Sécurité) Les mots de passe existants ne peuvent pas être affichés. Ici tu peux seulement définir / réinitialiser un mot de passe.
+              </div>
   </div>
 
   <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
@@ -24878,10 +24943,21 @@ async def admin_dashboard(request: Request):
     const emailEl = document.getElementById("newUserEmail");
     const planEl  = document.getElementById("newUserPlan");
     const passEl  = document.getElementById("newUserPassword");
+    
+    const toggleBtn = document.getElementById("toggleNewUserPassword");
+    if(toggleBtn && passEl){{
+      toggleBtn.addEventListener("click", () => {{
+        const isPwd = passEl.type === "password";
+        passEl.type = isPwd ? "text" : "password";
+        toggleBtn.textContent = isPwd ? "Masquer" : "Afficher";
+      });
+    }}
+
     const msgEl   = document.getElementById("createUserMsg");
 
     const email = (emailEl?.value || "").trim();
-    const role  = (planEl?.value || "free").trim();
+    const plan = (planEl?.value || "free").trim();
+    const role = "user";
     const password = (passEl?.value || "").trim();
 
     if(msgEl){{ msgEl.innerHTML = ""; }}
@@ -24895,7 +24971,7 @@ async def admin_dashboard(request: Request):
       const res = await fetch("/admin/add-user", {{
         method: "POST",
         headers: {{"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"}},
-        body: JSON.stringify({{ email, username: email, password, role }})
+        body: JSON.stringify({{ username: email, password, role, plan }})
       }});
       const data = await res.json();
 

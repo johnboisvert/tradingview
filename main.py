@@ -5636,195 +5636,372 @@ async def admin_panel(request: Request):
 </body>
 </html>""")
 
-@app.get("/admin-users", response_class=HTMLResponse)
-async def admin_users_page(request: Request, admin: dict = Depends(require_admin)):
-    """Liste / gestion simple des utilisateurs (admin seulement)."""
-    # Récupérer les utilisateurs
-    conn = db_manager.get_connection()
-    cur = conn.cursor()
+@app.get("/admin-users")
+async def admin_users_page(request: Request, admin=Depends(require_admin)):
+    """
+    Page admin : gestion des utilisateurs (forfait + expiration + suppression + reset mot de passe).
+    """
+    users = []
     try:
-        # username = email (identifiant)
-        if getattr(db_manager, "use_postgresql", False):
-            cur.execute("""
-                SELECT username, role, subscription_plan, subscription_end, created_at
-                FROM users
-                ORDER BY created_at DESC
-            """)
-        else:
-            cur.execute("""
-                SELECT username, role, subscription_plan, subscription_end, created_at
-                FROM users
-                ORDER BY created_at DESC
-            """)
-        rows = cur.fetchall() or []
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
+        users = list_users_from_sqlite()
+    except Exception:
+        users = []
 
-    # Normaliser l'affichage
-    def fmt_dt(v):
-        if v is None:
-            return "-"
-        try:
-            # psycopg2 peut renvoyer datetime
-            if hasattr(v, "isoformat"):
-                return v.isoformat(sep=" ", timespec="seconds")
-            return str(v)
-        except Exception:
-            return str(v)
+    # Sidebar: extraire le <style> pour le mettre dans le <head>
+    _sb_style, _sb_html = "", ""
+    try:
+        _sb_style = SIDEBAR.split("</style>", 1)[0] + "</style>"
+        _sb_html = SIDEBAR.split("</style>", 1)[1]
+    except Exception:
+        _sb_html = SIDEBAR
 
-    html_rows = ""
-    for r in rows:
-        # (username, role, subscription_plan, subscription_end, created_at)
-        username = (r[0] or "")
-        role = (r[1] or "")
-        plan = (r[2] or "")
-        sub_end = fmt_dt(r[3])
-        created = fmt_dt(r[4])
-        html_rows += f"""
-          <tr>
-            <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>{username}</td>
-            <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>{role}</td>
-            <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>
-              <select data-username="{username}" class="planSel" style="padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:#0f172a;color:#fff;">
-                <option value="free" {"selected" if plan=="free" else ""}>free</option>
-                <option value="premium" {"selected" if plan=="premium" else ""}>premium</option>
-                <option value="advanced" {"selected" if plan=="advanced" else ""}>advanced</option>
-                <option value="pro" {"selected" if plan=="pro" else ""}>pro</option>
-                <option value="elite" {"selected" if plan=="elite" else ""}>elite</option>
-              </select>
-              <button class="btnSavePlan" data-username="{username}" style="margin-left:10px;padding:7px 10px;border-radius:10px;border:0;background:#3b82f6;color:#fff;cursor:pointer;">Enregistrer</button>
-            </td>
-            <td class='subEndCell' data-username='{username}' style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>{sub_end}</td>
-            <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>{created}</td>
-            <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:right;'>
-              <button class="btnDelete" data-username="{username}" style="padding:7px 10px;border-radius:10px;border:0;background:#ef4444;color:#fff;cursor:pointer;">Supprimer</button>
-            </td>
-          </tr>
-        """
+    rows = []
+    for u in users:
+        username = (u.get("username") or "").strip()
+        role = (u.get("role") or "user").strip()
+        plan = (u.get("plan") or "free").strip()
+        subscription_end = u.get("subscription_end")
+        created_at = u.get("created_at")
 
-    return HTMLResponse(f"""
+        # Affichage des dates (peut être ISO / datetime / None)
+        def _fmt_dt(v):
+            if not v:
+                return "-"
+            try:
+                # Garder la string si déjà ISO
+                s = str(v)
+                return s
+            except Exception:
+                return "-"
+
+        sub_end_display = _fmt_dt(subscription_end) if plan != "free" else "-"
+        created_display = _fmt_dt(created_at)
+
+        # Option: ne pas permettre de supprimer l'admin principal
+        disable_delete = "disabled" if username == "admin" else ""
+
+        rows.append(f"""
+        <tr>
+          <td class="email">{_html.escape(username)}</td>
+          <td><span class="pill">{_html.escape(role)}</span></td>
+          <td>
+            <select class="plan-select" data-username="{_html.escape(username)}">
+              <option value="free" {'selected' if plan=='free' else ''}>free</option>
+              <option value="premium" {'selected' if plan=='premium' else ''}>premium</option>
+              <option value="advanced" {'selected' if plan=='advanced' else ''}>advanced</option>
+              <option value="pro" {'selected' if plan=='pro' else ''}>pro</option>
+              <option value="elite" {'selected' if plan=='elite' else ''}>elite</option>
+            </select>
+            <button class="btn btn-blue save-btn" data-username="{_html.escape(username)}">Enregistrer</button>
+          </td>
+          <td class="sub-end" data-username="{_html.escape(username)}">{_html.escape(sub_end_display)}</td>
+          <td>{_html.escape(created_display)}</td>
+          <td class="actions">
+            <button class="btn btn-dark reset-btn" data-username="{_html.escape(username)}">Reset MDP</button>
+            <button class="btn btn-red del-btn" data-username="{_html.escape(username)}" {disable_delete}>Supprimer</button>
+          </td>
+        </tr>
+        """)
+
+    rows_html = "\n".join(rows) if rows else """
+      <tr><td colspan="6" style="padding:18px;opacity:.8;">Aucun utilisateur trouvé.</td></tr>
+    """
+
+    admin_users_html = f"""
 <!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Admin — Gestion des utilisateurs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Admin · Gestion des utilisateurs</title>
+  {_sb_style}
   <style>
-    body{{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;background:linear-gradient(135deg,#0b1020,#0f172a,#111827) !important;color:#e5e7eb;padding:40px;padding-left:320px;}}
-    @media(max-width:900px){{body{{padding-left:16px;}}}}
-    .wrap{{max-width:1200px;margin:24px auto;padding:0 16px;}}
-    .card{{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,0.35);overflow:hidden;}}
-    .head{{display:flex;align-items:center;justify-content:space-between;padding:18px 18px;border-bottom:1px solid rgba(255,255,255,0.10);}}
-    .head h1{{margin:0;font-size:18px;}}
-    .btn{{padding:10px 12px;border-radius:12px;border:0;background:#6366f1;color:#fff;cursor:pointer;text-decoration:none;display:inline-flex;gap:8px;align-items:center;}}
-    table{{width:100%;border-collapse:collapse;font-size:14px;}}
-    th{{text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,0.10);color:#cbd5e1;font-weight:600;}}
-    .notice{{margin:14px 0 0;padding:12px 14px;border-radius:12px;background:rgba(34,197,94,0.14);border:1px solid rgba(34,197,94,0.22);display:none;}}
-    .error{{margin:14px 0 0;padding:12px 14px;border-radius:12px;background:rgba(239,68,68,0.14);border:1px solid rgba(239,68,68,0.22);display:none;}}
-    .toplinks{{display:flex;gap:10px;}}
+    :root {{
+      --bg:#0b1020;
+      --panel:rgba(255,255,255,.06);
+      --panel2:rgba(255,255,255,.08);
+      --border:rgba(255,255,255,.10);
+      --text:#e8eefc;
+      --muted:rgba(255,255,255,.7);
+      --blue:#3b82f6;
+      --red:#ef4444;
+      --dark:rgba(255,255,255,.12);
+    }}
+    body {{
+      margin:0;
+      background: radial-gradient(circle at 15% 10%, rgba(59,130,246,.18), transparent 55%),
+                  radial-gradient(circle at 85% 0%, rgba(99,102,241,.18), transparent 50%),
+                  radial-gradient(circle at 50% 100%, rgba(16,185,129,.10), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial;
+    }}
+    .page {{
+      padding: 40px 22px;
+    }}
+    .card {{
+      max-width: 1220px;
+      margin: 0 auto;
+      background: rgba(255,255,255,.04);
+      border:1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.45);
+      overflow:hidden;
+    }}
+    .card-header {{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:18px 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border-bottom:1px solid var(--border);
+    }}
+    .title {{
+      font-weight: 800;
+      letter-spacing:.2px;
+      font-size: 20px;
+    }}
+    .btn {{
+      border:0;
+      cursor:pointer;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-weight: 700;
+      color: white;
+      transition: transform .08s ease, opacity .15s ease;
+      white-space:nowrap;
+    }}
+    .btn:active {{ transform: scale(.98); }}
+    .btn-blue {{ background: linear-gradient(135deg, #2563eb, #60a5fa); }}
+    .btn-red {{ background: linear-gradient(135deg, #dc2626, #f87171); }}
+    .btn-dark {{ background: rgba(255,255,255,.14); color: var(--text); border: 1px solid rgba(255,255,255,.10); }}
+    .btn:hover {{ opacity:.92; }}
+
+    .notice {{
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 14px;
+    }}
+    .notice b {{ color: var(--text); }}
+
+    table {{
+      width:100%;
+      border-collapse: collapse;
+    }}
+    thead th {{
+      text-align:left;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom:1px solid var(--border);
+    }}
+    tbody td {{
+      padding: 12px 16px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      vertical-align: middle;
+      font-size: 14px;
+    }}
+    tbody tr:hover {{
+      background: rgba(255,255,255,.03);
+    }}
+    .email {{
+      font-weight: 700;
+    }}
+    .pill {{
+      display:inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.10);
+      font-size: 12px;
+      color: var(--text);
+    }}
+    .plan-select {{
+      background: rgba(0,0,0,.20);
+      border: 1px solid rgba(255,255,255,.12);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 10px;
+      outline: none;
+      margin-right: 8px;
+    }}
+    .actions {{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      justify-content:flex-end;
+      flex-wrap: wrap;
+    }}
+    .toast {{
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      max-width: 460px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 14px;
+      padding: 12px 14px;
+      color: var(--text);
+      box-shadow: 0 10px 25px rgba(0,0,0,.40);
+      display:none;
+      z-index: 999999;
+    }}
+    .toast small {{ color: var(--muted); display:block; margin-top:4px; }}
+    .toast .row {{ display:flex; gap:10px; align-items:center; justify-content:space-between; }}
+    .mono {{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      padding: 4px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+    }}
   </style>
 </head>
 <body>
-  {SIDEBAR}
-  <div class="wrap">
+  {_sb_html}
+
+  <div class="page">
     <div class="card">
-      <div class="head">
-        <h1>Gestion des utilisateurs</h1>
-        <div class="toplinks">
-          <a class="btn" href="/admin-dashboard">← Retour Admin</a>
-        </div>
+      <div class="card-header">
+        <div class="title">Gestion des utilisateurs</div>
+        <a class="btn btn-blue" href="/admin-dashboard" style="text-decoration:none;display:inline-block;">← Retour Admin</a>
       </div>
 
-      <div style="padding:14px 18px;">
-        <div id="ok" class="notice"></div>
-        <div id="err" class="error"></div>
+      <div class="notice">
+        <b>Important :</b> les mots de passe ne peuvent pas être affichés (ils sont stockés en hash). Utilisez <b>Reset MDP</b> pour générer un nouveau mot de passe temporaire.
+      </div>
 
-        <div style="overflow:auto;">
-          <table>
-            <thead>
-              <tr>
-                <th>Email / Username</th>
-                <th>Rôle</th>
-                <th>Plan</th>
-                <th>Fin abonnement</th>
-                <th>Créé</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {html_rows if html_rows else "<tr><td colspan='6' style='padding:14px;'>Aucun utilisateur trouvé.</td></tr>"}
-            </tbody>
-          </table>
-        </div>
+      <div style="overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Email / Username</th>
+              <th>Rôle</th>
+              <th>Plan</th>
+              <th>Fin abonnement</th>
+              <th>Créé</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows_html}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 
-<script>
-const ok = document.getElementById("ok");
-const err = document.getElementById("err");
+  <div id="toast" class="toast"></div>
 
-function show(el, msg){{ el.textContent = msg; el.style.display = "block"; setTimeout(()=> el.style.display="none", 6000); }}
-function showOk(msg){{ show(ok, msg); }}
-function showErr(msg){{ show(err, msg); }}
-
-document.addEventListener("click", async (e) => {{
-  const del = e.target.closest(".btnDelete");
-  if(del){{
-    const username = del.dataset.username;
-    if(!confirm("Supprimer " + username + " ?")) return;
-    try{{
-      const res = await fetch("/admin/delete-user", {{
-        method:"POST",
-        headers: {{"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"}},
-        body: JSON.stringify({{username}})
-      }});
-      const data = await res.json().catch(async ()=>({{success:false, message: await res.text()}}));
-      if(data.success){{
-        showOk(data.message || "Supprimé.");
-        location.reload();
-      }}else{{
-        showErr(data.message || "Erreur.");
-      }}
-    }}catch(ex){{
-      showErr("Erreur réseau.");
+  <script>
+    function showToast(title, detail, copyText=null) {{
+      const el = document.getElementById('toast');
+      if (!el) return;
+      window.__copyText = copyText;
+      const copyBtn = copyText ? `<button class="btn btn-blue" style="padding:6px 10px;border-radius:10px;" onclick="navigator.clipboard.writeText(window.__copyText)">Copier</button>` : '';
+      el.innerHTML = `
+        <div class="row">
+          <div>
+            <div style="font-weight:800;">${{title}}</div>
+            <small>${{detail || ''}}</small>
+          </div>
+          ${{copyBtn}}
+        </div>
+      `;
+      el.style.display = 'block';
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(()=>{{ el.style.display='none'; }}, 8000);
     }}
-  }}
 
-  const save = e.target.closest(".btnSavePlan");
-  if(save){{
-    const username = save.dataset.username;
-    const sel = document.querySelector(`.planSel[data-username="${{username}}"]`);
-    const new_plan = sel ? sel.value : "free";
-    try{{
-      const res = await fetch("/admin/update-user-plan", {{
-        method:"POST",
-        headers: {{"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"}},
-        body: JSON.stringify({{username, new_plan}})
+    async function postJSON(url, payload) {{
+      const res = await fetch(url, {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify(payload || {{}})
       }});
-      const data = await res.json().catch(async ()=>({{success:false, message: await res.text()}}));
-      if(data.success){{
-        showOk(data.message || "Plan mis à jour.");
-        // Mettre à jour la date d\'expiration affichée sans recharger
-        if (data.subscription_end) {{
-          const endCell = document.querySelector(".subEndCell[data-username=\'" + username + "\']");
-          if (endCell) endCell.textContent = data.subscription_end;
+      let data = null;
+      try {{ data = await res.json(); }} catch (e) {{ data = null; }}
+      return {{ ok: res.ok, status: res.status, data }};
+    }}
+
+    // Enregistrer plan
+    document.querySelectorAll('.save-btn').forEach(btn => {{
+      btn.addEventListener('click', async () => {{
+        const username = btn.getAttribute('data-username');
+        const select = document.querySelector(`.plan-select[data-username="${{CSS.escape(username)}}"]`);
+        const plan = select ? select.value : 'free';
+
+        btn.disabled = true;
+        try {{
+          const r = await postJSON('/admin/update-user-plan', {{ username, plan }});
+          if (!r.ok || !r.data) {{
+            showToast('Erreur', 'Impossible de mettre à jour le plan.');
+            return;
+          }}
+          if (r.data.success) {{
+            // mettre à jour la date affichée si fournie
+            const cell = document.querySelector(`.sub-end[data-username="${{CSS.escape(username)}}"]`);
+            if (cell) cell.textContent = (r.data.subscription_end || (plan === 'free' ? '-' : cell.textContent));
+            showToast('OK', r.data.message || 'Plan mis à jour');
+          }} else {{
+            showToast('Erreur', r.data.message || 'Mise à jour refusée');
+          }}
+        }} finally {{
+          btn.disabled = false;
         }}
-      }}else{{
-        showErr(data.message || "Erreur.");
-      }}
-    }}catch(ex){{
-      showErr("Erreur réseau.");
-    }}
-  }}
-}});
-</script>
+      }});
+    }});
+
+    // Supprimer utilisateur
+    document.querySelectorAll('.del-btn').forEach(btn => {{
+      btn.addEventListener('click', async () => {{
+        const username = btn.getAttribute('data-username');
+        if (!confirm('Supprimer l\\'utilisateur ' + username + ' ?')) return;
+
+        btn.disabled = true;
+        try {{
+          const r = await postJSON('/admin/delete-user', {{ username }});
+          if (r.ok && r.data && r.data.success) {{
+            showToast('OK', r.data.message || 'Utilisateur supprimé');
+            setTimeout(()=>window.location.reload(), 700);
+          }} else {{
+            showToast('Erreur', (r.data && r.data.message) ? r.data.message : 'Suppression refusée');
+          }}
+        }} finally {{
+          btn.disabled = false;
+        }}
+      }});
+    }});
+
+    // Reset mot de passe
+    document.querySelectorAll('.reset-btn').forEach(btn => {{
+      btn.addEventListener('click', async () => {{
+        const username = btn.getAttribute('data-username');
+        if (!confirm('Générer un nouveau mot de passe pour ' + username + ' ?\\n\\n⚠️ L\\'ancien mot de passe ne fonctionnera plus.')) return;
+
+        btn.disabled = true;
+        try {{
+          const r = await postJSON('/admin/reset-password', {{ username }});
+          if (r.ok && r.data && r.data.success) {{
+            const pwd = r.data.temp_password || '';
+            showToast('Nouveau mot de passe', username + ': ' + pwd, pwd);
+            alert('Nouveau mot de passe pour ' + username + ' :\\n\\n' + pwd + '\\n\\n(À noter: il ne sera pas ré-affiché)');
+          }} else {{
+            showToast('Erreur', (r.data && r.data.message) ? r.data.message : 'Reset refusé');
+          }}
+        }} finally {{
+          btn.disabled = false;
+        }}
+      }});
+    }});
+  </script>
 </body>
 </html>
-""")
+"""
+    return HTMLResponse(admin_users_html)
 
 @app.post("/admin/add-user")
 async def admin_add_user(request: Request):
@@ -6016,6 +6193,37 @@ async def delete_user(request: Request):
     
     db_manager.delete_user(user_to_delete)
     return JSONResponse({"success": True, "message": "Utilisateur supprimé."}, status_code=200)
+
+
+@app.post("/admin/reset-password")
+@app.post("/admin-dashboard/reset-password")
+async def reset_password(request: Request, admin=Depends(require_admin)):
+    """Réinitialise le mot de passe d'un utilisateur (retourne un mot de passe temporaire une seule fois)."""
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    username = (data.get("username") or "").strip()
+    if not username:
+        return JSONResponse({"success": False, "message": "Username requis."}, status_code=400)
+
+    # Générer un mot de passe temporaire (copiable)
+    temp_password = secrets.token_urlsafe(9)
+
+    ok = False
+    try:
+        ok = db_manager.change_password(username, temp_password)
+    except Exception:
+        ok = False
+
+    if not ok:
+        return JSONResponse({"success": False, "message": "Utilisateur introuvable ou erreur lors du reset."}, status_code=400)
+
+    return JSONResponse(
+        {"success": True, "message": "Mot de passe réinitialisé.", "temp_password": temp_password},
+        status_code=200
+    )
 
 @app.get("/admin/get-user/{username}")
 @app.get("/admin-dashboard/get-user/{username}")

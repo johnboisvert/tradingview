@@ -3771,7 +3771,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 USE_POSTGRESQL = POSTGRESQL_AVAILABLE and DATABASE_URL is not None
 
 # Base de donnes des utilisateurs et sessions
-USERS_DB = os.path.join(DB_CONFIG["dir"], "users.db")  # Persistant si /data est monté
+USERS_DB = DB_CONFIG["path"]  # single DB file for all features (users, plans, trades, etc.)  # Persistant si /data est monté
 active_sessions = {}  # 🆕 {token: {"username": str, "subscription_plan": str, ...}}
 
 class DatabaseManager:
@@ -3992,14 +3992,58 @@ class DatabaseManager:
         return result[0] if result else "user"
     
     def get_all_users(self):
-        """Récupérer tous les utilisateurs"""
+        """Retourne la liste des utilisateurs (pour /admin-users)."""
         conn = self.get_connection()
-        c = conn.cursor()
-        c.execute("SELECT username, role, created_at FROM users ORDER BY created_at DESC")
-        users = c.fetchall()
-        conn.close()
-        return users
-    
+        try:
+            if self.use_postgresql:
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT username, role,
+                           COALESCE(subscription_plan, 'free') AS plan,
+                           subscription_end,
+                           created_at
+                    FROM users
+                    ORDER BY created_at DESC
+                """)
+                rows = cur.fetchall()
+                users = []
+                for r in rows:
+                    users.append({
+                        "username": r[0],
+                        "role": r[1],
+                        "plan": r[2] or "free",
+                        "subscription_end": r[3],
+                        "created_at": r[4],
+                    })
+                return users
+            else:
+                conn.row_factory = sqlite3.Row
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT username, role,
+                           COALESCE(subscription_plan, 'free') AS plan,
+                           subscription_end,
+                           created_at
+                    FROM users
+                    ORDER BY created_at DESC
+                """)
+                rows = cur.fetchall()
+                users = []
+                for r in rows:
+                    users.append({
+                        "username": r["username"],
+                        "role": r["role"],
+                        "plan": r["plan"] or "free",
+                        "subscription_end": r["subscription_end"],
+                        "created_at": r["created_at"],
+                    })
+                return users
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
     def get_user_info(self, username: str) -> dict:
         """🆕 Récupérer toutes les infos d'un utilisateur incluant l'abonnement"""
         username = (username or "").strip()
@@ -4139,6 +4183,14 @@ class DatabaseManager:
 
 # Initialiser le gestionnaire de base de donnes
 db_manager = DatabaseManager()
+
+def list_users_from_sqlite():
+    """Compat : utilisé par /admin-users. Lit dans la même DB que db_manager."""
+    try:
+        return db_manager.get_all_users()
+    except Exception as e:
+        print(f"❌ Erreur list_users_from_sqlite: {e}")
+        return []
 
 # Fonctions de compatibilit pour le code existant
 def hash_password(password: str) -> str:
@@ -6055,7 +6107,7 @@ async def admin_add_user(request: Request):
         subscription_start = now.isoformat() if (plan != "free" and duration_days > 0) else None
         subscription_end = (now + timedelta(days=duration_days)).isoformat() if (plan != "free" and duration_days > 0) else None
 
-        users_db_path = os.path.join(DB_DIR, "users.db")
+        users_db_path = USERS_DB
         conn = sqlite3.connect(users_db_path)
         cur = conn.cursor()
 

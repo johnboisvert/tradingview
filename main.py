@@ -4174,11 +4174,11 @@ class DatabaseManager:
 
         try:
             if self.use_postgresql:
-                c.execute("UPDATE users SET password_hash = %s WHERE username = %s", (password_hash, username))
+                c.execute("UPDATE users SET password_hash = %s WHERE LOWER(username) = LOWER(%s)", (password_hash, username))
                 conn.commit()
                 updated = c.rowcount
             else:
-                c.execute("UPDATE users SET password_hash = ? WHERE username = ?", (password_hash, username))
+                c.execute("UPDATE users SET password_hash = ? WHERE LOWER(username) = LOWER(?)", (password_hash, username))
                 conn.commit()
                 # sqlite3.rowcount peut parfois être -1; on sécurise avec changes()
                 updated = c.rowcount
@@ -6315,6 +6315,70 @@ async def delete_user(request: Request):
 
 
 @app.post("/admin/reset-password")
+async def admin_reset_password(request: Request):
+    """
+    Reset (génère) un mot de passe temporaire pour un utilisateur.
+    Accepte JSON, form-urlencoded ou text/plain(JSON).
+    """
+    # --- lecture body robuste (évite les surprises de content-type) ---
+    data = {}
+    try:
+        data = await request.json()
+        if not isinstance(data, dict):
+            data = {}
+    except Exception:
+        data = {}
+
+    if not data:
+        # Essayer form-urlencoded / multipart
+        try:
+            form = await request.form()
+            data = dict(form)
+        except Exception:
+            data = {}
+
+    if not data:
+        # Essayer text/plain contenant du JSON
+        try:
+            raw = (await request.body() or b"").decode("utf-8", "ignore").strip()
+            if raw:
+                import json as _json
+                tmp = _json.loads(raw)
+                if isinstance(tmp, dict):
+                    data = tmp
+        except Exception:
+            data = {}
+
+    # --- champs acceptés ---
+    username = (
+        (data.get("username") if isinstance(data, dict) else None)
+        or (data.get("email") if isinstance(data, dict) else None)
+        or (data.get("user") if isinstance(data, dict) else None)
+        or (data.get("identifier") if isinstance(data, dict) else None)
+    )
+    username = (str(username).strip() if username is not None else "")
+
+    if not username:
+        return JSONResponse({"success": False, "message": "Champ 'username' manquant."}, status_code=400)
+
+    # Générer un mot de passe temporaire
+    temp_password = generate_temp_password(12)
+
+    ok = False
+    try:
+        ok = db_manager.change_password(username, temp_password)
+    except Exception as e:
+        print(f"❌ Reset password error for {username}: {e}")
+        ok = False
+
+    if not ok:
+        return JSONResponse(
+            {"success": False, "message": f"Utilisateur introuvable: {username}"},
+            status_code=404
+        )
+
+    return JSONResponse({"success": True, "temp_password": temp_password})
+
 @app.post("/admin-dashboard/reset-password")
 async def reset_password(request: Request, admin=Depends(require_admin)):
     """Réinitialise le mot de passe d'un utilisateur (retourne un mot de passe temporaire une seule fois)."""

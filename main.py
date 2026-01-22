@@ -3141,11 +3141,20 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             route_to_check = api_map.get(path, path)
         is_admin = False
         try:
-            if isinstance(user, dict) and (user.get("role") or "").lower() == "admin":
+            role = (user.get("role") or "").lower() if isinstance(user, dict) else ""
+            uname = (user.get("username") or user.get("email") or "").lower() if isinstance(user, dict) else ""
+            if role == "admin" or uname == "admin":
                 is_admin = True
+            elif uname:
+                # Fallback: session store might miss role; double-check against auth DB
+                try:
+                    info = db_manager.get_user_info(uname)
+                    if info and (info.get("role") or "").lower() == "admin":
+                        is_admin = True
+                except Exception:
+                    pass
         except Exception:
             is_admin = False
-
         if (not is_admin) and (not check_route_permission(username, route_to_check)):
             # API/JSON requests: renvoyer du JSON, sinon page HTML d'upgrade
             required_plan = get_min_plan_for_route(route_to_check)
@@ -30577,38 +30586,153 @@ print("Routes 4-7 créées")
 
 @app.get("/ai-token-scanner")
 async def ai_token_scanner_page(request: Request):
-    """AI Token Scanner (placeholder).
+    """AI Token Scanner (page placeholder dans le style du site)."""
+    html = f"""
+    {GLOBAL_STYLES}
+    <style>
+      .page-wrap {{
+        margin-left: 260px;
+        padding: 34px 28px;
+        min-height: 100vh;
+        background: radial-gradient(1200px 600px at 20% 10%, rgba(0,255,180,0.08), transparent 60%),
+                    radial-gradient(1000px 500px at 80% 80%, rgba(120,120,255,0.10), transparent 60%),
+                    linear-gradient(180deg, #070b14, #070b14);
+        color: #e9eefb;
+      }}
+      .card {{
+        max-width: 980px;
+        margin: 40px auto;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 18px;
+        padding: 28px 26px;
+        box-shadow: 0 14px 40px rgba(0,0,0,0.35);
+        backdrop-filter: blur(12px);
+      }}
+      .badge {{
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 12px;
+        background: rgba(0,255,180,0.10);
+        border: 1px solid rgba(0,255,180,0.25);
+        color: #bfffee;
+        margin-bottom: 12px;
+      }}
+      .title {{
+        font-size: 34px;
+        font-weight: 900;
+        letter-spacing: 0.2px;
+        margin: 6px 0 8px;
+      }}
+      .muted {{
+        color: rgba(233,238,251,0.75);
+        line-height: 1.55;
+        font-size: 15px;
+        margin-bottom: 18px;
+      }}
+      .grid {{
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 14px;
+        margin-top: 18px;
+      }}
+      .panel {{
+        background: rgba(0,0,0,0.18);
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 16px;
+        padding: 18px 16px;
+      }}
+      .panel h3 {{
+        margin: 0 0 8px;
+        font-size: 15px;
+        color: rgba(233,238,251,0.9);
+      }}
+      .panel ul {{
+        margin: 0;
+        padding-left: 18px;
+        color: rgba(233,238,251,0.75);
+        font-size: 14px;
+        line-height: 1.6;
+      }}
+      .actions {{
+        display:flex;
+        gap: 12px;
+        margin-top: 18px;
+        flex-wrap: wrap;
+      }}
+      .btn {{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.06);
+        color: #e9eefb;
+        font-weight: 800;
+        text-decoration: none;
+        cursor: pointer;
+      }}
+      .btn-primary {{
+        background: rgba(0,255,180,0.16);
+        border-color: rgba(0,255,180,0.35);
+        color: #d9fff4;
+      }}
+      .note {{
+        margin-top: 12px;
+        font-size: 12px;
+        color: rgba(233,238,251,0.60);
+      }}
+      @media (max-width: 900px) {{
+        .page-wrap {{ margin-left: 0; padding: 22px 16px; }}
+        .grid {{ grid-template-columns: 1fr; }}
+      }}
+    </style>
 
-    Cette route existait dans la gestion des accès, mais aucune page n'était définie.
-    On ajoute une page simple "à venir" pour éviter la confusion et permettre de gérer l'accès.
-    """
-    # La protection d'accès est gérée par le middleware de permissions (plan_access).
-    html = f"""<!doctype html>
-<html lang='fr'>
-<head>
-  <meta charset='utf-8'>
-  <meta name='viewport' content='width=device-width, initial-scale=1'>
-  <title>AI Token Scanner — CryptoIA</title>
-  <link rel='stylesheet' href='/static/styles.css'>
-</head>
-<body>
-  <div style='max-width: 980px; margin: 40px auto; padding: 0 16px;'>
-    <div class='card' style='padding: 24px; border-radius: 16px;'>
-      <h1 style='margin: 0 0 8px 0;'>AI Token Scanner</h1>
-      <p style='opacity: .85; margin: 0 0 18px 0;'>
-        Cette fonctionnalité est en préparation. La page a été ajoutée pour que la
-        <b>Gestion des Accès par Forfait</b> puisse la contrôler correctement.
-      </p>
-      <div style='display:flex; gap:10px; flex-wrap:wrap;'>
-        <a class='btn' href='/dashboard'>Retour au dashboard</a>
-        <a class='btn btn-secondary' href='/pricing-complete'>Voir les forfaits</a>
+    {SIDEBAR}
+
+    <div class="page-wrap">
+      <div class="card">
+        <div class="badge">🤖 Fonction IA</div>
+        <div class="title">AI Token Scanner</div>
+        <div class="muted">
+          Cette page est prête côté <b>accès</b> (Gestion des Accès par Forfait) et côté <b>menu</b>.
+          La fonctionnalité “scanner” arrive ensuite.
+        </div>
+
+        <div class="grid">
+          <div class="panel">
+            <h3>Ce qui est déjà en place ✅</h3>
+            <ul>
+              <li>Route <code>/ai-token-scanner</code> ajoutée</li>
+              <li>Entrée dans “Gestion des Accès par Forfait”</li>
+              <li>Contrôle par forfait + page “Accès refusé” automatique</li>
+              <li>Bypass admin (admin voit toujours la page)</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Prochaines étapes (quand tu veux)</h3>
+            <ul>
+              <li>Choisir les filtres (volume, narratives, on-chain, socials…)</li>
+              <li>Score/label (Gem, Risk, Trend…)</li>
+              <li>Watchlist + alertes</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="actions">
+          <a class="btn btn-primary" href="/dashboard">Retour au dashboard</a>
+          <a class="btn" href="/pricing">Voir les forfaits</a>
+        </div>
+        <div class="note">Astuce: active la page dans “Gestion des Accès par Forfait” pour le plan voulu (ex: Elite) puis teste avec un utilisateur de ce plan.</div>
       </div>
     </div>
-  </div>
-</body>
-</html>"""
+    """
     return HTMLResponse(html)
-
 @app.get("/ai-sizer", response_class=HTMLResponse)
 async def ai_sizer():
     """Calcul position sizing - TOP 50"""

@@ -4279,14 +4279,45 @@ def create_session(username: str, user_info: dict = None) -> str:
     return token
 
 def get_user_from_token(token: Optional[str]):
-    """Récupérer l'utilisateur depuis un token de session"""
-    if token:
-        user_data = active_sessions.get(token)
-        # Compatibilit: si c'est juste un string (ancien format), retourner tel quel
-        if isinstance(user_data, str):
-            return user_data
+    """Récupérer l'utilisateur depuis un token de session.
+
+    Normalise les anciens formats : si active_sessions[token] est une string (ex: "admin"),
+    on la convertit en dict {"username": "..."} afin que les middlewares puissent lire username/role.
+    """
+    if not token:
+        return None
+
+    user_data = active_sessions.get(token)
+    if not user_data:
+        return None
+
+    # Ancien format: juste un username en string
+    if isinstance(user_data, str):
+        uname = user_data.strip()
+        user_dict = {"username": uname}
+        # Enrichir avec le rôle depuis la DB si possible
+        try:
+            role = db_manager.get_user_role(uname)
+            if role:
+                user_dict["role"] = role
+        except Exception:
+            pass
+        return user_dict
+
+    # Format dict: s'assurer qu'on a un username et (si possible) un role
+    if isinstance(user_data, dict):
+        uname = (user_data.get("username") or user_data.get("email") or "").strip()
+        if uname and not user_data.get("role"):
+            try:
+                role = db_manager.get_user_role(uname)
+                if role:
+                    user_data["role"] = role
+            except Exception:
+                pass
         return user_data
+
     return None
+
 
 def get_current_user(session_token: Optional[str] = Cookie(None)) -> Optional[str]:
     """Dépendance FastAPI pour récupérer l'utilisateur actuel"""

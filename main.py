@@ -5295,7 +5295,7 @@ async def admin_panel(request: Request):
     """Panel d'administration pour gérer les utilisateurs"""
 
     # Rediriger tout l’ancien /admin vers la nouvelle section /admin-dashboard
-    return RedirectResponse(url="/admin-dashboard", status_code=302)
+    return RedirectResponse(url="/admin-users", status_code=302)
 
     
     # Rcuprer tous les utilisateurs
@@ -24511,7 +24511,7 @@ async def admin_dashboard(request: Request):
 
   <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
     <button class="btn" id="btnCreateUser" type="button">Créer l'utilisateur</button>
-    <a href="/admin" style="text-decoration:none; padding:12px 14px; border-radius:12px; background:#111827; color:#fff; font-weight:900;">Gestion complète</a>
+    <a href="/admin-users" style="text-decoration:none; padding:12px 14px; border-radius:12px; background:#111827; color:#fff; font-weight:900;">Gestion complète</a>
   </div>
 
   <div id="createUserMsg"></div>

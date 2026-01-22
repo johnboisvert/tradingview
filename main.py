@@ -30768,11 +30768,117 @@ def _norm_chain(chain: str) -> str:
     }
     return aliases.get(c, c if c else "auto")
 
-async def _fetch_json(url: str, params: dict | None = None, headers: dict | None = None, timeout: float = 12.0):
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-        r = await client.get(url, params=params, headers=headers)
-        r.raise_for_status()
-        return r.json()
+
+# --- AI Token Scanner helpers -------------------------------------------------
+
+# Petit cache mémoire pour réduire les appels externes (CoinGecko est rapidement limité)
+_HTTP_CACHE = {}
+_HTTP_CACHE_LOCK = asyncio.Lock()
+
+def _http_cache_key(url, params):
+    if not params:
+        return url
+    try:
+        items = sorted((str(k), str(v)) for k, v in params.items())
+    except Exception:
+        return url
+    return url + "?" + "&".join([f"{k}={v}" for k, v in items])
+
+async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeout: float = 15.0, cache_ttl: int = 0):
+    """Fetch JSON with small retries + optional caching.
+
+    - Retries on 429 and some transient errors
+    - Adds CoinGecko API key header if configured
+    - Optional in-memory TTL cache to avoid rate limits
+    """
+    params = params or {}
+    headers = headers or {}
+
+    # Add user-agent
+    headers.setdefault("User-Agent", "CryptoIA/1.0 (+https://www.cryptoia.ca)")
+
+    # CoinGecko API key support (optional)
+    # - Demo key header: x-cg-demo-api-key
+    # - Pro key header:  x-cg-pro-api-key
+    cg_demo_key = (os.getenv("COINGECKO_API_KEY") or "").strip()
+    cg_pro_key = (os.getenv("COINGECKO_PRO_API_KEY") or "").strip()
+    if "api.coingecko.com" in url:
+        if cg_pro_key:
+            headers.setdefault("x-cg-pro-api-key", cg_pro_key)
+        elif cg_demo_key:
+            headers.setdefault("x-cg-demo-api-key", cg_demo_key)
+        # Default cache TTL for CoinGecko if not provided
+        if cache_ttl <= 0:
+            cache_ttl = 45
+
+    cache_key = _http_cache_key(url, params) if cache_ttl and cache_ttl > 0 else None
+    now = time.time()
+
+    # Try cache
+    if cache_key:
+        async with _HTTP_CACHE_LOCK:
+            hit = _HTTP_CACHE.get(cache_key)
+            if hit:
+                exp, payload = hit
+                if exp > now:
+                    return payload
+                else:
+                    _HTTP_CACHE.pop(cache_key, None)
+
+    max_retries = 4
+    backoff = 1.0
+
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                r = await client.get(url, params=params, headers=headers)
+            # Handle rate limit
+            if r.status_code == 429:
+                # Rate limit: wait and retry (or fail on last attempt)
+                if attempt >= max_retries - 1:
+                    raise RuntimeError("CoinGecko est temporairement limité (HTTP 429). Réessaie dans 30–60 secondes.")
+                retry_after = r.headers.get("retry-after")
+                try:
+                    wait_s = float(retry_after) if retry_after else backoff
+                except Exception:
+                    wait_s = backoff
+                wait_s = max(1.0, min(60.0, wait_s))
+                await asyncio.sleep(wait_s)
+                backoff = min(60.0, backoff * 2.0)
+                continue
+
+            r.raise_for_status()
+            payload = r.json()
+
+            # Store cache
+            if cache_key:
+                async with _HTTP_CACHE_LOCK:
+                    _HTTP_CACHE[cache_key] = (time.time() + float(cache_ttl), payload)
+
+            return payload
+
+        except httpx.HTTPStatusError as e:
+            status = getattr(e.response, "status_code", None)
+            if status == 429:
+                if attempt >= max_retries - 1:
+                    raise RuntimeError("CoinGecko est temporairement limité (HTTP 429). Réessaie dans 30–60 secondes.") from e
+                # Already handled above, but just in case
+                await asyncio.sleep(backoff)
+                backoff = min(60.0, backoff * 2.0)
+                continue
+            # For other status codes, raise with a clean message
+            raise RuntimeError(f"Erreur API (HTTP {status})") from e
+        except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as e:
+            # Transient: retry
+            if attempt < max_retries - 1:
+                await asyncio.sleep(backoff)
+                backoff = min(60.0, backoff * 2.0)
+                continue
+            raise RuntimeError("Erreur réseau (timeout/connexion). Réessaie.") from e
+        except Exception as e:
+            # Unknown
+            raise
+
 
 def _pick_best_pair(pairs: list[dict]) -> dict | None:
     if not pairs:

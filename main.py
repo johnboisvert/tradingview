@@ -4520,12 +4520,17 @@ def is_admin_request(request: Request) -> bool:
     except Exception:
         return False
 
-def require_admin(session_token: str = Cookie(None)):
+def require_admin(session_token: str = Cookie(None), session: str = Cookie(None)):
     """Dépendance FastAPI: assure que l'utilisateur connecté est admin.
 
-    Note: Les sessions stockent généralement un dict (user_info).
-    Cette dépendance accepte donc un dict ou une string."""
-    user = get_user_from_token(session_token)
+    - Compat: accepte cookie 'session_token' OU 'session' (anciens déploiements).
+    - La session peut contenir un dict (user_info) ou une string (username/email).
+    """
+    token = ((session_token or session) or "").strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+
+    user = get_user_from_token(token)
 
     # user peut être un dict (user_info) ou une string (compat)
     if isinstance(user, dict):
@@ -6064,7 +6069,7 @@ async def admin_users_page(request: Request, admin=Depends(require_admin)):
     return HTMLResponse(admin_users_html)
 
 @app.post("/admin/add-user")
-async def admin_add_user(request: Request):
+async def admin_add_user(request: Request, admin: str = Depends(require_admin)):
     """Crée un utilisateur (ou met à jour s'il existe déjà).
 
     Entrées JSON:
@@ -6315,7 +6320,7 @@ async def delete_user(request: Request):
 
 
 @app.post("/admin/reset-password")
-async def admin_reset_password(request: Request):
+async def admin_reset_password(request: Request, admin: str = Depends(require_admin)):
     """
     Reset (génère) un mot de passe temporaire pour un utilisateur.
     Accepte JSON, form-urlencoded ou text/plain(JSON).
@@ -28870,7 +28875,7 @@ async def admin_update_plan_features_page(request: Request):
 
 @app.post("/admin/update-plan-features")
 @app.post("/admin-dashboard/update-plan-features")
-async def update_plan_features(request: Request):
+async def update_plan_features(request: Request, admin: str = Depends(require_admin)):
     """Met à jour les features des plans.
 
     - Si appelé depuis le formulaire HTML: accepte form-data avec fields features_<plan> (JSON).

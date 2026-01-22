@@ -9,6 +9,7 @@ from pathlib import Path
 # === Railway debug fingerprint (temp) ===
 import os, hashlib, pathlib
 import html  # pour html.escape (AI Token Scanner)
+import re  # regex (AI Token Scanner / permissions)
 _p = pathlib.Path(__file__)
 try:
     _sha1 = hashlib.sha1(_p.read_bytes()).hexdigest()
@@ -4414,6 +4415,32 @@ def get_min_plan_for_route(route_key: str) -> str:
         except Exception:
             continue
     return "elite"
+
+def normalize_route_key(route: str) -> str:
+    """Normalise une route en 'clé' utilisée par le système de permissions.
+    - retire /, querystring, #fragment
+    - mappe les alias fréquents vers la même clé
+    """
+    rk = (route or "").strip()
+    rk = rk.split("?", 1)[0].split("#", 1)[0]
+    rk = rk.lstrip("/")
+    if rk in ("", "/"):
+        rk = "dashboard"
+
+    # Aliases (URL -> clé permissions)
+    alias = {
+        "index": "dashboard",
+        "home": "dashboard",
+        "pricing": "pricing-complete",
+        "plans": "pricing-complete",
+        "plan": "pricing-complete",
+        "tarifs": "pricing-complete",
+        "pricing-complete": "pricing-complete",
+        "admin": "admin-dashboard",
+    }
+    # garde la route telle quelle si pas d'alias
+    rk = alias.get(rk, rk)
+    return rk
 
 def check_route_permission(username: str, route: str) -> bool:
     """

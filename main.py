@@ -4372,6 +4372,14 @@ def check_route_permission(username: str, route: str) -> bool:
     - Les clés stockées sont des slugs (ex: 'spot-trading', 'ai-market-regime', 'pricing-complete', 'dashboard')
     """
     try:
+        # Pages qui ne doivent jamais être bloquées par la gestion des forfaits.
+        # /mon-compte gère déjà la connexion (redirige vers /login si besoin).
+        route_key0 = normalize_route_key(route)
+        if route.startswith('/static') or route_key0.startswith('static/'):
+            return True
+        if route_key0 in ('health', 'login', 'register', 'logout', 'mon-compte', 'forgot-password', 'reset-password'):
+            return True
+
         uname = normalize_username(username)
         if not uname:
             # Invité (pas logué) -> traité comme plan FREE

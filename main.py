@@ -2800,15 +2800,16 @@ def get_user_from_request(request: Request):
     """Récupère l'utilisateur depuis les cookies - VERSION CORRIGÉE"""
     try:
         #  CORRECTION: Utiliser session_token, pas user_id!
-        session_token = request.cookies.get("session_token")
-        
-        if not session_token:
-            print("⚠️ get_user_from_request: Pas de session_token dans les cookies")
-            return None
-        
-        #  CORRECTION: Utiliser get_user_from_token() qui existe dj
-        token = session_token or session
-    user = get_user_from_token(token)
+        token = request.cookies.get("token")
+        if not token:
+            token = get_cookie(request, "access_token")
+        if not token:
+            session_token = get_cookie(request, "session")
+            if not session_token:
+                return None
+            token = session_token
+
+        user = get_user_from_token(token)
         
         if not user:
             print(f"⚠️ get_user_from_request: session_token trouvé mais utilisateur non trouvé")

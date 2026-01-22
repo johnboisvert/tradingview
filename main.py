@@ -8,6 +8,7 @@ from pathlib import Path
 
 # === Railway debug fingerprint (temp) ===
 import os, hashlib, pathlib
+import html  # pour html.escape (AI Token Scanner)
 _p = pathlib.Path(__file__)
 try:
     _sha1 = hashlib.sha1(_p.read_bytes()).hexdigest()

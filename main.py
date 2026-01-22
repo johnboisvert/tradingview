@@ -5697,7 +5697,7 @@ async def admin_users_page(request: Request, admin: dict = Depends(require_admin
               </select>
               <button class="btnSavePlan" data-username="{username}" style="margin-left:10px;padding:7px 10px;border-radius:10px;border:0;background:#3b82f6;color:#fff;cursor:pointer;">Enregistrer</button>
             </td>
-            <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>{sub_end}</td>
+            <td class='subEndCell' data-username='{username}' style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>{sub_end}</td>
             <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);'>{created}</td>
             <td style='padding:10px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:right;'>
               <button class="btnDelete" data-username="{username}" style="padding:7px 10px;border-radius:10px;border:0;background:#ef4444;color:#fff;cursor:pointer;">Supprimer</button>
@@ -5713,7 +5713,8 @@ async def admin_users_page(request: Request, admin: dict = Depends(require_admin
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Admin — Gestion des utilisateurs</title>
   <style>
-    body{{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;background:linear-gradient(135deg,#0b1220,#0f172a);color:#e5e7eb;}}
+    body{{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;background:linear-gradient(135deg,#0b1020,#0f172a,#111827) !important;color:#e5e7eb;padding:40px;padding-left:320px;}}
+    @media(max-width:900px){{body{{padding-left:16px;}}}}
     .wrap{{max-width:1200px;margin:24px auto;padding:0 16px;}}
     .card{{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,0.35);overflow:hidden;}}
     .head{{display:flex;align-items:center;justify-content:space-between;padding:18px 18px;border-bottom:1px solid rgba(255,255,255,0.10);}}
@@ -5727,6 +5728,7 @@ async def admin_users_page(request: Request, admin: dict = Depends(require_admin
   </style>
 </head>
 <body>
+  {SIDEBAR}
   <div class="wrap">
     <div class="card">
       <div class="head">
@@ -5806,6 +5808,11 @@ document.addEventListener("click", async (e) => {{
       const data = await res.json().catch(async ()=>({{success:false, message: await res.text()}}));
       if(data.success){{
         showOk(data.message || "Plan mis à jour.");
+        // Mettre à jour la date d\'expiration affichée sans recharger
+        if (data.subscription_end) {{
+          const endCell = document.querySelector(".subEndCell[data-username=\'" + username + "\']");
+          if (endCell) endCell.textContent = data.subscription_end;
+        }}
       }}else{{
         showErr(data.message || "Erreur.");
       }}
@@ -5977,7 +5984,25 @@ async def admin_update_user_plan(request: Request):
         "pro": "Pro (6 mois)",
         "elite": "Elite (12 mois)",
     }
-    return JSONResponse({"success": True, "message": f"Plan mis à jour: {username} → {plan_names.get(new_plan, new_plan)}."}, status_code=200)
+            # Renvoyer les valeurs mises à jour au front-end (pour rafraîchir la table sans recharger)
+    def _to_str(v):
+        if v is None:
+            return None
+        try:
+            return v.isoformat()
+        except Exception:
+            return str(v)
+
+    return JSONResponse(
+        {
+            "success": True,
+            "message": f"Plan mis à jour: {username} → {plan_names.get(new_plan, new_plan)}.",
+            "subscription_plan": new_plan,
+            "subscription_start": _to_str(sub_start),
+            "subscription_end": _to_str(sub_end),
+        },
+        status_code=200,
+    )
 
 @app.post("/admin/delete-user")
 @app.post("/admin-dashboard/delete-user")

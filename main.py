@@ -30643,6 +30643,56 @@ async def ai_sentiment():
 print("Routes 4-7 créées")
 
 
+
+
+# ===========================
+# AI TOKEN SCANNER - CACHE (anti 429)
+# ===========================
+AI_TOKEN_SCAN_CACHE_ENABLED = os.getenv("AI_TOKEN_SCAN_CACHE_ENABLED", "1").strip() not in ("0","false","False","no","NO")
+try:
+    AI_TOKEN_SCAN_CACHE_TTL = int(os.getenv("AI_TOKEN_SCAN_CACHE_TTL", "90") or "90")  # seconds
+except Exception:
+    AI_TOKEN_SCAN_CACHE_TTL = 90
+
+_AI_TOKEN_SCAN_CACHE = {}  # key -> {"ts": float, "data": dict}
+
+def _ai_token_scan_cache_key(q: str, chain: str) -> str:
+    qn = (q or "").strip().lower()
+    cn = _norm_chain(chain)
+    return f"{cn}||{qn}"
+
+def _ai_token_scan_cache_get(key: str):
+    if not AI_TOKEN_SCAN_CACHE_ENABLED:
+        return None
+    item = _AI_TOKEN_SCAN_CACHE.get(key)
+    if not item:
+        return None
+    try:
+        ts = float(item.get("ts", 0))
+    except Exception:
+        ts = 0.0
+    if (time.time() - ts) > AI_TOKEN_SCAN_CACHE_TTL:
+        _AI_TOKEN_SCAN_CACHE.pop(key, None)
+        return None
+    return item.get("data")
+
+def _ai_token_scan_cache_set(key: str, data: dict):
+    if not AI_TOKEN_SCAN_CACHE_ENABLED:
+        return
+    if not isinstance(data, dict):
+        return
+    _AI_TOKEN_SCAN_CACHE[key] = {"ts": time.time(), "data": data}
+
+async def _ai_token_scanner_run_cached(q: str, chain: str):
+    key = _ai_token_scan_cache_key(q, chain)
+    cached = _ai_token_scan_cache_get(key)
+    if cached is not None:
+        return cached, True
+    result, cache_hit = await _ai_token_scanner_run_cached(q=q, chain=chain)
+    if isinstance(result, dict) and result.get("ok"):
+        _ai_token_scan_cache_set(key, result)
+    return result, False
+
 @app.get("/ai-token-scanner", response_class=HTMLResponse)
 async def ai_token_scanner_page(request: Request):
     """
@@ -30652,17 +30702,19 @@ async def ai_token_scanner_page(request: Request):
       (Et l'admin doit toujours bypass, cf. logique d'accès globale.)
     """
     q = (request.query_params.get("q") or "").strip()
-    chain = (request.query_params.get("chain") or "auto").strip().lower()
+    chain = _norm_chain(request.query_params.get("chain") or "auto")
 
     result = None
     error = None
+    cache_hit = False
     if q:
         try:
-            result = await _ai_token_scanner_run(q=q, chain=chain)
+            result, cache_hit = await _ai_token_scanner_run_cached(q=q, chain=chain)
         except Exception as e:
+            cache_hit = False
             error = f"Erreur lors du scan: {e}"
 
-    html_page = _render_ai_token_scanner_page(q=q, chain=chain, result=result, error=error)
+    html_page = _render_ai_token_scanner_page(q=q, chain=chain, result=result, error=error, cache_hit=cache_hit)
     return HTMLResponse(content=html_page)
 
 
@@ -30674,20 +30726,22 @@ async def ai_token_scanner_scan(request: Request):
     """
     form = await request.form()
     q = (form.get("q") or "").strip()
-    chain = (form.get("chain") or "auto").strip().lower()
+    chain = _norm_chain(form.get("chain") or "auto")
 
     # Rendu direct (pas de redirect) pour afficher erreurs + résultats proprement
     result = None
     error = None
+    cache_hit = False
     if not q:
         error = "Entre un symbole, un nom ou une adresse de contrat."
     else:
         try:
-            result = await _ai_token_scanner_run(q=q, chain=chain)
+            result, cache_hit = await _ai_token_scanner_run_cached(q=q, chain=chain)
         except Exception as e:
+            cache_hit = False
             error = f"Erreur lors du scan: {e}"
 
-    html_page = _render_ai_token_scanner_page(q=q, chain=chain, result=result, error=error)
+    html_page = _render_ai_token_scanner_page(q=q, chain=chain, result=result, error=error, cache_hit=cache_hit)
     return HTMLResponse(content=html_page)
 
 
@@ -30701,7 +30755,7 @@ async def api_ai_token_scanner_scan(q: str = "", chain: str = "auto"):
     if not q:
         return JSONResponse({"ok": False, "error": "Missing q"}, status_code=400)
     try:
-        result = await _ai_token_scanner_run(q=q, chain=chain)
+        result, cache_hit = await _ai_token_scanner_run_cached(q=q, chain=chain)
         return JSONResponse({"ok": True, "result": result})
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -31098,9 +31152,10 @@ async def _ai_token_scanner_run(q: str, chain: str = "auto") -> dict:
 # AI TOKEN SCANNER - RENDER
 # =========================
 
-def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error: str | None) -> str:
+def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error: str | None, cache_hit: bool = False) -> str:
     q_esc = html.escape(q or "")
     chain = _norm_chain(chain)
+    cache_badge = '<span class="badge-cache">Résultat en cache</span>' if cache_hit else ''
     error_html = ""
     if error:
         error_html = f"""
@@ -31230,6 +31285,19 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
   <title>AI Token Scanner — CryptoIA</title>
   {CSS}
   <style>
+    .badge-cache {
+      display: inline-block;
+      margin-left: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(0, 255, 200, 0.12);
+      border: 1px solid rgba(0, 255, 200, 0.25);
+      color: #9fffe9;
+      vertical-align: middle;
+    }
+
     .page {{
       display: flex;
       min-height: 100vh;
@@ -31374,7 +31442,7 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
         <div class="hero">
           <div style="display:flex; align-items:center; gap:10px;">
             <div style="width:10px;height:10px;border-radius:99px;background:#00F5FF; box-shadow:0 0 20px rgba(0,245,255,0.35);"></div>
-            <h1>AI Token Scanner</h1>
+            <h1>AI Token Scanner {cache_badge}</h1>
           </div>
           <p>Analyse rapide d’un token (symbole / nom / contrat) via des données publiques. Idéal pour repérer la liquidité, la FDV et quelques signaux de risque.</p>
 

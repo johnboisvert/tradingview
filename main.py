@@ -30584,155 +30584,146 @@ async def ai_sentiment():
 print("Routes 4-7 créées")
 
 
-@app.get("/ai-token-scanner")
+@app.get("/ai-token-scanner", response_class=HTMLResponse)
 async def ai_token_scanner_page(request: Request):
-    """AI Token Scanner (page placeholder dans le style du site)."""
-    html = f"""
-    {GLOBAL_STYLES}
-    <style>
-      .page-wrap {{
-        margin-left: 260px;
-        padding: 34px 28px;
-        min-height: 100vh;
-        background: radial-gradient(1200px 600px at 20% 10%, rgba(0,255,180,0.08), transparent 60%),
-                    radial-gradient(1000px 500px at 80% 80%, rgba(120,120,255,0.10), transparent 60%),
-                    linear-gradient(180deg, #070b14, #070b14);
-        color: #e9eefb;
-      }}
-      .card {{
-        max-width: 980px;
-        margin: 40px auto;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.10);
-        border-radius: 18px;
-        padding: 28px 26px;
-        box-shadow: 0 14px 40px rgba(0,0,0,0.35);
-        backdrop-filter: blur(12px);
-      }}
-      .badge {{
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
-        border-radius: 999px;
-        font-weight: 700;
-        font-size: 12px;
-        background: rgba(0,255,180,0.10);
-        border: 1px solid rgba(0,255,180,0.25);
-        color: #bfffee;
-        margin-bottom: 12px;
-      }}
-      .title {{
-        font-size: 34px;
-        font-weight: 900;
-        letter-spacing: 0.2px;
-        margin: 6px 0 8px;
-      }}
-      .muted {{
-        color: rgba(233,238,251,0.75);
-        line-height: 1.55;
-        font-size: 15px;
-        margin-bottom: 18px;
-      }}
-      .grid {{
-        display: grid;
-        grid-template-columns: 1.2fr 0.8fr;
-        gap: 14px;
-        margin-top: 18px;
-      }}
-      .panel {{
-        background: rgba(0,0,0,0.18);
-        border: 1px solid rgba(255,255,255,0.10);
-        border-radius: 16px;
-        padding: 18px 16px;
-      }}
-      .panel h3 {{
-        margin: 0 0 8px;
-        font-size: 15px;
-        color: rgba(233,238,251,0.9);
-      }}
-      .panel ul {{
-        margin: 0;
-        padding-left: 18px;
-        color: rgba(233,238,251,0.75);
-        font-size: 14px;
-        line-height: 1.6;
-      }}
-      .actions {{
-        display:flex;
-        gap: 12px;
-        margin-top: 18px;
-        flex-wrap: wrap;
-      }}
-      .btn {{
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
-        padding: 12px 16px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,0.14);
-        background: rgba(255,255,255,0.06);
-        color: #e9eefb;
-        font-weight: 800;
-        text-decoration: none;
-        cursor: pointer;
-      }}
-      .btn-primary {{
-        background: rgba(0,255,180,0.16);
-        border-color: rgba(0,255,180,0.35);
-        color: #d9fff4;
-      }}
-      .note {{
-        margin-top: 12px;
-        font-size: 12px;
-        color: rgba(233,238,251,0.60);
-      }}
-      @media (max-width: 900px) {{
-        .page-wrap {{ margin-left: 0; padding: 22px 16px; }}
-        .grid {{ grid-template-columns: 1fr; }}
-      }}
-    </style>
+    """
+    Page AI Token Scanner (placeholder)
+    - Accessible seulement aux utilisateurs autorisés (géré par le middleware permissions).
+    - Rendu UI cohérent avec le site (sidebar + background).
+    """
+    html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Token Scanner</title>
+  <style>
+    body {{
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at 20% 10%, #2a2f45 0%, #0c0f1a 45%, #070a12 100%);
+      color: #e9edf7;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }}
 
-    {SIDEBAR}
+    .main {{
+      margin-left: 270px;
+      padding: 34px 28px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }}
 
-    <div class="page-wrap">
-      <div class="card">
-        <div class="badge">🤖 Fonction IA</div>
-        <div class="title">AI Token Scanner</div>
-        <div class="muted">
-          Cette page est prête côté <b>accès</b> (Gestion des Accès par Forfait) et côté <b>menu</b>.
-          La fonctionnalité “scanner” arrive ensuite.
-        </div>
+    .card {{
+      width: min(900px, 92vw);
+      background: rgba(16, 20, 36, 0.62);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.50);
+      border-radius: 18px;
+      padding: 26px 26px 20px;
+      backdrop-filter: blur(12px);
+    }}
 
-        <div class="grid">
-          <div class="panel">
-            <h3>Ce qui est déjà en place ✅</h3>
-            <ul>
-              <li>Route <code>/ai-token-scanner</code> ajoutée</li>
-              <li>Entrée dans “Gestion des Accès par Forfait”</li>
-              <li>Contrôle par forfait + page “Accès refusé” automatique</li>
-              <li>Bypass admin (admin voit toujours la page)</li>
-            </ul>
-          </div>
-          <div class="panel">
-            <h3>Prochaines étapes (quand tu veux)</h3>
-            <ul>
-              <li>Choisir les filtres (volume, narratives, on-chain, socials…)</li>
-              <li>Score/label (Gem, Risk, Trend…)</li>
-              <li>Watchlist + alertes</li>
-            </ul>
-          </div>
-        </div>
+    .badge {{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.25);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+      margin-bottom: 10px;
+    }}
 
-        <div class="actions">
-          <a class="btn btn-primary" href="/dashboard">Retour au dashboard</a>
-          <a class="btn" href="/pricing">Voir les forfaits</a>
-        </div>
-        <div class="note">Astuce: active la page dans “Gestion des Accès par Forfait” pour le plan voulu (ex: Elite) puis teste avec un utilisateur de ce plan.</div>
+    h1 {{
+      margin: 6px 0 10px;
+      font-size: 30px;
+      line-height: 1.15;
+    }}
+
+    p {{
+      margin: 0 0 18px;
+      opacity: 0.92;
+      font-size: 15px;
+      line-height: 1.55;
+    }}
+
+    .actions {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }}
+
+    .btn {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: #e9edf7;
+      transition: transform .12s ease, background .12s ease;
+    }}
+    .btn:hover {{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.10);
+    }}
+    .btn.primary {{
+      border: 1px solid rgba(0, 255, 153, 0.20);
+      background: linear-gradient(135deg, #00ff99, #00c8ff);
+      color: #071018;
+    }}
+
+    .note {{
+      margin-top: 14px;
+      font-size: 13px;
+      opacity: 0.75;
+    }}
+
+    @media (max-width: 900px) {{
+      .main {{
+        margin-left: 0;
+        padding: 24px 14px;
+      }}
+    }}
+  </style>
+</head>
+<body>
+  {SIDEBAR}
+  <div class="main">
+    <div class="card">
+      <div class="badge">🚧 Fonction en préparation</div>
+      <h1>AI Token Scanner</h1>
+      <p>
+        Cette fonctionnalité est en cours de développement. La page existe déjà pour que la
+        <b>Gestion des Accès par Forfait</b> puisse la contrôler correctement.
+      </p>
+
+      <div class="actions">
+        <a class="btn" href="/dashboard">Retour au dashboard</a>
+        <a class="btn primary" href="/pricing-complete">Voir les forfaits</a>
+      </div>
+
+      <div class="note">
+        Astuce : active la page dans “Gestion des Accès par Forfait” pour le plan voulu (ex : Elite),
+        puis teste avec un utilisateur de ce plan.
       </div>
     </div>
-    """
-    return HTMLResponse(html)
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
 @app.get("/ai-sizer", response_class=HTMLResponse)
 async def ai_sizer():
     """Calcul position sizing - TOP 50"""

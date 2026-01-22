@@ -2807,7 +2807,8 @@ def get_user_from_request(request: Request):
             return None
         
         #  CORRECTION: Utiliser get_user_from_token() qui existe dj
-        user = get_user_from_token(session_token)
+        token = session_token or session
+    user = get_user_from_token(token)
         
         if not user:
             print(f"⚠️ get_user_from_request: session_token trouvé mais utilisateur non trouvé")
@@ -4211,6 +4212,31 @@ def verify_user(username: str, password: str) -> bool:
 
     return False
 
+def generate_temp_password(length: int = 12) -> str:
+    """Génère un mot de passe temporaire robuste (admin reset).
+    - Évite les caractères ambigus (O/0, l/1, etc.)
+    - Assure une complexité minimale (maj/min/chiffre/symbole)
+    """
+    try:
+        length = int(length)
+    except Exception:
+        length = 12
+    if length < 8:
+        length = 8
+
+    upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+    lower = "abcdefghijkmnopqrstuvwxyz"
+    digits = "23456789"
+    symbols = "!@#$%&*?"
+    pool = upper + lower + digits + symbols
+
+    # garantir au moins 1 de chaque
+    pw = [secrets.choice(upper), secrets.choice(lower), secrets.choice(digits), secrets.choice(symbols)]
+    pw += [secrets.choice(pool) for _ in range(length - len(pw))]
+    random.SystemRandom().shuffle(pw)
+    return "".join(pw)
+
+
 def create_session(username: str, user_info: dict = None) -> str:
     """Créer une session pour un utilisateur avec infos d'abonnement"""
     token = secrets.token_urlsafe(32)
@@ -4523,13 +4549,9 @@ def is_admin_request(request: Request) -> bool:
 def require_admin(session_token: str = Cookie(None), session: str = Cookie(None)):
     """Dépendance FastAPI: assure que l'utilisateur connecté est admin.
 
-    - Compat: accepte cookie 'session_token' OU 'session' (anciens déploiements).
-    - La session peut contenir un dict (user_info) ou une string (username/email).
-    """
-    token = ((session_token or session) or "").strip()
-    if not token:
-        raise HTTPException(status_code=401, detail="Non authentifié")
-
+    Note: Les sessions stockent généralement un dict (user_info).
+    Cette dépendance accepte donc un dict ou une string."""
+    token = session_token or session
     user = get_user_from_token(token)
 
     # user peut être un dict (user_info) ou une string (compat)
@@ -6069,7 +6091,7 @@ async def admin_users_page(request: Request, admin=Depends(require_admin)):
     return HTMLResponse(admin_users_html)
 
 @app.post("/admin/add-user")
-async def admin_add_user(request: Request, admin: str = Depends(require_admin)):
+async def admin_add_user(request: Request):
     """Crée un utilisateur (ou met à jour s'il existe déjà).
 
     Entrées JSON:
@@ -28875,7 +28897,7 @@ async def admin_update_plan_features_page(request: Request):
 
 @app.post("/admin/update-plan-features")
 @app.post("/admin-dashboard/update-plan-features")
-async def update_plan_features(request: Request, admin: str = Depends(require_admin)):
+async def update_plan_features(request: Request):
     """Met à jour les features des plans.
 
     - Si appelé depuis le formulaire HTML: accepte form-data avec fields features_<plan> (JSON).

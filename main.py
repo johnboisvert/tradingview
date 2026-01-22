@@ -30618,142 +30618,661 @@ print("Routes 4-7 créées")
 @app.get("/ai-token-scanner", response_class=HTMLResponse)
 async def ai_token_scanner_page(request: Request):
     """
-    Page AI Token Scanner (placeholder)
-    - Accessible seulement aux utilisateurs autorisés (géré par le middleware permissions).
-    - Rendu UI cohérent avec le site (sidebar + background).
+    AI Token Scanner
+    - Page UI (sidebar + background) + formulaire de scan.
+    - Le contrôle d'accès (plans) est géré par le middleware permissions.
+      (Et l'admin doit toujours bypass, cf. logique d'accès globale.)
     """
-    html = f"""<!DOCTYPE html>
+    q = (request.query_params.get("q") or "").strip()
+    chain = (request.query_params.get("chain") or "auto").strip().lower()
+
+    result = None
+    error = None
+    if q:
+        try:
+            result = await _ai_token_scanner_run(q=q, chain=chain)
+        except Exception as e:
+            error = f"Erreur lors du scan: {e}"
+
+    html_page = _render_ai_token_scanner_page(q=q, chain=chain, result=result, error=error)
+    return HTMLResponse(content=html_page)
+
+
+@app.post("/ai-token-scanner")
+async def ai_token_scanner_scan(request: Request):
+    """
+    Submit formulaire -> rend la même page avec les résultats.
+    (On évite Form() pour ne pas dépendre d'un import additionnel.)
+    """
+    form = await request.form()
+    q = (form.get("q") or "").strip()
+    chain = (form.get("chain") or "auto").strip().lower()
+
+    # Rendu direct (pas de redirect) pour afficher erreurs + résultats proprement
+    result = None
+    error = None
+    if not q:
+        error = "Entre un symbole, un nom ou une adresse de contrat."
+    else:
+        try:
+            result = await _ai_token_scanner_run(q=q, chain=chain)
+        except Exception as e:
+            error = f"Erreur lors du scan: {e}"
+
+    html_page = _render_ai_token_scanner_page(q=q, chain=chain, result=result, error=error)
+    return HTMLResponse(content=html_page)
+
+
+@app.get("/api/ai-token-scanner/scan")
+async def api_ai_token_scanner_scan(q: str = "", chain: str = "auto"):
+    """
+    API JSON optionnelle (utile si un jour tu veux un scan en AJAX).
+    """
+    q = (q or "").strip()
+    chain = (chain or "auto").strip().lower()
+    if not q:
+        return JSONResponse({"ok": False, "error": "Missing q"}, status_code=400)
+    try:
+        result = await _ai_token_scanner_run(q=q, chain=chain)
+        return JSONResponse({"ok": True, "result": result})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+# =========================
+# AI TOKEN SCANNER - ENGINE
+# =========================
+
+def _is_evm_address(s: str) -> bool:
+    s = (s or "").strip()
+    return bool(re.fullmatch(r"0x[a-fA-F0-9]{40}", s))
+
+def _safe_float(x, default=None):
+    try:
+        if x is None:
+            return default
+        return float(x)
+    except Exception:
+        return default
+
+def _fmt_usd(x):
+    v = _safe_float(x, None)
+    if v is None:
+        return "—"
+    # Format lisible
+    if abs(v) >= 1_000_000_000:
+        return f"${v/1_000_000_000:.2f}B"
+    if abs(v) >= 1_000_000:
+        return f"${v/1_000_000:.2f}M"
+    if abs(v) >= 1_000:
+        return f"${v/1_000:.2f}K"
+    return f"${v:,.2f}"
+
+def _fmt_num(x):
+    v = _safe_float(x, None)
+    if v is None:
+        return "—"
+    if abs(v) >= 1_000_000_000:
+        return f"{v/1_000_000_000:.2f}B"
+    if abs(v) >= 1_000_000:
+        return f"{v/1_000_000:.2f}M"
+    if abs(v) >= 1_000:
+        return f"{v/1_000:.2f}K"
+    return f"{v:,.2f}"
+
+def _norm_chain(chain: str) -> str:
+    c = (chain or "auto").strip().lower()
+    aliases = {
+        "eth": "ethereum",
+        "ethereum": "ethereum",
+        "bsc": "bsc",
+        "binance": "bsc",
+        "binance-smart-chain": "bsc",
+        "polygon": "polygon",
+        "matic": "polygon",
+        "arbitrum": "arbitrum",
+        "arb": "arbitrum",
+        "base": "base",
+        "sol": "solana",
+        "solana": "solana",
+        "avax": "avalanche",
+        "avalanche": "avalanche",
+    }
+    return aliases.get(c, c if c else "auto")
+
+async def _fetch_json(url: str, params: dict | None = None, headers: dict | None = None, timeout: float = 12.0):
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        r = await client.get(url, params=params, headers=headers)
+        r.raise_for_status()
+        return r.json()
+
+def _pick_best_pair(pairs: list[dict]) -> dict | None:
+    if not pairs:
+        return None
+    def score(p):
+        liq = _safe_float((p.get("liquidity") or {}).get("usd"), 0.0) or 0.0
+        vol = _safe_float((p.get("volume") or {}).get("h24"), 0.0) or 0.0
+        return liq * 0.7 + vol * 0.3
+    return sorted(pairs, key=score, reverse=True)[0]
+
+def _risk_flags(summary: dict) -> list[str]:
+    flags = []
+    liq = _safe_float(summary.get("liquidity_usd"), None)
+    vol = _safe_float(summary.get("volume_24h_usd"), None)
+    mcap = _safe_float(summary.get("market_cap_usd"), None)
+    fdv = _safe_float(summary.get("fdv_usd"), None)
+    age_days = _safe_float(summary.get("pair_age_days"), None)
+    chg24 = _safe_float(summary.get("price_change_24h_pct"), None)
+
+    if liq is not None and liq < 50_000:
+        flags.append("Liquidité très faible (< $50K) → glissement + manipulation plus faciles.")
+    if vol is not None and vol < 10_000:
+        flags.append("Volume 24h faible (< $10K) → activité limitée, risque de spread élevé.")
+    if fdv is not None and mcap is not None and mcap > 0:
+        ratio = fdv / mcap
+        if ratio >= 5:
+            flags.append(f"FDV très élevé vs market cap (≈ {ratio:.1f}x) → dilution potentielle.")
+    if age_days is not None and age_days < 7:
+        flags.append("Pair très récente (< 7 jours) → données limitées, risque plus élevé.")
+    if chg24 is not None and abs(chg24) >= 50:
+        flags.append("Variation 24h extrême (±50%+) → volatilité très forte.")
+    return flags
+
+async def _scan_with_dexscreener_by_address(address: str) -> dict:
+    url = f"https://api.dexscreener.com/latest/dex/tokens/{address}"
+    data = await _fetch_json(url)
+    pairs = data.get("pairs") or []
+    best = _pick_best_pair(pairs)
+
+    def map_pair(p):
+        liq = (p.get("liquidity") or {}).get("usd")
+        vol = (p.get("volume") or {}).get("h24")
+        fdv = p.get("fdv")
+        price = p.get("priceUsd")
+        created = p.get("pairCreatedAt")
+        age_days = None
+        if created:
+            try:
+                # DexScreener renvoie souvent un timestamp ms
+                ts = int(created)
+                if ts > 10_000_000_000:  # ms
+                    ts = ts / 1000.0
+                age_days = (time.time() - float(ts)) / 86400.0
+            except Exception:
+                age_days = None
+        return {
+            "chain": p.get("chainId"),
+            "dex": (p.get("dexId") or "").title(),
+            "pair": (p.get("baseToken") or {}).get("symbol"),
+            "quote": (p.get("quoteToken") or {}).get("symbol"),
+            "pair_url": p.get("url"),
+            "price_usd": _safe_float(price, None),
+            "liquidity_usd": _safe_float(liq, None),
+            "volume_24h_usd": _safe_float(vol, None),
+            "fdv_usd": _safe_float(fdv, None),
+            "pair_created_at": created,
+            "pair_age_days": age_days,
+        }
+
+    top_pairs = [map_pair(p) for p in pairs[:12]]
+    best_m = map_pair(best) if best else None
+    return {
+        "source": "dexscreener",
+        "token_address": address,
+        "best_pair": best_m,
+        "pairs": top_pairs,
+    }
+
+async def _scan_with_coingecko(query: str) -> dict:
+    # Search
+    sdata = await _fetch_json("https://api.coingecko.com/api/v3/search", params={"query": query})
+    coins = sdata.get("coins") or []
+    if not coins:
+        raise ValueError("Aucun token trouvé sur CoinGecko avec cette recherche.")
+    coin = coins[0]
+    coin_id = coin.get("id")
+    if not coin_id:
+        raise ValueError("CoinGecko: id manquant.")
+    # Details
+    cdata = await _fetch_json(
+        f"https://api.coingecko.com/api/v3/coins/{coin_id}",
+        params={
+            "localization": "false",
+            "tickers": "false",
+            "market_data": "true",
+            "community_data": "true",
+            "developer_data": "false",
+            "sparkline": "false",
+        },
+    )
+    md = cdata.get("market_data") or {}
+    links = cdata.get("links") or {}
+
+    def get_usd(d, key):
+        try:
+            return d.get(key, {}).get("usd")
+        except Exception:
+            return None
+
+    summary = {
+        "source": "coingecko",
+        "id": coin_id,
+        "name": cdata.get("name") or coin.get("name"),
+        "symbol": (cdata.get("symbol") or coin.get("symbol") or "").upper(),
+        "thumb": coin.get("thumb") or "",
+        "homepage": (links.get("homepage") or [""])[0] if isinstance(links.get("homepage"), list) else links.get("homepage"),
+        "coingecko_url": links.get("homepage", [""])[0] if isinstance(links.get("homepage"), list) else "",
+        "market_cap_usd": _safe_float(get_usd(md, "market_cap"), None),
+        "fdv_usd": _safe_float(get_usd(md, "fully_diluted_valuation"), None),
+        "volume_24h_usd": _safe_float(get_usd(md, "total_volume"), None),
+        "price_usd": _safe_float(get_usd(md, "current_price"), None),
+        "price_change_24h_pct": _safe_float(md.get("price_change_percentage_24h"), None),
+        "circulating_supply": _safe_float(md.get("circulating_supply"), None),
+        "total_supply": _safe_float(md.get("total_supply"), None),
+        "max_supply": _safe_float(md.get("max_supply"), None),
+        "rank": cdata.get("market_cap_rank"),
+        "categories": cdata.get("categories") or [],
+        "platforms": cdata.get("platforms") or {},
+    }
+    return summary
+
+async def _ai_token_scanner_run(q: str, chain: str = "auto") -> dict:
+    """
+    Retourne un dict JSON-serializable:
+    {
+      "query": ..., "chain": ...,
+      "summary": {...}, "dex": {...}, "flags": [...]
+    }
+    """
+    q = (q or "").strip()
+    chain = _norm_chain(chain)
+
+    # 1) Si adresse EVM -> DexScreener direct
+    if _is_evm_address(q):
+        dex = await _scan_with_dexscreener_by_address(q)
+        best = dex.get("best_pair") or {}
+        summary = {
+            "name": (best.get("pair") or "Token").upper(),
+            "symbol": (best.get("pair") or "").upper(),
+            "chain": best.get("chain") or chain,
+            "contract": q,
+            "price_usd": best.get("price_usd"),
+            "liquidity_usd": best.get("liquidity_usd"),
+            "volume_24h_usd": best.get("volume_24h_usd"),
+            "fdv_usd": best.get("fdv_usd"),
+            "pair_age_days": best.get("pair_age_days"),
+            "price_change_24h_pct": None,
+            "market_cap_usd": None,
+        }
+        flags = _risk_flags(summary)
+        return {"query": q, "chain": chain, "summary": summary, "dex": dex, "flags": flags}
+
+    # 2) Sinon CoinGecko (nom/symbole)
+    cg = await _scan_with_coingecko(q)
+
+    # 3) Si on a une adresse de contrat pour la chaîne demandée -> DexScreener pour la liquidité
+    contract = None
+    platforms = cg.get("platforms") or {}
+    if chain != "auto":
+        contract = platforms.get(chain) or None
+    # fallback: si chain=auto et une seule plateforme non vide, on prend la première
+    if not contract and platforms:
+        # garder la première adresse non vide
+        for k, v in platforms.items():
+            if v:
+                contract = v
+                if chain == "auto":
+                    chain = k
+                break
+
+    dex = None
+    liq = None
+    pair_age_days = None
+    if contract and _is_evm_address(contract):
+        try:
+            dex = await _scan_with_dexscreener_by_address(contract)
+            best = dex.get("best_pair") or {}
+            liq = best.get("liquidity_usd")
+            pair_age_days = best.get("pair_age_days")
+        except Exception:
+            dex = None
+
+    summary = {
+        "name": cg.get("name"),
+        "symbol": cg.get("symbol"),
+        "chain": chain,
+        "contract": contract,
+        "price_usd": cg.get("price_usd"),
+        "market_cap_usd": cg.get("market_cap_usd"),
+        "fdv_usd": cg.get("fdv_usd"),
+        "volume_24h_usd": cg.get("volume_24h_usd"),
+        "liquidity_usd": liq,
+        "pair_age_days": pair_age_days,
+        "price_change_24h_pct": cg.get("price_change_24h_pct"),
+        "rank": cg.get("rank"),
+        "homepage": cg.get("homepage"),
+        "thumb": cg.get("thumb"),
+        "categories": cg.get("categories") or [],
+    }
+
+    flags = _risk_flags(summary)
+
+    return {"query": q, "chain": chain, "summary": summary, "dex": dex, "flags": flags}
+
+
+# =========================
+# AI TOKEN SCANNER - RENDER
+# =========================
+
+def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error: str | None) -> str:
+    q_esc = html.escape(q or "")
+    chain = _norm_chain(chain)
+    error_html = ""
+    if error:
+        error_html = f"""
+        <div class="alert alert-error">
+          <strong>Erreur :</strong> {html.escape(error)}
+        </div>
+        """
+
+    result_html = ""
+    if result and isinstance(result, dict):
+        s = result.get("summary") or {}
+        flags = result.get("flags") or []
+        dex = result.get("dex")
+
+        contract = s.get("contract") or ""
+        chain_lbl = (s.get("chain") or "—").upper()
+        name = html.escape(str(s.get("name") or "—"))
+        sym = html.escape(str(s.get("symbol") or "—"))
+        price = _fmt_usd(s.get("price_usd"))
+        mcap = _fmt_usd(s.get("market_cap_usd"))
+        fdv = _fmt_usd(s.get("fdv_usd"))
+        vol = _fmt_usd(s.get("volume_24h_usd"))
+        liq = _fmt_usd(s.get("liquidity_usd"))
+        rank = s.get("rank") or "—"
+        chg = s.get("price_change_24h_pct")
+        chg_txt = "—" if chg is None else f"{chg:.2f}%"
+        age = s.get("pair_age_days")
+        age_txt = "—" if age is None else f"{age:.1f} jours"
+
+        # Flags
+        if flags:
+            flags_html = "".join([f"<li>{html.escape(f)}</li>" for f in flags])
+            flags_block = f"""
+              <div class="card">
+                <div class="card-title">⚠️ Signaux de risque</div>
+                <ul class="list">{flags_html}</ul>
+              </div>
+            """
+        else:
+            flags_block = f"""
+              <div class="card">
+                <div class="card-title">✅ Signaux de risque</div>
+                <div class="muted">Aucun drapeau évident détecté avec les heuristiques de base.</div>
+              </div>
+            """
+
+        # Dex pairs table
+        pairs_block = ""
+        if dex and (dex.get("pairs") or []):
+            rows = []
+            for p in (dex.get("pairs") or [])[:10]:
+                url = p.get("pair_url") or ""
+                link = f'<a class="link" href="{html.escape(url)}" target="_blank" rel="noopener">Voir</a>' if url else "—"
+                rows.append(
+                    f"<tr>"
+                    f"<td>{html.escape(str(p.get('chain') or '—'))}</td>"
+                    f"<td>{html.escape(str(p.get('dex') or '—'))}</td>"
+                    f"<td>{html.escape(str(p.get('pair') or '—'))}/{html.escape(str(p.get('quote') or '—'))}</td>"
+                    f"<td>{_fmt_usd(p.get('liquidity_usd'))}</td>"
+                    f"<td>{_fmt_usd(p.get('volume_24h_usd'))}</td>"
+                    f"<td>{_fmt_usd(p.get('fdv_usd'))}</td>"
+                    f"<td>{link}</td>"
+                    f"</tr>"
+                )
+            pairs_block = f"""
+              <div class="card">
+                <div class="card-title">📊 Paires Dex (DexScreener)</div>
+                <div class="muted">Top paires détectées (tri approximatif par liquidité/volume).</div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Chaîne</th><th>DEX</th><th>Paire</th><th>Liquidité</th><th>Volume 24h</th><th>FDV</th><th>Lien</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {''.join(rows)}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            """
+
+        contract_line = ""
+        if contract:
+            contract_line = f"""
+              <div class="row">
+                <div class="label">Contrat</div>
+                <div class="value mono">{html.escape(contract)}</div>
+              </div>
+            """
+
+        result_html = f"""
+        <div class="section">
+          <div class="grid">
+            <div class="card">
+              <div class="card-title">🧾 Résumé</div>
+              <div class="row"><div class="label">Nom</div><div class="value">{name}</div></div>
+              <div class="row"><div class="label">Symbole</div><div class="value">{sym}</div></div>
+              <div class="row"><div class="label">Chaîne</div><div class="value">{html.escape(chain_lbl)}</div></div>
+              {contract_line}
+              <div class="row"><div class="label">Prix</div><div class="value">{price}</div></div>
+              <div class="row"><div class="label">Market Cap</div><div class="value">{mcap}</div></div>
+              <div class="row"><div class="label">FDV</div><div class="value">{fdv}</div></div>
+              <div class="row"><div class="label">Volume 24h</div><div class="value">{vol}</div></div>
+              <div class="row"><div class="label">Liquidité (DEX)</div><div class="value">{liq}</div></div>
+              <div class="row"><div class="label">Δ 24h</div><div class="value">{chg_txt}</div></div>
+              <div class="row"><div class="label">Âge pair</div><div class="value">{age_txt}</div></div>
+              <div class="row"><div class="label">Rank</div><div class="value">{html.escape(str(rank))}</div></div>
+              <div class="muted" style="margin-top:10px;">
+                Note: données publiques (CoinGecko / DexScreener). Ceci n'est pas un conseil financier.
+              </div>
+            </div>
+
+            {flags_block}
+          </div>
+
+          {pairs_block}
+        </div>
+        """
+
+    return f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Token Scanner</title>
+  <title>AI Token Scanner — CryptoIA</title>
+  {CSS}
   <style>
-    body {{
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      background: radial-gradient(circle at 20% 10%, #2a2f45 0%, #0c0f1a 45%, #070a12 100%);
-      color: #e9edf7;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }}
-
-    .main {{
-      margin-left: 270px;
-      padding: 34px 28px;
-      min-height: 100vh;
+    .page {{
       display: flex;
-      align-items: center;
-      justify-content: center;
+      min-height: 100vh;
+      background: radial-gradient(circle at 20% 20%, rgba(0,255,255,0.10), transparent 40%),
+                  radial-gradient(circle at 80% 30%, rgba(0,140,255,0.10), transparent 45%),
+                  radial-gradient(circle at 50% 80%, rgba(0,255,140,0.06), transparent 50%),
+                  #060913;
     }}
-
-    .card {{
-      width: min(900px, 92vw);
-      background: rgba(16, 20, 36, 0.62);
-      border: 1px solid rgba(255, 255, 255, 0.10);
-      box-shadow: 0 18px 50px rgba(0,0,0,0.50);
+    .content {{
+      flex: 1;
+      padding: 30px 30px 60px 30px;
+    }}
+    .container {{
+      max-width: 1100px;
+      margin: 0 auto;
+    }}
+    .hero {{
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
       border-radius: 18px;
-      padding: 26px 26px 20px;
-      backdrop-filter: blur(12px);
+      padding: 22px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      backdrop-filter: blur(14px);
     }}
-
-    .badge {{
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 12px;
-      border-radius: 999px;
+    .hero h1 {{
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0.2px;
+    }}
+    .hero p {{
+      margin: 8px 0 0 0;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.4;
+    }}
+    .form {{
+      display: grid;
+      grid-template-columns: 1fr 220px 140px;
+      gap: 10px;
+      margin-top: 16px;
+    }}
+    .input, .select {{
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.12);
       background: rgba(0,0,0,0.25);
-      font-weight: 700;
-      font-size: 13px;
-      letter-spacing: 0.2px;
-      margin-bottom: 10px;
+      color: white;
+      outline: none;
     }}
-
-    h1 {{
-      margin: 6px 0 10px;
-      font-size: 30px;
-      line-height: 1.15;
-    }}
-
-    p {{
-      margin: 0 0 18px;
-      opacity: 0.92;
-      font-size: 15px;
-      line-height: 1.55;
-    }}
-
-    .actions {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 14px;
-    }}
-
     .btn {{
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px 14px;
+      border: none;
+      cursor: pointer;
       border-radius: 12px;
-      text-decoration: none;
+      padding: 12px 14px;
       font-weight: 700;
-      font-size: 14px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      color: #e9edf7;
-      transition: transform .12s ease, background .12s ease;
+      color: #001015;
+      background: linear-gradient(135deg, #00F5FF, #00FF88);
+      box-shadow: 0 12px 30px rgba(0,255,200,0.15);
     }}
     .btn:hover {{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,0.10);
+      filter: brightness(1.05);
     }}
-    .btn.primary {{
-      border: 1px solid rgba(0, 255, 153, 0.20);
-      background: linear-gradient(135deg, #00ff99, #00c8ff);
-      color: #071018;
-    }}
-
-    .note {{
-      margin-top: 14px;
+    .hint {{
+      margin-top: 10px;
+      color: rgba(255,255,255,0.65);
       font-size: 13px;
-      opacity: 0.75;
     }}
-
-    @media (max-width: 900px) {{
-      .main {{
-        margin-left: 0;
-        padding: 24px 14px;
-      }}
+    .alert {{
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.06);
+    }}
+    .alert-error {{
+      border-color: rgba(255,70,70,0.35);
+      background: rgba(255,70,70,0.12);
+    }}
+    .section {{
+      margin-top: 18px;
+    }}
+    .grid {{
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 14px;
+    }}
+    .card {{
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      backdrop-filter: blur(14px);
+    }}
+    .card-title {{
+      font-weight: 800;
+      margin-bottom: 10px;
+      letter-spacing: 0.2px;
+    }}
+    .row {{
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }}
+    .row:last-child {{ border-bottom: none; }}
+    .label {{ color: rgba(255,255,255,0.65); font-size: 13px; }}
+    .value {{ color: rgba(255,255,255,0.92); font-weight: 650; }}
+    .muted {{ color: rgba(255,255,255,0.65); font-size: 13px; }}
+    .mono {{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }}
+    .list {{ margin: 0; padding-left: 18px; color: rgba(255,255,255,0.85); }}
+    .table-wrap {{ overflow:auto; margin-top: 10px; }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 820px;
+    }}
+    th, td {{
+      text-align: left;
+      padding: 10px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.88);
+      font-size: 13px;
+      vertical-align: top;
+    }}
+    th {{ color: rgba(255,255,255,0.65); font-weight: 800; }}
+    .link {{ color: #00F5FF; text-decoration: none; }}
+    .link:hover {{ text-decoration: underline; }}
+    @media (max-width: 980px) {{
+      .form {{ grid-template-columns: 1fr; }}
+      .grid {{ grid-template-columns: 1fr; }}
+      .row {{ grid-template-columns: 120px 1fr; }}
     }}
   </style>
 </head>
 <body>
-  {SIDEBAR}
-  <div class="main">
-    <div class="card">
-      <div class="badge">🚧 Fonction en préparation</div>
-      <h1>AI Token Scanner</h1>
-      <p>
-        Cette fonctionnalité est en cours de développement. La page existe déjà pour que la
-        <b>Gestion des Accès par Forfait</b> puisse la contrôler correctement.
-      </p>
+  <div class="page">
+    {SIDEBAR}
+    <div class="content">
+      <div class="container">
+        <div class="hero">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:10px;height:10px;border-radius:99px;background:#00F5FF; box-shadow:0 0 20px rgba(0,245,255,0.35);"></div>
+            <h1>AI Token Scanner</h1>
+          </div>
+          <p>Analyse rapide d’un token (symbole / nom / contrat) via des données publiques. Idéal pour repérer la liquidité, la FDV et quelques signaux de risque.</p>
 
-      <div class="actions">
-        <a class="btn" href="/dashboard">Retour au dashboard</a>
-        <a class="btn primary" href="/pricing-complete">Voir les forfaits</a>
-      </div>
+          <form class="form" method="POST" action="/ai-token-scanner">
+            <input class="input" name="q" value="{q_esc}" placeholder="Ex: BTC, Solana, PEPE, ou 0x... (contrat)" />
+            <select class="select" name="chain">
+              <option value="auto" {"selected" if chain=="auto" else ""}>Chaîne: Auto</option>
+              <option value="ethereum" {"selected" if chain=="ethereum" else ""}>Ethereum</option>
+              <option value="bsc" {"selected" if chain=="bsc" else ""}>BSC</option>
+              <option value="polygon" {"selected" if chain=="polygon" else ""}>Polygon</option>
+              <option value="arbitrum" {"selected" if chain=="arbitrum" else ""}>Arbitrum</option>
+              <option value="base" {"selected" if chain=="base" else ""}>Base</option>
+              <option value="solana" {"selected" if chain=="solana" else ""}>Solana</option>
+              <option value="avalanche" {"selected" if chain=="avalanche" else ""}>Avalanche</option>
+            </select>
+            <button class="btn" type="submit">Scanner</button>
+          </form>
 
-      <div class="note">
-        Astuce : active la page dans “Gestion des Accès par Forfait” pour le plan voulu (ex : Elite),
-        puis teste avec un utilisateur de ce plan.
+          <div class="hint">
+            Astuce: si tu colles un contrat EVM <span class="mono">0x...</span>, on utilise DexScreener directement pour obtenir la liquidité/paires. Sinon, recherche CoinGecko par nom/symbole.
+          </div>
+
+          {error_html}
+        </div>
+
+        {result_html}
       </div>
     </div>
   </div>
 </body>
 </html>"""
-    return HTMLResponse(content=html)
+
 
 @app.get("/ai-sizer", response_class=HTMLResponse)
 async def ai_sizer():

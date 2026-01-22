@@ -3788,6 +3788,12 @@ class DatabaseManager:
             print(f"⚠️  Utilisation de SQLite pour l'authentification: {USERS_DB}")
             self.init_sqlite()
     
+    def hash_password(self, password: str) -> str:
+        """Hasher un mot de passe avec bcrypt (retourne une str UTF-8)."""
+        pwd = (password or "").encode("utf-8")
+        return bcrypt.hashpw(pwd, bcrypt.gensalt()).decode("utf-8")
+
+
     def get_connection(self):
         """Obtenir une connexion à la base de données"""
         if self.use_postgresql:
@@ -6397,8 +6403,7 @@ async def admin_reset_password(request: Request, admin: str = Depends(require_ad
         ok = db_manager.change_password(username, temp_password)
     except Exception as e:
         print(f"❌ Reset password error for {username}: {e}")
-        ok = False
-
+        return JSONResponse({"success": False, "message": "Erreur interne lors du reset MDP."}, status_code=500)
     if not ok:
         return JSONResponse(
             {"success": False, "message": f"Utilisateur introuvable: {username}"},

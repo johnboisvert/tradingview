@@ -6073,18 +6073,41 @@ async def admin_users_page(request: Request, admin=Depends(require_admin)):
     // Reset mot de passe
     document.querySelectorAll('.reset-btn').forEach(btn => {{
       btn.addEventListener('click', async () => {{
-        const username = btn.getAttribute('data-username');
-        if (!confirm('Générer un nouveau mot de passe pour ' + username + ' ?\\n\\n⚠️ L\\'ancien mot de passe ne fonctionnera plus.')) return;
+        const username = btn.dataset.username;
+        // Option B: allow admin to choose the password (leave blank to auto-generate)
+        let newPwd = prompt(`Nouveau mot de passe pour ${username} :\n\n(Laissez vide pour générer automatiquement)`, '');
+        if (newPwd === null) return; // cancelled
+        newPwd = (newPwd || '').trim();
+
+        if (newPwd) {{
+          // confirm to avoid typos
+          const confirmPwd = prompt('Confirmez le nouveau mot de passe :', '');
+          if (confirmPwd === null) return;
+          if (confirmPwd !== newPwd) {{
+            showToast('Erreur', 'Les mots de passe ne correspondent pas.');
+            return;
+          }}
+          if (newPwd.length < 8) {{
+            showToast('Erreur', 'Mot de passe trop court (min 8 caractères).');
+            return;
+          }}
+        }}
 
         btn.disabled = true;
         try {{
-          const r = await postJSON('/admin/reset-password', {{ username }});
-          if (r.ok && r.data && r.data.success) {{
-            const pwd = r.data.temp_password || '';
-            showToast('Nouveau mot de passe', username + ': ' + pwd, pwd);
-            alert('Nouveau mot de passe pour ' + username + ' :\\n\\n' + pwd + '\\n\\n(À noter: il ne sera pas ré-affiché)');
+          const payload = {{ username }};
+          if (newPwd) payload.new_password = newPwd;
+
+          const r = await postJSON('/admin/reset-password', payload);
+          if (r && r.ok) {{
+            const d = r.data || {{}};
+            if (d.success) {{
+              alert(`Nouveau mot de passe pour ${username} :\n\n${d.temp_password}\n\n(À noter : il ne sera pas ré-affiché)`);
+            }} else {{
+              showToast('Erreur', d.message || 'Reset refusé');
+            }}
           }} else {{
-            showToast('Erreur', (r.data && r.data.message) ? r.data.message : 'Reset refusé');
+            showToast('Erreur', (r && r.data && r.data.message) ? r.data.message : 'Reset refusé');
           }}
         }} finally {{
           btn.disabled = false;
@@ -6349,97 +6372,82 @@ async def delete_user(request: Request):
 
 
 @app.post("/admin/reset-password")
-async def admin_reset_password(request: Request, admin: str = Depends(require_admin)):
+async def admin_reset_password(request: Request, admin=Depends(require_admin)):
+    """Reset / change password for a user.
+    - If new_password is provided, set it.
+    - Otherwise generate a random temporary password.
+    Returns the password once so the admin can copy it.
     """
-    Reset (génère) un mot de passe temporaire pour un utilisateur.
-    Accepte JSON, form-urlencoded ou text/plain(JSON).
-    """
-    # --- lecture body robuste (évite les surprises de content-type) ---
-    data = {}
     try:
-        data = await request.json()
-        if not isinstance(data, dict):
-            data = {}
+        payload = await request.json()
     except Exception:
-        data = {}
+        payload = {}
 
-    if not data:
-        # Essayer form-urlencoded / multipart
-        try:
-            form = await request.form()
-            data = dict(form)
-        except Exception:
-            data = {}
-
-    if not data:
-        # Essayer text/plain contenant du JSON
-        try:
-            raw = (await request.body() or b"").decode("utf-8", "ignore").strip()
-            if raw:
-                import json as _json
-                tmp = _json.loads(raw)
-                if isinstance(tmp, dict):
-                    data = tmp
-        except Exception:
-            data = {}
-
-    # --- champs acceptés ---
-    username = (
-        (data.get("username") if isinstance(data, dict) else None)
-        or (data.get("email") if isinstance(data, dict) else None)
-        or (data.get("user") if isinstance(data, dict) else None)
-        or (data.get("identifier") if isinstance(data, dict) else None)
-    )
-    username = (str(username).strip() if username is not None else "")
+    username = (payload.get("username") or payload.get("email") or "").strip()
+    new_password = payload.get("new_password")
+    if isinstance(new_password, str):
+        new_password = new_password.strip()
 
     if not username:
-        return JSONResponse({"success": False, "message": "Champ 'username' manquant."}, status_code=400)
+        return JSONResponse({"success": False, "message": "Username manquant."}, status_code=400)
 
-    # Générer un mot de passe temporaire
-    temp_password = generate_temp_password(12)
+    if new_password:
+        if len(new_password) < 8:
+            return JSONResponse({"success": False, "message": "Mot de passe trop court (min 8 caractères)."}, status_code=400)
+        password_to_set = new_password
+    else:
+        password_to_set = secrets.token_urlsafe(9)
 
-    ok = False
     try:
-        ok = db_manager.change_password(username, temp_password)
+        ok = db_manager.change_password(username, password_to_set)
     except Exception as e:
         print(f"❌ Reset password error for {username}: {e}")
-        return JSONResponse({"success": False, "message": "Erreur interne lors du reset MDP."}, status_code=500)
-    if not ok:
-        return JSONResponse(
-            {"success": False, "message": f"Utilisateur introuvable: {username}"},
-            status_code=404
-        )
+        return JSONResponse({"success": False, "message": f"Erreur interne: {e}"}, status_code=500)
 
-    return JSONResponse({"success": True, "temp_password": temp_password})
+    if not ok:
+        return JSONResponse({"success": False, "message": f"Utilisateur introuvable: {username}"}, status_code=404)
+
+    return JSONResponse({
+        "success": True,
+        "message": "Mot de passe mis à jour.",
+        "temp_password": password_to_set
+    })
+
 
 @app.post("/admin-dashboard/reset-password")
-async def reset_password(request: Request, admin=Depends(require_admin)):
-    """Réinitialise le mot de passe d'un utilisateur (retourne un mot de passe temporaire une seule fois)."""
+async def admin_dashboard_reset_password(request: Request, admin=Depends(require_admin)):
+    """Reset / change password from admin dashboard (legacy endpoint)."""
     try:
-        data = await request.json()
+        payload = await request.json()
     except Exception:
-        data = {}
+        payload = {}
 
-    username = (data.get("username") or "").strip()
+    username = (payload.get("username") or payload.get("email") or "").strip()
+    new_password = payload.get("new_password")
+    if isinstance(new_password, str):
+        new_password = new_password.strip()
+
     if not username:
-        return JSONResponse({"success": False, "message": "Username requis."}, status_code=400)
+        return JSONResponse({"success": False, "message": "Username manquant."}, status_code=400)
 
-    # Générer un mot de passe temporaire (copiable)
-    temp_password = secrets.token_urlsafe(9)
+    if new_password:
+        if len(new_password) < 8:
+            return JSONResponse({"success": False, "message": "Mot de passe trop court (min 8 caractères)."}, status_code=400)
+        password_to_set = new_password
+    else:
+        password_to_set = secrets.token_urlsafe(9)
 
-    ok = False
     try:
-        ok = db_manager.change_password(username, temp_password)
-    except Exception:
-        ok = False
+        ok = db_manager.change_password(username, password_to_set)
+    except Exception as e:
+        print(f"❌ Reset password error for {username}: {e}")
+        return JSONResponse({"success": False, "message": f"Erreur interne: {e}"}, status_code=500)
 
     if not ok:
-        return JSONResponse({"success": False, "message": "Utilisateur introuvable ou erreur lors du reset."}, status_code=400)
+        return JSONResponse({"success": False, "message": f"Utilisateur introuvable: {username}"}, status_code=404)
 
-    return JSONResponse(
-        {"success": True, "message": "Mot de passe réinitialisé.", "temp_password": temp_password},
-        status_code=200
-    )
+    return JSONResponse({"success": True, "temp_password": password_to_set})
+
 
 @app.get("/admin/get-user/{username}")
 @app.get("/admin-dashboard/get-user/{username}")

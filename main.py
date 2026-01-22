@@ -3329,6 +3329,11 @@ body.sidebar-open{padding-left:280px !important}
                 <span class="icon">🔮</span>
                 <span class="label">AI Predictor</span>
             </a>
+            <a href="/ai-token-scanner" class="menu-item ai-feature">
+                <span class="icon">🔎</span>
+                <span class="label">AI Token Scanner</span>
+            </a>
+
             <a href="/prediction-ia" class="menu-item ai-feature">
                 <span class="icon">🔮</span>
                 <span class="label">Prédictions IA</span>

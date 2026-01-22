@@ -5636,7 +5636,7 @@ async def admin_panel(request: Request):
     }}
     
     function editUser(username) {{
-        const newRole = prompt(`Nouveau rôle pour ${username} (user/admin):`);
+        const newRole = prompt(`Nouveau rôle pour ${{username}} (user/admin):`);
         if (newRole) {{
             fetch('/admin/edit-user', {{
                 method: 'POST',
@@ -5650,7 +5650,7 @@ async def admin_panel(request: Request):
     }}
     
     function managePermissions(username) {{
-        alert(`Permissions pour ${username}:\\n- Administrateur: accès complet\\n- Utilisateur: accès limité`);
+        alert(`Permissions pour ${{username}}:\\n- Administrateur: accès complet\\n- Utilisateur: accès limité`);
     }}
     
     function openPromoModal() {{
@@ -6075,7 +6075,7 @@ async def admin_users_page(request: Request, admin=Depends(require_admin)):
       btn.addEventListener('click', async () => {{
         const username = btn.dataset.username;
         // Option B: allow admin to choose the password (leave blank to auto-generate)
-        let newPwd = prompt(`Nouveau mot de passe pour ${username} :\n\n(Laissez vide pour générer automatiquement)`, '');
+        let newPwd = prompt(`Nouveau mot de passe pour ${{username}} :\n\n(Laissez vide pour générer automatiquement)`, '');
         if (newPwd === null) return; // cancelled
         newPwd = (newPwd || '').trim();
 
@@ -6102,7 +6102,7 @@ async def admin_users_page(request: Request, admin=Depends(require_admin)):
           if (r && r.ok) {{
             const d = r.data || {{}};
             if (d.success) {{
-              alert(`Nouveau mot de passe pour ${username} :\n\n${d.temp_password}\n\n(À noter : il ne sera pas ré-affiché)`);
+              alert(`Nouveau mot de passe pour ${{username}} :\n\n${{d.temp_password}}\n\n(À noter : il ne sera pas ré-affiché)`);
             }} else {{
               showToast('Erreur', d.message || 'Reset refusé');
             }}

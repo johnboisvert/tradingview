@@ -3114,7 +3114,7 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             if not user:
                 session_token = None
             else:
-                username = user.get("username") or ""
+                username = (user.get("username") or user.get("email") or user.get("user") or "").strip()
                 request.state.user = user
 
         if not session_token:
@@ -3139,8 +3139,14 @@ class PermissionMiddleware(BaseHTTPMiddleware):
                 "/api/crypto-news": "/nouvelles",
             }
             route_to_check = api_map.get(path, path)
+        is_admin = False
+        try:
+            if isinstance(user, dict) and (user.get("role") or "").lower() == "admin":
+                is_admin = True
+        except Exception:
+            is_admin = False
 
-        if not check_route_permission(username, route_to_check):
+        if (not is_admin) and (not check_route_permission(username, route_to_check)):
             # API/JSON requests: renvoyer du JSON, sinon page HTML d'upgrade
             required_plan = get_min_plan_for_route(route_to_check)
             current_plan = (_safe_get_user_plan(username, "free") or "free")

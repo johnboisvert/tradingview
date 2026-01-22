@@ -4163,23 +4163,31 @@ class DatabaseManager:
         conn.commit()
         conn.close()
     
-    def change_password(self, username: str, new_password: str):
-        """Changer le mot de passe d'un utilisateur"""
-        username = (username or "").strip()
-        username_lookup = username.lower() if "@" in username else username
+    def change_password(self, username: str, new_password: str) -> bool:
+        """Changer le mot de passe d'un utilisateur.
+
+        Retourne True si un utilisateur a été modifié, sinon False.
+        """
+        password_hash = self.hash_password(new_password)
         conn = self.get_connection()
         c = conn.cursor()
-        
-        #  CORRECTION 1: Hash scuris avec bcrypt
-        password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        
-        if self.use_postgresql:
-            c.execute("UPDATE users SET password_hash = %s WHERE LOWER(username) = LOWER(%s)", (password_hash, username_lookup))
-        else:
-            c.execute("UPDATE users SET password_hash = ? WHERE LOWER(username) = LOWER(?)", (password_hash, username_lookup))
-        
-        conn.commit()
-        conn.close()
+
+        try:
+            if self.use_postgresql:
+                c.execute("UPDATE users SET password_hash = %s WHERE username = %s", (password_hash, username))
+                conn.commit()
+                updated = c.rowcount
+            else:
+                c.execute("UPDATE users SET password_hash = ? WHERE username = ?", (password_hash, username))
+                conn.commit()
+                # sqlite3.rowcount peut parfois être -1; on sécurise avec changes()
+                updated = c.rowcount
+                if updated is None or updated < 0:
+                    updated = conn.execute("SELECT changes()").fetchone()[0]
+
+            return bool(updated and updated > 0)
+        finally:
+            conn.close()
 
 # Initialiser le gestionnaire de base de donnes
 db_manager = DatabaseManager()

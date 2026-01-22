@@ -6038,8 +6038,8 @@ async def admin_users_page(request: Request, admin=Depends(require_admin)):
 
         btn.disabled = true;
         try {{
-          const r = await postJSON('/admin/update-user-plan', {{ username, plan }});
-          if (!r.ok || !r.data) {{
+          const r = await postJSON('/admin/update-user-plan', {{ username, new_plan: plan, plan }});
+if (!r.ok || !r.data) {{
             showToast('Erreur', 'Impossible de mettre à jour le plan.');
             return;
           }}
@@ -6294,7 +6294,7 @@ async def admin_update_user_plan(request: Request):
         data = {}
 
     username = (data.get("username") or "").strip().lower()
-    new_plan = (data.get("new_plan") or "").strip().lower()
+    new_plan = (data.get("new_plan") or data.get("plan") or "").strip().lower()
 
     if not username:
         return JSONResponse({"success": False, "message": "Utilisateur requis."}, status_code=400)

@@ -3749,6 +3749,8 @@ try:
 except Exception:
     pass
 
+# Final sidebar HTML with replacements applied
+SIDEBAR_HTML = SIDEBAR
 
 # ==================================
 
@@ -30286,7 +30288,7 @@ def _http_cache_key(url, params):
         return url
     return url + "?" + "&".join([f"{k}={v}" for k, v in items])
 
-async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeout: float = 15.0, cache_ttl: int = 0):
+async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeout: float = 15.0, cache_ttl: int = 0, ttl_seconds: int | None = None):
     """Fetch JSON with small retries + optional caching.
 
     - Retries on 429 and some transient errors
@@ -30296,6 +30298,13 @@ async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeo
     params = params or {}
     headers = headers or {}
 
+
+    # Backward/forward compatible TTL naming
+    if ttl_seconds is not None:
+        try:
+            cache_ttl = int(ttl_seconds)
+        except Exception:
+            cache_ttl = cache_ttl
     # Add user-agent
     headers.setdefault("User-Agent", "CryptoIA/1.0 (+https://www.cryptoia.ca)")
 

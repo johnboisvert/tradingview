@@ -6571,47 +6571,71 @@ async def delete_user(request: Request):
 
 
 @app.post("/admin/reset-password")
-async def admin_reset_password(request: Request, admin=Depends(require_admin)):
-    """Reset / change password for a user.
-    - If new_password is provided, set it.
-    - Otherwise generate a random temporary password.
-    Returns the password once so the admin can copy it.
+async def admin_reset_password(
+    payload: dict = Body(...),
+    admin_user: dict = Depends(require_admin),
+):
+    """Réinitialiser le mot de passe d'un utilisateur (admin uniquement).
+
+    - Génère un mot de passe temporaire.
+    - Met à jour le hash dans la DB d'auth.
+    - Retourne le mot de passe temporaire pour que l'admin puisse le transmettre à l'utilisateur.
     """
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
-
-    username = (payload.get("username") or payload.get("email") or "").strip()
-    new_password = payload.get("new_password")
-    if isinstance(new_password, str):
-        new_password = new_password.strip()
-
+    username = (payload.get("username") or "").strip()
     if not username:
-        return JSONResponse({"success": False, "message": "Username manquant."}, status_code=400)
+        raise HTTPException(status_code=400, detail="Username requis")
 
-    if new_password:
-        if len(new_password) < 8:
-            return JSONResponse({"success": False, "message": "Mot de passe trop court (min 8 caractères)."}, status_code=400)
-        password_to_set = new_password
-    else:
-        password_to_set = secrets.token_urlsafe(9)
+    # Générer un mot de passe temporaire (fallback si la fonction n'existe pas)
+    try:
+        temp_password = generate_temp_password(12)
+    except Exception:
+        temp_password = secrets.token_urlsafe(9)
 
     try:
-        ok = db_manager.change_password(username, password_to_set)
+        # 1) Chemin standard
+        ok = False
+        try:
+            ok = bool(db_manager.change_password(username, temp_password))
+        except Exception as e:
+            print(f"❌ db_manager.change_password() a échoué: {e}")
+
+        # 2) Fallback : update direct (au cas où)
+        if not ok:
+            password_hash = bcrypt.hashpw(temp_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            conn = db_manager.get_connection()
+            try:
+                c = conn.cursor()
+                if getattr(db_manager, "use_postgresql", False):
+                    c.execute(
+                        "UPDATE users SET password_hash = %s WHERE LOWER(username) = LOWER(%s)",
+                        (password_hash, username),
+                    )
+                else:
+                    c.execute(
+                        "UPDATE users SET password_hash = ? WHERE LOWER(username) = LOWER(?)",
+                        (password_hash, username),
+                    )
+                conn.commit()
+                updated = getattr(c, "rowcount", 0) or 0
+                if (not getattr(db_manager, "use_postgresql", False)) and updated < 0:
+                    updated = conn.execute("SELECT changes()").fetchone()[0]
+                ok = bool(updated and updated > 0)
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+        if not ok:
+            return JSONResponse(
+                {"status": "error", "message": "Utilisateur introuvable ou mot de passe non modifié"},
+                status_code=404,
+            )
+
+        return JSONResponse({"status": "ok", "temp_password": temp_password})
     except Exception as e:
-        print(f"❌ Reset password error for {username}: {e}")
-        return JSONResponse({"success": False, "message": f"Erreur interne: {e}"}, status_code=500)
-
-    if not ok:
-        return JSONResponse({"success": False, "message": f"Utilisateur introuvable: {username}"}, status_code=404)
-
-    return JSONResponse({
-        "success": True,
-        "message": "Mot de passe mis à jour.",
-        "temp_password": password_to_set
-    })
-
+        print(f"❌ Erreur reset-password: {e}")
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 @app.post("/admin-dashboard/reset-password")
 async def admin_dashboard_reset_password(request: Request, admin=Depends(require_admin)):

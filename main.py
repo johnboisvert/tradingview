@@ -4538,6 +4538,21 @@ def get_current_user(session_token: Optional[str] = Cookie(None)) -> Optional[st
     """Dépendance FastAPI pour récupérer l'utilisateur actuel"""
     return get_user_from_token(session_token)
 
+
+def get_logged_user(request: Request) -> Optional[dict]:
+    """Compat helper for legacy endpoints.
+
+    Some routes expect a dict-like user object (e.g. user.get("username")).
+    We store the session token in a cookie and resolve the username via get_current_user().
+    """
+    try:
+        username = get_current_user(request)
+    except Exception:
+        username = None
+    if not username:
+        return None
+    return {"username": username}
+
 def require_auth(session_token: Optional[str] = Cookie(None)):
     """Dépendance FastAPI pour exiger une authentification"""
     user = get_user_from_token(session_token)

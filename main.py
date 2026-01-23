@@ -2901,7 +2901,7 @@ def access_denied_page(request, page_title: str = "Accès refusé", required_pla
         # Try to detect login
         is_logged = False
         try:
-            is_logged = bool(get_cookie(request, "access_token")) or bool(get_cookie(request, "session"))
+            is_logged = bool(get_cookie(request, "session_token")) or bool(get_cookie(request, "access_token")) or bool(get_cookie(request, "session")) or bool(get_cookie(request, "token"))
         except Exception:
             is_logged = False
 
@@ -4522,6 +4522,10 @@ def get_user_from_token(token: Optional[str]):
     # Format dict: s'assurer qu'on a un username et (si possible) un role
     if isinstance(user_data, dict):
         uname = (user_data.get("username") or user_data.get("email") or "").strip()
+        # Normalise: certains appels stockent seulement "email" ou "user".
+        if uname and not user_data.get("username"):
+            user_data["username"] = uname
+
         if uname and not user_data.get("role"):
             try:
                 role = db_manager.get_user_role(uname)

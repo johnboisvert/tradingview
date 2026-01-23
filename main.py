@@ -3751,6 +3751,8 @@ except Exception:
 
 # Final sidebar HTML with replacements applied
 SIDEBAR_HTML = SIDEBAR
+# Ensure any legacy templates that still use SIDEBAR directly get the resolved version
+SIDEBAR = SIDEBAR_HTML
 
 # ==================================
 
@@ -5348,9 +5350,15 @@ async def html_placeholder_middleware(request: Request, call_next):
         html = html.replace("{{SITE_LOGO_URL}}", logo)
         html = html.replace("${SITE_LOGO_URL}", logo)
 
+        html = html.replace("__SITE_LOGO_URL__", logo)
+        html = html.replace("_SITE_LOGO_URL_", logo)
+
         html = html.replace("{SITE_NAME}", name)
         html = html.replace("{{SITE_NAME}}", name)
         html = html.replace("${SITE_NAME}", name)
+
+        html = html.replace("__SITE_NAME__", name)
+        html = html.replace("_SITE_NAME_", name)
 
         new_body = html.encode("utf-8")
 
@@ -30288,7 +30296,7 @@ def _http_cache_key(url, params):
         return url
     return url + "?" + "&".join([f"{k}={v}" for k, v in items])
 
-async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeout: float = 15.0, cache_ttl: int = 0, ttl_seconds: int | None = None):
+async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeout: float = 15.0, cache_ttl: int = 0, ttl_seconds: int | None = None, **_kwargs):
     """Fetch JSON with small retries + optional caching.
 
     - Retries on 429 and some transient errors
@@ -30305,6 +30313,14 @@ async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeo
             cache_ttl = int(ttl_seconds)
         except Exception:
             cache_ttl = cache_ttl
+    # Compat: some callers may still pass ttl_seconds as a keyword even if signature changes
+    if ttl_seconds is None and isinstance(_kwargs, dict):
+        _ts = _kwargs.get("ttl_seconds")
+        if _ts is not None:
+            try:
+                cache_ttl = int(_ts)
+            except Exception:
+                pass
     # Add user-agent
     headers.setdefault("User-Agent", "CryptoIA/1.0 (+https://www.cryptoia.ca)")
 

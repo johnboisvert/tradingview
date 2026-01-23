@@ -4088,14 +4088,20 @@ class DatabaseManager:
         except:
             pass  # Colonnes existent déjà
         
-        # Crer un compte admin par dfaut si n'existe pas
-        c.execute("SELECT * FROM users WHERE username = 'admin'")
-        if not c.fetchone():
+        # Créer / réparer le compte admin par défaut (pour éviter "Accès réservé à l'admin" si le rôle a été altéré)
+        c.execute("SELECT role FROM users WHERE LOWER(username)=LOWER(?)", ("admin",))
+        row = c.fetchone()
+        if not row:
             default_password = "admin123"
             password_hash = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            c.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (%s, %s, %s, %s)", 
-                      ("admin", password_hash, "admin", datetime.now()))
+            c.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)", 
+                      ("admin", password_hash, "admin", datetime.now().isoformat()))
             print("✅ Compte admin par défaut créé: admin / admin123")
+        else:
+            current_role = (row[0] or "").strip().lower()
+            if current_role != "admin":
+                c.execute("UPDATE users SET role=? WHERE LOWER(username)=LOWER(?)", ("admin", "admin"))
+                print("✅ Rôle réparé: utilisateur 'admin' => role=admin")
         
         conn.commit()
         conn.close()
@@ -24300,7 +24306,13 @@ async def admin_dashboard(request: Request):
     if not user:
         return RedirectResponse("/login", status_code=303)
     username = normalize_username(user.get("username") or "")
-    if get_user_role(username) != "admin":
+    # Robustesse: si le rôle est déjà présent dans la session, on le privilégie.
+    session_role = (user.get("role") or "").strip().lower()
+    email_as_key = normalize_username(user.get("email") or "")
+    db_role_username = get_user_role(username)
+    db_role_email = get_user_role(email_as_key) if email_as_key else None
+
+    if session_role != "admin" and db_role_username != "admin" and db_role_email != "admin":
         page = html_doc(
             "Accès refusé",
             SIDEBAR_HTML + """

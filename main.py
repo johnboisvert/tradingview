@@ -4535,20 +4535,23 @@ def get_user_from_token(token: Optional[str]):
 
 
 def get_current_user(session_token: Optional[str] = Cookie(None)) -> Optional[str]:
-    """Dépendance FastAPI pour récupérer l'utilisateur actuel"""
+    """Dépendance FastAPI (Cookie injection) -> retourne le username ou None."""
+    if not session_token:
+        return None
     return get_user_from_token(session_token)
 
 
-def get_logged_user(request: Request) -> Optional[dict]:
-    """Compat helper for legacy endpoints.
+def get_current_user_from_request(request: Request) -> Optional[str]:
+    """Helper pour les appels 'manuels' avec Request (pas l'injection FastAPI)."""
+    token = request.cookies.get("session_token")
+    if not token:
+        return None
+    return get_user_from_token(token)
 
-    Some routes expect a dict-like user object (e.g. user.get("username")).
-    We store the session token in a cookie and resolve the username via get_current_user().
-    """
-    try:
-        username = get_current_user(request)
-    except Exception:
-        username = None
+
+def get_logged_user(request: Request) -> Optional[dict]:
+    """Retourne un dict user minimal depuis la cookie session_token."""
+    username = get_current_user_from_request(request)
     if not username:
         return None
     return {"username": username}

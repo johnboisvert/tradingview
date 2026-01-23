@@ -4558,6 +4558,35 @@ DEFAULT_USER_PERMISSIONS = [
     "/mon-compte",           # Gestion compte / abonnement
 ]
 
+
+def require_admin(user=Depends(require_auth)):
+    """Dependency: require an authenticated *admin* user.
+
+    Accepts users with role 'admin' (in DB), username 'admin', or a truthy 'is_admin' flag.
+    """
+    # If require_auth returned a redirect/response, just pass it through (FastAPI will handle).
+    # But typically it raises HTTPException instead.
+    try:
+        username = user.get("username") if isinstance(user, dict) else getattr(user, "username", None)
+        role = user.get("role") if isinstance(user, dict) else getattr(user, "role", None)
+        is_admin = user.get("is_admin") if isinstance(user, dict) else getattr(user, "is_admin", False)
+
+        if role == "admin" or username == "admin" or bool(is_admin):
+            return user
+
+        # Fallback: check DB role if available
+        try:
+            if "db_manager" in globals() and username:
+                info = db_manager.get_user_info(username)
+                if info and (info.get("role") == "admin" or info.get("is_admin") == 1):
+                    return user
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    raise HTTPException(status_code=403, detail="Accès réservé aux administrateurs")
+
 def give_default_permissions(username: str) -> bool:
     """
     🎁 Attribue les permissions par défaut à un nouvel utilisateur

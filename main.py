@@ -2901,7 +2901,7 @@ def access_denied_page(request, page_title: str = "Accès refusé", required_pla
         # Try to detect login
         is_logged = False
         try:
-            is_logged = bool(get_cookie(request, "session_token")) or bool(get_cookie(request, "access_token")) or bool(get_cookie(request, "token")) or bool(get_cookie(request, "session"))
+            is_logged = bool(get_cookie(request, "access_token")) or bool(get_cookie(request, "session"))
         except Exception:
             is_logged = False
 
@@ -2948,72 +2948,70 @@ def access_denied_page(request, page_title: str = "Accès refusé", required_pla
         from fastapi.responses import PlainTextResponse
         return PlainTextResponse("Accès refusé (403).", status_code=403)
 
-def get_user_from_request(request: Request) -> Optional[Dict]:
-    """Retourne l'utilisateur courant à partir de la session/cookies.
-
-    IMPORTANT:
-    - Le cookie utilisé par /login est **session_token** (token généré par create_session()).
-    - On garde la compatibilité avec d'anciens noms (access_token / token).
-    - On accepte aussi les infos dans request.session (SessionMiddleware).
-    """
+def get_user_from_request(request: Request):
+    """Récupère l'utilisateur depuis les cookies - VERSION CORRIGÉE"""
     try:
-        # 1) Session Starlette (prioritaire si présent)
-        sess = getattr(request, "session", None) or {}
-        # Certains anciens codes stockaient "user" directement
-        if isinstance(sess, dict):
-            if isinstance(sess.get("user"), dict):
-                u = sess.get("user") or {}
-                if u.get("username") or u.get("email"):
-                    return u
-            # Nouveau/commun : user_id/username
-            if sess.get("username"):
-                uname = str(sess.get("username"))
-                # admin bypass direct
-                if uname.lower() == "admin":
-                    return {"username": "admin", "role": "admin", "plan": "elite"}
-                udb = get_user_by_username(uname)
-                if udb:
-                    return udb
-            if sess.get("user_id"):
-                uid = sess.get("user_id")
-                # uid peut être int ou str
-                try:
-                    uid_int = int(uid)
-                except Exception:
-                    uid_int = None
-                if uid_int is not None:
-                    udb = get_user_by_id(uid_int)
-                    if udb:
-                        return udb
-                # sinon tenter username
-                uname = str(uid)
-                if uname.lower() == "admin":
-                    return {"username": "admin", "role": "admin", "plan": "elite"}
-                udb = get_user_by_username(uname)
-                if udb:
-                    return udb
+        #  CORRECTION: Utiliser session_token, pas user_id!
+        token = request.cookies.get("token")
+        if not token:
+            token = get_cookie(request, "access_token")
+        if not token:
+            session_token = get_cookie(request, "session")
+            if not session_token:
+                return None
+            token = session_token
 
-        # 2) Cookies: session_token (principal), puis access_token / token (legacy)
-        token = (
-            get_cookie(request, "session_token")
-            or request.cookies.get("session_token")
-            or get_cookie(request, "access_token")
-            or request.cookies.get("access_token")
-            or get_cookie(request, "token")
-            or request.cookies.get("token")
-            or get_cookie(request, "session")
-            or request.cookies.get("session")
-        )
-
-        if token:
-            u = get_user_from_token(token)
-            if u:
-                return u
-
+        user = get_user_from_token(token)
+        
+        if not user:
+            print(f"⚠️ get_user_from_request: session_token trouvé mais utilisateur non trouvé")
+            return None
+        
+        # L'utilisateur peut tre soit un dict, soit juste un username (ancien format)
+        if isinstance(user, str):
+            # Ancien format: juste le username
+            username = user
+            user_dict = {
+                "username": username,
+                "id": username,
+                "plan": "Free",
+                "role": "admin" if username == "admin" else "user"
+            }
+        else:
+            # Nouveau format: dj un dict
+            user_dict = user
+        
+        #  CORRECTION CRITIQUE: Vrifier le rle admin
+        # Le champ dans la DB peut tre "role" ou "plan"
+        role = user_dict.get("role", "")
+        plan = user_dict.get("plan", "Free")
+        username = user_dict.get("username", "")
+        
+        # L'utilisateur est admin si:
+        # 1. role == "admin" OU
+        # 2. username == "admin"
+        is_admin = (role == "admin" or username == "admin")
+        
+        # Enrichir le dict avec les champs ncessaires
+        user_dict["is_admin"] = is_admin
+        user_dict["subscription_tier"] = plan
+        
+        # Debug log
+        print(f"🔍 get_user_from_request: user={username}, role={role}, is_admin={is_admin}")
+        
+        return user_dict
+        
+    except Exception as e:
+        print(f"❌ get_user_from_request error: {e}")
+        import traceback
+        traceback.print_exc()
         return None
-    except Exception:
-        return None
 
+
+
+# -------------------------------------------------------------------------
+# Compat helper (certaines pages utilisent encore ce nom)
+# -------------------------------------------------------------------------
 def get_current_user_from_session(request: Request):
     """Alias compat : récupère l'utilisateur courant depuis cookies/session.
 
@@ -3197,18 +3195,6 @@ from starlette.responses import Response
 # NOTE: certaines versions du projet n'ont pas la fonction get_user_plan().
 # Si elle est absente, un appel direct provoque un NameError (500).
 # On encapsule donc l'accès au plan dans une fonction sûre.
-
-def get_logged_user(request: Request):
-    """Compat alias: retourne l'utilisateur connecté depuis cookies/session.
-
-    Certaines routes historiques (ex: /admin-dashboard) appellent get_logged_user().
-    On le mappe sur get_user_from_request(), qui gère access_token / session_token et fallback session.
-    """
-    try:
-        return get_user_from_request(request)
-    except Exception:
-        return None
-
 
 def _safe_get_user_plan(username, default: str = "free") -> str:
     try:
@@ -3739,20 +3725,12 @@ body.sidebar-open{padding-left:280px !important}
     }
     </script>"""
 
-# Alias utilisé par certaines pages (compatibilité)
-SIDEBAR_HTML = SIDEBAR
-
-
 # Appliquer les placeholders (logo + nom) dans la sidebar
 try:
     SIDEBAR = SIDEBAR.replace("__SITE_LOGO_URL__", SITE_LOGO_URL).replace("__SITE_NAME__", SITE_NAME)
 except Exception:
     pass
 
-# Final sidebar HTML with replacements applied
-SIDEBAR_HTML = SIDEBAR
-# Ensure any legacy templates that still use SIDEBAR directly get the resolved version
-SIDEBAR = SIDEBAR_HTML
 
 # ==================================
 
@@ -4501,92 +4479,58 @@ def generate_temp_password(length: int = 12) -> str:
     return "".join(pw)
 
 
-SESSION_TABLE = "user_sessions"
-SESSION_TTL_DAYS = 30
-
-def _ensure_sessions_table():
-    """Crée la table de sessions si absente (SQLite)."""
-    try:
-        with sqlite3.connect(DB_PATH) as conn:
-            conn.execute(f"""
-                CREATE TABLE IF NOT EXISTS {SESSION_TABLE} (
-                    token TEXT PRIMARY KEY,
-                    user_json TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    expires_at TEXT NOT NULL
-                )
-            """)
-            conn.commit()
-    except Exception as e:
-        print(f"⚠️  Impossible de créer la table sessions: {e}")
-
-def _persist_session(token: str, user_data: dict):
-    try:
-        _ensure_sessions_table()
-        now = datetime.utcnow()
-        exp = now + timedelta(days=SESSION_TTL_DAYS)
-        with sqlite3.connect(DB_PATH) as conn:
-            conn.execute(
-                f"INSERT OR REPLACE INTO {SESSION_TABLE} (token, user_json, created_at, expires_at) VALUES (?,?,?,?)",
-                (token, json.dumps(user_data, ensure_ascii=False), now.isoformat(), exp.isoformat()),
-            )
-            conn.commit()
-    except Exception as e:
-        print(f"⚠️  Impossible de persister la session: {e}")
-
-def _delete_session(token: str):
-    try:
-        _ensure_sessions_table()
-        with sqlite3.connect(DB_PATH) as conn:
-            conn.execute(f"DELETE FROM {SESSION_TABLE} WHERE token = ?", (token,))
-            conn.commit()
-    except Exception as e:
-        print(f"⚠️  Impossible de supprimer la session: {e}")
-
-def _load_session(token: str):
-    try:
-        _ensure_sessions_table()
-        with sqlite3.connect(DB_PATH) as conn:
-            cur = conn.cursor()
-            cur.execute(f"SELECT user_json, expires_at FROM {SESSION_TABLE} WHERE token = ?", (token,))
-            row = cur.fetchone()
-        if not row:
-            return None
-        user_json, expires_at = row
-        # expiration
-        try:
-            exp = datetime.fromisoformat(expires_at)
-            if exp < datetime.utcnow():
-                _delete_session(token)
-                return None
-        except Exception:
-            pass
-        return json.loads(user_json) if user_json else None
-    except Exception as e:
-        print(f"⚠️  Impossible de charger la session: {e}")
-        return None
-
 def create_session(username: str, user_info: dict = None) -> str:
-    """Crée une session persistante (cookie -> token), stockée en mémoire + SQLite."""
+    """Créer une session pour un utilisateur avec infos d'abonnement"""
     token = secrets.token_urlsafe(32)
+    
     if user_info:
-        user_data = dict(user_info)
+        # Stocker toutes les infos de l'utilisateur
+        active_sessions[token] = user_info
     else:
-        user_data = db_manager.get_user_info(username) or {"username": username, "role": "user"}
-    active_sessions[token] = user_data
-    _persist_session(token, user_data)
+        # Rcuprer les infos depuis la DB
+        user_data = db_manager.get_user_info(username)
+        active_sessions[token] = user_data
+    
     return token
 
-def get_user_from_token(token: str):
+def get_user_from_token(token: Optional[str]):
+    """Récupérer l'utilisateur depuis un token de session.
+
+    Normalise les anciens formats : si active_sessions[token] est une string (ex: "admin"),
+    on la convertit en dict {"username": "..."} afin que les middlewares puissent lire username/role.
+    """
     if not token:
         return None
-    user = active_sessions.get(token)
-    if user:
-        return user
-    user = _load_session(token)
-    if user:
-        active_sessions[token] = user
-        return user
+
+    user_data = active_sessions.get(token)
+    if not user_data:
+        return None
+
+    # Ancien format: juste un username en string
+    if isinstance(user_data, str):
+        uname = user_data.strip()
+        user_dict = {"username": uname}
+        # Enrichir avec le rôle depuis la DB si possible
+        try:
+            role = db_manager.get_user_role(uname)
+            if role:
+                user_dict["role"] = role
+        except Exception:
+            pass
+        return user_dict
+
+    # Format dict: s'assurer qu'on a un username et (si possible) un role
+    if isinstance(user_data, dict):
+        uname = (user_data.get("username") or user_data.get("email") or "").strip()
+        if uname and not user_data.get("role"):
+            try:
+                role = db_manager.get_user_role(uname)
+                if role:
+                    user_data["role"] = role
+            except Exception:
+                pass
+        return user_data
+
     return None
 
 
@@ -5350,26 +5294,9 @@ async def html_placeholder_middleware(request: Request, call_next):
         html = html.replace("{{SITE_LOGO_URL}}", logo)
         html = html.replace("${SITE_LOGO_URL}", logo)
 
-        html = html.replace("__SITE_LOGO_URL__", logo)
-        html = html.replace("_SITE_LOGO_URL_", logo)
-        html = html.replace("SITE_LOGO_URL", logo)
-        # Variantes fréquentes (avec slash ou URL absolue)
-        html = html.replace("/_SITE_LOGO_URL_", "/" + str(logo).lstrip("/"))
-        # si jamais un template a construit une URL absolue avec le placeholder
-        try:
-            base_host = (request.url.scheme + "://" + request.url.netloc).rstrip("/")
-            html = html.replace(base_host + "/_SITE_LOGO_URL_", str(logo))
-        except Exception:
-            pass
-
-
         html = html.replace("{SITE_NAME}", name)
         html = html.replace("{{SITE_NAME}}", name)
         html = html.replace("${SITE_NAME}", name)
-
-        html = html.replace("__SITE_NAME__", name)
-        html = html.replace("_SITE_NAME_", name)
-        html = html.replace("SITE_NAME", name)
 
         new_body = html.encode("utf-8")
 
@@ -5571,17 +5498,11 @@ async def login(request: Request, response: Response):
         return RedirectResponse(url=error_url, status_code=303)
 
 @app.get("/logout")
-async def logout(request: Request, session_token: str = Cookie(None)):
-    """Déconnexion: supprime la session côté serveur + cookie."""
-    if session_token:
-        try:
-            active_sessions.pop(session_token, None)
-            _delete_session(session_token)
-        except Exception:
-            pass
-    response = RedirectResponse(url="/login", status_code=303)
-    response.delete_cookie("session_token", path="/", domain=".cryptoia.ca")
-    return response
+async def logout(request: Request):
+    # Déconnexion simple
+    resp = RedirectResponse(url="/login", status_code=303)
+    resp.delete_cookie("session_token")
+    return resp
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel(request: Request):
@@ -6571,79 +6492,28 @@ async def delete_user(request: Request):
 
 
 @app.post("/admin/reset-password")
-async def admin_reset_password(
-    payload: dict = Body(...),
-    admin_user: dict = Depends(require_admin),
-):
-    """Réinitialiser le mot de passe d'un utilisateur (admin uniquement).
-
-    - Génère un mot de passe temporaire.
-    - Met à jour le hash dans la DB d'auth.
-    - Retourne le mot de passe temporaire pour que l'admin puisse le transmettre à l'utilisateur.
+async def admin_reset_password(request: Request, admin=Depends(require_admin)):
+    """Reset / change password for a user.
+    - If new_password is provided, set it.
+    - Otherwise generate a random temporary password.
+    Returns the password once so the admin can copy it.
     """
-    username = (payload.get("username") or "").strip()
-    if not username:
-        raise HTTPException(status_code=400, detail="Username requis")
-
-    # Générer un mot de passe temporaire (fallback si la fonction n'existe pas)
-    try:
-        temp_password = generate_temp_password(12)
-    except Exception:
-        temp_password = secrets.token_urlsafe(9)
-
-    try:
-        # 1) Chemin standard
-        ok = False
-        try:
-            ok = bool(db_manager.change_password(username, temp_password))
-        except Exception as e:
-            print(f"❌ db_manager.change_password() a échoué: {e}")
-
-        # 2) Fallback : update direct (au cas où)
-        if not ok:
-            password_hash = bcrypt.hashpw(temp_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-            conn = db_manager.get_connection()
-            try:
-                c = conn.cursor()
-                if getattr(db_manager, "use_postgresql", False):
-                    c.execute(
-                        "UPDATE users SET password_hash = %s WHERE LOWER(username) = LOWER(%s)",
-                        (password_hash, username),
-                    )
-                else:
-                    c.execute(
-                        "UPDATE users SET password_hash = ? WHERE LOWER(username) = LOWER(?)",
-                        (password_hash, username),
-                    )
-                conn.commit()
-                updated = getattr(c, "rowcount", 0) or 0
-                if (not getattr(db_manager, "use_postgresql", False)) and updated < 0:
-                    updated = conn.execute("SELECT changes()").fetchone()[0]
-                ok = bool(updated and updated > 0)
-            finally:
-                try:
-                    conn.close()
-                except Exception:
-                    pass
-
-        if not ok:
-            return JSONResponse(
-                {"status": "error", "message": "Utilisateur introuvable ou mot de passe non modifié"},
-                status_code=404,
-            )
-
-        return JSONResponse({"status": "ok", "temp_password": temp_password})
-    except Exception as e:
-        print(f"❌ Erreur reset-password: {e}")
-        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
-
-@app.post("/admin-dashboard/reset-password")
-async def admin_dashboard_reset_password(request: Request, admin=Depends(require_admin)):
-    """Reset / change password from admin dashboard (legacy endpoint)."""
+    # Accepte JSON, text/plain (JSON string) et form-urlencoded
+    payload = {}
     try:
         payload = await request.json()
     except Exception:
-        payload = {}
+        try:
+            raw = (await request.body() or b"").decode("utf-8", errors="ignore").strip()
+            if raw:
+                import json as _json
+                payload = _json.loads(raw)
+        except Exception:
+            try:
+                form = await request.form()
+                payload = dict(form)
+            except Exception:
+                payload = {}
 
     username = (payload.get("username") or payload.get("email") or "").strip()
     new_password = payload.get("new_password")
@@ -6658,7 +6528,58 @@ async def admin_dashboard_reset_password(request: Request, admin=Depends(require
             return JSONResponse({"success": False, "message": "Mot de passe trop court (min 8 caractères)."}, status_code=400)
         password_to_set = new_password
     else:
-        password_to_set = secrets.token_urlsafe(9)
+        password_to_set = generate_temp_password()
+
+    try:
+        ok = db_manager.change_password(username, password_to_set)
+    except Exception as e:
+        print(f"❌ Reset password error for {username}: {e}")
+        return JSONResponse({"success": False, "message": f"Erreur interne: {e}"}, status_code=500)
+
+    if not ok:
+        return JSONResponse({"success": False, "message": f"Utilisateur introuvable: {username}"}, status_code=404)
+
+    return JSONResponse({
+        "success": True,
+        "message": "Mot de passe mis à jour.",
+        "temp_password": password_to_set
+    })
+
+
+@app.post("/admin-dashboard/reset-password")
+async def admin_dashboard_reset_password(request: Request, admin=Depends(require_admin)):
+    """Reset / change password from admin dashboard (legacy endpoint)."""
+    # Accepte JSON, text/plain (JSON string) et form-urlencoded
+    payload = {}
+    try:
+        payload = await request.json()
+    except Exception:
+        try:
+            raw = (await request.body() or b"").decode("utf-8", errors="ignore").strip()
+            if raw:
+                import json as _json
+                payload = _json.loads(raw)
+        except Exception:
+            try:
+                form = await request.form()
+                payload = dict(form)
+            except Exception:
+                payload = {}
+
+    username = (payload.get("username") or payload.get("email") or "").strip()
+    new_password = payload.get("new_password")
+    if isinstance(new_password, str):
+        new_password = new_password.strip()
+
+    if not username:
+        return JSONResponse({"success": False, "message": "Username manquant."}, status_code=400)
+
+    if new_password:
+        if len(new_password) < 8:
+            return JSONResponse({"success": False, "message": "Mot de passe trop court (min 8 caractères)."}, status_code=400)
+        password_to_set = new_password
+    else:
+        password_to_set = generate_temp_password()
 
     try:
         ok = db_manager.change_password(username, password_to_set)
@@ -7791,10 +7712,6 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
-
-# Alias global de styles (utilisé par certaines pages)
-GLOBAL_STYLES = CSS
-
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
@@ -24235,99 +24152,6 @@ except Exception:
 
 PLAN_ROUTE_OPTIONS = [r for r, _ in PLAN_ROUTES]
 
-
-
-def normalize_username(username: str) -> str:
-    """Normalize usernames for consistent comparisons (login/admin checks)."""
-    try:
-        import re as _re
-        u = (username or "").strip().lower()
-        # collapse/remove whitespace
-        u = _re.sub(r"\s+", "", u)
-        return u
-    except Exception:
-        return (username or "").strip().lower()
-
-
-def get_user_role(username: str) -> str:
-    """Retourne le rôle de l'utilisateur (admin/user) de façon robuste.
-
-    Priorité:
-      1) db_manager.get_user_role()
-      2) lecture directe SQLite (users.role / users.is_admin)
-      3) fallback via variables d'environnement ADMIN_USERNAME / ADMIN_EMAIL
-    """
-    uname = (username or "").strip()
-    if not uname:
-        return "user"
-
-    # 1) via db_manager si disponible
-    try:
-        if "db_manager" in globals() and hasattr(db_manager, "get_user_role"):
-            role = db_manager.get_user_role(uname)
-            if role:
-                return str(role).strip().lower()
-    except Exception:
-        pass
-
-    # 2) fallback: lecture directe SQLite
-    try:
-        import os
-        import sqlite3
-
-        db_dir = os.getenv("DB_DIR", "/app/data")
-        db_path = os.getenv("AUTH_DB_PATH") or os.path.join(db_dir, "ai_trader.db")
-
-        conn = sqlite3.connect(db_path)
-        cur = conn.cursor()
-
-        # colonnes disponibles
-        try:
-            cur.execute("PRAGMA table_info(users)")
-            cols = [r[1] for r in cur.fetchall()]
-        except Exception:
-            cols = []
-
-        if "role" in cols:
-            cur.execute("SELECT role FROM users WHERE lower(username)=lower(?) LIMIT 1", (uname,))
-            row = cur.fetchone()
-            if row and row[0]:
-                return str(row[0]).strip().lower()
-
-        if "is_admin" in cols:
-            cur.execute("SELECT is_admin FROM users WHERE lower(username)=lower(?) LIMIT 1", (uname,))
-            row = cur.fetchone()
-            if row is not None and row[0] is not None:
-                try:
-                    if int(row[0]) == 1:
-                        return "admin"
-                except Exception:
-                    pass
-
-        # ADMIN_EMAIL via users.email si présent
-        admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
-        if admin_email and "email" in cols:
-            cur.execute("SELECT email FROM users WHERE lower(username)=lower(?) LIMIT 1", (uname,))
-            row = cur.fetchone()
-            if row and row[0] and str(row[0]).strip().lower() == admin_email:
-                return "admin"
-
-    except Exception:
-        pass
-    finally:
-        try:
-            conn.close()  # type: ignore[name-defined]
-        except Exception:
-            pass
-
-    # 3) dernier fallback via env
-    admin_user = (os.getenv("ADMIN_USERNAME", "") if "os" in globals() else "").strip().lower()  # type: ignore[name-defined]
-    if admin_user and uname.lower() == admin_user:
-        return "admin"
-
-    return "user"
-
-
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
     """
@@ -24337,7 +24161,7 @@ async def admin_dashboard(request: Request):
     import html as html_lib
     # Auth admin
     # page admin : doit être connecté + admin
-    user = get_user_from_request(request)
+    user = get_logged_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
     username = normalize_username(user.get("username") or "")
@@ -30424,7 +30248,7 @@ def _http_cache_key(url, params):
         return url
     return url + "?" + "&".join([f"{k}={v}" for k, v in items])
 
-async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeout: float = 15.0, cache_ttl: int = 0, ttl_seconds: int | None = None, **_kwargs):
+async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeout: float = 15.0, cache_ttl: int = 0):
     """Fetch JSON with small retries + optional caching.
 
     - Retries on 429 and some transient errors
@@ -30434,21 +30258,6 @@ async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeo
     params = params or {}
     headers = headers or {}
 
-
-    # Backward/forward compatible TTL naming
-    if ttl_seconds is not None:
-        try:
-            cache_ttl = int(ttl_seconds)
-        except Exception:
-            cache_ttl = cache_ttl
-    # Compat: some callers may still pass ttl_seconds as a keyword even if signature changes
-    if ttl_seconds is None and isinstance(_kwargs, dict):
-        _ts = _kwargs.get("ttl_seconds")
-        if _ts is not None:
-            try:
-                cache_ttl = int(_ts)
-            except Exception:
-                pass
     # Add user-agent
     headers.setdefault("User-Agent", "CryptoIA/1.0 (+https://www.cryptoia.ca)")
 
@@ -31423,593 +31232,179 @@ async def ai_exit_page(request: Request):
     """
     return HTMLResponse(html_page)
 
-# =========================
-# AI GEM HUNTER 2.0 (Low-cap discovery + scoring)
-# - Données: CoinGecko (marchés) + scoring heuristique "AI" (pas de données inventées)
-# - Objectif: repérer des low-caps avec liquidité/momentum intéressants, tout en affichant des drapeaux de risque.
-# =========================
-
-def _clamp(v: float, lo: float, hi: float) -> float:
-    try:
-        return max(lo, min(hi, float(v)))
-    except Exception:
-        return lo
-
-def _sigmoid(x: float) -> float:
-    # stable sigmoid
-    try:
-        if x >= 0:
-            z = math.exp(-x)
-            return 1 / (1 + z)
-        else:
-            z = math.exp(x)
-            return z / (1 + z)
-    except Exception:
-        return 0.5
-
-def _fmt_money(x: float) -> str:
-    try:
-        x = float(x or 0.0)
-    except Exception:
-        x = 0.0
-    if x >= 1_000_000_000:
-        return f"${x/1_000_000_000:.2f}B"
-    if x >= 1_000_000:
-        return f"${x/1_000_000:.2f}M"
-    if x >= 1_000:
-        return f"${x/1_000:.2f}K"
-    return f"${x:.0f}"
-
-def _fmt_pct(x: float) -> str:
-    try:
-        if x is None:
-            return "—"
-        return f"{float(x):+.2f}%"
-    except Exception:
-        return "—"
-
-def _compute_gem_score(*, mc: float, vol: float, chg24: float | None, chg7: float | None, chg30: float | None) -> tuple[int, list[str], list[str]]:
-    """
-    Retourne (score 0-100, points forts, risques).
-    Tout est basé sur des features NUMÉRIQUES issues des APIs (pas de texte inventé).
-    """
-    mc = float(mc or 0.0)
-    vol = float(vol or 0.0)
-    chg24 = None if chg24 is None else float(chg24)
-    chg7 = None if chg7 is None else float(chg7)
-    chg30 = None if chg30 is None else float(chg30)
-
-    vratio = (vol / mc) if mc > 0 else 0.0  # volume / market cap
-    strengths: list[str] = []
-    risks: list[str] = []
-
-    # --- Scores partiels (0..1) ---
-    # Liquidité: log10(volume) -> 0..1
-    vol_log = math.log10(vol + 1.0)
-    s_liq = _clamp((vol_log - 4.5) / 2.5, 0.0, 1.0)  # ~ 30k -> 0, 10M -> ~1
-
-    # Volume/MC: >0.2 intéressant (activité). Trop haut peut être louche.
-    s_vratio = _sigmoid((vratio - 0.20) * 6.0)  # centre ~0.20
-
-    # Momentum: 7d et 30d
-    c7 = 0.0 if chg7 is None else chg7
-    c30 = 0.0 if chg30 is None else chg30
-    s_mom = 0.55 * _sigmoid(c7 / 12.0) + 0.45 * _sigmoid(c30 / 25.0)
-
-    # Volatilité/pump: pénalité si 24h énorme
-    c24 = 0.0 if chg24 is None else chg24
-    p_pump = _clamp((abs(c24) - 35.0) / 65.0, 0.0, 1.0)  # >35% commence, >100% max
-
-    # Market cap: on favorise 3M..80M (trop petit = risque, trop gros = moins "gem")
-    # mapping 0..1
-    if mc <= 0:
-        s_mc = 0.0
-    else:
-        # peak around ~25M
-        log_mc = math.log10(mc)
-        # gaussian-ish around log10(25M)=7.397
-        s_mc = math.exp(-((log_mc - 7.40) ** 2) / (2 * (0.65 ** 2)))
-        s_mc = _clamp(s_mc, 0.0, 1.0)
-
-    # --- Score final (0..100) ---
-    score = (
-        28.0 * s_liq +
-        22.0 * s_vratio +
-        32.0 * s_mom +
-        18.0 * s_mc
-    ) - (18.0 * p_pump)
-
-    # --- Risques / drapeaux ---
-    if mc and mc < 2_000_000:
-        risks.append("Low-cap extrême (<$2M) : risque très élevé")
-        score -= 8
-    if vol and vol < 150_000:
-        risks.append("Faible liquidité (volume < $150k)")
-        score -= 10
-    if vratio > 3.0 and mc > 0:
-        risks.append("Volume/MC très élevé (peut indiquer wash / volatilité)")
-        score -= 6
-    if chg7 is not None and chg7 < -25:
-        risks.append("Momentum 7j négatif (tendance baissière)")
-        score -= 8
-    if abs(c24) > 80:
-        risks.append("Variation 24h extrême (pump/dump possible)")
-        score -= 8
-
-    # --- Strengths ---
-    if s_liq > 0.65:
-        strengths.append("Liquidité solide (volume élevé)")
-    if vratio >= 0.25 and vratio <= 1.5:
-        strengths.append("Activité saine (Volume/MC)")
-    if (chg7 is not None and chg7 > 10) or (chg30 is not None and chg30 > 25):
-        strengths.append("Momentum positif (7j/30j)")
-    if mc >= 3_000_000 and mc <= 80_000_000:
-        strengths.append("Zone 'gem' (market cap low/mid)")
-
-    score = int(round(_clamp(score, 0.0, 100.0)))
-    return score, strengths, risks
-
-async def _fetch_gem_candidates_coingecko(
-    *,
-    vs_currency: str = "usd",
-    pages: int = 2,
-    per_page: int = 250,
-    ttl_seconds: int = 180,
-) -> list[dict]:
-    """
-    Récupère des coins triés par market cap ASC (les plus petits d'abord).
-    On prend plusieurs pages pour élargir l'univers "low-cap".
-    """
-    base = "https://api.coingecko.com/api/v3/coins/markets"
-    out: list[dict] = []
-    for page in range(1, max(1, pages) + 1):
-        url = (
-            f"{base}?vs_currency={vs_currency}"
-            f"&order=market_cap_asc"
-            f"&per_page={per_page}"
-            f"&page={page}"
-            f"&sparkline=false"
-            f"&price_change_percentage=24h,7d,30d"
-        )
-        try:
-            data = await _fetch_json(url, ttl_seconds=ttl_seconds)
-            if isinstance(data, list):
-                out.extend(data)
-        except Exception:
-            continue
-    return out
-
-@app.get("/api/ai-gem-hunter", response_class=JSONResponse)
-@require_login
-@require_permission("elite")
-async def api_ai_gem_hunter(
-    request: Request,
-    min_mc: float = 1.0,     # en millions $
-    max_mc: float = 120.0,   # en millions $
-    min_vol: float = 0.2,    # en millions $
-    pages: int = 2,
-    sort: str = "score",     # score|mc|vol|chg24|chg7|chg30
-    limit: int = 50,
-):
-    """
-    API JSON pour le Gem Hunter 2.0.
-    - min_mc/max_mc/min_vol sont en MILLIONS (plus simple côté UI).
-    """
-    min_mc_usd = float(min_mc) * 1_000_000
-    max_mc_usd = float(max_mc) * 1_000_000
-    min_vol_usd = float(min_vol) * 1_000_000
-    pages = int(_clamp(pages, 1, 5))
-    limit = int(_clamp(limit, 10, 200))
-
-    coins = await _fetch_gem_candidates_coingecko(pages=pages, ttl_seconds=180)
-
-    items: list[dict] = []
-    for c in coins:
-        mc = c.get("market_cap") or 0
-        vol = c.get("total_volume") or 0
-        if not mc or not vol:
-            continue
-        if mc < min_mc_usd or mc > max_mc_usd:
-            continue
-        if vol < min_vol_usd:
-            continue
-
-        chg24 = c.get("price_change_percentage_24h_in_currency")
-        chg7 = c.get("price_change_percentage_7d_in_currency")
-        chg30 = c.get("price_change_percentage_30d_in_currency")
-
-        score, strengths, risks = _compute_gem_score(
-            mc=float(mc), vol=float(vol), chg24=chg24, chg7=chg7, chg30=chg30
-        )
-
-        items.append({
-            "id": c.get("id"),
-            "symbol": (c.get("symbol") or "").upper(),
-            "name": c.get("name") or "",
-            "image": c.get("image") or "",
-            "price": c.get("current_price"),
-            "market_cap": mc,
-            "volume": vol,
-            "volume_to_mc": (float(vol) / float(mc)) if mc else None,
-            "chg24": chg24,
-            "chg7": chg7,
-            "chg30": chg30,
-            "score": score,
-            "strengths": strengths,
-            "risks": risks,
-            "coingecko_url": f"https://www.coingecko.com/en/coins/{c.get('id')}" if c.get("id") else None
-        })
-
-    # tri
-    sort = (sort or "score").lower()
-    if sort == "mc":
-        items.sort(key=lambda x: x.get("market_cap") or 0)
-    elif sort == "vol":
-        items.sort(key=lambda x: x.get("volume") or 0, reverse=True)
-    elif sort == "chg24":
-        items.sort(key=lambda x: x.get("chg24") if x.get("chg24") is not None else -1e9, reverse=True)
-    elif sort == "chg7":
-        items.sort(key=lambda x: x.get("chg7") if x.get("chg7") is not None else -1e9, reverse=True)
-    elif sort == "chg30":
-        items.sort(key=lambda x: x.get("chg30") if x.get("chg30") is not None else -1e9, reverse=True)
-    else:
-        items.sort(key=lambda x: x.get("score") or 0, reverse=True)
-
-    items = items[:limit]
-
-    return JSONResponse({
-        "status": "ok",
-        "count": len(items),
-        "filters": {
-            "min_mc_m": min_mc,
-            "max_mc_m": max_mc,
-            "min_vol_m": min_vol,
-            "pages": pages,
-            "sort": sort,
-            "limit": limit,
-        },
-        "items": items
-    })
-
 @app.get("/ai-gem-hunter", response_class=HTMLResponse)
-@require_login
-@require_permission("elite")
-async def ai_gem_hunter_page(
-    request: Request,
-    min_mc: float = 1.0,     # en millions $
-    max_mc: float = 120.0,   # en millions $
-    min_vol: float = 0.2,    # en millions $
-    pages: int = 2,
-    sort: str = "score",
-):
+async def ai_gem_hunter_page(request: Request):
     """
-    Gem Hunter 2.0 — Low caps + scoring (AI heuristique) + drapeaux de risque.
-    IMPORTANT: aucun chiffre n'est inventé. Les données viennent de CoinGecko.
+    AI Gem Hunter (v2) — Scanner de coins (top market) + signaux heuristiques.
+    Données publiques CoinGecko + règles internes (pas une garantie).
     """
-    # Pré-calc (server side) pour affichage immédiat, la page utilise aussi l'API pour refresh.
-    api = await api_ai_gem_hunter(request, min_mc=min_mc, max_mc=max_mc, min_vol=min_vol, pages=pages, sort=sort, limit=80)
-    payload = api.body
+    user = get_current_user_from_session(request)
+
+    # Admin = accès total
+    if user and str(user.get("username", "")).lower() == "admin":
+        can_access = True
+    else:
+        can_access = check_route_permission(user, "/ai-gem-hunter")
+    if not can_access:
+        return access_denied_page(request, page_title="AI Gem Hunter", required_plan=get_required_plan_for_route("/ai-gem-hunter"))
+
+    # Paramètres
+    page = int(request.query_params.get("page") or 1)
+    per_page = 25
+    page = max(1, min(page, 4))  # 1..4 (jusqu'à 100 coins)
+
+    coins = []
+    error = None
+
+    def _fmt_money(v):
+        try:
+            v = float(v)
+        except Exception:
+            return "—"
+        if v >= 1e12:
+            return f"${v/1e12:.2f}T"
+        if v >= 1e9:
+            return f"${v/1e9:.2f}B"
+        if v >= 1e6:
+            return f"${v/1e6:.2f}M"
+        if v >= 1e3:
+            return f"${v/1e3:.2f}K"
+        return f"${v:.0f}"
+
+    def _signal(coin: dict):
+        """Signal simple: Momentum 24h + Liquidité relative."""
+        chg = float(coin.get("price_change_percentage_24h") or 0.0)
+        vol = float(coin.get("total_volume") or 0.0)
+        mc = float(coin.get("market_cap") or 0.0)
+        vratio = (vol / mc) if mc > 0 else 0.0
+
+        if chg >= 8 and vratio >= 0.08:
+            return ("🔥 Breakout", "green")
+        if chg >= 3 and vratio >= 0.05:
+            return ("✅ Bullish", "green")
+        if chg <= -8 and vratio >= 0.08:
+            return ("⚠️ Dump + Volume", "red")
+        if chg <= -3:
+            return ("🔻 Weak", "red")
+        if vratio >= 0.07:
+            return ("👀 Volume", "yellow")
+        return ("—", "gray")
+
     try:
-        payload = json.loads(payload.decode("utf-8")) if isinstance(payload, (bytes, bytearray)) else payload
-    except Exception:
-        payload = {"status": "error", "items": []}
+        coins = await _fetch_json(
+            "https://api.coingecko.com/api/v3/coins/markets",
+            params={
+                "vs_currency": "usd",
+                "order": "market_cap_desc",
+                "per_page": per_page,
+                "page": page,
+                "sparkline": "false",
+                "price_change_percentage": "24h",
+            },
+            ttl_seconds=120,
+            use_coingecko_key=True,
+        ) or []
+    except Exception as e:
+        error = str(e)
+        coins = []
 
-    items = payload.get("items", []) if isinstance(payload, dict) else []
-    # Construire le HTML des lignes (évite les f-strings imbriqués)
-    rows_parts = []
-    for it in items:
-        try:
-            price = it.get("price")
-            price_txt = (f"${float(price):,.6f}" if price is not None else "—")
-        except Exception:
-            price_txt = "—"
+    # Table
+    rows = ""
+    for c in coins:
+        name = html.escape(str(c.get("name") or ""))
+        sym = html.escape(str(c.get("symbol") or "").upper())
+        price = c.get("current_price")
+        chg = c.get("price_change_percentage_24h")
+        mc = c.get("market_cap")
+        vol = c.get("total_volume")
 
-        vtmc = it.get("volume_to_mc")
-        try:
-            vtmc_txt = (f"{float(vtmc):.2f}" if vtmc is not None else "—")
-        except Exception:
-            vtmc_txt = "—"
+        sig, sig_color = _signal(c)
+        sig_html = f"<span class='tag {sig_color}'>{html.escape(sig)}</span>"
 
-        chg24 = it.get("chg24")
-        chg7 = it.get("chg7")
-        chg24_cls = "pos" if (chg24 or 0) >= 0 else "neg"
-        chg7_cls = "pos" if (chg7 or 0) >= 0 else "neg"
-
-        strengths = (it.get("strengths") or [])[:3]
-        risks = (it.get("risks") or [])[:2]
-        score = int(it.get("score") or 0)
-
-        link = (
-            f"<a class='chip link' target='_blank' href='{it.get('coingecko_url')}'>CoinGecko</a>"
-            if it.get("coingecko_url")
-            else ""
-        )
-
-        rows_parts.append(
-            "<tr>"
-            "<td><div class='coin'>"
-            f"<img src='{it.get('image') or ''}' alt='' onerror=\"this.style.display='none'\"/>"
-            "<div><div class='name'>"
-            f"{(it.get('symbol') or '')} <span class='muted'>{(it.get('name') or '')}</span>"
-            "</div></div></div></td>"
-            f"<td class='num'>{price_txt}</td>"
-            f"<td class='num'>{_fmt_money(it.get('market_cap'))}</td>"
-            f"<td class='num'>{_fmt_money(it.get('volume'))}</td>"
-            f"<td class='num'>{vtmc_txt}</td>"
-            f"<td class='num {chg24_cls}'>{_fmt_pct(chg24)}</td>"
-            f"<td class='num {chg7_cls}'>{_fmt_pct(chg7)}</td>"
-            "<td><div class='score'>"
-            f"<div class='bar'><span style='width:{score}%'></span></div>"
-            f"<div class='snum'>{score}</div>"
-            "</div></td>"
-            "<td><div class='chips'>"
-            + "".join([f"<span class='chip ok'>{s}</span>" for s in strengths])
-            + "".join([f"<span class='chip risk'>{r}</span>" for r in risks])
-            + link
-            + "</div></td>"
-            "</tr>"
-        )
-
-    rows_html = (
-        "".join(rows_parts)
-        if rows_parts
-        else "<tr><td colspan='9' class='muted'>Aucun résultat avec ces filtres.</td></tr>"
-    )
-
-
-    # UI moderne (sans toucher aux templates)
-    html = f"""
-<div class="content">
-  <div class="header-row">
-    <div>
-      <h1 style="margin-bottom:6px;">AI Gem Hunter <span class="badge">2.0</span></h1>
-      <div class="subtext">
-        Détection de <b>low-caps</b> avec scoring multi-facteurs (liquidité, momentum, volume/MC) + drapeaux de risque.
-        <br/><span style="opacity:.9">Données: CoinGecko. Cache serveur ~3 min pour éviter les limites.</span>
-      </div>
-    </div>
-    <div class="pill">
-      <span class="dot"></span>
-      <span id="statusText">Prêt</span>
-    </div>
-  </div>
-
-  <div class="filters">
-    <div class="fitem">
-      <label>Market cap min (M$)</label>
-      <input id="minMc" type="number" step="0.5" value="{min_mc}"/>
-    </div>
-    <div class="fitem">
-      <label>Market cap max (M$)</label>
-      <input id="maxMc" type="number" step="1" value="{max_mc}"/>
-    </div>
-    <div class="fitem">
-      <label>Volume min (M$ / 24h)</label>
-      <input id="minVol" type="number" step="0.1" value="{min_vol}"/>
-    </div>
-    <div class="fitem">
-      <label>Profondeur scan</label>
-      <select id="pages">
-        <option value="1">Rapide (page 1)</option>
-        <option value="2" selected>Standard (pages 1-2)</option>
-        <option value="3">Large (pages 1-3)</option>
-        <option value="4">Très large (pages 1-4)</option>
-      </select>
-    </div>
-    <div class="fitem">
-      <label>Trier</label>
-      <select id="sort">
-        <option value="score" selected>Score (AI)</option>
-        <option value="vol">Volume</option>
-        <option value="mc">Market cap</option>
-        <option value="chg24">Δ 24h</option>
-        <option value="chg7">Δ 7j</option>
-        <option value="chg30">Δ 30j</option>
-      </select>
-    </div>
-    <div class="fitem" style="align-self:end;">
-      <button class="btn" onclick="runScan()">Scanner</button>
-    </div>
-  </div>
-
-  <div class="grid">
-    <div class="card">
-      <div class="k">Résultats</div>
-      <div class="v" id="countBox">{len(items)}</div>
-      <div class="hint">Coins qui matchent tes filtres</div>
-    </div>
-    <div class="card">
-      <div class="k">Ce que le score favorise</div>
-      <div class="hint">Liquidité • Momentum • Volume/MC • Zone low/mid cap</div>
-      <div class="meter"><span style="width:76%"></span></div>
-    </div>
-    <div class="card">
-      <div class="k">Ce que le score pénalise</div>
-      <div class="hint">Pump 24h extrême • Low-cap extrême • Illiquidité</div>
-      <div class="meter warn"><span style="width:58%"></span></div>
-    </div>
-  </div>
-
-  <div class="tablewrap">
-    <table class="table" id="tbl">
-      <thead>
+        rows += f"""
         <tr>
-          <th>Coin</th>
-          <th>Prix</th>
-          <th>MC</th>
-          <th>Vol 24h</th>
-          <th>Vol/MC</th>
-          <th>Δ24h</th>
-          <th>Δ7j</th>
-          <th>Score</th>
-          <th>Insights</th>
+            <td><b>{name}</b><div class="muted">{sym}</div></td>
+            <td>${price:,.6f}</td>
+            <td class="{'pos' if (chg or 0) >= 0 else 'neg'}">{(chg or 0):+.2f}%</td>
+            <td>{_fmt_money(mc)}</td>
+            <td>{_fmt_money(vol)}</td>
+            <td>{sig_html}</td>
         </tr>
-      </thead>
-      <tbody id="tbody">{rows_html}</tbody>
-    </table>
-  </div>
+        """
 
-  <div class="note">
-    <b>Important</b> : “Gem hunting” = activité <b>très risquée</b>. Le score aide à trier, pas à garantir un gain.
-    Les données affichées sont <b>réelles</b> (CoinGecko), et le score est une heuristique basée sur ces chiffres.
-  </div>
-</div>
+    nav = f"""
+    <div class="nav">
+        <a class="btn" href="/ai-gem-hunter?page={max(1,page-1)}">◀</a>
+        <div class="muted">Page {page} / 4</div>
+        <a class="btn" href="/ai-gem-hunter?page={min(4,page+1)}">▶</a>
+    </div>
+    """
 
-<style>
-  .header-row{{display:flex; justify-content:space-between; gap:14px; align-items:flex-start; margin-bottom:14px;}}
-  .badge{{display:inline-block; font-size:12px; padding:4px 8px; border-radius:999px; background:rgba(3,225,255,.14); color:#03e1ff; border:1px solid rgba(3,225,255,.25); vertical-align:middle;}}
-  .subtext{{color:#b9c3cf; font-size:13px; line-height:1.35; max-width:900px;}}
-  .pill{{display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); color:#dfe7f1;}}
-  .dot{{width:8px; height:8px; border-radius:50%; background:#12d18e; box-shadow:0 0 12px rgba(18,209,142,.4);}}
-  .filters{{display:grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap:10px; margin:12px 0 14px;}}
-  .fitem{{background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:10px;}}
-  .fitem label{{display:block; font-size:12px; color:#aeb9c7; margin-bottom:6px;}}
-  .fitem input, .fitem select{{width:100%; border-radius:10px; border:1px solid rgba(255,255,255,.10); background:rgba(0,0,0,.25); color:#e9f0f7; padding:9px 10px; outline:none;}}
-  .btn{{width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(3,225,255,.25); background:rgba(3,225,255,.14); color:#03e1ff; cursor:pointer; font-weight:700;}}
-  .btn:hover{{filter:brightness(1.05);}}
-  .grid{{display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin:8px 0 14px;}}
-  .card{{background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:14px;}}
-  .k{{font-size:12px; color:#aeb9c7;}}
-  .v{{font-size:28px; font-weight:900; margin-top:4px;}}
-  .hint{{font-size:12px; color:#b9c3cf; margin-top:6px;}}
-  .meter{{height:10px; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden; margin-top:10px;}}
-  .meter span{{display:block; height:100%; background:linear-gradient(90deg, rgba(18,209,142,.9), rgba(3,225,255,.9));}}
-  .meter.warn span{{background:linear-gradient(90deg, rgba(255,187,68,.95), rgba(255,77,77,.95));}}
-  .tablewrap{{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:16px; overflow:hidden;}}
-  .table{{width:100%; border-collapse:collapse;}}
-  .table th{{text-align:left; padding:12px 12px; font-size:12px; letter-spacing:.02em; color:#aeb9c7; background:rgba(0,0,0,.18);}}
-  .table td{{padding:12px; border-top:1px solid rgba(255,255,255,.06); vertical-align:top;}}
-  .num{{font-variant-numeric: tabular-nums;}}
-  .pos{{color:#12d18e;}}
-  .neg{{color:#ff4d4d;}}
-  .coin{{display:flex; align-items:center; gap:10px;}}
-  .coin img{{width:22px; height:22px; border-radius:8px;}}
-  .name{{font-weight:800;}}
-  .muted{{color:#aeb9c7; font-weight:500; margin-left:6px;}}
-  .score{{display:flex; align-items:center; gap:10px;}}
-  .bar{{flex:1; height:10px; background:rgba(255,255,255,.10); border-radius:999px; overflow:hidden; min-width:90px;}}
-  .bar span{{display:block; height:100%; background:linear-gradient(90deg, rgba(3,225,255,.85), rgba(126,86,255,.85));}}
-  .snum{{width:34px; text-align:right; font-weight:900;}}
-  .chips{{display:flex; flex-wrap:wrap; gap:6px;}}
-  .chip{{display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border-radius:999px; font-size:12px; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04); color:#e8f1fb;}}
-  .chip.ok{{border-color:rgba(18,209,142,.25); background:rgba(18,209,142,.10);}}
-  .chip.risk{{border-color:rgba(255,77,77,.25); background:rgba(255,77,77,.10);}}
-  .chip.link{{border-color:rgba(3,225,255,.25); background:rgba(3,225,255,.10); color:#03e1ff; text-decoration:none;}}
-  .note{{margin-top:14px; padding:12px 14px; border-radius:14px; border:1px solid rgba(255,187,68,.20); background:rgba(255,187,68,.08); color:#ffe6b3; font-size:13px;}}
-  @media (max-width: 1200px) {{
-    .filters{{grid-template-columns: repeat(3, minmax(0,1fr));}}
-    .grid{{grid-template-columns: 1fr;}}
-  }}
-</style>
+    html_page = f"""
+    <html>
+    <head>
+        <title>AI Gem Hunter - CryptoIA</title>
+        {GLOBAL_STYLES}
+        <style>
+            .wrap {{ padding: 40px; }}
+            .card {{ background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 26px; max-width: 1100px; margin: 0 auto; }}
+            .title {{ font-size: 34px; font-weight: 800; margin: 0 0 6px 0; }}
+            .sub {{ opacity: 0.85; margin: 0 0 16px 0; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 10px; overflow: hidden; border-radius: 14px; }}
+            th, td {{ padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); text-align: left; }}
+            th {{ opacity: 0.75; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }}
+            .muted {{ opacity: 0.7; font-size: 12px; }}
+            .pos {{ color: #20f7c7; font-weight: 800; }}
+            .neg {{ color: #ff5a5a; font-weight: 800; }}
+            .tag {{ display:inline-flex; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.10); background: rgba(0,0,0,0.30); font-weight: 800; font-size: 12px; }}
+            .tag.green {{ border-color: rgba(32,247,199,0.35); }}
+            .tag.red {{ border-color: rgba(255,90,90,0.35); }}
+            .tag.yellow {{ border-color: rgba(255,220,120,0.35); }}
+            .tag.gray {{ opacity: 0.7; }}
+            .err {{ margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,0,0,0.25); background: rgba(255,0,0,0.10); }}
+            .nav {{ display:flex; gap: 10px; align-items:center; justify-content: center; margin-top: 16px; }}
+            .btn {{ padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.10); background: rgba(0,0,0,0.35); color: #fff; cursor: pointer; text-decoration: none; font-weight: 800; }}
+            @media (max-width: 900px) {{ .wrap {{ padding: 18px; }} td:nth-child(4), th:nth-child(4), td:nth-child(5), th:nth-child(5) {{ display:none; }} }}
+        </style>
+    </head>
+    <body>
+        {SIDEBAR_HTML}
+        <div class="main-content">
+            <div class="wrap">
+                <div class="card">
+                    <h1 class="title">AI Gem Hunter</h1>
+                    <p class="sub">Top coins (market cap) + signaux simples basés sur variation 24h & ratio Volume/MarketCap. Données CoinGecko.</p>
+                    {f'<div class="err"><b>Erreur:</b> {html.escape(error)}</div>' if error else ''}
 
-<script>
-  // set selects to current values
-  (function initSel(){{
-    try {{
-      document.getElementById('pages').value = String({int(_clamp(pages,1,4))});
-      document.getElementById('sort').value = "{(sort or 'score')}";
-    }} catch(e) {{}}
-  }})();
+                    {nav}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Coin</th>
+                                <th>Prix</th>
+                                <th>24h</th>
+                                <th>Market Cap</th>
+                                <th>Volume</th>
+                                <th>Signal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows if rows else '<tr><td colspan="6" class="muted">Aucune donnée pour le moment.</td></tr>'}
+                        </tbody>
+                    </table>
+                    {nav}
 
-  async function runScan(){{
-    const status = document.getElementById('statusText');
-    status.textContent = 'Scan…';
-    const minMc = parseFloat(document.getElementById('minMc').value || '1');
-    const maxMc = parseFloat(document.getElementById('maxMc').value || '120');
-    const minVol = parseFloat(document.getElementById('minVol').value || '0.2');
-    const pages = parseInt(document.getElementById('pages').value || '2', 10);
-    const sort = document.getElementById('sort').value || 'score';
-
-    const qs = new URLSearchParams({{
-      min_mc: String(minMc),
-      max_mc: String(maxMc),
-      min_vol: String(minVol),
-      pages: String(pages),
-      sort: sort,
-      limit: '80'
-    }});
-
-    try {{
-      const r = await fetch('/api/ai-gem-hunter?' + qs.toString());
-      const j = await r.json();
-      if(!j || j.status !== 'ok') throw new Error('API error');
-      renderRows(j.items || []);
-      document.getElementById('countBox').textContent = String((j.items||[]).length);
-      status.textContent = 'OK';
-    }} catch(e) {{
-      status.textContent = 'Erreur';
-      console.error(e);
-      alert('Erreur: impossible de récupérer les données.');
-    }}
-  }}
-
-  function fmtMoney(x){{
-    if(x === null || x === undefined) return '—';
-    const n = Number(x);
-    if(!isFinite(n)) return '—';
-    if(n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
-    if(n >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
-    if(n >= 1e3) return '$' + (n/1e3).toFixed(2) + 'K';
-    return '$' + Math.round(n).toString();
-  }}
-  function fmtPct(x){{
-    if(x === null || x === undefined) return '—';
-    const n = Number(x);
-    if(!isFinite(n)) return '—';
-    const s = (n>=0?'+':'') + n.toFixed(2) + '%';
-    return s;
-  }}
-  function esc(s){{ return (s||'').toString().replace(/[&<>"']/g, m => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#39;'}}[m])); }}
-
-  function renderRows(items){{
-    const tbody = document.getElementById('tbody');
-    if(!items || !items.length){{
-      tbody.innerHTML = '<tr><td colspan="9" class="muted">Aucun résultat avec ces filtres.</td></tr>';
-      return;
-    }}
-    tbody.innerHTML = items.map(it => {{
-      const chg24 = it.chg24 ?? 0;
-      const chg7 = it.chg7 ?? 0;
-      const vtmc = it.volume_to_mc;
-      const score = Number(it.score || 0);
-      const price = (it.price !== null && it.price !== undefined) ? ('$' + Number(it.price).toLocaleString(undefined, {{minimumFractionDigits: 0, maximumFractionDigits: 6}})) : '—';
-      const strengths = (it.strengths || []).slice(0,3).map(s => `<span class="chip ok">${{esc(s)}}</span>`).join('');
-      const risks = (it.risks || []).slice(0,2).map(s => `<span class="chip risk">${{esc(s)}}</span>`).join('');
-      const link = it.coingecko_url ? `<a class="chip link" target="_blank" href="${{it.coingecko_url}}">CoinGecko</a>` : '';
-      return `
-        <tr>
-          <td>
-            <div class="coin">
-              <img src="${{it.image || ''}}" alt="" onerror="this.style.display='none'"/>
-              <div>
-                <div class="name">${{esc(it.symbol || '')}} <span class="muted">${{esc(it.name || '')}}</span></div>
-              </div>
+                    <div style="opacity:0.72; font-size: 12px; margin-top: 12px;">
+                        “IA” ici = règles de détection + données publiques. Si tu veux un vrai scoring IA (LLM / modèles), on peut ajouter une couche d'analyse plus avancée.
+                    </div>
+                </div>
             </div>
-          </td>
-          <td class="num">${{price}}</td>
-          <td class="num">${{fmtMoney(it.market_cap)}}</td>
-          <td class="num">${{fmtMoney(it.volume)}}</td>
-          <td class="num">${{vtmc === null || vtmc === undefined ? '—' : Number(vtmc).toFixed(2)}}</td>
-          <td class="num ${{chg24>=0?'pos':'neg'}}">${{fmtPct(it.chg24)}}</td>
-          <td class="num ${{chg7>=0?'pos':'neg'}}">${{fmtPct(it.chg7)}}</td>
-          <td>
-            <div class="score">
-              <div class="bar"><span style="width:${{Math.max(0, Math.min(100, score))}}%"></span></div>
-              <div class="snum">${{score}}</div>
-            </div>
-          </td>
-          <td>
-            <div class="chips">
-              ${{strengths}}${{risks}}${{link}}
-            </div>
-          </td>
-        </tr>
-      `;
-    }}).join('');
-  }}
-</script>
-"""
-    return HTMLResponse(SIDEBAR + html)
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(html_page)
+
 @app.get("/crypto-pepites", response_class=HTMLResponse)
 async def crypto_pepites():
     """

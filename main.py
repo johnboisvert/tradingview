@@ -770,6 +770,70 @@ DEFAULT_PLAN_ACCESS = {
     "pro": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist"],
     "elite": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist"],
 }
+
+# -----------------------------
+# Helper: required plan per route
+# -----------------------------
+def get_required_plan_for_route(route_path: str):
+    """Retourne le plan minimal requis pour accéder à une route.
+
+    - Utilise d'abord la table sqlite `plan_access` (si dispo)
+    - Sinon retombe sur DEFAULT_PLAN_ACCESS
+    - Retourne une string style "Free"/"Premium"/"Advanced"/"Pro"/"Elite" ou None si inconnu
+    """
+    try:
+        if route_path is None:
+            return None
+
+        # Normaliser en "route_key" sans slash
+        route_key = str(route_path).split("?")[0].strip().lstrip("/")
+        if not route_key:
+            # Home page: généralement accessible à tous
+            return "Free"
+
+        plan_order = ["free", "premium", "advanced", "pro", "elite"]
+        plan_label = {
+            "free": "Free",
+            "premium": "Premium",
+            "advanced": "Advanced",
+            "pro": "Pro",
+            "elite": "Elite",
+        }
+
+        # 1) DB plan_access si possible
+        try:
+            conn = get_settings_db_connection()  # défini plus bas dans main.py
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT plan, enabled FROM plan_access WHERE route = ?",
+                (route_key,),
+            )
+            rows = cur.fetchall()
+            conn.close()
+
+            if rows:
+                enabled_by_plan = {str(p).lower(): int(e) for p, e in rows}
+                for p in plan_order:
+                    if enabled_by_plan.get(p, 0) == 1:
+                        return plan_label.get(p, p.title())
+        except Exception:
+            # Ignore DB errors; fallback sur DEFAULT_PLAN_ACCESS
+            pass
+
+        # 2) Fallback: DEFAULT_PLAN_ACCESS
+        try:
+            for p in plan_order:
+                routes = DEFAULT_PLAN_ACCESS.get(p, [])
+                if route_key in routes:
+                    return plan_label.get(p, p.title())
+        except Exception:
+            pass
+
+        return None
+    except Exception:
+        return None
+
+
 def init_plan_access_db():
     """DB des accès par forfait (persistant)."""
     try:

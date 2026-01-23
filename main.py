@@ -4549,6 +4549,14 @@ def get_current_user_from_request(request: Request) -> Optional[str]:
     return get_user_from_token(token)
 
 
+
+def normalize_username(value: str) -> str:
+    """Normalise un identifiant utilisateur (username/email) pour les comparaisons."""
+    try:
+        return (value or "").strip().lower()
+    except Exception:
+        return ""
+
 def get_logged_user(request: Request) -> Optional[dict]:
     """Retourne un dict user minimal depuis la cookie session_token."""
     username = get_current_user_from_request(request)

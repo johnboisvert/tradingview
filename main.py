@@ -3936,6 +3936,57 @@ def _ensure_writable_trades_file():
 _ensure_writable_trades_file()
 
 
+# ==========================
+# Trades persistence (JSON)
+# ==========================
+# NOTE: Le projet utilise SQLite pour les tables "trades", mais plusieurs
+# routes/moniteurs utilisent encore une liste mémoire `trades_db` + un fichier JSON.
+# Ces helpers évitent les crashs au démarrage et gardent la compatibilité.
+
+trades_db = []  # liste de dicts (trades)
+
+def load_trades_from_file():
+    """Charge `trades_db` depuis TRADES_FILE (JSON).
+
+    Tolère:
+    - fichier absent
+    - format {"trades":[...]} ou [...]
+    """
+    global trades_db, TRADES_FILE
+    try:
+        _ensure_writable_trades_file()
+        if not TRADES_FILE or not os.path.exists(TRADES_FILE):
+            trades_db = []
+            return
+        with open(TRADES_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict) and "trades" in data:
+            data = data.get("trades", [])
+        if not isinstance(data, list):
+            data = []
+        # Normaliser: chaque item doit être un dict
+        trades_db = [t for t in data if isinstance(t, dict)]
+        print(f"✅ Trades chargés depuis JSON: {len(trades_db)}")
+    except Exception as e:
+        trades_db = []
+        print(f"⚠️ Impossible de charger les trades depuis JSON: {e}")
+
+
+def save_trades_to_file():
+    """Sauvegarde `trades_db` vers TRADES_FILE (JSON) en écriture atomique."""
+    global trades_db, TRADES_FILE
+    try:
+        _ensure_writable_trades_file()
+        if not TRADES_FILE:
+            return
+        os.makedirs(os.path.dirname(TRADES_FILE), exist_ok=True)
+        tmp_path = TRADES_FILE + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(trades_db, f, ensure_ascii=False, indent=2, default=str)
+        os.replace(tmp_path, TRADES_FILE)
+    except Exception as e:
+        print(f"⚠️ Impossible de sauvegarder les trades vers JSON: {e}")
+
 #  TELEGRAM CONFIGURATION
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")

@@ -2901,7 +2901,7 @@ def access_denied_page(request, page_title: str = "Accès refusé", required_pla
         # Try to detect login
         is_logged = False
         try:
-            is_logged = bool(get_cookie(request, "session_token")) or bool(get_cookie(request, "access_token")) or bool(get_cookie(request, "session")) or bool(get_cookie(request, "token"))
+            is_logged = bool(get_cookie(request, "session_token")) or bool(get_cookie(request, "access_token")) or bool(get_cookie(request, "token")) or bool(get_cookie(request, "session"))
         except Exception:
             is_logged = False
 
@@ -2948,48 +2948,72 @@ def access_denied_page(request, page_title: str = "Accès refusé", required_pla
         from fastapi.responses import PlainTextResponse
         return PlainTextResponse("Accès refusé (403).", status_code=403)
 
-def get_user_from_request(request: Request) -> dict | None:
-    """Retourne l'utilisateur (dict) a partir du token, ou None.
+def get_user_from_request(request: Request) -> Optional[Dict]:
+    """Retourne l'utilisateur courant à partir de la session/cookies.
 
-    Le token peut venir:
-    - du cookie 'token'
-    - d'un header 'Authorization: Bearer <token>'
+    IMPORTANT:
+    - Le cookie utilisé par /login est **session_token** (token généré par create_session()).
+    - On garde la compatibilité avec d'anciens noms (access_token / token).
+    - On accepte aussi les infos dans request.session (SessionMiddleware).
     """
     try:
-        # Essayer d'abord le cookie via helper robuste
-        token = get_cookie(request, "token") or request.cookies.get("token")
+        # 1) Session Starlette (prioritaire si présent)
+        sess = getattr(request, "session", None) or {}
+        # Certains anciens codes stockaient "user" directement
+        if isinstance(sess, dict):
+            if isinstance(sess.get("user"), dict):
+                u = sess.get("user") or {}
+                if u.get("username") or u.get("email"):
+                    return u
+            # Nouveau/commun : user_id/username
+            if sess.get("username"):
+                uname = str(sess.get("username"))
+                # admin bypass direct
+                if uname.lower() == "admin":
+                    return {"username": "admin", "role": "admin", "plan": "elite"}
+                udb = get_user_by_username(uname)
+                if udb:
+                    return udb
+            if sess.get("user_id"):
+                uid = sess.get("user_id")
+                # uid peut être int ou str
+                try:
+                    uid_int = int(uid)
+                except Exception:
+                    uid_int = None
+                if uid_int is not None:
+                    udb = get_user_by_id(uid_int)
+                    if udb:
+                        return udb
+                # sinon tenter username
+                uname = str(uid)
+                if uname.lower() == "admin":
+                    return {"username": "admin", "role": "admin", "plan": "elite"}
+                udb = get_user_by_username(uname)
+                if udb:
+                    return udb
 
-        # Sinon, essayer le header Authorization
-        if not token:
-            auth = request.headers.get("Authorization") or request.headers.get("authorization")
-            if auth and auth.lower().startswith("bearer "):
-                token = auth.split(" ", 1)[1].strip()
+        # 2) Cookies: session_token (principal), puis access_token / token (legacy)
+        token = (
+            get_cookie(request, "session_token")
+            or request.cookies.get("session_token")
+            or get_cookie(request, "access_token")
+            or request.cookies.get("access_token")
+            or get_cookie(request, "token")
+            or request.cookies.get("token")
+            or get_cookie(request, "session")
+            or request.cookies.get("session")
+        )
 
-        if not token:
-            return None
+        if token:
+            u = get_user_from_token(token)
+            if u:
+                return u
 
-        user = get_user_from_token(token)
-        if not user:
-            return None
-
-        # Normaliser en dict (certaines fonctions utilisent ce format)
-        if isinstance(user, dict):
-            return user
-
-        return {
-            "id": user[0],
-            "username": user[1],
-            "email": user[2],
-            "plan": user[3],
-            "is_admin": bool(user[4]) if len(user) > 4 else False,
-        }
-    except Exception as e:
-        print(f"⚠️ get_user_from_request error: {e}")
+        return None
+    except Exception:
         return None
 
-# -------------------------------------------------------------------------
-# Compat helper (certaines pages utilisent encore ce nom)
-# -------------------------------------------------------------------------
 def get_current_user_from_session(request: Request):
     """Alias compat : récupère l'utilisateur courant depuis cookies/session.
 
@@ -3248,10 +3272,7 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         #  Vérifier si l'utilisateur est connecté
-        session_token = (request.cookies.get("session_token")
-                        or request.cookies.get("access_token")
-                        or request.cookies.get("token")
-                        or request.cookies.get("session"))
+        session_token = request.cookies.get("session_token")
         user = None
         username = ""
 
@@ -3300,14 +3321,7 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         try:
             role = (user.get("role") or "").lower() if isinstance(user, dict) else ""
             uname = (user.get("username") or user.get("email") or "").lower() if isinstance(user, dict) else ""
-
-            admin_users_env = os.getenv("ADMIN_USERS", "") or ""
-            admin_emails = {x.strip().lower() for x in admin_users_env.split(",") if x.strip()}
-            admin_single = (os.getenv("ADMIN_EMAIL", "") or os.getenv("OWNER_EMAIL", "") or "").strip().lower()
-            if admin_single:
-                admin_emails.add(admin_single)
-
-            if role == "admin" or uname == "admin" or (uname and (uname in admin_emails)):
+            if role == "admin" or uname == "admin":
                 is_admin = True
             elif uname:
                 # Fallback: session store might miss role; double-check against auth DB
@@ -4522,10 +4536,6 @@ def get_user_from_token(token: Optional[str]):
     # Format dict: s'assurer qu'on a un username et (si possible) un role
     if isinstance(user_data, dict):
         uname = (user_data.get("username") or user_data.get("email") or "").strip()
-        # Normalise: certains appels stockent seulement "email" ou "user".
-        if uname and not user_data.get("username"):
-            user_data["username"] = uname
-
         if uname and not user_data.get("role"):
             try:
                 role = db_manager.get_user_role(uname)
@@ -4548,12 +4558,6 @@ def require_auth(session_token: Optional[str] = Cookie(None)):
     if not user:
         raise HTTPException(status_code=401, detail="Non authentifié")
     return user
-
-
-# --- Compat helper (certaines versions appellent get_logged_user) ---
-if "get_logged_user" not in globals():
-    def get_logged_user(request: Request):
-        return get_user_from_request(request)
 
 # 
 #  SYSTME DE PERMISSIONS - CONFIGURATION
@@ -20274,10 +20278,7 @@ async def stripe_checkout(request: Request):
         email = data.get('email', 'user@example.com')
         
         # Rcuprer l'email de l'utilisateur connect si disponible
-        session_token = (request.cookies.get("session_token")
-                        or request.cookies.get("access_token")
-                        or request.cookies.get("token")
-                        or request.cookies.get("session"))
+        session_token = request.cookies.get("session_token")
         user = get_user_from_token(session_token)
         if user:
             email = user.get('username', email)
@@ -20405,10 +20406,7 @@ async def coinbase_checkout(request: Request):
         email = data.get('email', 'user@example.com')
         
         # Rcuprer l'email de l'utilisateur connect si disponible
-        session_token = (request.cookies.get("session_token")
-                        or request.cookies.get("access_token")
-                        or request.cookies.get("token")
-                        or request.cookies.get("session"))
+        session_token = request.cookies.get("session_token")
         user = get_user_from_token(session_token)
         if user:
             email = user.get('username', email)
@@ -35797,10 +35795,7 @@ def get_all_holdings(user_id):
 async def connect_exchange(request: Request):
     """Connecter un exchange avec vraies clés API"""
     try:
-        session_token = (request.cookies.get("session_token")
-                        or request.cookies.get("access_token")
-                        or request.cookies.get("token")
-                        or request.cookies.get("session"))
+        session_token = request.cookies.get("session_token")
         user = get_user_from_token(session_token)
         
         if not user:
@@ -35859,10 +35854,7 @@ async def connect_exchange(request: Request):
 async def clear_portfolio(request: Request):
     """Nettoyer la DB portfolio - ADMIN ONLY"""
     try:
-        session_token = (request.cookies.get("session_token")
-                        or request.cookies.get("access_token")
-                        or request.cookies.get("token")
-                        or request.cookies.get("session"))
+        session_token = request.cookies.get("session_token")
         user = get_user_from_token(session_token)
         
         if not user or user.get('username') != 'admin':
@@ -35884,10 +35876,7 @@ async def get_portfolio_data(request: Request):
     """Récupérer les données du portfolio"""
     try:
         # Rcuprer l'utilisateur depuis le token
-        session_token = (request.cookies.get("session_token")
-                        or request.cookies.get("access_token")
-                        or request.cookies.get("token")
-                        or request.cookies.get("session"))
+        session_token = request.cookies.get("session_token")
         user = get_user_from_token(session_token)
         
         if not user:

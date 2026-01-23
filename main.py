@@ -3731,6 +3731,13 @@ try:
 except Exception:
     pass
 
+# Alias stable pour les pages qui attendent SIDEBAR_HTML
+try:
+    SIDEBAR_HTML = SIDEBAR
+except Exception:
+    SIDEBAR_HTML = ""
+
+
 
 # ==================================
 
@@ -4556,6 +4563,54 @@ def normalize_username(value: str) -> str:
         return (value or "").strip().lower()
     except Exception:
         return ""
+
+def html_doc(title: str, body_html: str, extra_head: str = "") -> str:
+    """
+    Construit un document HTML complet.
+    Utilisé pour les pages "placeholder" (ex: accès refusé) afin d'éviter les NameError.
+    """
+    safe_title = (title or "CryptoIA").replace("<", "&lt;").replace(">", "&gt;")
+    return f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{safe_title}</title>
+  {extra_head or ""}
+  <style>
+    :root {{ color-scheme: dark; }}
+    body {{
+      margin: 0;
+      font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+      background: #0b1220;
+      color: #e7eefc;
+    }}
+    .container {{ max-width: 980px; margin: 40px auto; padding: 0 16px; }}
+    .card {{
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }}
+    a.btn {{
+      display: inline-block;
+      margin-top: 12px;
+      background: #2563eb;
+      color: #fff !important;
+      text-decoration: none;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 700;
+    }}
+    a.btn:hover {{ filter: brightness(1.05); }}
+  </style>
+</head>
+<body>
+{body_html}
+</body>
+</html>"""
+
 
 def get_logged_user(request: Request) -> Optional[dict]:
     """Retourne un dict user minimal depuis la cookie session_token."""

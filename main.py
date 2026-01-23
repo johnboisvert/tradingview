@@ -5353,6 +5353,15 @@ async def html_placeholder_middleware(request: Request, call_next):
         html = html.replace("__SITE_LOGO_URL__", logo)
         html = html.replace("_SITE_LOGO_URL_", logo)
         html = html.replace("SITE_LOGO_URL", logo)
+        # Variantes fréquentes (avec slash ou URL absolue)
+        html = html.replace("/_SITE_LOGO_URL_", "/" + str(logo).lstrip("/"))
+        # si jamais un template a construit une URL absolue avec le placeholder
+        try:
+            base_host = (request.url.scheme + "://" + request.url.netloc).rstrip("/")
+            html = html.replace(base_host + "/_SITE_LOGO_URL_", str(logo))
+        except Exception:
+            pass
+
 
         html = html.replace("{SITE_NAME}", name)
         html = html.replace("{{SITE_NAME}}", name)

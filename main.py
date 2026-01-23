@@ -3739,6 +3739,10 @@ body.sidebar-open{padding-left:280px !important}
     }
     </script>"""
 
+# Alias utilisé par certaines pages (compatibilité)
+SIDEBAR_HTML = SIDEBAR
+
+
 # Appliquer les placeholders (logo + nom) dans la sidebar
 try:
     SIDEBAR = SIDEBAR.replace("__SITE_LOGO_URL__", SITE_LOGO_URL).replace("__SITE_NAME__", SITE_NAME)
@@ -4493,58 +4497,92 @@ def generate_temp_password(length: int = 12) -> str:
     return "".join(pw)
 
 
-def create_session(username: str, user_info: dict = None) -> str:
-    """Créer une session pour un utilisateur avec infos d'abonnement"""
-    token = secrets.token_urlsafe(32)
-    
-    if user_info:
-        # Stocker toutes les infos de l'utilisateur
-        active_sessions[token] = user_info
-    else:
-        # Rcuprer les infos depuis la DB
-        user_data = db_manager.get_user_info(username)
-        active_sessions[token] = user_data
-    
-    return token
+SESSION_TABLE = "user_sessions"
+SESSION_TTL_DAYS = 30
 
-def get_user_from_token(token: Optional[str]):
-    """Récupérer l'utilisateur depuis un token de session.
+def _ensure_sessions_table():
+    """Crée la table de sessions si absente (SQLite)."""
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute(f"""
+                CREATE TABLE IF NOT EXISTS {SESSION_TABLE} (
+                    token TEXT PRIMARY KEY,
+                    user_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL
+                )
+            """)
+            conn.commit()
+    except Exception as e:
+        print(f"⚠️  Impossible de créer la table sessions: {e}")
 
-    Normalise les anciens formats : si active_sessions[token] est une string (ex: "admin"),
-    on la convertit en dict {"username": "..."} afin que les middlewares puissent lire username/role.
-    """
-    if not token:
-        return None
+def _persist_session(token: str, user_data: dict):
+    try:
+        _ensure_sessions_table()
+        now = datetime.utcnow()
+        exp = now + timedelta(days=SESSION_TTL_DAYS)
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute(
+                f"INSERT OR REPLACE INTO {SESSION_TABLE} (token, user_json, created_at, expires_at) VALUES (?,?,?,?)",
+                (token, json.dumps(user_data, ensure_ascii=False), now.isoformat(), exp.isoformat()),
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"⚠️  Impossible de persister la session: {e}")
 
-    user_data = active_sessions.get(token)
-    if not user_data:
-        return None
+def _delete_session(token: str):
+    try:
+        _ensure_sessions_table()
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute(f"DELETE FROM {SESSION_TABLE} WHERE token = ?", (token,))
+            conn.commit()
+    except Exception as e:
+        print(f"⚠️  Impossible de supprimer la session: {e}")
 
-    # Ancien format: juste un username en string
-    if isinstance(user_data, str):
-        uname = user_data.strip()
-        user_dict = {"username": uname}
-        # Enrichir avec le rôle depuis la DB si possible
+def _load_session(token: str):
+    try:
+        _ensure_sessions_table()
+        with sqlite3.connect(DB_PATH) as conn:
+            cur = conn.cursor()
+            cur.execute(f"SELECT user_json, expires_at FROM {SESSION_TABLE} WHERE token = ?", (token,))
+            row = cur.fetchone()
+        if not row:
+            return None
+        user_json, expires_at = row
+        # expiration
         try:
-            role = db_manager.get_user_role(uname)
-            if role:
-                user_dict["role"] = role
+            exp = datetime.fromisoformat(expires_at)
+            if exp < datetime.utcnow():
+                _delete_session(token)
+                return None
         except Exception:
             pass
-        return user_dict
+        return json.loads(user_json) if user_json else None
+    except Exception as e:
+        print(f"⚠️  Impossible de charger la session: {e}")
+        return None
 
-    # Format dict: s'assurer qu'on a un username et (si possible) un role
-    if isinstance(user_data, dict):
-        uname = (user_data.get("username") or user_data.get("email") or "").strip()
-        if uname and not user_data.get("role"):
-            try:
-                role = db_manager.get_user_role(uname)
-                if role:
-                    user_data["role"] = role
-            except Exception:
-                pass
-        return user_data
+def create_session(username: str, user_info: dict = None) -> str:
+    """Crée une session persistante (cookie -> token), stockée en mémoire + SQLite."""
+    token = secrets.token_urlsafe(32)
+    if user_info:
+        user_data = dict(user_info)
+    else:
+        user_data = db_manager.get_user_info(username) or {"username": username, "role": "user"}
+    active_sessions[token] = user_data
+    _persist_session(token, user_data)
+    return token
 
+def get_user_from_token(token: str):
+    if not token:
+        return None
+    user = active_sessions.get(token)
+    if user:
+        return user
+    user = _load_session(token)
+    if user:
+        active_sessions[token] = user
+        return user
     return None
 
 
@@ -5512,11 +5550,17 @@ async def login(request: Request, response: Response):
         return RedirectResponse(url=error_url, status_code=303)
 
 @app.get("/logout")
-async def logout(request: Request):
-    # Déconnexion simple
-    resp = RedirectResponse(url="/login", status_code=303)
-    resp.delete_cookie("session_token")
-    return resp
+async def logout(request: Request, session_token: str = Cookie(None)):
+    """Déconnexion: supprime la session côté serveur + cookie."""
+    if session_token:
+        try:
+            active_sessions.pop(session_token, None)
+            _delete_session(session_token)
+        except Exception:
+            pass
+    response = RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie("session_token", path="/", domain=".cryptoia.ca")
+    return response
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel(request: Request):
@@ -7702,6 +7746,10 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
+
+# Alias global de styles (utilisé par certaines pages)
+GLOBAL_STYLES = CSS
+
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""

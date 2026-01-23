@@ -5352,6 +5352,7 @@ async def html_placeholder_middleware(request: Request, call_next):
 
         html = html.replace("__SITE_LOGO_URL__", logo)
         html = html.replace("_SITE_LOGO_URL_", logo)
+        html = html.replace("SITE_LOGO_URL", logo)
 
         html = html.replace("{SITE_NAME}", name)
         html = html.replace("{{SITE_NAME}}", name)
@@ -5359,6 +5360,7 @@ async def html_placeholder_middleware(request: Request, call_next):
 
         html = html.replace("__SITE_NAME__", name)
         html = html.replace("_SITE_NAME_", name)
+        html = html.replace("SITE_NAME", name)
 
         new_body = html.encode("utf-8")
 
@@ -24199,6 +24201,19 @@ except Exception:
     pass
 
 PLAN_ROUTE_OPTIONS = [r for r, _ in PLAN_ROUTES]
+
+
+
+def normalize_username(username: str) -> str:
+    """Normalize usernames for consistent comparisons (login/admin checks)."""
+    try:
+        import re as _re
+        u = (username or "").strip().lower()
+        # collapse/remove whitespace
+        u = _re.sub(r"\s+", "", u)
+        return u
+    except Exception:
+        return (username or "").strip().lower()
 
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):

@@ -2948,73 +2948,44 @@ def access_denied_page(request, page_title: str = "Accès refusé", required_pla
         from fastapi.responses import PlainTextResponse
         return PlainTextResponse("Accès refusé (403).", status_code=403)
 
-def get_user_from_request(request: Request):
-    """Récupère l'utilisateur depuis les cookies - VERSION CORRIGÉE"""
-    try:
-        #  CORRECTION: Utiliser session_token, pas user_id!
-# Essayer cookies dans l'ordre le plus probable
-token = (
-    request.cookies.get("session_token")
-    or request.cookies.get("token")
-    or get_cookie(request, "access_token")
-    or get_cookie(request, "session")
-)
-# Fallback: Authorization: Bearer <token>
-if not token:
-    auth = request.headers.get("authorization") or request.headers.get("Authorization") or ""
-    if auth.lower().startswith("bearer "):
-        token = auth.split(" ", 1)[1].strip()
-if not token:
-    return None
+def get_user_from_request(request: Request) -> dict | None:
+    """Retourne l'utilisateur (dict) a partir du token, ou None.
 
+    Le token peut venir:
+    - du cookie 'token'
+    - d'un header 'Authorization: Bearer <token>'
+    """
+    try:
+        # Essayer d'abord le cookie via helper robuste
+        token = get_cookie(request, "token") or request.cookies.get("token")
+
+        # Sinon, essayer le header Authorization
+        if not token:
+            auth = request.headers.get("Authorization") or request.headers.get("authorization")
+            if auth and auth.lower().startswith("bearer "):
+                token = auth.split(" ", 1)[1].strip()
+
+        if not token:
+            return None
 
         user = get_user_from_token(token)
-        
         if not user:
-            print(f"⚠️ get_user_from_request: session_token trouvé mais utilisateur non trouvé")
             return None
-        
-        # L'utilisateur peut tre soit un dict, soit juste un username (ancien format)
-        if isinstance(user, str):
-            # Ancien format: juste le username
-            username = user
-            user_dict = {
-                "username": username,
-                "id": username,
-                "plan": "Free",
-                "role": "admin" if username == "admin" else "user"
-            }
-        else:
-            # Nouveau format: dj un dict
-            user_dict = user
-        
-        #  CORRECTION CRITIQUE: Vrifier le rle admin
-        # Le champ dans la DB peut tre "role" ou "plan"
-        role = user_dict.get("role", "")
-        plan = user_dict.get("plan", "Free")
-        username = user_dict.get("username", "")
-        
-        # L'utilisateur est admin si:
-        # 1. role == "admin" OU
-        # 2. username == "admin"
-        is_admin = (role == "admin" or username == "admin")
-        
-        # Enrichir le dict avec les champs ncessaires
-        user_dict["is_admin"] = is_admin
-        user_dict["subscription_tier"] = plan
-        
-        # Debug log
-        print(f"🔍 get_user_from_request: user={username}, role={role}, is_admin={is_admin}")
-        
-        return user_dict
-        
+
+        # Normaliser en dict (certaines fonctions utilisent ce format)
+        if isinstance(user, dict):
+            return user
+
+        return {
+            "id": user[0],
+            "username": user[1],
+            "email": user[2],
+            "plan": user[3],
+            "is_admin": bool(user[4]) if len(user) > 4 else False,
+        }
     except Exception as e:
-        print(f"❌ get_user_from_request error: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"⚠️ get_user_from_request error: {e}")
         return None
-
-
 
 # -------------------------------------------------------------------------
 # Compat helper (certaines pages utilisent encore ce nom)

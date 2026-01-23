@@ -2798,6 +2798,92 @@ def init_ebooks_table():
         print(f"❌ Init ebooks/contact: {e}")
         return False
 
+
+
+# ============================
+# Cookie helpers + Access denied page (missing defs fix)
+# ============================
+
+def get_cookie(request, name: str, default=None):
+    """Safe cookie getter (avoids NameError and handles missing request.cookies)."""
+    try:
+        # Standard cookie
+        if hasattr(request, "cookies") and request.cookies is not None:
+            val = request.cookies.get(name)
+            if val is not None:
+                return val
+        # Optional: Authorization header fallback for access_token
+        if name == "access_token":
+            auth = None
+            try:
+                auth = request.headers.get("authorization") if hasattr(request, "headers") else None
+            except Exception:
+                auth = None
+            if auth and isinstance(auth, str) and auth.lower().startswith("bearer "):
+                return auth.split(" ", 1)[1].strip() or default
+        return default
+    except Exception:
+        return default
+
+
+def access_denied_page(request, page_title: str = "Accès refusé", required_plan=None):
+    """Return a clean 403 page instead of crashing when user lacks permission."""
+    try:
+        if isinstance(required_plan, (list, tuple, set)):
+            required_txt = ", ".join([str(x) for x in required_plan if x])
+        else:
+            required_txt = str(required_plan) if required_plan else "un forfait supérieur"
+
+        # Try to detect login
+        is_logged = False
+        try:
+            is_logged = bool(get_cookie(request, "access_token")) or bool(get_cookie(request, "session"))
+        except Exception:
+            is_logged = False
+
+        login_cta = '<a class="btn" href="/login">Se connecter</a>' if not is_logged else ""
+        html = f"""<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>{page_title}</title>
+  <style>
+    body{{margin:0;background:#0b1220;color:#e5e7eb;font-family:Arial,Helvetica,sans-serif}}
+    .wrap{{max-width:900px;margin:60px auto;padding:0 16px}}
+    .card{{background:rgba(15,23,42,.85);border:1px solid rgba(148,163,184,.18);
+          border-radius:16px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.35)}}
+    h1{{margin:0 0 10px;font-size:28px}}
+    p{{margin:8px 0;color:#cbd5e1;line-height:1.5}}
+    .row{{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}}
+    .btn{{display:inline-block;padding:10px 14px;border-radius:12px;text-decoration:none;font-weight:700}}
+    .primary{{background:#00e5ff;color:#05101a}}
+    .ghost{{border:1px solid rgba(148,163,184,.35);color:#e5e7eb}}
+    .note{{margin-top:14px;font-size:13px;color:#94a3b8}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>⛔ Accès refusé</h1>
+      <p>Cette page (<b>{page_title}</b>) nécessite <b>{required_txt}</b>.</p>
+      <div class="row">
+        <a class="btn primary" href="/pricing-complete">Voir les forfaits</a>
+        <a class="btn ghost" href="/">Retour à l’accueil</a>
+        {login_cta}
+      </div>
+      <div class="note">Si tu viens de te connecter, recharge la page. Si le problème persiste, contacte le support via la page Contact.</div>
+    </div>
+  </div>
+</body>
+</html>"""
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(html, status_code=403)
+    except Exception:
+        # ultra safe fallback
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse("Accès refusé (403).", status_code=403)
+
 def get_user_from_request(request: Request):
     """Récupère l'utilisateur depuis les cookies - VERSION CORRIGÉE"""
     try:

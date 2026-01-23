@@ -2857,6 +2857,18 @@ def get_user_from_request(request: Request):
         traceback.print_exc()
         return None
 
+
+
+# -------------------------------------------------------------------------
+# Compat helper (certaines pages utilisent encore ce nom)
+# -------------------------------------------------------------------------
+def get_current_user_from_session(request: Request):
+    """Alias compat : récupère l'utilisateur courant depuis cookies/session.
+
+    Plusieurs routes historiques appellent `get_current_user_from_session(request)`.
+    Notre système d'auth actuel s'appuie sur les cookies (token / access_token / session).
+    """
+    return get_user_from_request(request)
 #  CORRECTION 2: RATE LIMITING - Protection contre brute-force
 # 
 

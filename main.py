@@ -4564,6 +4564,60 @@ def get_logged_user(request: Request) -> Optional[dict]:
         return None
     return {"username": username}
 
+
+def get_user_role(username: str) -> str:
+    """Retourne le rôle (ex: 'admin') pour un username.
+
+    Wrapper global autour de DatabaseManager.get_user_role pour éviter les NameError
+    dans certaines routes (ex: /admin-dashboard).
+    """
+    try:
+        if not username:
+            return "user"
+        role = db_manager.get_user_role(username)
+        role = (role or "user").strip().lower()
+        return role
+    except Exception:
+        return "user"
+
+
+
+def get_user_permission(username: str, route: str) -> bool:
+    """Retourne True si l'utilisateur a une permission explicite pour une route.
+
+    Utilise la table SQLite/Postgres `user_permissions` (username, route).
+    Sert à accorder des exceptions (ex: accès à une page même si le plan ne l'autorise pas).
+    """
+    try:
+        username = normalize_username(username or "")
+        route = (route or "").strip()
+        if not username or not route:
+            return False
+
+        conn = db_manager.get_connection()
+        cur = conn.cursor()
+
+        if getattr(db_manager, "use_postgresql", False):
+            cur.execute(
+                "SELECT 1 FROM user_permissions WHERE LOWER(username)=LOWER(%s) AND route=%s LIMIT 1",
+                (username, route),
+            )
+        else:
+            cur.execute(
+                "SELECT 1 FROM user_permissions WHERE LOWER(username)=LOWER(?) AND route=? LIMIT 1",
+                (username, route),
+            )
+
+        row = cur.fetchone()
+        try:
+            conn.close()
+        except Exception:
+            pass
+        return row is not None
+    except Exception:
+        return False
+
+
 def require_auth(session_token: Optional[str] = Cookie(None)):
     """Dépendance FastAPI pour exiger une authentification"""
     user = get_user_from_token(session_token)

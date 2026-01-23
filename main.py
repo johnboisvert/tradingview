@@ -24224,6 +24224,86 @@ def normalize_username(username: str) -> str:
     except Exception:
         return (username or "").strip().lower()
 
+
+def get_user_role(username: str) -> str:
+    """Retourne le rôle de l'utilisateur (admin/user) de façon robuste.
+
+    Priorité:
+      1) db_manager.get_user_role()
+      2) lecture directe SQLite (users.role / users.is_admin)
+      3) fallback via variables d'environnement ADMIN_USERNAME / ADMIN_EMAIL
+    """
+    uname = (username or "").strip()
+    if not uname:
+        return "user"
+
+    # 1) via db_manager si disponible
+    try:
+        if "db_manager" in globals() and hasattr(db_manager, "get_user_role"):
+            role = db_manager.get_user_role(uname)
+            if role:
+                return str(role).strip().lower()
+    except Exception:
+        pass
+
+    # 2) fallback: lecture directe SQLite
+    try:
+        import os
+        import sqlite3
+
+        db_dir = os.getenv("DB_DIR", "/app/data")
+        db_path = os.getenv("AUTH_DB_PATH") or os.path.join(db_dir, "ai_trader.db")
+
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+
+        # colonnes disponibles
+        try:
+            cur.execute("PRAGMA table_info(users)")
+            cols = [r[1] for r in cur.fetchall()]
+        except Exception:
+            cols = []
+
+        if "role" in cols:
+            cur.execute("SELECT role FROM users WHERE lower(username)=lower(?) LIMIT 1", (uname,))
+            row = cur.fetchone()
+            if row and row[0]:
+                return str(row[0]).strip().lower()
+
+        if "is_admin" in cols:
+            cur.execute("SELECT is_admin FROM users WHERE lower(username)=lower(?) LIMIT 1", (uname,))
+            row = cur.fetchone()
+            if row is not None and row[0] is not None:
+                try:
+                    if int(row[0]) == 1:
+                        return "admin"
+                except Exception:
+                    pass
+
+        # ADMIN_EMAIL via users.email si présent
+        admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
+        if admin_email and "email" in cols:
+            cur.execute("SELECT email FROM users WHERE lower(username)=lower(?) LIMIT 1", (uname,))
+            row = cur.fetchone()
+            if row and row[0] and str(row[0]).strip().lower() == admin_email:
+                return "admin"
+
+    except Exception:
+        pass
+    finally:
+        try:
+            conn.close()  # type: ignore[name-defined]
+        except Exception:
+            pass
+
+    # 3) dernier fallback via env
+    admin_user = (os.getenv("ADMIN_USERNAME", "") if "os" in globals() else "").strip().lower()  # type: ignore[name-defined]
+    if admin_user and uname.lower() == admin_user:
+        return "admin"
+
+    return "user"
+
+
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
     """

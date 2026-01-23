@@ -805,7 +805,7 @@ def get_required_plan_for_route(route_path: str):
             conn = get_settings_db_connection()  # défini plus bas dans main.py
             cur = conn.cursor()
             cur.execute(
-                "SELECT plan, enabled FROM plan_access WHERE route = ?",
+                "SELECT plan, enabled FROM plan_access WHERE route_key = ?",
                 (route_key,),
             )
             rows = cur.fetchall()
@@ -4604,271 +4604,62 @@ def normalize_route_key(route: str) -> str:
     rk = alias.get(rk, rk)
     return rk
 
-def check_route_permission(username: str, route: str) -> bool:
-    """
-    Vérifie si un utilisateur peut accéder à une route (basé sur plan_access).
+def check_route_permission(user_or_username, route: str) -> bool:
+    """Vérifie si un utilisateur a accès à une route.
 
-    - ADMIN: accès total
-    - Autres: accès selon plan (free/premium/advanced/pro/elite) configuré dans /admin-dashboard
-    - Les clés stockées sont des slugs (ex: 'spot-trading', 'ai-market-regime', 'pricing-complete', 'dashboard')
+    Accepte soit:
+      - un username/email (str)
+      - un dict user (ex: {"username": ..., "role": ...})
+
+    Les admins (role=admin ou username=admin) bypassent toujours.
     """
     try:
-        # Pages qui ne doivent jamais être bloquées par la gestion des forfaits.
-        # /mon-compte gère déjà la connexion (redirige vers /login si besoin).
-        route_key0 = normalize_route_key(route)
-        if route.startswith('/static') or route_key0.startswith('static/'):
-            return True
-        if route_key0 in ('health', 'login', 'register', 'logout', 'mon-compte', 'forgot-password', 'reset-password'):
-            return True
+        username = ""
+        role = ""
 
-        uname = normalize_username(username)
+        # Support dict user ou string username
+        if isinstance(user_or_username, dict):
+            username = (
+                user_or_username.get("username")
+                or user_or_username.get("email")
+                or user_or_username.get("user")
+                or ""
+            )
+            role = (user_or_username.get("role") or "")
+        else:
+            username = user_or_username or ""
+
+        uname = (username or "").strip().lower()
         if not uname:
-            # Invité (pas logué) -> traité comme plan FREE
-            try:
-                allowed = set(get_plan_access_routes('free') or [])
-            except Exception:
-                allowed = set()
-            if not allowed:
-                try:
-                    allowed = set((DEFAULT_PLAN_ACCESS or {}).get('free', []) or [])
-                except Exception:
-                    allowed = set()
-            if route in ('/', ''):
-                route_key_guest = 'dashboard'
-            else:
-                route_key_guest = str(route or '').lstrip('/').split('?')[0].split('#')[0].strip() or 'dashboard'
-            # Alias pricing -> pricing-complete
-            if route_key_guest in ('pricing', 'plans', 'plans-et-tarifs'):
-                route_key_guest = 'pricing-complete'
-            # Autoriser si route exact ou préfixe (ex: 'academy/*')
-            if route_key_guest in allowed:
-                return True
-            for a in allowed:
-                if a and route_key_guest.startswith(a + '/'):  # sous-pages
-                    return True
             return False
 
-        # Admin = full access
-        try:
-            if str(get_user_role(uname)).lower() == "admin":
-                return True
-        except Exception:
-            if uname == "admin":
-                return True
-
-        path = str(route or "")
-
-        # Si URL complète
-        if path.startswith(("http://", "https://")):
-            try:
-                import urllib.parse
-                path = urllib.parse.urlparse(path).path or path
-            except Exception:
-                pass
-
-        # Autoriser assets / endpoints publics
-        public_prefixes = (
-            "/static/", "/favicon", "/robots.txt", "/sitemap.xml", "/ads.txt",
-            "/llms.txt", "/humans.txt", "/security.txt", "/.well-known/"
-        )
-        if path.startswith(public_prefixes):
+        # Admin bypass (role dans le dict OU DB OU username explicite)
+        if (role or "").strip().lower() == "admin" or uname == "admin":
             return True
-        if path in ("/login", "/register", "/logout", "/pricing-complete", "/contact"):
-            return True
-
-        # Normaliser -> route_key
-        if path == "/" or path.strip() == "":
-            route_key = "dashboard"
-        else:
-            route_key = path.lstrip("/").split("?")[0].split("#")[0].strip()
-
-        # Harmoniser quelques alias
-        if route_key in ("pricing", "plans", "plans-et-tarifs"):
-            route_key = "pricing-complete"
-        if route_key in ("",):
-            route_key = "dashboard"
-
-        # Récupérer le plan utilisateur (et vérifier expiration)
-        plan = "free"
-        end_dt = None
         try:
-            info = db_manager.get_user_info(uname) or {}
-            plan = info.get("subscription_plan") or info.get("plan") or plan
-            end_dt = info.get("subscription_end") or info.get("subscription_expires_at")
+            if db_manager.get_user_role(uname) == "admin":
+                return True
         except Exception:
             pass
 
-        # Expiration => free
-        end_parsed = None
-        try:
-            if "_to_dt" in globals():
-                end_parsed = _to_dt(end_dt)
-        except Exception:
-            end_parsed = None
-        try:
-            if end_parsed and datetime.now() > end_parsed:
-                plan = "free"
-        except Exception:
-            pass
+        # Vérifier permissions par plan
+        user_plan = get_user_plan(uname) or "free"
+        plan_routes = set(get_plan_access_routes(user_plan))
+        if not plan_routes:
+            # fallback: config en mémoire
+            plan_routes = set(get_plan_permissions(user_plan, {}))
 
-        plan_key = normalize_plan(str(plan or "free"))
-        # Accès par plan (settings.db) — monotone: si un route est cochée pour Premium, Advanced/Pro/Elite l'ont aussi.
-        PLAN_ORDER = ["free", "premium", "advanced", "pro", "elite"]
-        if plan_key not in PLAN_ORDER:
-            plan_key = "free"
+        route_key = (route or "").strip().lstrip("/").split("?")[0]
 
-        def _allowed_for(plan):
-            try:
-                return set(get_plan_access_routes(plan) or [])
-            except Exception:
-                return set()
-
-        # Union des routes de tous les plans <= plan utilisateur
-        idx = PLAN_ORDER.index(plan_key)
-        allowed = set()
-        for pkey in PLAN_ORDER[: idx + 1]:
-            allowed |= _allowed_for(pkey)
-
-        if not allowed:
-            # fallback mémoire (même logique monotone)
-            try:
-                for pkey in PLAN_ORDER[: idx + 1]:
-                    allowed |= set((DEFAULT_PLAN_ACCESS or {}).get(pkey, []))
-            except Exception:
-                allowed = set()
-
-        # Match exact OU prefix (ex: telechargements/download/123)
-        if route_key in allowed:
+        if route_key in plan_routes or f"/{route_key}" in plan_routes:
             return True
-        for ak in allowed:
-            if ak and route_key.startswith(ak + "/"):
-                return True
-        return False
+
+        # Vérifier permissions spécifiques utilisateur
+        return bool(get_user_permission(uname, route_key))
+
     except Exception as e:
-        print(f"⚠️ check_route_permission: {e}")
+        print(f"❌ check_route_permission error: {e}")
         return False
-
-def normalize_username(user_obj):
-    """Accepte str/dict (session payload) et retourne un username string ou None."""
-    if user_obj is None:
-        return None
-    if isinstance(user_obj, str):
-        return user_obj
-    if isinstance(user_obj, dict):
-        for k in ("username", "user", "email", "name"):
-            v = user_obj.get(k)
-            if isinstance(v, str) and v.strip():
-                return v.strip()
-        return None
-    # fallback
-    try:
-        return str(user_obj)
-    except Exception:
-        return None
-
-def get_user_role(username):
-    """Retourne le rôle de l'utilisateur. Supporte username dict/str."""
-    uname = normalize_username(username)
-    if not uname:
-        return "user"
-    try:
-        return db_manager.get_user_role(uname)
-    except Exception:
-        return "user"
-
-def get_logged_user(request: Request):
-    """Return user dict from session cookie, or None."""
-    try:
-        token = (request.cookies.get("session_token") or request.cookies.get("session") or "").strip()
-    except Exception:
-        token = ""
-    if not token:
-        return None
-    try:
-        return get_user_from_token(token)
-    except Exception:
-        return None
-
-def is_logged_in(request: Request) -> bool:
-    return get_logged_user(request) is not None
-
-def is_admin_request(request: Request) -> bool:
-    u = get_logged_user(request)
-    if not u:
-        return False
-    username = normalize_username(u.get("username") or "")
-    try:
-        return get_user_role(username) == "admin"
-    except Exception:
-        return False
-
-def require_admin(session_token: str = Cookie(None), session: str = Cookie(None)):
-    """Dépendance FastAPI: assure que l'utilisateur connecté est admin.
-
-    Note: Les sessions stockent généralement un dict (user_info).
-    Cette dépendance accepte donc un dict ou une string."""
-    token = session_token or session
-    user = get_user_from_token(token)
-
-    # user peut être un dict (user_info) ou une string (compat)
-    if isinstance(user, dict):
-        uname = normalize_username(user.get("username") or user.get("email") or "")
-        # si le role est déjà présent dans la session, on peut s'en servir en fallback
-        session_role = (user.get("role") or "").strip().lower()
-    else:
-        uname = normalize_username(user)
-        session_role = ""
-
-    if not uname:
-        raise HTTPException(status_code=401, detail="Non authentifié")
-
-    role = (get_user_role(uname) or session_role or "").strip().lower()
-    if role != "admin":
-        raise HTTPException(status_code=403, detail="Accès admin requis")
-
-    return uname
-def load_trades_from_file():
-    """📂 Charger les trades depuis le fichier JSON"""
-    global trades_db
-    try:
-        if os.path.exists(TRADES_FILE):
-            with open(TRADES_FILE, 'r', encoding='utf-8') as f:
-                raw = f.read().strip()
-                if not raw:
-                    trades_db = []
-                else:
-                    trades_db = json.loads(raw)
-                print(f"✅ {len(trades_db)} trades chargés depuis {TRADES_FILE}")
-        else:
-            trades_db = []
-            print(f"📄 Fichier {TRADES_FILE} créé (nouveau)")
-    except Exception as e:
-        print(f"❌ Erreur chargement trades: {e}")
-        trades_db = []
-
-
-def save_trades_to_file():
-    """💾 Sauvegarder les trades dans le fichier JSON (avec fallback si /data n'est pas writable)."""
-    global TRADES_FILE
-    try:
-        with open(TRADES_FILE, 'w', encoding='utf-8') as f:
-            json.dump(trades_db, f, indent=2, ensure_ascii=False)
-            print(f"✅ {len(trades_db)} trades sauvegardés dans {TRADES_FILE}")
-            return
-    except Exception as e:
-        print(f"❌ Erreur sauvegarde trades: {e}")
-
-        # Fallback automatique si le dossier n'est pas writable (ex: /data permission denied)
-        try:
-            fallback_dir = "/tmp"
-            os.makedirs(fallback_dir, exist_ok=True)
-            TRADES_FILE = os.path.join(fallback_dir, "trades_database.json")
-            with open(TRADES_FILE, 'w', encoding='utf-8') as f:
-                json.dump(trades_db, f, indent=2, ensure_ascii=False)
-            print(f"✅ Fallback OK: {len(trades_db)} trades sauvegardés dans {TRADES_FILE}")
-        except Exception as e2:
-            print(f"❌ Fallback sauvegarde trades impossible: {e2}")
-
 
 # ============================================================================
 #  MEXC API - AUTO-DETECTION TP/SL

@@ -3196,6 +3196,18 @@ from starlette.responses import Response
 # Si elle est absente, un appel direct provoque un NameError (500).
 # On encapsule donc l'accès au plan dans une fonction sûre.
 
+def get_logged_user(request: Request):
+    """Compat alias: retourne l'utilisateur connecté depuis cookies/session.
+
+    Certaines routes historiques (ex: /admin-dashboard) appellent get_logged_user().
+    On le mappe sur get_user_from_request(), qui gère access_token / session_token et fallback session.
+    """
+    try:
+        return get_user_from_request(request)
+    except Exception:
+        return None
+
+
 def _safe_get_user_plan(username, default: str = "free") -> str:
     try:
         if 'get_user_plan' in globals():
@@ -24137,7 +24149,7 @@ async def admin_dashboard(request: Request):
     import html as html_lib
     # Auth admin
     # page admin : doit être connecté + admin
-    user = get_logged_user(request)
+    user = get_user_from_request(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
     username = normalize_username(user.get("username") or "")

@@ -4629,18 +4629,34 @@ def get_logged_user(request: Request) -> Optional[dict]:
 def get_user_role(username: str) -> str:
     """Retourne le rôle (ex: 'admin') pour un username.
 
-    Wrapper global autour de DatabaseManager.get_user_role pour éviter les NameError
-    dans certaines routes (ex: /admin-dashboard).
+    NOTE: sur certaines DB, le rôle peut ne pas être rempli pour 'admin'. On
+    applique donc un fallback sûr pour éviter de bloquer l'accès admin.
     """
-    try:
-        if not username:
-            return "user"
-        role = db_manager.get_user_role(username)
-        role = (role or "user").strip().lower()
-        return role
-    except Exception:
+    uname = normalize_username(username or "")
+    if not uname:
         return "user"
 
+    # Le compte 'admin' doit toujours être admin
+    if uname == "admin":
+        return "admin"
+
+    try:
+        role = db_manager.get_user_role(uname)
+        role = (role or "").strip().lower()
+        if role:
+            return role
+    except Exception:
+        pass
+
+    # fallback: is_admin flag (si dispo)
+    try:
+        info = db_manager.get_user_info(uname)
+        if info and (info.get("is_admin") in (1, True, "1", "true", "True")):
+            return "admin"
+    except Exception:
+        pass
+
+    return "user"
 
 
 def get_user_permission(username: str, route: str) -> bool:

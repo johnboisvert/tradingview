@@ -4619,11 +4619,27 @@ def html_doc(title: str, body_html: str, extra_head: str = "") -> str:
 
 
 def get_logged_user(request: Request) -> Optional[dict]:
-    """Retourne un dict user minimal depuis la cookie session_token."""
-    username = get_current_user_from_request(request)
-    if not username:
+    """Retourne le dict utilisateur de la session, ou None si pas connecté."""
+    token = request.cookies.get("session_token")
+    if not token:
         return None
-    return {"username": username}
+    user = get_user_from_token(token)
+    if not user:
+        return None
+
+    # Garantir un champ username (string)
+    u = user.get("username") or user.get("email") or ""
+    if isinstance(u, dict):
+        u = u.get("username") or u.get("email") or ""
+    user["username"] = str(u).strip()
+
+    # Normaliser un champ role si présent
+    r = user.get("role") or user.get("user_role") or ""
+    if r:
+        user["role"] = str(r).strip().lower()
+
+    return user
+
 
 
 def get_user_role(username: str) -> str:
@@ -24316,32 +24332,26 @@ async def admin_dashboard(request: Request):
     IMPORTANT: DOCTYPE doit être en premier (sinon Quirks Mode + layout cassé).
     """
     import html as html_lib
-    # Auth admin
-    # page admin : doit être connecté + admin
-    user = get_logged_user(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
+    # Auth admin (robuste) — on accepte: rôle DB username/email, rôle de session, ou alias admin
     username = normalize_username(user.get("username") or "")
-    # Robustesse: si le rôle est déjà présent dans la session, on le privilégie.
-    session_role = (user.get("role") or "").strip().lower()
-    email_as_key = normalize_username(user.get("email") or "")
-    db_role_username = get_user_role(username)
-    db_role_email = get_user_role(email_as_key) if email_as_key else None
+    email = (user.get("email") or "").strip()
+    email_as_key = normalize_username(email)
 
-    if session_role != "admin" and db_role_username != "admin" and db_role_email != "admin":
+    session_role = (user.get("role") or user.get("user_role") or "").strip().lower()
+    db_role_username = get_user_role(username)
+    db_role_email = get_user_role(email_as_key)
+    is_admin_alias = username in {"admin", "administrator", "root"}
+
+    # Debug: visible dans les logs Railway (aucun mot de passe)
+    print(f"🔎 /admin-dashboard auth: username={username!r} email={email!r} session_role={session_role!r} db_user_role={db_role_username!r} db_email_role={db_role_email!r}")
+
+    if (db_role_username != "admin") and (db_role_email != "admin") and (session_role != "admin") and (not is_admin_alias):
         page = html_doc(
-            "Accès refusé",
-            SIDEBAR_HTML + """
-            <div class="container" style="max-width:900px;margin:40px auto;">
-              <div class="card" style="padding:22px;">
-                <h2 style="margin:0 0 8px 0;">⛔ Accès réservé à l’admin</h2>
-                <p style="margin:0;color:#334155;">Cette page est disponible uniquement pour le compte administrateur.</p>
-                <div style="margin-top:16px;">
-                  <a class="btn" href="/" style="text-decoration:none;display:inline-block;">Retour au site</a>
-                </div>
-              </div>
-            </div>
-            """,
+            "Accès réservé à l'admin",
+            "<div class='card'><h2>Accès réservé à l'admin</h2><p>Cette page est disponible uniquement pour le compte administrateur.</p>"
+            "<p><a class='btn' href='/'>Retour au site</a></p></div>",
+            active="/admin-dashboard",
+            user=user
         )
         return HTMLResponse(page, status_code=403)
 

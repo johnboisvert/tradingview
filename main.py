@@ -4488,10 +4488,11 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 def verify_user(username: str, password: str) -> bool:
-    """Vérifier les identifiants d'un utilisateur"""
-    return db_manager.verify_user(username, password)
-
-    return False
+    """Vérifier les identifiants d'un utilisateur (wrapper compat)."""
+    try:
+        return bool(db_manager.verify_user(username, password))
+    except Exception:
+        return False
 
 def generate_temp_password(length: int = 12) -> str:
     """Génère un mot de passe temporaire robuste (admin reset).
@@ -6332,7 +6333,8 @@ async def admin_users_page(request: Request, admin=Depends(require_admin)):
     async function postJSON(url, payload) {{
       const res = await fetch(url, {{
         method: 'POST',
-        headers: {{ 'Content-Type': 'application/json' }},
+        credentials: 'same-origin',
+        headers: {{ 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }},
         body: JSON.stringify(payload || {{}})
       }});
       let data = null;
@@ -6727,7 +6729,11 @@ async def admin_reset_password(request: Request, admin=Depends(require_admin)):
             return JSONResponse({"success": False, "message": "Mot de passe trop court (min 8 caractères)."}, status_code=400)
         password_to_set = new_password
     else:
-        password_to_set = generate_temp_password()
+        try:
+            password_to_set = generate_temp_password()
+        except NameError:
+            # Fallback ultra-sûr si la fonction n'est pas dispo (évite 500)
+            password_to_set = secrets.token_urlsafe(9)
 
     try:
         ok = db_manager.change_password(username, password_to_set)
@@ -6778,7 +6784,10 @@ async def admin_dashboard_reset_password(request: Request, admin=Depends(require
             return JSONResponse({"success": False, "message": "Mot de passe trop court (min 8 caractères)."}, status_code=400)
         password_to_set = new_password
     else:
-        password_to_set = generate_temp_password()
+        try:
+            password_to_set = generate_temp_password()
+        except NameError:
+            password_to_set = secrets.token_urlsafe(9)
 
     try:
         ok = db_manager.change_password(username, password_to_set)

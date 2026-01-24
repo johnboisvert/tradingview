@@ -3229,38 +3229,64 @@ class PermissionMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request, call_next):
         path = request.url.path
-        
-        #  Routes PUBLIQUES (pas d'authentification requise)
+
+        # --- Toujours essayer d'attacher l'utilisateur à request.state.user ---
+        # (même pour les routes publiques), afin que les pages /admin-* puissent
+        # lire l'utilisateur connecté sans être bloquées par la logique "public".
+        session_token = (
+            request.session.get("session_token")
+            or request.cookies.get("session_token")
+            or request.cookies.get("session")
+            or ""
+        )
+
+        user = None
+        username = ""
+        if session_token:
+            try:
+                user = get_user_from_token(session_token)
+            except Exception:
+                user = None
+
+            if isinstance(user, dict):
+                username = (user.get("username") or user.get("email") or "").strip()
+                request.state.user = user
+            else:
+                request.state.user = {"username": "", "role": "guest", "plan": "free"}
+                session_token = ""
+        else:
+            request.state.user = {"username": "", "role": "guest", "plan": "free"}
+
+        # Routes PUBLIQUES (pas d'authentification requise)
         public_paths = [
-            "/", "/login", "/register", "/logout", "/health",
-            "/pricing", "/pricing-new", "/pricing-complete",
+            "/",
+            "/login",
+            "/logout",
+            "/register",
+            "/pricing",
+            "/plans",
+            "/subscribe",
+            "/success",
+            "/cancel",
+            "/health",
             "/contact",
-            "/manifest.json", "/favicon.ico", "/robots.txt", "/sitemap.xml",
-            "/tv-webhook"
         ]
 
         public_prefixes = [
-            "/static/",
-            "/assets/",
-            "/webhook/",
+            "/static",
+            "/assets",
+            "/public",
+            "/favicon",
+            "/stripe",
+            "/coinbase",
+            "/webhook",
             "/tv-webhook",
-            # Admin (bypass contrôle d'accès par forfait; la sécurité admin est gérée par require_admin)
-            "/admin",
-            "/admin-dashboard",
-            # Checkout / paiements
-            "/api/stripe-checkout",
-            "/api/coinbase-checkout",
-            "/api/payment-",
+            "/checkout",
         ]
 
-        # Public = accessible sans authentification
+        # Public = accessible sans authentification (mais request.state.user est déjà rempli)
         if path in public_paths or any(path.startswith(p) for p in public_prefixes):
             return await call_next(request)
-
-        #  Vérifier si l'utilisateur est connecté
-        session_token = request.cookies.get("session_token")
-        user = None
-        username = ""
 
         # Endpoints POST publics (webhooks / auth / contact)
         public_write_paths = (
@@ -24332,15 +24358,58 @@ async def admin_dashboard(request: Request):
     IMPORTANT: DOCTYPE doit être en premier (sinon Quirks Mode + layout cassé).
     """
     import html as html_lib
-    # Auth admin (robuste) — on accepte: rôle DB username/email, rôle de session, ou alias admin
-    username = normalize_username(user.get("username") or "")
-    email = (user.get("email") or "").strip()
-    email_as_key = normalize_username(email)
 
-    session_role = (user.get("role") or user.get("user_role") or "").strip().lower()
-    db_role_username = get_user_role(username)
-    db_role_email = get_user_role(email_as_key)
-    is_admin_alias = username in {"admin", "administrator", "root"}
+    # --- Auth admin robuste ---
+    user = getattr(request.state, "user", None)
+    if not isinstance(user, dict) or not (user.get("username") or user.get("email")):
+        session_token = (
+            request.session.get("session_token")
+            or request.cookies.get("session_token")
+            or request.cookies.get("session")
+            or ""
+        )
+        if session_token:
+            try:
+                user = get_user_from_token(session_token) or {}
+            except Exception:
+                user = {}
+        else:
+            user = {}
+        request.state.user = user
+
+    username = normalize_username((user.get("username") or user.get("email") or "").strip())
+
+    # Rôle admin: prioriser le rôle en session, puis fallback DB
+    role = (user.get("role") or "").strip()
+    if not role and username:
+        try:
+            role = (get_user_role(username) or "").strip()
+        except Exception:
+            role = ""
+    role_lc = role.lower()
+
+    is_admin = (
+        username == "admin"
+        or role_lc in ("admin", "administrator", "superadmin", "owner")
+        or bool(user.get("is_admin"))
+    )
+
+    if not is_admin:
+        page = html_doc(
+            title="Accès réservé à l'admin",
+            body=f"""{render_sidebar(active='admin-dashboard')}
+            <div style='padding:40px;max-width:900px;margin:0 auto;'>
+              <div class='card' style='padding:24px;'>
+                <h1 style='margin:0 0 6px 0;'>⛔ Accès réservé à l'admin</h1>
+                <p style='margin:0;opacity:.85'>Cette page est disponible uniquement pour le compte administrateur.</p>
+                <div style='margin-top:16px;'>
+                  <a class='btn btn-primary' href='/' style='display:inline-block;padding:10px 16px;border-radius:10px;'>Retour au site</a>
+                </div>
+              </div>
+            </div>""",
+            user=user,
+        )
+        return HTMLResponse(page, status_code=403)
 
     # Debug: visible dans les logs Railway (aucun mot de passe)
     print(f"🔎 /admin-dashboard auth: username={username!r} email={email!r} session_role={session_role!r} db_user_role={db_role_username!r} db_email_role={db_role_email!r}")

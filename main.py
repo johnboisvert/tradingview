@@ -3350,6 +3350,11 @@ class PermissionMiddleware(BaseHTTPMiddleware):
                     pass
         except Exception:
             is_admin = False
+        # ✅ Autoriser le changement de mot de passe (route "compte") pour tout utilisateur connecté,
+        # même si l'URL commence par /admin (héritage historique).
+        if path in ("/admin/change-password", "/admin-dashboard/change-password"):
+            return await call_next(request)
+
         if (not is_admin) and (not check_route_permission(username, route_to_check)):
             # API/JSON requests: renvoyer du JSON, sinon page HTML d'upgrade
             required_plan = get_min_plan_for_route(route_to_check)
@@ -4749,29 +4754,48 @@ def get_user_role(username: str) -> str:
 
 
 def get_user_permission(username: str, route: str) -> bool:
-    """Retourne True si l'utilisateur a une permission explicite pour une route.
+    """
+    True si l'utilisateur a une permission explicite pour une route.
 
-    Utilise la table SQLite/Postgres `user_permissions` (username, route).
-    Sert à accorder des exceptions (ex: accès à une page même si le plan ne l'autorise pas).
+    ✅ Compatible avec anciennes valeurs stockées en DB (avec "/" devant).
     """
     try:
         username = normalize_username(username or "")
-        route = (route or "").strip()
-        if not username or not route:
+        if not username:
             return False
+
+        # Normaliser la route pour être cohérent partout
+        route_key = normalize_route_key(route or "")
+        if not route_key:
+            return False
+
+        # Compat: certaines entrées DB ont été enregistrées avec "/" (ex: "/dashboard")
+        candidates = (route_key, f"/{route_key}")
 
         conn = db_manager.get_connection()
         cur = conn.cursor()
 
         if getattr(db_manager, "use_postgresql", False):
             cur.execute(
-                "SELECT 1 FROM user_permissions WHERE LOWER(username)=LOWER(%s) AND route=%s LIMIT 1",
-                (username, route),
+                """
+                SELECT 1
+                FROM user_permissions
+                WHERE LOWER(username)=LOWER(%s)
+                  AND (route=%s OR route=%s)
+                LIMIT 1
+                """,
+                (username, candidates[0], candidates[1]),
             )
         else:
             cur.execute(
-                "SELECT 1 FROM user_permissions WHERE LOWER(username)=LOWER(?) AND route=? LIMIT 1",
-                (username, route),
+                """
+                SELECT 1
+                FROM user_permissions
+                WHERE LOWER(username)=LOWER(?)
+                  AND (route=? OR route=?)
+                LIMIT 1
+                """,
+                (username, candidates[0], candidates[1]),
             )
 
         row = cur.fetchone()
@@ -4782,7 +4806,6 @@ def get_user_permission(username: str, route: str) -> bool:
         return row is not None
     except Exception:
         return False
-
 
 def require_auth(session_token: Optional[str] = Cookie(None)):
     """Dépendance FastAPI pour exiger une authentification"""
@@ -4931,19 +4954,17 @@ def normalize_route_key(route: str) -> str:
     return rk
 
 def check_route_permission(user_or_username, route: str) -> bool:
-    """Vérifie si un utilisateur a accès à une route.
-
-    Accepte soit:
-      - un username/email (str)
-      - un dict user (ex: {"username": ..., "role": ...})
-
-    Les admins (role=admin ou username=admin) bypassent toujours.
+    """
+    Vérifie si un utilisateur a accès à une route.
+    - Admin bypass
+    - Accès par plan (plan_access)
+    - Permission utilisateur (user_permissions)
+    ✅ Normalise tout (évite mismatch /dashboard vs dashboard)
     """
     try:
         username = ""
         role = ""
 
-        # Support dict user ou string username
         if isinstance(user_or_username, dict):
             username = (
                 user_or_username.get("username")
@@ -4959,7 +4980,7 @@ def check_route_permission(user_or_username, route: str) -> bool:
         if not uname:
             return False
 
-        # Admin bypass (role dans le dict OU DB OU username explicite)
+        # ---- Admin bypass ----
         if (role or "").strip().lower() == "admin" or uname == "admin":
             return True
         try:
@@ -4968,28 +4989,41 @@ def check_route_permission(user_or_username, route: str) -> bool:
         except Exception:
             pass
 
-        # Vérifier permissions par plan
+        # ---- Plan permissions ----
         user_plan = get_user_plan(uname) or "free"
-        plan_routes = set(get_plan_access_routes(user_plan))
+        plan_routes_raw = []
+        try:
+            plan_routes_raw = list(get_plan_access_routes(user_plan) or [])
+        except Exception:
+            plan_routes_raw = []
+
+        plan_routes = set()
+        for r in plan_routes_raw:
+            try:
+                plan_routes.add(normalize_route_key(r))
+            except Exception:
+                pass
+
         if not plan_routes:
             # fallback: config en mémoire
-            plan_routes = set(get_plan_permissions(user_plan, {}))
+            try:
+                fallback = get_plan_permissions(user_plan, {}) or []
+                for r in fallback:
+                    plan_routes.add(normalize_route_key(r))
+            except Exception:
+                pass
 
-        route_key = (route or "").strip().lstrip("/").split("?")[0]
+        route_key = normalize_route_key(route or "")
 
-        if route_key in plan_routes or f"/{route_key}" in plan_routes:
+        if route_key in plan_routes:
             return True
 
-        # Vérifier permissions spécifiques utilisateur
+        # ---- Permission spécifique utilisateur ----
         return bool(get_user_permission(uname, route_key))
 
     except Exception as e:
         print(f"❌ check_route_permission error: {e}")
         return False
-
-# ============================================================================
-#  MEXC API - AUTO-DETECTION TP/SL
-# ============================================================================
 
 async def get_mexc_price(symbol: str) -> Optional[float]:
     """Get current price from MEXC API"""

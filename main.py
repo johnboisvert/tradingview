@@ -3742,6 +3742,18 @@ body.sidebar-open{padding-left:280px !important}
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
             </a>
+<a href="/admin-users" class="menu-item admin">
+                <span class="icon">👥</span>
+                <span class="label">Admin — Utilisateurs</span>
+            </a>
+<a href="/admin-access" class="menu-item admin">
+                <span class="icon">🔐</span>
+                <span class="label">Admin — Accès par forfait</span>
+            </a>
+<a href="/admin-pricing" class="menu-item admin">
+                <span class="icon">💳</span>
+                <span class="label">Admin — Tarifs</span>
+            </a>
             <a href="/logout" class="menu-item logout">
                 <span class="icon">🚪</span>
                 <span class="label">Déconnexion</span>
@@ -6724,6 +6736,302 @@ async def delete_user(request: Request):
     
     db_manager.delete_user(user_to_delete)
     return JSONResponse({"success": True, "message": "Utilisateur supprimé."}, status_code=200)
+
+
+
+
+# ==========================
+# ADMIN — ACCÈS PAR FORFAIT
+# ==========================
+
+@app.get("/admin-access", response_class=HTMLResponse)
+async def admin_access_page(request: Request, user: dict = Depends(require_admin)):
+    """
+    Page admin pour gérer quels endpoints sont accessibles par forfait.
+    Stockage: table plan_access dans ai_trader.db (DB_CONFIG["path"]).
+    """
+    try:
+        current_access = get_plan_access()
+    except Exception:
+        current_access = DEFAULT_PLAN_ACCESS.copy()
+
+    plans_order = ["Gratuit", "Premium", "Advanced", "Pro", "Elite"]
+    plans = [p for p in plans_order if p in current_access] + [p for p in current_access.keys() if p not in plans_order]
+
+    # Routes gérables = union de toutes les routes (defaults + DB)
+    all_routes = set()
+    for plan, routes in current_access.items():
+        for r in (routes or []):
+            if isinstance(r, str) and r.startswith("/"):
+                all_routes.add(r)
+
+    # Toujours inclure les routes admin attendues
+    all_routes.update({"/admin-dashboard", "/admin-users", "/admin-access", "/admin-pricing"})
+
+    # Ordonner: admin d'abord, puis reste
+    def _route_sort_key(r: str):
+        if r.startswith("/admin"):
+            return (0, r)
+        if r.startswith("/pricing"):
+            return (1, r)
+        if r.startswith("/"):
+            return (2, r)
+        return (9, r)
+
+    routes_sorted = sorted(all_routes, key=_route_sort_key)
+
+    saved = request.query_params.get("saved") == "1"
+
+    # Table HTML
+    header_cells = "".join(f"<th style='text-align:center'>{html.escape(pl)}</th>" for pl in plans)
+    rows_html = []
+    for route in routes_sorted:
+        row = [f"<td style='font-family: ui-monospace, SFMono-Regular, Menlo, monospace;'>{html.escape(route)}</td>"]
+        for pl in plans:
+            checked = "checked" if route in set(current_access.get(pl, []) or []) else ""
+            name = f"chk__{pl}__{route}"
+            row.append(
+                f"<td style='text-align:center'>"
+                f"<input type='checkbox' name='{html.escape(name)}' value='1' {checked} />"
+                f"</td>"
+            )
+        rows_html.append("<tr>" + "".join(row) + "</tr>")
+
+    notice = ""
+    if saved:
+        notice = """
+        <div style="padding:10px 12px;border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.08);border-radius:10px;margin-bottom:14px;">
+          ✅ Accès mis à jour.
+        </div>
+        """
+
+    content = f"""
+    <div class="page-header">
+      <h1>Admin — Accès par forfait</h1>
+      <p class="muted">Coche/décoche les pages accessibles pour chaque forfait. Les routes <b>/admin-*</b> restent protégées par le rôle admin.</p>
+    </div>
+
+    {notice}
+
+    <form method="post" action="/admin-access">
+      <div style="overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:14px;">
+        <table class="table" style="min-width:900px;">
+          <thead>
+            <tr>
+              <th>Route</th>
+              {header_cells}
+            </tr>
+          </thead>
+          <tbody>
+            {''.join(rows_html)}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+        <button class="btn btn-primary" type="submit">💾 Sauvegarder</button>
+        <a class="btn" href="/pricing-complete">Voir la page Pricing</a>
+        <a class="btn" href="/admin-dashboard">Retour Admin Dashboard</a>
+      </div>
+    </form>
+    """
+
+    # Wrapper (même shell que les autres pages)
+    SIDEBAR_HTML = SIDEBAR
+    html_out = f"""<!doctype html>
+    <html lang="fr">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Admin — Accès par forfait</title>
+      <style>{GLOBAL_STYLES}</style>
+    </head>
+    <body>
+      <div class="app-shell">
+        {SIDEBAR_HTML}
+        <main class="main-content">
+          <div class="container">
+            {content}
+          </div>
+        </main>
+      </div>
+    </body>
+    </html>"""
+    return HTMLResponse(html_out)
+
+
+@app.post("/admin-access")
+async def admin_access_save(request: Request, user: dict = Depends(require_admin)):
+    """
+    Sauvegarde la matrice d'accès.
+    On réécrit la table plan_access pour chaque plan (transaction).
+    """
+    form = await request.form()
+
+    # Reconstituer la liste des plans à partir des noms de champs
+    plans = set()
+    selected_by_plan = {}
+    for key in form.keys():
+        if not isinstance(key, str):
+            continue
+        if not key.startswith("chk__"):
+            continue
+        # format: chk__{PLAN}__{ROUTE}
+        parts = key.split("__", 2)
+        if len(parts) != 3:
+            continue
+        _, plan, route = parts
+        plans.add(plan)
+        selected_by_plan.setdefault(plan, set()).add(route)
+
+    # Si aucun champ (rare): ne rien faire
+    if not plans:
+        return RedirectResponse(url="/admin-access", status_code=303)
+
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("CREATE TABLE IF NOT EXISTS plan_access (plan TEXT NOT NULL, route TEXT NOT NULL, PRIMARY KEY(plan, route))")
+        for plan in plans:
+            cur.execute("DELETE FROM plan_access WHERE plan = ?", (plan,))
+            routes = sorted(r for r in selected_by_plan.get(plan, set()) if isinstance(r, str) and r.startswith("/"))
+            for route in routes:
+                cur.execute("INSERT OR IGNORE INTO plan_access(plan, route) VALUES(?, ?)", (plan, route))
+        conn.commit()
+    finally:
+        conn.close()
+
+    return RedirectResponse(url="/admin-access?saved=1", status_code=303)
+
+
+# ==========================
+# ADMIN — TARIFS (PRICING)
+# ==========================
+
+@app.get("/admin-pricing", response_class=HTMLResponse)
+async def admin_pricing_page(request: Request, user: dict = Depends(require_admin)):
+    plans = get_all_plan_pricing()
+    # garantir un ordre stable
+    plans_order = ["free", "premium", "advanced", "pro", "elite"]
+    ordered = []
+    for k in plans_order:
+        if k in plans:
+            ordered.append((k, plans[k]))
+    for k,v in plans.items():
+        if k not in plans_order:
+            ordered.append((k,v))
+
+    saved = request.query_params.get("saved") == "1"
+    notice = ""
+    if saved:
+        notice = """
+        <div style="padding:10px 12px;border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.08);border-radius:10px;margin-bottom:14px;">
+          ✅ Tarifs mis à jour.
+        </div>
+        """
+
+    rows = []
+    for plan_key, cfg in ordered:
+        display_name = html.escape(str(cfg.get("display_name", plan_key)))
+        currency = html.escape(str(cfg.get("currency", "CAD")))
+        price_cents = int(cfg.get("price_cents", 0) or 0)
+        duration_days = int(cfg.get("duration_days", 30) or 30)
+
+        rows.append(f"""
+        <tr>
+          <td style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">{html.escape(plan_key)}</td>
+          <td><input class="input" name="name__{html.escape(plan_key)}" value="{display_name}" /></td>
+          <td><input class="input" name="currency__{html.escape(plan_key)}" value="{currency}" style="width:90px" /></td>
+          <td><input class="input" type="number" min="0" step="1" name="price__{html.escape(plan_key)}" value="{price_cents}" /></td>
+          <td><input class="input" type="number" min="1" step="1" name="days__{html.escape(plan_key)}" value="{duration_days}" style="width:110px" /></td>
+        </tr>
+        """)
+
+    content = f"""
+    <div class="page-header">
+      <h1>Admin — Tarifs</h1>
+      <p class="muted">Gère les prix affichés/stockés (settings.db → table plan_pricing). Prix en <b>cents</b>.</p>
+    </div>
+
+    {notice}
+
+    <form method="post" action="/admin-pricing">
+      <div style="overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:14px;">
+        <table class="table" style="min-width:820px;">
+          <thead>
+            <tr>
+              <th>Plan key</th>
+              <th>Nom affiché</th>
+              <th>Devise</th>
+              <th>Prix (cents)</th>
+              <th>Durée (jours)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {''.join(rows)}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+        <button class="btn btn-primary" type="submit">💾 Sauvegarder</button>
+        <a class="btn" href="/pricing-complete">Voir la page Pricing</a>
+        <a class="btn" href="/admin-dashboard">Retour Admin Dashboard</a>
+      </div>
+    </form>
+    """
+
+    SIDEBAR_HTML = SIDEBAR
+    html_out = f"""<!doctype html>
+    <html lang="fr">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Admin — Tarifs</title>
+      <style>{GLOBAL_STYLES}</style>
+    </head>
+    <body>
+      <div class="app-shell">
+        {SIDEBAR_HTML}
+        <main class="main-content">
+          <div class="container">
+            {content}
+          </div>
+        </main>
+      </div>
+    </body>
+    </html>"""
+    return HTMLResponse(html_out)
+
+
+@app.post("/admin-pricing")
+async def admin_pricing_save(request: Request, user: dict = Depends(require_admin)):
+    form = await request.form()
+
+    # charger plans existants pour itérer
+    current = get_all_plan_pricing()
+    for plan_key in list(current.keys()):
+        name = str(form.get(f"name__{plan_key}", current[plan_key].get("display_name", plan_key))).strip()
+        currency = str(form.get(f"currency__{plan_key}", current[plan_key].get("currency", "CAD"))).strip().upper()[:4]
+        try:
+            price_cents = int(str(form.get(f"price__{plan_key}", current[plan_key].get("price_cents", 0))).strip() or "0")
+        except Exception:
+            price_cents = int(current[plan_key].get("price_cents", 0) or 0)
+        try:
+            duration_days = int(str(form.get(f"days__{plan_key}", current[plan_key].get("duration_days", 30))).strip() or "30")
+        except Exception:
+            duration_days = int(current[plan_key].get("duration_days", 30) or 30)
+
+        # gardes
+        if duration_days <= 0:
+            duration_days = 30
+        if price_cents < 0:
+            price_cents = 0
+
+        set_plan_pricing(plan_key=plan_key, display_name=name, price_cents=price_cents, duration_days=duration_days, currency=currency)
+
+    return RedirectResponse(url="/admin-pricing?saved=1", status_code=303)
+
 
 
 @app.post("/admin/reset-password")

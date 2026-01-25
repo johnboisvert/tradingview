@@ -12598,8 +12598,36 @@ async def ai_market_regime_page(request: Request):
         hint += " Dominance BTC plus basse: contexte souvent favorable aux alts."
         confidence = min(0.85, confidence + 0.05)
 
+
+    # Mini-sparklines (24h) pour un visuel plus pro (cache serveur)
+    spark_btc = ""
+    spark_eth = ""
+    try:
+        btc_chart = await _fetch_json(
+            "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart",
+            params={"vs_currency": "usd", "days": "1", "interval": "hourly"},
+            ttl_seconds=180,
+            use_coingecko_key=True,
+        )
+        btc_vals = [p[1] for p in (btc_chart.get("prices") or [])][-60:]
+        spark_btc = _sparkline_svg(btc_vals)
+    except Exception:
+        spark_btc = ""
+
+    try:
+        eth_chart = await _fetch_json(
+            "https://api.coingecko.com/api/v3/coins/ethereum/market_chart",
+            params={"vs_currency": "usd", "days": "1", "interval": "hourly"},
+            ttl_seconds=180,
+            use_coingecko_key=True,
+        )
+        eth_vals = [p[1] for p in (eth_chart.get("prices") or [])][-60:]
+        spark_eth = _sparkline_svg(eth_vals)
+    except Exception:
+        spark_eth = ""
     html_page = f"""
-    <html>
+    <!doctype html>
+<html>
     <head>
         <title>AI Market Regime - CryptoIA</title>
         <style>{GLOBAL_STYLES}</style>
@@ -12619,7 +12647,10 @@ async def ai_market_regime_page(request: Request):
             .btn.primary {{ background: linear-gradient(135deg, rgba(32,247,199,0.9), rgba(0,190,255,0.7)); border: none; color: #051016; }}
             .err {{ margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,0,0,0.25); background: rgba(255,0,0,0.10); }}
             @media (max-width: 920px) {{ .grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} .page-wrap {{ padding: 18px; }} }}
-        </style>
+        
+            .spark-wrap{margin-top:10px;opacity:.9}
+            .sparkline{display:block;width:100%;height:38px;color:#60a5fa}
+</style>
     </head>
     <body>
         {SIDEBAR_HTML}
@@ -30917,7 +30948,7 @@ def _http_cache_key(url, params):
         return url
     return url + "?" + "&".join([f"{k}={v}" for k, v in items])
 
-async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeout: float = 15.0, cache_ttl: int = 0, ttl_seconds: int | None = None):
+async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeout: float = 15.0, cache_ttl: int = 0, ttl_seconds: int | None = None, use_coingecko_key: bool = True, **_ignored_kwargs):
     """Fetch JSON with small retries + optional caching.
 
     - Retries on 429 and some transient errors
@@ -30942,7 +30973,7 @@ async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeo
     # - Pro key header:  x-cg-pro-api-key
     cg_demo_key = (os.getenv("COINGECKO_API_KEY") or "").strip()
     cg_pro_key = (os.getenv("COINGECKO_PRO_API_KEY") or "").strip()
-    if "api.coingecko.com" in url:
+    if use_coingecko_key and "api.coingecko.com" in url:
         if cg_pro_key:
             headers.setdefault("x-cg-pro-api-key", cg_pro_key)
         elif cg_demo_key:
@@ -31051,6 +31082,32 @@ def _risk_flags(summary: dict) -> list[str]:
     if chg24 is not None and abs(chg24) >= 50:
         flags.append("Variation 24h extrême (±50%+) → volatilité très forte.")
     return flags
+
+def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor") -> str:
+    """Return a tiny inline SVG sparkline (server-side, no JS)."""
+    if not values or len(values) < 2:
+        return ""
+    try:
+        vals = [float(v) for v in values if v is not None]
+    except Exception:
+        return ""
+    if len(vals) < 2:
+        return ""
+    lo, hi = min(vals), max(vals)
+    rng = (hi - lo) if (hi - lo) != 0 else 1.0
+    pts = []
+    for i, v in enumerate(vals):
+        x = 1 + (width - 2) * (i / (len(vals) - 1))
+        y = 1 + (height - 2) * ((hi - v) / rng)
+        pts.append(f"{x:.1f},{y:.1f}")
+    poly = " ".join(pts)
+    return (
+        f'<svg class="sparkline" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+        f'xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+        f'<polyline points="{poly}" fill="none" stroke="{stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />'
+        f'</svg>'
+    )
+
 
 async def _scan_with_dexscreener_by_address(address: str) -> dict:
     url = f"https://api.dexscreener.com/latest/dex/tokens/{address}"
@@ -31857,7 +31914,8 @@ async def ai_exit_page(request: Request):
     dir_hint = "TP au-dessus / SL en dessous" if direction == "long" else "TP en dessous / SL au-dessus"
 
     html_page = f"""
-    <html>
+    <!doctype html>
+<html>
     <head>
         <title>AI Exit - CryptoIA</title>
         <style>{GLOBAL_STYLES}</style>
@@ -32033,7 +32091,8 @@ async def ai_gem_hunter_page(request: Request):
     """
 
     html_page = f"""
-    <html>
+    <!doctype html>
+<html>
     <head>
         <title>AI Gem Hunter - CryptoIA</title>
         <style>{GLOBAL_STYLES}</style>

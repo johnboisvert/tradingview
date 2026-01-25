@@ -2590,6 +2590,47 @@ try:
         https_only=_HTTPS_ONLY,
         max_age=60 * 60 * 24 * 30,  # 30 jours
     )
+    # Optionnel: partager la session entre www et le domaine racine (ex: www.cryptoia.ca <-> cryptoia.ca)
+    # À activer via SESSION_COOKIE_DOMAIN=".cryptoia.ca"
+    _COOKIE_DOMAIN = (os.getenv("SESSION_COOKIE_DOMAIN") or "").strip()
+    if _COOKIE_DOMAIN:
+        try:
+            from starlette.middleware.base import BaseHTTPMiddleware
+
+            class _SessionCookieDomainMiddleware(BaseHTTPMiddleware):
+                def __init__(self, app, cookie_name: str = "session", domain: str = ""):
+                    super().__init__(app)
+                    self.cookie_name = cookie_name
+                    self.domain = domain.strip()
+
+                async def dispatch(self, request, call_next):
+                    response = await call_next(request)
+                    if not self.domain:
+                        return response
+
+                    host = (request.url.hostname or "").lower()
+                    dom = self.domain.lstrip(".").lower()
+                    # On ne force le Domain que si on est sur le bon domaine (évite de casser railway.app / localhost)
+                    if dom and host and (host == dom or host.endswith("." + dom)):
+                        try:
+                            raw = list(getattr(response, "raw_headers", []) or [])
+                            new_raw = []
+                            for k, v in raw:
+                                if k.lower() == b"set-cookie":
+                                    s = v.decode("latin-1")
+                                    if s.startswith(f"{self.cookie_name}=") and "domain=" not in s.lower():
+                                        s = s + f"; Domain={self.domain}"
+                                    new_raw.append((k, s.encode("latin-1")))
+                                else:
+                                    new_raw.append((k, v))
+                            response.raw_headers = new_raw
+                        except Exception:
+                            pass
+                    return response
+
+            app.add_middleware(_SessionCookieDomainMiddleware, cookie_name="session", domain=_COOKIE_DOMAIN)
+        except Exception as _e:
+            print(f"⚠️ CookieDomainMiddleware non activé: {_e}")
 except Exception as _e:
     print(f"ℹ️ SessionMiddleware absent (OK): {_e}")
 
@@ -3195,6 +3236,22 @@ from starlette.responses import Response
 # NOTE: certaines versions du projet n'ont pas la fonction get_user_plan().
 # Si elle est absente, un appel direct provoque un NameError (500).
 # On encapsule donc l'accès au plan dans une fonction sûre.
+
+
+def is_admin_user(user: dict | None) -> bool:
+    """Détermine si l’utilisateur doit bypass les restrictions (admin)."""
+    if not user:
+        return False
+    if user.get("is_admin") is True:
+        return True
+    role = str(user.get("role") or "").strip().lower()
+    if role in ("admin", "superadmin", "owner", "root"):
+        return True
+    username = str(user.get("username") or "").strip().lower()
+    if username == "admin":
+        return True
+    return False
+
 
 def _safe_get_user_plan(username, default: str = "free") -> str:
     try:
@@ -3917,17 +3974,12 @@ try:
         app.user_middleware = [m for m in app.user_middleware if getattr(m, "cls", None) is not _SessionMiddleware]
     except Exception:
         pass
-    _SESSION_COOKIE_NAME = (os.getenv("SESSION_COOKIE_NAME") or "cryptoia_session").strip() or "cryptoia_session"
-    _SESSION_COOKIE_DOMAIN = (os.getenv("SESSION_COOKIE_DOMAIN") or "").strip() or None  # ex: .cryptoia.ca (pour partager entre www et root)
-
     app.add_middleware(
         _SessionMiddleware,
         secret_key=_SESSION_SECRET,
-        session_cookie=_SESSION_COOKIE_NAME,
         same_site="lax",
         https_only=_HTTPS_ONLY,
         max_age=60 * 60 * 24 * 30,  # 30 jours
-        domain=_SESSION_COOKIE_DOMAIN,
     )
     # NOTE: Do NOT manually rebuild app.middleware_stack at import time.
     # Starlette/FastAPI will build the middleware stack when the app starts.
@@ -30783,23 +30835,22 @@ def _ai_token_scan_cache_set(key: str, data: dict):
     _AI_TOKEN_SCAN_CACHE[key] = {"ts": time.time(), "data": data}
 
 async def _ai_token_scanner_run_cached(q: str, chain: str):
-    """Version avec cache: évite de recalculer plusieurs fois le même scan (sur ~2 min).
-
-    Retourne (result, cache_hit).
-    """
+    """Exécute le scan avec cache mémoire (TTL) pour éviter de spammer les APIs."""
     key = _ai_token_scan_cache_key(q, chain)
     cached = _ai_token_scan_cache_get(key)
     if cached is not None:
         return cached, True
 
-    # Important: appeler le runner réel (pas la fonction cached) pour éviter la récursion infinie.
     result = await _ai_token_scanner_run(q=q, chain=chain)
-
-    # On ne cache que les succès (pour ne pas figer une erreur transitoire)
-    if isinstance(result, dict) and result.get("ok"):
-        _ai_token_scan_cache_set(key, result)
+    # On cache seulement les résultats "ok" (sinon on garde l’erreur fraîche)
+    try:
+        if isinstance(result, dict) and result.get("ok"):
+            _ai_token_scan_cache_set(key, result)
+    except Exception:
+        pass
 
     return result, False
+
 
 @app.get("/ai-token-scanner", response_class=HTMLResponse)
 async def ai_token_scanner_page(request: Request):

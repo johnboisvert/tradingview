@@ -2949,69 +2949,83 @@ def access_denied_page(request, page_title: str = "Accès refusé", required_pla
         return PlainTextResponse("Accès refusé (403).", status_code=403)
 
 def get_user_from_request(request: Request):
-    """Récupère l'utilisateur depuis les cookies - VERSION CORRIGÉE"""
+    """Récupère l'utilisateur depuis les cookies (robuste).
+
+    Unifie les anciens noms de cookies: session_token / token / access_token / session.
+    Retourne toujours un dict enrichi: username, role, plan, is_admin.
+    """
     try:
-        #  CORRECTION: Utiliser session_token, pas user_id!
-        token = request.cookies.get("token")
+        # ✅ Priorité au cookie officiel utilisé par le middleware
+        token = (
+            request.cookies.get("session_token")
+            or request.cookies.get("token")
+            or get_cookie(request, "access_token")
+            or get_cookie(request, "session")
+            or request.cookies.get("session")
+            or ""
+        )
+
         if not token:
-            token = get_cookie(request, "access_token")
-        if not token:
-            session_token = get_cookie(request, "session")
-            if not session_token:
-                return None
-            token = session_token
+            return None
 
         user = get_user_from_token(token)
-        
         if not user:
-            print(f"⚠️ get_user_from_request: session_token trouvé mais utilisateur non trouvé")
+            print("⚠️ get_user_from_request: token trouvé mais utilisateur non trouvé")
             return None
-        
-        # L'utilisateur peut tre soit un dict, soit juste un username (ancien format)
+
+        # Normaliser -> dict
         if isinstance(user, str):
-            # Ancien format: juste le username
-            username = user
-            user_dict = {
-                "username": username,
-                "id": username,
-                "plan": "Free",
-                "role": "admin" if username == "admin" else "user"
-            }
+            uname = user.strip()
+            user_dict = {"username": uname}
+        elif isinstance(user, dict):
+            user_dict = dict(user)  # copie défensive
         else:
-            # Nouveau format: dj un dict
-            user_dict = user
-        
-        #  CORRECTION CRITIQUE: Vrifier le rle admin
-        # Le champ dans la DB peut tre "role" ou "plan"
-        role = user_dict.get("role", "")
-        plan = user_dict.get("plan", "Free")
-        username = user_dict.get("username", "")
-        
-        # L'utilisateur est admin si:
-        # 1. role == "admin" OU
-        # 2. username == "admin"
-        is_admin = (role == "admin" or username == "admin")
-        
-        # Enrichir le dict avec les champs ncessaires
+            return None
+
+        # Extraire username (compat)
+        uname = (
+            user_dict.get("username")
+            or user_dict.get("email")
+            or user_dict.get("user")
+            or ""
+        )
+        uname_norm = normalize_username(uname)
+        user_dict["username"] = uname_norm or (uname or "")
+
+        # Enrichir le rôle depuis la DB si manquant / incohérent
+        role = (user_dict.get("role") or "").strip().lower()
+        if uname_norm and not role:
+            try:
+                role = (db_manager.get_user_role(uname_norm) or "").strip().lower()
+            except Exception:
+                role = ""
+        user_dict["role"] = role or user_dict.get("role") or "user"
+
+        # Plan: source de vérité DB
+        try:
+            plan = get_user_plan(uname_norm) if uname_norm else "free"
+        except Exception:
+            plan = "free"
+        user_dict["plan"] = plan
+
+        # Admin?
+        is_admin = (str(user_dict.get("role") or "").strip().lower() == "admin") or (uname_norm == "admin")
         user_dict["is_admin"] = is_admin
-        user_dict["subscription_tier"] = plan
-        
-        # Debug log
-        print(f"🔍 get_user_from_request: user={username}, role={role}, is_admin={is_admin}")
-        
+
+        # Debug léger
+        try:
+            print(f"🔍 auth: user={uname_norm} role={user_dict.get('role')} plan={plan} is_admin={is_admin}")
+        except Exception:
+            pass
+
         return user_dict
-        
+
     except Exception as e:
         print(f"❌ get_user_from_request error: {e}")
         import traceback
         traceback.print_exc()
         return None
 
-
-
-# -------------------------------------------------------------------------
-# Compat helper (certaines pages utilisent encore ce nom)
-# -------------------------------------------------------------------------
 def get_current_user_from_session(request: Request):
     """Alias compat : récupère l'utilisateur courant depuis cookies/session.
 
@@ -4621,13 +4635,19 @@ def get_current_user(session_token: Optional[str] = Cookie(None)) -> Optional[st
 
 
 def get_current_user_from_request(request: Request) -> Optional[str]:
-    """Helper pour les appels 'manuels' avec Request (pas l'injection FastAPI)."""
-    token = request.cookies.get("session_token")
+    """Helper pour les appels 'manuels' avec Request (pas l'injection FastAPI).
+
+    Retourne le dict utilisateur (compat historique) ou None.
+    """
+    token = (
+        request.cookies.get("session_token")
+        or request.cookies.get("token")
+        or request.cookies.get("access_token")
+        or request.cookies.get("session")
+    )
     if not token:
         return None
     return get_user_from_token(token)
-
-
 
 def normalize_username(value: str) -> str:
     """Normalise un identifiant utilisateur (username/email) pour les comparaisons."""

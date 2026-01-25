@@ -5115,13 +5115,53 @@ def check_route_permission(user_or_username, route: str) -> bool:
         return False
 
 
+# ----------------------------------------------------------------------
+# Background monitor (compat)
+# ----------------------------------------------------------------------
+# Certaines versions appellent start_background_monitor() qui lançait
+# background_monitor(), mais la coroutine pouvait être absente -> NameError.
+# On fournit donc un wrapper compatible + un démarrage robuste.
+#
+# NOTE: si tu as déjà un vrai monitor ailleurs, tu peux le brancher ici
+# en définissant une coroutine `monitor_trades_background()` ou `background_monitor()`.
+# ----------------------------------------------------------------------
+
+async def background_monitor():
+    """Wrapper compat pour éviter un crash au démarrage.
+
+    - Si une coroutine `monitor_trades_background` existe, on l'exécute.
+    - Sinon, on désactive proprement (ne fait rien).
+    """
+    try:
+        fn = globals().get("monitor_trades_background")
+        if callable(fn) and asyncio.iscoroutinefunction(fn):
+            await fn()
+            return
+        # Aucun monitor réel disponible
+        print("⚠️ background_monitor: aucun monitor_trades_background détecté (monitor désactivé).")
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        print(f"⚠️ background_monitor: erreur: {e}")
+
 def start_background_monitor():
-    """Start background monitor"""
+    """Démarre le monitor en arrière-plan sans faire planter l'app."""
     global monitor_running
-    if not monitor_running:
-        asyncio.create_task(background_monitor())
+    if monitor_running:
+        return
 
+    fn = globals().get("background_monitor")
+    if not callable(fn) or not asyncio.iscoroutinefunction(fn):
+        print("⚠️ start_background_monitor: background_monitor absent/non-async (désactivé).")
+        return
 
+    try:
+        asyncio.create_task(fn())
+        monitor_running = True
+        print("🟢 Background monitor démarré.")
+    except RuntimeError as e:
+        # Pas de loop active (ne devrait pas arriver dans startup_event, mais safe)
+        print(f"⚠️ start_background_monitor: impossible de démarrer (loop inactive): {e}")
 #  Charger les trades au dmarrage
 load_trades_from_file()
 

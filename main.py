@@ -2997,6 +2997,8 @@ def get_user_from_request(request: Request):
         if not token:
             token = get_cookie(request, "access_token")
         if not token:
+            token = get_cookie(request, "session_token")
+        if not token:
             session_token = get_cookie(request, "session")
             if not session_token:
                 return None

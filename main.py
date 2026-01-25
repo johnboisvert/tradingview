@@ -3915,11 +3915,8 @@ try:
         https_only=_HTTPS_ONLY,
         max_age=60 * 60 * 24 * 30,  # 30 jours
     )
-    # Rebuild middleware stack (important after mutating user_middleware)
-    try:
-        app.middleware_stack = app.build_middleware_stack()
-    except Exception:
-        pass
+    # NOTE: Do NOT manually rebuild app.middleware_stack at import time.
+    # Starlette/FastAPI will build the middleware stack when the app starts.
     print("✅ SessionMiddleware forcé en premier (request.session OK)")
 except Exception as _e:
     print(f"ℹ️ SessionMiddleware non forcé (OK): {_e}")

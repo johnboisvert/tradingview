@@ -4610,7 +4610,7 @@ def get_user_from_token(token: Optional[str]):
                 pass
         return user_data
 
-    return None
+    
 
 
 def get_current_user(session_token: Optional[str] = Cookie(None)) -> Optional[str]:
@@ -4635,6 +4635,40 @@ def normalize_username(value: str) -> str:
         return (value or "").strip().lower()
     except Exception:
         return ""
+
+
+def get_user_plan(username: str) -> str:
+    """Retourne le plan d'abonnement d'un utilisateur (free/premium/advanced/pro/elite).
+
+    Source de vérité: table users.subscription_plan (SQLite/Postgres via db_manager.get_user_info).
+    Compat: accepte aussi les clés 'plan' ou 'subscription_plan' dans des dicts déjà en mémoire.
+    """
+    try:
+        # Accepter un dict (ex: request.state.user)
+        if isinstance(username, dict):
+            # Si le dict contient déjà le plan, on le prend
+            p = username.get("subscription_plan") or username.get("plan") or username.get("subscription") or None
+            if p:
+                return normalize_plan(str(p))
+            username = (
+                username.get("username")
+                or username.get("email")
+                or username.get("user")
+                or ""
+            )
+
+        uname = normalize_username(username or "")
+        if not uname:
+            return "free"
+
+        try:
+            info = db_manager.get_user_info(uname)
+            p = (info or {}).get("subscription_plan") or (info or {}).get("plan") or "free"
+            return normalize_plan(str(p))
+        except Exception:
+            return "free"
+    except Exception:
+        return "free"
 
 def html_doc(title: str, body_html: str, extra_head: str = "") -> str:
     """
@@ -30752,8 +30786,15 @@ async def ai_token_scanner_page(request: Request):
             cache_hit = False
             error = f"Erreur lors du scan: {e}"
 
-    html_page = _render_ai_token_scanner_page(q=q, chain=chain, result=result, error=error, cache_hit=cache_hit)
+    try:
+        html_page = _render_ai_token_scanner_page(q=q, chain=chain, result=result, error=error, cache_hit=cache_hit)
+    except Exception as e:
+        print(f"❌ ai-token-scanner render error (GET): {e}")
+        # Fallback minimal (évite écran 500 vide)
+        html_page = f"<h1>Internal Server Error</h1><pre>{html.escape(str(e))}</pre>"
     return HTMLResponse(content=html_page)
+
+
 
 
 @app.post("/ai-token-scanner")
@@ -30779,7 +30820,11 @@ async def ai_token_scanner_scan(request: Request):
             cache_hit = False
             error = f"Erreur lors du scan: {e}"
 
-    html_page = _render_ai_token_scanner_page(q=q, chain=chain, result=result, error=error, cache_hit=cache_hit)
+    try:
+        html_page = _render_ai_token_scanner_page(q=q, chain=chain, result=result, error=error, cache_hit=cache_hit)
+    except Exception as e:
+        print(f"❌ ai-token-scanner render error (POST): {e}")
+        html_page = f"<h1>Internal Server Error</h1><pre>{html.escape(str(e))}</pre>"
     return HTMLResponse(content=html_page)
 
 

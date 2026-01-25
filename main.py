@@ -3309,6 +3309,10 @@ class PermissionMiddleware(BaseHTTPMiddleware):
                 request.state.user = user
 
         if not session_token:
+            # 🔐 Routes admin: forcer la connexion (au lieu d'afficher un écran "Accès refusé / Upgrade" en mode invité)
+            if path.startswith("/admin"):
+                return RedirectResponse(url="/login?" + urlencode({"redirect": path}), status_code=303)
+
             # Bloquer les requêtes d'écriture si non connecté (sauf exceptions)
             if request.method not in ("GET", "HEAD", "OPTIONS"):
                 if (path not in public_write_paths) and (not path.startswith(public_write_prefixes)):
@@ -39954,7 +39958,7 @@ async def contact_page(request: Request):
     user_data = get_user_from_request(request)
     
     if not user_data:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/login?" + urlencode({"redirect": path}), status_code=303)
     
     username = user_data.get("username", "Utilisateur")
     

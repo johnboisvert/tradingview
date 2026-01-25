@@ -3917,12 +3917,17 @@ try:
         app.user_middleware = [m for m in app.user_middleware if getattr(m, "cls", None) is not _SessionMiddleware]
     except Exception:
         pass
+    _SESSION_COOKIE_NAME = (os.getenv("SESSION_COOKIE_NAME") or "cryptoia_session").strip() or "cryptoia_session"
+    _SESSION_COOKIE_DOMAIN = (os.getenv("SESSION_COOKIE_DOMAIN") or "").strip() or None  # ex: .cryptoia.ca (pour partager entre www et root)
+
     app.add_middleware(
         _SessionMiddleware,
         secret_key=_SESSION_SECRET,
+        session_cookie=_SESSION_COOKIE_NAME,
         same_site="lax",
         https_only=_HTTPS_ONLY,
         max_age=60 * 60 * 24 * 30,  # 30 jours
+        domain=_SESSION_COOKIE_DOMAIN,
     )
     # NOTE: Do NOT manually rebuild app.middleware_stack at import time.
     # Starlette/FastAPI will build the middleware stack when the app starts.
@@ -30778,13 +30783,22 @@ def _ai_token_scan_cache_set(key: str, data: dict):
     _AI_TOKEN_SCAN_CACHE[key] = {"ts": time.time(), "data": data}
 
 async def _ai_token_scanner_run_cached(q: str, chain: str):
+    """Version avec cache: évite de recalculer plusieurs fois le même scan (sur ~2 min).
+
+    Retourne (result, cache_hit).
+    """
     key = _ai_token_scan_cache_key(q, chain)
     cached = _ai_token_scan_cache_get(key)
     if cached is not None:
         return cached, True
-    result, cache_hit = await _ai_token_scanner_run_cached(q=q, chain=chain)
+
+    # Important: appeler le runner réel (pas la fonction cached) pour éviter la récursion infinie.
+    result = await _ai_token_scanner_run(q=q, chain=chain)
+
+    # On ne cache que les succès (pour ne pas figer une erreur transitoire)
     if isinstance(result, dict) and result.get("ok"):
         _ai_token_scan_cache_set(key, result)
+
     return result, False
 
 @app.get("/ai-token-scanner", response_class=HTMLResponse)

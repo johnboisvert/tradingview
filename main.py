@@ -3233,8 +3233,9 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         # --- Toujours essayer d'attacher l'utilisateur à request.state.user ---
         # (même pour les routes publiques), afin que les pages /admin-* puissent
         # lire l'utilisateur connecté sans être bloquées par la logique "public".
+        _sess = request.scope.get("session") if "session" in request.scope else {}
         session_token = (
-            request.session.get("session_token")
+            _sess.get("session_token")
             or request.cookies.get("session_token")
             or request.cookies.get("session")
             or ""
@@ -3891,6 +3892,38 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+
+# --- IMPORTANT: ensure SessionMiddleware is OUTERMOST so request.session works in other middlewares ---
+# Starlette/FastAPI middleware order can be surprising: the LAST app.add_middleware() becomes the first executed.
+# Some of our custom middlewares read request.session, so we force SessionMiddleware to be outermost here.
+try:
+    from starlette.middleware.sessions import SessionMiddleware as _SessionMiddleware
+    _SESSION_SECRET = (os.getenv("SESSION_SECRET_KEY") or os.getenv("SESSION_SECRET") or os.getenv("SECRET_KEY") or "").strip()
+    if not _SESSION_SECRET:
+        _SESSION_SECRET = "CHANGE_ME_SESSION_SECRET"  # ⚠️ Définir SESSION_SECRET_KEY dans Railway
+    _HTTPS_ONLY = os.getenv("SESSION_HTTPS_ONLY", "1").strip().lower() not in ("0", "false", "no")
+    # Remove existing SessionMiddleware entries (if any), then add it again so it's executed first.
+    try:
+        app.user_middleware = [m for m in app.user_middleware if getattr(m, "cls", None) is not _SessionMiddleware]
+    except Exception:
+        pass
+    app.add_middleware(
+        _SessionMiddleware,
+        secret_key=_SESSION_SECRET,
+        same_site="lax",
+        https_only=_HTTPS_ONLY,
+        max_age=60 * 60 * 24 * 30,  # 30 jours
+    )
+    # Rebuild middleware stack (important after mutating user_middleware)
+    try:
+        app.middleware_stack = app.build_middleware_stack()
+    except Exception:
+        pass
+    print("✅ SessionMiddleware forcé en premier (request.session OK)")
+except Exception as _e:
+    print(f"ℹ️ SessionMiddleware non forcé (OK): {_e}")
+
 
 
 #  Middleware d'authentification
@@ -24371,8 +24404,9 @@ async def admin_dashboard(request: Request):
     # --- Auth admin robuste ---
     user = getattr(request.state, "user", None)
     if not isinstance(user, dict) or not (user.get("username") or user.get("email")):
+        _sess = request.scope.get("session") if "session" in request.scope else {}
         session_token = (
-            request.session.get("session_token")
+            _sess.get("session_token")
             or request.cookies.get("session_token")
             or request.cookies.get("session")
             or ""

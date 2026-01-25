@@ -2949,83 +2949,69 @@ def access_denied_page(request, page_title: str = "Accès refusé", required_pla
         return PlainTextResponse("Accès refusé (403).", status_code=403)
 
 def get_user_from_request(request: Request):
-    """Récupère l'utilisateur depuis les cookies (robuste).
-
-    Unifie les anciens noms de cookies: session_token / token / access_token / session.
-    Retourne toujours un dict enrichi: username, role, plan, is_admin.
-    """
+    """Récupère l'utilisateur depuis les cookies - VERSION CORRIGÉE"""
     try:
-        # ✅ Priorité au cookie officiel utilisé par le middleware
-        token = (
-            request.cookies.get("session_token")
-            or request.cookies.get("token")
-            or get_cookie(request, "access_token")
-            or get_cookie(request, "session")
-            or request.cookies.get("session")
-            or ""
-        )
-
+        #  CORRECTION: Utiliser session_token, pas user_id!
+        token = request.cookies.get("token")
         if not token:
-            return None
+            token = get_cookie(request, "access_token")
+        if not token:
+            session_token = get_cookie(request, "session")
+            if not session_token:
+                return None
+            token = session_token
 
         user = get_user_from_token(token)
+        
         if not user:
-            print("⚠️ get_user_from_request: token trouvé mais utilisateur non trouvé")
+            print(f"⚠️ get_user_from_request: session_token trouvé mais utilisateur non trouvé")
             return None
-
-        # Normaliser -> dict
+        
+        # L'utilisateur peut tre soit un dict, soit juste un username (ancien format)
         if isinstance(user, str):
-            uname = user.strip()
-            user_dict = {"username": uname}
-        elif isinstance(user, dict):
-            user_dict = dict(user)  # copie défensive
+            # Ancien format: juste le username
+            username = user
+            user_dict = {
+                "username": username,
+                "id": username,
+                "plan": "Free",
+                "role": "admin" if username == "admin" else "user"
+            }
         else:
-            return None
-
-        # Extraire username (compat)
-        uname = (
-            user_dict.get("username")
-            or user_dict.get("email")
-            or user_dict.get("user")
-            or ""
-        )
-        uname_norm = normalize_username(uname)
-        user_dict["username"] = uname_norm or (uname or "")
-
-        # Enrichir le rôle depuis la DB si manquant / incohérent
-        role = (user_dict.get("role") or "").strip().lower()
-        if uname_norm and not role:
-            try:
-                role = (db_manager.get_user_role(uname_norm) or "").strip().lower()
-            except Exception:
-                role = ""
-        user_dict["role"] = role or user_dict.get("role") or "user"
-
-        # Plan: source de vérité DB
-        try:
-            plan = get_user_plan(uname_norm) if uname_norm else "free"
-        except Exception:
-            plan = "free"
-        user_dict["plan"] = plan
-
-        # Admin?
-        is_admin = (str(user_dict.get("role") or "").strip().lower() == "admin") or (uname_norm == "admin")
+            # Nouveau format: dj un dict
+            user_dict = user
+        
+        #  CORRECTION CRITIQUE: Vrifier le rle admin
+        # Le champ dans la DB peut tre "role" ou "plan"
+        role = user_dict.get("role", "")
+        plan = user_dict.get("plan", "Free")
+        username = user_dict.get("username", "")
+        
+        # L'utilisateur est admin si:
+        # 1. role == "admin" OU
+        # 2. username == "admin"
+        is_admin = (role == "admin" or username == "admin")
+        
+        # Enrichir le dict avec les champs ncessaires
         user_dict["is_admin"] = is_admin
-
-        # Debug léger
-        try:
-            print(f"🔍 auth: user={uname_norm} role={user_dict.get('role')} plan={plan} is_admin={is_admin}")
-        except Exception:
-            pass
-
+        user_dict["subscription_tier"] = plan
+        
+        # Debug log
+        print(f"🔍 get_user_from_request: user={username}, role={role}, is_admin={is_admin}")
+        
         return user_dict
-
+        
     except Exception as e:
         print(f"❌ get_user_from_request error: {e}")
         import traceback
         traceback.print_exc()
         return None
 
+
+
+# -------------------------------------------------------------------------
+# Compat helper (certaines pages utilisent encore ce nom)
+# -------------------------------------------------------------------------
 def get_current_user_from_session(request: Request):
     """Alias compat : récupère l'utilisateur courant depuis cookies/session.
 
@@ -4635,19 +4621,13 @@ def get_current_user(session_token: Optional[str] = Cookie(None)) -> Optional[st
 
 
 def get_current_user_from_request(request: Request) -> Optional[str]:
-    """Helper pour les appels 'manuels' avec Request (pas l'injection FastAPI).
-
-    Retourne le dict utilisateur (compat historique) ou None.
-    """
-    token = (
-        request.cookies.get("session_token")
-        or request.cookies.get("token")
-        or request.cookies.get("access_token")
-        or request.cookies.get("session")
-    )
+    """Helper pour les appels 'manuels' avec Request (pas l'injection FastAPI)."""
+    token = request.cookies.get("session_token")
     if not token:
         return None
     return get_user_from_token(token)
+
+
 
 def normalize_username(value: str) -> str:
     """Normalise un identifiant utilisateur (username/email) pour les comparaisons."""
@@ -8338,6 +8318,28 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
+
+
+# ------------------------------------------------------------
+# GLOBAL_STYLES: CSS global utilisé dans plusieurs pages HTML
+# (évite les NameError quand des routes injectent {GLOBAL_STYLES})
+# ------------------------------------------------------------
+def _extract_global_styles(css_block: str) -> str:
+    """Retourne uniquement le contenu CSS (sans <style>) et corrige {{ }} -> { } si présent."""
+    if not css_block:
+        return ""
+    s = css_block.strip()
+    # si on a un wrapper <style>...</style>
+    if s.lower().startswith("<style"):
+        # enlever le premier tag <style ...>
+        s = re.sub(r"^<style[^>]*>", "", s, flags=re.I).strip()
+        s = re.sub(r"</style>\s*$", "", s, flags=re.I).strip()
+    # Beaucoup de sections CSS ont été écrites avec des doubles accolades ({{ }}) 
+    # pour être compatibles avec des f-strings ailleurs. Ici, on normalise.
+    s = s.replace("{{", "{").replace("}}", "}")
+    return s
+
+GLOBAL_STYLES = _extract_global_styles(CSS)
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
@@ -31388,7 +31390,7 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
   <title>AI Token Scanner — CryptoIA</title>
   {CSS}
   <style>
-    .badge-cache {
+    .badge-cache {{
       display: inline-block;
       margin-left: 12px;
       padding: 4px 10px;
@@ -31399,7 +31401,7 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
       border: 1px solid rgba(0, 255, 200, 0.25);
       color: #9fffe9;
       vertical-align: middle;
-    }
+    }}
 
     .page {{
       display: flex;

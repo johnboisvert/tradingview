@@ -5039,222 +5039,81 @@ def check_route_permission(user_or_username, route: str) -> bool:
     - Accès par plan (plan_access)
     - Permission utilisateur (user_permissions)
     ✅ Normalise tout (évite mismatch /dashboard vs dashboard)
+
+    Important:
+    - Certains flux d'auth peuvent ne fournir que email (sans username) ou varier la casse.
+      On normalise donc username/email/role avant de décider.
     """
     try:
         username = ""
+        email = ""
         role = ""
 
+        # -------- Normaliser l'identité --------
         if isinstance(user_or_username, dict):
-            username = (
-                user_or_username.get("username")
-                or user_or_username.get("email")
-                or user_or_username.get("user")
-                or ""
-            )
-            role = (user_or_username.get("role") or "")
-        else:
-            username = user_or_username or ""
+            # clés possibles: username, email, user{username/email}, session{...}
+            username = (user_or_username.get("username") or "").strip()
+            email = (user_or_username.get("email") or "").strip()
 
-        uname = (username or "").strip().lower()
-        if not uname:
+            # Support nested user dict (au cas où)
+            nested = user_or_username.get("user")
+            if isinstance(nested, dict):
+                username = username or (nested.get("username") or "").strip()
+                email = email or (nested.get("email") or "").strip()
+
+            # role peut venir de plusieurs endroits
+            role = (
+                (user_or_username.get("role") or user_or_username.get("session_role") or "").strip()
+            )
+
+        else:
+            # string: peut être username OU email
+            username = (str(user_or_username or "")).strip()
+
+        # si username vide mais email présent, utiliser email comme identifiant
+        if not username and email:
+            username = email
+
+        uname_norm = (username or "").strip().lower()
+        role_norm = (role or "").strip().lower()
+
+        # -------- Admin bypass --------
+        # ✅ Bypass si role admin OU username admin (quel que soit le plan)
+        if uname_norm == "admin" or role_norm in ("admin", "superadmin"):
+            return True
+
+        # Non connecté / inconnu
+        if not uname_norm:
             return False
 
-        # ---- Admin bypass ----
-        if (role or "").strip().lower() == "admin" or uname == "admin":
-            return True
-        try:
-            if db_manager.get_user_role(uname) == "admin":
+        # -------- Normaliser route --------
+        normalized_route = route.strip().lower()
+        if not normalized_route.startswith("/"):
+            normalized_route = "/" + normalized_route
+
+        # -------- Récupérer plan utilisateur --------
+        user_plan = (get_user_effective_plan(uname_norm) or "free").strip().lower()
+
+        # -------- Accès par plan --------
+        required_plan = get_required_plan_for_route(normalized_route)
+        if required_plan:
+            if plan_rank(user_plan) >= plan_rank(required_plan):
                 return True
-        except Exception:
-            pass
 
-        # ---- Plan permissions ----
-        user_plan = get_user_plan(uname) or "free"
-        plan_routes_raw = []
-        try:
-            plan_routes_raw = list(get_plan_access_routes(user_plan) or [])
-        except Exception:
-            plan_routes_raw = []
-
-        plan_routes = set()
-        for r in plan_routes_raw:
-            try:
-                plan_routes.add(normalize_route_key(r))
-            except Exception:
-                pass
-
-        if not plan_routes:
-            # fallback: config en mémoire
-            try:
-                fallback = get_plan_permissions(user_plan, {}) or []
-                for r in fallback:
-                    plan_routes.add(normalize_route_key(r))
-            except Exception:
-                pass
-
-        route_key = normalize_route_key(route or "")
-
-        if route_key in plan_routes:
+        # -------- Permissions spécifiques --------
+        # user_permissions peut contenir des routes exactes, ou des patterns simples
+        # (ici: check exact seulement, comme avant)
+        perms = user_permissions.get(uname_norm, []) if isinstance(user_permissions, dict) else []
+        if normalized_route in [str(p).strip().lower() for p in (perms or [])]:
             return True
 
-        # ---- Permission spécifique utilisateur ----
-        return bool(get_user_permission(uname, route_key))
-
-    except Exception as e:
-        print(f"❌ check_route_permission error: {e}")
+        # Sinon, refuser
         return False
 
-async def get_mexc_price(symbol: str) -> Optional[float]:
-    """Get current price from MEXC API"""
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            url = f"{MEXC_PRICE_ENDPOINT}?symbol={symbol}"
-            response = await client.get(url)
-            if response.status_code == 200:
-                data = response.json()
-                price = float(data.get('price', 0))
-                return price
-            else:
-                return None
     except Exception as e:
-        print(f"⚠️  MEXC Error {symbol}: {e}")
-        return None
+        print(f"❌ Erreur check_route_permission({route}): {e}")
+        return False
 
-async def send_telegram_notification(message: str, target=None, current_price=None, target_price=None):
-    """Send notification to Telegram"""
-    try:
-        if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-            return
-        
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": message,
-            "parse_mode": "HTML"
-        }
-        
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(url, json=payload)
-    except Exception as e:
-        print(f"⚠️  Telegram Error: {e}")
-
-async def check_tp_sl_hits():
-    """🔍 SERVER-SIDE TP/SL DETECTION - Checks every 10 seconds"""
-    global trades_db
-    
-    if not trades_db:
-        return
-    
-    for trade in trades_db:
-        if trade.get('status') == 'closed':
-            continue
-        
-        symbol = trade.get('symbol')
-        side = trade.get('side')
-        entry = float(trade.get('entry'))
-        sl = float(trade.get('sl'))
-        tp1 = float(trade.get('tp1'))
-        tp2 = float(trade.get('tp2'))
-        tp3 = float(trade.get('tp3'))
-        
-        current_price = await get_mexc_price(symbol)
-        if current_price is None:
-            continue
-        
-        if trade.get('tp1_hit') or trade.get('tp2_hit') or trade.get('tp3_hit') or trade.get('sl_hit'):
-            continue
-        
-        # LONG TRADES
-        if side == "LONG":
-            if current_price >= tp3 and not trade.get('tp3_hit'):
-                trade['tp3_hit'] = True
-                trade['status'] = 'closed'
-                trade['closed_at'] = datetime.now().isoformat()
-                pnl = (tp3 - entry) / entry * 100
-                trade['pnl'] = pnl
-                msg = f"🚀 TP3 HIT! {symbol} LONG\nEntry: {format_price(entry)}\nTP3: {format_price(tp3)}\nPnL: +{pnl:.2f}%"
-                await send_telegram_notification(msg)
-                print(f"✅ {symbol} TP3 HIT!")
-            
-            elif current_price >= tp2 and not trade.get('tp2_hit'):
-                trade['tp2_hit'] = True
-                pnl = (tp2 - entry) / entry * 100
-                trade['pnl'] = pnl
-                msg = f"💎 TP2 HIT! {symbol} LONG\nEntry: {format_price(entry)}\nTP2: {format_price(tp2)}\nPnL: +{pnl:.2f}%"
-                await send_telegram_notification(msg)
-                print(f"✅ {symbol} TP2 HIT!")
-            
-            elif current_price >= tp1 and not trade.get('tp1_hit'):
-                trade['tp1_hit'] = True
-                pnl = (tp1 - entry) / entry * 100
-                trade['pnl'] = pnl
-                msg = f"🎯 TP1 HIT! {symbol} LONG\nEntry: {format_price(entry)}\nTP1: {format_price(tp1)}\nPnL: +{pnl:.2f}%"
-                await send_telegram_notification(msg)
-                print(f"✅ {symbol} TP1 HIT!")
-            
-            elif current_price <= sl and not trade.get('sl_hit'):
-                trade['sl_hit'] = True
-                trade['status'] = 'closed'
-                trade['closed_at'] = datetime.now().isoformat()
-                pnl = (sl - entry) / entry * 100
-                trade['pnl'] = pnl
-                msg = f"🛑 STOP LOSS HIT! {symbol} LONG\nEntry: {format_price(entry)}\nSL: {format_price(sl)}\nPnL: {pnl:.2f}%"
-                await send_telegram_notification(msg)
-                print(f"❌ {symbol} SL HIT!")
-        
-        # SHORT TRADES
-        elif side == "SHORT":
-            if current_price <= tp3 and not trade.get('tp3_hit'):
-                trade['tp3_hit'] = True
-                trade['status'] = 'closed'
-                trade['closed_at'] = datetime.now().isoformat()
-                pnl = (entry - tp3) / entry * 100
-                trade['pnl'] = pnl
-                msg = f"🚀 TP3 HIT! {symbol} SHORT\nEntry: {format_price(entry)}\nTP3: {format_price(tp3)}\nPnL: +{pnl:.2f}%"
-                await send_telegram_notification(msg)
-                print(f"✅ {symbol} TP3 HIT!")
-            
-            elif current_price <= tp2 and not trade.get('tp2_hit'):
-                trade['tp2_hit'] = True
-                pnl = (entry - tp2) / entry * 100
-                trade['pnl'] = pnl
-                msg = f"💎 TP2 HIT! {symbol} SHORT\nEntry: {format_price(entry)}\nTP2: {format_price(tp2)}\nPnL: +{pnl:.2f}%"
-                await send_telegram_notification(msg)
-                print(f"✅ {symbol} TP2 HIT!")
-            
-            elif current_price <= tp1 and not trade.get('tp1_hit'):
-                trade['tp1_hit'] = True
-                pnl = (entry - tp1) / entry * 100
-                trade['pnl'] = pnl
-                msg = f"🎯 TP1 HIT! {symbol} SHORT\nEntry: {format_price(entry)}\nTP1: {format_price(tp1)}\nPnL: +{pnl:.2f}%"
-                await send_telegram_notification(msg)
-                print(f"✅ {symbol} TP1 HIT!")
-            
-            elif current_price >= sl and not trade.get('sl_hit'):
-                trade['sl_hit'] = True
-                trade['status'] = 'closed'
-                trade['closed_at'] = datetime.now().isoformat()
-                pnl = (entry - sl) / entry * 100
-                trade['pnl'] = pnl
-                msg = f"🛑 STOP LOSS HIT! {symbol} SHORT\nEntry: {format_price(entry)}\nSL: {format_price(sl)}\nPnL: {pnl:.2f}%"
-                await send_telegram_notification(msg)
-                print(f"❌ {symbol} SL HIT!")
-        
-        save_trades_to_file()
-
-async def background_monitor():
-    """Background task - monitors TP/SL every 10 seconds"""
-    global monitor_running
-    monitor_running = True
-    print("🟢 Background MEXC monitor started")
-    try:
-        while monitor_running:
-            await asyncio.sleep(10)
-            await check_tp_sl_hits()
-    except Exception as e:
-        print(f"❌ Monitor error: {e}")
-    finally:
-        monitor_running = False
 
 def start_background_monitor():
     """Start background monitor"""
@@ -12617,6 +12476,14 @@ async def ai_market_regime_page(request: Request):
     (Ce n’est pas un conseil financier; ce sont des indicateurs agrégés.)
     """
     user = get_current_user_from_session(request)
+    try:
+        _u = user or {}
+        _uname = (_u.get("username") or _u.get("email") or "").strip()
+        _role = (_u.get("role") or _u.get("session_role") or "").strip()
+        _plan = (get_user_effective_plan(_uname) or "") if _uname else ""
+        print(f"🔎 /ai-market-regime auth: username={_uname!r} role={_role!r} plan={_plan!r}")
+    except Exception as _e:
+        print(f"⚠️ /ai-market-regime auth debug failed: {_e}")
 
     # Admin = accès total
     if user and str(user.get("username", "")).lower() == "admin":
@@ -31870,6 +31737,14 @@ async def ai_exit_page(request: Request):
     IMPORTANT: par défaut c'est un outil de calcul (pas une prédiction IA).
     """
     user = get_current_user_from_session(request)
+    try:
+        _u = user or {}
+        _uname = (_u.get("username") or _u.get("email") or "").strip()
+        _role = (_u.get("role") or _u.get("session_role") or "").strip()
+        _plan = (get_user_effective_plan(_uname) or "") if _uname else ""
+        print(f"🔎 /ai-exit auth: username={_uname!r} role={_role!r} plan={_plan!r}")
+    except Exception as _e:
+        print(f"⚠️ /ai-exit auth debug failed: {_e}")
 
     # Admin = accès total
     if user and str(user.get("username", "")).lower() == "admin":
@@ -31999,6 +31874,14 @@ async def ai_gem_hunter_page(request: Request):
     Données publiques CoinGecko + règles internes (pas une garantie).
     """
     user = get_current_user_from_session(request)
+    try:
+        _u = user or {}
+        _uname = (_u.get("username") or _u.get("email") or "").strip()
+        _role = (_u.get("role") or _u.get("session_role") or "").strip()
+        _plan = (get_user_effective_plan(_uname) or "") if _uname else ""
+        print(f"🔎 /ai-gem-hunter auth: username={_uname!r} role={_role!r} plan={_plan!r}")
+    except Exception as _e:
+        print(f"⚠️ /ai-gem-hunter auth debug failed: {_e}")
 
     # Admin = accès total
     if user and str(user.get("username", "")).lower() == "admin":
@@ -36785,6 +36668,14 @@ async def scan_narratives_cg():
 async def narrative_radar_page(request: Request):
     """Narrative Radar (v2) — CoinGecko trending + regroupement heuristique."""
     user = get_current_user_from_session(request)
+    try:
+        _u = user or {}
+        _uname = (_u.get("username") or _u.get("email") or "").strip()
+        _role = (_u.get("role") or _u.get("session_role") or "").strip()
+        _plan = (get_user_effective_plan(_uname) or "") if _uname else ""
+        print(f"🔎 /narrative-radar auth: username={_uname!r} role={_role!r} plan={_plan!r}")
+    except Exception as _e:
+        print(f"⚠️ /narrative-radar auth debug failed: {_e}")
 
     # Admin = accès total
     if user and str(user.get("username", "")).lower() == "admin":

@@ -24419,24 +24419,48 @@ async def admin_dashboard(request: Request):
                 user = {}
         else:
             user = {}
-        request.state.user = user
-
-    username = normalize_username((user.get("username") or user.get("email") or "").strip())
-
-    # Rôle admin: prioriser le rôle en session, puis fallback DB
-    role = (user.get("role") or "").strip()
-    if not role and username:
+    # --- Auth / rôles admin (robuste) ---
+    # Si pas connecté: on renvoie vers /login avec redirect
+    if not user or not (user.get('username') or user.get('email')):
         try:
-            role = (get_user_role(username) or "").strip()
+            from urllib.parse import quote
+            return RedirectResponse(url=f"/login?redirect={quote('/admin-dashboard')}", status_code=303)
         except Exception:
-            role = ""
-    role_lc = role.lower()
+            return RedirectResponse(url="/login?redirect=%2Fadmin-dashboard", status_code=303)
 
+    username = (user.get("username") or "").strip()
+    email = (user.get("email") or user.get("user_email") or "").strip()
+    session_role = (request.session.get("role") or request.session.get("user_role") or "").strip()
+
+    admin_roles = {"admin", "administrator", "superadmin", "owner", "root"}
+
+    # Rôle depuis DB (username et email)
+    db_role_username = ""
+    db_role_email = ""
+    try:
+        db_role_username = (get_user_role(username) or "").strip() if username else ""
+    except Exception:
+        db_role_username = ""
+    try:
+        db_role_email = (get_user_role(email) or "").strip() if email else ""
+    except Exception:
+        db_role_email = ""
+
+    role_candidates = {db_role_username.lower(), db_role_email.lower(), session_role.lower(), (user.get("role") or "").lower()}
     is_admin = (
-        username == "admin"
-        or role_lc in ("admin", "administrator", "superadmin", "owner")
+        username.lower() == "admin"
         or bool(user.get("is_admin"))
+        or any(r in admin_roles for r in role_candidates if r)
     )
+
+    # Debug (logs Railway) - aucun mot de passe
+    try:
+        print(
+            f"🔎 /admin-dashboard auth: username={username!r} email={email!r} session_role={session_role!r} "
+            f"db_role_username={db_role_username!r} db_role_email={db_role_email!r} user_role={(user.get('role') or '')!r} is_admin={is_admin!r}"
+        )
+    except Exception:
+        pass
 
     if not is_admin:
         page = html_doc(
@@ -24445,7 +24469,7 @@ async def admin_dashboard(request: Request):
             <div style='padding:40px;max-width:900px;margin:0 auto;'>
               <div class='card' style='padding:24px;'>
                 <h1 style='margin:0 0 6px 0;'>⛔ Accès réservé à l'admin</h1>
-                <p style='margin:0;opacity:.85'>Cette page est disponible uniquement pour le compte administrateur.</p>
+                <p style='margin:0;opacity:.85'>Cette page est disponible uniquement pour un compte administrateur.</p>
                 <div style='margin-top:16px;'>
                   <a class='btn btn-primary' href='/' style='display:inline-block;padding:10px 16px;border-radius:10px;'>Retour au site</a>
                 </div>
@@ -24455,19 +24479,7 @@ async def admin_dashboard(request: Request):
         )
         return HTMLResponse(page, status_code=403)
 
-    # Debug: visible dans les logs Railway (aucun mot de passe)
-    print(f"🔎 /admin-dashboard auth: username={username!r} email={email!r} session_role={session_role!r} db_user_role={db_role_username!r} db_email_role={db_role_email!r}")
-
-    if (db_role_username != "admin") and (db_role_email != "admin") and (session_role != "admin") and (not is_admin_alias):
-        page = html_doc(
-            "Accès réservé à l'admin",
-            "<div class='card'><h2>Accès réservé à l'admin</h2><p>Cette page est disponible uniquement pour le compte administrateur.</p>"
-            "<p><a class='btn' href='/'>Retour au site</a></p></div>",
-            active="/admin-dashboard",
-            user=user
-        )
-        return HTMLResponse(page, status_code=403)
-
+    # --- Fin Auth / rôles admin ---
     _sb_style = ""
     _sb_html = SIDEBAR
     if "</style>" in SIDEBAR:

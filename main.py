@@ -3747,18 +3747,6 @@ body.sidebar-open{padding-left:280px !important}
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
             </a>
-<a href="/admin-users" class="menu-item admin">
-                <span class="icon">👥</span>
-                <span class="label">Admin — Utilisateurs</span>
-            </a>
-<a href="/admin-access" class="menu-item admin">
-                <span class="icon">🔐</span>
-                <span class="label">Admin — Accès par forfait</span>
-            </a>
-<a href="/admin-pricing" class="menu-item admin">
-                <span class="icon">💳</span>
-                <span class="label">Admin — Tarifs</span>
-            </a>
             <a href="/logout" class="menu-item logout">
                 <span class="icon">🚪</span>
                 <span class="label">Déconnexion</span>

@@ -12602,7 +12602,7 @@ async def ai_market_regime_page(request: Request):
     <html>
     <head>
         <title>AI Market Regime - CryptoIA</title>
-        {GLOBAL_STYLES}
+        <style>{GLOBAL_STYLES}</style>
         <style>
             .page-wrap {{ padding: 40px; }}
             .card {{ background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 26px; max-width: 980px; margin: 0 auto; }}
@@ -30917,13 +30917,20 @@ def _http_cache_key(url, params):
         return url
     return url + "?" + "&".join([f"{k}={v}" for k, v in items])
 
-async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeout: float = 15.0, cache_ttl: int = 0):
+async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeout: float = 15.0, cache_ttl: int = 0, ttl_seconds: int | None = None):
     """Fetch JSON with small retries + optional caching.
 
     - Retries on 429 and some transient errors
     - Adds CoinGecko API key header if configured
     - Optional in-memory TTL cache to avoid rate limits
     """
+    # Backward-compat: allow callers to pass ttl_seconds (alias of cache_ttl)
+    if ttl_seconds is not None and (not cache_ttl or cache_ttl <= 0):
+        try:
+            cache_ttl = int(ttl_seconds)
+        except Exception:
+            cache_ttl = 0
+
     params = params or {}
     headers = headers or {}
 
@@ -31853,7 +31860,7 @@ async def ai_exit_page(request: Request):
     <html>
     <head>
         <title>AI Exit - CryptoIA</title>
-        {GLOBAL_STYLES}
+        <style>{GLOBAL_STYLES}</style>
         <style>
             .wrap {{ padding: 40px; }}
             .card {{ background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 26px; max-width: 980px; margin: 0 auto; }}
@@ -32029,7 +32036,7 @@ async def ai_gem_hunter_page(request: Request):
     <html>
     <head>
         <title>AI Gem Hunter - CryptoIA</title>
-        {GLOBAL_STYLES}
+        <style>{GLOBAL_STYLES}</style>
         <style>
             .wrap {{ padding: 40px; }}
             .card {{ background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 26px; max-width: 1100px; margin: 0 auto; }}
@@ -36731,7 +36738,7 @@ async def narrative_radar_page(request: Request):
     <html>
     <head>
         <title>Narrative Radar - CryptoIA</title>
-        %%GLOBAL_STYLES%%
+        <style>%%GLOBAL_STYLES%%</style>
         <style>
             .wrap { padding: 40px; }
             .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 26px; max-width: 1100px; margin: 0 auto; }

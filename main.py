@@ -12670,7 +12670,7 @@ async def ai_market_regime_page(request: Request):
 
                     <div class="cta-row">
                         <a class="btn" href="/">Retour au dashboard</a>
-                        <a class="btn primary" href="/pricing">Voir les forfaits</a>
+                        
                     </div>
 
                     {f'<div class="err"><b>Note:</b> données temporairement indisponibles. {html.escape(error)}</div>' if error else ''}
@@ -31424,6 +31424,16 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
               <div class="muted" style="margin-top:10px;">
                 Note: données publiques (CoinGecko / DexScreener). Ceci n'est pas un conseil financier.
               </div>
+              <div class="card" style="margin-top:16px;">
+                <h3 style="margin:0 0 8px 0;">Comment utiliser cette page</h3>
+                <ul style="margin:0; padding-left:18px; color:#c7d0df; line-height:1.65;">
+                  <li><b>But :</b> scanner des tokens et sortir des <b>signaux de tri</b> (activité, momentum, liquidité) à partir de données publiques.</li>
+                  <li><b>Étapes :</b> ajuste les filtres → lance le scan → lis les “flags” → ouvre ensuite le graphique pour valider.</li>
+                  <li><b>Interprétation :</b> un flag “positif” = conditions intéressantes, pas une certitude; un flag “négatif” = prudence.</li>
+                  <li><b>Meilleure pratique :</b> combine avec <b>Market Regime</b> (tendance vs range) + ton plan de risque (Position Sizer / SL).</li>
+                </ul>
+              </div>
+
             </div>
 
             {flags_block}
@@ -31979,6 +31989,17 @@ async def ai_exit_page(request: Request):
                     <div style="opacity:0.72; font-size: 12px; margin-top: 12px;">
                         Astuce: si tu veux un vrai mode “IA”, on peut connecter une détection de tendance (ex: market regime / momentum) pour proposer Long/Short automatiquement.
                     </div>
+            <div class="card" style="margin-top:18px;">
+              <h3 style="margin:0 0 8px 0;">Comment utiliser cette page</h3>
+              <ul style="margin:0; padding-left:18px; color:#c7d0df; line-height:1.65;">
+                <li><b>But :</b> transformer un prix d’entrée en <b>TP</b> (take profit) et <b>SL</b> (stop loss) cohérents selon ta direction (Long/Short).</li>
+                <li><b>Étapes :</b> 1) entre ton prix d’entrée 2) choisis <b>Long</b> ou <b>Short</b> 3) clique <b>Calculer</b>.</li>
+                <li><b>Lecture :</b> les TP sont des paliers progressifs (ex: +1%, +2%, +3%...) et le SL est en dessous (Long) / au-dessus (Short).</li>
+                <li><b>Conseil :</b> adapte les niveaux à ta stratégie, ta volatilité et ton money management.</li>
+              </ul>
+              <div style="margin-top:10px; opacity:.85;">Important : cet outil <b>n’anticipe pas</b> le marché — il structure une gestion de sortie.</div>
+            </div>
+
                 </div>
             </div>
         </div>
@@ -32161,6 +32182,16 @@ async def ai_gem_hunter_page(request: Request):
                     <div style="opacity:0.72; font-size: 12px; margin-top: 12px;">
                         “IA” ici = règles de détection + données publiques. Si tu veux un vrai scoring IA (LLM / modèles), on peut ajouter une couche d'analyse plus avancée.
                     </div>
+            <div class="card" style="margin-top:18px;">
+              <h3 style="margin:0 0 8px 0;">Comment utiliser cette page</h3>
+              <ul style="margin:0; padding-left:18px; color:#c7d0df; line-height:1.65;">
+                <li><b>But :</b> repérer des coins qui bougent (variation 24h) avec de l’activité (volume / market cap) — pour faire du tri rapide.</li>
+                <li><b>Lecture :</b> <b>24H</b> = momentum court terme; <b>Market Cap</b> = taille; <b>Volume</b> = activité; <b>Signal</b> = étiquette basée sur des règles simples.</li>
+                <li><b>Étapes :</b> parcours les pages, puis valide les coins sur tes charts (tendance, niveaux, liquidité).</li>
+                <li><b>Bon réflexe :</b> évite les micro-caps si tu veux limiter le slippage.</li>
+              </ul>
+            </div>
+
                 </div>
             </div>
         </div>
@@ -36855,6 +36886,17 @@ async def narrative_radar_page(request: Request):
                     <div style="opacity:0.72; font-size: 12px; margin-top: 14px;">
                         Source: CoinGecko trending. Cache serveur 3 minutes pour éviter les limites API.
                     </div>
+            <div class="card" style="margin-top:18px;">
+              <h3 style="margin:0 0 8px 0;">Comment utiliser cette page</h3>
+              <ul style="margin:0; padding-left:18px; color:#c7d0df; line-height:1.65;">
+                <li><b>But :</b> regrouper les coins “trending” en <b>narratives</b> (AI, RWA, L2, gaming, meme, etc.) via des mots-clés.</li>
+                <li><b>Étapes :</b> clique <b>Scanner maintenant</b> → attends la fin → observe les narratives dominantes et les coins associés.</li>
+                <li><b>Interprétation :</b> une narrative forte = attention + rotation possible; ce n’est pas un signal d’achat automatique.</li>
+                <li><b>À faire ensuite :</b> choisis 1–2 coins par narrative et valide tendance + liquidité + news.</li>
+              </ul>
+              <div style="margin-top:10px; opacity:.85;">Note : ce module reste volontairement “léger” (données publiques + mots-clés) pour être rapide et stable.</div>
+            </div>
+
                 </div>
             </div>
         </div>

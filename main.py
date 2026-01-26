@@ -766,9 +766,9 @@ DEFAULT_PLAN_ACCESS = {
     # (Si un plan n'a rien, il ne voit que les pages publiques.)
     "free": ["dashboard", "pricing-complete", "contact"],
     "premium": ["dashboard", "trades", "spot-trading", "strategie"],
-    "advanced": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed"],
-    "pro": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist"],
-    "elite": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist"],
+    "advanced": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "ai-alerts","ai-setup-builder"],
+    "pro": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist", "ai-alerts","ai-setup-builder"],
+    "elite": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist", "ai-alerts","ai-setup-builder"],
 }
 
 # -----------------------------
@@ -24571,7 +24571,8 @@ PLAN_ROUTES = [
     ("ai-exit", "Exit Strategy"),
     ("ai-timeframe", "Timeframe Analysis"),
     ("ai-liquidity", "Liquidité IA"),
-    ("ai-alerts", "Alertes IA"),
+    ("ai-alerts", "Signal Inbox IA"),
+    ("ai-setup-builder", "AI Setup Builder"),
     ("ai-gem-hunter", "Gem Hunter"),
     ("ai-technical-analysis", "Technical Analysis Pro"),
     ("narrative-radar", "Narrative Radar"),
@@ -41005,7 +41006,7 @@ async def _coingecko_markets_top50(vs_currency: str = "usd", order: str = "marke
         "&sparkline=false"
         "&price_change_percentage=1h,24h,7d"
     )
-    return await _fetch_json(url, ttl_seconds=90, use_coingecko_key=True)
+    return await _fetch_json(url, ttl_seconds=ttl_seconds, use_coingecko_key=True)
 
 @app.get("/ai-alerts")
 async def ai_signal_inbox(request: Request):
@@ -41027,7 +41028,7 @@ async def ai_signal_inbox(request: Request):
 
     # ---- Données temps réel (avec petit TTL) ----
     now_utc = datetime.utcnow()
-    markets = _coingecko_markets_top50(ttl_seconds=180)  # top 50
+    markets = await _coingecko_markets_top50(ttl_seconds=180)  # top 50
     if not markets:
         html = f"""
         {GLOBAL_STYLES}

@@ -2576,6 +2576,27 @@ BADGES_DATA = {
 
 app = FastAPI()
 
+# --- Rate limiting (SlowAPI) ---
+class _NoOpLimiter:
+    def limit(self, *args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+
+limiter = _NoOpLimiter()
+
+if 'SLOWAPI_AVAILABLE' in globals() and SLOWAPI_AVAILABLE:
+    try:
+        limiter = Limiter(key_func=get_remote_address)
+        app.state.limiter = limiter
+        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+        app.add_middleware(SlowAPIMiddleware)
+        print("✅ Rate limiter configuré (SlowAPI)")
+    except Exception as _e:
+        limiter = _NoOpLimiter()
+        print(f"⚠️ Rate limiter désactivé: {_e}")
+
+
 # --- Sessions (required for request.session) ---
 try:
     from starlette.middleware.sessions import SessionMiddleware

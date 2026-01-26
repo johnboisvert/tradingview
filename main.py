@@ -2990,276 +2990,57 @@ def access_denied_page(request, page_title: str = "Accès refusé", required_pla
         return PlainTextResponse("Accès refusé (403).", status_code=403)
 
 def get_user_from_request(request):
-    """Récupère des infos utilisateur à partir d'une Request FastAPI/Starlette.
-
-    Important: certains appels internes peuvent passer autre chose qu'une Request (ex: str/dict).
-    Dans ce cas on retourne {{}} sans lever d'exception, pour éviter les 500.
+    """
+    Retourne un dict utilisateur à partir de la Request (session/cookies).
+    - Tolérant si on lui passe autre chose qu'une Request (retourne None).
     """
     try:
-        if request is None:
-            return {}
-        # Si ce n'est pas une vraie Request (ex: string), on sort proprement.
-        if not hasattr(request, "cookies") or not hasattr(request, "session"):
-            return {}
+        # Protection: parfois des appels debug passent un str par erreur
+        if request is None or not hasattr(request, "session"):
+            return None
 
-        username = request.session.get("username") or request.session.get("user") or request.session.get("email") or ""
-        role = request.session.get("role") or ""
+        username = (request.session.get("username") or "").strip()
+        email = (request.session.get("email") or "").strip()
+        role = (request.session.get("role") or "").strip()
 
-        # Token cookie (optionnel)
+        # Cookie token (si présent)
         token = None
         try:
-            token = request.cookies.get("token")
+            token = (request.cookies.get("token") if hasattr(request, "cookies") else None)
         except Exception:
             token = None
 
-        # Plan effectif (DB / subscription_system)
-        plan = get_user_effective_plan(username) if username else "free"
+        user_from_token = None
+        if token:
+            try:
+                user_from_token = get_user_from_token(token)
+            except Exception:
+                user_from_token = None
+
+        # Fusion des infos (session prioritaire)
+        if user_from_token:
+            if not username:
+                username = (user_from_token.get("username") or "").strip()
+            if not email:
+                email = (user_from_token.get("email") or "").strip()
+            if not role:
+                role = (user_from_token.get("role") or "").strip()
+
+        if not username and not email:
+            return None
+
+        is_admin = (role.lower() == "admin") or (username.lower() == "admin")
 
         return {
-            "username": username or "",
-            "role": role or "",
-            "plan": plan or "free",
-            "token": token,
+            "username": username,
+            "email": email,
+            "role": role or ("admin" if is_admin else ""),
+            "is_admin": is_admin,
         }
     except Exception as e:
-        print(f"❌ get_user_from_request error: {e}")
-        return {}
-
-
-        user = get_user_from_token(token)
-        
-        if not user:
-            print(f"⚠️ get_user_from_request: session_token trouvé mais utilisateur non trouvé")
-            return None
-        
-        # L'utilisateur peut tre soit un dict, soit juste un username (ancien format)
-        if isinstance(user, str):
-            # Ancien format: juste le username
-            username = user
-            user_dict = {
-                "username": username,
-                "id": username,
-                "plan": "Free",
-                "role": "admin" if username == "admin" else "user"
-            }
-        else:
-            # Nouveau format: dj un dict
-            user_dict = user
-        
-        #  CORRECTION CRITIQUE: Vrifier le rle admin
-        # Le champ dans la DB peut tre "role" ou "plan"
-        role = user_dict.get("role", "")
-        plan = user_dict.get("plan", "Free")
-        username = user_dict.get("username", "")
-        
-        # L'utilisateur est admin si:
-        # 1. role == "admin" OU
-        # 2. username == "admin"
-        is_admin = (role == "admin" or username == "admin")
-        
-        # Enrichir le dict avec les champs ncessaires
-        user_dict["is_admin"] = is_admin
-        user_dict["subscription_tier"] = plan
-        
-        # Debug log
-        print(f"🔍 get_user_from_request: user={username}, role={role}, is_admin={is_admin}")
-        
-        return user_dict
-        
-    except Exception as e:
-        print(f"❌ get_user_from_request error: {e}")
-        import traceback
-        traceback.print_exc()
+        print("❌ get_user_from_request error:", e)
         return None
 
-
-
-# -------------------------------------------------------------------------
-# Compat helper (certaines pages utilisent encore ce nom)
-# -------------------------------------------------------------------------
-def get_current_user_from_session(request: Request):
-    """Alias compat : récupère l'utilisateur courant depuis cookies/session.
-
-    Plusieurs routes historiques appellent `get_current_user_from_session(request)`.
-    Notre système d'auth actuel s'appuie sur les cookies (token / access_token / session).
-    """
-    return get_user_from_request(request)
-#  CORRECTION 2: RATE LIMITING - Protection contre brute-force
-# 
-
-# Configuration du rate limiter
-#  Rate limiter (optionnel)
-# Si slowapi n'est pas install, l'app reste fonctionnelle mais sans limitation de dbit.
-if SLOWAPI_AVAILABLE:
-    limiter = Limiter(key_func=get_remote_address)
-    app.state.limiter = limiter
-
-    def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
-        return JSONResponse(
-            status_code=429,
-            content={
-                "error": "⛔ Trop de requêtes. Réessaie dans quelques secondes.",
-                "hint": "Si ça arrive souvent, attends 1-2 minutes ou réduis la fréquence.",
-            },
-        )
-
-    app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
-    app.add_middleware(SlowAPIMiddleware)
-else:
-    class _DummyLimiter:
-        def limit(self, *args, **kwargs):
-            def _decorator(fn):
-                return fn
-            return _decorator
-
-    limiter = _DummyLimiter()
-
-
-# --------- Pages HTML propres pour accès refusé / non autorisé (plans) ----------
-from fastapi import HTTPException as _FastAPIHTTPException
-import html as _html
-
-@app.exception_handler(_FastAPIHTTPException)
-async def _http_exception_handler(request: Request, exc: _FastAPIHTTPException):
-    if exc.status_code in (401, 403):
-        # IMPORTANT: certaines routes (admin/api, admin-dashboard/api, etc.) sont appelées en fetch()
-        # et doivent retourner du JSON. Sinon le front reçoit du HTML (qui commence par <style> ou <html>)
-        # et ça casse avec "Unexpected token '<'".
-        path = request.url.path or ""
-        accept = (request.headers.get("accept") or "").lower()
-        wants_json = (
-            path.startswith("/admin/")
-            or path.startswith("/admin-dashboard/api")
-            or path.startswith("/api/")
-            or "application/json" in accept
-        )
-        if wants_json:
-            return JSONResponse({"success": False, "error": str(exc.detail)}, status_code=exc.status_code)
-        detail = _html.escape(str(exc.detail))
-        return HTMLResponse(
-            content=f"""<!doctype html>
-<html lang='fr'>
-<head>
-  <meta charset='utf-8'>
-  <meta name='viewport' content='width=device-width, initial-scale=1'>
-  <title>Accès refusé — CryptoIA</title>
-</head>
-<body style='margin:0;font-family:Arial,sans-serif;background:#0b1220;color:#fff;'>
-  <div style='max-width:980px;margin:0 auto;padding:36px 18px;'>
-    <div style='background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:16px;padding:18px;'>
-      <div style='display:flex;align-items:center;gap:12px;margin-bottom:14px;'>
-        <img src='/static/cryptoia_logo.png' alt='CryptoIA' style='width:56px;height:56px;background:#fff;padding:6px;border-radius:14px;object-fit:contain;'>
-        <div>
-          <div style='font-size:22px;font-weight:800;'>Accès refusé</div>
-          <div style='opacity:.85;'>Cette section est réservée aux abonnés. Rehausse ton plan pour continuer.</div>
-        </div>
-      </div>
-
-      <div style='opacity:.85;line-height:1.55;'>
-        <div>Détails : <span style='background:rgba(255,255,255,0.10);padding:2px 8px;border-radius:10px;'>{detail}</span></div>
-        <div style='margin-top:10px;'>Plans : <b>Free</b> / <b>Premium</b> / <b>Advanced</b> / <b>Pro</b> / <b>Elite</b></div>
-      </div>
-
-      <div style='display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;'>
-        <a href='/pricing-complete' style='display:inline-block;padding:12px 14px;border-radius:12px;background:#7c3aed;color:#fff;text-decoration:none;font-weight:800;'>Voir / rehausser mon plan</a>
-        <a href='/' style='display:inline-block;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:#fff;text-decoration:none;font-weight:800;'>Retour au dashboard</a>
-      </div>
-    </div>
-  </div>
-</body>
-</html>""",
-            status_code=exc.status_code,
-        )
-    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
-
-    app.state.limiter = limiter
-
-# 
-#  CORRECTION 3: DISCLAIMERS LGAUX - Protection juridique
-# 
-
-LEGAL_DISCLAIMER_HTML = """
-<div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
-            color: white; 
-            padding: 20px; 
-            margin: 20px auto;
-            max-width: 1200px;
-            border-radius: 12px; 
-            border: 2px solid #fca5a5;
-            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);">
-    <h3 style="margin: 0 0 15px 0; font-size: 22px; font-weight: 700;">⚠️ AVERTISSEMENT LÉGAL IMPORTANT</h3>
-    <div style="font-size: 15px; line-height: 1.8;">
-        <p style="margin: 10px 0;"><strong>Ce service ne constitue PAS un conseil financier, fiscal ou juridique.</strong></p>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
-            <div>
-                ✋ <strong>Performances passées:</strong><br>
-                Les résultats antérieurs ne garantissent PAS les résultats futurs.
-            </div>
-            <div>
-                💸 <strong>Capital à risque:</strong><br>
-                Ne tradez qu'avec des fonds que vous pouvez perdre sans conséquence.
-            </div>
-            <div>
-                🤖 <strong>Prédictions IA:</strong><br>
-                Les analyses par intelligence artificielle sont probabilistes et peuvent être inexactes.
-            </div>
-            <div>
-                📚 <strong>Responsabilité personnelle:</strong><br>
-                Faites toujours vos propres recherches (DYOR - Do Your Own Research).
-            </div>
-            <div>
-                ⚖️ <strong>Risques importants:</strong><br>
-                Le trading comporte des risques significatifs de perte totale en capital.
-            </div>
-            <div>
-                🔞 <strong>Réservé aux adultes:</strong><br>
-                Ce service est destiné aux personnes majeures et responsables.
-            </div>
-        </div>
-        
-        <p style="margin: 20px 0 0 0; font-size: 13px; opacity: 0.9; text-align: center;">
-            En utilisant ce service, vous reconnaissez avoir lu et compris ces avertissements.
-        </p>
-    </div>
-</div>
-"""
-
-LEGAL_FOOTER_HTML = """
-<footer style="text-align: center; 
-               padding: 30px 20px; 
-               background: #0f172a; 
-               color: #94a3b8; 
-               font-size: 13px;
-               border-top: 1px solid rgba(6,182,212,0.2);
-               margin-top: 60px;">
-    <p style="margin: 10px 0; line-height: 1.6;">
-        <strong style="color: #ef4444;">⚠️ Avertissement de risque:</strong> 
-        Le trading et l'investissement en crypto-monnaies comportent des risques importants de perte en capital. 
-        Ne tradez qu'avec des fonds que vous pouvez vous permettre de perdre. 
-        Ce site ne fournit aucun conseil financier, fiscal ou juridique.
-    </p>
-    <p style="margin: 20px 0 10px 0;">
-        © 2024 Trading Dashboard Pro • Tous droits réservés
-    </p>
-    <p style="margin: 5px 0;">
-        <a href="/terms-of-service" style="color: #06b6d4; text-decoration: none; margin: 0 10px;">Conditions Générales</a> •
-        <a href="/privacy-policy" style="color: #06b6d4; text-decoration: none; margin: 0 10px;">Politique de Confidentialité</a> •
-        <a href="/risk-disclaimer" style="color: #06b6d4; text-decoration: none; margin: 0 10px;">Avertissement des Risques</a>
-    </p>
-</footer>
-"""
-
-# 
-#  MIDDLEWARE DE PROTECTION AUTOMATIQUE DES ROUTES
-# 
-
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
-
-# NOTE: certaines versions du projet n'ont pas la fonction get_user_plan().
-# Si elle est absente, un appel direct provoque un NameError (500).
-# On encapsule donc l'accès au plan dans une fonction sûre.
 
 
 def is_admin_user(user: dict | None) -> bool:
@@ -5131,68 +4912,50 @@ def normalize_route_key(route: str) -> str:
     rk = alias.get(rk, rk)
     return rk
 
-def check_route_permission(user_or_username, route: str) -> bool:
-    """Vérifie si l'utilisateur a accès à une route (retourne un bool).
-
-    - Compatible avec les appels existants (middleware, templates, etc.)
-    - Accepte: username (str), dict utilisateur, ou Request.
-    - Ne doit JAMAIS lever une exception (sinon ça casse le site).
+def check_route_permission(username_or_user, route_path):
+    """
+    Retourne True si l'utilisateur (username/email ou dict user) a accès à la route.
+    Ne dépend PAS de `user_permissions` (qui a causé des NameError).
     """
     try:
-        # Extract user context
-        username = ""
-        role = ""
-        plan = ""
+        route_path = (route_path or "/").split("?")[0]
 
-        if user_or_username is None:
-            username = ""
-        elif isinstance(user_or_username, dict):
-            username = (user_or_username.get("username") or user_or_username.get("user") or user_or_username.get("email") or "")
-            role = (user_or_username.get("role") or "")
-            plan = (user_or_username.get("plan") or "")
-        elif hasattr(user_or_username, "session") and hasattr(user_or_username, "cookies"):
-            # Request object
-            req = user_or_username
-            username = (req.session.get("username") or req.session.get("user") or req.session.get("email") or "")
-            role = (req.session.get("role") or "")
-        else:
-            # fallback: assume it's the username
-            username = str(user_or_username)
-
-        # Admin bypass
-        if (role or "").lower() == "admin" or (username or "").lower() == "admin":
+        # Routes publiques toujours accessibles
+        PUBLIC_PREFIXES = ("/static", "/health", "/login", "/logout", "/pricing", "/stripe", "/tv-webhook", "/favicon")
+        if route_path == "/" or route_path.startswith(PUBLIC_PREFIXES):
             return True
 
-        # Determine plan
-        if not plan:
-            plan = get_user_effective_plan(username) if username else "free"
-        plan = normalize_plan(plan)
+        # Extraire user + plan
+        username = ""
+        email = ""
+        role = ""
+        if isinstance(username_or_user, dict):
+            username = (username_or_user.get("username") or "").strip()
+            email = (username_or_user.get("email") or "").strip()
+            role = (username_or_user.get("role") or "").strip()
+        else:
+            username = (str(username_or_user or "")).strip()
 
-        required_plan = get_required_plan_for_route(route)
+        is_admin = (role.lower() == "admin") or (username.lower() == "admin")
+        if is_admin:
+            return True
+
+        # Si pas connecté, on bloque les pages protégées
+        if not username and not email:
+            return False
+
+        user_plan = get_user_effective_plan(username or email) or "free"
+        required_plan = get_required_plan_for_route(route_path)  # peut être None
+
         if not required_plan:
             return True
 
-        required_plan = normalize_plan(required_plan)
-
-        PLAN_RANK = {
-            "free": 0,
-            "premium": 1,
-            "advanced": 2,
-            "pro": 3,
-            "elite": 4,
-            "admin": 99,
-        }
-        user_rank = PLAN_RANK.get(plan, 0)
-        req_rank = PLAN_RANK.get(required_plan, 0)
-        return user_rank >= req_rank
-
+        return PLAN_RANK.get(user_plan, 0) >= PLAN_RANK.get(required_plan, 0)
     except Exception as e:
-        print(f"❌ Erreur check_route_permission({route}): {e}")
-        try:
-            required_plan = get_required_plan_for_route(route)
-            return False if required_plan else True
-        except Exception:
-            return True
+        print(f"❌ Erreur check_route_permission({route_path}): {e}")
+        # Fail-safe: on bloque si erreur
+        return False
+
 
 
 def start_background_monitor():
@@ -31689,6 +31452,23 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
   </ul>
   <div style="margin-top:8px; font-size:13px; opacity:.85;">⚠️ Ce n’est pas un conseil financier. Utilise-le comme <b>filtre</b> avant ton plan de trade.</div>
 </div>
+
+<div class="card" style="margin-top:14px;">
+  <h2 style="margin:0 0 8px 0;">À quoi sert cette page ?</h2>
+  <p style="margin:0 0 10px 0; line-height:1.55;">
+    L’<b>AI Token Scanner</b> analyse automatiquement le <b>Top 50</b> (par Market Cap) et repère :
+    <b>momentum</b>, <b>sur/sous-performance</b>, <b>volume anormal</b>, et <b>contexte marché</b>.
+    Ça te donne une <b>shortlist claire</b> de tokens à regarder, avant même d’ouvrir ton graphique.
+  </p>
+  <ul style="margin:0 0 10px 18px; line-height:1.55;">
+    <li><b>Pourquoi l’utiliser</b> : gagner du temps, éviter de scanner “au hasard”, détecter les coins qui bougent vraiment.</li>
+    <li><b>Ce que tu obtiens</b> : une table classée avec un <b>score</b> + une <b>explication IA</b> (signal, risque, scénario).</li>
+    <li><b>Données</b> : données publiques <b>réelles</b> et <b>mises à jour</b> (CoinGecko : prix, market cap, volume, variations).</li>
+  </ul>
+  <p style="margin:0; opacity:.9;">
+    Astuce : lance le scan → ouvre le graphique TradingView des meilleurs résultats → confirme structure + niveaux.
+  </p>
+</div>
 <form class="form" method="POST" action="/ai-token-scanner">
             <input class="input" name="q" value="{q_esc}" placeholder="Ex: BTC, Solana, PEPE, ou 0x... (contrat)" />
             <select class="select" name="chain">
@@ -41273,8 +41053,8 @@ async def ai_alerts(request: Request):
         html = f"""<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI Alerts — CryptoIA</title>
-{GLOBAL_STYLES}
-<style>
+  <style>{GLOBAL_STYLES}</style>
+  <style>
   body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
   .container {{ max-width: 1200px; margin: 0 auto; }}
   .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}
@@ -41316,6 +41096,18 @@ async def ai_alerts(request: Request):
         {table_rows if table_rows else '<tr><td colspan="9" class="muted">Aucune donnée pour le moment.</td></tr>'}
       </tbody>
     </table>
+      <div class="card" style="margin-top:16px;">
+        <h2 style="margin:0 0 10px 0;">Comment utiliser cette page</h2>
+        <ul style="margin:0 0 0 18px; line-height:1.55;">
+          <li><b>But</b> : repérer vite les coins qui bougent (pump/dump) + où le <b>volume</b> est anormal.</li>
+          <li><b>Étape 1</b> : trie par <b>SIGNAL</b> ou <b>VOL/MCAP</b> pour voir les mouvements “réels”.</li>
+          <li><b>Étape 2</b> : ouvre le token sur ton graphique (TradingView) et valide : tendance, structure, niveaux.</li>
+          <li><b>Étape 3</b> : combine avec <b>AI Market Regime</b> (risk-on/off) pour ajuster l’agressivité.</li>
+          <li><b>Données</b> : CoinGecko (prix/market cap/volume) — données publiques, mises à jour régulièrement.</li>
+        </ul>
+        <p style="margin:10px 0 0 0; opacity:.85;">Pas un conseil financier — c’est un radar pour accélérer ton process.</p>
+      </div>
+
 
     <div style="margin-top:18px;" class="card">
       <h2 style="margin:0 0 8px 0;">Comment utiliser cette page</h2>
@@ -41391,8 +41183,8 @@ async def ai_liquidity(request: Request):
         html=f"""<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI Liquidity — CryptoIA</title>
-{GLOBAL_STYLES}
-<style>
+  <style>{GLOBAL_STYLES}</style>
+  <style>
   body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
   .container {{ max-width: 1200px; margin: 0 auto; }}
   .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}
@@ -41431,6 +41223,17 @@ async def ai_liquidity(request: Request):
         {table_rows if table_rows else '<tr><td colspan="7" class="muted">Aucune donnée pour le moment.</td></tr>'}
       </tbody>
     </table>
+      <div class="card" style="margin-top:16px;">
+        <h2 style="margin:0 0 10px 0;">Comment utiliser cette page</h2>
+        <ul style="margin:0 0 0 18px; line-height:1.55;">
+          <li><b>But</b> : savoir quels coins sont “tradables” (liquidité relative élevée = exécutions plus propres).</li>
+          <li><b>Score</b> : basé sur <b>Volume 24h / Market Cap</b> (proxy simple de liquidité relative).</li>
+          <li><b>À privilégier</b> : scalps et entrées rapides sur les scores élevés (slippage souvent plus faible).</li>
+          <li><b>À éviter</b> : scores faibles = mouvements erratiques / mèches / risque de manipulation plus élevé.</li>
+          <li><b>Données</b> : CoinGecko (volume & market cap) — données publiques, mises à jour régulièrement.</li>
+        </ul>
+      </div>
+
 
     <div style="margin-top:18px;" class="card">
       <h2 style="margin:0 0 8px 0;">Comment utiliser cette page</h2>
@@ -41508,8 +41311,8 @@ async def ai_timeframe(request: Request):
         html=f"""<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI Timeframe — CryptoIA</title>
-{GLOBAL_STYLES}
-<style>
+  <style>{GLOBAL_STYLES}</style>
+  <style>
   body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
   .container {{ max-width: 1100px; margin: 0 auto; }}
   .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}

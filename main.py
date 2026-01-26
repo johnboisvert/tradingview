@@ -41008,144 +41008,688 @@ async def _coingecko_markets_top50(vs_currency: str = "usd", order: str = "marke
     return await _fetch_json(url, ttl_seconds=90, use_coingecko_key=True)
 
 @app.get("/ai-alerts")
-async def ai_alerts(request: Request):
-    """AI Alerts — Top 50: signaux rapides (momentum / dump / volume)."""
-    try:
-        if not is_logged_in(request):
-            return RedirectResponse(url=f"/login?redirect=%2Fai-alerts", status_code=303)
+async def ai_signal_inbox(request: Request):
+    """
+    📥 Signal Inbox IA (remplace l’ancienne page AI Alerts).
 
-        # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
-        data = await _coingecko_markets_top50()
-        rows = data if isinstance(data, list) else []
-        enriched = []
-        for c in rows:
-            sym = (c.get("symbol") or "").upper()
-            name = c.get("name") or sym
-            price = c.get("current_price")
-            ch1h = c.get("price_change_percentage_1h_in_currency")
-            ch24 = c.get("price_change_percentage_24h")
-            ch7 = c.get("price_change_percentage_7d_in_currency")
-            vol = c.get("total_volume")
-            mcap = c.get("market_cap")
-            ratio = (float(vol) / float(mcap)) if vol and mcap and float(mcap) > 0 else 0.0
+    Objectif:
+    - Générer des "signaux" à partir de VRAIES données (CoinGecko + watchlist).
+    - Rester *explainable* : chaque signal affiche pourquoi il est proposé.
+    - Personnaliser selon ta watchlist (si présente).
 
-            signal = "Neutre"
-            tag = "tag"
-            if ch1h is not None and ch24 is not None:
-                try:
-                    ch1h_f = float(ch1h); ch24_f = float(ch24)
-                    if ch1h_f <= -2.0 and ch24_f <= -8.0:
-                        signal, tag = "Dump / pression vendeuse", "tag danger"
-                    elif ch1h_f >= 1.5 and ch24_f >= 5.0:
-                        signal, tag = "Momentum haussier", "tag success"
-                    elif ch1h_f >= 1.5 and ch24_f <= -3.0:
-                        signal, tag = "Rebond / reversal possible", "tag"
-                    elif ratio >= 0.12 and abs(ch24_f) >= 3.0:
-                        signal, tag = "Volume inhabituel", "tag"
-                except Exception:
-                    pass
+    Notes:
+    - Données marchés CoinGecko: TTL 180s via _coingecko_markets_top50
+    - Watchlist: in-memory watchlist_db (API /api/watchlist/*)
+    """
+    # ---- Auth ----
+    if not is_logged_in(request):
+        return RedirectResponse(url="/login", status_code=303)
 
-            enriched.append({
-                "sym": sym, "name": name, "price": price,
-                "ch1h": ch1h, "ch24": ch24, "ch7": ch7,
-                "mcap": mcap, "vol": vol, "ratio": ratio,
-                "signal": signal, "tag": tag
-            })
-
-        # trier: signaux d'abord, puis volume/mcap
-        enriched.sort(key=lambda x: (0 if "danger" in x["tag"] else 1 if "success" in x["tag"] else 2, -x["ratio"]))
-
-        table_rows = "".join([
-            f"""
-            <tr>
-              <td><b>{r['sym']}</b><div style='font-size:12px;color:#9fb0c7'>{r['name']}</div></td>
-              <td>{_fmt_usd(r['price'])}</td>
-              <td>{_fmt_pct(r['ch1h'])}</td>
-              <td>{_fmt_pct(r['ch24'])}</td>
-              <td>{_fmt_pct(r['ch7'])}</td>
-              <td>{_fmt_usd(r['mcap'])}</td>
-              <td>{_fmt_usd(r['vol'])}</td>
-              <td>{r['ratio']*100:.2f}%</td>
-              <td><span class='{r['tag']}'>{r['signal']}</span></td>
-            </tr>
-            """ for r in enriched
-        ])
-
-        html = f"""<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Alerts — CryptoIA</title>
-  <style>{GLOBAL_STYLES}</style>
-  <style>
-  body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
-  .container {{ max-width: 1200px; margin: 0 auto; }}
-  .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}
-  .muted {{ color:#9fb0c7; }}
-  .tag {{ display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(96,165,250,.15); border:1px solid rgba(96,165,250,.35); }}
-  .tag.success {{ background:rgba(16,185,129,.14); border-color:rgba(16,185,129,.35); }}
-  .tag.danger {{ background:rgba(239,68,68,.14); border-color:rgba(239,68,68,.35); }}
-  table {{ width:100%; border-collapse: collapse; margin-top: 14px; }}
-  th,td {{ padding: 10px 12px; border-bottom:1px solid rgba(255,255,255,.06); text-align:left; vertical-align:top; }}
-  th {{ color:#cfd7e6; font-size:13px; text-transform:uppercase; letter-spacing:.06em; }}
-  tr:hover td {{ background: rgba(255,255,255,.03); }}
-</style>
-</head>
-<body>
-{SIDEBAR_HTML}
-<div class="container">
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
-      <div>
-        <h1 style="margin:0;">AI Alerts</h1>
-        <p class="muted" style="margin:8px 0 0 0;">Top 50 (market cap) — signaux rapides basés sur variations + volume (données CoinGecko).</p>
-      </div>
-      <div class="muted" style="font-size:13px;">Dernière mise à jour: <b>{_now_utc_str()}</b></div>
-    </div>
-
-    <div style="margin-top:14px;" class="muted">
-      <b>But:</b> repérer en 10 secondes où ça bouge (momentum), où ça saigne (dump), et où le volume est anormal.  
-      <br><b>Astuce:</b> clique ensuite sur ton graphique (TradingView) pour valider structure + niveaux.
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Coin</th><th>Prix</th><th>1h</th><th>24h</th><th>7j</th>
-          <th>Market Cap</th><th>Volume 24h</th><th>Vol/Mcap</th><th>Signal</th>
-        </tr>
-      </thead>
-      <tbody>
-        {table_rows if table_rows else '<tr><td colspan="9" class="muted">Aucune donnée pour le moment.</td></tr>'}
-      </tbody>
-    </table>
-      <div class="card" style="margin-top:16px;">
-        <h2 style="margin:0 0 10px 0;">Comment utiliser cette page</h2>
-        <ul style="margin:0 0 0 18px; line-height:1.55;">
-          <li><b>But</b> : repérer vite les coins qui bougent (pump/dump) + où le <b>volume</b> est anormal.</li>
-          <li><b>Étape 1</b> : trie par <b>SIGNAL</b> ou <b>VOL/MCAP</b> pour voir les mouvements “réels”.</li>
-          <li><b>Étape 2</b> : ouvre le token sur ton graphique (TradingView) et valide : tendance, structure, niveaux.</li>
-          <li><b>Étape 3</b> : combine avec <b>AI Market Regime</b> (risk-on/off) pour ajuster l’agressivité.</li>
-          <li><b>Données</b> : CoinGecko (prix/market cap/volume) — données publiques, mises à jour régulièrement.</li>
-        </ul>
-        <p style="margin:10px 0 0 0; opacity:.85;">Pas un conseil financier — c’est un radar pour accélérer ton process.</p>
-      </div>
-
-
-    <div style="margin-top:18px;" class="card">
-      <h2 style="margin:0 0 8px 0;">Comment utiliser cette page</h2>
-      <ul class="muted" style="margin:0; padding-left:18px;">
-        <li><b>Momentum haussier</b>: privilégie une approche trend (pullbacks / breakouts) + stop serré.</li>
-        <li><b>Dump / pression vendeuse</b>: évite les entrées impulsives — attends une stabilisation ou une structure.</li>
-        <li><b>Vol/Mcap</b> élevé = liquidité relative forte (plus de “flow”). Vol/Mcap faible = plus fragile.</li>
-        <li>Ce n’est pas un conseil financier — c’est un <b>radar</b> pour prioriser ton analyse.</li>
-      </ul>
-    </div>
-  </div>
-</div>
-</body></html>"""
+    # ---- Données temps réel (avec petit TTL) ----
+    now_utc = datetime.utcnow()
+    markets = _coingecko_markets_top50(ttl_seconds=180)  # top 50
+    if not markets:
+        html = f"""
+        {GLOBAL_STYLES}
+        <div class="container" style="padding: 24px;">
+          <h1>📥 Signal Inbox IA</h1>
+          <div class="card">Impossible de récupérer les données CoinGecko pour le moment.</div>
+        </div>
+        """
         return HTMLResponse(html)
 
-    except Exception as e:
-        return HTMLResponse(f"<h1>Erreur</h1><pre>{e}</pre>", status_code=500)
+    # Index rapide par symbol
+    by_symbol = {}
+    for c in markets:
+        sym = (c.get("symbol") or "").upper()
+        if sym:
+            by_symbol[sym] = c
+
+    # Stats globales pour détecter "spike" de volume
+    vols = [float(x.get("total_volume") or 0) for x in markets]
+    mcaps = [float(x.get("market_cap") or 0) for x in markets]
+    ratios = []
+    for c in markets:
+        v = float(c.get("total_volume") or 0)
+        m = float(c.get("market_cap") or 0)
+        if v > 0 and m > 0:
+            ratios.append(v / m)
+    ratio_med = (statistics.median(ratios) if ratios else 0.0)
+
+    # ---- Watchlist (personnalisation) ----
+    wl = []
+    try:
+        # watchlist_db est une liste globale déjà utilisée par /api/watchlist
+        wl = list(watchlist_db) if isinstance(watchlist_db, list) else []
+    except Exception:
+        wl = []
+
+    signals = []
+
+    def add_signal(kind: str, symbol: str, score: float, confidence: int, reasons: list, payload: dict):
+        signals.append({
+            "kind": kind,
+            "symbol": symbol,
+            "score": float(score),
+            "confidence": int(max(0, min(100, confidence))),
+            "reasons": reasons[:6],
+            "payload": payload,
+            "ts": now_utc.isoformat() + "Z"
+        })
+
+    # ---- 1) Signaux watchlist (target + distance) ----
+    for item in wl[:80]:
+        sym = (item.get("symbol") or "").upper().strip()
+        if not sym:
+            continue
+        m = by_symbol.get(sym)
+        if not m:
+            continue
+
+        price = float(m.get("current_price") or 0)
+        ch24 = float(m.get("price_change_percentage_24h") or 0)
+        vol = float(m.get("total_volume") or 0)
+        mcap = float(m.get("market_cap") or 0)
+        liq = (vol / mcap) if (vol > 0 and mcap > 0) else 0.0
+
+        target = item.get("target_price")
+        note = (item.get("note") or "").strip()
+
+        if target is not None:
+            try:
+                tgt = float(target)
+            except Exception:
+                tgt = None
+        else:
+            tgt = None
+
+        reasons = [f"Watchlist: {sym}"]
+        if note:
+            reasons.append(f"Note: {note}")
+
+        if tgt and price > 0:
+            dist_pct = ((price - tgt) / tgt) * 100.0
+            near = abs(dist_pct) <= 1.0
+            crossed = (dist_pct >= 0)
+
+            if near:
+                add_signal(
+                    "🎯 Proche d'un target",
+                    sym,
+                    score=80 + (10 - min(10, abs(dist_pct))) ,
+                    confidence=78,
+                    reasons=reasons + [f"Prix: {price:.6g} — Target: {tgt:.6g} ({dist_pct:+.2f}%)"],
+                    payload={"price": price, "target": tgt, "ch24": ch24, "liq": liq}
+                )
+            elif crossed:
+                add_signal(
+                    "✅ Target atteint",
+                    sym,
+                    score=92,
+                    confidence=84,
+                    reasons=reasons + [f"Prix: {price:.6g} ≥ Target: {tgt:.6g} ({dist_pct:+.2f}%)"],
+                    payload={"price": price, "target": tgt, "ch24": ch24, "liq": liq}
+                )
+            else:
+                # target pas atteint: si momentum + volume ok, on remonte
+                if ch24 > 2 and liq >= ratio_med:
+                    add_signal(
+                        "📈 Watchlist momentum",
+                        sym,
+                        score=65 + min(25, ch24 * 2),
+                        confidence=70,
+                        reasons=reasons + [f"24h: {ch24:+.2f}%", f"Liquidité (vol/mcap): {liq:.3f}"],
+                        payload={"price": price, "target": tgt, "ch24": ch24, "liq": liq}
+                    )
+
+        else:
+            # pas de target -> signaux momentum/risque
+            if ch24 >= 3:
+                add_signal(
+                    "📈 Watchlist momentum",
+                    sym,
+                    score=60 + min(30, ch24 * 2),
+                    confidence=68,
+                    reasons=reasons + [f"24h: {ch24:+.2f}%", f"Liquidité (vol/mcap): {liq:.3f}"],
+                    payload={"price": price, "ch24": ch24, "liq": liq}
+                )
+            elif ch24 <= -4:
+                add_signal(
+                    "🧲 Watchlist dip",
+                    sym,
+                    score=58 + min(25, abs(ch24) * 2),
+                    confidence=64,
+                    reasons=reasons + [f"Repli 24h: {ch24:+.2f}%", f"Liquidité (vol/mcap): {liq:.3f}"],
+                    payload={"price": price, "ch24": ch24, "liq": liq}
+                )
+
+    # ---- 2) Signaux marchés (non-watchlist) ----
+    # Scoring simple (explainable) = momentum + spike volume + liquidité
+    for c in markets:
+        sym = (c.get("symbol") or "").upper()
+        if not sym:
+            continue
+
+        # éviter doublons watchlist: on laissera la watchlist "prioritaire"
+        if any(s.get("symbol") == sym for s in signals):
+            continue
+
+        price = float(c.get("current_price") or 0)
+        ch24 = float(c.get("price_change_percentage_24h") or 0)
+        vol = float(c.get("total_volume") or 0)
+        mcap = float(c.get("market_cap") or 0)
+        liq = (vol / mcap) if (vol > 0 and mcap > 0) else 0.0
+
+        # spike si ratio > 2x médiane
+        spike = (ratio_med > 0 and liq > 2.0 * ratio_med)
+
+        # momentum positif
+        if ch24 >= 5 or (ch24 >= 3 and spike):
+            reasons = [f"24h: {ch24:+.2f}%", f"Liquidité (vol/mcap): {liq:.3f}"]
+            if spike:
+                reasons.append("Spike de volume relatif (vol/mcap > 2× médiane top50)")
+            score = 50 + min(35, max(0, ch24) * 3) + (15 if spike else 0)
+            conf = 60 + (10 if spike else 0) + (10 if ch24 >= 7 else 0)
+            add_signal("⚡ Momentum + volume", sym, score, conf, reasons, {"price": price, "ch24": ch24, "liq": liq})
+
+        # dip prononcé (mean reversion)
+        if ch24 <= -7 and liq >= ratio_med:
+            reasons = [f"Repli 24h: {ch24:+.2f}%", f"Liquidité (vol/mcap): {liq:.3f}", "Profil possible de mean-reversion (si marché neutre)"]
+            score = 55 + min(35, abs(ch24) * 3)
+            conf = 58 + (8 if liq > 2*ratio_med else 0)
+            add_signal("🧲 Dip liquid", sym, score, conf, reasons, {"price": price, "ch24": ch24, "liq": liq})
+
+    # ---- Tri + limitation ----
+    signals.sort(key=lambda x: (x["score"], x["confidence"]), reverse=True)
+    signals = signals[:35]
+
+    # ---- UI ----
+    # Petit util: construire HTML des cartes
+    cards_html = ""
+    for s in signals:
+        sym = s["symbol"]
+        p = s["payload"] or {}
+        price = p.get("price")
+        ch24 = p.get("ch24")
+        target = p.get("target")
+        liq = p.get("liq")
+
+        reasons_html = "".join([f"<li>{escape_html(r)}</li>" for r in (s.get("reasons") or [])])
+
+        badges = f"""
+          <span class="badge">{escape_html(s['kind'])}</span>
+          <span class="badge">Score {s['score']:.0f}</span>
+          <span class="badge">Confiance {s['confidence']}%</span>
+        """
+
+        sub = []
+        if price is not None:
+            sub.append(f"Prix: <b>{price:.6g}</b>")
+        if ch24 is not None:
+            sub.append(f"24h: <b>{ch24:+.2f}%</b>")
+        if target is not None:
+            sub.append(f"Target: <b>{target:.6g}</b>")
+        if liq is not None:
+            sub.append(f"Vol/MCap: <b>{liq:.3f}</b>")
+
+        cards_html += f"""
+        <div class="card" style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+            <div>
+              <div style="font-size:20px;font-weight:800;">{escape_html(sym)}</div>
+              <div class="muted" style="margin-top:4px;">{' • '.join(sub)}</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">{badges}</div>
+          </div>
+
+          <div style="margin-top:10px;">
+            <div style="font-weight:700;margin-bottom:6px;">Pourquoi ce signal ?</div>
+            <ul style="margin:0 0 0 18px;">{reasons_html}</ul>
+          </div>
+        </div>
+        """
+
+    # Section watchlist rapide
+    wl_html = ""
+    if wl:
+        items = []
+        for item in wl[:12]:
+            sym = (item.get("symbol") or "").upper()
+            note = (item.get("note") or "").strip()
+            tgt = item.get("target_price")
+            extra = []
+            if tgt is not None:
+                extra.append(f"🎯 {escape_html(str(tgt))}")
+            if note:
+                extra.append(f"📝 {escape_html(note)}")
+            items.append(f"<li><b>{escape_html(sym)}</b> <span class='muted'>{' • '.join(extra)}</span></li>")
+        wl_html = f"""
+        <div class="card" style="margin-top:14px;">
+          <div style="font-weight:800;">🎯 Ta watchlist</div>
+          <div class="muted" style="margin-top:6px;">Astuce: ajoute/édite via <code>/api/watchlist/add</code> (ton admin pourra aussi offrir une UI plus tard).</div>
+          <ul style="margin:10px 0 0 18px;">{''.join(items)}</ul>
+        </div>
+        """
+
+    html = f"""
+    {GLOBAL_STYLES}
+    <div class="app-shell">
+      {SIDEBAR}
+      <main class="main">
+        <div class="container">
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+            <div>
+              <h1 style="margin:0;">📥 Signal Inbox IA</h1>
+              <div class="muted">Signaux générés à partir de données live (CoinGecko) + ta watchlist. Dernière génération: <b>{now_utc.strftime('%Y-%m-%d %H:%M:%S')} UTC</b></div>
+            </div>
+            <div class="muted">TTL données: ~3 min</div>
+          </div>
+
+          <div class="card" style="margin-top:14px;">
+            <div style="font-weight:800;">Comment ça marche (explainable)</div>
+            <div class="muted" style="margin-top:6px;">
+              On calcule un score basé sur: <b>momentum 24h</b>, <b>liquidité (vol/mcap)</b>, et <b>spikes de volume</b>.
+              Les alertes watchlist (targets) passent en priorité.
+            </div>
+          </div>
+
+          <div style="margin-top:14px;">
+            {cards_html if cards_html else '<div class="card">Aucun signal pour le moment. Ajoute des coins à ta watchlist ou reviens plus tard.</div>'}
+          </div>
+
+          {wl_html}
+        </div>
+      </main>
+    </div>
+    """
+    return HTMLResponse(html)
+
+# ============= AI SETUP BUILDER (Explainable) =============
+def _binance_klines(symbol: str, interval: str, limit: int = 500, ttl_seconds: int = 60):
+    """
+    Récupère des chandelles OHLCV (VRAIES données) depuis Binance (API publique).
+    - symbol: ex "BTCUSDT"
+    - interval: "5m","15m","1h","4h","1d"
+    """
+    symbol = (symbol or "").upper().strip()
+    interval = (interval or "").strip()
+    if not symbol or not interval:
+        return []
+    url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={int(limit)}"
+    return _fetch_json(url, ttl_seconds=ttl_seconds) or []
+
+def _ema(values, period: int):
+    if not values or period <= 1:
+        return None
+    k = 2 / (period + 1)
+    ema = values[0]
+    for v in values[1:]:
+        ema = (v * k) + (ema * (1 - k))
+    return ema
+
+def _rsi(values, period: int = 14):
+    if not values or len(values) < period + 1:
+        return None
+    gains = []
+    losses = []
+    for i in range(1, period + 1):
+        ch = values[i] - values[i-1]
+        gains.append(max(0.0, ch))
+        losses.append(max(0.0, -ch))
+    avg_gain = sum(gains) / period
+    avg_loss = sum(losses) / period
+    for i in range(period + 1, len(values)):
+        ch = values[i] - values[i-1]
+        gain = max(0.0, ch)
+        loss = max(0.0, -ch)
+        avg_gain = ((avg_gain * (period - 1)) + gain) / period
+        avg_loss = ((avg_loss * (period - 1)) + loss) / period
+    if avg_loss == 0:
+        return 100.0
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+
+def _atr(highs, lows, closes, period: int = 14):
+    if not closes or len(closes) < period + 1:
+        return None
+    trs = []
+    for i in range(1, len(closes)):
+        tr = max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1]))
+        trs.append(tr)
+    if len(trs) < period:
+        return None
+    atr = sum(trs[:period]) / period
+    for tr in trs[period:]:
+        atr = ((atr * (period - 1)) + tr) / period
+    return atr
+
+@app.get("/ai-setup-builder")
+async def ai_setup_builder(request: Request):
+    if not is_logged_in(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+    # valeurs par défaut
+    symbol = (request.query_params.get("symbol") or "BTCUSDT").upper().strip()
+    interval = (request.query_params.get("tf") or "15m").strip()
+    style = (request.query_params.get("style") or "day").strip()
+    risk = (request.query_params.get("risk") or "1").strip()
+
+    html = f"""
+    {GLOBAL_STYLES}
+    <div class="app-shell">
+      {SIDEBAR}
+      <main class="main">
+        <div class="container">
+          <h1 style="margin:0;">🧩 AI Setup Builder (Explainable)</h1>
+          <div class="muted" style="margin-top:6px;">
+            Génère des setups basés sur <b>vraies chandelles OHLCV Binance</b> + logique IA explainable (règles + score).
+          </div>
+
+          <div class="card" style="margin-top:14px;">
+            <form method="post" action="/ai-setup-builder" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;">
+              <div>
+                <div class="muted">Symbol (Binance)</div>
+                <input name="symbol" value="{escape_html(symbol)}" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+              </div>
+              <div>
+                <div class="muted">Timeframe</div>
+                <select name="tf" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+                  {''.join([f'<option value="{t}" {"selected" if t==interval else ""}>{t}</option>' for t in ["5m","15m","1h","4h","1d"]])}
+                </select>
+              </div>
+              <div>
+                <div class="muted">Style</div>
+                <select name="style" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+                  {''.join([f'<option value="{t}" {"selected" if t==style else ""}>{t}</option>' for t in ["scalp","day","swing"]])}
+                </select>
+              </div>
+              <div>
+                <div class="muted">Risque / trade (%)</div>
+                <input name="risk" value="{escape_html(risk)}" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+              </div>
+              <div style="grid-column:1/-1;display:flex;gap:10px;justify-content:flex-end;">
+                <button class="btn" type="submit">Générer setups</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card" style="margin-top:14px;">
+            <div style="font-weight:800;">Ce que la page fait</div>
+            <ul style="margin:10px 0 0 18px;">
+              <li>Récupère 500 chandelles depuis Binance (API publique).</li>
+              <li>Calcule EMA20/EMA50, RSI14, ATR14, volume moyen.</li>
+              <li>Détecte un régime (Trend / Range) puis propose 1-3 setups avec entry/stop/target + explication.</li>
+            </ul>
+          </div>
+
+        </div>
+      </main>
+    </div>
+    """
+    return HTMLResponse(html)
+
+@app.post("/ai-setup-builder")
+async def ai_setup_builder_generate(request: Request):
+    if not is_logged_in(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+    form = await request.form()
+    symbol = (form.get("symbol") or "BTCUSDT").upper().strip()
+    interval = (form.get("tf") or "15m").strip()
+    style = (form.get("style") or "day").strip()
+    risk_raw = (form.get("risk") or "1").strip()
+
+    try:
+        risk_pct = float(risk_raw)
+    except Exception:
+        risk_pct = 1.0
+    risk_pct = max(0.1, min(5.0, risk_pct))
+
+    kl = _binance_klines(symbol, interval, limit=500, ttl_seconds=60)
+    if not kl or not isinstance(kl, list):
+        return HTMLResponse(f"""{GLOBAL_STYLES}<div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card">Impossible de récupérer les chandelles Binance pour {escape_html(symbol)} ({escape_html(interval)}).</div></div>""")
+
+    # Parse chandelles
+    opens, highs, lows, closes, vols, times = [], [], [], [], [], []
+    for row in kl:
+        try:
+            times.append(int(row[0]))
+            opens.append(float(row[1]))
+            highs.append(float(row[2]))
+            lows.append(float(row[3]))
+            closes.append(float(row[4]))
+            vols.append(float(row[5]))
+        except Exception:
+            continue
+
+    if len(closes) < 60:
+        return HTMLResponse(f"""{GLOBAL_STYLES}<div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card">Pas assez de données pour analyser {escape_html(symbol)}.</div></div>""")
+
+    last_price = closes[-1]
+    ema20 = _ema(closes[-200:], 20)
+    ema50 = _ema(closes[-250:], 50)
+    rsi14 = _rsi(closes[-200:], 14)
+    atr14 = _atr(highs[-200:], lows[-200:], closes[-200:], 14)
+    vol_avg = sum(vols[-50:]) / max(1, len(vols[-50:]))
+
+    # Régime simple
+    regime = "Range"
+    trend_strength = 0.0
+    if ema20 and ema50 and last_price:
+        spread = abs(ema20 - ema50) / last_price
+        trend_strength = spread
+        if ema20 > ema50 and spread > 0.004:
+            regime = "Trend ↑"
+        elif ema20 < ema50 and spread > 0.004:
+            regime = "Trend ↓"
+
+    # Paramètres style (targets/stop basés ATR)
+    if not atr14 or atr14 <= 0:
+        atr14 = max(1e-9, last_price * 0.002)
+
+    if style == "scalp":
+        stop_mult, tp_mult = 1.0, 1.5
+    elif style == "swing":
+        stop_mult, tp_mult = 2.0, 3.5
+    else:
+        stop_mult, tp_mult = 1.5, 2.5
+
+    setups = []
+
+    def push_setup(title, direction, entry, stop, target, confidence, why):
+        rr = (abs(target-entry) / max(1e-9, abs(entry-stop))) if entry and stop else 0
+        setups.append({
+            "title": title,
+            "direction": direction,
+            "entry": entry,
+            "stop": stop,
+            "target": target,
+            "rr": rr,
+            "confidence": int(max(0, min(100, confidence))),
+            "why": why[:8]
+        })
+
+    # 1) Trend pullback (si Trend)
+    if regime.startswith("Trend") and ema20:
+        dist = abs(last_price - ema20)
+        near = dist <= 0.6 * atr14
+        if near and rsi14 is not None and 40 <= rsi14 <= 65:
+            direction = "Long" if regime.endswith("↑") else "Short"
+            entry = last_price
+            stop = entry - stop_mult*atr14 if direction=="Long" else entry + stop_mult*atr14
+            target = entry + tp_mult*atr14 if direction=="Long" else entry - tp_mult*atr14
+            confidence = 72 if trend_strength > 0.006 else 66
+            why = [
+                f"Régime: {regime} (EMA20 vs EMA50)",
+                f"Prix proche EMA20 (distance {dist:.4g} ≤ 0.6×ATR)",
+                f"RSI14 = {rsi14:.1f} (zone saine pour pullback)",
+                f"ATR14 = {atr14:.4g} (stop/target calibrés)",
+            ]
+            push_setup("Pullback EMA20", direction, entry, stop, target, confidence, why)
+
+    # 2) Breakout volume (20 périodes)
+    hi20 = max(highs[-20:])
+    lo20 = min(lows[-20:])
+    vol_now = vols[-1]
+    vol_spike = vol_now > 1.5 * vol_avg if vol_avg else False
+
+    if last_price >= 0.995*hi20 and vol_spike:
+        entry = last_price
+        stop = entry - stop_mult*atr14
+        target = entry + tp_mult*atr14
+        why = [
+            "Breakout proche du plus haut 20 périodes",
+            f"Volume spike: vol last = {vol_now:.4g} > 1.5×moyenne(50) {vol_avg:.4g}",
+            f"ATR14 = {atr14:.4g}",
+        ]
+        push_setup("Breakout + Volume", "Long", entry, stop, target, 70, why)
+
+    if last_price <= 1.005*lo20 and vol_spike:
+        entry = last_price
+        stop = entry + stop_mult*atr14
+        target = entry - tp_mult*atr14
+        why = [
+            "Breakdown proche du plus bas 20 périodes",
+            f"Volume spike: vol last = {vol_now:.4g} > 1.5×moyenne(50) {vol_avg:.4g}",
+            f"ATR14 = {atr14:.4g}",
+        ]
+        push_setup("Breakdown + Volume", "Short", entry, stop, target, 70, why)
+
+    # 3) Range mean reversion (si Range)
+    if regime == "Range":
+        # Bollinger simple
+        window = closes[-20:]
+        sma20 = sum(window)/len(window)
+        variance = sum((x - sma20)**2 for x in window)/len(window)
+        std = math.sqrt(variance)
+        lower = sma20 - 2*std
+        upper = sma20 + 2*std
+
+        if rsi14 is not None and last_price <= lower and rsi14 <= 35:
+            entry = last_price
+            stop = entry - stop_mult*atr14
+            target = sma20  # retour moyenne
+            why = [
+                "Régime: Range",
+                f"Prix sous bande basse (BB20-2σ)",
+                f"RSI14 bas: {rsi14:.1f}",
+                f"Target = retour SMA20 ({sma20:.4g})",
+            ]
+            push_setup("Mean-reversion (BB20)", "Long", entry, stop, target, 64, why)
+
+        if rsi14 is not None and last_price >= upper and rsi14 >= 65:
+            entry = last_price
+            stop = entry + stop_mult*atr14
+            target = sma20
+            why = [
+                "Régime: Range",
+                f"Prix au-dessus bande haute (BB20+2σ)",
+                f"RSI14 élevé: {rsi14:.1f}",
+                f"Target = retour SMA20 ({sma20:.4g})",
+            ]
+            push_setup("Mean-reversion (BB20)", "Short", entry, stop, target, 64, why)
+
+    # Tri et garder max 3
+    setups.sort(key=lambda x: (x["confidence"], x["rr"]), reverse=True)
+    setups = setups[:3]
+
+    gen_utc = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    last_candle_utc = datetime.utcfromtimestamp(times[-1]/1000).strftime("%Y-%m-%d %H:%M:%S") if times else "?"
+    metrics = f"""
+      <div class="card" style="margin-top:14px;">
+        <div style="font-weight:800;">📊 Snapshot live</div>
+        <div class="muted" style="margin-top:6px;">
+          Symbol: <b>{escape_html(symbol)}</b> • TF: <b>{escape_html(interval)}</b> • Dernière bougie: <b>{last_candle_utc} UTC</b> • Généré: <b>{gen_utc} UTC</b>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+          <span class="badge">Prix {last_price:.6g}</span>
+          <span class="badge">EMA20 {ema20:.6g if ema20 else "—"}</span>
+          <span class="badge">EMA50 {ema50:.6g if ema50 else "—"}</span>
+          <span class="badge">RSI14 {rsi14:.1f if rsi14 is not None else "—"}</span>
+          <span class="badge">ATR14 {atr14:.6g}</span>
+          <span class="badge">Régime {escape_html(regime)}</span>
+          <span class="badge">Risque {risk_pct:.1f}%</span>
+        </div>
+      </div>
+    """
+
+    setups_html = ""
+    if not setups:
+        setups_html = '<div class="card" style="margin-top:14px;">Aucun setup fort détecté sur ce snapshot. Essaie un autre timeframe ou un autre coin.</div>'
+    else:
+        for st in setups:
+            why_html = "".join([f"<li>{escape_html(x)}</li>" for x in st["why"]])
+            setups_html += f"""
+            <div class="card" style="margin-top:14px;">
+              <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div style="font-size:18px;font-weight:900;">{escape_html(st["title"])}</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                  <span class="badge">{escape_html(st["direction"])}</span>
+                  <span class="badge">RR {st["rr"]:.2f}</span>
+                  <span class="badge">Confiance {st["confidence"]}%</span>
+                </div>
+              </div>
+              <div class="muted" style="margin-top:8px;">
+                Entry: <b>{st["entry"]:.6g}</b> • Stop: <b>{st["stop"]:.6g}</b> • Target: <b>{st["target"]:.6g}</b>
+              </div>
+              <div style="margin-top:10px;">
+                <div style="font-weight:800;">Pourquoi ce setup ?</div>
+                <ul style="margin:8px 0 0 18px;">{why_html}</ul>
+              </div>
+            </div>
+            """
+
+    html = f"""
+    {GLOBAL_STYLES}
+    <div class="app-shell">
+      {SIDEBAR}
+      <main class="main">
+        <div class="container">
+          <h1 style="margin:0;">🧩 AI Setup Builder</h1>
+          <div class="muted" style="margin-top:6px;">Setups générés à partir de vraies chandelles Binance (TTL ~60s) + logique explainable.</div>
+
+          <div class="card" style="margin-top:14px;">
+            <form method="post" action="/ai-setup-builder" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;">
+              <div>
+                <div class="muted">Symbol (Binance)</div>
+                <input name="symbol" value="{escape_html(symbol)}" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+              </div>
+              <div>
+                <div class="muted">Timeframe</div>
+                <select name="tf" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+                  {''.join([f'<option value="{t}" {"selected" if t==interval else ""}>{t}</option>' for t in ["5m","15m","1h","4h","1d"]])}
+                </select>
+              </div>
+              <div>
+                <div class="muted">Style</div>
+                <select name="style" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+                  {''.join([f'<option value="{t}" {"selected" if t==style else ""}>{t}</option>' for t in ["scalp","day","swing"]])}
+                </select>
+              </div>
+              <div>
+                <div class="muted">Risque / trade (%)</div>
+                <input name="risk" value="{risk_pct:.1f}" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+              </div>
+              <div style="grid-column:1/-1;display:flex;gap:10px;justify-content:flex-end;">
+                <button class="btn" type="submit">Regénérer</button>
+              </div>
+            </form>
+          </div>
+
+          {metrics}
+          {setups_html}
+
+          <div class="card" style="margin-top:14px;">
+            <div style="font-weight:800;">⚠️ Note</div>
+            <div class="muted" style="margin-top:6px;">Ceci est un outil d’aide à la décision, pas un conseil financier. Vérifie toujours le contexte (news, volatilité, liquidité) avant de trader.</div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+    """
+    return HTMLResponse(html)
+
 
 @app.get("/ai-liquidity")
 async def ai_liquidity(request: Request):

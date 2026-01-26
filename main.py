@@ -4713,6 +4713,64 @@ def normalize_username(value: str) -> str:
         return ""
 
 
+
+
+# ---------------------------------------------------------------------------
+# Compat helpers (some IA pages call these; keep them stable)
+# ---------------------------------------------------------------------------
+def is_logged_in(request: Request) -> bool:
+    """Compat: returns True if a user session/cookie indicates an authenticated user."""
+    try:
+        user = get_user_from_request(request)
+        if user:
+            return True
+    except Exception:
+        pass
+    try:
+        if hasattr(request, "session") and request.session:
+            if request.session.get("username") or request.session.get("email") or request.session.get("user"):
+                return True
+    except Exception:
+        pass
+    try:
+        # Some deployments rely on a cookie token; presence usually means logged-in.
+        if request.cookies.get("session_token") or request.cookies.get("access_token"):
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def get_user_effective_plan(request: Request) -> str:
+    """Best-effort plan resolution used for debug/UI. Admins are treated as full access."""
+    try:
+        u = get_user_from_request(request) or {}
+        if isinstance(u, dict) and u.get("is_admin"):
+            return "elite"
+        # Try stored plan in session/db
+        if isinstance(u, dict):
+            p = (u.get("plan") or u.get("subscription_plan") or u.get("user_plan") or "").strip().lower()
+            if p:
+                return p
+            uname = (u.get("username") or "").strip()
+            email = (u.get("email") or "").strip()
+        else:
+            uname, email = "", ""
+        if not uname and hasattr(request, "session") and request.session:
+            uname = (request.session.get("username") or "").strip()
+            email = (request.session.get("email") or "").strip()
+        # get_user_plan exists elsewhere in this file
+        if uname or email:
+            try:
+                p = (get_user_plan(uname or email) or "").strip().lower()
+                if p:
+                    return p
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return "free"
+
 def get_user_plan(username: str) -> str:
     """Retourne le plan d'abonnement d'un utilisateur (free/premium/advanced/pro/elite).
 
@@ -31643,9 +31701,20 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
             </p>
           </div>
 </div>
-          <p>Analyse rapide d’un token (symbole / nom / contrat) via des données publiques. Idéal pour repérer la liquidité, la FDV et quelques signaux de risque.</p>
-
-          <form class="form" method="POST" action="/ai-token-scanner">
+          <p>
+  <b>But :</b> vérifier un token en quelques secondes avec des <b>données réelles</b> (prix, market cap, volume 24h) et une lecture simple.
+  Entre un symbole / nom / adresse de contrat, puis lance un scan.
+</p>
+<div class="card" style="margin:14px 0 0 0; padding:14px 16px;">
+  <div style="font-weight:700; margin-bottom:6px;">Avant de scanner</div>
+  <ul style="margin:0; padding-left:18px; line-height:1.6;">
+    <li><b>Pourquoi :</b> filtrer vite (liquidité/volume), éviter les coins “morts” et repérer l’activité anormale.</li>
+    <li><b>Ce que tu obtiens :</b> score + signaux (variation 24h, volume/market cap, volatilité, etc.).</li>
+    <li><b>Sources :</b> CoinGecko + heuristiques internes (cache court côté serveur).</li>
+  </ul>
+  <div style="margin-top:8px; font-size:13px; opacity:.85;">⚠️ Ce n’est pas un conseil financier. Utilise-le comme <b>filtre</b> avant ton plan de trade.</div>
+</div>
+<form class="form" method="POST" action="/ai-token-scanner">
             <input class="input" name="q" value="{q_esc}" placeholder="Ex: BTC, Solana, PEPE, ou 0x... (contrat)" />
             <select class="select" name="chain">
               <option value="auto" {"selected" if chain=="auto" else ""}>Chaîne: Auto</option>

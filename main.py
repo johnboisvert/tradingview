@@ -6,21 +6,6 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
-
-
-# ---------------------------------------------------------------------
-# Helpers manquants (évite NameError sur certaines pages)
-# ---------------------------------------------------------------------
-def escape_html(value) -> str:
-    """Escape HTML safely for user-controlled strings."""
-    try:
-        import html as _html
-        if value is None:
-            return ""
-        return _html.escape(str(value), quote=True)
-    except Exception:
-        return "" if value is None else str(value)
-
 # === Railway debug fingerprint (temp) ===
 import os, hashlib, pathlib
 import html  # pour html.escape (AI Token Scanner)
@@ -2658,6 +2643,65 @@ BADGES_DATA = {
 
 
 app = FastAPI()
+
+# =========================
+# Shared helpers (compatibilité / anti-NameError)
+# =========================
+try:
+    from html import escape as _html_escape
+except Exception:  # pragma: no cover
+    _html_escape = None
+
+def escape_html(value) -> str:
+    """Escape HTML safely (returns '' for None)."""
+    try:
+        if value is None:
+            return ""
+        s = str(value)
+        if _html_escape:
+            return _html_escape(s, quote=True)
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&#x27;")
+    except Exception:
+        return ""
+
+def _fmt_pct(x, decimals: int = 2, empty: str = "—") -> str:
+    """Format percent number and append '%'."""
+    try:
+        if x is None:
+            return empty
+        v = float(x)
+        return f"{v:.{int(decimals)}f}%"
+    except Exception:
+        return empty
+
+def _coingecko_markets_top50(vs_currency: str = "usd"):
+    """Top 50 markets from CoinGecko. Returns [] on any error."""
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        "vs_currency": vs_currency,
+        "order": "market_cap_desc",
+        "per_page": 50,
+        "page": 1,
+        "sparkline": "false",
+        "price_change_percentage": "1h,24h,7d",
+    }
+    # Prefer httpx if available, fallback to requests.
+    try:
+        import httpx
+        with httpx.Client(timeout=10.0) as client:
+            r = client.get(url, params=params, headers={"accept": "application/json"})
+            r.raise_for_status()
+            return r.json() or []
+    except Exception:
+        try:
+            import requests
+            r = requests.get(url, params=params, timeout=10)
+            r.raise_for_status()
+            return r.json() or []
+        except Exception:
+            return []
+
+
 
 # --- Rate limiting (SlowAPI) ---
 class _NoOpLimiter:
@@ -29244,6 +29288,7 @@ async def get_top_50_cryptos():
 
 @app.get("/ai-signals", response_class=HTMLResponse)
 async def ai_signals():
+    cards_html = ""  # safety: always defined
     """Signaux de trading basés sur analyse technique - TOP 50"""
     
     # Rcuprer le top 50
@@ -29589,6 +29634,7 @@ def _ai_alerts_score(m: dict, style: str = "scalp") -> dict:
 
 @app.get("/ai-alerts", response_class=HTMLResponse)
 async def ai_alerts_inbox(request: Request):
+    cards_html = ""  # safety: always defined
     """AI Alerts / Inbox (données réelles CoinGecko)."""
     style = (request.query_params.get("style") or "scalp").strip().lower()
     if style not in ("scalp", "swing"):
@@ -31204,44 +31250,6 @@ async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeo
             raise
 
 
-
-
-async def _coingecko_markets_top50(vs_currency: str = "usd") -> list[dict]:
-    """Retourne le top 50 CoinGecko (cache court) — utilisé par /ai-liquidity.
-    On passe par _fetch_json() (déjà présent dans ce fichier) pour gérer retries/headers/cache.
-    """
-    vs = (vs_currency or "usd").lower().strip()
-    cache_key = f"cg_markets_top50:{vs}"
-
-    # Utiliser SmartCache si dispo pour éviter de spammer CoinGecko.
-    try:
-        cached = cache.get_price_cache(cache_key)  # type: ignore[name-defined]
-        if cached:
-            return cached
-    except Exception:
-        pass
-
-    url = "https://api.coingecko.com/api/v3/coins/markets"
-    params = {
-        "vs_currency": vs,
-        "order": "market_cap_desc",
-        "per_page": 50,
-        "page": 1,
-        "sparkline": "false",
-        "price_change_percentage": "24h",
-    }
-
-    data = await _fetch_json(url, params=params, cache_ttl=30, use_coingecko_key=True)  # type: ignore[name-defined]
-    if not isinstance(data, list):
-        data = []
-
-    try:
-        cache.set_price_cache(cache_key, data)  # type: ignore[name-defined]
-    except Exception:
-        pass
-
-    return data
-
 def _pick_best_pair(pairs: list[dict]) -> dict | None:
     if not pairs:
         return None
@@ -32437,4 +32445,283 @@ async def ai_timeframe(request: Request):
     except Exception as e:
         return HTMLResponse(f"<h1>Erreur</h1><pre>{e}</pre>", status_code=500)
 
-SIDEBAR_FULL = globals().get('SIDEBAR_HTML','')
+# ============================================================
+# ✅ Routes manquantes (évite 404) + pages robustes (anti-500)
+# ============================================================
+
+def _simple_page(title: str, body_html: str, sidebar_html: str = "") -> str:
+    styles = globals().get("GLOBAL_STYLES") or ""
+    # fallback mini CSS si GLOBAL_STYLES absent
+    if not styles:
+        styles = r'''<style>
+        body{font-family:Segoe UI,Arial,sans-serif;background:#0f172a;color:#e2e8f0;margin:0}
+        .layout{display:flex;min-height:100vh}
+        aside{width:280px;background:#0b1220;border-right:1px solid #1f2937}
+        main{flex:1;padding:24px}
+        .card{background:#0b1220;border:1px solid #1f2937;border-radius:14px;padding:18px;max-width:1100px}
+        input,select{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0}
+        button{padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#111827;color:#e2e8f0;cursor:pointer}
+        .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+        @media (max-width:900px){aside{display:none}.grid{grid-template-columns:1fr}}
+        .muted{color:#94a3b8}
+        </style>'''
+    return f"""<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">{styles}<title>{escape_html(title)}</title></head>
+<body>
+<div class="layout">
+  <aside class="sidebar">{sidebar_html}</aside>
+  <main>
+    <h1 style="margin:0 0 14px 0">{escape_html(title)}</h1>
+    {body_html}
+  </main>
+</div>
+</body>
+</html>"""
+
+@app.get("/ai-sizer", response_class=HTMLResponse)
+async def ai_sizer_page(request: Request):
+    """Calculateur de taille de position (spot/futures)."""
+    SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
+    q = dict(request.query_params)
+    account = q.get("account", "1000")
+    risk = q.get("risk", "1")
+    entry = q.get("entry", "")
+    stop = q.get("stop", "")
+    leverage = q.get("leverage", "1")
+    direction = q.get("direction", "long")
+    result_html = ""
+
+    try:
+        if entry and stop:
+            acc = float(account)
+            r = float(risk) / 100.0
+            e = float(entry)
+            s = float(stop)
+            lev = max(1.0, float(leverage))
+            per_unit_risk = abs(e - s)
+            if per_unit_risk <= 0:
+                raise ValueError("Entry et Stop doivent être différents.")
+            risk_amount = acc * r
+            qty = risk_amount / per_unit_risk
+            position_notional = qty * e
+            margin = position_notional / lev
+            result_html = f"""
+            <div class="card" style="margin-top:14px">
+              <h3 style="margin:0 0 10px 0">Résultat</h3>
+              <div class="grid">
+                <div><div class="muted">Risque ($)</div><div><b>{risk_amount:,.2f}</b></div></div>
+                <div><div class="muted">Quantité (coins)</div><div><b>{qty:,.6f}</b></div></div>
+                <div><div class="muted">Notional ($)</div><div><b>{position_notional:,.2f}</b></div></div>
+                <div><div class="muted">Marge requise ($)</div><div><b>{margin:,.2f}</b></div></div>
+              </div>
+              <div class="muted" style="margin-top:10px">* Approximation: ne tient pas compte des frais/slippage.</div>
+            </div>
+            """
+    except Exception as e:
+        result_html = f'<div class="card" style="margin-top:14px;border-color:#ef4444"><b>Erreur:</b> {escape_html(e)}</div>'
+
+    body = f"""
+    <div class="card">
+      <div class="muted" style="margin-bottom:12px">Entre ton capital + entry/stop, on calcule la taille de position selon ton risque.</div>
+      <form method="get">
+        <div class="grid">
+          <div><label>Capital ($)</label><input name="account" value="{escape_html(account)}"></div>
+          <div><label>Risque / trade (%)</label><input name="risk" value="{escape_html(risk)}"></div>
+          <div><label>Entry</label><input name="entry" value="{escape_html(entry)}" placeholder="ex: 43000"></div>
+          <div><label>Stop</label><input name="stop" value="{escape_html(stop)}" placeholder="ex: 42500"></div>
+          <div><label>Leverage (futures)</label><input name="leverage" value="{escape_html(leverage)}"></div>
+          <div><label>Direction</label>
+            <select name="direction">
+              <option value="long" {'selected' if direction=='long' else ''}>Long</option>
+              <option value="short" {'selected' if direction=='short' else ''}>Short</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px"><button type="submit">Calculer</button></div>
+      </form>
+    </div>
+    {result_html}
+    """
+    return HTMLResponse(_simple_page("AI Sizer — Position sizing", body, SID))
+
+@app.get("/ai-exit", response_class=HTMLResponse)
+async def ai_exit_page(request: Request):
+    """Aide simple TP/SL selon RR."""
+    SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
+    q = dict(request.query_params)
+    entry = q.get("entry", "")
+    stop = q.get("stop", "")
+    rr = q.get("rr", "2")
+    direction = q.get("direction", "long")
+    out = ""
+    try:
+        if entry and stop:
+            e = float(entry); s = float(stop); rr_f = float(rr)
+            risk = abs(e - s)
+            if risk <= 0:
+                raise ValueError("Entry et Stop doivent être différents.")
+            tp = (e + risk * rr_f) if direction == "long" else (e - risk * rr_f)
+            out = f"""
+            <div class="card" style="margin-top:14px">
+              <h3 style="margin:0 0 10px 0">Sortie proposée</h3>
+              <div class="grid">
+                <div><div class="muted">Entry</div><div><b>{e:,.6f}</b></div></div>
+                <div><div class="muted">Stop</div><div><b>{s:,.6f}</b></div></div>
+                <div><div class="muted">RR</div><div><b>{rr_f:g}R</b></div></div>
+                <div><div class="muted">Take Profit (TP)</div><div><b>{tp:,.6f}</b></div></div>
+              </div>
+              <div class="muted" style="margin-top:10px">* Tu peux split TP1/TP2 ensuite (ex: 1R et 2R).</div>
+            </div>
+            """
+    except Exception as e:
+        out = f'<div class="card" style="margin-top:14px;border-color:#ef4444"><b>Erreur:</b> {escape_html(e)}</div>'
+
+    body = f"""
+    <div class="card">
+      <div class="muted" style="margin-bottom:12px">Entre ton entry/stop + RR désiré, on calcule un TP cohérent.</div>
+      <form method="get">
+        <div class="grid">
+          <div><label>Entry</label><input name="entry" value="{escape_html(entry)}"></div>
+          <div><label>Stop</label><input name="stop" value="{escape_html(stop)}"></div>
+          <div><label>RR (ex: 2)</label><input name="rr" value="{escape_html(rr)}"></div>
+          <div><label>Direction</label>
+            <select name="direction">
+              <option value="long" {'selected' if direction=='long' else ''}>Long</option>
+              <option value="short" {'selected' if direction=='short' else ''}>Short</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px"><button type="submit">Calculer TP</button></div>
+      </form>
+    </div>
+    {out}
+    """
+    return HTMLResponse(_simple_page("AI Exit — TP/SL simple", body, SID))
+
+@app.get("/ai-gem-hunter", response_class=HTMLResponse)
+async def ai_gem_hunter_page(request: Request):
+    """Gem Hunter (trending) — robuste."""
+    SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
+    items = []
+    err = ""
+    try:
+        url = "https://api.coingecko.com/api/v3/search/trending"
+        try:
+            import httpx
+            with httpx.Client(timeout=10.0) as client:
+                r = client.get(url, headers={"accept": "application/json"})
+                r.raise_for_status()
+                js = r.json() or {}
+        except Exception:
+            import requests
+            r = requests.get(url, timeout=10)
+            r.raise_for_status()
+            js = r.json() or {}
+        coins = (js.get("coins") or [])[:15]
+        for c in coins:
+            item = (c or {}).get("item") or {}
+            items.append({
+                "name": item.get("name") or "",
+                "symbol": item.get("symbol") or "",
+                "rank": item.get("market_cap_rank"),
+            })
+    except Exception as e:
+        err = str(e)
+
+    if err:
+        body = f'<div class="card" style="border-color:#ef4444"><b>Erreur CoinGecko:</b> {escape_html(err)}</div>'
+    else:
+        rows = "".join(
+            f'<tr><td style="padding:10px;border-bottom:1px solid #1f2937">{escape_html(i["name"])} <span class="muted">({escape_html(i["symbol"])})</span></td><td style="padding:10px;border-bottom:1px solid #1f2937" class="muted">Rank: {escape_html(i["rank"])}</td></tr>'
+            for i in items
+        )
+        body = f"""
+        <div class="card">
+          <div class="muted" style="margin-bottom:10px">Trending CoinGecko (idées rapides). Pas un conseil financier.</div>
+          <table style="width:100%;border-collapse:collapse">
+            {rows or '<tr><td class="muted" style="padding:10px">Aucune donnée.</td></tr>'}
+          </table>
+        </div>
+        """
+
+    return HTMLResponse(_simple_page("AI Gem Hunter — Trending", body, SID))
+
+@app.get("/ai-technical-analysis", response_class=HTMLResponse)
+async def ai_technical_analysis_page(request: Request):
+    """Analyse technique simple (fallback)."""
+    SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
+    q = dict(request.query_params)
+    symbol = (q.get("symbol") or "BTCUSDT").upper()
+    interval = (q.get("interval") or "1h")
+    summary_html = ""
+
+    try:
+        import httpx, pandas as pd, numpy as np
+        url = "https://api.binance.com/api/v3/klines"
+        params = {"symbol": symbol, "interval": interval, "limit": 200}
+        with httpx.Client(timeout=10.0) as client:
+            r = client.get(url, params=params)
+            r.raise_for_status()
+            kl = r.json() or []
+        if not kl:
+            raise ValueError("Aucune donnée Binance retournée.")
+        df = pd.DataFrame(kl, columns=["open_time","open","high","low","close","volume","close_time","qav","num_trades","taker_base","taker_quote","ignore"])
+        for col in ["open","high","low","close","volume"]:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        df["close"] = df["close"].astype(float)
+
+        df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
+        df["ema50"] = df["close"].ewm(span=50, adjust=False).mean()
+
+        delta = df["close"].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        rs = gain / loss.replace(0, np.nan)
+        df["rsi14"] = 100 - (100 / (1 + rs))
+
+        last = df.dropna().iloc[-1]
+        trend = "Bullish" if last["ema20"] > last["ema50"] else "Bearish"
+
+        summary_html = f"""
+        <div class="card" style="margin-top:14px">
+          <div class="grid">
+            <div><div class="muted">Close</div><div><b>{float(last['close']):,.6f}</b></div></div>
+            <div><div class="muted">Trend EMA20/50</div><div><b>{trend}</b></div></div>
+            <div><div class="muted">EMA20</div><div><b>{float(last['ema20']):,.6f}</b></div></div>
+            <div><div class="muted">EMA50</div><div><b>{float(last['ema50']):,.6f}</b></div></div>
+            <div><div class="muted">RSI14</div><div><b>{float(last['rsi14']):,.2f}</b></div></div>
+          </div>
+          <div class="muted" style="margin-top:10px">* Page légère (fallback).</div>
+        </div>
+        """
+    except Exception as e:
+        summary_html = f'<div class="card" style="margin-top:14px;border-color:#ef4444"><b>Erreur:</b> {escape_html(e)}</div>'
+
+    options = ['1m','5m','15m','1h','4h','1d']
+    body = f"""
+    <div class="card">
+      <form method="get">
+        <div class="grid">
+          <div><label>Symbol (Binance)</label><input name="symbol" value="{escape_html(symbol)}"></div>
+          <div><label>Interval</label>
+            <select name="interval">
+              {''.join(f'<option value="{i}" ' + ('selected' if i==interval else '') + f'>{i}</option>' for i in options)}
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px"><button type="submit">Analyser</button></div>
+      </form>
+    </div>
+    {summary_html}
+    """
+    return HTMLResponse(_simple_page("AI Technical Analysis", body, SID))
+
+
+
+# --------------------------
+# Final: alias sidebar full (compat)
+# --------------------------
+if not globals().get("SIDEBAR_FULL"):
+    globals()["SIDEBAR_FULL"] = globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR") or ""
+

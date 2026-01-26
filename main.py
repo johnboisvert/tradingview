@@ -898,6 +898,70 @@ def init_plan_access_db():
     except Exception as e:
         print(f"⚠️ init_plan_access_db: {e}")
         return False
+
+def init_portfolio_db() -> None:
+    """Initialise la DB du Portfolio Tracker (persistante via DB_DIR).
+
+    Cette fonction doit *jamais* faire planter le démarrage de l'app:
+    si l'outil portfolio n'est pas utilisé, on tolère l'absence/erreur.
+    """
+    try:
+        db_path = os.path.join(DB_DIR, "portfolio.db")
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+
+        # Portfolios (optionnel, permet plusieurs portefeuilles)
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS portfolios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT,
+                name TEXT DEFAULT 'Mon portfolio',
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+            )
+            """
+        )
+
+        # Holdings (positions actuelles)
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS portfolio_holdings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                portfolio_id INTEGER,
+                symbol TEXT NOT NULL,
+                amount REAL NOT NULL DEFAULT 0,
+                avg_cost REAL,
+                last_price REAL,
+                updated_at TEXT DEFAULT (datetime('now')),
+                UNIQUE(portfolio_id, symbol)
+            )
+            """
+        )
+
+        # Transactions (historique)
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS portfolio_transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                portfolio_id INTEGER,
+                ts TEXT DEFAULT (datetime('now')),
+                symbol TEXT NOT NULL,
+                side TEXT CHECK(side IN ('BUY','SELL')) NOT NULL,
+                qty REAL NOT NULL,
+                price REAL,
+                fee REAL DEFAULT 0,
+                notes TEXT
+            )
+            """
+        )
+
+        conn.commit()
+        conn.close()
+        print(f"✅ Table portfolio OK (sqlite) -> {db_path}")
+    except Exception as e:
+        print(f"⚠️  portfolio_db non disponible (OK): {e}")
+
 def get_plan_access_routes(plan: str) -> list:
     """Retourne la liste des routes (route_key) activées pour un plan."""
     plan = normalize_plan(plan)
@@ -5322,7 +5386,7 @@ async def get_top_cryptos_real(limit=100):
     try:
         cache_key = f"top_cryptos_{limit}"
         if cache.needs_update(cache_key):
-            url = f'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page={limit}&page=1&sparkline=false&price_change_percentage=24h,7d,90d'
+            url = f'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page={limit}&page=1&sparkline=false&price_change_percentage=1h,24h,7d,90d'
             response = await http_client.get(url)
             data = response.json()
             cache.set(cache_key, data)
@@ -29419,6 +29483,224 @@ async def ai_signals():
 
 print("Route 1/12 créée: AI Signals")
 
+
+
+def _ai_alerts_score(m: dict, style: str = "scalp") -> dict:
+    """Score simple (0-100) basé sur données CoinGecko.
+
+    - scalp: favorise momentum 1h + volume
+    - swing: favorise momentum 24h/7d + stabilité
+    """
+    try:
+        ch1 = float(m.get("price_change_percentage_1h_in_currency") or 0.0)
+    except Exception:
+        ch1 = 0.0
+    try:
+        ch24 = float(m.get("price_change_percentage_24h_in_currency") or m.get("price_change_percentage_24h") or 0.0)
+    except Exception:
+        ch24 = 0.0
+    try:
+        ch7 = float(m.get("price_change_percentage_7d_in_currency") or 0.0)
+    except Exception:
+        ch7 = 0.0
+
+    vol = float(m.get("total_volume") or 0.0)
+    mcap = float(m.get("market_cap") or 0.0)
+    v2m = (vol / mcap) if mcap > 0 else 0.0
+
+    # Pondérations
+    if style == "swing":
+        w1, w24, w7, wv, wvol = 12.0, 16.0, 12.0, 6.0, 8.0
+    else:
+        w1, w24, w7, wv, wvol = 18.0, 12.0, 6.0, 10.0, 6.0
+
+    # Score borné avec tanh pour éviter les extrêmes
+    score = 50.0
+    score += w1 * math.tanh(ch1 / 2.0)
+    score += w24 * math.tanh(ch24 / 6.0)
+    score += w7 * math.tanh(ch7 / 12.0)
+    score += wv * math.tanh((v2m - 0.03) / 0.03)
+
+    # Pénalité volatilité brute (prudence)
+    vol_pen = abs(ch1) * 0.5 + abs(ch24) * 0.15
+    score -= wvol * math.tanh((vol_pen - 3.0) / 3.0)
+
+    score = max(0.0, min(100.0, score))
+
+    # Confiance (heuristique)
+    conf = 25.0 + abs(score - 50.0) * 1.1 + 20.0 * min(max(v2m / 0.08, 0.0), 1.0)
+    conf = max(10.0, min(95.0, conf))
+
+    if score >= 60:
+        label = "Bullish"
+    elif score <= 40:
+        label = "Bearish"
+    else:
+        label = "Neutral"
+
+    reasons = []
+    if ch1 >= 0.8:
+        reasons.append(f"Momentum 1h +{ch1:.2f}%")
+    elif ch1 <= -0.8:
+        reasons.append(f"Momentum 1h {ch1:.2f}%")
+
+    if ch24 >= 3:
+        reasons.append(f"Tendance 24h +{ch24:.2f}%")
+    elif ch24 <= -3:
+        reasons.append(f"Tendance 24h {ch24:.2f}%")
+
+    if v2m >= 0.05:
+        reasons.append("Volume élevé vs market cap")
+    elif v2m <= 0.015 and vol > 0:
+        reasons.append("Volume faible (prudence)")
+
+    if vol_pen >= 6:
+        reasons.append("Volatilité élevée")
+
+    if not reasons:
+        reasons.append("Signaux mixtes / pas de conviction forte")
+
+    return {
+        "label": label,
+        "score": round(score, 1),
+        "confidence": round(conf, 0),
+        "ch1": ch1,
+        "ch24": ch24,
+        "ch7": ch7,
+        "v2m": v2m,
+        "reasons": reasons[:4],
+    }
+
+
+@app.get("/ai-alerts", response_class=HTMLResponse)
+async def ai_alerts_inbox(request: Request):
+    """AI Alerts / Inbox (données réelles CoinGecko)."""
+    style = (request.query_params.get("style") or "scalp").strip().lower()
+    if style not in ("scalp", "swing"):
+        style = "scalp"
+
+    try:
+        markets = await get_top_50_cryptos()
+    except Exception as e:
+        markets = []
+        print(f"⚠️ CoinGecko indisponible (ai-alerts): {e}")
+
+    alerts = []
+    for m in (markets or [])[:30]:
+        s = _ai_alerts_score(m, style=style)
+        alerts.append((s["score"], m, s))
+    alerts.sort(key=lambda x: x[0], reverse=True)
+
+    cards = []
+    for score, m, s in alerts[:20]:
+        name = m.get("name") or m.get("symbol", "").upper()
+        sym = (m.get("symbol") or "").upper()
+        price = m.get("current_price")
+        price_str = f"${price:,.6f}" if isinstance(price, (int, float)) else "-"
+        img = m.get("image") or ""
+
+        badge_class = "badge-bull" if s["label"] == "Bullish" else ("badge-bear" if s["label"] == "Bearish" else "badge-neutral")
+        reasons_html = "".join([f"<li>{html.escape(r)}</li>" for r in s["reasons"]])
+
+        cards.append(
+            f"""
+            <div class="alert-card">
+              <div class="alert-head">
+                <div class="alert-left">
+                  <div class="token">
+                    {'<img class="token-img" src="'+img+'" alt="">' if img else ''}
+                    <div>
+                      <div class="token-name">{html.escape(name)} <span class="token-sym">{html.escape(sym)}</span></div>
+                      <div class="token-sub">{price_str} · 1h <b>{s['ch1']:+.2f}%</b> · 24h <b>{s['ch24']:+.2f}%</b> · 7d <b>{s['ch7']:+.2f}%</b></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="alert-right">
+                  <div class="badge {badge_class}">{s['label']}</div>
+                  <div class="score">{s['score']}/100</div>
+                  <div class="conf">Confiance {int(s['confidence'])}%</div>
+                </div>
+              </div>
+              <div class="alert-body">
+                <ul class="reasons">{reasons_html}</ul>
+                <div class="meta">Style: <b>{style}</b> · Volume/MCAP: <b>{(s['v2m']*100):.2f}%</b></div>
+              </div>
+            </div>
+            """
+        )
+
+    cards_html = "\n".join(cards) if cards else '<div class="empty">Aucune donnée pour le moment. Réessaie dans 1-2 minutes.</div>'
+
+    html_page = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CryptoIA — AI Alerts</title>
+  <style>
+    body{{margin:0;background:#0b1220;color:#e9eef9;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}}
+    a{{color:inherit}}
+    .wrap{{display:flex;min-height:100vh}}
+    .sidebar{{width:260px;flex:0 0 260px;background:rgba(255,255,255,.03);border-right:1px solid rgba(255,255,255,.06)}}
+    .main{{flex:1;padding:22px 22px 40px}}
+    .title{{display:flex;align-items:end;gap:12px;flex-wrap:wrap}}
+    .title h1{{margin:0;font-size:28px;letter-spacing:.2px}}
+    .title p{{margin:6px 0 0;color:rgba(233,238,249,.75)}}
+    .toolbar{{margin:16px 0 10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}}
+    .btn{{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);text-decoration:none}}
+    .btn.active{{background:rgba(255,255,255,.12)}}
+    .grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:12px}}
+    .alert-card{{border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);border-radius:18px;overflow:hidden}}
+    .alert-head{{display:flex;justify-content:space-between;gap:14px;padding:14px 14px 10px}}
+    .token{{display:flex;gap:10px;align-items:center}}
+    .token-img{{width:34px;height:34px;border-radius:12px;background:rgba(255,255,255,.08)}}
+    .token-name{{font-weight:700}}
+    .token-sym{{opacity:.8;font-weight:700;margin-left:6px}}
+    .token-sub{{margin-top:2px;font-size:13px;color:rgba(233,238,249,.75)}}
+    .alert-right{{text-align:right;min-width:120px}}
+    .badge{{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700;font-size:12px;border:1px solid rgba(255,255,255,.12)}}
+    .badge-bull{{background:rgba(0,255,163,.12)}}
+    .badge-bear{{background:rgba(255,67,89,.12)}}
+    .badge-neutral{{background:rgba(255,255,255,.08)}}
+    .score{{margin-top:6px;font-size:20px;font-weight:800}}
+    .conf{{margin-top:2px;font-size:12px;color:rgba(233,238,249,.75)}}
+    .alert-body{{padding:0 14px 14px}}
+    .reasons{{margin:8px 0 8px 18px;color:rgba(233,238,249,.85)}}
+    .meta{{font-size:12px;color:rgba(233,238,249,.7)}}
+    .empty{{padding:16px;border:1px dashed rgba(255,255,255,.18);border-radius:14px;color:rgba(233,238,249,.75)}}
+    .note{{margin-top:16px;padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.25);color:rgba(233,238,249,.78)}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <aside class="sidebar">{SIDEBAR_FULL}</aside>
+    <main class="main">
+      <div class="title">
+        <div>
+          <h1>AI Alerts — Inbox</h1>
+          <p>Feed d’alertes basé sur des données réelles (CoinGecko). Style <b>{style}</b>.</p>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <a class="btn {'active' if style=='scalp' else ''}" href="/ai-alerts?style=scalp">Scalp (1h/volume)</a>
+        <a class="btn {'active' if style=='swing' else ''}" href="/ai-alerts?style=swing">Swing (24h/7d)</a>
+        <a class="btn" href="/ai-alerts">Rafraîchir</a>
+      </div>
+
+      <div class="grid">
+        {cards_html}
+      </div>
+
+      <div class="note">
+        <b>Note:</b> ce score est un modèle de scoring heuristique (inspiré ML) pour aider à prioriser des coins à surveiller.
+        Il ne constitue pas un conseil financier.
+      </div>
+    </main>
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(html_page)
 
 @app.get("/ai-news", response_class=HTMLResponse)
 async def ai_news():

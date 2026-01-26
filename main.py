@@ -12641,15 +12641,15 @@ async def ai_market_regime_page(request: Request):
             .kpi .k {{ opacity: 0.8; font-size: 13px; }}
             .kpi .v {{ font-size: 18px; font-weight: 800; margin-top: 6px; }}
             .badge {{ display: inline-flex; align-items:center; gap:10px; padding: 10px 14px; border-radius: 999px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); }}
-            .dot {{ width: 10px; height: 10px; border-radius: 999px; background: {color}; box-shadow: 0 0 20px {color}; }}
+            .dot {{ width: 10px; height: 10px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 20px var(--accent); }}
             .cta-row {{ display:flex; gap:10px; margin-top: 20px; flex-wrap: wrap; }}
             .btn {{ padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.10); background: rgba(0,0,0,0.35); color: #fff; cursor: pointer; text-decoration: none; font-weight: 700; }}
             .btn.primary {{ background: linear-gradient(135deg, rgba(32,247,199,0.9), rgba(0,190,255,0.7)); border: none; color: #051016; }}
             .err {{ margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,0,0,0.25); background: rgba(255,0,0,0.10); }}
             @media (max-width: 920px) {{ .grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} .page-wrap {{ padding: 18px; }} }}
         
-            .spark-wrap{margin-top:10px;opacity:.9}
-            .sparkline{display:block;width:100%;height:38px;color:#60a5fa}
+            .spark-wrap{{margin-top:10px;opacity:.9}}
+            .sparkline{{display:block;width:100%;height:38px;color:#60a5fa}}
 </style>
     </head>
     <body>
@@ -12676,6 +12676,19 @@ async def ai_market_regime_page(request: Request):
                     {f'<div class="err"><b>Note:</b> données temporairement indisponibles. {html.escape(error)}</div>' if error else ''}
                     <div style="opacity:0.72; font-size: 12px; margin-top: 12px;">
                         Données: CoinGecko (prix & global). Heuristique interne (règles simples). Pas une recommandation.
+            <div style="margin-top:18px;padding:16px;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(0,0,0,.18)">
+              <div style="font-weight:800;font-size:14px;margin-bottom:10px">Comment utiliser cette page</div>
+              <ul style="margin:0;padding-left:18px;line-height:1.6;opacity:.92">
+                <li><b>Régime</b> te dit si le marché ressemble plutôt à un <b>Trend</b> (tendance) ou un <b>Range</b> (consolidation).</li>
+                <li><b>Biais</b> résume la direction probable (Bull/Neutre/Bear) à partir de la dynamique BTC + dominance.</li>
+                <li><b>Confiance</b> (0–100%) = force du signal. Sous ~60%: évite d’overtrader, privilégie des tailles plus petites.</li>
+                <li>Utilise les cartes <b>Market Cap / BTC / ETH / Dominance</b> pour contextualiser le mouvement du marché.</li>
+              </ul>
+              <div style="margin-top:10px;opacity:.85;font-size:12px">
+                Astuce: combine ce régime avec ta page <b>Stratégies</b> (ex: en <b>Trend</b> privilégie breakout/continuation; en <b>Range</b> privilégie mean-reversion).
+              </div>
+            </div>
+
                     </div>
                 </div>
             </div>
@@ -12683,7 +12696,7 @@ async def ai_market_regime_page(request: Request):
     </body>
     </html>
     """
-    return HTMLResponse(html_page)
+    return HTMLResponse(html_page.lstrip())
 
 @app.get("/ai-whale-watcher", response_class=HTMLResponse)
 async def ai_whale_watcher():
@@ -31972,7 +31985,7 @@ async def ai_exit_page(request: Request):
     </body>
     </html>
     """
-    return HTMLResponse(html_page)
+    return HTMLResponse(html_page.lstrip())
 
 @app.get("/ai-gem-hunter", response_class=HTMLResponse)
 async def ai_gem_hunter_page(request: Request):
@@ -32154,7 +32167,7 @@ async def ai_gem_hunter_page(request: Request):
     </body>
     </html>
     """
-    return HTMLResponse(html_page)
+    return HTMLResponse(html_page.lstrip())
 
 @app.get("/crypto-pepites", response_class=HTMLResponse)
 async def crypto_pepites():

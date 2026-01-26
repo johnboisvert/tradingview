@@ -3203,6 +3203,12 @@ def get_user_from_request(request):
 
 
 
+
+# Backward-compat: certaines pages appellent encore cette fonction
+def get_current_user_from_session(request: Request) -> dict | None:
+    """Retourne l'utilisateur courant depuis la session (alias)."""
+    return get_user_from_request(request)
+
 def is_admin_user(user: dict | None) -> bool:
     """Détermine si l’utilisateur doit bypass les restrictions (admin)."""
     if not user:
@@ -12673,6 +12679,55 @@ async def ai_market_regime_page(request: Request):
     </html>
     """
     return HTMLResponse(html_page.lstrip())
+
+
+# ----------------------------------------------------------------------
+# Whale Watcher helpers (fallback) — évite 500 si les modules externes ne sont pas présents
+# ----------------------------------------------------------------------
+async def _real_whale_transactions(symbol: str = "BTC", limit: int = 25):
+    """Récupère des transactions 'whales'.
+    
+    Fallback sans clé/API externe : retourne une liste vide (la page reste fonctionnelle).
+    Tu peux brancher ici WhaleAlert, Arkham, Glassnode, etc. plus tard.
+    """
+    try:
+        # Pas d'API externe par défaut (pas de clé).
+        return []
+    except Exception:
+        return []
+
+def _whale_watcher(transactions):
+    """Construit un payload simple pour l'UI (summary + transactions)."""
+    txs = []
+    for t in (transactions or []):
+        if not isinstance(t, dict):
+            continue
+        # normalise et rend JSON-safe
+        tx = {
+            "time": str(t.get("time", "")),
+            "symbol": str(t.get("symbol", "")),
+            "amount": float(t.get("amount", 0) or 0),
+            "usd": float(t.get("usd", 0) or 0),
+            "direction": str(t.get("direction", "")),
+            "from": str(t.get("from", "")),
+            "to": str(t.get("to", "")),
+            "txid": str(t.get("txid", "")),
+        }
+        txs.append(tx)
+    total_usd = 0.0
+    biggest = None
+    for tx in txs:
+        total_usd += float(tx.get("usd", 0) or 0)
+        if biggest is None or float(tx.get("usd", 0) or 0) > float(biggest.get("usd", 0) or 0):
+            biggest = tx
+    return {
+        "summary": {
+            "count": len(txs),
+            "total_usd": round(total_usd, 2),
+            "biggest": biggest or {},
+        },
+        "transactions": txs,
+    }
 
 @app.get("/ai-whale-watcher", response_class=HTMLResponse)
 async def ai_whale_watcher():
@@ -31897,8 +31952,12 @@ async def ai_setup_builder(request: Request):
     style = (request.query_params.get("style") or "day").strip()
     risk = (request.query_params.get("risk") or "1").strip()
 
+    # Ancien rendu attendait `cards_html` et `wl_html` (bug: variables non définies)
+    cards_html = result_html
+    wl_html = ""
+
     html = f"""
-    {GLOBAL_STYLES}
+    <style>{GLOBAL_STYLES}</style>
     <div class="app-shell">
       {SIDEBAR}
       <main class="main">
@@ -31970,7 +32029,7 @@ async def ai_setup_builder_generate(request: Request):
 
     kl = await _binance_klines(symbol, interval, limit=500, ttl_seconds=60)
     if not kl or not isinstance(kl, list):
-        return HTMLResponse(f"""{GLOBAL_STYLES}<div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card">Impossible de récupérer les chandelles Binance pour {escape_html(symbol)} ({escape_html(interval)}).</div></div>""")
+        return HTMLResponse(f"""<style>{GLOBAL_STYLES}</style><div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card">Impossible de récupérer les chandelles Binance pour {escape_html(symbol)} ({escape_html(interval)}).</div></div>""")
 
     # Parse chandelles
     opens, highs, lows, closes, vols, times = [], [], [], [], [], []
@@ -31986,7 +32045,7 @@ async def ai_setup_builder_generate(request: Request):
             continue
 
     if len(closes) < 60:
-        return HTMLResponse(f"""{GLOBAL_STYLES}<div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card">Pas assez de données pour analyser {escape_html(symbol)}.</div></div>""")
+        return HTMLResponse(f"""<style>{GLOBAL_STYLES}</style><div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card">Pas assez de données pour analyser {escape_html(symbol)}.</div></div>""")
 
     last_price = closes[-1]
     ema20 = _ema(closes[-200:], 20)
@@ -32163,7 +32222,7 @@ async def ai_setup_builder_generate(request: Request):
             """
 
     html = f"""
-    {GLOBAL_STYLES}
+    <style>{GLOBAL_STYLES}</style>
     <div class="app-shell">
       {SIDEBAR}
       <main class="main">
@@ -32463,6 +32522,9 @@ async def ai_timeframe(request: Request):
 
 def _simple_page(title: str, body_html: str, sidebar_html: str = "") -> str:
     styles = globals().get("GLOBAL_STYLES") or ""
+    # GLOBAL_STYLES est du CSS brut; on l'encapsule pour éviter qu'il apparaisse comme texte sur la page
+    if styles and not styles.lstrip().lower().startswith('<style'):
+        styles = f"<style>{styles}</style>"
     # fallback mini CSS si GLOBAL_STYLES absent
     if not styles:
         styles = r'''<style>
@@ -32839,5 +32901,4 @@ async def _page_ai_swarm_agents():
     </div>
     """
     return HTMLResponse(_simple_page("AI Swarm Agents", body, sidebar=SIDEBAR_FULL))
-
 

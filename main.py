@@ -6,6 +6,21 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
+
+
+# ---------------------------------------------------------------------
+# Helpers manquants (évite NameError sur certaines pages)
+# ---------------------------------------------------------------------
+def escape_html(value) -> str:
+    """Escape HTML safely for user-controlled strings."""
+    try:
+        import html as _html
+        if value is None:
+            return ""
+        return _html.escape(str(value), quote=True)
+    except Exception:
+        return "" if value is None else str(value)
+
 # === Railway debug fingerprint (temp) ===
 import os, hashlib, pathlib
 import html  # pour html.escape (AI Token Scanner)
@@ -31189,6 +31204,44 @@ async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeo
             raise
 
 
+
+
+async def _coingecko_markets_top50(vs_currency: str = "usd") -> list[dict]:
+    """Retourne le top 50 CoinGecko (cache court) — utilisé par /ai-liquidity.
+    On passe par _fetch_json() (déjà présent dans ce fichier) pour gérer retries/headers/cache.
+    """
+    vs = (vs_currency or "usd").lower().strip()
+    cache_key = f"cg_markets_top50:{vs}"
+
+    # Utiliser SmartCache si dispo pour éviter de spammer CoinGecko.
+    try:
+        cached = cache.get_price_cache(cache_key)  # type: ignore[name-defined]
+        if cached:
+            return cached
+    except Exception:
+        pass
+
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        "vs_currency": vs,
+        "order": "market_cap_desc",
+        "per_page": 50,
+        "page": 1,
+        "sparkline": "false",
+        "price_change_percentage": "24h",
+    }
+
+    data = await _fetch_json(url, params=params, cache_ttl=30, use_coingecko_key=True)  # type: ignore[name-defined]
+    if not isinstance(data, list):
+        data = []
+
+    try:
+        cache.set_price_cache(cache_key, data)  # type: ignore[name-defined]
+    except Exception:
+        pass
+
+    return data
+
 def _pick_best_pair(pairs: list[dict]) -> dict | None:
     if not pairs:
         return None
@@ -32383,3 +32436,5 @@ async def ai_timeframe(request: Request):
 
     except Exception as e:
         return HTMLResponse(f"<h1>Erreur</h1><pre>{e}</pre>", status_code=500)
+
+SIDEBAR_FULL = globals().get('SIDEBAR_HTML','')

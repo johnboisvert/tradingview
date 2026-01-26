@@ -2989,20 +2989,42 @@ def access_denied_page(request, page_title: str = "Accès refusé", required_pla
         from fastapi.responses import PlainTextResponse
         return PlainTextResponse("Accès refusé (403).", status_code=403)
 
-def get_user_from_request(request: Request):
-    """Récupère l'utilisateur depuis les cookies - VERSION CORRIGÉE"""
+def get_user_from_request(request):
+    """Récupère des infos utilisateur à partir d'une Request FastAPI/Starlette.
+
+    Important: certains appels internes peuvent passer autre chose qu'une Request (ex: str/dict).
+    Dans ce cas on retourne {{}} sans lever d'exception, pour éviter les 500.
+    """
     try:
-        #  CORRECTION: Utiliser session_token, pas user_id!
-        token = request.cookies.get("token")
-        if not token:
-            token = get_cookie(request, "access_token")
-        if not token:
-            token = get_cookie(request, "session_token")
-        if not token:
-            session_token = get_cookie(request, "session")
-            if not session_token:
-                return None
-            token = session_token
+        if request is None:
+            return {}
+        # Si ce n'est pas une vraie Request (ex: string), on sort proprement.
+        if not hasattr(request, "cookies") or not hasattr(request, "session"):
+            return {}
+
+        username = request.session.get("username") or request.session.get("user") or request.session.get("email") or ""
+        role = request.session.get("role") or ""
+
+        # Token cookie (optionnel)
+        token = None
+        try:
+            token = request.cookies.get("token")
+        except Exception:
+            token = None
+
+        # Plan effectif (DB / subscription_system)
+        plan = get_user_effective_plan(username) if username else "free"
+
+        return {
+            "username": username or "",
+            "role": role or "",
+            "plan": plan or "free",
+            "token": token,
+        }
+    except Exception as e:
+        print(f"❌ get_user_from_request error: {e}")
+        return {}
+
 
         user = get_user_from_token(token)
         
@@ -5110,116 +5132,68 @@ def normalize_route_key(route: str) -> str:
     return rk
 
 def check_route_permission(user_or_username, route: str) -> bool:
-    """
-    Vérifie si un utilisateur a accès à une route.
-    - Admin bypass
-    - Accès par plan (plan_access)
-    - Permission utilisateur (user_permissions)
-    ✅ Normalise tout (évite mismatch /dashboard vs dashboard)
+    """Vérifie si l'utilisateur a accès à une route (retourne un bool).
 
-    Important:
-    - Certains flux d'auth peuvent ne fournir que email (sans username) ou varier la casse.
-      On normalise donc username/email/role avant de décider.
+    - Compatible avec les appels existants (middleware, templates, etc.)
+    - Accepte: username (str), dict utilisateur, ou Request.
+    - Ne doit JAMAIS lever une exception (sinon ça casse le site).
     """
     try:
+        # Extract user context
         username = ""
-        email = ""
         role = ""
+        plan = ""
 
-        # -------- Normaliser l'identité --------
-        if isinstance(user_or_username, dict):
-            # clés possibles: username, email, user{username/email}, session{...}
-            username = (user_or_username.get("username") or "").strip()
-            email = (user_or_username.get("email") or "").strip()
-
-            # Support nested user dict (au cas où)
-            nested = user_or_username.get("user")
-            if isinstance(nested, dict):
-                username = username or (nested.get("username") or "").strip()
-                email = email or (nested.get("email") or "").strip()
-
-            # role peut venir de plusieurs endroits
-            role = (
-                (user_or_username.get("role") or user_or_username.get("session_role") or "").strip()
-            )
-
+        if user_or_username is None:
+            username = ""
+        elif isinstance(user_or_username, dict):
+            username = (user_or_username.get("username") or user_or_username.get("user") or user_or_username.get("email") or "")
+            role = (user_or_username.get("role") or "")
+            plan = (user_or_username.get("plan") or "")
+        elif hasattr(user_or_username, "session") and hasattr(user_or_username, "cookies"):
+            # Request object
+            req = user_or_username
+            username = (req.session.get("username") or req.session.get("user") or req.session.get("email") or "")
+            role = (req.session.get("role") or "")
         else:
-            # string: peut être username OU email
-            username = (str(user_or_username or "")).strip()
+            # fallback: assume it's the username
+            username = str(user_or_username)
 
-        # si username vide mais email présent, utiliser email comme identifiant
-        if not username and email:
-            username = email
-
-        uname_norm = (username or "").strip().lower()
-        role_norm = (role or "").strip().lower()
-
-        # -------- Admin bypass --------
-        # ✅ Bypass si role admin OU username admin (quel que soit le plan)
-        if uname_norm == "admin" or role_norm in ("admin", "superadmin"):
+        # Admin bypass
+        if (role or "").lower() == "admin" or (username or "").lower() == "admin":
             return True
 
-        # Non connecté / inconnu
-        if not uname_norm:
-            return False
+        # Determine plan
+        if not plan:
+            plan = get_user_effective_plan(username) if username else "free"
+        plan = normalize_plan(plan)
 
-        # -------- Normaliser route --------
-        normalized_route = route.strip().lower()
-        if not normalized_route.startswith("/"):
-            normalized_route = "/" + normalized_route
-
-        # -------- Récupérer plan utilisateur --------
-        user_plan = (get_user_effective_plan(uname_norm) or "free").strip().lower()
-
-        # -------- Accès par plan --------
-        required_plan = get_required_plan_for_route(normalized_route)
-        if required_plan:
-            if plan_rank(user_plan) >= plan_rank(required_plan):
-                return True
-
-        # -------- Permissions spécifiques --------
-        # user_permissions peut contenir des routes exactes, ou des patterns simples
-        # (ici: check exact seulement, comme avant)
-        perms = user_permissions.get(uname_norm, []) if isinstance(user_permissions, dict) else []
-        if normalized_route in [str(p).strip().lower() for p in (perms or [])]:
+        required_plan = get_required_plan_for_route(route)
+        if not required_plan:
             return True
 
-        # Sinon, refuser
-        return False
+        required_plan = normalize_plan(required_plan)
+
+        PLAN_RANK = {
+            "free": 0,
+            "premium": 1,
+            "advanced": 2,
+            "pro": 3,
+            "elite": 4,
+            "admin": 99,
+        }
+        user_rank = PLAN_RANK.get(plan, 0)
+        req_rank = PLAN_RANK.get(required_plan, 0)
+        return user_rank >= req_rank
 
     except Exception as e:
         print(f"❌ Erreur check_route_permission({route}): {e}")
-        return False
+        try:
+            required_plan = get_required_plan_for_route(route)
+            return False if required_plan else True
+        except Exception:
+            return True
 
-
-# ----------------------------------------------------------------------
-# Background monitor (compat)
-# ----------------------------------------------------------------------
-# Certaines versions appellent start_background_monitor() qui lançait
-# background_monitor(), mais la coroutine pouvait être absente -> NameError.
-# On fournit donc un wrapper compatible + un démarrage robuste.
-#
-# NOTE: si tu as déjà un vrai monitor ailleurs, tu peux le brancher ici
-# en définissant une coroutine `monitor_trades_background()` ou `background_monitor()`.
-# ----------------------------------------------------------------------
-
-async def background_monitor():
-    """Wrapper compat pour éviter un crash au démarrage.
-
-    - Si une coroutine `monitor_trades_background` existe, on l'exécute.
-    - Sinon, on désactive proprement (ne fait rien).
-    """
-    try:
-        fn = globals().get("monitor_trades_background")
-        if callable(fn) and asyncio.iscoroutinefunction(fn):
-            await fn()
-            return
-        # Aucun monitor réel disponible
-        print("⚠️ background_monitor: aucun monitor_trades_background détecté (monitor désactivé).")
-    except asyncio.CancelledError:
-        raise
-    except Exception as e:
-        print(f"⚠️ background_monitor: erreur: {e}")
 
 def start_background_monitor():
     """Démarre le monitor en arrière-plan sans faire planter l'app."""
@@ -31708,9 +31682,10 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
 <div class="card" style="margin:14px 0 0 0; padding:14px 16px;">
   <div style="font-weight:700; margin-bottom:6px;">Avant de scanner</div>
   <ul style="margin:0; padding-left:18px; line-height:1.6;">
-    <li><b>Pourquoi :</b> filtrer vite (liquidité/volume), éviter les coins “morts” et repérer l’activité anormale.</li>
-    <li><b>Ce que tu obtiens :</b> score + signaux (variation 24h, volume/market cap, volatilité, etc.).</li>
-    <li><b>Sources :</b> CoinGecko + heuristiques internes (cache court côté serveur).</li>
+    <li><b>À quoi ça sert :</b> filtrer vite (liquidité/volume), éviter les coins “morts”, repérer l’activité anormale et les mouvements “trop rapides”.</li>
+    <li><b>Données réelles & à jour :</b> prix, market cap, volume et variation 24h proviennent de <b>CoinGecko</b>. On applique un <b>cache serveur</b> (≈ 1–3 minutes) pour éviter les limites API.</li>
+    <li><b>Ce que tu obtiens :</b> score + signaux (variation 24h, ratio Volume/MarketCap, volatilité, momentum, etc.).</li>
+    <li><b>Comment l’utiliser :</b> lance un scan, <b>shortlist</b> 3–10 tokens, puis vérifie le chart (structure, niveaux, tendance) avant toute décision.</li>
   </ul>
   <div style="margin-top:8px; font-size:13px; opacity:.85;">⚠️ Ce n’est pas un conseil financier. Utilise-le comme <b>filtre</b> avant ton plan de trade.</div>
 </div>
@@ -41238,10 +41213,7 @@ async def ai_alerts(request: Request):
         if not is_logged_in(request):
             return RedirectResponse(url=f"/login?redirect=%2Fai-alerts", status_code=303)
 
-        has_access, denial_html = check_route_permission(request, "/ai-alerts")
-        if not has_access:
-            return HTMLResponse(denial_html, status_code=403)
-
+        # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
         data = await _coingecko_markets_top50()
         rows = data if isinstance(data, list) else []
         enriched = []
@@ -41369,10 +41341,7 @@ async def ai_liquidity(request: Request):
         if not is_logged_in(request):
             return RedirectResponse(url=f"/login?redirect=%2Fai-liquidity", status_code=303)
 
-        has_access, denial_html = check_route_permission(request, "/ai-liquidity")
-        if not has_access:
-            return HTMLResponse(denial_html, status_code=403)
-
+        # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
         rows = await _coingecko_markets_top50()
         rows = rows if isinstance(rows, list) else []
         items=[]
@@ -41485,10 +41454,7 @@ async def ai_timeframe(request: Request):
         if not is_logged_in(request):
             return RedirectResponse(url=f"/login?redirect=%2Fai-timeframe", status_code=303)
 
-        has_access, denial_html = check_route_permission(request, "/ai-timeframe")
-        if not has_access:
-            return HTMLResponse(denial_html, status_code=403)
-
+        # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
         # prix BTC 30j
         url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily"
         chart = await _fetch_json(url, ttl_seconds=180, use_coingecko_key=True)
@@ -41599,4 +41565,3 @@ async def ai_timeframe(request: Request):
 
     except Exception as e:
         return HTMLResponse(f"<h1>Erreur</h1><pre>{e}</pre>", status_code=500)
-

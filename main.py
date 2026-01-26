@@ -3459,7 +3459,6 @@ class PermissionMiddleware(BaseHTTPMiddleware):
               <p class="p">Tu essaies d'ouvrir <b>{route_label}</b>.</p>
               <p class="p">Ton forfait actuel : <b>{current_label}</b> • Requis : <b>{required_label}</b> (ou plus).</p>
               <div class="row">
-                <a class="btn btn-primary" href="/pricing-complete">Voir les forfaits / Upgrader</a>
                 <a class="btn btn-ghost" href="/">Retour au dashboard</a>
               </div>
             </div>
@@ -4571,6 +4570,24 @@ class DatabaseManager:
 
 # Initialiser le gestionnaire de base de donnes
 db_manager = DatabaseManager()
+
+
+def get_user_effective_plan(username_or_email: str) -> str:
+    """Retourne le plan 'effectif' d'un utilisateur (fallback: free).
+    Utilisé par les pages IA pour debug + gating.
+    """
+    try:
+        info = db_manager.get_user_info(username_or_email) or {}
+        plan = (info.get("subscription_plan") or info.get("plan") or info.get("role") or "").strip().lower()
+        # Normaliser
+        if plan in ("", "none", "null"):
+            return "free"
+        # Si quelqu'un met 'admin' ici par erreur, on garde 'free' côté abonnement
+        if plan == "admin":
+            return "free"
+        return plan
+    except Exception:
+        return "free"
 
 def list_users_from_sqlite():
     """Compat : utilisé par /admin-users. Lit dans la même DB que db_manager."""
@@ -31609,7 +31626,23 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
           <div style="display:flex; align-items:center; gap:10px;">
             <div style="width:10px;height:10px;border-radius:99px;background:#00F5FF; box-shadow:0 0 20px rgba(0,245,255,0.35);"></div>
             <h1>AI Token Scanner {cache_badge}</h1>
+          
+          <div class="card" style="margin-top:14px;">
+            <h2 style="margin:0 0 8px 0;">À quoi sert cette page ?</h2>
+            <p style="margin:0 0 10px 0; color:#cfd7e6;">
+              <b>AI Token Scanner</b> analyse un token (ou une paire) en combinant des <b>données de marché réelles</b> (DEX/agrégateurs)
+              et des règles “IA” (scores + signaux) pour t’aider à repérer rapidement : momentum, surchauffe, liquidité, risques et zones de prudence.
+            </p>
+            <ul style="margin:0; padding-left:18px; color:#cfd7e6;">
+              <li><b>Données vraies & à jour</b> : prix/variation/volume/liquidité proviennent d’API publiques (mise en cache courte pour éviter les limites).</li>
+              <li><b>Ce que ça donne</b> : un score clair + des signaux actionnables (momentum, volatilité, risque de dump, liquidité faible, etc.).</li>
+              <li><b>Comment l’utiliser</b> : entre le symbole ou le contrat, choisis la chaîne, puis lance le scan — lis d’abord les alertes “risque”.</li>
+            </ul>
+            <p style="margin:10px 0 0 0; font-size:13px; color:#9fb0c7;">
+              ⚠️ Ce n’est pas un conseil financier. Utilise-le comme <b>filtre intelligent</b> avant ton analyse technique et ta gestion du risque.
+            </p>
           </div>
+</div>
           <p>Analyse rapide d’un token (symbole / nom / contrat) via des données publiques. Idéal pour repérer la liquidité, la FDV et quelques signaux de risque.</p>
 
           <form class="form" method="POST" action="/ai-token-scanner">
@@ -32034,7 +32067,7 @@ async def ai_gem_hunter_page(request: Request):
 
     # Paramètres
     page = int(request.query_params.get("page") or 1)
-    per_page = 25
+    per_page = 50
     page = max(1, min(page, 4))  # 1..4 (jusqu'à 100 coins)
 
     coins = []
@@ -32119,8 +32152,8 @@ async def ai_gem_hunter_page(request: Request):
     nav = f"""
     <div class="nav">
         <a class="btn" href="/ai-gem-hunter?page={max(1,page-1)}">◀</a>
-        <div class="muted">Page {page} / 4</div>
-        <a class="btn" href="/ai-gem-hunter?page={min(4,page+1)}">▶</a>
+        <div class="muted">Page {page} / 1</div>
+        <a class="btn" href="/ai-gem-hunter?page={min(1,page+1)}">▶</a>
     </div>
     """
 
@@ -41084,3 +41117,417 @@ async def toggle_ebook(ebook_id: int, request: Request):
 # ============================================================================
 # FIN DES ROUTES EBOOKS/CONTACT - TOUT EST PRT!
 # ============================================================================
+
+# =============================
+#  AI PAGES (restaurées) — Alerts / Liquidity / Timeframe
+# =============================
+
+def _fmt_pct(v):
+    try:
+        if v is None: 
+            return "—"
+        return f"{float(v):+.2f}%"
+    except Exception:
+        return "—"
+
+def _fmt_usd(v):
+    try:
+        if v is None:
+            return "—"
+        x=float(v)
+        if abs(x) >= 1_000_000_000:
+            return f"${x/1_000_000_000:.2f}B"
+        if abs(x) >= 1_000_000:
+            return f"${x/1_000_000:.2f}M"
+        if abs(x) >= 1_000:
+            return f"${x/1_000:.2f}K"
+        return f"${x:,.2f}"
+    except Exception:
+        return "—"
+
+def _now_utc_str():
+    try:
+        return datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    except Exception:
+        return ""
+
+async def _coingecko_markets_top50(vs_currency: str = "usd", order: str = "market_cap_desc"):
+    url = (
+        "https://api.coingecko.com/api/v3/coins/markets"
+        f"?vs_currency={vs_currency}"
+        f"&order={order}"
+        "&per_page=50&page=1"
+        "&sparkline=false"
+        "&price_change_percentage=1h,24h,7d"
+    )
+    return await _fetch_json(url, ttl_seconds=90, use_coingecko_key=True)
+
+@app.get("/ai-alerts")
+async def ai_alerts(request: Request):
+    """AI Alerts — Top 50: signaux rapides (momentum / dump / volume)."""
+    try:
+        if not is_logged_in(request):
+            return RedirectResponse(url=f"/login?redirect=%2Fai-alerts", status_code=303)
+
+        has_access, denial_html = check_route_permission(request, "/ai-alerts")
+        if not has_access:
+            return HTMLResponse(denial_html, status_code=403)
+
+        data = await _coingecko_markets_top50()
+        rows = data if isinstance(data, list) else []
+        enriched = []
+        for c in rows:
+            sym = (c.get("symbol") or "").upper()
+            name = c.get("name") or sym
+            price = c.get("current_price")
+            ch1h = c.get("price_change_percentage_1h_in_currency")
+            ch24 = c.get("price_change_percentage_24h")
+            ch7 = c.get("price_change_percentage_7d_in_currency")
+            vol = c.get("total_volume")
+            mcap = c.get("market_cap")
+            ratio = (float(vol) / float(mcap)) if vol and mcap and float(mcap) > 0 else 0.0
+
+            signal = "Neutre"
+            tag = "tag"
+            if ch1h is not None and ch24 is not None:
+                try:
+                    ch1h_f = float(ch1h); ch24_f = float(ch24)
+                    if ch1h_f <= -2.0 and ch24_f <= -8.0:
+                        signal, tag = "Dump / pression vendeuse", "tag danger"
+                    elif ch1h_f >= 1.5 and ch24_f >= 5.0:
+                        signal, tag = "Momentum haussier", "tag success"
+                    elif ch1h_f >= 1.5 and ch24_f <= -3.0:
+                        signal, tag = "Rebond / reversal possible", "tag"
+                    elif ratio >= 0.12 and abs(ch24_f) >= 3.0:
+                        signal, tag = "Volume inhabituel", "tag"
+                except Exception:
+                    pass
+
+            enriched.append({
+                "sym": sym, "name": name, "price": price,
+                "ch1h": ch1h, "ch24": ch24, "ch7": ch7,
+                "mcap": mcap, "vol": vol, "ratio": ratio,
+                "signal": signal, "tag": tag
+            })
+
+        # trier: signaux d'abord, puis volume/mcap
+        enriched.sort(key=lambda x: (0 if "danger" in x["tag"] else 1 if "success" in x["tag"] else 2, -x["ratio"]))
+
+        table_rows = "".join([
+            f"""
+            <tr>
+              <td><b>{r['sym']}</b><div style='font-size:12px;color:#9fb0c7'>{r['name']}</div></td>
+              <td>{_fmt_usd(r['price'])}</td>
+              <td>{_fmt_pct(r['ch1h'])}</td>
+              <td>{_fmt_pct(r['ch24'])}</td>
+              <td>{_fmt_pct(r['ch7'])}</td>
+              <td>{_fmt_usd(r['mcap'])}</td>
+              <td>{_fmt_usd(r['vol'])}</td>
+              <td>{r['ratio']*100:.2f}%</td>
+              <td><span class='{r['tag']}'>{r['signal']}</span></td>
+            </tr>
+            """ for r in enriched
+        ])
+
+        html = f"""<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Alerts — CryptoIA</title>
+{GLOBAL_STYLES}
+<style>
+  body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
+  .container {{ max-width: 1200px; margin: 0 auto; }}
+  .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}
+  .muted {{ color:#9fb0c7; }}
+  .tag {{ display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(96,165,250,.15); border:1px solid rgba(96,165,250,.35); }}
+  .tag.success {{ background:rgba(16,185,129,.14); border-color:rgba(16,185,129,.35); }}
+  .tag.danger {{ background:rgba(239,68,68,.14); border-color:rgba(239,68,68,.35); }}
+  table {{ width:100%; border-collapse: collapse; margin-top: 14px; }}
+  th,td {{ padding: 10px 12px; border-bottom:1px solid rgba(255,255,255,.06); text-align:left; vertical-align:top; }}
+  th {{ color:#cfd7e6; font-size:13px; text-transform:uppercase; letter-spacing:.06em; }}
+  tr:hover td {{ background: rgba(255,255,255,.03); }}
+</style>
+</head>
+<body>
+{SIDEBAR_HTML}
+<div class="container">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
+      <div>
+        <h1 style="margin:0;">AI Alerts</h1>
+        <p class="muted" style="margin:8px 0 0 0;">Top 50 (market cap) — signaux rapides basés sur variations + volume (données CoinGecko).</p>
+      </div>
+      <div class="muted" style="font-size:13px;">Dernière mise à jour: <b>{_now_utc_str()}</b></div>
+    </div>
+
+    <div style="margin-top:14px;" class="muted">
+      <b>But:</b> repérer en 10 secondes où ça bouge (momentum), où ça saigne (dump), et où le volume est anormal.  
+      <br><b>Astuce:</b> clique ensuite sur ton graphique (TradingView) pour valider structure + niveaux.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Coin</th><th>Prix</th><th>1h</th><th>24h</th><th>7j</th>
+          <th>Market Cap</th><th>Volume 24h</th><th>Vol/Mcap</th><th>Signal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {table_rows if table_rows else '<tr><td colspan="9" class="muted">Aucune donnée pour le moment.</td></tr>'}
+      </tbody>
+    </table>
+
+    <div style="margin-top:18px;" class="card">
+      <h2 style="margin:0 0 8px 0;">Comment utiliser cette page</h2>
+      <ul class="muted" style="margin:0; padding-left:18px;">
+        <li><b>Momentum haussier</b>: privilégie une approche trend (pullbacks / breakouts) + stop serré.</li>
+        <li><b>Dump / pression vendeuse</b>: évite les entrées impulsives — attends une stabilisation ou une structure.</li>
+        <li><b>Vol/Mcap</b> élevé = liquidité relative forte (plus de “flow”). Vol/Mcap faible = plus fragile.</li>
+        <li>Ce n’est pas un conseil financier — c’est un <b>radar</b> pour prioriser ton analyse.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body></html>"""
+        return HTMLResponse(html)
+
+    except Exception as e:
+        return HTMLResponse(f"<h1>Erreur</h1><pre>{e}</pre>", status_code=500)
+
+@app.get("/ai-liquidity")
+async def ai_liquidity(request: Request):
+    """AI Liquidity — Top 50: score de liquidité relative (volume/marketcap)."""
+    try:
+        if not is_logged_in(request):
+            return RedirectResponse(url=f"/login?redirect=%2Fai-liquidity", status_code=303)
+
+        has_access, denial_html = check_route_permission(request, "/ai-liquidity")
+        if not has_access:
+            return HTMLResponse(denial_html, status_code=403)
+
+        rows = await _coingecko_markets_top50()
+        rows = rows if isinstance(rows, list) else []
+        items=[]
+        ratios=[]
+        for c in rows:
+            vol=c.get("total_volume"); mcap=c.get("market_cap")
+            ratio=(float(vol)/float(mcap)) if vol and mcap and float(mcap)>0 else 0.0
+            ratios.append(ratio)
+        max_ratio=max(ratios) if ratios else 0.0
+
+        for c in rows:
+            sym=(c.get("symbol") or "").upper()
+            name=c.get("name") or sym
+            price=c.get("current_price")
+            ch24=c.get("price_change_percentage_24h")
+            vol=c.get("total_volume")
+            mcap=c.get("market_cap")
+            ratio=(float(vol)/float(mcap)) if vol and mcap and float(mcap)>0 else 0.0
+            # score simple (0-100)
+            score=0
+            if max_ratio>0:
+                score = min(100, int(100 * (math.log10(ratio*100+1) / math.log10(max_ratio*100+1))))
+            tier="Faible"
+            tag="tag danger"
+            if score>=70: tier, tag="Élevée","tag success"
+            elif score>=40: tier, tag="Moyenne","tag"
+
+            items.append({
+                "sym":sym,"name":name,"price":price,"ch24":ch24,
+                "mcap":mcap,"vol":vol,"ratio":ratio,"score":score,"tier":tier,"tag":tag
+            })
+
+        items.sort(key=lambda x: (-x["score"], -x["ratio"]))
+
+        table_rows="".join([
+            f"""<tr>
+              <td><b>{r['sym']}</b><div style='font-size:12px;color:#9fb0c7'>{r['name']}</div></td>
+              <td>{_fmt_usd(r['price'])}</td>
+              <td>{_fmt_pct(r['ch24'])}</td>
+              <td>{_fmt_usd(r['mcap'])}</td>
+              <td>{_fmt_usd(r['vol'])}</td>
+              <td>{r['ratio']*100:.2f}%</td>
+              <td><span class='{r['tag']}'>{r['score']}/100 • {r['tier']}</span></td>
+            </tr>""" for r in items
+        ])
+
+        html=f"""<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Liquidity — CryptoIA</title>
+{GLOBAL_STYLES}
+<style>
+  body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
+  .container {{ max-width: 1200px; margin: 0 auto; }}
+  .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}
+  .muted {{ color:#9fb0c7; }}
+  .tag {{ display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(96,165,250,.15); border:1px solid rgba(96,165,250,.35); }}
+  .tag.success {{ background:rgba(16,185,129,.14); border-color:rgba(16,185,129,.35); }}
+  .tag.danger {{ background:rgba(239,68,68,.14); border-color:rgba(239,68,68,.35); }}
+  table {{ width:100%; border-collapse: collapse; margin-top: 14px; }}
+  th,td {{ padding: 10px 12px; border-bottom:1px solid rgba(255,255,255,.06); text-align:left; vertical-align:top; }}
+  th {{ color:#cfd7e6; font-size:13px; text-transform:uppercase; letter-spacing:.06em; }}
+  tr:hover td {{ background: rgba(255,255,255,.03); }}
+</style></head>
+<body>
+{SIDEBAR_HTML}
+<div class="container">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
+      <div>
+        <h1 style="margin:0;">AI Liquidity</h1>
+        <p class="muted" style="margin:8px 0 0 0;">Top 50 (market cap) — score de liquidité relative basé sur <b>Volume 24h / Market Cap</b>.</p>
+      </div>
+      <div class="muted" style="font-size:13px;">Dernière mise à jour: <b>{_now_utc_str()}</b></div>
+    </div>
+
+    <div style="margin-top:14px;" class="muted">
+      <b>Pourquoi c'est utile ?</b>  
+      Une liquidité relative élevée = exécutions plus “propres”, moins de slippage, et des mouvements souvent plus “suivables”.
+      À l’inverse, liquidité faible = mouvements plus erratiques (risque de mèches / manip).
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Coin</th><th>Prix</th><th>24h</th><th>Market Cap</th><th>Volume 24h</th><th>Vol/Mcap</th><th>Score</th></tr>
+      </thead>
+      <tbody>
+        {table_rows if table_rows else '<tr><td colspan="7" class="muted">Aucune donnée pour le moment.</td></tr>'}
+      </tbody>
+    </table>
+
+    <div style="margin-top:18px;" class="card">
+      <h2 style="margin:0 0 8px 0;">Comment utiliser cette page</h2>
+      <ul class="muted" style="margin:0; padding-left:18px;">
+        <li>Avant de trader un coin, regarde son <b>Score</b>: <b>≥70</b> = conditions plus stables; <b>&lt;40</b> = prudence.</li>
+        <li>Combine avec <b>AI Alerts</b> pour repérer “où ça bouge” et “où c’est tradable”.</li>
+        <li>Ce score est une heuristique rapide (pas un conseil financier).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body></html>"""
+        return HTMLResponse(html)
+    except Exception as e:
+        return HTMLResponse(f"<h1>Erreur</h1><pre>{e}</pre>", status_code=500)
+
+@app.get("/ai-timeframe")
+async def ai_timeframe(request: Request):
+    """AI Timeframe — recommandation de timeframe basée sur volatilité BTC (30j)."""
+    try:
+        if not is_logged_in(request):
+            return RedirectResponse(url=f"/login?redirect=%2Fai-timeframe", status_code=303)
+
+        has_access, denial_html = check_route_permission(request, "/ai-timeframe")
+        if not has_access:
+            return HTMLResponse(denial_html, status_code=403)
+
+        # prix BTC 30j
+        url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily"
+        chart = await _fetch_json(url, ttl_seconds=180, use_coingecko_key=True)
+        prices = chart.get("prices") if isinstance(chart, dict) else None
+        returns=[]
+        if prices and isinstance(prices, list) and len(prices) > 5:
+            for i in range(1, len(prices)):
+                p0 = float(prices[i-1][1]); p1=float(prices[i][1])
+                if p0>0:
+                    returns.append(math.log(p1/p0))
+        vol_annual=None
+        if returns:
+            vol_annual = ( (sum((x-(sum(returns)/len(returns)))**2 for x in returns)/len(returns))**0.5 * math.sqrt(365) ) if len(returns) > 1 else 0.0
+
+        # dernière variation 24h BTC via markets
+        mk = await _coingecko_markets_top50()
+        btc_row = next((r for r in (mk if isinstance(mk,list) else []) if (r.get("id")=="bitcoin" or (r.get("symbol")=="btc"))), None)
+        btc_ch24 = btc_row.get("price_change_percentage_24h") if btc_row else None
+        btc_price = btc_row.get("current_price") if btc_row else None
+
+        regime="Normal"
+        if vol_annual is not None:
+            if vol_annual >= 0.95:
+                regime="Volatilité très élevée"
+            elif vol_annual >= 0.70:
+                regime="Volatilité élevée"
+            elif vol_annual <= 0.45:
+                regime="Volatilité faible"
+
+        # recommandation
+        rec = []
+        if regime in ("Volatilité très élevée","Volatilité élevée"):
+            rec = [
+                ("Scalp / court-terme", "5m → 15m", "Cherche des setups rapides, stops serrés, prends des profits partiels."),
+                ("Day-trade", "15m → 1h", "Attends confirmations (break+retest), évite l’overtrade."),
+                ("Swing", "4h", "Réduis la taille, vise des zones clés, patience.")
+            ]
+        else:
+            rec = [
+                ("Scalp / court-terme", "15m", "Moins de range explosif: privilégie la précision (VWAP/levels)."),
+                ("Day-trade", "1h → 4h", "Meilleure lisibilité structurelle (tendance / range)."),
+                ("Swing", "4h → 1D", "Les signaux durent plus longtemps: setups plus “propres”.")
+            ]
+
+        vol_txt = f"{vol_annual*100:.1f}%" if vol_annual is not None else "—"
+        btc_txt = _fmt_usd(btc_price)
+        btc_ch_txt = _fmt_pct(btc_ch24)
+
+        rec_rows = "".join([f"<tr><td><b>{a}</b></td><td>{b}</td><td class='muted'>{c}</td></tr>" for a,b,c in rec])
+
+        html=f"""<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Timeframe — CryptoIA</title>
+{GLOBAL_STYLES}
+<style>
+  body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
+  .container {{ max-width: 1100px; margin: 0 auto; }}
+  .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}
+  .muted {{ color:#9fb0c7; }}
+  .pill {{ display:inline-flex; gap:10px; align-items:center; padding:8px 12px; border-radius:999px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); }}
+  table {{ width:100%; border-collapse: collapse; margin-top: 14px; }}
+  th,td {{ padding: 10px 12px; border-bottom:1px solid rgba(255,255,255,.06); text-align:left; vertical-align:top; }}
+  th {{ color:#cfd7e6; font-size:13px; text-transform:uppercase; letter-spacing:.06em; }}
+  tr:hover td {{ background: rgba(255,255,255,.03); }}
+</style></head>
+<body>
+{SIDEBAR_HTML}
+<div class="container">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
+      <div>
+        <h1 style="margin:0;">AI Timeframe</h1>
+        <p class="muted" style="margin:8px 0 0 0;">Recommandation de timeframe basée sur la <b>volatilité BTC (30 jours)</b> + dynamique récente.</p>
+      </div>
+      <div class="muted" style="font-size:13px;">Dernière mise à jour: <b>{_now_utc_str()}</b></div>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
+      <div class="pill"><b>BTC</b> <span class="muted">{btc_txt}</span></div>
+      <div class="pill"><b>BTC (24h)</b> <span class="muted">{btc_ch_txt}</span></div>
+      <div class="pill"><b>Volatilité (annualisée)</b> <span class="muted">{vol_txt}</span></div>
+      <div class="pill"><b>Régime</b> <span class="muted">{regime}</span></div>
+    </div>
+
+    <div style="margin-top:14px;" class="muted">
+      <b>Pourquoi c'est utile ?</b>  
+      Quand la volatilité est haute, les timeframes très petits peuvent devenir “bruyants” — ou au contraire offrir des scalps rapides.  
+      Ici, on te donne un <b>cadre</b> pour choisir un TF cohérent avec le marché, avant de chercher tes setups.
+    </div>
+
+    <table>
+      <thead><tr><th>Style</th><th>Timeframe conseillé</th><th>Pourquoi</th></tr></thead>
+      <tbody>{rec_rows}</tbody>
+    </table>
+
+    <div style="margin-top:18px;" class="card">
+      <h2 style="margin:0 0 8px 0;">Comment utiliser cette page</h2>
+      <ul class="muted" style="margin:0; padding-left:18px;">
+        <li>Commence par ce TF conseillé, puis <b>descends</b> d’un cran pour optimiser ton entrée (ex: 1h → 15m).</li>
+        <li>Combine avec <b>AI Market Regime</b> (trend/range) pour adapter la stratégie (breakouts vs mean-reversion).</li>
+        <li>Ce n’est pas un conseil financier — c’est une aide de cadrage basée sur données publiques.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body></html>"""
+        return HTMLResponse(html)
+
+    except Exception as e:
+        return HTMLResponse(f"<h1>Erreur</h1><pre>{e}</pre>", status_code=500)
+

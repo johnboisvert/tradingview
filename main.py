@@ -20,6 +20,7 @@ from pathlib import Path
 
 # === Railway debug fingerprint (temp) ===
 import os, hashlib, pathlib
+import html as _html
 import html  # pour html.escape (AI Token Scanner)
 import re  # regex (AI Token Scanner / permissions)
 _p = pathlib.Path(__file__)
@@ -3791,6 +3792,10 @@ body.sidebar-open{padding-left:280px !important}
         document.body.classList.toggle('sidebar-open');
     }
     </script>"""
+
+# Backward-compat alias (some routes still reference SIDEBAR_FULL)
+SIDEBAR_FULL = SIDEBAR
+
 
 # Appliquer les placeholders (logo + nom) dans la sidebar
 try:
@@ -29563,7 +29568,7 @@ async def ai_signals():
                 <p class="subtitle">Signaux de trading - TOP 50 Cryptomonnaies par capitalisation</p>
                 <div class="live-badge"><div class="live-dot"></div><span>DONNÉES EN TEMPS RÉEL</span></div>
             </div>
-            <div class="signals-grid">{cards_html}</div>
+            <div class="signals-grid">{result_html}</div>
         </div>
         <script>
             setTimeout(function() {{ window.location.reload(); }}, 60000);
@@ -29817,7 +29822,7 @@ async def ai_alerts_inbox(request: Request):
       </div>
 
       <div class="grid">
-        {cards_html}
+        {result_html}
       </div>
 
       <div class="note">
@@ -31874,7 +31879,7 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
             {cards_html if cards_html else '<div class="card">Aucun signal pour le moment. Ajoute des coins à ta watchlist ou reviens plus tard.</div>'}
           </div>
 
-          {wl_html}
+          
         </div>
       </main>
     </div>
@@ -31953,7 +31958,7 @@ async def ai_setup_builder(request: Request):
     risk = (request.query_params.get("risk") or "1").strip()
 
     # Ancien rendu attendait `cards_html` et `wl_html` (bug: variables non définies)
-    cards_html = result_html
+    cards_html = ""  # no results on GET
     wl_html = ""
 
     html = f"""

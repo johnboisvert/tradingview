@@ -2709,7 +2709,7 @@ def _is_admin_user(user: dict) -> bool:
     return role in {"admin","owner","superadmin"} or username == "admin"
 
 def _admin_bypass_enabled() -> bool:
-    v = (os.getenv("ADMIN_BYPASS", "1") or "").strip().lower()
+    v = (os.getenv("ADMIN_BYPASS", "0") or "").strip().lower()
     return v in {"1","true","yes","on"}
 
 def _force_admin_on_request(request):
@@ -3334,7 +3334,7 @@ class PermissionMiddleware(BaseHTTPMiddleware):
 
         # --- ADMIN BYPASS TOTAL (requested) ---
         # If enabled, any /admin* page is accessible even without login.
-        if _admin_bypass_enabled() and (path.startswith("/admin") or path in ("/admin-dashboard",)):
+        if (_admin_bypass_enabled() or _admin_bypass_token_ok(request)) and (path.startswith("/admin") or path in ("/admin-dashboard",)):
             _force_admin_on_request(request)
             return await call_next(request)
 

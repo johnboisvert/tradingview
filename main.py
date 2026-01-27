@@ -2655,6 +2655,79 @@ BADGES_DATA = {
 #     print(f" Erreur init Academy DB: {e}")
 
 
+# ==============================
+# ✅ Safety utilities (globals)
+# (Prevents NameError across pages)
+# ==============================
+import os
+import html as _html_mod
+
+# Global fallbacks used by several pages (avoid NameError)
+SIDEBAR_FULL = globals().get("SIDEBAR_FULL", "")
+cards_html = globals().get("cards_html", "")
+
+def escape_html(value):
+    """HTML-escape helper used in f-strings. Safe for None."""
+    try:
+        return _html_mod.escape(str(value), quote=True)
+    except Exception:
+        return ""
+
+def get_current_user_from_session(request):
+    """Return current user dict from request.state/session/cookies.
+
+    Works even if SessionMiddleware changes or if only cookies are present.
+    """
+    try:
+        u = getattr(request.state, "user", None)
+        if isinstance(u, dict) and u:
+            return u
+    except Exception:
+        pass
+
+    try:
+        sess = request.session  # type: ignore[attr-defined]
+        if isinstance(sess, dict) and sess.get("user"):
+            return sess.get("user")
+        if isinstance(sess, dict):
+            for k in ("username","email","role","plan","session_role"):
+                if k in sess:
+                    return {
+                        "username": sess.get("username") or sess.get("email") or "",
+                        "email": sess.get("email") or "",
+                        "role": sess.get("role") or sess.get("session_role") or "user",
+                        "plan": sess.get("plan") or "free",
+                    }
+    except Exception:
+        pass
+
+    return {"username": "", "email": "", "role": "guest", "plan": "free"}
+
+def _is_admin_user(user: dict) -> bool:
+    role = (user.get("role") or user.get("session_role") or "").strip().lower()
+    username = (user.get("username") or user.get("email") or "").strip().lower()
+    return role in {"admin","owner","superadmin"} or username == "admin"
+
+def _admin_bypass_enabled() -> bool:
+    v = (os.getenv("ADMIN_BYPASS", "1") or "").strip().lower()
+    return v in {"1","true","yes","on"}
+
+def _force_admin_on_request(request):
+    admin_user = {"username": "admin", "email": "", "role": "admin", "plan": "elite"}
+    try:
+        request.state.user = admin_user
+    except Exception:
+        pass
+    try:
+        if hasattr(request, "session") and isinstance(request.session, dict):  # type: ignore[attr-defined]
+            request.session["user"] = admin_user
+            request.session["role"] = "admin"
+            request.session["plan"] = "elite"
+            request.session["username"] = "admin"
+    except Exception:
+        pass
+    return admin_user
+
 app = FastAPI()
 
 # =========================
@@ -3258,6 +3331,12 @@ class PermissionMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request, call_next):
         path = request.url.path
+
+        # --- ADMIN BYPASS TOTAL (requested) ---
+        # If enabled, any /admin* page is accessible even without login.
+        if _admin_bypass_enabled() and (path.startswith("/admin") or path in ("/admin-dashboard",)):
+            _force_admin_on_request(request)
+            return await call_next(request)
 
         # --- Toujours essayer d'attacher l'utilisateur à request.state.user ---
         # (même pour les routes publiques), afin que les pages /admin-* puissent

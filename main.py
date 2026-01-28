@@ -32907,81 +32907,222 @@ async def ai_gem_hunter_page(request: Request):
 
 @app.get("/ai-technical-analysis", response_class=HTMLResponse)
 async def ai_technical_analysis_page(request: Request):
-    """Analyse technique simple (fallback)."""
+    """
+    AI Technical Analysis (simple + robuste).
+    - Affiche un formulaire (symbol/interval)
+    - Récupère 200 chandelles OHLCV via Binance (avec mirrors)
+    - Calcule quelques indicateurs (EMA20/EMA50, RSI14, ATR14, tendance)
+    """
     SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
     q = dict(request.query_params)
-    symbol = (q.get("symbol") or "BTCUSDT").upper()
-    interval = (q.get("interval") or "1h")
+
+    symbol = (q.get("symbol") or "BTCUSDT").upper().strip()
+    interval = (q.get("interval") or "1h").strip()
+    limit = 200
+
+    # ----- helpers indicateurs (sans dépendre 100% de pandas) -----
+    def _ema(values, period: int):
+        if not values or period <= 1:
+            return []
+        k = 2 / (period + 1)
+        out = []
+        ema = values[0]
+        out.append(ema)
+        for v in values[1:]:
+            ema = (v * k) + (ema * (1 - k))
+            out.append(ema)
+        return out
+
+    def _rsi(values, period: int = 14):
+        if len(values) < period + 1:
+            return []
+        gains = []
+        losses = []
+        for i in range(1, len(values)):
+            chg = values[i] - values[i - 1]
+            gains.append(max(chg, 0.0))
+            losses.append(max(-chg, 0.0))
+
+        # Wilder smoothing
+        avg_gain = sum(gains[:period]) / period
+        avg_loss = sum(losses[:period]) / period
+        rsis = [None] * period  # padding
+        for i in range(period, len(gains)):
+            g = gains[i]
+            l = losses[i]
+            avg_gain = (avg_gain * (period - 1) + g) / period
+            avg_loss = (avg_loss * (period - 1) + l) / period
+            if avg_loss == 0:
+                r = 100.0
+            else:
+                rs = avg_gain / avg_loss
+                r = 100.0 - (100.0 / (1.0 + rs))
+            rsis.append(r)
+        # rsis length == len(values)-1; pad to len(values)
+        return [None] + rsis
+
+    def _atr(highs, lows, closes, period: int = 14):
+        if len(closes) < period + 1:
+            return []
+        trs = []
+        for i in range(len(closes)):
+            if i == 0:
+                tr = highs[i] - lows[i]
+            else:
+                tr = max(
+                    highs[i] - lows[i],
+                    abs(highs[i] - closes[i - 1]),
+                    abs(lows[i] - closes[i - 1]),
+                )
+            trs.append(tr)
+        # Wilder smoothing
+        atrs = [None] * (period - 1)
+        atr = sum(trs[:period]) / period
+        atrs.append(atr)
+        for i in range(period, len(trs)):
+            atr = (atr * (period - 1) + trs[i]) / period
+            atrs.append(atr)
+        return atrs
+
+    error_msg = None
     summary_html = ""
 
+    # ----- fetch OHLCV -----
+    kl = []
     try:
-        import pandas as pd, numpy as np
-        kl = await _binance_klines(symbol, interval, limit=200, ttl_seconds=30)
-        if not kl:
-            raise ValueError("Aucune donnée Binance retournée.")
-        df = pd.DataFrame(kl, columns=["open_time","open","high","low","close","volume","close_time","qav","num_trades","taker_base","taker_quote","ignore"])
-        for col in ["open","high","low","close","volume"]:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-        df["close"] = df["close"].astype(float)
+        # utilise la fonction robuste (mirrors) ajoutée pour Setup Builder
+        kl = await _binance_klines(symbol=symbol, interval=interval, limit=limit, ttl_seconds=30)
+    except Exception as e:
+        error_msg = str(e)
 
-        df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
-        df["ema50"] = df["close"].ewm(span=50, adjust=False).mean()
+    if kl:
+        try:
+            highs = [float(x[2]) for x in kl]
+            lows = [float(x[3]) for x in kl]
+            closes = [float(x[4]) for x in kl]
+            vols = [float(x[5]) for x in kl]
 
-        delta = df["close"].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-        rs = gain / loss.replace(0, np.nan)
-        df["rsi14"] = 100 - (100 / (1 + rs))
+            last_close = closes[-1]
+            ema20 = _ema(closes, 20)[-1] if len(closes) >= 20 else None
+            ema50 = _ema(closes, 50)[-1] if len(closes) >= 50 else None
+            rsi14 = _rsi(closes, 14)[-1] if len(closes) >= 15 else None
+            atr14 = _atr(highs, lows, closes, 14)[-1] if len(closes) >= 15 else None
 
-        last = df.dropna().iloc[-1]
-        trend = "Bullish" if last["ema20"] > last["ema50"] else "Bearish"
+            trend = "Neutre"
+            if ema20 is not None and ema50 is not None:
+                if ema20 > ema50 and last_close >= ema20:
+                    trend = "Haussier"
+                elif ema20 < ema50 and last_close <= ema20:
+                    trend = "Baissier"
+                else:
+                    trend = "Transition"
 
-        summary_html = f"""
-        <div class="card" style="margin-top:14px">
-          <div class="grid">
-            <div><div class="muted">Close</div><div><b>{float(last['close']):,.6f}</b></div></div>
-            <div><div class="muted">Trend EMA20/50</div><div><b>{trend}</b></div></div>
-            <div><div class="muted">EMA20</div><div><b>{float(last['ema20']):,.6f}</b></div></div>
-            <div><div class="muted">EMA50</div><div><b>{float(last['ema50']):,.6f}</b></div></div>
-            <div><div class="muted">RSI14</div><div><b>{float(last['rsi14']):,.2f}</b></div></div>
+            support = min(lows) if lows else None
+            resistance = max(highs) if highs else None
+            vol_avg = sum(vols[-50:]) / max(1, len(vols[-50:]))
+
+            def _fmt(v, nd=6):
+                if v is None:
+                    return "—"
+                try:
+                    return f"{float(v):.{nd}g}"
+                except Exception:
+                    return "—"
+
+            summary_html = f"""
+            <div class="card">
+              <h3>Résumé (IA explainable)</h3>
+              <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-top:10px">
+                <div class="stat-box"><div class="label">Tendance</div><div class="value">{trend}</div></div>
+                <div class="stat-box"><div class="label">RSI 14</div><div class="value">{_fmt(rsi14, 4)}</div></div>
+                <div class="stat-box"><div class="label">EMA 20</div><div class="value">{_fmt(ema20, 6)}</div></div>
+                <div class="stat-box"><div class="label">EMA 50</div><div class="value">{_fmt(ema50, 6)}</div></div>
+              </div>
+
+              <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px">
+                <div class="stat-box"><div class="label">Prix</div><div class="value">{_fmt(last_close, 6)}</div></div>
+                <div class="stat-box"><div class="label">ATR 14</div><div class="value">{_fmt(atr14, 6)}</div></div>
+                <div class="stat-box"><div class="label">Support (200)</div><div class="value">{_fmt(support, 6)}</div></div>
+                <div class="stat-box"><div class="label">Résistance (200)</div><div class="value">{_fmt(resistance, 6)}</div></div>
+              </div>
+
+              <p class="muted" style="margin-top:12px">
+                Volume moyen (50 bougies): <b>{_fmt(vol_avg, 6)}</b>.
+                Les niveaux support/résistance sont calculés sur le range des {limit} dernières bougies.
+              </p>
+            </div>
+            """
+        except Exception as e:
+            error_msg = f"Erreur calcul indicateurs: {e}"
+
+    err_box = ""
+    if error_msg:
+        err_box = f"""
+        <div class="card" style="border:1px solid rgba(239,68,68,.6)">
+          <h3 style="color:#f87171">Erreur</h3>
+          <div style="white-space:pre-wrap;color:#e2e8f0">{error_msg}</div>
+          <div class="muted" style="margin-top:10px">
+            Astuce: si tu vois une erreur HTTP 451/403 sur Binance, c’est souvent un blocage réseau/geo.
+            Le serveur essaie des “mirrors”, mais tu peux aussi définir <code>BINANCE_API_BASE</code>.
           </div>
-          <div class="muted" style="margin-top:10px">* Page légère (fallback).</div>
         </div>
         """
-    except Exception as e:
-        summary_html = f'<div class="card" style="margin-top:14px;border-color:#ef4444"><b>Erreur:</b> {escape_html(e)}</div>'
 
-    options = ['1m','5m','15m','1h','4h','1d']
+    explanation = """
+    <div class="card">
+      <h3>À quoi sert cette page ?</h3>
+      <p style="color:#cbd5e1">
+        <b>AI Technical Analysis</b> te donne une lecture rapide (et “explainable”) d’un actif :
+        tendance, momentum et volatilité à partir de vraies chandelles (OHLCV).
+        L’objectif est de t’aider à <b>structurer une décision</b> (pas de prédire le futur).
+      </p>
+
+      <h4 style="margin-top:12px">Comment l’utiliser</h4>
+      <ol style="color:#e2e8f0;line-height:1.6">
+        <li>Choisis un <b>symbol</b> Binance (ex: <code>BTCUSDT</code>, <code>ETHUSDT</code>).</li>
+        <li>Choisis l’<b>interval</b> (ex: <code>15m</code>, <code>1h</code>, <code>4h</code>, <code>1d</code>).</li>
+        <li>Clique <b>Analyser</b>.</li>
+        <li>Lis le résumé: <b>Tendance</b> (EMA20/EMA50), <b>RSI</b> (momentum), <b>ATR</b> (volatilité),
+            et les zones <b>support/résistance</b>.</li>
+      </ol>
+
+      <h4 style="margin-top:12px">Interprétation rapide</h4>
+      <ul style="color:#e2e8f0;line-height:1.6">
+        <li><b>EMA20 &gt; EMA50</b> + prix au-dessus EMA20 → biais plutôt haussier.</li>
+        <li><b>RSI</b> &gt; 70 = surchauffe possible, &lt; 30 = pression vendeuse forte (contexte important).</li>
+        <li><b>ATR</b> te sert à calibrer la marge de mouvement (stop/objectif plus réalistes).</li>
+      </ul>
+
+      <div class="muted" style="margin-top:10px">
+        Note: ce module utilise des données publiques; si l’API est bloquée, tu verras un message d’erreur.
+      </div>
+    </div>
+    """
+
     body = f"""
     <div class="card">
-      <form method="get">
-        <div class="grid">
-          <div><label>Symbol (Binance)</label><input name="symbol" value="{escape_html(symbol)}"></div>
-          <div><label>Interval</label>
-            <select name="interval">
-              {''.join(f'<option value="{i}" ' + ('selected' if i==interval else '') + f'>{i}</option>' for i in options)}
-            </select>
-          </div>
+      <h2>AI Technical Analysis</h2>
+      <form method="get" action="/ai-technical-analysis" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+        <div style="flex:1;min-width:220px">
+          <label class="muted">Symbol (Binance)</label>
+          <input name="symbol" value="{symbol}" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(148,163,184,.25);background:#0b1220;color:#e2e8f0" />
         </div>
-        <div style="margin-top:12px"><button type="submit">Analyser</button></div>
+        <div style="min-width:140px">
+          <label class="muted">Interval</label>
+          <select name="interval" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(148,163,184,.25);background:#0b1220;color:#e2e8f0">
+            {''.join([f'<option value="{iv}" {"selected" if iv==interval else ""}>{iv}</option>' for iv in ["1m","5m","15m","1h","4h","1d"]])}
+          </select>
+        </div>
+        <button class="btn" type="submit" style="padding:10px 16px;border-radius:10px">Analyser</button>
       </form>
     </div>
+
+    {err_box}
     {summary_html}
+    {explanation}
     """
+
     return HTMLResponse(_simple_page("AI Technical Analysis", body, SID))
-
-
-
-# --------------------------
-# Final: alias sidebar full (compat)
-# --------------------------
-if not globals().get("SIDEBAR_FULL"):
-    globals()["SIDEBAR_FULL"] = globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR") or ""
-
-
-
-# ===================== RESTORED/MISSING PAGES =====================
-
 @app.get("/ai-gem-hunter")
 async def _page_ai_gem_hunter():
     body = f"""
@@ -32999,7 +33140,7 @@ async def _page_ai_gem_hunter():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Gem Hunter", body, sidebar_html=SIDEBAR_FULL))
+    return HTMLResponse(_simple_page("AI Gem Hunter", body, sidebar=SIDEBAR_FULL))
 
 
 @app.get("/ai-technical-analysis")
@@ -33019,29 +33160,175 @@ async def _page_ai_technical_analysis():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Technical Analysis", body, sidebar_html=SIDEBAR_FULL))
+    return HTMLResponse(_simple_page("AI Technical Analysis", body, sidebar=SIDEBAR_FULL))
 
 
-@app.get("/narrative-radar")
-async def _page_narrative_radar():
+@app.get("/narrative-radar", response_class=HTMLResponse)
+async def narrative_radar_page(request: Request):
+    """
+    Narrative Radar: narratives + score simple basé sur marché (CoinGecko),
+    avec fallback démo si l'API est indisponible.
+    """
+    SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
+    q = dict(request.query_params)
+    vs = (q.get("vs") or "usd").lower().strip()
+    vs = vs if vs in ("usd", "cad", "eur") else "usd"
+
+    narratives = [
+        {"key": "ai", "name": "AI & Data", "coins": ["render-token", "fetch-ai", "singularitynet", "ocean-protocol", "bittensor"]},
+        {"key": "rwa", "name": "RWA (Real World Assets)", "coins": ["ondo-finance", "chainlink", "maker", "centrifuge", "truefi"]},
+        {"key": "l2", "name": "Layer 2", "coins": ["arbitrum", "optimism", "polygon-ecosystem-token", "metis-token"]},
+        {"key": "defi", "name": "DeFi", "coins": ["aave", "uniswap", "curve-dao-token", "compound-governance-token"]},
+        {"key": "gaming", "name": "Gaming", "coins": ["the-sandbox", "gala", "axie-infinity", "illuvium"]},
+        {"key": "meme", "name": "Memecoins", "coins": ["dogecoin", "shiba-inu", "pepe", "bonk", "floki"]},
+    ]
+
+    async def _cg(url: str, ttl: int = 60):
+        if "_fetch_json" in globals():
+            return await globals()["_fetch_json"](url, ttl_seconds=ttl)
+        import httpx
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            return r.json()
+
+    demo_mode = False
+    err = None
+    market = {}
+
+    all_ids = sorted({cid for n in narratives for cid in n["coins"]})
+
+    try:
+        ids_param = ",".join(all_ids)
+        url = (
+            "https://api.coingecko.com/api/v3/coins/markets"
+            f"?vs_currency={vs}&ids={ids_param}&order=market_cap_desc&per_page=250&page=1"
+            "&sparkline=false&price_change_percentage=24h"
+        )
+        data = await _cg(url, ttl=60)
+        market = {str(x.get("id")): x for x in (data or [])}
+        if not market:
+            raise ValueError("CoinGecko: aucune donnée retournée.")
+    except Exception as e:
+        demo_mode = True
+        err = str(e)
+
+    def _num(v, default=None):
+        try:
+            return float(v)
+        except Exception:
+            return default
+
+    def _score(items):
+        if not items:
+            return 0
+        changes = []
+        volumes = 0.0
+        for it in items:
+            changes.append(_num(it.get("price_change_percentage_24h"), 0.0) or 0.0)
+            volumes += _num(it.get("total_volume"), 0.0) or 0.0
+        avg_ch = sum(changes) / max(1, len(changes))
+        vol_part = min(40.0, max(0.0, (math.log10(volumes + 1) - 4) * 10))
+        ch_part = max(-30.0, min(60.0, avg_ch * 3.0))
+        s = 50.0 + ch_part + vol_part
+        return int(max(0, min(100, round(s))))
+
+    cards = []
+    for n in narratives:
+        items = [market.get(cid) for cid in n["coins"] if market.get(cid)] if not demo_mode else []
+        sc = _score(items) if not demo_mode else 50
+
+        rows = ""
+        if not demo_mode:
+            for it in items[:8]:
+                name = it.get("name") or it.get("id")
+                sym = (it.get("symbol") or "").upper()
+                price = _num(it.get("current_price"))
+                ch = _num(it.get("price_change_percentage_24h"))
+                vol = _num(it.get("total_volume"))
+                rows += f"""
+                <tr style="border-top:1px solid rgba(148,163,184,.12)">
+                  <td style="padding:10px 8px">{name} <span class="muted">({sym})</span></td>
+                  <td style="padding:10px 8px;text-align:right">{price:,.6g}</td>
+                  <td style="padding:10px 8px;text-align:right">{(ch if ch is not None else 0):.2f}%</td>
+                  <td style="padding:10px 8px;text-align:right">{(vol if vol is not None else 0):,.0f}</td>
+                </tr>
+                """
+        else:
+            rows = '<tr><td class="muted" style="padding:10px">Mode démo (API indisponible)</td></tr>'
+
+        cards.append(f"""
+        <div class="card" style="margin-top:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <h3 style="margin:0">{n["name"]}</h3>
+            <div class="stat-box" style="min-width:120px;text-align:center">
+              <div class="label">Score</div>
+              <div class="value">{sc}/100</div>
+            </div>
+          </div>
+          <div class="muted" style="margin-top:6px">Coins suivis: {', '.join(n["coins"][:5])}{'…' if len(n["coins"])>5 else ''}</div>
+          <table style="width:100%;border-collapse:collapse;margin-top:10px">
+            <thead>
+              <tr class="muted" style="text-align:left">
+                <th style="padding:6px 8px">Coin</th>
+                <th style="padding:6px 8px;text-align:right">Prix ({vs.upper()})</th>
+                <th style="padding:6px 8px;text-align:right">24h</th>
+                <th style="padding:6px 8px;text-align:right">Volume</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows}
+            </tbody>
+          </table>
+        </div>
+        """)
+
+    warning = ""
+    if demo_mode:
+        warning = f"""
+        <div class="card" style="border:1px solid rgba(239,68,68,.6)">
+          <h3 style="color:#f87171">Mode démo</h3>
+          <div class="muted">Impossible de joindre CoinGecko: {err}</div>
+        </div>
+        """
+
+    expl = """
+    <div class="card" style="margin-top:12px">
+      <h3>C’est quoi “Narrative Radar” ?</h3>
+      <p style="color:#cbd5e1">
+        Une “narrative” = un thème qui attire l’attention (AI, RWA, memecoins, L2…).  
+        Cette page sert à <b>repérer les thèmes chauds</b> en combinant:
+        (1) la performance 24h, (2) le volume, et (3) une liste de coins représentatifs.
+      </p>
+      <ul style="color:#e2e8f0;line-height:1.6">
+        <li><b>Score</b> (0–100): indicateur simple pour trier vite.</li>
+        <li>Ensuite, utilise <b>Market Regime</b>, <b>Setup Builder</b> ou <b>Risk</b> pour valider le trade.</li>
+      </ul>
+      <div class="muted">Ce n’est pas un conseil financier. Les données sont publiques (CoinGecko).</div>
+    </div>
+    """
+
     body = f"""
     <div class="card">
       <h2>Narrative Radar</h2>
-      <p style="color:#94a3b8">
-        Cette page est en cours de réintégration. Pour l’instant, elle ne doit plus renvoyer 404/500.
-      </p>
-      <div class="stat-box" style="margin-top:12px">
-        <div class="label">Statut</div>
-        <div class="value">Maintenance</div>
-      </div>
-      <p style="margin-top:12px;color:#e2e8f0">
-        Si tu veux, je peux remettre la version complète (widgets + logique) exactement comme avant.
-      </p>
+      <div class="muted">Choisis la devise d’affichage, puis rafraîchis.</div>
+      <form method="get" action="/narrative-radar" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:10px">
+        <div style="min-width:160px">
+          <label class="muted">Devise</label>
+          <select name="vs" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(148,163,184,.25);background:#0b1220;color:#e2e8f0">
+            {''.join([f'<option value="{c}" {"selected" if c==vs else ""}>{c.upper()}</option>' for c in ["usd","cad","eur"]])}
+          </select>
+        </div>
+        <button class="btn" type="submit" style="padding:10px 16px;border-radius:10px">Rafraîchir</button>
+      </form>
     </div>
+
+    {warning}
+    {''.join(cards)}
+    {expl}
     """
-    return HTMLResponse(_simple_page("Narrative Radar", body, sidebar_html=SIDEBAR_FULL))
 
-
+    return HTMLResponse(_simple_page("Narrative Radar", body, sidebar_html=SID))
 @app.get("/ai-crypto-coach")
 async def _page_ai_crypto_coach():
     body = f"""
@@ -33059,7 +33346,7 @@ async def _page_ai_crypto_coach():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Crypto Coach", body, sidebar_html=SIDEBAR_FULL))
+    return HTMLResponse(_simple_page("AI Crypto Coach", body, sidebar=SIDEBAR_FULL))
 
 
 @app.get("/ai-swarm-agents")
@@ -33079,5 +33366,5 @@ async def _page_ai_swarm_agents():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Swarm Agents", body, sidebar_html=SIDEBAR_FULL))
+    return HTMLResponse(_simple_page("AI Swarm Agents", body, sidebar=SIDEBAR_FULL))
 

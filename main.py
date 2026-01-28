@@ -3928,7 +3928,6 @@ body.sidebar-open{padding-left:280px !important}
     </script>"""
 
 # Backward-compat alias (some routes still reference SIDEBAR_FULL)
-SIDEBAR_FULL = SIDEBAR
 
 
 # Appliquer les placeholders (logo + nom) dans la sidebar
@@ -3939,12 +3938,11 @@ except Exception:
 
 # Alias stable pour les pages qui attendent SIDEBAR_HTML
 try:
+    SIDEBAR_FULL = SIDEBAR  # Backward-compat alias (after placeholder substitution)
     SIDEBAR_HTML = SIDEBAR
 except Exception:
     SIDEBAR_HTML = ""
-
-
-
+    SIDEBAR_FULL = ""
 # ==================================
 
 # ============================================================================
@@ -31459,6 +31457,43 @@ async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeo
             raise
 
 
+# ------------------------------
+# CoinGecko helpers (robust)
+# ------------------------------
+COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3"
+
+async def _cg_fetch(path: str, params: dict | None = None, *, cache_key: str | None = None, cache_ttl: int = 30):
+    """Fetch CoinGecko JSON and return parsed data (dict/list)."""
+    if not path.startswith("/"):
+        path = "/" + path
+    url = COINGECKO_BASE_URL + path
+    if cache_key is None:
+        try:
+            import json as _json
+            cache_key = "cg:" + path + ":" + _json.dumps(params or {}, sort_keys=True)
+        except Exception:
+            cache_key = "cg:" + path
+    return await _fetch_json(url, params=params, cache_key=cache_key, ttl_seconds=cache_ttl)
+
+async def _cg_market(coin_id: str, *, vs_currency: str = "usd") -> dict:
+    """Return a single market dict for coin_id (or {})."""
+    data = await _cg_fetch(
+        "/coins/markets",
+        params={"vs_currency": vs_currency, "ids": coin_id, "sparkline": "false"},
+        cache_key=f"cg:markets:{vs_currency}:{coin_id}",
+        cache_ttl=30,
+    )
+    if isinstance(data, list):
+        return data[0] if data else {}
+    return data if isinstance(data, dict) else {}
+
+async def _cg_global() -> dict:
+    """Return CoinGecko global market data (or {})."""
+    data = await _cg_fetch("/global", cache_key="cg:global", cache_ttl=60)
+    return data if isinstance(data, dict) else {}
+
+
+
 def _pick_best_pair(pairs: list[dict]) -> dict | None:
     if not pairs:
         return None
@@ -33334,487 +33369,441 @@ async def narrative_radar_page(request: Request):
     return HTMLResponse(_simple_page("Narrative Radar", body, sidebar_html=SID))
 @app.get("/ai-crypto-coach")
 async def ai_crypto_coach(request: Request):
-    """AI Crypto Coach — page interactive (analyse légère, sans dépendre d'une API LLM)."""
-    symbol = (request.query_params.get("symbol") or "BTCUSDT").upper().strip()
-    tf = (request.query_params.get("tf") or "1h").lower().strip()
-    if tf not in {"15m", "1h", "4h", "1d"}:
-        tf = "1h"
+    """
+    AI Crypto Coach (Binance OHLCV) + plan indicatif EMA/RSI/ATR.
+    Robuste: ne plante pas si certaines APIs ne répondent pas.
+    """
+    symbol = (request.query_params.get("symbol") or request.query_params.get("sym") or "BTCUSDT").strip().upper()
+    tf = (request.query_params.get("tf") or request.query_params.get("timeframe") or "1h").strip().lower()
+    do_analysis = request.query_params.get("go") == "1" or ("symbol" in request.query_params)
 
-    analysis_html = ""
-    error_msg = ""
+    tf_map = {
+        "1m":"1m","3m":"3m","5m":"5m","15m":"15m","30m":"30m","45m":"45m",
+        "1h":"1h","2h":"2h","4h":"4h","6h":"6h","8h":"8h","12h":"12h",
+        "1d":"1d","3d":"3d","1w":"1w","1mo":"1M"
+    }
+    interval = tf_map.get(tf, "1h")
 
-    try:
-        kl = await _binance_klines(symbol=symbol, interval=tf, limit=240)
-        closes = [k["close"] for k in kl]
-        highs = [k["high"] for k in kl]
-        lows = [k["low"] for k in kl]
+    error = None
+    result = None
 
-        last = closes[-1]
-        ema20 = _ema_series(closes, 20)[-1]
-        ema50 = _ema_series(closes, 50)[-1]
-        rsi14 = _rsi_series(closes, 14)[-1]
-        atr14 = _atr_series(highs, lows, closes, 14)[-1]
+    if do_analysis:
+        try:
+            kl = await _binance_klines(symbol, interval, limit=200)
+            if not isinstance(kl, list) or len(kl) < 50:
+                raise ValueError("Pas assez de données OHLCV pour analyser.")
+            closes = [float(x["close"]) for x in kl]
+            highs  = [float(x["high"]) for x in kl]
+            lows   = [float(x["low"]) for x in kl]
+            vols   = [float(x["volume"]) for x in kl]
 
-        # Biais simple
-        if last > ema50 and ema20 > ema50:
-            bias = "Bullish"
-        elif last < ema50 and ema20 < ema50:
-            bias = "Bearish"
-        else:
-            bias = "Range"
+            last_close = closes[-1]
+            ema20 = _ema(closes, 20)
+            ema50 = _ema(closes, 50)
+            ema200 = _ema(closes, 200) if len(closes) >= 200 else _ema(closes, 100)
+            rsi14 = _rsi(closes, 14)
+            atr14 = _atr(highs, lows, closes, 14)
 
-        # Plan (exemple) basé sur ATR
-        if bias == "Bullish":
-            entry_low = last - 0.35 * atr14
-            entry_high = last + 0.10 * atr14
-            stop = last - 1.25 * atr14
-            t1 = last + 1.00 * atr14
-            t2 = last + 2.00 * atr14
-        elif bias == "Bearish":
-            entry_low = last - 0.10 * atr14
-            entry_high = last + 0.35 * atr14
-            stop = last + 1.25 * atr14
-            t1 = last - 1.00 * atr14
-            t2 = last - 2.00 * atr14
-        else:
-            entry_low = last - 0.50 * atr14
-            entry_high = last + 0.50 * atr14
-            stop = last - 1.25 * atr14
-            t1 = last + 0.75 * atr14
-            t2 = last + 1.25 * atr14
+            trend = "bullish" if ema20 > ema50 and last_close > ema50 else "bearish" if ema20 < ema50 and last_close < ema50 else "range"
+            momentum = "forte" if rsi14 >= 60 else "faible" if rsi14 <= 40 else "neutre"
+            vol_regime = "haute" if (atr14 / last_close) >= 0.015 else "normale"
 
-        rsi_note = (
-            "RSI élevé → attention au surachat (préfère attendre un pullback)."
-            if rsi14 >= 70
-            else "RSI faible → attention au survente (risque de rebond violent)."
-            if rsi14 <= 30
-            else "RSI neutre → conditions plus saines."
-        )
+            if trend == "bullish":
+                direction = "LONG (tendance)"
+                entry = last_close
+                sl = last_close - 1.5 * atr14
+                tp1 = last_close + 1.5 * atr14
+                tp2 = last_close + 3.0 * atr14
+            elif trend == "bearish":
+                direction = "SHORT (tendance)"
+                entry = last_close
+                sl = last_close + 1.5 * atr14
+                tp1 = last_close - 1.5 * atr14
+                tp2 = last_close - 3.0 * atr14
+            else:
+                direction = "RANGE (attendre confirmation)"
+                entry = last_close
+                sl = last_close - 1.2 * atr14
+                tp1 = last_close + 1.2 * atr14
+                tp2 = last_close + 2.0 * atr14
 
-        analysis_html = f"""
-        <div class="grid" style="gap:14px; grid-template-columns: repeat(12, 1fr);">
-          <div class="card" style="grid-column: span 12;">
-            <div class="section-title">Résumé</div>
-            <div class="kpi-row">
-              <span class="pill">Symbole: <b>{html.escape(symbol)}</b></span>
-              <span class="pill">TF: <b>{html.escape(tf)}</b></span>
-              <span class="pill">Biais: <b>{bias}</b></span>
-              <span class="pill">Prix: <b>{last:,.4f}</b></span>
-              <span class="pill">RSI(14): <b>{rsi14:,.1f}</b></span>
-              <span class="pill">ATR(14): <b>{atr14:,.4f}</b></span>
-            </div>
-            <div style="margin-top:10px" class="small">{rsi_note}</div>
-          </div>
+            vol_20 = sum(vols[-20:]) / max(1, len(vols[-20:]))
+            vol_5 = sum(vols[-5:]) / max(1, len(vols[-5:]))
+            vol_note = "Volume en hausse" if vol_5 > 1.2 * vol_20 else "Volume normal"
 
-          <div class="card" style="grid-column: span 12;">
-            <div class="section-title">Plan de trade (exemple)</div>
-            <div class="grid" style="gap:10px; grid-template-columns: repeat(12, 1fr);">
-              <div class="card" style="grid-column: span 6;">
-                <div class="small">Zone d'entrée</div>
-                <div class="kpi-value">{entry_low:,.4f} → {entry_high:,.4f}</div>
-              </div>
-              <div class="card" style="grid-column: span 6;">
-                <div class="small">Stop-loss (indicatif)</div>
-                <div class="kpi-value">{stop:,.4f}</div>
-              </div>
-              <div class="card" style="grid-column: span 6;">
-                <div class="small">Take Profit 1</div>
-                <div class="kpi-value">{t1:,.4f}</div>
-              </div>
-              <div class="card" style="grid-column: span 6;">
-                <div class="small">Take Profit 2</div>
-                <div class="kpi-value">{t2:,.4f}</div>
-              </div>
-            </div>
-            <div style="margin-top:10px" class="small">
-              ⚠️ Ceci est un coach "structure" (biais + zones). Ajuste selon ton plan, ta taille de position, et le contexte marché.
-            </div>
-          </div>
-        </div>
-        """
-    except Exception as e:
-        error_msg = str(e)
+            result = {
+                "symbol": symbol,
+                "tf": interval,
+                "last_close": last_close,
+                "ema20": ema20,
+                "ema50": ema50,
+                "ema200": ema200,
+                "rsi14": rsi14,
+                "atr14": atr14,
+                "trend": trend,
+                "momentum": momentum,
+                "vol_regime": vol_regime,
+                "direction": direction,
+                "entry": entry,
+                "sl": sl,
+                "tp1": tp1,
+                "tp2": tp2,
+                "volume_note": vol_note,
+            }
+        except Exception as e:
+            error = str(e)
 
-    body_html = f"""
-    <div class="card">
-      <div class="section-title">AI Crypto Coach</div>
-      <div class="small">Analyse rapide (Binance OHLCV) + plan indicatif basé sur EMA/RSI/ATR.</div>
-
-      <form method="get" style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-        <input class="input" name="symbol" value="{html.escape(symbol)}" placeholder="Ex: BTCUSDT" style="min-width:160px;">
-        <select class="input" name="tf" style="min-width:120px;">
-          {''.join([f'<option value="{x}" {"selected" if tf==x else ""}>{x}</option>' for x in ["15m","1h","4h","1d"]])}
+    body = f"""
+    <div class="card mb-3">
+      <h2>AI Crypto Coach</h2>
+      <p>Analyse rapide (Binance OHLCV) + plan indicatif basé sur EMA/RSI/ATR.</p>
+      <form method="get" action="/ai-crypto-coach" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <input class="input" name="symbol" value="{html.escape(symbol)}" style="max-width:220px;" />
+        <select class="input" name="tf" style="max-width:140px;">
+          {''.join([f'<option value="{k}" {"selected" if k==interval else ""}>{k}</option>' for k in ["15m","30m","1h","2h","4h","1d"]])}
         </select>
         <button class="btn" type="submit">Analyser</button>
+        <input type="hidden" name="go" value="1"/>
       </form>
     </div>
-
-    {f'<div class="card" style="border:1px solid rgba(255,90,90,.35)"><b>Erreur:</b> {html.escape(error_msg)}</div>' if error_msg else ''}
-    {analysis_html if analysis_html else '<div class="card"><div class="small">Entre un symbole + timeframe puis clique “Analyser”.</div></div>'}
     """
 
-    return HTMLResponse(_simple_page(
-        title="AI Crypto Coach",
-        body_html=body_html,
-        sidebar_html=SIDEBAR_FULL,
-    ))
+    if error:
+        body += f"""
+        <div class="card mb-3" style="border:1px solid #7f1d1d;">
+          <h3 style="color:#fca5a5;">Erreur</h3>
+          <div style="white-space:pre-wrap;">{html.escape(error)}</div>
+        </div>
+        """
+    elif result:
+        def fmt(x):
+            try:
+                return f"{float(x):,.6f}".replace(",", " ")
+            except Exception:
+                return str(x)
+
+        body += f"""
+        <div class="card mb-3">
+          <h3>Résumé</h3>
+          <ul>
+            <li><b>Prix</b>: {fmt(result["last_close"])}</li>
+            <li><b>Tendance</b>: {html.escape(result["trend"])}, <b>Momentum</b>: {html.escape(result["momentum"])}, <b>Volatilité</b>: {html.escape(result["vol_regime"])}</li>
+            <li>{html.escape(result["volume_note"])}</li>
+          </ul>
+        </div>
+
+        <div class="card mb-3">
+          <h3>Indicateurs</h3>
+          <ul>
+            <li>EMA20: {fmt(result["ema20"])}</li>
+            <li>EMA50: {fmt(result["ema50"])}</li>
+            <li>EMA200: {fmt(result["ema200"])}</li>
+            <li>RSI14: {fmt(result["rsi14"])}</li>
+            <li>ATR14: {fmt(result["atr14"])}</li>
+          </ul>
+        </div>
+
+        <div class="card mb-3">
+          <h3>Plan indicatif</h3>
+          <p><b>Direction</b>: {html.escape(result["direction"])}</p>
+          <ul>
+            <li>Entrée (référence): {fmt(result["entry"])}</li>
+            <li>Stop (ATR): {fmt(result["sl"])}</li>
+            <li>TP1 (ATR): {fmt(result["tp1"])}</li>
+            <li>TP2 (ATR): {fmt(result["tp2"])}</li>
+          </ul>
+          <p style="opacity:.85;">Note: c’est un plan indicatif basé sur la volatilité (ATR), pas un conseil financier.</p>
+        </div>
+        """
+    else:
+        body += """
+        <div class="card mb-3">
+          <p>Entre un symbole + timeframe puis clique “Analyser”.</p>
+        </div>
+        """
+
+    return _simple_page("AI Crypto Coach", body, sidebar=SIDEBAR_FULL)
+
+@app.get("/academy")
+async def academy_page(request: Request):
+    body = """
+    <div class="card">
+      <h3>Academy</h3>
+      <p class="muted">
+        Ici tu vas retrouver des modules d'apprentissage (vidéos / guides / quiz) pour comprendre:
+        les bases, l'analyse technique, la gestion du risque, et comment utiliser les outils Crypto IA.
+      </p>
+      <ul>
+        <li><b>Débutant</b> : notions, vocabulaire, erreurs à éviter</li>
+        <li><b>Intermédiaire</b> : structure de marché, supports/résistances, tendances</li>
+        <li><b>Avancé</b> : multi-timeframe, setups, journaling, optimisation</li>
+      </ul>
+      <p class="muted">Cette page est en cours de consolidation (contenus + progression).</p>
+    </div>
+    """
+    return HTMLResponse(_simple_page("Academy", body, sidebar=SIDEBAR_FULL))
+
+@app.get("/crypto-academy")
+async def crypto_academy_redirect(request: Request):
+    return RedirectResponse(url="/academy", status_code=302)
+
+@app.get("/academy-progress")
+async def academy_progress(request: Request):
+    body = """
+    <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+      <div class="text-xl font-semibold mb-1">Academy Progress</div>
+      <div class="text-slate-300">
+        Ta progression (modules complétés, quiz, scores, badges) sera affichée ici.
+        Pour l'instant, on laisse ce module en <b>beta</b> le temps de connecter la base d'utilisateurs et les quiz.
+      </div>
+      <div class="text-slate-500 text-xs mt-3">
+        Prochaine étape: table <code>academy_progress</code> liée à ton user_id + pages quiz.
+      </div>
+    </div>
+    """
+    return HTMLResponse(_simple_page("Academy Progress", body, sidebar=SIDEBAR_FULL))
+
+
+@app.get("/altseason-copilot-pro")
+async def altseason_copilot_pro(request: Request):
+    """
+    Altseason Copilot Pro: signaux simples basés sur dominance BTC/ETH + Fear&Greed.
+    Robuste: erreurs affichées dans la page (au lieu de 500).
+    """
+    error = None
+    data = None
+
+    try:
+        fg = None
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.get("https://api.alternative.me/fng/?limit=1&format=json")
+                js = r.json()
+                if isinstance(js, dict) and js.get("data"):
+                    fg = int(js["data"][0].get("value") or 0)
+        except Exception:
+            fg = None
+
+        g = await _cg_global()
+        gd = (g or {}).get("data") if isinstance(g, dict) else None
+        mcap = (gd or {}).get("total_market_cap", {}).get("usd") if isinstance(gd, dict) else None
+        btc_dom = (gd or {}).get("market_cap_percentage", {}).get("btc") if isinstance(gd, dict) else None
+        eth_dom = (gd or {}).get("market_cap_percentage", {}).get("eth") if isinstance(gd, dict) else None
+
+        if btc_dom is None:
+            raise ValueError("Impossible de récupérer la dominance BTC (CoinGecko).")
+
+        mood = "n/a" if fg is None else ("Fear" if fg < 45 else "Neutral" if fg < 60 else "Greed")
+        if fg is None:
+            window = "Données Fear&Greed indisponibles (mode dégradé)."
+        else:
+            window = "Altcoins favorisés" if (btc_dom < 50 and 45 <= fg <= 70) else "Plutôt BTC / prudence"
+
+        data = {
+            "fear_greed": fg,
+            "mood": mood,
+            "market_cap_usd": mcap,
+            "btc_dom": btc_dom,
+            "eth_dom": eth_dom,
+            "window": window,
+        }
+    except Exception as e:
+        error = str(e)
+
+    def fmt_num(x, digits=2):
+        try:
+            return f"{float(x):,.{digits}f}".replace(",", " ")
+        except Exception:
+            return "n/a"
+
+    body = """
+    <div class="card mb-3">
+      <h2>Altseason Copilot Pro</h2>
+      <p>Lecture rapide du contexte (dominance + sentiment). Mode “robuste” si certaines APIs sont down.</p>
+    </div>
+    """
+
+    if error:
+        body += f"""
+        <div class="card mb-3" style="border:1px solid #7f1d1d;">
+          <h3 style="color:#fca5a5;">Impossible de récupérer les données live.</h3>
+          <div style="white-space:pre-wrap;">Erreur: {html.escape(error)}</div>
+        </div>
+        """
+    else:
+        body += f"""
+        <div class="card mb-3">
+          <h3>Contexte</h3>
+          <ul>
+            <li><b>Fear &amp; Greed</b>: {html.escape(str(data["fear_greed"]))} ({html.escape(data["mood"])})</li>
+            <li><b>Market cap (USD)</b>: {fmt_num(data["market_cap_usd"], 0)}</li>
+            <li><b>BTC dominance</b>: {fmt_num(data["btc_dom"], 2)}%</li>
+            <li><b>ETH dominance</b>: {fmt_num(data["eth_dom"], 2)}%</li>
+          </ul>
+          <h3>Lecture</h3>
+          <p>{html.escape(data["window"])}</p>
+          <p style="opacity:.85;">Note: heuristique simple; ce n’est pas un conseil financier.</p>
+        </div>
+        """
+
+    return _simple_page("Altseason Copilot Pro", body, sidebar=SIDEBAR_FULL)
+
+@app.get("/rug-scam-shield")
+async def rug_scam_shield(request: Request):
+    token = (request.query_params.get("token") or "").strip()
+    chain = (request.query_params.get("chain") or "ETH").strip().upper()
+
+    checklist = """
+    <ul class="list-disc pl-5 space-y-1 text-slate-300">
+      <li><b>Contrat vérifié</b> (source visible) + pas de fonctions suspectes.</li>
+      <li><b>Liquidité</b> lock/burn (preuve) + pas de mint illimité.</li>
+      <li><b>Taxes</b> raisonnables (éviter 10%+ buy/sell) + pas de blacklist abusive.</li>
+      <li><b>Répartition</b> (top holders) + pas de wallet unique dominant.</li>
+      <li><b>Volume</b> & spreads cohérents (attention aux faux volumes).</li>
+      <li><b>Team / docs</b> : site, X, roadmap, audits si possible.</li>
+    </ul>
+    """
+
+    verdict = "—"
+    if token:
+        verdict = "Analyse manuelle requise (beta)"
+
+    body = f"""
+    <div class="space-y-4">
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-xl font-semibold mb-1">Rug / Scam Shield (beta)</div>
+        <div class="text-slate-300 text-sm">
+          Module de prévention: checklist + signaux simples. (beta)
+        </div>
+        <form class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2" method="get">
+          <input class="w-full rounded-lg bg-slate-950/60 border border-slate-700 px-3 py-2" name="token" value="{token}" placeholder="Token / contrat (texte)">
+          <select class="w-full rounded-lg bg-slate-950/60 border border-slate-700 px-3 py-2" name="chain">
+            {''.join([f'<option value="{x}" {"selected" if chain==x else ""}>{x}</option>' for x in ["ETH","BSC","SOL","BASE"]])}
+          </select>
+          <button class="rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-2 font-semibold" type="submit">Vérifier</button>
+        </form>
+      </div>
+
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-lg font-semibold mb-2">Verdict</div>
+        <div class="text-2xl font-bold">{verdict}</div>
+        <div class="text-slate-500 text-xs mt-2">
+          (beta) Prochaine étape: intégration API explorer (Etherscan/Solscan) + détection de taxes/mint/owner.
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-lg font-semibold mb-2">Checklist</div>
+        {checklist}
+      </div>
+    </div>
+    """
+    return HTMLResponse(_simple_page("Rug / Scam Shield", body, sidebar=SIDEBAR_FULL))
 
 
 @app.get("/ai-swarm-agents")
 async def ai_swarm_agents(request: Request):
-    """Swarm Agents — organise l'analyse en 4 'agents' (data / TA / risque / exécution)."""
-    symbol = (request.query_params.get("symbol") or "BTCUSDT").upper().strip()
-    tf = (request.query_params.get("tf") or "1h").lower().strip()
-    if tf not in {"15m", "1h", "4h", "1d"}:
-        tf = "1h"
+    """
+    AI Swarm Agents (Binance OHLCV) : plusieurs "agents" simples qui votent.
+    """
+    symbol = (request.query_params.get("symbol") or "BTCUSDT").strip().upper()
+    tf = (request.query_params.get("tf") or "1h").strip().lower()
+    do_run = request.query_params.get("go") == "1" or ("symbol" in request.query_params)
 
-    agent_html = ""
-    error_msg = ""
+    tf_map = {"15m":"15m","30m":"30m","1h":"1h","2h":"2h","4h":"4h","1d":"1d"}
+    interval = tf_map.get(tf, "1h")
 
-    try:
-        kl = await _binance_klines(symbol=symbol, interval=tf, limit=240)
-        closes = [k["close"] for k in kl]
-        highs = [k["high"] for k in kl]
-        lows = [k["low"] for k in kl]
-        last = closes[-1]
-        ema20 = _ema_series(closes, 20)[-1]
-        ema50 = _ema_series(closes, 50)[-1]
-        rsi14 = _rsi_series(closes, 14)[-1]
-        atr14 = _atr_series(highs, lows, closes, 14)[-1]
+    error = None
+    out = None
 
-        # Agent "TA"
-        trend = "Uptrend" if last > ema50 and ema20 > ema50 else "Downtrend" if last < ema50 and ema20 < ema50 else "Sideways"
-        momentum = "Strong" if rsi14 >= 60 else "Weak" if rsi14 <= 40 else "Neutral"
+    if do_run:
+        try:
+            kl = await _binance_klines(symbol, interval, limit=200)
+            if not isinstance(kl, list) or len(kl) < 60:
+                raise ValueError("Pas assez de données OHLCV pour lancer les agents.")
+            closes = [float(x["close"]) for x in kl]
+            highs  = [float(x["high"]) for x in kl]
+            lows   = [float(x["low"]) for x in kl]
+            vols   = [float(x["volume"]) for x in kl]
 
-        # Agent "Risque"
-        vol = "Élevée" if atr14 / max(last, 1e-9) >= 0.02 else "Modérée" if atr14 / max(last, 1e-9) >= 0.01 else "Faible"
-        risk_tip = "Réduis la taille / stop plus large." if vol == "Élevée" else "Stop classique." if vol == "Modérée" else "Peut serrer un peu le stop."
+            last = closes[-1]
+            ema50 = _ema(closes, 50)
+            ema200 = _ema(closes, 200) if len(closes) >= 200 else _ema(closes, 100)
+            rsi14 = _rsi(closes, 14)
+            atr14 = _atr(highs, lows, closes, 14)
 
-        # Agent "Exécution"
-        if trend == "Uptrend":
-            idea = "Chercher un pullback vers EMA20/EMA50 puis reprise."
-        elif trend == "Downtrend":
-            idea = "Attendre un rejet sous EMA20/EMA50 (ou éviter les longs)."
-        else:
-            idea = "Trader les bornes (range) avec confirmations (RSI + niveaux)."
+            agent_trend = "LONG" if last > ema50 and ema50 > ema200 else "SHORT" if last < ema50 and ema50 < ema200 else "NEUTRE"
+            agent_momo = "LONG" if rsi14 >= 55 else "SHORT" if rsi14 <= 45 else "NEUTRE"
+            vol_20 = sum(vols[-20:]) / max(1, len(vols[-20:]))
+            vol_5 = sum(vols[-5:]) / max(1, len(vols[-5:]))
+            agent_volume = "LONG" if (vol_5 > 1.3 * vol_20 and last > ema50) else "SHORT" if (vol_5 > 1.3 * vol_20 and last < ema50) else "NEUTRE"
+            atr_pct = atr14 / last
+            agent_volatility = "RISK_OFF" if atr_pct >= 0.02 else "OK"
 
-        agent_html = f"""
-        <div class="grid" style="gap:14px; grid-template-columns: repeat(12, 1fr);">
-          <div class="card" style="grid-column: span 12;">
-            <div class="section-title">Swarm — {html.escape(symbol)} ({html.escape(tf)})</div>
-            <div class="kpi-row">
-              <span class="pill">Prix: <b>{last:,.4f}</b></span>
-              <span class="pill">Trend: <b>{trend}</b></span>
-              <span class="pill">Momentum (RSI): <b>{momentum}</b></span>
-              <span class="pill">Volatilité (ATR): <b>{vol}</b></span>
-            </div>
-          </div>
+            votes = [agent_trend, agent_momo, agent_volume]
+            long_votes = sum(1 for v in votes if v == "LONG")
+            short_votes = sum(1 for v in votes if v == "SHORT")
+            if long_votes >= 2:
+                consensus = "LONG"
+            elif short_votes >= 2:
+                consensus = "SHORT"
+            else:
+                consensus = "NEUTRE"
 
-          <div class="card" style="grid-column: span 6;">
-            <div class="section-title">Agent 1 — Data Scout</div>
-            <ul class="small">
-              <li>Dernier prix: <b>{last:,.4f}</b></li>
-              <li>EMA20 / EMA50: <b>{ema20:,.4f}</b> / <b>{ema50:,.4f}</b></li>
-              <li>RSI(14): <b>{rsi14:,.1f}</b></li>
-              <li>ATR(14): <b>{atr14:,.4f}</b></li>
-            </ul>
-          </div>
+            out = {
+                "symbol": symbol,
+                "tf": interval,
+                "price": last,
+                "agents": {
+                    "Trend Agent (EMA50/EMA200)": agent_trend,
+                    "Momentum Agent (RSI14)": agent_momo,
+                    "Volume Agent (volume vs 20)": agent_volume,
+                    "Volatility Agent (ATR%)": agent_volatility,
+                },
+                "consensus": consensus,
+                "notes": f"Votes LONG={long_votes}, SHORT={short_votes}. ATR%={atr_pct:.2%}.",
+            }
+        except Exception as e:
+            error = str(e)
 
-          <div class="card" style="grid-column: span 6;">
-            <div class="section-title">Agent 2 — Technical Analyst</div>
-            <ul class="small">
-              <li>Structure: <b>{trend}</b></li>
-              <li>Momentum: <b>{momentum}</b></li>
-              <li>Signal simple: <b>{"Long biais" if trend=="Uptrend" else "Short biais" if trend=="Downtrend" else "Range"}</b></li>
-            </ul>
-          </div>
-
-          <div class="card" style="grid-column: span 6;">
-            <div class="section-title">Agent 3 — Risk Manager</div>
-            <ul class="small">
-              <li>Volatilité: <b>{vol}</b></li>
-              <li>Conseil: {risk_tip}</li>
-              <li>Règle: viser un R:R ≥ <b>1:1.5</b> minimum.</li>
-            </ul>
-          </div>
-
-          <div class="card" style="grid-column: span 6;">
-            <div class="section-title">Agent 4 — Execution Planner</div>
-            <div class="small">{idea}</div>
-            <div class="small" style="margin-top:8px">
-              Checklist: niveau clé → confirmation → stop → take-profit → taille.
-            </div>
-          </div>
-        </div>
-        """
-    except Exception as e:
-        error_msg = str(e)
-
-    body_html = f"""
-    <div class="card">
-      <div class="section-title">AI Swarm Agents</div>
-      <div class="small">Même data, mais organisée en “agents” pour structurer une décision.</div>
-
-      <form method="get" style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-        <input class="input" name="symbol" value="{html.escape(symbol)}" placeholder="Ex: BTCUSDT" style="min-width:160px;">
-        <select class="input" name="tf" style="min-width:120px;">
-          {''.join([f'<option value="{x}" {"selected" if tf==x else ""}>{x}</option>' for x in ["15m","1h","4h","1d"]])}
+    body = f"""
+    <div class="card mb-3">
+      <h2>AI Swarm Agents</h2>
+      <p>Même data, mais organisée en “agents” pour structurer une décision.</p>
+      <form method="get" action="/ai-swarm-agents" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <input class="input" name="symbol" value="{html.escape(symbol)}" style="max-width:220px;" />
+        <select class="input" name="tf" style="max-width:140px;">
+          {''.join([f'<option value="{k}" {"selected" if k==interval else ""}>{k}</option>' for k in ["15m","30m","1h","2h","4h","1d"]])}
         </select>
         <button class="btn" type="submit">Lancer les agents</button>
+        <input type="hidden" name="go" value="1"/>
       </form>
     </div>
-
-    {f'<div class="card" style="border:1px solid rgba(255,90,90,.35)"><b>Erreur:</b> {html.escape(error_msg)}</div>' if error_msg else ''}
-    {agent_html if agent_html else '<div class="card"><div class="small">Choisis un symbole + timeframe puis lance les agents.</div></div>'}
     """
 
-    return HTMLResponse(_simple_page(
-        title="AI Swarm Agents",
-        body_html=body_html,
-        sidebar_html=SIDEBAR_FULL,
-    ))
-@app.get("/academy")
-@app.get("/academy-progress")
-async def academy(request: Request):
-    """Academy + Progress — pages stables (contenu + structure)."""
-    path = request.url.path
-
-    modules = [
-        ("01", "Bases Crypto & Risque", "Comprendre market structure, volatilité, sizing, et erreurs classiques."),
-        ("02", "Lecture de tendance", "EMA, structure HH/HL, timing d'entrée, invalidation."),
-        ("03", "Range & Breakout", "Ranges propres, fausses cassures, confirmations."),
-        ("04", "Indicateurs utiles", "RSI, ATR, volume — comment les utiliser sans se faire piéger."),
-        ("05", "Plans & Journal", "Checklists, journaling, améliorations progressives."),
-    ]
-
-    if path == "/academy":
-        modules_html = ""
-        for code, title, desc in modules:
-            modules_html += (
-                f'<div class="card" style="grid-column: span 6;">'
-                f'  <div class="section-title">Module {code} — {html.escape(title)}</div>'
-                f'  <div class="small">{html.escape(desc)}</div>'
-                f'  <div class="small" style="margin-top:10px; opacity:.9">✅ Objectif: apprendre 1 concept, l\'appliquer sur 10 trades en démo.</div>'
-                f'</div>'
-            )
-
-        body_html = f"""
-        <div class="card">
-          <div class="section-title">Academy</div>
-          <div class="small">Cours structurés (courts) + exercices. Objectif: te rendre autonome, pas te noyer d'infos.</div>
-          <div style="margin-top:10px" class="kpi-row">
-            <a class="btn" href="/academy-progress">Voir ma progression</a>
-          </div>
-        </div>
-
-        <div class="grid" style="gap:14px; grid-template-columns: repeat(12, 1fr);">
-          {modules_html}
+    if error:
+        body += f"""
+        <div class="card mb-3" style="border:1px solid #7f1d1d;">
+          <h3 style="color:#fca5a5;">Erreur</h3>
+          <div style="white-space:pre-wrap;">{html.escape(error)}</div>
         </div>
         """
-        return HTMLResponse(_simple_page(title="Academy", body_html=body_html, sidebar_html=SIDEBAR_FULL))
-
-    # /academy-progress
-    body_html = """
-    <div class="card">
-      <div class="section-title">Academy Progress</div>
-      <div class="small">
-        Cette page est prête côté UI. Prochaine étape: sauvegarder ta progression (SQLite /app/data) + boutons “terminé”.
-      </div>
-      <div class="small" style="margin-top:10px">
-        Pour l'instant: utilise un journal (Google Sheet) ou un carnet. Quand tu veux, je te code la persistance.
-      </div>
-      <div style="margin-top:12px" class="kpi-row">
-        <a class="btn" href="/academy">Retour à l'Academy</a>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="section-title">Checklist quotidienne (simple)</div>
-      <ul class="small">
-        <li>1 seul setup (pas 10) ✅</li>
-        <li>Stop défini avant l'entrée ✅</li>
-        <li>R:R min 1:1.5 ✅</li>
-        <li>Capture écran avant/après + note émotion ✅</li>
-      </ul>
-    </div>
-    """
-    return HTMLResponse(_simple_page(title="Academy Progress", body_html=body_html, sidebar_html=SIDEBAR_FULL))
-@app.get("/altseason-copilot-pro")
-async def altseason_copilot_pro(request: Request):
-    """Altseason Copilot — score simple (Coingecko) + lecture dominance/retours."""
-    error_msg = ""
-    data = None
-
-    async def _pct_return(prices: list) -> float:
-        # prices: [[ts, price], ...]
-        if not prices or len(prices) < 2:
-            return 0.0
-        p0 = float(prices[0][1])
-        p1 = float(prices[-1][1])
-        if p0 <= 0:
-            return 0.0
-        return (p1 - p0) / p0 * 100.0
-
-    try:
-        global_js = await _fetch_json("https://api.coingecko.com/api/v3/global")
-        btc_dom = float(global_js.get("data", {}).get("market_cap_percentage", {}).get("btc", 0.0))
-
-        btc_js = await _fetch_json("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30")
-        eth_js = await _fetch_json("https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=usd&days=30")
-
-        btc_ret = _pct_return(btc_js.get("prices") or [])
-        eth_ret = _pct_return(eth_js.get("prices") or [])
-
-        score = 50.0
-        if btc_dom and btc_dom < 50:
-            score += 20
-        elif btc_dom and btc_dom < 55:
-            score += 10
-
-        if eth_ret > btc_ret:
-            score += 15
-        if btc_ret < 0 and eth_ret > 0:
-            score += 10
-        if btc_ret > 0 and eth_ret > btc_ret:
-            score += 10
-
-        score = max(0.0, min(100.0, score))
-
-        if score >= 75:
-            phase = "Altseason possible"
-            reco = "Focus: alts de qualité, mais garde un plan de risk strict."
-        elif score >= 60:
-            phase = "Transition"
-            reco = "Commence progressif sur les alts (taille réduite) + surveille dominance."
-        elif score >= 45:
-            phase = "Neutre"
-            reco = "Évite de sur-alloc aux alts. Priorité: setups propres."
-        else:
-            phase = "BTC Season / Risk-off"
-            reco = "Les alts sont fragiles. Préfère BTC/ETH ou cash."
-
-        data = {
-            "btc_dom": btc_dom,
-            "btc_ret": btc_ret,
-            "eth_ret": eth_ret,
-            "score": score,
-            "phase": phase,
-            "reco": reco,
-        }
-    except Exception as e:
-        error_msg = str(e)
-
-    if error_msg:
-        body_html = f"""
-        <div class="card">
-          <div class="section-title">Altseason Copilot Pro</div>
-          <div class="small">Impossible de récupérer les données live.</div>
-          <div style="margin-top:10px" class="small"><b>Erreur:</b> {html.escape(error_msg)}</div>
+    elif out:
+        body += f"""
+        <div class="card mb-3">
+          <h3>Consensus: {html.escape(out["consensus"])}</h3>
+          <p style="opacity:.85;">{html.escape(out["notes"])}</p>
+          <ul>
+            {''.join([f"<li><b>{html.escape(k)}</b>: {html.escape(v)}</li>" for k,v in out["agents"].items()])}
+          </ul>
         </div>
         """
-        return HTMLResponse(_simple_page(title="Altseason Copilot Pro", body_html=body_html, sidebar_html=SIDEBAR_FULL))
-
-    body_html = f"""
-    <div class="card">
-      <div class="section-title">Altseason Copilot Pro</div>
-      <div class="small">Score rapide basé sur BTC dominance + performance BTC vs ETH (30 jours).</div>
-    </div>
-
-    <div class="grid" style="gap:14px; grid-template-columns: repeat(12, 1fr);">
-      <div class="card" style="grid-column: span 4;">
-        <div class="small">Altseason Score</div>
-        <div class="kpi-value">{data["score"]:.0f}/100</div>
-      </div>
-      <div class="card" style="grid-column: span 4;">
-        <div class="small">BTC dominance</div>
-        <div class="kpi-value">{data["btc_dom"]:.1f}%</div>
-      </div>
-      <div class="card" style="grid-column: span 4;">
-        <div class="small">BTC vs ETH (30j)</div>
-        <div class="kpi-value">{data["btc_ret"]:+.1f}% / {data["eth_ret"]:+.1f}%</div>
-      </div>
-
-      <div class="card" style="grid-column: span 12;">
-        <div class="section-title">{html.escape(data["phase"])}</div>
-        <div class="small">{html.escape(data["reco"])}</div>
-        <div class="small" style="margin-top:10px; opacity:.85">
-          Note: c'est un “copilot” (indicateurs macro). Tu confirmes toujours avec tes setups + gestion du risque.
-        </div>
-      </div>
-    </div>
-    """
-
-    return HTMLResponse(_simple_page(
-        title="Altseason Copilot Pro",
-        body_html=body_html,
-        sidebar_html=SIDEBAR_FULL,
-    ))
-@app.get("/rug-scam-shield")
-async def rug_scam_shield(request: Request):
-    """Rug/Scam Shield — s'appuie sur Dexscreener (liquidité/volume/âge) + heuristiques."""
-    q = (request.query_params.get("q") or "").strip()
-    chain = (request.query_params.get("chain") or "all").lower().strip()
-    if chain not in {"all", "eth", "bsc", "polygon", "arbitrum", "optimism", "base", "solana", "avax"}:
-        chain = "all"
-
-    error_msg = ""
-    scan = None
-
-    if q:
-        try:
-            scan = await _ai_token_scanner_run([q], chain=chain)
-        except Exception as e:
-            error_msg = str(e)
-
-    def _render_item(it: dict) -> str:
-        pair_url = it.get("pairUrl") or ""
-        link = f'<a class="link" target="_blank" rel="noopener" href="{html.escape(pair_url)}">Voir sur Dexscreener</a>' if pair_url else ""
-        flags = it.get("flags") or []
-        flags_html = " ".join([f'<span class="pill">{html.escape(str(x))}</span>' for x in flags]) if flags else '<span class="pill">OK</span>'
-        return f"""
-        <div class="card" style="grid-column: span 12;">
-          <div class="section-title">{html.escape(it.get("symbol") or it.get("target") or "Token")}</div>
-          <div class="kpi-row">
-            <span class="pill">Prix: <b>{_fmt_usd(it.get("priceUsd"))}</b></span>
-            <span class="pill">Liquidité: <b>{_fmt_usd(it.get("liquidityUsd"))}</b></span>
-            <span class="pill">Volume 24h: <b>{_fmt_usd(it.get("volume24h"))}</b></span>
-            <span class="pill">Âge: <b>{_fmt_num(it.get("ageDays"))} j</b></span>
-            <span class="pill">Risk: <b>{_fmt_num(it.get("riskScore"))}/100</b></span>
-          </div>
-          <div style="margin-top:10px" class="small">
-            <b>Recommandation:</b> {html.escape(it.get("recommendation") or "N/A")}
-          </div>
-          <div style="margin-top:10px" class="kpi-row">{flags_html}</div>
-          <div style="margin-top:10px">{link}</div>
-          {f'<div class="small" style="margin-top:10px; opacity:.9">{html.escape(it.get("notes") or "")}</div>' if it.get("notes") else ''}
+    else:
+        body += """
+        <div class="card mb-3">
+          <p>Choisis un symbole + timeframe puis lance les agents.</p>
         </div>
         """
 
-    items_html = ""
-    if scan and scan.get("ok"):
-        items = scan.get("items") or []
-        items_html = "".join([_render_item(it) for it in items])
-
-    body_html = f"""
-    <div class="card">
-      <div class="section-title">Rug / Scam Shield</div>
-      <div class="small">Entre un ticker (ex: PEPE) ou une adresse de contrat. Le score est heuristique (pas une certitude).</div>
-
-      <form method="get" style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-        <input class="input" name="q" value="{html.escape(q)}" placeholder="Ticker ou contrat..." style="min-width:220px;">
-        <select class="input" name="chain" style="min-width:140px;">
-          {''.join([f'<option value="{c}" {"selected" if chain==c else ""}>{c}</option>' for c in ["all","eth","bsc","polygon","arbitrum","optimism","base","solana","avax"]])}
-        </select>
-        <button class="btn" type="submit">Scanner</button>
-      </form>
-    </div>
-
-    {f'<div class="card" style="border:1px solid rgba(255,90,90,.35)"><b>Erreur:</b> {html.escape(error_msg)}</div>' if error_msg else ''}
-    {items_html if items_html else ('<div class="card"><div class="small">Entre un token puis clique “Scanner”.</div></div>' if not q else '<div class="card"><div class="small">Aucun résultat trouvé (essaie un autre ticker ou une adresse).</div></div>')}
-    """
-
-    return HTMLResponse(_simple_page(
-        title="Rug / Scam Shield",
-        body_html=body_html,
-        sidebar_html=SIDEBAR_FULL,
-    ))
+    return _simple_page("AI Swarm Agents", body, sidebar=SIDEBAR_FULL)

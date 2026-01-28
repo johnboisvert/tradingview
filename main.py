@@ -4183,8 +4183,9 @@ MEXC_API_BASE = "https://api.mexc.com"
 MEXC_PRICE_ENDPOINT = f"{MEXC_API_BASE}/api/v3/ticker/price"
 
 #  Background Monitor
-monitor_running = False
-monitor_lock = asyncio.Lock()  # évite NameError dans monitor_trades_background
+tp_sl_monitor_running = False
+background_monitor_running = False
+tp_sl_monitor_lock = asyncio.Lock()  # évite double démarrage TP/SL
 
 # ============================================================================
 #  SYSTME D'AUTHENTIFICATION AVEC POSTGRESQL
@@ -5214,8 +5215,8 @@ def check_route_permission(username_or_user, route_path):
 
 def start_background_monitor():
     """Démarre le monitor en arrière-plan sans faire planter l'app."""
-    global monitor_running
-    if monitor_running:
+    global tp_sl_monitor_running
+    if tp_sl_monitor_running:
         return
 
     fn = globals().get("background_monitor")
@@ -5225,7 +5226,7 @@ def start_background_monitor():
 
     try:
         asyncio.create_task(fn())
-        monitor_running = True
+        tp_sl_background_monitor_running = True
         print("🟢 Background monitor démarré.")
     except RuntimeError as e:
         # Pas de loop active (ne devrait pas arriver dans startup_event, mais safe)
@@ -7138,7 +7139,7 @@ async def admin_reset_password(request: Request, admin=Depends(require_admin)):
             except Exception:
                 payload = {}
 
-    username = (payload.get("username") or payload.get("email") or "").strip().lower()
+    username = (payload.get("username") or payload.get("email") or "").strip()
     new_password = payload.get("new_password")
     if isinstance(new_password, str):
         new_password = new_password.strip()
@@ -7193,7 +7194,7 @@ async def admin_dashboard_reset_password(request: Request, admin=Depends(require
             except Exception:
                 payload = {}
 
-    username = (payload.get("username") or payload.get("email") or "").strip().lower()
+    username = (payload.get("username") or payload.get("email") or "").strip()
     new_password = payload.get("new_password")
     if isinstance(new_password, str):
         new_password = new_password.strip()
@@ -20317,14 +20318,14 @@ async def send_telegram_target_notification(symbol: str, target: str, current_pr
 
 async def monitor_trades_background():
     """Tâche de fond - surveillance automatique toutes les 30 secondes"""
-    global monitor_running
+    global tp_sl_monitor_running
     
     # Vrifier si une instance est dj en cours
-    async with monitor_lock:
-        if monitor_running:
+    async with tp_sl_monitor_lock:
+        if tp_sl_monitor_running:
             print("⚠️ Une instance du moniteur est déjà active, skip")
             return
-        monitor_running = True
+        tp_sl_background_monitor_running = True
     
     print("\n" + "="*70)
     print("🤖 MONITEUR AUTOMATIQUE DES TP/SL DÉMARRÉ")
@@ -20395,7 +20396,7 @@ async def startup_event():
     
     # Initialiser l'Academy
     # Utiliser try_lock pour viter de bloquer si un autre worker a dj lanc
-    if not monitor_running:
+    if not tp_sl_monitor_running:
         asyncio.create_task(monitor_trades_background())
     
     #  Dmarrer le monitoring MEXC pour auto-dtection TP/SL

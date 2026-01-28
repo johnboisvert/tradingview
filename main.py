@@ -32053,19 +32053,26 @@ async def _binance_klines(symbol: str, interval: str, limit: int = 500, ttl_seco
             )
             if isinstance(data, list) and data:
                 return data
-            # Si payload vide, essaie un autre mirror
+            # Payload vide -> essaie un autre mirror
             last_err = RuntimeError("Réponse vide Binance")
+            continue
         except RuntimeError as e:
-            # On retente sur d'autres bases pour certains codes
             msg = str(e)
+            # Erreur de code (URL malformée) -> ne pas masquer
+            if "missing an 'http'" in msg or "missing an \"http\"" in msg:
+                raise
             last_err = e
-            if ("HTTP 451" in msg) or ("HTTP 403" in msg) or ("HTTP 418" in msg) or ("HTTP 429" in msg):
+            # Region-block / forbidden / rate-limit / autres codes: on tente les autres mirrors
+            if re.search(r"(451|403|418|429)", msg):
                 continue
-            # autre erreur -> stop
-            break
+            if "Client error" in msg and re.search(r"(451|403|418|429)", msg):
+                continue
+            continue
         except Exception as e:
             last_err = e
-            break
+            continue
+
+    raise RuntimeError("Binance klines indisponibles (tous les mirrors ont échoué).") from last_err
 
     # Échec complet
     if last_err:
@@ -32465,7 +32472,7 @@ async def ai_liquidity(request: Request):
             return RedirectResponse(url=f"/login?redirect=%2Fai-liquidity", status_code=303)
 
         # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
-        rows = await _coingecko_markets_top50()
+        rows = _coingecko_markets_top50()
         rows = rows if isinstance(rows, list) else []
         items=[]
         ratios=[]
@@ -32604,7 +32611,7 @@ async def ai_timeframe(request: Request):
             vol_annual = ( (sum((x-(sum(returns)/len(returns)))**2 for x in returns)/len(returns))**0.5 * math.sqrt(365) ) if len(returns) > 1 else 0.0
 
         # dernière variation 24h BTC via markets
-        mk = await _coingecko_markets_top50()
+        mk = _coingecko_markets_top50()
         btc_row = next((r for r in (mk if isinstance(mk,list) else []) if (r.get("id")=="bitcoin" or (r.get("symbol")=="btc"))), None)
         btc_ch24 = btc_row.get("price_change_percentage_24h") if btc_row else None
         btc_price = btc_row.get("current_price") if btc_row else None
@@ -33159,7 +33166,29 @@ async def _page_ai_technical_analysis():
         Si tu veux, je peux remettre la version complète (widgets + logique) exactement comme avant.
       </p>
     </div>
-    """
+    
+      <div class="card">
+        <h3>À quoi sert cette page ?</h3>
+        <ul>
+          <li><b>Analyser rapidement</b> un symbole avec un intervalle (1h, 4h, 1d, etc.).</li>
+          <li>Obtenir un <b>résumé IA</b> : tendance, momentum, niveaux clés, volatilité, biais (Bull / Bear / Range).</li>
+          <li>Comprendre <b>pourquoi</b> l'IA arrive à cette conclusion (indicateurs + score).</li>
+        </ul>
+
+        <h3>Comment l'utiliser</h3>
+        <ol>
+          <li>Choisis un <b>symbol</b> (ex: BTCUSDT) et un <b>interval</b> (ex: 1h).</li>
+          <li>Clique <b>Analyser</b>.</li>
+          <li>Lis d'abord le <b>biais</b> (trend/range) puis les <b>niveaux</b> (supports/résistances).</li>
+          <li>Utilise ça comme <b>filtre</b> avant un trade: si le biais est Range, évite de forcer un trade "trend".</li>
+          <li>Combine avec ta gestion du risque (stop/target) et ton plan.</li>
+        </ol>
+
+        <p class="muted">
+          Note: si Binance bloque l'accès (HTTP 451) le site essaie automatiquement des mirrors.
+        </p>
+      </div>
+"""
     return HTMLResponse(_simple_page("AI Technical Analysis", body, sidebar=SIDEBAR_FULL))
 
 
@@ -33347,6 +33376,74 @@ async def _page_ai_crypto_coach():
     </div>
     """
     return HTMLResponse(_simple_page("AI Crypto Coach", body, sidebar=SIDEBAR_FULL))
+
+
+# ------------------------------
+# Academy / Pro modules (pages manquantes)
+# ------------------------------
+
+@app.get("/academy")
+async def academy_page(request: Request):
+    body = """
+    <div class="card">
+      <h3>Academy</h3>
+      <p class="muted">
+        Ici tu vas retrouver des modules d'apprentissage (vidéos / guides / quiz) pour comprendre:
+        les bases, l'analyse technique, la gestion du risque, et comment utiliser les outils Crypto IA.
+      </p>
+      <ul>
+        <li><b>Débutant</b> : notions, vocabulaire, erreurs à éviter</li>
+        <li><b>Intermédiaire</b> : structure de marché, supports/résistances, tendances</li>
+        <li><b>Avancé</b> : multi-timeframe, setups, journaling, optimisation</li>
+      </ul>
+      <p class="muted">Cette page est en cours de consolidation (contenus + progression).</p>
+    </div>
+    """
+    return HTMLResponse(_simple_page("Academy", body, sidebar=SIDEBAR_FULL))
+
+@app.get("/crypto-academy")
+async def crypto_academy_redirect(request: Request):
+    return RedirectResponse(url="/academy", status_code=302)
+
+@app.get("/academy-progress")
+async def academy_progress_page(request: Request):
+    body = """
+    <div class="card">
+      <h3>Academy Progress</h3>
+      <p class="muted">
+        Ta progression (modules complétés, quiz, scores, badges) sera affichée ici.
+        Pour l'instant, la page est en maintenance.
+      </p>
+    </div>
+    """
+    return HTMLResponse(_simple_page("Academy Progress", body, sidebar=SIDEBAR_FULL))
+
+@app.get("/altseason-copilot-pro")
+async def altseason_copilot_pro_page(request: Request):
+    body = """
+    <div class="card">
+      <h3>Altseason Copilot Pro</h3>
+      <p class="muted">
+        Objectif: détecter les phases d'altseason (rotation BTC → ALTS) et proposer un plan:
+        watchlist, signaux, filtres de liquidité, et règles de risk management.
+      </p>
+      <p class="muted">Module en cours de réintégration.</p>
+    </div>
+    """
+    return HTMLResponse(_simple_page("Altseason Copilot Pro", body, sidebar=SIDEBAR_FULL))
+
+@app.get("/rug-scam-shield")
+async def rug_scam_shield_page(request: Request):
+    body = """
+    <div class="card">
+      <h3>Rug / Scam Shield</h3>
+      <p class="muted">
+        Analyse de risques (signaux on-chain simples, anomalies, liquidité, flags) pour éviter les
+        projets douteux. Cette page est temporairement en maintenance.
+      </p>
+    </div>
+    """
+    return HTMLResponse(_simple_page("Rug / Scam Shield", body, sidebar=SIDEBAR_FULL))
 
 
 @app.get("/ai-swarm-agents")

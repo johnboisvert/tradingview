@@ -32915,13 +32915,8 @@ async def ai_technical_analysis_page(request: Request):
     summary_html = ""
 
     try:
-        import httpx, pandas as pd, numpy as np
-        url = "https://api.binance.com/api/v3/klines"
-        params = {"symbol": symbol, "interval": interval, "limit": 200}
-        with httpx.Client(timeout=10.0) as client:
-            r = client.get(url, params=params)
-            r.raise_for_status()
-            kl = r.json() or []
+        import pandas as pd, numpy as np
+        kl = await _binance_klines(symbol, interval, limit=200, ttl_seconds=30)
         if not kl:
             raise ValueError("Aucune donnée Binance retournée.")
         df = pd.DataFrame(kl, columns=["open_time","open","high","low","close","volume","close_time","qav","num_trades","taker_base","taker_quote","ignore"])
@@ -33004,7 +32999,7 @@ async def _page_ai_gem_hunter():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Gem Hunter", body, sidebar=SIDEBAR_FULL))
+    return HTMLResponse(_simple_page("AI Gem Hunter", body, sidebar_html=SIDEBAR_FULL))
 
 
 @app.get("/ai-technical-analysis")
@@ -33024,7 +33019,7 @@ async def _page_ai_technical_analysis():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Technical Analysis", body, sidebar=SIDEBAR_FULL))
+    return HTMLResponse(_simple_page("AI Technical Analysis", body, sidebar_html=SIDEBAR_FULL))
 
 
 @app.get("/narrative-radar")
@@ -33044,7 +33039,7 @@ async def _page_narrative_radar():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("Narrative Radar", body, sidebar=SIDEBAR_FULL))
+    return HTMLResponse(_simple_page("Narrative Radar", body, sidebar_html=SIDEBAR_FULL))
 
 
 @app.get("/ai-crypto-coach")
@@ -33064,7 +33059,7 @@ async def _page_ai_crypto_coach():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Crypto Coach", body, sidebar=SIDEBAR_FULL))
+    return HTMLResponse(_simple_page("AI Crypto Coach", body, sidebar_html=SIDEBAR_FULL))
 
 
 @app.get("/ai-swarm-agents")
@@ -33084,5 +33079,5 @@ async def _page_ai_swarm_agents():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Swarm Agents", body, sidebar=SIDEBAR_FULL))
+    return HTMLResponse(_simple_page("AI Swarm Agents", body, sidebar_html=SIDEBAR_FULL))
 

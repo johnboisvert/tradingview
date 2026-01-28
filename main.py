@@ -32014,7 +32014,10 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
 # ============= AI SETUP BUILDER (Explainable) =============
 async def _binance_klines(symbol: str, interval: str, limit: int = 500, ttl_seconds: int = 60):
     """
-    Récupère des chandelles OHLCV (VRAIES données) depuis Binance (API publique).
+    Récupère des chandelles OHLCV depuis Binance (API publique).
+    IMPORTANT: l'endpoint principal api.binance.com peut renvoyer 451/403 selon la région.
+    On tente donc une liste de "mirrors" publics avant d'abandonner.
+
     - symbol: ex "BTCUSDT"
     - interval: "5m","15m","1h","4h","1d"
     """
@@ -32022,9 +32025,53 @@ async def _binance_klines(symbol: str, interval: str, limit: int = 500, ttl_seco
     interval = (interval or "").strip()
     if not symbol or not interval:
         return []
-    url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={int(limit)}"
-    data = await _fetch_json(url, ttl_seconds=ttl_seconds)
-    return data or []
+
+    # Base principale configurable
+    base_env = (os.getenv("BINANCE_API_BASE") or "").strip().rstrip("/")
+    bases = []
+    if base_env:
+        bases.append(base_env)
+
+    # Mirrors connus (souvent utiles quand api.binance.com est bloqué)
+    bases += [
+        "https://api.binance.com",
+        "https://data-api.binance.vision",
+        "https://api1.binance.com",
+        "https://api2.binance.com",
+        "https://api3.binance.com",
+    ]
+
+    last_err = None
+    for base in bases:
+        url = f"{base}/api/v3/klines?symbol={symbol}&interval={interval}&limit={int(limit)}"
+        try:
+            data = await _fetch_json(
+                url,
+                ttl_seconds=ttl_seconds,
+                use_coingecko_key=False,  # pas pertinent ici
+                headers={"Accept": "application/json"},
+            )
+            if isinstance(data, list) and data:
+                return data
+            # Si payload vide, essaie un autre mirror
+            last_err = RuntimeError("Réponse vide Binance")
+        except RuntimeError as e:
+            # On retente sur d'autres bases pour certains codes
+            msg = str(e)
+            last_err = e
+            if ("HTTP 451" in msg) or ("HTTP 403" in msg) or ("HTTP 418" in msg) or ("HTTP 429" in msg):
+                continue
+            # autre erreur -> stop
+            break
+        except Exception as e:
+            last_err = e
+            break
+
+    # Échec complet
+    if last_err:
+        raise RuntimeError(f"Impossible de joindre Binance pour {symbol} ({interval}). {last_err}")
+    return []
+
 
 def _ema(values, period: int):
     if not values or period <= 1:

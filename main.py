@@ -2774,6 +2774,14 @@ def _force_admin_on_request(request):
         pass
     return admin_user
 
+
+def _now_utc_str() -> str:
+    """Return current UTC time as a short human-readable string."""
+    try:
+        return datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    except Exception:
+        return "UTC"
+
 app = FastAPI()
 
 # =========================
@@ -2933,6 +2941,7 @@ class _InjectPlaceholdersMiddleware(BaseHTTPMiddleware):
                 logo_url = (os.getenv("SITE_LOGO_URL") or "").strip() or "https://github.com/johnboisvert/tradingview/blob/main/static/cryptoia_logo.png?raw=true"
                 body = resp.body
                 body = body.replace(b"{SITE_LOGO_URL}", logo_url.encode("utf-8"))
+                body = body.replace(b"/__SITE_LOGO_URL__", logo_url.encode("utf-8"))
                 body = body.replace(b"__SITE_LOGO_URL__", logo_url.encode("utf-8"))
                 resp.body = body
                 resp.headers["content-length"] = str(len(body))
@@ -8907,6 +8916,7 @@ async def webhook(request: Request):
     except Exception:
         payload = {"raw": raw_body.decode("utf-8", errors="ignore")}
 
+    
     def _to_float(v):
         try:
             if v is None:
@@ -29889,6 +29899,8 @@ async def ai_alerts_inbox(request: Request):
 
     cards_html = "\n".join(cards) if cards else '<div class="empty">Aucune donnée pour le moment. Réessaie dans 1-2 minutes.</div>'
 
+    result_html = cards_html
+
     html_page = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -32711,7 +32723,7 @@ async def ai_timeframe(request: Request):
 # ✅ Routes manquantes (évite 404) + pages robustes (anti-500)
 # ============================================================
 
-def _simple_page(title: str, body_html: str, sidebar_html: str = "") -> str:
+def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: str | None = None) -> str:
     styles = globals().get("GLOBAL_STYLES") or ""
     # GLOBAL_STYLES est du CSS brut; on l'encapsule pour éviter qu'il apparaisse comme texte sur la page
     if styles and not styles.lstrip().lower().startswith('<style'):
@@ -33150,46 +33162,8 @@ async def _page_ai_gem_hunter():
     return HTMLResponse(_simple_page("AI Gem Hunter", body, sidebar=SIDEBAR_FULL))
 
 
-@app.get("/ai-technical-analysis")
-async def _page_ai_technical_analysis():
-    body = f"""
-    <div class="card">
-      <h2>AI Technical Analysis</h2>
-      <p style="color:#94a3b8">
-        Cette page est en cours de réintégration. Pour l’instant, elle ne doit plus renvoyer 404/500.
-      </p>
-      <div class="stat-box" style="margin-top:12px">
-        <div class="label">Statut</div>
-        <div class="value">Maintenance</div>
-      </div>
-      <p style="margin-top:12px;color:#e2e8f0">
-        Si tu veux, je peux remettre la version complète (widgets + logique) exactement comme avant.
-      </p>
-    </div>
-    
-      <div class="card">
-        <h3>À quoi sert cette page ?</h3>
-        <ul>
-          <li><b>Analyser rapidement</b> un symbole avec un intervalle (1h, 4h, 1d, etc.).</li>
-          <li>Obtenir un <b>résumé IA</b> : tendance, momentum, niveaux clés, volatilité, biais (Bull / Bear / Range).</li>
-          <li>Comprendre <b>pourquoi</b> l'IA arrive à cette conclusion (indicateurs + score).</li>
-        </ul>
 
-        <h3>Comment l'utiliser</h3>
-        <ol>
-          <li>Choisis un <b>symbol</b> (ex: BTCUSDT) et un <b>interval</b> (ex: 1h).</li>
-          <li>Clique <b>Analyser</b>.</li>
-          <li>Lis d'abord le <b>biais</b> (trend/range) puis les <b>niveaux</b> (supports/résistances).</li>
-          <li>Utilise ça comme <b>filtre</b> avant un trade: si le biais est Range, évite de forcer un trade "trend".</li>
-          <li>Combine avec ta gestion du risque (stop/target) et ton plan.</li>
-        </ol>
 
-        <p class="muted">
-          Note: si Binance bloque l'accès (HTTP 451) le site essaie automatiquement des mirrors.
-        </p>
-      </div>
-"""
-    return HTMLResponse(_simple_page("AI Technical Analysis", body, sidebar=SIDEBAR_FULL))
 
 
 @app.get("/narrative-radar", response_class=HTMLResponse)

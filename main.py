@@ -32608,6 +32608,13 @@ async def ai_timeframe(request: Request):
             return RedirectResponse(url=f"/login?redirect=%2Fai-timeframe", status_code=303)
 
         # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
+
+    # Timestamp UTC (évite NameError si helper absent)
+    try:
+        now = _now_utc_str()
+    except Exception:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         # prix BTC 30j
         url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily"
         chart = await _fetch_json(url, ttl_seconds=180, use_coingecko_key=True)
@@ -32682,7 +32689,7 @@ async def ai_timeframe(request: Request):
         <h1 style="margin:0;">AI Timeframe</h1>
         <p class="muted" style="margin:8px 0 0 0;">Recommandation de timeframe basée sur la <b>volatilité BTC (30 jours)</b> + dynamique récente.</p>
       </div>
-      <div class="muted" style="font-size:13px;">Dernière mise à jour: <b>{_now_utc_str()}</b></div>
+      <div class="muted" style="font-size:13px;">Dernière mise à jour: <b>{now}</b></div>
     </div>
 
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
@@ -32725,6 +32732,10 @@ async def ai_timeframe(request: Request):
 
 def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: str | None = None) -> str:
     styles = globals().get("GLOBAL_STYLES") or ""
+    # Compat: certains appels utilisent `sidebar=` au lieu de `sidebar_html=`
+    if (not sidebar_html) and sidebar:
+        sidebar_html = sidebar
+
     # GLOBAL_STYLES est du CSS brut; on l'encapsule pour éviter qu'il apparaisse comme texte sur la page
     if styles and not styles.lstrip().lower().startswith('<style'):
         styles = f"<style>{styles}</style>"

@@ -32608,13 +32608,6 @@ async def ai_timeframe(request: Request):
             return RedirectResponse(url=f"/login?redirect=%2Fai-timeframe", status_code=303)
 
         # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
-
-    # Timestamp UTC (évite NameError si helper absent)
-    try:
-        now = _now_utc_str()
-    except Exception:
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         # prix BTC 30j
         url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily"
         chart = await _fetch_json(url, ttl_seconds=180, use_coingecko_key=True)
@@ -32689,7 +32682,7 @@ async def ai_timeframe(request: Request):
         <h1 style="margin:0;">AI Timeframe</h1>
         <p class="muted" style="margin:8px 0 0 0;">Recommandation de timeframe basée sur la <b>volatilité BTC (30 jours)</b> + dynamique récente.</p>
       </div>
-      <div class="muted" style="font-size:13px;">Dernière mise à jour: <b>{now}</b></div>
+      <div class="muted" style="font-size:13px;">Dernière mise à jour: <b>{_now_utc_str()}</b></div>
     </div>
 
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
@@ -32732,10 +32725,6 @@ async def ai_timeframe(request: Request):
 
 def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: str | None = None) -> str:
     styles = globals().get("GLOBAL_STYLES") or ""
-    # Compat: certains appels utilisent `sidebar=` au lieu de `sidebar_html=`
-    if (not sidebar_html) and sidebar:
-        sidebar_html = sidebar
-
     # GLOBAL_STYLES est du CSS brut; on l'encapsule pour éviter qu'il apparaisse comme texte sur la page
     if styles and not styles.lstrip().lower().startswith('<style'):
         styles = f"<style>{styles}</style>"
@@ -33344,28 +33333,130 @@ async def narrative_radar_page(request: Request):
 
     return HTMLResponse(_simple_page("Narrative Radar", body, sidebar_html=SID))
 @app.get("/ai-crypto-coach")
-async def _page_ai_crypto_coach():
+async def ai_crypto_coach(request: Request):
+    coin = (request.query_params.get("coin") or "bitcoin").strip().lower()
+    tf = (request.query_params.get("tf") or "4H").strip().upper()
+    style = (request.query_params.get("style") or "spot").strip().lower()
+
+    data = await _cg_market(coin)
+    tv_symbol = _tv_symbol_for_coin(coin)
+
+    # Simple "coach" rules (beta) — based on 24h change + ATH distance if available
+    price = data.get("current_price") if isinstance(data, dict) else None
+    chg24 = data.get("price_change_percentage_24h") if isinstance(data, dict) else None
+    ath_chg = data.get("ath_change_percentage") if isinstance(data, dict) else None
+    mc = data.get("market_cap") if isinstance(data, dict) else None
+    vol = data.get("total_volume") if isinstance(data, dict) else None
+    rank = data.get("market_cap_rank") if isinstance(data, dict) else None
+
+    if chg24 is None:
+        signal = "Neutre"
+        plan = "Données insuffisantes pour générer un plan."
+    else:
+        if chg24 >= 3:
+            signal = "Bullish"
+        elif chg24 <= -3:
+            signal = "Bearish"
+        else:
+            signal = "Neutre"
+
+        # Very conservative template plan (NOT financial advice)
+        if style == "scalp":
+            tp = "0.7% à 1.5%"
+            sl = "0.4% à 0.8%"
+            note = "Scalp = petites cibles, discipline stricte."
+        elif style == "swing":
+            tp = "5% à 12%"
+            sl = "2% à 4%"
+            note = "Swing = patience, éviter de sur-trader."
+        else:
+            tp = "2% à 6%"
+            sl = "1% à 2%"
+            note = "Spot = privilégie la gestion du risque et l'exposition progressive."
+
+        plan = f"""
+        <ul class="list-disc pl-5 space-y-1">
+          <li><b>Bias</b> : {signal}</li>
+          <li><b>Timeframe</b> : {tf} (valide surtout si ton graphique confirme)</li>
+          <li><b>TP (cible)</b> : {tp}</li>
+          <li><b>SL (invalid.)</b> : {sl}</li>
+          <li><b>Note</b> : {note}</li>
+        </ul>
+        """
+
+    if not isinstance(data, dict):
+        data_box = f"""
+        <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+          <div class="text-lg font-semibold mb-2">Erreur</div>
+          <div class="text-slate-300">
+            Impossible de récupérer les données pour <b>{coin}</b>. Essaie un id CoinGecko (ex: <code>bitcoin</code>, <code>ethereum</code>, <code>solana</code>).
+          </div>
+        </div>
+        """
+    else:
+        data_box = f"""
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+            <div class="text-slate-400 text-sm">Prix</div>
+            <div class="text-2xl font-bold">{_fmt_usd(price)}</div>
+          </div>
+          <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+            <div class="text-slate-400 text-sm">Variation 24h</div>
+            <div class="text-2xl font-bold">{_fmt_pct(chg24)}</div>
+          </div>
+          <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+            <div class="text-slate-400 text-sm">Market cap</div>
+            <div class="text-2xl font-bold">{_fmt_usd(mc)}</div>
+            <div class="text-slate-500 text-xs mt-1">Rank: {rank or "—"} • Volume: {_fmt_usd(vol)}</div>
+          </div>
+        </div>
+        """
+
     body = f"""
-    <div class="card">
-      <h2>AI Crypto Coach</h2>
-      <p style="color:#94a3b8">
-        Cette page est en cours de réintégration. Pour l’instant, elle ne doit plus renvoyer 404/500.
-      </p>
-      <div class="stat-box" style="margin-top:12px">
-        <div class="label">Statut</div>
-        <div class="value">Maintenance</div>
+    <div class="space-y-4">
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-xl font-semibold mb-2">AI Crypto Coach (beta)</div>
+        <div class="text-slate-300 text-sm">
+          Analyse rapide + plan de trade <b>indicatif</b> basé sur des données publiques. Ce n'est pas un conseil financier.
+        </div>
+        <form class="mt-3 grid grid-cols-1 md:grid-cols-4 gap-2" method="get">
+          <input class="w-full rounded-lg bg-slate-950/60 border border-slate-700 px-3 py-2" name="coin" value="{coin}" placeholder="coin id (bitcoin)">
+          <select class="w-full rounded-lg bg-slate-950/60 border border-slate-700 px-3 py-2" name="tf">
+            {''.join([f'<option value="{x}" {"selected" if tf==x else ""}>{x}</option>' for x in ["1H","4H","1D","1W"]])}
+          </select>
+          <select class="w-full rounded-lg bg-slate-950/60 border border-slate-700 px-3 py-2" name="style">
+            {''.join([f'<option value="{x}" {"selected" if style==x else ""}>{x.upper()}</option>' for x in ["spot","scalp","swing"]])}
+          </select>
+          <button class="rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-2 font-semibold" type="submit">Analyser</button>
+        </form>
       </div>
-      <p style="margin-top:12px;color:#e2e8f0">
-        Si tu veux, je peux remettre la version complète (widgets + logique) exactement comme avant.
-      </p>
+
+      {data_box}
+
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-lg font-semibold mb-2">Plan (beta)</div>
+        {plan}
+        <div class="text-slate-500 text-xs mt-3">
+          Règle simple: risque faible par trade, éviter de trader contre une tendance claire, et toujours valider sur ton graphique.
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-lg font-semibold mb-2">Chart</div>
+        <div class="text-slate-400 text-sm mb-2">TradingView intégré (symbol: {tv_symbol}).</div>
+        <div class="w-full" style="height:520px;">
+          <iframe
+            src="https://s.tradingview.com/widgetembed/?frameElementId=tvchart&symbol={tv_symbol}&interval=60&hidesidetoolbar=1&symboledit=1&saveimage=0&toolbarbg=%231f2937&studies=%5B%5D&theme=dark&style=1&timezone=Etc%2FUTC"
+            style="width:100%; height:100%; border:0; border-radius:12px;"
+            loading="lazy"
+            allowtransparency="true">
+          </iframe>
+        </div>
+      </div>
     </div>
     """
     return HTMLResponse(_simple_page("AI Crypto Coach", body, sidebar=SIDEBAR_FULL))
 
-
-# ------------------------------
-# Academy / Pro modules (pages manquantes)
-# ------------------------------
 
 @app.get("/academy")
 async def academy_page(request: Request):
@@ -33391,61 +33482,210 @@ async def crypto_academy_redirect(request: Request):
     return RedirectResponse(url="/academy", status_code=302)
 
 @app.get("/academy-progress")
-async def academy_progress_page(request: Request):
+async def academy_progress(request: Request):
     body = """
-    <div class="card">
-      <h3>Academy Progress</h3>
-      <p class="muted">
+    <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+      <div class="text-xl font-semibold mb-1">Academy Progress</div>
+      <div class="text-slate-300">
         Ta progression (modules complétés, quiz, scores, badges) sera affichée ici.
-        Pour l'instant, la page est en maintenance.
-      </p>
+        Pour l'instant, on laisse ce module en <b>beta</b> le temps de connecter la base d'utilisateurs et les quiz.
+      </div>
+      <div class="text-slate-500 text-xs mt-3">
+        Prochaine étape: table <code>academy_progress</code> liée à ton user_id + pages quiz.
+      </div>
     </div>
     """
     return HTMLResponse(_simple_page("Academy Progress", body, sidebar=SIDEBAR_FULL))
 
+
 @app.get("/altseason-copilot-pro")
-async def altseason_copilot_pro_page(request: Request):
-    body = """
-    <div class="card">
-      <h3>Altseason Copilot Pro</h3>
-      <p class="muted">
-        Objectif: détecter les phases d'altseason (rotation BTC → ALTS) et proposer un plan:
-        watchlist, signaux, filtres de liquidité, et règles de risk management.
-      </p>
-      <p class="muted">Module en cours de réintégration.</p>
+async def altseason_copilot_pro(request: Request):
+    g = await _cg_global()
+
+    btc_dom = None
+    eth_dom = None
+    total_mc = None
+    if isinstance(g, dict):
+        mcap = g.get("market_cap_percentage") or {}
+        btc_dom = mcap.get("btc")
+        eth_dom = mcap.get("eth")
+        total_mc = (g.get("total_market_cap") or {}).get("usd")
+
+    # Basic heuristic score
+    score = None
+    verdict = "Indéterminé"
+    if btc_dom is not None:
+        # lower BTC dominance -> more alt-friendly (rough heuristic)
+        score = max(0, min(100, int((60 - float(btc_dom)) * 3)))
+        if score >= 65:
+            verdict = "Altseason potentiel"
+        elif score >= 45:
+            verdict = "Transition"
+        else:
+            verdict = "BTC season"
+
+    body = f"""
+    <div class="space-y-4">
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-xl font-semibold mb-1">Altseason Copilot Pro (beta)</div>
+        <div class="text-slate-300 text-sm">
+          Lecture macro simple: dominance BTC/ETH + contexte global. (beta)
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+          <div class="text-slate-400 text-sm">Total market cap</div>
+          <div class="text-2xl font-bold">{_fmt_usd(total_mc)}</div>
+        </div>
+        <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+          <div class="text-slate-400 text-sm">BTC dominance</div>
+          <div class="text-2xl font-bold">{_fmt_pct(btc_dom)}</div>
+        </div>
+        <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+          <div class="text-slate-400 text-sm">ETH dominance</div>
+          <div class="text-2xl font-bold">{_fmt_pct(eth_dom)}</div>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-lg font-semibold mb-2">Score altseason</div>
+        <div class="text-3xl font-bold">{score if score is not None else "—"} / 100</div>
+        <div class="text-slate-300 mt-1">Verdict: <b>{verdict}</b></div>
+        <div class="text-slate-500 text-xs mt-3">
+          Heuristique simple: dominance BTC plus basse = plus d'espace pour les ALTs.
+          On améliorera avec rotation BTC→ETH→ALTs, breadth, et flows. (beta)
+        </div>
+      </div>
     </div>
     """
     return HTMLResponse(_simple_page("Altseason Copilot Pro", body, sidebar=SIDEBAR_FULL))
 
+
 @app.get("/rug-scam-shield")
-async def rug_scam_shield_page(request: Request):
-    body = """
-    <div class="card">
-      <h3>Rug / Scam Shield</h3>
-      <p class="muted">
-        Analyse de risques (signaux on-chain simples, anomalies, liquidité, flags) pour éviter les
-        projets douteux. Cette page est temporairement en maintenance.
-      </p>
+async def rug_scam_shield(request: Request):
+    token = (request.query_params.get("token") or "").strip()
+    chain = (request.query_params.get("chain") or "ETH").strip().upper()
+
+    checklist = """
+    <ul class="list-disc pl-5 space-y-1 text-slate-300">
+      <li><b>Contrat vérifié</b> (source visible) + pas de fonctions suspectes.</li>
+      <li><b>Liquidité</b> lock/burn (preuve) + pas de mint illimité.</li>
+      <li><b>Taxes</b> raisonnables (éviter 10%+ buy/sell) + pas de blacklist abusive.</li>
+      <li><b>Répartition</b> (top holders) + pas de wallet unique dominant.</li>
+      <li><b>Volume</b> & spreads cohérents (attention aux faux volumes).</li>
+      <li><b>Team / docs</b> : site, X, roadmap, audits si possible.</li>
+    </ul>
+    """
+
+    verdict = "—"
+    if token:
+        verdict = "Analyse manuelle requise (beta)"
+
+    body = f"""
+    <div class="space-y-4">
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-xl font-semibold mb-1">Rug / Scam Shield (beta)</div>
+        <div class="text-slate-300 text-sm">
+          Module de prévention: checklist + signaux simples. (beta)
+        </div>
+        <form class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2" method="get">
+          <input class="w-full rounded-lg bg-slate-950/60 border border-slate-700 px-3 py-2" name="token" value="{token}" placeholder="Token / contrat (texte)">
+          <select class="w-full rounded-lg bg-slate-950/60 border border-slate-700 px-3 py-2" name="chain">
+            {''.join([f'<option value="{x}" {"selected" if chain==x else ""}>{x}</option>' for x in ["ETH","BSC","SOL","BASE"]])}
+          </select>
+          <button class="rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-2 font-semibold" type="submit">Vérifier</button>
+        </form>
+      </div>
+
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-lg font-semibold mb-2">Verdict</div>
+        <div class="text-2xl font-bold">{verdict}</div>
+        <div class="text-slate-500 text-xs mt-2">
+          (beta) Prochaine étape: intégration API explorer (Etherscan/Solscan) + détection de taxes/mint/owner.
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-lg font-semibold mb-2">Checklist</div>
+        {checklist}
+      </div>
     </div>
     """
     return HTMLResponse(_simple_page("Rug / Scam Shield", body, sidebar=SIDEBAR_FULL))
 
 
 @app.get("/ai-swarm-agents")
-async def _page_ai_swarm_agents():
-    body = f"""
-    <div class="card">
-      <h2>AI Swarm Agents</h2>
-      <p style="color:#94a3b8">
-        Cette page est en cours de réintégration. Pour l’instant, elle ne doit plus renvoyer 404/500.
-      </p>
-      <div class="stat-box" style="margin-top:12px">
-        <div class="label">Statut</div>
-        <div class="value">Maintenance</div>
+async def ai_swarm_agents(request: Request):
+    coin = (request.query_params.get("coin") or "bitcoin").strip().lower()
+    data = await _cg_market(coin)
+
+    price = data.get("current_price") if isinstance(data, dict) else None
+    chg24 = data.get("price_change_percentage_24h") if isinstance(data, dict) else None
+    ath_chg = data.get("ath_change_percentage") if isinstance(data, dict) else None
+    vol = data.get("total_volume") if isinstance(data, dict) else None
+
+    def verdict():
+        if chg24 is None:
+            return "Neutre"
+        if chg24 >= 3:
+            return "Bullish"
+        if chg24 <= -3:
+            return "Bearish"
+        return "Neutre"
+
+    trend = verdict()
+    momentum = "Fort" if (chg24 is not None and abs(chg24) >= 5) else "Modéré"
+    risk = "Élevé" if (vol is not None and float(vol) < 50_000_000) else "Normal"
+
+    agent_cards = f"""
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+        <div class="font-semibold text-lg mb-1">Agent Trend</div>
+        <div class="text-slate-300 text-sm">Bias: <b>{trend}</b> (d'après la variation 24h)</div>
+        <div class="text-slate-500 text-xs mt-2">Conseil: valider avec structure (HH/HL vs LH/LL) sur 4H/1D.</div>
       </div>
-      <p style="margin-top:12px;color:#e2e8f0">
-        Si tu veux, je peux remettre la version complète (widgets + logique) exactement comme avant.
-      </p>
+      <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+        <div class="font-semibold text-lg mb-1">Agent Momentum</div>
+        <div class="text-slate-300 text-sm">Momentum: <b>{momentum}</b> • 24h: <b>{_fmt_pct(chg24)}</b></div>
+        <div class="text-slate-500 text-xs mt-2">Conseil: éviter d'entrer après une extension; attendre un pullback.</div>
+      </div>
+      <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+        <div class="font-semibold text-lg mb-1">Agent Risk</div>
+        <div class="text-slate-300 text-sm">Risque: <b>{risk}</b> • Volume: <b>{_fmt_usd(vol)}</b></div>
+        <div class="text-slate-500 text-xs mt-2">Conseil: réduire taille si liquidité faible, SL plus strict.</div>
+      </div>
+      <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+        <div class="font-semibold text-lg mb-1">Agent Context</div>
+        <div class="text-slate-300 text-sm">Distance ATH: <b>{_fmt_pct(ath_chg)}</b></div>
+        <div class="text-slate-500 text-xs mt-2">Conseil: proche ATH = prudence; loin ATH = focus sur support & momentum.</div>
+      </div>
+    </div>
+    """
+
+    body = f"""
+    <div class="space-y-4">
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-xl font-semibold mb-1">AI Swarm Agents (beta)</div>
+        <div class="text-slate-300 text-sm">
+          4 mini-agents qui donnent chacun un angle: tendance, momentum, risque, contexte. (beta)
+        </div>
+        <form class="mt-3 flex gap-2" method="get">
+          <input class="flex-1 rounded-lg bg-slate-950/60 border border-slate-700 px-3 py-2" name="coin" value="{coin}" placeholder="coin id (bitcoin)">
+          <button class="rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-2 font-semibold" type="submit">Run</button>
+        </form>
+      </div>
+
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-slate-400 text-sm mb-2">Résumé</div>
+        <div class="text-2xl font-bold">{coin.upper()} • {_fmt_usd(price)} • {_fmt_pct(chg24)}</div>
+      </div>
+
+      {agent_cards}
+
+      <div class="text-slate-500 text-xs">
+        Remarque: c'est un module de coaching et d'aide à la décision, pas un conseil financier.
+      </div>
     </div>
     """
     return HTMLResponse(_simple_page("AI Swarm Agents", body, sidebar=SIDEBAR_FULL))

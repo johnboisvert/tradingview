@@ -7138,7 +7138,7 @@ async def admin_reset_password(request: Request, admin=Depends(require_admin)):
             except Exception:
                 payload = {}
 
-    username = (payload.get("username") or payload.get("email") or "").strip()
+    username = (payload.get("username") or payload.get("email") or "").strip().lower()
     new_password = payload.get("new_password")
     if isinstance(new_password, str):
         new_password = new_password.strip()
@@ -7193,7 +7193,7 @@ async def admin_dashboard_reset_password(request: Request, admin=Depends(require
             except Exception:
                 payload = {}
 
-    username = (payload.get("username") or payload.get("email") or "").strip()
+    username = (payload.get("username") or payload.get("email") or "").strip().lower()
     new_password = payload.get("new_password")
     if isinstance(new_password, str):
         new_password = new_password.strip()

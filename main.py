@@ -2712,6 +2712,52 @@ def _admin_bypass_enabled() -> bool:
     v = (os.getenv("ADMIN_BYPASS", "0") or "").strip().lower()
     return v in {"1","true","yes","on"}
 
+
+def _admin_bypass_token_ok(request) -> bool:
+    """
+    Optional: allow admin bypass only when a secret token is provided.
+    Set env ADMIN_BYPASS_TOKEN to enable this path.
+    Token can be provided via:
+      - Header: X-Admin-Bypass-Token
+      - Query:  ?admin_bypass_token=...
+      - Cookie: admin_bypass_token
+    """
+    try:
+        import secrets as _secrets
+
+        expected = (os.getenv("ADMIN_BYPASS_TOKEN", "") or "").strip()
+        if not expected:
+            return False
+
+        provided = ""
+        # header
+        try:
+            provided = (request.headers.get("x-admin-bypass-token") or request.headers.get("X-Admin-Bypass-Token") or "").strip()
+        except Exception:
+            provided = ""
+
+        # query param
+        if not provided:
+            try:
+                qp = request.query_params  # starlette.datastructures.QueryParams
+                provided = (qp.get("admin_bypass_token") or qp.get("admin_token") or "").strip()
+            except Exception:
+                provided = ""
+
+        # cookie
+        if not provided:
+            try:
+                provided = (request.cookies.get("admin_bypass_token") or "").strip()
+            except Exception:
+                provided = ""
+
+        if not provided:
+            return False
+        # constant-time compare
+        return _secrets.compare_digest(provided, expected)
+    except Exception:
+        return False
+
 def _force_admin_on_request(request):
     admin_user = {"username": "admin", "email": "", "role": "admin", "plan": "elite"}
     try:
@@ -4183,9 +4229,8 @@ MEXC_API_BASE = "https://api.mexc.com"
 MEXC_PRICE_ENDPOINT = f"{MEXC_API_BASE}/api/v3/ticker/price"
 
 #  Background Monitor
-tp_sl_monitor_running = False
-background_monitor_running = False
-tp_sl_monitor_lock = asyncio.Lock()  # évite double démarrage TP/SL
+monitor_running = False
+monitor_lock = asyncio.Lock()  # évite NameError dans monitor_trades_background
 
 # ============================================================================
 #  SYSTME D'AUTHENTIFICATION AVEC POSTGRESQL
@@ -5215,8 +5260,8 @@ def check_route_permission(username_or_user, route_path):
 
 def start_background_monitor():
     """Démarre le monitor en arrière-plan sans faire planter l'app."""
-    global tp_sl_monitor_running
-    if tp_sl_monitor_running:
+    global monitor_running
+    if monitor_running:
         return
 
     fn = globals().get("background_monitor")
@@ -5226,7 +5271,7 @@ def start_background_monitor():
 
     try:
         asyncio.create_task(fn())
-        tp_sl_background_monitor_running = True
+        monitor_running = True
         print("🟢 Background monitor démarré.")
     except RuntimeError as e:
         # Pas de loop active (ne devrait pas arriver dans startup_event, mais safe)
@@ -20318,14 +20363,14 @@ async def send_telegram_target_notification(symbol: str, target: str, current_pr
 
 async def monitor_trades_background():
     """Tâche de fond - surveillance automatique toutes les 30 secondes"""
-    global tp_sl_monitor_running
+    global monitor_running
     
     # Vrifier si une instance est dj en cours
-    async with tp_sl_monitor_lock:
-        if tp_sl_monitor_running:
+    async with monitor_lock:
+        if monitor_running:
             print("⚠️ Une instance du moniteur est déjà active, skip")
             return
-        tp_sl_background_monitor_running = True
+        monitor_running = True
     
     print("\n" + "="*70)
     print("🤖 MONITEUR AUTOMATIQUE DES TP/SL DÉMARRÉ")
@@ -20396,7 +20441,7 @@ async def startup_event():
     
     # Initialiser l'Academy
     # Utiliser try_lock pour viter de bloquer si un autre worker a dj lanc
-    if not tp_sl_monitor_running:
+    if not monitor_running:
         asyncio.create_task(monitor_trades_background())
     
     #  Dmarrer le monitoring MEXC pour auto-dtection TP/SL

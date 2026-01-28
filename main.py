@@ -33542,125 +33542,300 @@ async def ai_crypto_coach(request: Request):
     {f"<div class='alert alert-error'>Erreur: {error}</div>" if error else ''}
 
     {analysis_html if analysis_html else "<div class='card mb-3'><p>Entre un symbole + timeframe puis clique “Analyser”.</p></div>"}
+
+        <div class='card'>
+  <h3>Comment l'utiliser</h3>
+  <ul>
+    <li><b>Symbole</b>: format Binance (ex: <b>BTCUSDT</b>, <b>ETHUSDT</b>).</li>
+    <li><b>Timeframe</b>: choisis 15m/30m/1h/2h/4h/1d selon ton style.</li>
+    <li>Le module résume <b>tendance</b> (EMA20/EMA50), <b>momentum</b> (RSI), <b>volatilité</b> (ATR) et propose un plan indicatif.</li>
+    <li>Pour un résultat “pro”: valide avec tes niveaux (support/résistance), news, et gestion du risque.</li>
+  </ul>
+</div>
     """
-    return HTMLResponse(_simple_page("AI Crypto Coach", body, sidebar=SIDEBAR_FULL))
+    return Response(content=_simple_page("AI Crypto Coach", body, sidebar_html=SIDEBAR), media_type="text/html")
 
-@app.get("/altseason-copilot-pro")
+@app.get("/altseason-copilot-pro", response_class=HTMLResponse)
 async def altseason_copilot_pro(request: Request):
-    g = await _cg_global()
+    """
+    Altseason Copilot Pro (v1): lit des métriques globales (CoinGecko) + heuristiques simples.
+    """
+    # Sidebar + page pro (pas "beta")
+    SID = SIDEBAR  # menu complet
+    error = ""
+    try:
+        g = await _cg_global()
+        mcap = (g.get("total_market_cap") or {}).get("usd")
+        vol = (g.get("total_volume") or {}).get("usd")
+        mcap_chg = g.get("market_cap_change_percentage_24h_usd")
+        dom = g.get("market_cap_percentage") or {}
+        btc_dom = dom.get("btc")
+        eth_dom = dom.get("eth")
 
-    btc_dom = None
-    eth_dom = None
-    total_mc = None
-    if isinstance(g, dict):
-        mcap = g.get("market_cap_percentage") or {}
-        btc_dom = mcap.get("btc")
-        eth_dom = mcap.get("eth")
-        total_mc = (g.get("total_market_cap") or {}).get("usd")
+        # Heuristique de "sentiment"
+        sentiment = "Neutre"
+        if isinstance(mcap_chg, (int, float)) and mcap_chg > 1:
+            sentiment = "Plutôt haussier"
+        if isinstance(mcap_chg, (int, float)) and mcap_chg < -1:
+            sentiment = "Prudent / risk-off"
+        if isinstance(btc_dom, (int, float)) and btc_dom > 55:
+            sentiment = "BTC first (altseason moins probable)"
+        if isinstance(btc_dom, (int, float)) and btc_dom < 50:
+            sentiment = "Altseason potentiel (à confirmer)"
 
-    # Basic heuristic score
-    score = None
-    verdict = "Indéterminé"
-    if btc_dom is not None:
-        # lower BTC dominance -> more alt-friendly (rough heuristic)
-        score = max(0, min(100, int((60 - float(btc_dom)) * 3)))
-        if score >= 65:
-            verdict = "Altseason potentiel"
-        elif score >= 45:
-            verdict = "Transition"
+        def fmt_money(x):
+            try:
+                x = float(x)
+            except Exception:
+                return "N/A"
+            # format compact
+            if x >= 1e12:
+                return f"{x/1e12:.2f} T$"
+            if x >= 1e9:
+                return f"{x/1e9:.2f} B$"
+            if x >= 1e6:
+                return f"{x/1e6:.2f} M$"
+            return f"{x:,.0f} $".replace(",", " ")
+
+        def fmt_pct(x):
+            try:
+                return f"{float(x):.2f}%"
+            except Exception:
+                return "N/A"
+
+        body = f"""
+        <div class="card mb-3">
+          <h2>Altseason Copilot Pro</h2>
+          <p style="opacity:.9;">Lecture automatique (données globales) + signaux simples pour savoir quand prioriser BTC/ETH ou les alts.</p>
+        </div>
+
+        <div class="card mb-3">
+          <h2>Contexte marché</h2>
+          <ul>
+            <li><b>Total Market Cap (USD)</b> : {fmt_money(mcap)}</li>
+            <li><b>Volume 24h (USD)</b> : {fmt_money(vol)}</li>
+            <li><b>Variation Market Cap 24h</b> : {fmt_pct(mcap_chg)}</li>
+            <li><b>BTC dominance</b> : {fmt_pct(btc_dom)}</li>
+            <li><b>ETH dominance</b> : {fmt_pct(eth_dom)}</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h2>Lecture</h2>
+          <p><b>Sentiment:</b> {sentiment}</p>
+          <ul>
+            <li>Si <b>BTC dominance</b> monte et reste élevée → souvent plus dur pour les alts.</li>
+            <li>Si <b>BTC dominance</b> baisse + market cap monte → rotation possible vers alts (valider avec tes setups).</li>
+            <li>Utilise ça comme <b>filtre</b>, pas comme signal d'entrée.</li>
+          </ul>
+          <p style="opacity:.85;margin-top:10px;">Données: CoinGecko. Ce n’est pas un conseil financier.</p>
+        </div>
+        """
+    except Exception as e:
+        error = f"Impossible de récupérer les données live: {e}"
+        body = """
+        <div class="card mb-3">
+          <h2>Altseason Copilot Pro</h2>
+          <p>Impossible de récupérer les données live pour l'instant.</p>
+        </div>
+        """
+
+    if error:
+        error_html = f'<div class="alert alert-error">Erreur: {html.escape(str(error))}</div>'
+    else:
+        error_html = ""
+
+    return Response(content=_simple_page("Altseason Copilot Pro", body, error_html=error_html, sidebar_html=SID), media_type="text/html")
+
+@app.get("/rug-scam-shield", response_class=HTMLResponse)
+async def rug_scam_shield(request: Request, token: str = "eth", chain: str = "ETH"):
+    """
+    Rug / Scam Shield (v1): agrège des données live (Dexscreener + (optionnel) honeypot.is) et affiche une checklist.
+    - token: symbole (ex: "pepe") OU adresse de contrat (recommandé).
+    - chain: ETH / BSC / SOL
+    """
+    SID = SIDEBAR
+    token_in = (token or "").strip()
+    chain_in = (chain or "ETH").strip().upper()
+
+    chain_map = {
+        "ETH": {"dex": "ethereum", "hp": 1},
+        "BSC": {"dex": "bsc", "hp": 56},
+        "SOL": {"dex": "solana", "hp": None},
+    }
+    dex_chain = chain_map.get(chain_in, chain_map["ETH"])["dex"]
+    hp_chain_id = chain_map.get(chain_in, chain_map["ETH"])["hp"]
+
+    # Detect address
+    is_evm_addr = token_in.lower().startswith("0x") and len(token_in) == 42
+    is_probably_addr = is_evm_addr or (chain_in == "SOL" and 32 <= len(token_in) <= 50 and " " not in token_in)
+
+    pair = None
+    hp = {}
+    error = ""
+    try:
+        if is_probably_addr:
+            ds = await _dex_token(token_in)
+            pair = _pick_best_pair((ds.get("pairs") or []), chain=dex_chain)
         else:
-            verdict = "BTC season"
+            ds = await _dex_search(token_in)
+            pair = _pick_best_pair((ds.get("pairs") or []), chain=dex_chain)
 
-    body = f"""
-    <div class="space-y-4">
-      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
-        <div class="text-xl font-semibold mb-1">Altseason Copilot Pro (beta)</div>
-        <div class="text-slate-300 text-sm">
-          Lecture macro simple: dominance BTC/ETH + contexte global. (beta)
-        </div>
-      </div>
+        if pair and is_evm_addr and hp_chain_id:
+            hp = await _honeypot_check(token_in, hp_chain_id)
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
-          <div class="text-slate-400 text-sm">Total market cap</div>
-          <div class="text-2xl font-bold">{_fmt_usd(total_mc)}</div>
-        </div>
-        <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
-          <div class="text-slate-400 text-sm">BTC dominance</div>
-          <div class="text-2xl font-bold">{_fmt_pct(btc_dom)}</div>
-        </div>
-        <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
-          <div class="text-slate-400 text-sm">ETH dominance</div>
-          <div class="text-2xl font-bold">{_fmt_pct(eth_dom)}</div>
-        </div>
-      </div>
+    except Exception as e:
+        error = str(e)
 
-      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
-        <div class="text-lg font-semibold mb-2">Score altseason</div>
-        <div class="text-3xl font-bold">{score if score is not None else "—"} / 100</div>
-        <div class="text-slate-300 mt-1">Verdict: <b>{verdict}</b></div>
-        <div class="text-slate-500 text-xs mt-3">
-          Heuristique simple: dominance BTC plus basse = plus d'espace pour les ALTs.
-          On améliorera avec rotation BTC→ETH→ALTs, breadth, et flows. (beta)
-        </div>
-      </div>
+    def fmt_money(x):
+        try:
+            x = float(x)
+        except Exception:
+            return "N/A"
+        if x >= 1e12:
+            return f"{x/1e12:.2f} T$"
+        if x >= 1e9:
+            return f"{x/1e9:.2f} B$"
+        if x >= 1e6:
+            return f"{x/1e6:.2f} M$"
+        if x >= 1e3:
+            return f"{x:,.0f} $".replace(",", " ")
+        return f"{x:.2f} $"
+
+    def fmt_pct(x):
+        try:
+            return f"{float(x):.2f}%"
+        except Exception:
+            return "N/A"
+
+    # Build verdict
+    verdict = "Analyse manuelle requise"
+    risk = "Moyen"
+    details = []
+    if pair:
+        liq_usd = float((pair.get("liquidity") or {}).get("usd") or 0.0)
+        fdv = float(pair.get("fdv") or 0.0)
+        vol24 = float((pair.get("volume") or {}).get("h24") or 0.0)
+
+        # Heuristiques simples
+        if liq_usd < 10000:
+            risk = "Élevé"
+            details.append("Liquidité très faible (< 10k$).")
+        elif liq_usd < 50000:
+            risk = "Moyen"
+            details.append("Liquidité modeste (< 50k$).")
+        else:
+            risk = "Plus faible"
+            details.append("Liquidité correcte.")
+
+        if fdv and liq_usd and fdv / max(liq_usd, 1) > 200:
+            risk = "Élevé"
+            details.append("FDV très élevé par rapport à la liquidité (déséquilibre).")
+
+        if vol24 < 5000:
+            details.append("Volume 24h faible (peu de marché).")
+
+        verdict = f"Risque: <b>{risk}</b>"
+
+    # Honeypot insights (best-effort)
+    hp_line = ""
+    try:
+        if isinstance(hp, dict) and hp:
+            # honeypot.is payload varies; best effort extraction
+            is_hp = hp.get("honeypotResult", {}).get("isHoneypot")
+            buy_tax = hp.get("simulationResult", {}).get("buyTax")
+            sell_tax = hp.get("simulationResult", {}).get("sellTax")
+            hp_line = f"<li><b>Honeypot</b>: {('Oui' if is_hp else 'Non' if is_hp is not None else 'N/A')} | <b>Buy tax</b>: {fmt_pct(buy_tax)} | <b>Sell tax</b>: {fmt_pct(sell_tax)}</li>"
+    except Exception:
+        hp_line = ""
+
+    # UI
+    form = f"""
+    <div class="card mb-3">
+      <h2>Rug / Scam Shield</h2>
+      <p style="opacity:.9;">Analyse rapide avec données <b>live</b> (Dexscreener) + checks (optionnels) pour réduire les mauvais trades.</p>
+      <form method="get" action="/rug-scam-shield" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <input class="vinput" name="token" value="{html.escape(token_in or '')}" placeholder="Symbole (pepe) ou adresse (0x...)" style="max-width:320px;" />
+        <select class="vinput" name="chain" style="max-width:140px;">
+          <option value="ETH" {'selected' if chain_in=='ETH' else ''}>ETH</option>
+          <option value="BSC" {'selected' if chain_in=='BSC' else ''}>BSC</option>
+          <option value="SOL" {'selected' if chain_in=='SOL' else ''}>SOL</option>
+        </select>
+        <button class="btn" type="submit">Vérifier</button>
+      </form>
+      <p style="opacity:.8;margin-top:8px;">Conseil: mets l'<b>adresse du contrat</b> (plus fiable qu'un symbole).</p>
     </div>
     """
-    return HTMLResponse(_simple_page("Altseason Copilot Pro", body, sidebar=SIDEBAR_FULL))
 
+    if error:
+        main = form + f'<div class="alert alert-error">Erreur: {html.escape(error)}</div>'
+        return Response(content=_simple_page("Rug / Scam Shield", main, sidebar_html=SID), media_type="text/html")
 
-@app.get("/rug-scam-shield")
-async def rug_scam_shield(request: Request):
-    token = (request.query_params.get("token") or "").strip()
-    chain = (request.query_params.get("chain") or "ETH").strip().upper()
+    if not pair:
+        main = form + """
+        <div class="card">
+          <h3>Aucune donnée trouvée</h3>
+          <p>Essaie avec l'adresse de contrat exacte, ou change de chaîne.</p>
+        </div>
+        """
+        return Response(content=_simple_page("Rug / Scam Shield", main, sidebar_html=SID), media_type="text/html")
+
+    base = pair.get("baseToken") or {}
+    quote = pair.get("quoteToken") or {}
+    liq = (pair.get("liquidity") or {}).get("usd")
+    vol24 = (pair.get("volume") or {}).get("h24")
+    tx24 = (pair.get("txns") or {}).get("h24") or {}
+    buys = tx24.get("buys")
+    sells = tx24.get("sells")
+    created_at = pair.get("pairCreatedAt")
+
+    link = pair.get("url") or ""
+    dex = pair.get("dexId") or ""
+    price = pair.get("priceUsd")
+    fdv = pair.get("fdv")
+    mc = pair.get("marketCap")
+
+    info = f"""
+    <div class="card mb-3">
+      <h3>Données live</h3>
+      <ul>
+        <li><b>Token</b>: {html.escape(str(base.get('name') or ''))} ({html.escape(str(base.get('symbol') or ''))}) / Quote: {html.escape(str(quote.get('symbol') or ''))}</li>
+        <li><b>DEX</b>: {html.escape(str(dex))} | <b>Chain</b>: {html.escape(chain_in)}</li>
+        <li><b>Prix</b>: {html.escape(str(price or 'N/A'))} USD</li>
+        <li><b>Liquidité</b>: {fmt_money(liq)} | <b>Volume 24h</b>: {fmt_money(vol24)}</li>
+        <li><b>FDV</b>: {fmt_money(fdv)} | <b>Market cap</b>: {fmt_money(mc)}</li>
+        <li><b>Tx 24h</b>: buys={html.escape(str(buys or 'N/A'))} / sells={html.escape(str(sells or 'N/A'))}</li>
+        {hp_line}
+        <li><b>Lien</b>: <a href="{html.escape(link)}" target="_blank" rel="noopener">Dexscreener</a></li>
+      </ul>
+    </div>
+    """
+
+    verdict_html = f"""
+    <div class="card mb-3">
+      <h3>Verdict</h3>
+      <p>{verdict}</p>
+      {'<ul><li>' + '</li><li>'.join(html.escape(x) for x in details) + '</li></ul>' if details else ''}
+    </div>
+    """
 
     checklist = """
-    <ul class="list-disc pl-5 space-y-1 text-slate-300">
-      <li><b>Contrat vérifié</b> (source visible) + pas de fonctions suspectes.</li>
-      <li><b>Liquidité</b> lock/burn (preuve) + pas de mint illimité.</li>
-      <li><b>Taxes</b> raisonnables (éviter 10%+ buy/sell) + pas de blacklist abusive.</li>
-      <li><b>Répartition</b> (top holders) + pas de wallet unique dominant.</li>
-      <li><b>Volume</b> & spreads cohérents (attention aux faux volumes).</li>
-      <li><b>Team / docs</b> : site, X, roadmap, audits si possible.</li>
-    </ul>
-    """
-
-    verdict = "—"
-    if token:
-        verdict = "Analyse manuelle requise (beta)"
-
-    body = f"""
-    <div class="space-y-4">
-      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
-        <div class="text-xl font-semibold mb-1">Rug / Scam Shield (beta)</div>
-        <div class="text-slate-300 text-sm">
-          Module de prévention: checklist + signaux simples. (beta)
-        </div>
-        <form class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2" method="get">
-          <input class="w-full rounded-lg bg-slate-950/60 border border-slate-700 px-3 py-2" name="token" value="{token}" placeholder="Token / contrat (texte)">
-          <select class="w-full rounded-lg bg-slate-950/60 border border-slate-700 px-3 py-2" name="chain">
-            {''.join([f'<option value="{x}" {"selected" if chain==x else ""}>{x}</option>' for x in ["ETH","BSC","SOL","BASE"]])}
-          </select>
-          <button class="rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-2 font-semibold" type="submit">Vérifier</button>
-        </form>
-      </div>
-
-      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
-        <div class="text-lg font-semibold mb-2">Verdict</div>
-        <div class="text-2xl font-bold">{verdict}</div>
-        <div class="text-slate-500 text-xs mt-2">
-          (beta) Prochaine étape: intégration API explorer (Etherscan/Solscan) + détection de taxes/mint/owner.
-        </div>
-      </div>
-
-      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
-        <div class="text-lg font-semibold mb-2">Checklist</div>
-        {checklist}
-      </div>
+    <div class="card">
+      <h3>Checklist pro (à valider)</h3>
+      <ul>
+        <li><b>Contrat vérifié</b> (source visible) + pas de fonctions suspectes.</li>
+        <li><b>Liquidité</b>: idéalement lock/burn + pas de mint illimité.</li>
+        <li><b>Taxes</b>: raisonnables (éviter &gt; 10% buy/sell) + pas de blacklist abusive.</li>
+        <li><b>Répartition</b> (top holders): pas de wallet unique dominant.</li>
+        <li><b>Volume &amp; spreads</b> cohérents (attention aux faux volumes).</li>
+        <li><b>Team / docs</b>: site, X, roadmap, audits si possible.</li>
+      </ul>
+      <p style="opacity:.85;margin-top:10px;">Ce module aide à filtrer. Toujours faire ta propre due diligence.</p>
     </div>
     """
-    return HTMLResponse(_simple_page("Rug / Scam Shield", body, sidebar=SIDEBAR_FULL))
 
+    main = form + verdict_html + info + checklist
+    return Response(content=_simple_page("Rug / Scam Shield", main, sidebar_html=SID), media_type="text/html")
 
 @app.get("/ai-swarm-agents", response_class=HTMLResponse)
 async def ai_swarm_agents(request: Request):
@@ -33874,5 +34049,64 @@ async def ai_swarm_agents(request: Request):
 
     {agents_html if agents_html else "<div class='card mb-3'><p>Choisis un symbole + timeframe puis lance les agents.</p></div>"}
     """
-    return HTMLResponse(_simple_page("AI Swarm Agents", body, sidebar=SIDEBAR_FULL))
+    return Response(content=_simple_page("AI Swarm Agents", body, sidebar_html=SIDEBAR), media_type="text/html")
 
+
+
+
+
+@app.get("/academy", response_class=HTMLResponse)
+async def academy(request: Request):
+    """Page Academy (catalogue)."""
+    body = """
+    <div class="card mb-3">
+      <h2>Crypto Academy</h2>
+      <p style="opacity:.9;">Des modules courts, pratiques, orientés “résultats”. Tout est centralisé ici.</p>
+    </div>
+
+    <div class="card mb-3">
+      <h3>Modules</h3>
+      <ul>
+        <li><b>1) Bases crypto</b> — wallets, CEX/DEX, sécurité.</li>
+        <li><b>2) Lecture de marché</b> — tendances, ranges, structure.</li>
+        <li><b>3) Gestion du risque</b> — sizing, invalidation, journal.</li>
+        <li><b>4) Stratégies</b> — spot, swing, scalping (principes).</li>
+        <li><b>5) Outils IA</b> — comment utiliser les pages IA du site efficacement.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Progression</h3>
+      <p>Tu peux suivre ta progression et reprendre où tu étais rendu.</p>
+      <a class="btn" href="/academy-progress">Voir ma progression</a>
+    </div>
+    """
+    return Response(content=_simple_page("Academy", body, sidebar_html=SIDEBAR), media_type="text/html")
+
+
+@app.get("/academy-progress", response_class=HTMLResponse)
+async def academy_progress(request: Request):
+    """Page progression (placeholder pro)."""
+    body = """
+    <div class="card mb-3">
+      <h2>Progression</h2>
+      <p style="opacity:.9;">Cette page affiche ta progression dans les modules (à connecter à ta base Academy).</p>
+    </div>
+
+    <div class="card">
+      <h3>À venir</h3>
+      <ul>
+        <li>Modules complétés / en cours</li>
+        <li>Dernière leçon consultée</li>
+        <li>Quiz rapides + certificats</li>
+      </ul>
+      <p style="opacity:.85;margin-top:10px;">Si tu veux, je te branche ça sur la DB Academy déjà initialisée (lecture/écriture par utilisateur).</p>
+    </div>
+    """
+    return Response(content=_simple_page("Academy Progress", body, sidebar_html=SIDEBAR), media_type="text/html")
+
+
+@app.get("/crypto-academy", response_class=HTMLResponse)
+async def crypto_academy(request: Request):
+    """Alias vers /academy (compat)."""
+    return RedirectResponse(url="/academy", status_code=302)

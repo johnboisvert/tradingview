@@ -34057,56 +34057,395 @@ async def ai_swarm_agents(request: Request):
 
 @app.get("/academy", response_class=HTMLResponse)
 async def academy(request: Request):
-    """Page Academy (catalogue)."""
-    body = """
-    <div class="card mb-3">
-      <h2>Crypto Academy</h2>
-      <p style="opacity:.9;">Des modules courts, pratiques, orientés “résultats”. Tout est centralisé ici.</p>
-    </div>
+    user_id = get_current_user_from_request(request)
+    completed = _academy_get_completed(user_id) if user_id else set()
 
-    <div class="card mb-3">
-      <h3>Modules</h3>
-      <ul>
-        <li><b>1) Bases crypto</b> — wallets, CEX/DEX, sécurité.</li>
-        <li><b>2) Lecture de marché</b> — tendances, ranges, structure.</li>
-        <li><b>3) Gestion du risque</b> — sizing, invalidation, journal.</li>
-        <li><b>4) Stratégies</b> — spot, swing, scalping (principes).</li>
-        <li><b>5) Outils IA</b> — comment utiliser les pages IA du site efficacement.</li>
-      </ul>
-    </div>
+    cards = []
+    for m in ACADEMY_MODULES:
+        lessons = m.get("lessons") or []
+        total = len(lessons)
+        done = sum(1 for l in lessons if l.get("id") in completed)
+        pct = int((done / total) * 100) if total else 0
 
-    <div class="card">
-      <h3>Progression</h3>
-      <p>Tu peux suivre ta progression et reprendre où tu étais rendu.</p>
-      <a class="btn" href="/academy-progress">Voir ma progression</a>
+        cards.append(f"""
+        <div class="card mb-3">
+          <h2 style="margin-bottom:6px">{m.get('title')}</h2>
+          <div style="opacity:.85;margin-bottom:10px">{m.get('subtitle','')}</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+            <div class="value" style="min-width:200px">
+              <div style="opacity:.8;font-size:12px">Leçons</div>
+              <div style="font-size:18px;font-weight:800">{total}</div>
+            </div>
+            <div class="value" style="min-width:200px">
+              <div style="opacity:.8;font-size:12px">Progression</div>
+              <div style="font-size:18px;font-weight:800">{done}/{total} ({pct}%)</div>
+            </div>
+            <a class="btn" href="/academy/module/{m['id']}">Ouvrir le module</a>
+          </div>
+        </div>
+        """)
+
+    header = """
+    <h1>Academy</h1>
+    <p style="opacity:.9">Des formations courtes, pratiques, orientées “résultats”. Tout est centralisé ici.</p>
+    """
+
+    if not user_id:
+        note = """
+        <div class="card mb-3">
+          <div class="alert">Connecte-toi pour sauvegarder ta progression.</div>
+        </div>
+        """
+    else:
+        note = """
+        <div class="card mb-3">
+          <div class="alert alert-success">Progression activée ✅ <a href="/academy-progress">Voir ma progression</a></div>
+        </div>
+        """
+
+    html = _simple_page(
+        title="Academy",
+        content_html=header + note + "".join(cards),
+        sidebar_html=SIDEBAR,
+    )
+    return Response(content=html, media_type="text/html")
+
+
+@app.get("/academy/module/{module_id}", response_class=HTMLResponse)
+async def academy_module(request: Request, module_id: str):
+    user_id = get_current_user_from_request(request)
+    completed = _academy_get_completed(user_id) if user_id else set()
+
+    m = _academy_module(module_id)
+    if not m:
+        html = _simple_page(title="Academy", content_html="<div class='card'><h2>Module introuvable</h2></div>", sidebar_html=SIDEBAR)
+        return Response(content=html, media_type="text/html")
+
+    lessons = m.get("lessons") or []
+    total = len(lessons)
+    done = sum(1 for l in lessons if l.get("id") in completed)
+    pct = int((done / total) * 100) if total else 0
+
+    items = []
+    for l in lessons:
+        lid = l.get("id")
+        is_done = "✅" if lid in completed else "⬜"
+        items.append(f"""
+        <div class="card mb-2" style="padding:14px">
+          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+            <div>
+              <div style="font-weight:800">{is_done} {l.get('title')}</div>
+              <div style="opacity:.8;font-size:12px">Durée: {l.get('duration','—')}</div>
+            </div>
+            <a class="btn" href="/academy/lesson/{lid}">Ouvrir</a>
+          </div>
+        </div>
+        """)
+
+    header = f"""
+    <h1>{m.get('title')}</h1>
+    <p style="opacity:.9">{m.get('subtitle','')}</p>
+    <div class="card mb-3">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <div class="value" style="min-width:220px">
+          <div style="opacity:.8;font-size:12px">Progression module</div>
+          <div style="font-size:18px;font-weight:800">{done}/{total} ({pct}%)</div>
+        </div>
+        <a class="btn" href="/academy">← Retour Academy</a>
+        <a class="btn" href="/academy-progress">Ma progression</a>
+      </div>
     </div>
     """
-    return Response(content=_simple_page("Academy", body, sidebar_html=SIDEBAR), media_type="text/html")
 
+    html = _simple_page(title="Academy", content_html=header + "".join(items), sidebar_html=SIDEBAR)
+    return Response(content=html, media_type="text/html")
+
+
+@app.get("/academy/lesson/{lesson_id}", response_class=HTMLResponse)
+async def academy_lesson(request: Request, lesson_id: str):
+    user_id = get_current_user_from_request(request)
+    completed = _academy_get_completed(user_id) if user_id else set()
+
+    m, l = _academy_lesson(lesson_id)
+    if not l:
+        html = _simple_page(title="Academy", content_html="<div class='card'><h2>Leçon introuvable</h2></div>", sidebar_html=SIDEBAR)
+        return Response(content=html, media_type="text/html")
+
+    is_done = lesson_id in completed
+    done_badge = "<span class='badge'>Complété ✅</span>" if is_done else "<span class='badge'>Non complété</span>"
+
+    complete_btn = ""
+    if user_id and not is_done:
+        complete_btn = f"""
+        <form method="post" action="/academy/complete" style="margin-top:12px">
+          <input type="hidden" name="lesson_id" value="{lesson_id}"/>
+          <input type="hidden" name="module_id" value="{m.get('id') if m else ''}"/>
+          <button class="btn" type="submit">Marquer comme complété</button>
+        </form>
+        """
+    elif not user_id:
+        complete_btn = "<div class='alert'>Connecte-toi pour sauvegarder ta progression.</div>"
+
+    header = f"""
+    <h1>{l.get('title')}</h1>
+    <p style="opacity:.85">Module: <a href="/academy/module/{m.get('id') if m else ''}">{m.get('title') if m else mention_escape('Academy')}</a> · Durée: {l.get('duration','—')}</p>
+    """
+
+    content = f"""
+    <div class="card mb-3">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+        <div>{done_badge}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <a class="btn" href="/academy/module/{m.get('id') if m else ''}">← Retour module</a>
+          <a class="btn" href="/academy">Academy</a>
+        </div>
+      </div>
+      <div style="margin-top:12px">{l.get('content','')}</div>
+      {complete_btn}
+    </div>
+    <div class="card mb-3">
+      <h3>Astuce</h3>
+      <p style="opacity:.85">Applique cette leçon sur 1 seul coin de ta watchlist, puis note ton résultat dans le journal.</p>
+    </div>
+    """
+
+    html = _simple_page(title="Academy", content_html=header + content, sidebar_html=SIDEBAR)
+    return Response(content=html, media_type="text/html")
+
+
+@app.post("/academy/complete")
+async def academy_complete(request: Request):
+    user_id = get_current_user_from_request(request)
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=303)
+
+    form = await request.form()
+    lesson_id = (form.get("lesson_id") or "").strip()
+    module_id = (form.get("module_id") or "").strip()
+
+    if lesson_id:
+        try:
+            _academy_mark_completed(user_id, lesson_id)
+        except Exception:
+            pass
+
+    # Retour vers la leçon
+    return RedirectResponse(url=f"/academy/lesson/{lesson_id}", status_code=303)
 
 @app.get("/academy-progress", response_class=HTMLResponse)
 async def academy_progress(request: Request):
-    """Page progression (placeholder pro)."""
-    body = """
-    <div class="card mb-3">
-      <h2>Progression</h2>
-      <p style="opacity:.9;">Cette page affiche ta progression dans les modules (à connecter à ta base Academy).</p>
-    </div>
+    user_id = get_current_user_from_request(request)
+    if not user_id:
+        html = _simple_page(
+            title="Academy Progress",
+            content_html="""
+            <h1>Ma progression</h1>
+            <div class="card mb-3"><div class="alert">Connecte-toi pour voir ta progression.</div></div>
+            <a class="btn" href="/academy">← Retour Academy</a>
+            """,
+            sidebar_html=SIDEBAR,
+        )
+        return Response(content=html, media_type="text/html")
 
-    <div class="card">
-      <h3>À venir</h3>
-      <ul>
-        <li>Modules complétés / en cours</li>
-        <li>Dernière leçon consultée</li>
-        <li>Quiz rapides + certificats</li>
-      </ul>
-      <p style="opacity:.85;margin-top:10px;">Si tu veux, je te branche ça sur la DB Academy déjà initialisée (lecture/écriture par utilisateur).</p>
-    </div>
-    """
-    return Response(content=_simple_page("Academy Progress", body, sidebar_html=SIDEBAR), media_type="text/html")
+    completed = _academy_get_completed(user_id)
 
+    rows = []
+    total_all = 0
+    done_all = 0
+    for m in ACADEMY_MODULES:
+        lessons = m.get("lessons") or []
+        total = len(lessons)
+        done = sum(1 for l in lessons if l.get("id") in completed)
+        total_all += total
+        done_all += done
+        pct = int((done / total) * 100) if total else 0
+        rows.append(f"""
+        <tr>
+          <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06)"><b>{m.get('title')}</b><div style="opacity:.8;font-size:12px">{m.get('subtitle','')}</div></td>
+          <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06)">{done}/{total}</td>
+          <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06)">{pct}%</td>
+          <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06)"><a class="btn" href="/academy/module/{m['id']}">Ouvrir</a></td>
+        </tr>
+        """)
+
+    overall_pct = int((done_all / total_all) * 100) if total_all else 0
+
+    html = _simple_page(
+        title="Academy Progress",
+        content_html=f"""
+        <h1>Ma progression</h1>
+        <div class="card mb-3">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+            <div class="value" style="min-width:240px">
+              <div style="opacity:.8;font-size:12px">Total complété</div>
+              <div style="font-size:20px;font-weight:800">{done_all}/{total_all} ({overall_pct}%)</div>
+            </div>
+            <a class="btn" href="/academy">← Retour Academy</a>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <h2>Détail par module</h2>
+          <div style="overflow:auto">
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr>
+                  <th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,.12)">Module</th>
+                  <th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,.12)">Progression</th>
+                  <th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,.12)">%</th>
+                  <th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,.12)"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {''.join(rows)}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <h3>Prochain pas</h3>
+          <p style="opacity:.85">Choisis 1 module, complète 1 leçon, puis applique-la sur un trade “paper” ou un petit montant.</p>
+        </div>
+        """,
+        sidebar_html=SIDEBAR,
+    )
+    return Response(content=html, media_type="text/html")
 
 @app.get("/crypto-academy", response_class=HTMLResponse)
 async def crypto_academy(request: Request):
     """Alias vers /academy (compat)."""
     return RedirectResponse(url="/academy", status_code=302)
+
+# =========================
+# Academy curriculum (formations + progression)
+# =========================
+ACADEMY_MODULES = [
+    {
+        "id": "bases",
+        "title": "Bases crypto",
+        "subtitle": "Wallets, CEX/DEX, sécurité",
+        "lessons": [
+            {"id": "bases_wallets", "title": "Wallets & seed phrase (sécurité)", "duration": "10 min",
+             "content": "<h2>Wallets & seed phrase</h2><p>Objectif: sécuriser tes fonds. Une seed phrase = la clé de ton coffre.</p><ul><li>Hot vs cold wallet</li><li>Règles d'or: jamais partager, jamais screenshot, backup papier/métal</li><li>Phishing: faux sites / fausses extensions</li></ul><p><b>Checklist</b>: 2 backups, 2FA, test de petit transfert.</p>"},
+            {"id": "bases_cex_dex", "title": "CEX vs DEX: avantages & risques", "duration": "10 min",
+             "content": "<h2>CEX vs DEX</h2><ul><li><b>CEX</b>: simple, liquidité, mais risque de plateforme</li><li><b>DEX</b>: self-custody, mais risques smart contracts + slippage</li></ul><p>Quand utiliser quoi, et comment limiter les risques.</p>"},
+            {"id": "bases_networks", "title": "Réseaux, gas & bridges (sans se faire piéger)", "duration": "12 min",
+             "content": "<h2>Réseaux & gas</h2><p>Comprendre L1/L2, frais, et les erreurs classiques (mauvais réseau).</p><ul><li>ERC20 vs BEP20 vs SPL</li><li>Bridges: vérifie l'URL officielle</li><li>Gas: éviter de swap quand le réseau est saturé</li></ul>"},
+            {"id": "bases_security", "title": "Sécurité avancée: scams fréquents", "duration": "12 min",
+             "content": "<h2>Scams fréquents</h2><ul><li>Airdrops fake</li><li>DM sur Discord/Telegram</li><li>Approvals illimités (revoke)</li></ul><p>Réflexe: vérifier domaines, contrats, et permissions.</p>"},
+            {"id": "bases_setup", "title": "Ton setup pro: watchlist + alertes", "duration": "10 min",
+             "content": "<h2>Setup pro</h2><p>Un trader gagne du temps avec un setup clair.</p><ul><li>Watchlist (10-25 actifs)</li><li>Alertes par niveaux</li><li>Journal de trade</li></ul>"},
+        ],
+    },
+    {
+        "id": "market",
+        "title": "Lecture de marché",
+        "subtitle": "Tendance, ranges, structure",
+        "lessons": [
+            {"id": "market_structure", "title": "Structure (HH/HL, LH/LL) en 10 minutes", "duration": "10 min",
+             "content": "<h2>Structure</h2><p>Identifier tendance vs range avec HH/HL et LH/LL.</p><ul><li>Break of structure (BOS)</li><li>Change of character (CHOCH)</li></ul>"},
+            {"id": "market_support_res", "title": "Supports/Résistances utiles (pas 50 lignes)", "duration": "10 min",
+             "content": "<h2>Supports/Résistances</h2><p>Moins de lignes, plus de qualité: niveaux testés + confluence.</p>"},
+            {"id": "market_liquidity", "title": "Liquidité & chasse aux stops (version simple)", "duration": "12 min",
+             "content": "<h2>Liquidité</h2><ul><li>Les stops sont des “pools” de liquidité</li><li>Pourquoi les mèches arrivent</li></ul>"},
+            {"id": "market_volume", "title": "Volume: comment le lire sans se tromper", "duration": "12 min",
+             "content": "<h2>Volume</h2><p>Volume = carburant. Sans volume, méfiance sur les cassures.</p><ul><li>Breakout avec volume</li><li>Divergence volume</li></ul>"},
+            {"id": "market_regime", "title": "Régime de marché (risk-on / risk-off)", "duration": "10 min",
+             "content": "<h2>Régime de marché</h2><p>Quand être agressif vs défensif. Utilise Altseason Copilot Pro + BTC dominance.</p>"},
+        ],
+    },
+    {
+        "id": "risk",
+        "title": "Gestion du risque",
+        "subtitle": "Sizing, invalidation, journal",
+        "lessons": [
+            {"id": "risk_1", "title": "Le risque: la règle #1 (et pourquoi 1% suffit)", "duration": "10 min",
+             "content": "<h2>Risque</h2><p>Ton but: survivre. 1-2% par trade te garde en jeu.</p>"},
+            {"id": "risk_stop", "title": "Stop-loss: où le placer (structure, pas émotion)", "duration": "12 min",
+             "content": "<h2>Stop</h2><ul><li>Stop derrière structure</li><li>Invalide l'idée (pas “je veux pas perdre”)</li></ul>"},
+            {"id": "risk_rr", "title": "R:R & prises de profit (TP1/TP2)", "duration": "12 min",
+             "content": "<h2>R:R</h2><p>Planifier TP avant d'entrer. Exemple: TP1 à 1R, TP2 à 2-3R.</p>"},
+            {"id": "risk_sizing", "title": "Position sizing (calcul rapide)", "duration": "12 min",
+             "content": "<h2>Position sizing</h2><p>Montant = (Capital × risque%) / distance au stop.</p>"},
+            {"id": "risk_journal", "title": "Journal de trade: la méthode simple", "duration": "10 min",
+             "content": "<h2>Journal</h2><p>3 colonnes: Setup / Exécution / Résultat. Le but: améliorer le process.</p>"},
+        ],
+    },
+    {
+        "id": "strategy",
+        "title": "Stratégies",
+        "subtitle": "Spot, swing, scalp (principes)",
+        "lessons": [
+            {"id": "strat_spot", "title": "Spot: accumulation & sorties", "duration": "12 min",
+             "content": "<h2>Spot</h2><p>DCA intelligent + niveaux de sortie.</p>"},
+            {"id": "strat_swing", "title": "Swing: suivre la tendance", "duration": "12 min",
+             "content": "<h2>Swing</h2><p>Entries sur pullbacks, invalidation claire, gestion en pyramide (optionnel).</p>"},
+            {"id": "strat_scalp", "title": "Scalp: ce qu'il faut absolument éviter", "duration": "10 min",
+             "content": "<h2>Scalp</h2><ul><li>Spread / frais</li><li>Overtrade</li><li>Trading en range sans plan</li></ul>"},
+            {"id": "strat_breakout", "title": "Breakout propre vs fakeout", "duration": "10 min",
+             "content": "<h2>Breakout</h2><p>Confluence: structure + volume + retest.</p>"},
+            {"id": "strat_checklist", "title": "Checklist de trade (pro)", "duration": "10 min",
+             "content": "<h2>Checklist</h2><ul><li>Contexte</li><li>Setup</li><li>Risque</li><li>Plan TP/SL</li></ul>"},
+        ],
+    },
+    {
+        "id": "ai",
+        "title": "Outils IA (CryptoIA)",
+        "subtitle": "Comment utiliser les pages IA du site",
+        "lessons": [
+            {"id": "ai_coach", "title": "AI Crypto Coach: transformer analyse → plan", "duration": "10 min",
+             "content": "<h2>AI Crypto Coach</h2><p>Tu entres un symbole + TF, l'IA te propose un plan (scénarios, risques, invalidation).</p><p>Règle: compare avec la structure du chart.</p>"},
+            {"id": "ai_swarm", "title": "AI Swarm Agents: consensus multi-signaux", "duration": "10 min",
+             "content": "<h2>AI Swarm Agents</h2><p>Plusieurs agents analysent des signaux différents. Cherche le consensus.</p>"},
+            {"id": "ai_rug", "title": "Rug / Scam Shield: filtrer les memecoins", "duration": "10 min",
+             "content": "<h2>Rug / Scam Shield</h2><p>Utilise l'adresse de contrat + vérifie liquidité/âge/volume.</p>"},
+            {"id": "ai_altseason", "title": "Altseason Copilot Pro: lecture macro", "duration": "10 min",
+             "content": "<h2>Altseason Copilot Pro</h2><p>BTC dominance & market cap pour décider où mettre ton focus.</p>"},
+            {"id": "ai_workflow", "title": "Workflow pro: de l'idée au trade", "duration": "12 min",
+             "content": "<h2>Workflow</h2><ol><li>Contexte (macro + structure)</li><li>Setup</li><li>Risque</li><li>Exécution</li><li>Journal</li></ol>"},
+        ],
+    },
+]
+
+def _academy_module(mid: str) -> dict | None:
+    mid = (mid or "").strip()
+    for m in ACADEMY_MODULES:
+        if m["id"] == mid:
+            return m
+    return None
+
+def _academy_lesson(lid: str) -> tuple[dict | None, dict | None]:
+    lid = (lid or "").strip()
+    for m in ACADEMY_MODULES:
+        for l in m.get("lessons") or []:
+            if l["id"] == lid:
+                return m, l
+    return None, None
+
+def _academy_get_completed(user_id: str) -> set[str]:
+    if not user_id:
+        return set()
+    try:
+        conn = sqlite3.connect(ACADEMY_DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT lesson_id FROM user_lessons WHERE user_id=? AND completed=1", (user_id,))
+        rows = cur.fetchall()
+        conn.close()
+        return {r[0] for r in rows if r and r[0]}
+    except Exception:
+        return set()
+
+def _academy_mark_completed(user_id: str, lesson_id: str) -> None:
+    if not user_id or not lesson_id:
+        return
+    now = datetime.utcnow().isoformat()
+    conn = sqlite3.connect(ACADEMY_DB_PATH)
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT OR REPLACE INTO user_lessons (user_id, lesson_id, completed, completed_at) VALUES (?, ?, 1, ?)",
+        (user_id, lesson_id, now),
+    )
+    conn.commit()
+    conn.close()
+

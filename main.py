@@ -3928,6 +3928,7 @@ body.sidebar-open{padding-left:280px !important}
     </script>"""
 
 # Backward-compat alias (some routes still reference SIDEBAR_FULL)
+SIDEBAR_FULL = SIDEBAR
 
 
 # Appliquer les placeholders (logo + nom) dans la sidebar
@@ -3938,11 +3939,12 @@ except Exception:
 
 # Alias stable pour les pages qui attendent SIDEBAR_HTML
 try:
-    SIDEBAR_FULL = SIDEBAR  # Backward-compat alias (after placeholder substitution)
     SIDEBAR_HTML = SIDEBAR
 except Exception:
     SIDEBAR_HTML = ""
-    SIDEBAR_FULL = ""
+
+
+
 # ==================================
 
 # ============================================================================
@@ -31457,43 +31459,6 @@ async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeo
             raise
 
 
-# ------------------------------
-# CoinGecko helpers (robust)
-# ------------------------------
-COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3"
-
-async def _cg_fetch(path: str, params: dict | None = None, *, cache_key: str | None = None, cache_ttl: int = 30):
-    """Fetch CoinGecko JSON and return parsed data (dict/list)."""
-    if not path.startswith("/"):
-        path = "/" + path
-    url = COINGECKO_BASE_URL + path
-    if cache_key is None:
-        try:
-            import json as _json
-            cache_key = "cg:" + path + ":" + _json.dumps(params or {}, sort_keys=True)
-        except Exception:
-            cache_key = "cg:" + path
-    return await _fetch_json(url, params=params, cache_key=cache_key, ttl_seconds=cache_ttl)
-
-async def _cg_market(coin_id: str, *, vs_currency: str = "usd") -> dict:
-    """Return a single market dict for coin_id (or {})."""
-    data = await _cg_fetch(
-        "/coins/markets",
-        params={"vs_currency": vs_currency, "ids": coin_id, "sparkline": "false"},
-        cache_key=f"cg:markets:{vs_currency}:{coin_id}",
-        cache_ttl=30,
-    )
-    if isinstance(data, list):
-        return data[0] if data else {}
-    return data if isinstance(data, dict) else {}
-
-async def _cg_global() -> dict:
-    """Return CoinGecko global market data (or {})."""
-    data = await _cg_fetch("/global", cache_key="cg:global", cache_ttl=60)
-    return data if isinstance(data, dict) else {}
-
-
-
 def _pick_best_pair(pairs: list[dict]) -> dict | None:
     if not pairs:
         return None
@@ -33367,287 +33332,282 @@ async def narrative_radar_page(request: Request):
     """
 
     return HTMLResponse(_simple_page("Narrative Radar", body, sidebar_html=SID))
-@app.get("/ai-crypto-coach")
+@app.get("/ai-crypto-coach", response_class=HTMLResponse)
 async def ai_crypto_coach(request: Request):
-    """
-    AI Crypto Coach (Binance OHLCV) + plan indicatif EMA/RSI/ATR.
-    Robuste: ne plante pas si certaines APIs ne répondent pas.
-    """
-    symbol = (request.query_params.get("symbol") or request.query_params.get("sym") or "BTCUSDT").strip().upper()
-    tf = (request.query_params.get("tf") or request.query_params.get("timeframe") or "1h").strip().lower()
-    do_analysis = request.query_params.get("go") == "1" or ("symbol" in request.query_params)
+    """Analyse rapide (Binance OHLCV) + plan indicatif (EMA/RSI/ATR).
 
-    tf_map = {
-        "1m":"1m","3m":"3m","5m":"5m","15m":"15m","30m":"30m","45m":"45m",
-        "1h":"1h","2h":"2h","4h":"4h","6h":"6h","8h":"8h","12h":"12h",
-        "1d":"1d","3d":"3d","1w":"1w","1mo":"1M"
-    }
+    Fixes:
+      - Retourne toujours du HTML (sinon le navigateur affiche le code source + logo 404).
+      - Normalise les klines Binance sous forme liste [ts, o, h, l, c, v].
+    """
+    q = request.query_params
+    symbol = (q.get("symbol") or "BTCUSDT").strip().upper()
+    tf = (q.get("tf") or "1h").strip()
+    go = (q.get("go") or "").strip() in ("1", "true", "yes", "on")
+
+    def _klines_to_dicts(kl):
+        out = []
+        for row in (kl or []):
+            if isinstance(row, dict):
+                if all(k in row for k in ("open", "high", "low", "close", "volume")):
+                    out.append({
+                        "ts": row.get("ts") or row.get("timestamp"),
+                        "open": float(row["open"]),
+                        "high": float(row["high"]),
+                        "low": float(row["low"]),
+                        "close": float(row["close"]),
+                        "volume": float(row.get("volume", 0.0)),
+                    })
+                continue
+            if isinstance(row, (list, tuple)) and len(row) >= 6:
+                try:
+                    out.append({
+                        "ts": int(row[0]),
+                        "open": float(row[1]),
+                        "high": float(row[2]),
+                        "low": float(row[3]),
+                        "close": float(row[4]),
+                        "volume": float(row[5]),
+                    })
+                except Exception:
+                    pass
+        return out
+
+    def _ema(values, period: int):
+        if not values:
+            return []
+        k = 2.0 / (period + 1.0)
+        ema_vals = [float(values[0])]
+        for v in values[1:]:
+            ema_vals.append(float(v) * k + ema_vals[-1] * (1.0 - k))
+        return ema_vals
+
+    def _rsi(values, period: int = 14):
+        if len(values) < period + 1:
+            return None
+        gains, losses = [], []
+        for i in range(1, period + 1):
+            ch = values[i] - values[i - 1]
+            gains.append(max(ch, 0.0))
+            losses.append(max(-ch, 0.0))
+        avg_gain = sum(gains) / period
+        avg_loss = sum(losses) / period
+        for i in range(period + 1, len(values)):
+            ch = values[i] - values[i - 1]
+            gain = max(ch, 0.0)
+            loss = max(-ch, 0.0)
+            avg_gain = (avg_gain * (period - 1) + gain) / period
+            avg_loss = (avg_loss * (period - 1) + loss) / period
+        if avg_loss == 0:
+            return 100.0
+        rs = avg_gain / avg_loss
+        return 100.0 - (100.0 / (1.0 + rs))
+
+    def _atr(candles, period: int = 14):
+        if len(candles) < period + 1:
+            return None
+        trs = []
+        for i in range(1, len(candles)):
+            h = candles[i]["high"]
+            l = candles[i]["low"]
+            pc = candles[i - 1]["close"]
+            trs.append(max(h - l, abs(h - pc), abs(l - pc)))
+        atr_val = sum(trs[:period]) / period
+        for tr in trs[period:]:
+            atr_val = (atr_val * (period - 1) + tr) / period
+        return atr_val
+
+    tf_map = {"15m": "15m", "30m": "30m", "1h": "1h", "2h": "2h", "4h": "4h", "1d": "1d"}
     interval = tf_map.get(tf, "1h")
 
-    error = None
-    result = None
+    error = ""
+    analysis_html = ""
 
-    if do_analysis:
+    if go:
         try:
-            kl = await _binance_klines(symbol, interval, limit=200)
-            if not isinstance(kl, list) or len(kl) < 50:
-                raise ValueError("Pas assez de données OHLCV pour analyser.")
-            closes = [float(x["close"]) for x in kl]
-            highs  = [float(x["high"]) for x in kl]
-            lows   = [float(x["low"]) for x in kl]
-            vols   = [float(x["volume"]) for x in kl]
+            kl = await _binance_klines(symbol, interval, limit=300)
+            candles = _klines_to_dicts(kl)
+            if len(candles) < 60:
+                raise ValueError("Pas assez de données OHLCV (essaie un autre timeframe/symbole).")
 
-            last_close = closes[-1]
-            ema20 = _ema(closes, 20)
-            ema50 = _ema(closes, 50)
-            ema200 = _ema(closes, 200) if len(closes) >= 200 else _ema(closes, 100)
+            closes = [c["close"] for c in candles]
+            vols = [c["volume"] for c in candles]
+
+            ema20 = _ema(closes, 20)[-1]
+            ema50 = _ema(closes, 50)[-1]
             rsi14 = _rsi(closes, 14)
-            atr14 = _atr(highs, lows, closes, 14)
+            atr14 = _atr(candles, 14)
+            last = closes[-1]
+            last_vol = vols[-1]
+            avg_vol20 = sum(vols[-20:]) / max(1, len(vols[-20:]))
 
-            trend = "bullish" if ema20 > ema50 and last_close > ema50 else "bearish" if ema20 < ema50 and last_close < ema50 else "range"
-            momentum = "forte" if rsi14 >= 60 else "faible" if rsi14 <= 40 else "neutre"
-            vol_regime = "haute" if (atr14 / last_close) >= 0.015 else "normale"
+            trend = "Bullish" if ema20 >= ema50 else "Bearish"
 
-            if trend == "bullish":
-                direction = "LONG (tendance)"
-                entry = last_close
-                sl = last_close - 1.5 * atr14
-                tp1 = last_close + 1.5 * atr14
-                tp2 = last_close + 3.0 * atr14
-            elif trend == "bearish":
-                direction = "SHORT (tendance)"
-                entry = last_close
-                sl = last_close + 1.5 * atr14
-                tp1 = last_close - 1.5 * atr14
-                tp2 = last_close - 3.0 * atr14
+            mom = "Neutre"
+            if rsi14 is not None:
+                if rsi14 >= 65:
+                    mom = "Fort (sur-achat possible)"
+                elif rsi14 <= 35:
+                    mom = "Faible (sur-vente possible)"
+                else:
+                    mom = "Neutre / sain"
+
+            vol_state = "Normal"
+            if atr14 is not None and last > 0:
+                pct = (atr14 / last) * 100.0
+                if pct >= 2.2:
+                    vol_state = "Élevée"
+                elif pct <= 0.9:
+                    vol_state = "Faible"
+
+            vol_sig = "OK"
+            if avg_vol20 > 0 and last_vol > avg_vol20 * 1.6:
+                vol_sig = "Volume en hausse"
+            elif avg_vol20 > 0 and last_vol < avg_vol20 * 0.6:
+                vol_sig = "Volume faible"
+
+            if atr14 is None:
+                atr14 = (candles[-1]["high"] - candles[-1]["low"]) or 0.0
+            stop_dist = max(atr14 * 1.5, 0.0)
+            tp1_dist = stop_dist
+            tp2_dist = stop_dist * 2.0
+
+            if trend == "Bullish":
+                idea = f"""<ul class='list-disc pl-5 space-y-1 text-slate-300'>
+                  <li><b>Idée</b>: pullback vers EMA20/EMA50 puis reprise haussière.</li>
+                  <li><b>Entrée (zone)</b>: proche EMA20 ({ema20:.4f}) → EMA50 ({ema50:.4f}).</li>
+                  <li><b>Stop</b>: ~{stop_dist:.4f} sous le dernier swing / sous la zone.</li>
+                  <li><b>TP1</b>: +{tp1_dist:.4f} (1R) · <b>TP2</b>: +{tp2_dist:.4f} (2R).</li>
+                </ul>"""
             else:
-                direction = "RANGE (attendre confirmation)"
-                entry = last_close
-                sl = last_close - 1.2 * atr14
-                tp1 = last_close + 1.2 * atr14
-                tp2 = last_close + 2.0 * atr14
+                idea = f"""<ul class='list-disc pl-5 space-y-1 text-slate-300'>
+                  <li><b>Idée</b>: rejet/pullback vers EMA20/EMA50 puis continuation baissière.</li>
+                  <li><b>Entrée (zone)</b>: proche EMA50 ({ema50:.4f}) → EMA20 ({ema20:.4f}).</li>
+                  <li><b>Stop</b>: ~{stop_dist:.4f} au-dessus du dernier swing / au-dessus de la zone.</li>
+                  <li><b>TP1</b>: -{tp1_dist:.4f} (1R) · <b>TP2</b>: -{tp2_dist:.4f} (2R).</li>
+                </ul>"""
 
-            vol_20 = sum(vols[-20:]) / max(1, len(vols[-20:]))
-            vol_5 = sum(vols[-5:]) / max(1, len(vols[-5:]))
-            vol_note = "Volume en hausse" if vol_5 > 1.2 * vol_20 else "Volume normal"
+            analysis_html = f"""
+            <div class='card mb-3'>
+              <h3>Résumé</h3>
+              <div class='grid' style='grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;'>
+                <div class='card' style='margin:0;'>
+                  <div style='opacity:.8;font-size:12px;'>Prix</div>
+                  <div style='font-size:20px;font-weight:700;'>{last:.6f}</div>
+                  <div style='opacity:.8;font-size:12px;'>Symbol: <b>{symbol}</b> · TF: <b>{interval}</b></div>
+                </div>
+                <div class='card' style='margin:0;'>
+                  <div style='opacity:.8;font-size:12px;'>Tendance</div>
+                  <div style='font-size:20px;font-weight:700;'>{trend}</div>
+                  <div style='opacity:.8;font-size:12px;'>EMA20 {ema20:.4f} · EMA50 {ema50:.4f}</div>
+                </div>
+                <div class='card' style='margin:0;'>
+                  <div style='opacity:.8;font-size:12px;'>Momentum</div>
+                  <div style='font-size:20px;font-weight:700;'>{mom}</div>
+                  <div style='opacity:.8;font-size:12px;'>RSI14 {'' if rsi14 is None else f'{rsi14:.1f}'}</div>
+                </div>
+                <div class='card' style='margin:0;'>
+                  <div style='opacity:.8;font-size:12px;'>Volatilité / Volume</div>
+                  <div style='font-size:20px;font-weight:700;'>{vol_state}</div>
+                  <div style='opacity:.8;font-size:12px;'>{vol_sig}</div>
+                </div>
+              </div>
+            </div>
 
-            result = {
-                "symbol": symbol,
-                "tf": interval,
-                "last_close": last_close,
-                "ema20": ema20,
-                "ema50": ema50,
-                "ema200": ema200,
-                "rsi14": rsi14,
-                "atr14": atr14,
-                "trend": trend,
-                "momentum": momentum,
-                "vol_regime": vol_regime,
-                "direction": direction,
-                "entry": entry,
-                "sl": sl,
-                "tp1": tp1,
-                "tp2": tp2,
-                "volume_note": vol_note,
-            }
+            <div class='card mb-3'>
+              <h3>Plan indicatif (EMA/RSI/ATR)</h3>
+              {idea}
+              <div style='opacity:.75;font-size:12px;margin-top:8px;'>
+                Note: indicatif (pas un conseil financier). Vérifie toujours le contexte + niveaux.
+              </div>
+            </div>
+            """
         except Exception as e:
             error = str(e)
 
     body = f"""
-    <div class="card mb-3">
+    <div class='card mb-3'>
       <h2>AI Crypto Coach</h2>
       <p>Analyse rapide (Binance OHLCV) + plan indicatif basé sur EMA/RSI/ATR.</p>
-      <form method="get" action="/ai-crypto-coach" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <input class="input" name="symbol" value="{html.escape(symbol)}" style="max-width:220px;" />
-        <select class="input" name="tf" style="max-width:140px;">
-          {''.join([f'<option value="{k}" {"selected" if k==interval else ""}>{k}</option>' for k in ["15m","30m","1h","2h","4h","1d"]])}
+      <form method='get' action='/ai-crypto-coach' style='display:flex; gap:10px; align-items:center; flex-wrap:wrap;'>
+        <input class='v5-input' name='symbol' value='{symbol}' style='max-width:220px;' />
+        <select class='v5-input' name='tf' style='max-width:140px;'>
+          {''.join([f"<option value='{k}' {'selected' if tf==k else ''}>{k}</option>" for k in ['15m','30m','1h','2h','4h','1d']])}
         </select>
-        <button class="btn" type="submit">Analyser</button>
-        <input type="hidden" name="go" value="1"/>
+        <button class='btn' type='submit'>Analyser</button>
+        <input type='hidden' name='go' value='1' />
       </form>
     </div>
+
+    {f"<div class='alert alert-error'>Erreur: {error}</div>" if error else ''}
+
+    {analysis_html if analysis_html else "<div class='card mb-3'><p>Entre un symbole + timeframe puis clique “Analyser”.</p></div>"}
     """
-
-    if error:
-        body += f"""
-        <div class="card mb-3" style="border:1px solid #7f1d1d;">
-          <h3 style="color:#fca5a5;">Erreur</h3>
-          <div style="white-space:pre-wrap;">{html.escape(error)}</div>
-        </div>
-        """
-    elif result:
-        def fmt(x):
-            try:
-                return f"{float(x):,.6f}".replace(",", " ")
-            except Exception:
-                return str(x)
-
-        body += f"""
-        <div class="card mb-3">
-          <h3>Résumé</h3>
-          <ul>
-            <li><b>Prix</b>: {fmt(result["last_close"])}</li>
-            <li><b>Tendance</b>: {html.escape(result["trend"])}, <b>Momentum</b>: {html.escape(result["momentum"])}, <b>Volatilité</b>: {html.escape(result["vol_regime"])}</li>
-            <li>{html.escape(result["volume_note"])}</li>
-          </ul>
-        </div>
-
-        <div class="card mb-3">
-          <h3>Indicateurs</h3>
-          <ul>
-            <li>EMA20: {fmt(result["ema20"])}</li>
-            <li>EMA50: {fmt(result["ema50"])}</li>
-            <li>EMA200: {fmt(result["ema200"])}</li>
-            <li>RSI14: {fmt(result["rsi14"])}</li>
-            <li>ATR14: {fmt(result["atr14"])}</li>
-          </ul>
-        </div>
-
-        <div class="card mb-3">
-          <h3>Plan indicatif</h3>
-          <p><b>Direction</b>: {html.escape(result["direction"])}</p>
-          <ul>
-            <li>Entrée (référence): {fmt(result["entry"])}</li>
-            <li>Stop (ATR): {fmt(result["sl"])}</li>
-            <li>TP1 (ATR): {fmt(result["tp1"])}</li>
-            <li>TP2 (ATR): {fmt(result["tp2"])}</li>
-          </ul>
-          <p style="opacity:.85;">Note: c’est un plan indicatif basé sur la volatilité (ATR), pas un conseil financier.</p>
-        </div>
-        """
-    else:
-        body += """
-        <div class="card mb-3">
-          <p>Entre un symbole + timeframe puis clique “Analyser”.</p>
-        </div>
-        """
-
-    return _simple_page("AI Crypto Coach", body, sidebar=SIDEBAR_FULL)
-
-@app.get("/academy")
-async def academy_page(request: Request):
-    body = """
-    <div class="card">
-      <h3>Academy</h3>
-      <p class="muted">
-        Ici tu vas retrouver des modules d'apprentissage (vidéos / guides / quiz) pour comprendre:
-        les bases, l'analyse technique, la gestion du risque, et comment utiliser les outils Crypto IA.
-      </p>
-      <ul>
-        <li><b>Débutant</b> : notions, vocabulaire, erreurs à éviter</li>
-        <li><b>Intermédiaire</b> : structure de marché, supports/résistances, tendances</li>
-        <li><b>Avancé</b> : multi-timeframe, setups, journaling, optimisation</li>
-      </ul>
-      <p class="muted">Cette page est en cours de consolidation (contenus + progression).</p>
-    </div>
-    """
-    return HTMLResponse(_simple_page("Academy", body, sidebar=SIDEBAR_FULL))
-
-@app.get("/crypto-academy")
-async def crypto_academy_redirect(request: Request):
-    return RedirectResponse(url="/academy", status_code=302)
-
-@app.get("/academy-progress")
-async def academy_progress(request: Request):
-    body = """
-    <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
-      <div class="text-xl font-semibold mb-1">Academy Progress</div>
-      <div class="text-slate-300">
-        Ta progression (modules complétés, quiz, scores, badges) sera affichée ici.
-        Pour l'instant, on laisse ce module en <b>beta</b> le temps de connecter la base d'utilisateurs et les quiz.
-      </div>
-      <div class="text-slate-500 text-xs mt-3">
-        Prochaine étape: table <code>academy_progress</code> liée à ton user_id + pages quiz.
-      </div>
-    </div>
-    """
-    return HTMLResponse(_simple_page("Academy Progress", body, sidebar=SIDEBAR_FULL))
-
+    return HTMLResponse(_simple_page("AI Crypto Coach", body, sidebar=SIDEBAR_FULL))
 
 @app.get("/altseason-copilot-pro")
 async def altseason_copilot_pro(request: Request):
-    """
-    Altseason Copilot Pro: signaux simples basés sur dominance BTC/ETH + Fear&Greed.
-    Robuste: erreurs affichées dans la page (au lieu de 500).
-    """
-    error = None
-    data = None
+    g = await _cg_global()
 
-    try:
-        fg = None
-        try:
-            import httpx
-            async with httpx.AsyncClient(timeout=10) as client:
-                r = await client.get("https://api.alternative.me/fng/?limit=1&format=json")
-                js = r.json()
-                if isinstance(js, dict) and js.get("data"):
-                    fg = int(js["data"][0].get("value") or 0)
-        except Exception:
-            fg = None
+    btc_dom = None
+    eth_dom = None
+    total_mc = None
+    if isinstance(g, dict):
+        mcap = g.get("market_cap_percentage") or {}
+        btc_dom = mcap.get("btc")
+        eth_dom = mcap.get("eth")
+        total_mc = (g.get("total_market_cap") or {}).get("usd")
 
-        g = await _cg_global()
-        gd = (g or {}).get("data") if isinstance(g, dict) else None
-        mcap = (gd or {}).get("total_market_cap", {}).get("usd") if isinstance(gd, dict) else None
-        btc_dom = (gd or {}).get("market_cap_percentage", {}).get("btc") if isinstance(gd, dict) else None
-        eth_dom = (gd or {}).get("market_cap_percentage", {}).get("eth") if isinstance(gd, dict) else None
-
-        if btc_dom is None:
-            raise ValueError("Impossible de récupérer la dominance BTC (CoinGecko).")
-
-        mood = "n/a" if fg is None else ("Fear" if fg < 45 else "Neutral" if fg < 60 else "Greed")
-        if fg is None:
-            window = "Données Fear&Greed indisponibles (mode dégradé)."
+    # Basic heuristic score
+    score = None
+    verdict = "Indéterminé"
+    if btc_dom is not None:
+        # lower BTC dominance -> more alt-friendly (rough heuristic)
+        score = max(0, min(100, int((60 - float(btc_dom)) * 3)))
+        if score >= 65:
+            verdict = "Altseason potentiel"
+        elif score >= 45:
+            verdict = "Transition"
         else:
-            window = "Altcoins favorisés" if (btc_dom < 50 and 45 <= fg <= 70) else "Plutôt BTC / prudence"
+            verdict = "BTC season"
 
-        data = {
-            "fear_greed": fg,
-            "mood": mood,
-            "market_cap_usd": mcap,
-            "btc_dom": btc_dom,
-            "eth_dom": eth_dom,
-            "window": window,
-        }
-    except Exception as e:
-        error = str(e)
+    body = f"""
+    <div class="space-y-4">
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-xl font-semibold mb-1">Altseason Copilot Pro (beta)</div>
+        <div class="text-slate-300 text-sm">
+          Lecture macro simple: dominance BTC/ETH + contexte global. (beta)
+        </div>
+      </div>
 
-    def fmt_num(x, digits=2):
-        try:
-            return f"{float(x):,.{digits}f}".replace(",", " ")
-        except Exception:
-            return "n/a"
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+          <div class="text-slate-400 text-sm">Total market cap</div>
+          <div class="text-2xl font-bold">{_fmt_usd(total_mc)}</div>
+        </div>
+        <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+          <div class="text-slate-400 text-sm">BTC dominance</div>
+          <div class="text-2xl font-bold">{_fmt_pct(btc_dom)}</div>
+        </div>
+        <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+          <div class="text-slate-400 text-sm">ETH dominance</div>
+          <div class="text-2xl font-bold">{_fmt_pct(eth_dom)}</div>
+        </div>
+      </div>
 
-    body = """
-    <div class="card mb-3">
-      <h2>Altseason Copilot Pro</h2>
-      <p>Lecture rapide du contexte (dominance + sentiment). Mode “robuste” si certaines APIs sont down.</p>
+      <div class="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+        <div class="text-lg font-semibold mb-2">Score altseason</div>
+        <div class="text-3xl font-bold">{score if score is not None else "—"} / 100</div>
+        <div class="text-slate-300 mt-1">Verdict: <b>{verdict}</b></div>
+        <div class="text-slate-500 text-xs mt-3">
+          Heuristique simple: dominance BTC plus basse = plus d'espace pour les ALTs.
+          On améliorera avec rotation BTC→ETH→ALTs, breadth, et flows. (beta)
+        </div>
+      </div>
     </div>
     """
+    return HTMLResponse(_simple_page("Altseason Copilot Pro", body, sidebar=SIDEBAR_FULL))
 
-    if error:
-        body += f"""
-        <div class="card mb-3" style="border:1px solid #7f1d1d;">
-          <h3 style="color:#fca5a5;">Impossible de récupérer les données live.</h3>
-          <div style="white-space:pre-wrap;">Erreur: {html.escape(error)}</div>
-        </div>
-        """
-    else:
-        body += f"""
-        <div class="card mb-3">
-          <h3>Contexte</h3>
-          <ul>
-            <li><b>Fear &amp; Greed</b>: {html.escape(str(data["fear_greed"]))} ({html.escape(data["mood"])})</li>
-            <li><b>Market cap (USD)</b>: {fmt_num(data["market_cap_usd"], 0)}</li>
-            <li><b>BTC dominance</b>: {fmt_num(data["btc_dom"], 2)}%</li>
-            <li><b>ETH dominance</b>: {fmt_num(data["eth_dom"], 2)}%</li>
-          </ul>
-          <h3>Lecture</h3>
-          <p>{html.escape(data["window"])}</p>
-          <p style="opacity:.85;">Note: heuristique simple; ce n’est pas un conseil financier.</p>
-        </div>
-        """
-
-    return _simple_page("Altseason Copilot Pro", body, sidebar=SIDEBAR_FULL)
 
 @app.get("/rug-scam-shield")
 async def rug_scam_shield(request: Request):
@@ -33702,108 +33662,217 @@ async def rug_scam_shield(request: Request):
     return HTMLResponse(_simple_page("Rug / Scam Shield", body, sidebar=SIDEBAR_FULL))
 
 
-@app.get("/ai-swarm-agents")
+@app.get("/ai-swarm-agents", response_class=HTMLResponse)
 async def ai_swarm_agents(request: Request):
-    """
-    AI Swarm Agents (Binance OHLCV) : plusieurs "agents" simples qui votent.
-    """
-    symbol = (request.query_params.get("symbol") or "BTCUSDT").strip().upper()
-    tf = (request.query_params.get("tf") or "1h").strip().lower()
-    do_run = request.query_params.get("go") == "1" or ("symbol" in request.query_params)
+    """Swarm Agents (Binance OHLCV) — même data, structurée en agents.
 
-    tf_map = {"15m":"15m","30m":"30m","1h":"1h","2h":"2h","4h":"4h","1d":"1d"}
+    Fixes:
+      - Normalise les klines (liste) -> dicts, sinon erreur: list indices must be integers...
+      - Force HTMLResponse pour éviter l'affichage du code HTML + logo 404.
+    """
+    q = request.query_params
+    symbol = (q.get("symbol") or "BTCUSDT").strip().upper()
+    tf = (q.get("tf") or "1h").strip()
+    go = (q.get("go") or "").strip() in ("1", "true", "yes", "on")
+
+    tf_map = {"15m": "15m", "30m": "30m", "1h": "1h", "2h": "2h", "4h": "4h", "1d": "1d"}
     interval = tf_map.get(tf, "1h")
 
-    error = None
-    out = None
+    def _klines_to_dicts(kl):
+        out = []
+        for row in (kl or []):
+            if isinstance(row, dict):
+                if all(k in row for k in ("open", "high", "low", "close", "volume")):
+                    out.append({
+                        "ts": row.get("ts") or row.get("timestamp"),
+                        "open": float(row["open"]),
+                        "high": float(row["high"]),
+                        "low": float(row["low"]),
+                        "close": float(row["close"]),
+                        "volume": float(row.get("volume", 0.0)),
+                    })
+                continue
+            if isinstance(row, (list, tuple)) and len(row) >= 6:
+                try:
+                    out.append({
+                        "ts": int(row[0]),
+                        "open": float(row[1]),
+                        "high": float(row[2]),
+                        "low": float(row[3]),
+                        "close": float(row[4]),
+                        "volume": float(row[5]),
+                    })
+                except Exception:
+                    pass
+        return out
 
-    if do_run:
+    def _ema(values, period: int):
+        if not values:
+            return []
+        k = 2.0 / (period + 1.0)
+        ema_vals = [float(values[0])]
+        for v in values[1:]:
+            ema_vals.append(float(v) * k + ema_vals[-1] * (1.0 - k))
+        return ema_vals
+
+    def _rsi(values, period: int = 14):
+        if len(values) < period + 1:
+            return None
+        gains, losses = [], []
+        for i in range(1, period + 1):
+            ch = values[i] - values[i - 1]
+            gains.append(max(ch, 0.0))
+            losses.append(max(-ch, 0.0))
+        avg_gain = sum(gains) / period
+        avg_loss = sum(losses) / period
+        for i in range(period + 1, len(values)):
+            ch = values[i] - values[i - 1]
+            gain = max(ch, 0.0)
+            loss = max(-ch, 0.0)
+            avg_gain = (avg_gain * (period - 1) + gain) / period
+            avg_loss = (avg_loss * (period - 1) + loss) / period
+        if avg_loss == 0:
+            return 100.0
+        rs = avg_gain / avg_loss
+        return 100.0 - (100.0 / (1.0 + rs))
+
+    def _atr(candles, period: int = 14):
+        if len(candles) < period + 1:
+            return None
+        trs = []
+        for i in range(1, len(candles)):
+            h = candles[i]["high"]
+            l = candles[i]["low"]
+            pc = candles[i - 1]["close"]
+            trs.append(max(h - l, abs(h - pc), abs(l - pc)))
+        atr_val = sum(trs[:period]) / period
+        for tr in trs[period:]:
+            atr_val = (atr_val * (period - 1) + tr) / period
+        return atr_val
+
+    error = ""
+    agents_html = ""
+
+    if go:
         try:
-            kl = await _binance_klines(symbol, interval, limit=200)
-            if not isinstance(kl, list) or len(kl) < 60:
-                raise ValueError("Pas assez de données OHLCV pour lancer les agents.")
-            closes = [float(x["close"]) for x in kl]
-            highs  = [float(x["high"]) for x in kl]
-            lows   = [float(x["low"]) for x in kl]
-            vols   = [float(x["volume"]) for x in kl]
+            kl = await _binance_klines(symbol, interval, limit=300)
+            candles = _klines_to_dicts(kl)
+            if len(candles) < 80:
+                raise ValueError("Pas assez de données OHLCV (essaie un autre timeframe/symbole).")
 
-            last = closes[-1]
-            ema50 = _ema(closes, 50)
-            ema200 = _ema(closes, 200) if len(closes) >= 200 else _ema(closes, 100)
+            closes = [c["close"] for c in candles]
+            vols = [c["volume"] for c in candles]
+
+            ema20 = _ema(closes, 20)[-1]
+            ema50 = _ema(closes, 50)[-1]
             rsi14 = _rsi(closes, 14)
-            atr14 = _atr(highs, lows, closes, 14)
+            atr14 = _atr(candles, 14)
+            last = closes[-1]
+            avg_vol20 = sum(vols[-20:]) / max(1, len(vols[-20:]))
 
-            agent_trend = "LONG" if last > ema50 and ema50 > ema200 else "SHORT" if last < ema50 and ema50 < ema200 else "NEUTRE"
-            agent_momo = "LONG" if rsi14 >= 55 else "SHORT" if rsi14 <= 45 else "NEUTRE"
-            vol_20 = sum(vols[-20:]) / max(1, len(vols[-20:]))
-            vol_5 = sum(vols[-5:]) / max(1, len(vols[-5:]))
-            agent_volume = "LONG" if (vol_5 > 1.3 * vol_20 and last > ema50) else "SHORT" if (vol_5 > 1.3 * vol_20 and last < ema50) else "NEUTRE"
-            atr_pct = atr14 / last
-            agent_volatility = "RISK_OFF" if atr_pct >= 0.02 else "OK"
+            agent_trend = "Bullish" if ema20 >= ema50 else "Bearish"
 
-            votes = [agent_trend, agent_momo, agent_volume]
-            long_votes = sum(1 for v in votes if v == "LONG")
-            short_votes = sum(1 for v in votes if v == "SHORT")
-            if long_votes >= 2:
-                consensus = "LONG"
-            elif short_votes >= 2:
-                consensus = "SHORT"
+            if rsi14 is None:
+                agent_mom = "Neutre"
+            elif rsi14 >= 65:
+                agent_mom = "Haussier (sur-achat possible)"
+            elif rsi14 <= 35:
+                agent_mom = "Baissier (sur-vente possible)"
             else:
-                consensus = "NEUTRE"
+                agent_mom = "Neutre / sain"
 
-            out = {
-                "symbol": symbol,
-                "tf": interval,
-                "price": last,
-                "agents": {
-                    "Trend Agent (EMA50/EMA200)": agent_trend,
-                    "Momentum Agent (RSI14)": agent_momo,
-                    "Volume Agent (volume vs 20)": agent_volume,
-                    "Volatility Agent (ATR%)": agent_volatility,
-                },
-                "consensus": consensus,
-                "notes": f"Votes LONG={long_votes}, SHORT={short_votes}. ATR%={atr_pct:.2%}.",
-            }
+            if atr14 is None or last <= 0:
+                agent_vol = "Inconnu"
+            else:
+                pct = (atr14 / last) * 100.0
+                agent_vol = "Élevée" if pct >= 2.2 else ("Faible" if pct <= 0.9 else "Normale")
+
+            last_vol = vols[-1]
+            if avg_vol20 <= 0:
+                agent_volume = "Inconnu"
+            elif last_vol > avg_vol20 * 1.6:
+                agent_volume = "En hausse (confirmation possible)"
+            elif last_vol < avg_vol20 * 0.6:
+                agent_volume = "Faible (prudence)"
+            else:
+                agent_volume = "Normal"
+
+            score = 0
+            score += 1 if agent_trend == "Bullish" else -1
+            if "Haussier" in agent_mom:
+                score += 1
+            if "Baissier" in agent_mom:
+                score -= 1
+            if "En hausse" in agent_volume:
+                score += 1
+            if "Faible" in agent_volume:
+                score -= 1
+
+            decision = "WAIT"
+            rationale = "Signal mixte. Attendre une confirmation (cassure, pullback, structure)."
+            if score >= 2:
+                decision = "LONG (conditionnel)"
+                rationale = "Trend + confirmations suffisantes. Chercher un setup propre + gestion du risque."
+            elif score <= -2:
+                decision = "SHORT (conditionnel)"
+                rationale = "Trend baissier + confirmations suffisantes. Attendre un rejet / continuation."
+
+            agents_html = f"""
+            <div class='card mb-3'>
+              <h3>Agents</h3>
+              <div class='grid' style='grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;'>
+                <div class='card' style='margin:0;'>
+                  <div style='opacity:.8;font-size:12px;'>Agent Trend</div>
+                  <div style='font-size:20px;font-weight:700;'>{agent_trend}</div>
+                  <div style='opacity:.8;font-size:12px;'>EMA20 {ema20:.4f} · EMA50 {ema50:.4f}</div>
+                </div>
+                <div class='card' style='margin:0;'>
+                  <div style='opacity:.8;font-size:12px;'>Agent Momentum</div>
+                  <div style='font-size:20px;font-weight:700;'>{agent_mom}</div>
+                  <div style='opacity:.8;font-size:12px;'>RSI14 {'' if rsi14 is None else f'{rsi14:.1f}'}</div>
+                </div>
+                <div class='card' style='margin:0;'>
+                  <div style='opacity:.8;font-size:12px;'>Agent Volatilité</div>
+                  <div style='font-size:20px;font-weight:700;'>{agent_vol}</div>
+                  <div style='opacity:.8;font-size:12px;'>ATR14 {'' if atr14 is None else f'{atr14:.6f}'}</div>
+                </div>
+                <div class='card' style='margin:0;'>
+                  <div style='opacity:.8;font-size:12px;'>Agent Volume</div>
+                  <div style='font-size:20px;font-weight:700;'>{agent_volume}</div>
+                  <div style='opacity:.8;font-size:12px;'>Vol(20) ~ {avg_vol20:.2f}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class='card mb-3'>
+              <h3>Conclusion</h3>
+              <div style='font-size:22px;font-weight:800;'>{decision}</div>
+              <div class='text-slate-300' style='margin-top:6px;'>{rationale}</div>
+              <div style='opacity:.75;font-size:12px;margin-top:8px;'>
+                Symbol: <b>{symbol}</b> · TF: <b>{interval}</b> · Prix: <b>{last:.6f}</b>
+              </div>
+            </div>
+            """
         except Exception as e:
             error = str(e)
 
     body = f"""
-    <div class="card mb-3">
+    <div class='card mb-3'>
       <h2>AI Swarm Agents</h2>
       <p>Même data, mais organisée en “agents” pour structurer une décision.</p>
-      <form method="get" action="/ai-swarm-agents" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <input class="input" name="symbol" value="{html.escape(symbol)}" style="max-width:220px;" />
-        <select class="input" name="tf" style="max-width:140px;">
-          {''.join([f'<option value="{k}" {"selected" if k==interval else ""}>{k}</option>' for k in ["15m","30m","1h","2h","4h","1d"]])}
+      <form method='get' action='/ai-swarm-agents' style='display:flex; gap:10px; align-items:center; flex-wrap:wrap;'>
+        <input class='v5-input' name='symbol' value='{symbol}' style='max-width:220px;' />
+        <select class='v5-input' name='tf' style='max-width:140px;'>
+          {''.join([f"<option value='{k}' {'selected' if tf==k else ''}>{k}</option>" for k in ['15m','30m','1h','2h','4h','1d']])}
         </select>
-        <button class="btn" type="submit">Lancer les agents</button>
-        <input type="hidden" name="go" value="1"/>
+        <button class='btn' type='submit'>Lancer les agents</button>
+        <input type='hidden' name='go' value='1' />
       </form>
     </div>
+
+    {f"<div class='alert alert-error'>Erreur: {error}</div>" if error else ''}
+
+    {agents_html if agents_html else "<div class='card mb-3'><p>Choisis un symbole + timeframe puis lance les agents.</p></div>"}
     """
+    return HTMLResponse(_simple_page("AI Swarm Agents", body, sidebar=SIDEBAR_FULL))
 
-    if error:
-        body += f"""
-        <div class="card mb-3" style="border:1px solid #7f1d1d;">
-          <h3 style="color:#fca5a5;">Erreur</h3>
-          <div style="white-space:pre-wrap;">{html.escape(error)}</div>
-        </div>
-        """
-    elif out:
-        body += f"""
-        <div class="card mb-3">
-          <h3>Consensus: {html.escape(out["consensus"])}</h3>
-          <p style="opacity:.85;">{html.escape(out["notes"])}</p>
-          <ul>
-            {''.join([f"<li><b>{html.escape(k)}</b>: {html.escape(v)}</li>" for k,v in out["agents"].items()])}
-          </ul>
-        </div>
-        """
-    else:
-        body += """
-        <div class="card mb-3">
-          <p>Choisis un symbole + timeframe puis lance les agents.</p>
-        </div>
-        """
-
-    return _simple_page("AI Swarm Agents", body, sidebar=SIDEBAR_FULL)

@@ -32364,9 +32364,9 @@ async def ai_setup_builder_generate(request: Request):
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
               <span class="badge">Prix {last_price:.6g}</span>
-              <span class="badge">EMA20 {ema20:.6g if ema20 else "—"}</span>
-              <span class="badge">EMA50 {ema50:.6g if ema50 else "—"}</span>
-              <span class="badge">RSI14 {rsi14:.1f if rsi14 is not None else "—"}</span>
+              <span class="badge">EMA20 {(format(ema20, ".6g") if ema20 is not None else "—")}</span>
+              <span class="badge">EMA50 {(format(ema50, ".6g") if ema50 is not None else "—")}</span>
+              <span class="badge">RSI14 {(format(rsi14, ".1f") if rsi14 is not None else "—")}</span>
               <span class="badge">ATR14 {atr14:.6g}</span>
               <span class="badge">Régime {escape_html(regime)}</span>
               <span class="badge">Risque {risk_pct:.1f}%</span>

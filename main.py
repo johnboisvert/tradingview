@@ -24901,6 +24901,13 @@ async def admin_dashboard(request: Request):
     if not is_admin:
         return RedirectResponse(url="/admin-login?next=/admin-dashboard", status_code=302)
 
+    # Sidebar (style + HTML) — évite NameError si non défini
+    try:
+        _sb_style = (SIDEBAR.split("</style>", 1)[0] + "</style>") if ("</style>" in SIDEBAR) else ""
+        _sb_html = SIDEBAR.split("</style>", 1)[1] if ("</style>" in SIDEBAR) else SIDEBAR
+    except Exception:
+        _sb_style, _sb_html = "", ""
+
     page_html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -32926,3 +32933,39 @@ async def rug_scam_shield(request: Request):
     subtitle = "Module Rug/Scam Shield (en cours de réintégration)."
     return HTMLResponse(_feature_placeholder("Rug/Scam Shield", subtitle, status="Bêta"))
 
+
+
+# ---------------------------------------------------------------------
+# GARDE-FOUS: s'assure que certaines routes "pages" existent toujours
+# ---------------------------------------------------------------------
+try:
+    def _ensure_route(path: str, endpoint, methods=None):
+        methods = methods or ["GET"]
+        existing = {getattr(r, "path", None) for r in getattr(app, "routes", [])}
+        if path in existing:
+            return
+        app.add_api_route(path, endpoint, methods=methods, include_in_schema=False)
+
+    def _make_page_endpoint(template_name: str, title: str):
+        async def _page(request: Request):
+            return await _render_or_placeholder(request, template_name, title=title)
+        _page.__name__ = f"page_{template_name.replace('.', '_').replace('-', '_')}"
+        return _page
+
+    for _p, _tpl, _title in [
+        ("/academy", "academy.html", "Academy"),
+        ("/academy-progress", "academy_progress.html", "Academy — Progression"),
+        ("/altseason-copilot-pro", "altseason_copilot_pro.html", "Altseason Copilot Pro"),
+        ("/ai-swarm-agents", "ai_swarm_agents.html", "AI Swarm Agents"),
+        ("/rug-scam-shield", "rug_scam_shield.html", "Rug / Scam Shield"),
+    ]:
+        _ensure_route(_p, _make_page_endpoint(_tpl, _title))
+
+    async def _admin_login_alias(request: Request):
+        nxt = request.query_params.get("next") or "/admin-dashboard"
+        return RedirectResponse(url=f"/login?next={nxt}", status_code=302)
+
+    _ensure_route("/admin-login", _admin_login_alias)
+except Exception as _e:
+    # Ne jamais bloquer le démarrage pour ça
+    pass

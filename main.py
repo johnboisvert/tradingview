@@ -2709,8 +2709,16 @@ def _is_admin_user(user: dict) -> bool:
     return role in {"admin","owner","superadmin"} or username == "admin"
 
 def _admin_bypass_enabled() -> bool:
+    """Bypass admin UNIQUEMENT en dev/local.
+
+    Sécurité: en production, le bypass est forcé à False même si la variable est mal réglée.
+    """
+    env = (os.getenv("ENV") or os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") or "").strip().lower()
+    if env in {"prod", "production", "main"}:
+        return False
+
     v = (os.getenv("ADMIN_BYPASS", "0") or "").strip().lower()
-    return v in {"1","true","yes","on"}
+    return v in {"1", "true", "yes", "on"}
 
 def _force_admin_on_request(request):
     admin_user = {"username": "admin", "email": "", "role": "admin", "plan": "elite"}
@@ -3224,59 +3232,37 @@ def access_denied_page(request, page_title: str = "Accès refusé", required_pla
         return PlainTextResponse("Accès refusé (403).", status_code=403)
 
 def get_user_from_request(request):
+    """Retourne l'utilisateur courant à partir d'un token de session.
+
+    IMPORTANT: on **ne fait pas confiance** à request.session['user'] tout seul.
+    - Le cookie de session (Starlette) peut survivre aux redéploiements.
+    - Notre SessionManager est en mémoire (active_sessions) : le token est la source de vérité.
     """
-    Retourne un dict utilisateur à partir de la Request (session/cookies).
-    - Tolérant si on lui passe autre chose qu'une Request (retourne None).
-    """
-    try:
-        # Protection: parfois des appels debug passent un str par erreur
-        if request is None or not hasattr(request, "session"):
-            return None
+    # Accepte plusieurs noms historiques de cookie, mais la référence est `session_token`
+    token = (
+        request.cookies.get("session_token")
+        or request.cookies.get("token")
+        or request.cookies.get("access_token")
+    )
 
-        username = (request.session.get("username") or "").strip()
-        email = (request.session.get("email") or "").strip()
-        role = (request.session.get("role") or "").strip()
-
-        # Cookie token (si présent)
-        token = None
-        try:
-            token = (request.cookies.get("token") if hasattr(request, "cookies") else None)
-        except Exception:
-            token = None
-
-        user_from_token = None
-        if token:
+    if token:
+        user = get_user_from_token(token)
+        if user:
+            # Synchronise (utile pour les templates), sans que ce soit la source d'auth
             try:
-                user_from_token = get_user_from_token(token)
+                if isinstance(request.session, dict):
+                    request.session["user"] = {
+                        "username": user.get("username", ""),
+                        "email": user.get("email", ""),
+                        "role": user.get("role", "user"),
+                        "plan": user.get("plan", ""),
+                    }
             except Exception:
-                user_from_token = None
+                pass
+            return user
 
-        # Fusion des infos (session prioritaire)
-        if user_from_token:
-            if not username:
-                username = (user_from_token.get("username") or "").strip()
-            if not email:
-                email = (user_from_token.get("email") or "").strip()
-            if not role:
-                role = (user_from_token.get("role") or "").strip()
-
-        if not username and not email:
-            return None
-
-        is_admin = (role.lower() == "admin") or (username.lower() == "admin")
-
-        return {
-            "username": username,
-            "email": email,
-            "role": role or ("admin" if is_admin else ""),
-            "is_admin": is_admin,
-        }
-    except Exception as e:
-        print("❌ get_user_from_request error:", e)
-        return None
-
-
-
+    # Pas de token valide => considéré déconnecté (sécurité)
+    return None
 
 # Backward-compat: certaines pages appellent encore cette fonction
 def get_current_user_from_session(request: Request) -> dict | None:
@@ -3347,6 +3333,7 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             "/login", "/logout", "/register",
             "/admin-login",
             "/contact", "/pricing",
+            "/academy",
             "/tv-webhook",
         }
         PUBLIC_PREFIXES = ("/static", "/assets", "/css", "/js", "/img")
@@ -4693,28 +4680,12 @@ def normalize_username(value: str) -> str:
 # ---------------------------------------------------------------------------
 # Compat helpers (some IA pages call these; keep them stable)
 # ---------------------------------------------------------------------------
-def is_logged_in(request: Request) -> bool:
-    """Compat: returns True if a user session/cookie indicates an authenticated user."""
-    try:
-        user = get_user_from_request(request)
-        if user:
-            return True
-    except Exception:
-        pass
-    try:
-        if hasattr(request, "session") and request.session:
-            if request.session.get("username") or request.session.get("email") or request.session.get("user"):
-                return True
-    except Exception:
-        pass
-    try:
-        # Some deployments rely on a cookie token; presence usually means logged-in.
-        if request.cookies.get("session_token") or request.cookies.get("access_token"):
-            return True
-    except Exception:
-        pass
-    return False
-
+def is_logged_in(request) -> bool:
+    """Vrai si un token de session valide est présent et reconnu."""
+    user = get_user_from_request(request)
+    if not user:
+        return False
+    return bool(user.get("username") or user.get("email"))
 
 def get_user_effective_plan(request: Request) -> str:
     """Best-effort plan resolution used for debug/UI. Admins are treated as full access."""
@@ -5743,9 +5714,19 @@ async def login(request: Request, response: Response):
 
 @app.get("/logout")
 async def logout(request: Request):
-    # Déconnexion simple
+    """Déconnexion (nettoie token + session Starlette)."""
+    try:
+        if isinstance(request.session, dict):
+            request.session.clear()
+    except Exception:
+        pass
+
     resp = RedirectResponse(url="/login", status_code=303)
-    resp.delete_cookie("session_token")
+
+    # Cookies historiques + cookie de session Starlette
+    for ck in ("session_token", "token", "access_token", "session"):
+        resp.delete_cookie(ck)
+
     return resp
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -32903,4 +32884,77 @@ async def _page_ai_swarm_agents():
     </div>
     """
     return HTMLResponse(_simple_page("AI Swarm Agents", body, sidebar=SIDEBAR_FULL))
+
+
+# ==============================
+# Academy & nouvelles pages (anti-404)
+# ==============================
+
+def _feature_placeholder(title: str, subtitle: str, status: str = "Maintenance"):
+    body = f"""
+    <h1 style="margin:0 0 8px 0">{title}</h1>
+    <p style="margin:0 0 14px 0;color:#cbd5e1;max-width:820px">
+      {subtitle}
+    </p>
+    <div class="stat-box" style="margin-top:12px">
+      <div class="label">Statut</div>
+      <div class="value">{status}</div>
+    </div>
+    """
+    return _simple_page(title, body, sidebar=SIDEBAR_FULL)
+
+@app.get("/academy", response_class=HTMLResponse)
+async def academy(request: Request):
+    # Page "vitrine" publique + fallback pour éviter les 404
+    user = get_user_from_request(request)
+    if user:
+        subtitle = "Bienvenue dans l’Academy. Cette section est en cours de réintégration (contenu + suivi de progression)."
+        return HTMLResponse(_feature_placeholder("Academy", subtitle, status="Bêta"))
+    subtitle = "Espace formation CryptoIA (en cours de réintégration). Connecte-toi pour voir tes modules et ton suivi."
+    body = f"""
+      <h1 style="margin:0 0 8px 0">Academy</h1>
+      <p style="margin:0 0 14px 0;color:#cbd5e1;max-width:820px">{subtitle}</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+        <a class="btn" href="/login">Se connecter</a>
+        <a class="btn-outline" href="/pricing">Voir les plans</a>
+      </div>
+    """
+    return HTMLResponse(_simple_page("Academy", body, sidebar=SIDEBAR_FULL))
+
+@app.get("/academy-progress", response_class=HTMLResponse)
+async def academy_progress(request: Request):
+    user = get_user_from_request(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    subtitle = "Suivi de progression Academy (en cours de réintégration)."
+    return HTMLResponse(_feature_placeholder("Academy — Progression", subtitle, status="Bêta"))
+
+@app.get("/altseason-copilot-pro", response_class=HTMLResponse)
+async def altseason_copilot_pro(request: Request):
+    user = get_user_from_request(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    route_path = "/altseason-copilot-pro"
+    required_plan = get_required_plan_for_route(route_path)
+    if not check_route_permission(user, route_path):
+        return access_denied_page(request, "Altseason Copilot Pro", required_plan=required_plan)
+
+    subtitle = "Module Altseason Copilot Pro (en cours de réintégration)."
+    return HTMLResponse(_feature_placeholder("Altseason Copilot Pro", subtitle, status="Bêta"))
+
+@app.get("/rug-scam-shield", response_class=HTMLResponse)
+async def rug_scam_shield(request: Request):
+    user = get_user_from_request(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    route_path = "/rug-scam-shield"
+    required_plan = get_required_plan_for_route(route_path)
+    if not check_route_permission(user, route_path):
+        return access_denied_page(request, "Rug/Scam Shield", required_plan=required_plan)
+
+    subtitle = "Module Rug/Scam Shield (en cours de réintégration)."
+    return HTMLResponse(_feature_placeholder("Rug/Scam Shield", subtitle, status="Bêta"))
 

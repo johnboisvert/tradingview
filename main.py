@@ -24908,6 +24908,13 @@ async def admin_dashboard(request: Request):
     except Exception:
         _sb_style, _sb_html = "", ""
 
+    # Prix des forfaits (utilisés dans le HTML ci-dessous)
+    # On récupère depuis la config/DB via get_plan_price() avec fallback sûr.
+    premium_price = get_plan_price("premium")
+    advanced_price = get_plan_price("advanced")
+    pro_price = get_plan_price("pro")
+    elite_price = get_plan_price("elite")
+
     page_html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>

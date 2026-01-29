@@ -24915,6 +24915,39 @@ async def admin_dashboard(request: Request):
     pro_price = get_plan_price("pro")
     elite_price = get_plan_price("elite")
 
+    # Génération HTML des routes (évite NameError: routes_html)
+    try:
+        _all_routes = []
+        for _plan, _routes in PLAN_ROUTES.items():
+            for _r in _routes:
+                if _r not in _all_routes:
+                    _all_routes.append(_r)
+
+        # Plan initial affiché dans l'UI (les valeurs seront ensuite chargées via JS)
+        _initial_allowed = set(get_plan_access("free") or [])
+
+        _parts = []
+        for _r in _all_routes:
+            _checked = "checked" if _r in _initial_allowed else ""
+            _label = ROUTE_LABELS.get(_r, _r)
+            _parts.append(
+                "<div class='route-item'>"
+                "<label>"
+                f"<input class='route-checkbox' type='checkbox' name='routes' value='{_html.escape(_r)}' {_checked}>"
+                f"<span class='route-path'>{_html.escape(_r)}</span>"
+                f"<span class='route-label'>{_html.escape(_label)}</span>"
+                "</label>"
+                "</div>"
+            )
+        routes_html = "\n".join(_parts)
+    except Exception as _e:
+        routes_html = (
+            "<div style='color:#b91c1c;font-weight:800;'>"
+            "Erreur génération routes: "
+            f"{_html.escape(str(_e))}"
+            "</div>"
+        )
+
     page_html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>

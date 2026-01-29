@@ -33798,6 +33798,9 @@ async def altseason_copilot_pro(request: Request):
         pass
 
     body = f"""
+    {_academy_ui_css()}
+    <div class="academy-wrap">
+
     <div class="card mb-3">
       <h2>Altseason Copilot Pro</h2>
       <p><b>Mode</b>: <span style="color:#60a5fa">{html.escape(mode)}</span></p>
@@ -33820,6 +33823,8 @@ async def altseason_copilot_pro(request: Request):
       </ul>
       <p style="opacity:.85">Note: heuristique simple (snapshot). Ce n’est pas un conseil financier.</p>
     </div>
+    </div>
+
     """
 
     page = _simple_page("Altseason Copilot Pro", body, sidebar_html=SIDEBAR, username=(getattr(request.state, "user", None) or {}).get("username") or request.session.get("username"))
@@ -33969,6 +33974,8 @@ async def rug_scam_shield(request: Request, token: str = "", chain: str = "ETH",
                 """
 
     form_html = f"""
+    {_academy_ui_css()}
+
     <div class="card mb-3">
       <h2>Rug / Scam Shield</h2>
       <p>Entre un <b>symbole</b> (ex: PEPE) ou une <b>adresse de contrat</b> (0x...).</p>
@@ -34207,6 +34214,9 @@ async def ai_swarm_agents(request: Request):
             error = str(e)
 
     body = f"""
+    {_academy_ui_css()}
+    <div class="academy-wrap">
+
     <div class='card mb-3'>
       <h2>AI Swarm Agents</h2>
       <p>Même data, mais organisée en “agents” pour structurer une décision.</p>
@@ -34241,6 +34251,8 @@ async def ai_swarm_agents(request: Request):
       </ol>
       <p style='opacity:.8'>Note: ce sont des indications; utilise toujours ton plan + gestion du risque.</p>
     </div>
+    </div>
+
     """
     page = _simple_page("AI Swarm Agents", body, sidebar_html=SIDEBAR, username=(getattr(request.state, "user", None) or {}).get("username") or request.session.get("username"))
     return HTMLResponse(content=page)
@@ -34249,91 +34261,794 @@ async def ai_swarm_agents(request: Request):
 
 
 
-@app.get("/academy", response_class=HTMLResponse)
+def _html_escape(s: str) -> str:
+    try:
+        import html as _html
+        return _html.escape(str(s or ""))
+    except Exception:
+        return str(s or "")
+
+def _academy_ui_css() -> str:
+    # UI sobre + moderne (sans dépendances)
+    return """
+    <style>
+      .academy-wrap{max-width:1200px;margin:0 auto;padding:24px 18px}
+      .academy-hero{display:flex;gap:18px;justify-content:space-between;align-items:stretch;flex-wrap:wrap;margin-bottom:18px}
+      .academy-kicker{letter-spacing:.14em;text-transform:uppercase;font-size:12px;opacity:.85}
+      .academy-h1{font-size:34px;line-height:1.1;margin:8px 0 10px}
+      .academy-h1--lesson{font-size:30px}
+      .academy-h2{font-size:22px;margin:0 0 10px}
+      .academy-sub{opacity:.9}
+      .academy-dot{opacity:.5;margin:0 8px}
+      .academy-cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+      .academy-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);text-decoration:none;color:inherit;font-weight:700}
+      .academy-btn:hover{background:rgba(255,255,255,.14)}
+      .academy-btn--ghost{background:transparent}
+      .academy-statbox{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch}
+      .academy-stat{min-width:160px;padding:14px 14px;border-radius:18px;background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.10)}
+      .academy-stat--small{min-width:220px}
+      .academy-stat__n{font-size:24px;font-weight:900;margin-bottom:4px}
+      .academy-stat__label{opacity:.85;font-size:12px}
+      .academy-alert{padding:14px 14px;border-radius:18px;background:rgba(255, 193, 7,.12);border:1px solid rgba(255, 193, 7,.25);margin:10px 0 18px}
+      .academy-alert__title{font-weight:900;margin-bottom:4px}
+      .academy-alert__text{opacity:.95}
+      .academy-link{text-decoration:none;font-weight:800}
+      .academy-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0 16px}
+      .academy-search{flex:1;min-width:260px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:inherit;outline:none}
+      .academy-pill{padding:10px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);font-weight:800;font-size:12px}
+      .academy-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+      .academy-card{border-radius:20px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.10);padding:16px}
+      .academy-card__title{font-size:16px;font-weight:900;margin-bottom:6px;display:flex;gap:10px;align-items:center}
+      .academy-card__sub{opacity:.9;font-size:13px;margin-bottom:10px}
+      .academy-module{grid-column:span 6}
+      @media (max-width: 980px){ .academy-module{grid-column:span 12} }
+      .academy-module-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+      .academy-module-meta{display:flex;gap:10px;align-items:center}
+      .academy-icon{font-size:20px}
+      .academy-progressbar{height:10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);overflow:hidden;margin-top:10px}
+      .academy-progressbar>div{height:100%;background:linear-gradient(90deg, rgba(0,255,180,.85), rgba(0,180,255,.85));width:0%}
+      .academy-lessons{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+      .academy-lesson-row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);text-decoration:none;color:inherit}
+      .academy-lesson-row:hover{background:rgba(255,255,255,.10)}
+      .academy-lesson-left{display:flex;gap:10px;align-items:center}
+      .academy-badge-mini{font-size:12px;font-weight:900;padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.10);opacity:.95}
+      .academy-muted{opacity:.85}
+      .academy-cols{display:grid;grid-template-columns: 8fr 4fr;gap:14px;align-items:start}
+      @media (max-width: 980px){ .academy-cols{grid-template-columns:1fr} }
+      .academy-content p{margin:10px 0;opacity:.95}
+      .academy-content ul{margin:10px 0 10px 18px}
+      .academy-content li{margin:6px 0}
+      .academy-callout{padding:12px 12px;border-radius:16px;background:rgba(0,180,255,.10);border:1px solid rgba(0,180,255,.22);margin:12px 0}
+      .academy-callout b{display:block;margin-bottom:4px}
+      .academy-action{padding:12px 12px;border-radius:16px;background:rgba(0,255,180,.10);border:1px solid rgba(0,255,180,.20);margin:12px 0}
+      .academy-action textarea{width:100%;min-height:90px;margin-top:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.22);color:inherit;outline:none}
+      .academy-chipbox{display:flex;gap:10px;flex-wrap:wrap;align-content:flex-start;justify-content:flex-end}
+      .academy-chip{padding:8px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);font-weight:900;font-size:12px}
+      .academy-quiz-q{padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);margin:10px 0}
+      .academy-quiz-q__title{font-weight:900;margin-bottom:8px}
+      .academy-radio{display:flex;gap:8px;align-items:flex-start;margin:6px 0;cursor:pointer}
+      .academy-radio input{margin-top:3px}
+      .academy-quiz-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+      .academy-breadcrumbs{opacity:.9;margin-bottom:10px}
+      .academy-lesson-hero{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px}
+      .academy-checklist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+      .academy-check{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10)}
+      .academy-check input{margin-top:3px}
+      .academy-links{display:flex;flex-direction:column;gap:10px}
+      .academy-modules{display:flex;flex-direction:column;gap:10px}
+      .academy-prow{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10)}
+      .academy-prow__name{font-weight:900;min-width:160px}
+      .academy-prow__bar{flex:1;height:10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);overflow:hidden}
+      .academy-prow__bar>div{height:100%;background:linear-gradient(90deg, rgba(0,255,180,.85), rgba(0,180,255,.85));width:0%}
+      .academy-prow__pct{font-weight:900;min-width:54px;text-align:right}
+      .academy-badges{display:flex;flex-wrap:wrap;gap:10px}
+      .academy-badge{padding:10px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);font-weight:900}
+      .academy-rec{padding:12px 12px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10)}
+      .academy-rec__line{margin:8px 0;opacity:.95}
+    </style>
+    """
+
+def _academy_render_content(text: str) -> str:
+    """
+    Convertit du texte simple en HTML lisible (paragraphes + listes).
+    """
+    raw = (text or "").strip()
+    if not raw:
+        return "<p class='academy-muted'>Contenu en cours d’amélioration.</p>"
+
+    # Mini "markdown" : listes avec "- "
+    lines = raw.splitlines()
+    blocks = []
+    buf = []
+    list_buf = []
+
+    def flush_paragraph():
+        nonlocal buf
+        if buf:
+            p = " ".join(buf).strip()
+            if p:
+                blocks.append(f"<p>{_html_escape(p)}</p>")
+            buf = []
+
+    def flush_list():
+        nonlocal list_buf
+        if list_buf:
+            items = "".join(f"<li>{_html_escape(x)}</li>" for x in list_buf)
+            blocks.append(f"<ul>{items}</ul>")
+            list_buf = []
+
+    for ln in lines:
+        s = ln.strip()
+        if not s:
+            flush_list()
+            flush_paragraph()
+            continue
+        if s.startswith("- "):
+            flush_paragraph()
+            list_buf.append(s[2:].strip())
+        else:
+            flush_list()
+            buf.append(s)
+
+    flush_list()
+    flush_paragraph()
+
+    # Ajoute une callout “à retenir” automatiquement
+    blocks.append("""
+      <div class="academy-callout">
+        <b>À retenir</b>
+        Comprendre = bien. Appliquer = mieux. Fais le mini-exercice juste en bas.
+      </div>
+    """)
+    return "\n".join(blocks)
+
+def _academy_action_box(lesson_id: str) -> str:
+    tips = {
+        "bases": "Écris en 3 lignes ce que tu as compris et 1 action concrète que tu feras aujourd’hui.",
+        "market": "Choisis 1 crypto et décris: trend/range, niveau clé, scénario A/B.",
+        "risk": "Écris tes règles: stop, risque max, taille de position. Simple et strict.",
+        "strategy": "Décris une stratégie en 5 étapes (conditions d’entrée/sortie).",
+        "ai": "Note comment tu vas utiliser CryptoIA (1 page, 1 métrique, 1 routine).",
+    }
+    prefix = lesson_id.split("_")[0]
+    msg = tips.get(prefix, "Note ton plan d’action pour cette leçon.")
+    return f"""
+      <div class="academy-action">
+        <b>Mini-exercice (2 minutes)</b>
+        <div class="academy-muted">{_html_escape(msg)}</div>
+        <textarea placeholder="Écris ici... (tu peux copier-coller dans ton journal de trading)"></textarea>
+      </div>
+    """
+
+def _academy_checklist(lesson_id: str) -> str:
+    prefix = lesson_id.split("_")[0]
+    ck = {
+        "bases": [
+            "Je peux expliquer le concept à quelqu’un en 30 secondes.",
+            "Je sais ce que je dois éviter (erreurs fréquentes).",
+            "J’ai une action concrète à faire après cette leçon."
+        ],
+        "market": [
+            "Je sais dire si le marché est en trend ou en range.",
+            "Je repère 1 niveau de liquidité / zone clé.",
+            "J’ai un scénario A/B (si ça monte / si ça casse)."
+        ],
+        "risk": [
+            "Je connais mon risque max par trade et par jour.",
+            "Je sais où est mon stop AVANT d’entrer.",
+            "Je ne déplace pas mon stop par émotion."
+        ],
+        "strategy": [
+            "Je connais mes conditions exactes d’entrée.",
+            "Je sais quand je ne trade PAS.",
+            "Je peux backtester 10 exemples rapidement."
+        ],
+        "ai": [
+            "Je sais à quoi sert l’outil (et ses limites).",
+            "Je garde une décision finale humaine.",
+            "Je sauvegarde mes résultats (journal)."
+        ],
+    }.get(prefix, ["Je comprends le concept.", "Je peux l’appliquer.", "Je sais la prochaine étape."])
+
+    items = "".join(f"<label class='academy-check'><input type='checkbox'/> <span>{_html_escape(x)}</span></label>" for x in ck)
+    return f"<div class='academy-checklist'>{items}</div>"
+
+def _academy_module_name(lesson_id: str) -> str:
+    prefix = (lesson_id or "").split("_")[0]
+    names = {"bases":"Fondations", "market":"Marché", "risk":"Risque", "strategy":"Stratégies", "ai":"IA & Outils"}
+    return names.get(prefix, prefix.capitalize() if prefix else "Module")
+
+def _academy_prev_next_ids(current_id: str):
+    ids = sorted(LESSONS_DATA.keys(), key=lambda x: (x.split('_')[0], int(x.split('_')[-1]) if x.split('_')[-1].isdigit() else 9999, x))
+    if current_id not in ids:
+        return (None, None)
+    i = ids.index(current_id)
+    prev_id = ids[i-1] if i-1 >= 0 else None
+    next_id = ids[i+1] if i+1 < len(ids) else None
+    return (next_id, prev_id)
+
+def _academy_next_lesson_id(completed_set) -> str:
+    ids = sorted(LESSONS_DATA.keys(), key=lambda x: (x.split('_')[0], int(x.split('_')[-1]) if x.split('_')[-1].isdigit() else 9999, x))
+    for lid in ids:
+        if lid not in completed_set:
+            return lid
+    return ids[0] if ids else ""
+
+def _academy_module_card(module: dict) -> str:
+    lessons = module.get("lessons") or []
+    total = len(lessons)
+    done = sum(1 for l in lessons if l.get("is_done"))
+    pct = int((done/total)*100) if total else 0
+    bar = f"<div class='academy-progressbar'><div style='width:{pct}%;'></div></div>"
+    rows = []
+    for l in lessons:
+        status = "✅" if l.get("is_done") else "•"
+        badge = "Quiz" if l.get("has_quiz") else l.get("duration","10 min")
+        rows.append(
+            f"""
+            <a class="academy-lesson-row" data-lesson-row="1" data-hay="{_html_escape(module.get('title','') + ' ' + l.get('title',''))}" href="/academy/lesson/{l.get('id')}">
+              <div class="academy-lesson-left">
+                <div class="academy-badge-mini">{status}</div>
+                <div>
+                  <div style="font-weight:900">{_html_escape(l.get('title',''))}</div>
+                  <div class="academy-muted" style="font-size:12px">{_html_escape(l.get('id',''))}</div>
+                </div>
+              </div>
+              <div class="academy-badge-mini">{_html_escape(badge)}</div>
+            </a>
+            """
+        )
+
+    return f"""
+      <div class="academy-card academy-module">
+        <div class="academy-module-top">
+          <div class="academy-module-meta">
+            <div class="academy-icon">{_html_escape(module.get('icon','📚'))}</div>
+            <div>
+              <div class="academy-card__title">{_html_escape(module.get('title','Module'))}</div>
+              <div class="academy-card__sub">{_html_escape(module.get('subtitle',''))}</div>
+            </div>
+          </div>
+          <div class="academy-badge-mini">{done}/{total}</div>
+        </div>
+        {bar}
+        <div class="academy-lessons">
+          {''.join(rows)}
+        </div>
+      </div>
+    """
+
+def _academy_module_stats(completed_set):
+    # calcule stats par module prefix
+    prefixes = {}
+    for lid in LESSONS_DATA.keys():
+        p = lid.split("_")[0]
+        prefixes.setdefault(p, {"prefix": p, "total": 0, "done": 0})
+        prefixes[p]["total"] += 1
+        if lid in completed_set:
+            prefixes[p]["done"] += 1
+
+    order = ["bases", "market", "risk", "strategy", "ai"]
+    items = []
+    for p in order:
+        if p in prefixes:
+            items.append(prefixes[p])
+    for p, v in prefixes.items():
+        if p not in order:
+            items.append(v)
+    return items
+
+def _academy_progress_row(ms: dict) -> str:
+    total = int(ms.get("total") or 0)
+    done = int(ms.get("done") or 0)
+    pct = int((done/total)*100) if total else 0
+    name = _academy_module_name(ms.get("prefix",""))
+    return f"""
+      <div class="academy-prow">
+        <div class="academy-prow__name">{_html_escape(name)}</div>
+        <div class="academy-prow__bar"><div style="width:{pct}%"></div></div>
+        <div class="academy-prow__pct">{pct}%</div>
+      </div>
+    """
+
+@app.get("/academy")
 async def academy(request: Request):
     """
-    Crypto Academy — hub de formations (modules + leçons).
-    Progression sauvegardée si l'utilisateur est connecté.
+    CryptoIA Academy — hub (modules + leçons) avec progression sauvegardée si connecté.
     """
-    user = getattr(request.state, "user", None) or {}
-    username = (user.get("username") or request.session.get("username") or "").strip()
-    if not username:
+    username = (getattr(request.state, "user", None) or {}).get("username") or request.session.get("username")
+
+    completed = set()
+    if username:
         try:
-            u = get_current_user(request) or {}
-            username = u.get("username")
+            completed = set(get_completed_lessons(username))
         except Exception:
-            username = None
+            completed = set()
 
-    completed = get_completed_lessons(username) if username else set()
+    # Regroupe les leçons par "prefix" (ex: bases_1 => bases)
+    module_meta = {
+        "bases": {
+            "title": "Fondations Crypto",
+            "subtitle": "Comprendre la crypto (sans blabla) : wallets, blockchains, cycles, tokens.",
+            "icon": "🧠",
+        },
+        "market": {
+            "title": "Lecture de Marché",
+            "subtitle": "Trend, range, volumes, liquidités, dominance, narratives.",
+            "icon": "📈",
+        },
+        "risk": {
+            "title": "Gestion du Risque",
+            "subtitle": "Stop/TP, sizing, psychologique, règles pro, journal.",
+            "icon": "🛡️",
+        },
+        "strategy": {
+            "title": "Stratégies",
+            "subtitle": "Spot, swing, breakout, pullback, scalping (cadre sain).",
+            "icon": "🎯",
+        },
+        "ai": {
+            "title": "IA & Outils CryptoIA",
+            "subtitle": "Copilots, agents, signaux, automatisations et lecture guidée.",
+            "icon": "🤖",
+        },
+    }
 
-    modules_html = ""
-    for mod in ACADEMY_CATALOG:
-        lessons_html = ""
-        for lesson in mod.get("lessons", []):
-            lid = lesson["lesson_id"]
-            done = lid in completed
-            badge = "<span class='badge' style='background:rgba(16,185,129,.18);border:1px solid rgba(16,185,129,.35);color:#a7f3d0'>Terminé</span>" if done else "<span class='badge' style='background:rgba(96,165,250,.14);border:1px solid rgba(96,165,250,.35);color:#bfdbfe'>À faire</span>"
-            action = ""
-            if username and not done:
-                action = f"""
-                <form method="post" action="/academy/complete" style="display:inline">
-                  <input type="hidden" name="lesson_id" value="{html.escape(lid)}"/>
-                  <button class="btn" type="submit">Marquer terminé</button>
-                </form>
-                """
-            lessons_html += f"""
-              <li style="margin:10px 0; display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
-                <div><b>{html.escape(lesson['title'])}</b><div style="opacity:.8;font-size:13px">XP: {int(lesson.get('xp',10))}</div></div>
-                <div style="display:flex; gap:10px; align-items:center;">{badge}{action}</div>
-              </li>
-            """
+    # Construction des modules à partir des clés de LESSONS_DATA
+    modules = {k: {"id": k, **v, "lessons": []} for k, v in module_meta.items()}
+    unknown_bucket = {"id": "autres", "title": "Autres", "subtitle": "Leçons diverses.", "icon": "📚", "lessons": []}
 
-        modules_html += f"""
-        <div class="card mb-3">
-          <h3>{html.escape(mod['title'])}</h3>
-          <p style="opacity:.85">{html.escape(mod.get('desc',''))}</p>
-          <ul style="margin-left:18px">{lessons_html}</ul>
-        </div>
-        """
+    def _sort_key(lesson_id: str):
+        # bases_12 => ("bases", 12)
+        parts = lesson_id.split("_")
+        n = 9999
+        if len(parts) >= 2:
+            try:
+                n = int(parts[-1])
+            except Exception:
+                n = 9999
+        return (parts[0], n, lesson_id)
 
-    login_note = ""
+    for lesson_id in sorted(LESSONS_DATA.keys(), key=_sort_key):
+        prefix = lesson_id.split("_")[0]
+        lesson = LESSONS_DATA.get(lesson_id, {})
+        entry = {
+            "id": lesson_id,
+            "title": lesson.get("title", lesson_id),
+            "duration": lesson.get("duration", "10 min"),
+            "has_quiz": bool(lesson.get("quiz_questions")),
+            "is_done": lesson_id in completed,
+        }
+        if prefix in modules:
+            modules[prefix]["lessons"].append(entry)
+        else:
+            unknown_bucket["lessons"].append(entry)
+
+    module_list = [m for m in modules.values() if m["lessons"]]
+    if unknown_bucket["lessons"]:
+        module_list.append(unknown_bucket)
+
+    # Stats rapides
+    total_lessons = sum(len(m["lessons"]) for m in module_list)
+    done_lessons = sum(1 for m in module_list for l in m["lessons"] if l["is_done"])
+    pct = int((done_lessons / total_lessons) * 100) if total_lessons else 0
+
+    login_banner = ""
     if not username:
-        login_note = """
-        <div class="alert alert-error">
-          Tu peux lire l'Academy sans compte, mais pour <b>sauvegarder ta progression</b>, connecte-toi.
+        login_banner = f"""
+        <div class="academy-alert">
+            <div class="academy-alert__title">Mode invité</div>
+            <div class="academy-alert__text">
+                Tu peux explorer les modules, mais ta progression ne sera pas enregistrée.
+                <a class="academy-link" href="/login?redirect=%2Facademy">Se connecter</a>
+                pour débloquer la progression, les badges et le tableau de bord.
+            </div>
         </div>
         """
 
     body = f"""
-    <div class="card mb-3">
-      <h2>Crypto Academy</h2>
-      <p>Des modules courts, pratiques, orientés “résultats”. Tout est centralisé ici.</p>
-      {login_note}
-      <p><a href="/academy-progress">➡️ Voir ma progression</a></p>
+    {_academy_ui_css()}
+    <div class="academy-wrap">
+      <div class="academy-hero">
+        <div>
+          <div class="academy-kicker">CRYPTOIA ACADEMY</div>
+          <h1 class="academy-h1">Formations crypto claires, actionnables, et orientées résultats.</h1>
+          <div class="academy-sub">Modules courts • Quiz • Badges • Progression enregistrée</div>
+          <div class="academy-cta">
+            <a class="academy-btn" href="/academy-progress">Voir ma progression</a>
+            <a class="academy-btn academy-btn--ghost" href="/academy/lesson/{_academy_next_lesson_id(completed)}">Continuer</a>
+          </div>
+        </div>
+        <div class="academy-statbox">
+          <div class="academy-stat">
+            <div class="academy-stat__n">{done_lessons}</div>
+            <div class="academy-stat__label">Leçons complétées</div>
+          </div>
+          <div class="academy-stat">
+            <div class="academy-stat__n">{pct}%</div>
+            <div class="academy-stat__label">Progression totale</div>
+          </div>
+          <div class="academy-stat academy-stat--small">
+            <div class="academy-stat__label">Compte</div>
+            <div class="academy-stat__n">{(username or "Invité")}</div>
+          </div>
+        </div>
+      </div>
+
+      {login_banner}
+
+      <div class="academy-toolbar">
+        <input id="academySearch" class="academy-search" placeholder="Rechercher une leçon (ex: dominance, stop, altseason...)" />
+        <div class="academy-pill">Conseil: fais 1 leçon/jour = progrès réel.</div>
+      </div>
+
+      <div class="academy-grid">
+        {"".join(_academy_module_card(m) for m in module_list)}
+      </div>
     </div>
-    {modules_html}
+
+    <script>
+      (function() {{
+        const input = document.getElementById('academySearch');
+        if (!input) return;
+        input.addEventListener('input', () => {{
+          const q = (input.value || '').toLowerCase().trim();
+          document.querySelectorAll('[data-lesson-row]').forEach(row => {{
+            const hay = (row.getAttribute('data-hay') || '').toLowerCase();
+            row.style.display = (!q || hay.includes(q)) ? '' : 'none';
+          }});
+        }});
+      }})();
+    </script>
     """
 
     page = _simple_page("Academy", body, sidebar_html=SIDEBAR, username=username)
-    return HTMLResponse(content=page)
+    return HTMLResponse(page)
 
 
-@app.post("/academy/complete")
-async def academy_complete(request: Request):
-    form = await request.form()
-    lesson_id = (form.get("lesson_id") or "").strip()
-    user = getattr(request.state, "user", None) or {}
-    username = (user.get("username") or request.session.get("username") or "").strip()
+@app.get("/academy/lesson/{lesson_id}")
+async def academy_lesson(request: Request, lesson_id: str):
+    """
+    Page d'une leçon (contenu + quiz + bouton "terminé").
+    """
+    username = (getattr(request.state, "user", None) or {}).get("username") or request.session.get("username")
+
+    lesson = LESSONS_DATA.get(lesson_id)
+    if not lesson:
+        return HTMLResponse(_simple_page("Leçon introuvable",
+            f"{_academy_ui_css()}<div class='academy-wrap'><h2 class='academy-h2'>Leçon introuvable</h2><p>Cette leçon n'existe pas.</p><a class='academy-btn' href='/academy'>Retour à l'Academy</a></div>",
+            sidebar_html=SIDEBAR, username=username), status_code=404)
+
+    completed = set()
+    if username:
+        try:
+            completed = set(get_completed_lessons(username))
+        except Exception:
+            completed = set()
+
+    is_done = lesson_id in completed
+    next_id, prev_id = _academy_prev_next_ids(lesson_id)
+
+    # Quiz rendering
+    quiz = lesson.get("quiz_questions") or []
+    quiz_html = ""
+    if quiz:
+        items = []
+        for i, q in enumerate(quiz, start=1):
+            qtext = (q.get("q") or "").strip()
+            opts = q.get("options") or []
+            # options as radio
+            opt_html = []
+            for j, opt in enumerate(opts):
+                opt_html.append(
+                    f"<label class='academy-radio'><input type='radio' name='q{i}' value='{j}' /> <span>{_html_escape(opt)}</span></label>"
+                )
+            items.append(
+                f"""
+                <div class="academy-quiz-q" data-qidx="{i}" data-answer="{int(q.get('answer', 0))}">
+                  <div class="academy-quiz-q__title">Q{i}. {_html_escape(qtext)}</div>
+                  <div class="academy-quiz-q__opts">{''.join(opt_html)}</div>
+                </div>
+                """
+            )
+        quiz_html = f"""
+        <div class="academy-card">
+          <div class="academy-card__title">Quiz (rapide)</div>
+          <div class="academy-card__sub">Fais-le sérieusement : c’est comme ça que tu avances vite.</div>
+          <div id="academyQuiz">{''.join(items)}</div>
+          <div class="academy-quiz-actions">
+            <button class="academy-btn" id="academyQuizSubmit" type="button">Valider le quiz</button>
+            <div id="academyQuizResult" class="academy-pill" style="display:none"></div>
+          </div>
+        </div>
+        """
+
+    complete_btn = f"""
+      <button class="academy-btn" id="academyCompleteBtn" type="button">{'✅ Déjà terminée' if is_done else '✅ Marquer comme terminée'}</button>
+    """
+
     if not username:
-        return RedirectResponse(url="/login?redirect=%2Facademy", status_code=303)
-    if not lesson_id:
-        return RedirectResponse(url="/academy", status_code=303)
-    try:
-        complete_lesson(username, lesson_id)
-    except Exception:
-        pass
-    return RedirectResponse(url="/academy", status_code=303)
+        complete_btn = f"""
+          <a class="academy-btn" href="/login?redirect=%2Facademy%2Flesson%2F{lesson_id}">Se connecter pour enregistrer</a>
+        """
 
+    body = f"""
+    {_academy_ui_css()}
+    <div class="academy-wrap">
+      <div class="academy-breadcrumbs">
+        <a class="academy-link" href="/academy">Academy</a>
+        <span class="academy-dot">•</span>
+        <span>{_html_escape(lesson.get('title','Leçon'))}</span>
+      </div>
+
+      <div class="academy-lesson-hero">
+        <div>
+          <h1 class="academy-h1 academy-h1--lesson">{_html_escape(lesson.get('title','Leçon'))}</h1>
+          <div class="academy-sub">Durée: <b>{_html_escape(lesson.get('duration','10 min'))}</b> • Quiz: <b>{'Oui' if quiz else 'Non'}</b></div>
+          <div class="academy-cta">
+            {complete_btn}
+            <a class="academy-btn academy-btn--ghost" href="{('/academy/lesson/' + prev_id) if prev_id else '/academy'}">← Précédent</a>
+            <a class="academy-btn academy-btn--ghost" href="{('/academy/lesson/' + next_id) if next_id else '/academy'}">Suivant →</a>
+          </div>
+        </div>
+        <div class="academy-chipbox">
+          <div class="academy-chip">{'Terminé ✅' if is_done else 'À faire'}</div>
+          <div class="academy-chip">{_academy_module_name(lesson_id)}</div>
+          <div class="academy-chip">XP: +50</div>
+        </div>
+      </div>
+
+      <div class="academy-cols">
+        <div class="academy-col-main">
+          <div class="academy-card">
+            <div class="academy-card__title">Leçon</div>
+            <div class="academy-content">
+              {_academy_render_content(lesson.get("content",""))}
+              {_academy_action_box(lesson_id)}
+            </div>
+          </div>
+
+          {quiz_html}
+
+          <div class="academy-card">
+            <div class="academy-card__title">Prochaine étape</div>
+            <div class="academy-card__sub">Passe à la leçon suivante pendant que c’est frais.</div>
+            <div class="academy-cta">
+              <a class="academy-btn" href="{('/academy/lesson/' + next_id) if next_id else '/academy'}">Continuer →</a>
+              <a class="academy-btn academy-btn--ghost" href="/academy-progress">Tableau de progression</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="academy-col-side">
+          <div class="academy-card">
+            <div class="academy-card__title">Checklist (pro)</div>
+            <div class="academy-card__sub">Coche ces points avant de dire “je maîtrise”.</div>
+            {_academy_checklist(lesson_id)}
+          </div>
+
+          <div class="academy-card">
+            <div class="academy-card__title">Raccourcis</div>
+            <div class="academy-links">
+              <a class="academy-link" href="/pricing-complete">Plans & accès</a>
+              <a class="academy-link" href="/ai-swarm-agents">AI Swarm Agents</a>
+              <a class="academy-link" href="/rug-scam-shield">Rug/Scam Shield</a>
+              <a class="academy-link" href="/altseason-copilot-pro">Altseason Copilot Pro</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function() {{
+        const completeBtn = document.getElementById('academyCompleteBtn');
+        const quizBtn = document.getElementById('academyQuizSubmit');
+        const quizResult = document.getElementById('academyQuizResult');
+
+        async function postComplete(score) {{
+          try {{
+            const resp = await fetch('/academy/api/complete', {{
+              method: 'POST',
+              headers: {{'Content-Type': 'application/json'}},
+              body: JSON.stringify({{ lesson_id: '{lesson_id}', quiz_score: score ?? null }})
+            }});
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data?.detail || 'Erreur');
+            if (completeBtn) {{
+              completeBtn.textContent = '✅ Déjà terminée';
+              completeBtn.disabled = true;
+            }}
+            return data;
+          }} catch (e) {{
+            alert('Impossible d’enregistrer: ' + (e.message || e));
+          }}
+        }}
+
+        if (completeBtn && !completeBtn.disabled) {{
+          completeBtn.addEventListener('click', async () => {{
+            await postComplete(null);
+          }});
+        }}
+
+        if (quizBtn) {{
+          quizBtn.addEventListener('click', async () => {{
+            const container = document.getElementById('academyQuiz');
+            if (!container) return;
+            const questions = Array.from(container.querySelectorAll('.academy-quiz-q'));
+            let score = 0;
+            let answered = 0;
+            questions.forEach(q => {{
+              const idx = q.getAttribute('data-qidx');
+              const ans = parseInt(q.getAttribute('data-answer') || '0', 10);
+              const chosen = q.querySelector('input[type="radio"]:checked');
+              if (chosen) {{
+                answered += 1;
+                const val = parseInt(chosen.value || '0', 10);
+                if (val === ans) score += 1;
+              }}
+            }});
+            if (answered < questions.length) {{
+              alert('Réponds à toutes les questions avant de valider.');
+              return;
+            }}
+            const pct = Math.round((score / Math.max(1, questions.length)) * 100);
+            quizResult.style.display = '';
+            quizResult.textContent = `Score: ${score}/${questions.length} (${pct}%)`;
+            await postComplete(pct);
+          }});
+        }}
+      }})();
+    </script>
+    """
+
+    page = _simple_page(lesson.get("title", "Leçon"), body, sidebar_html=SIDEBAR, username=username)
+    return HTMLResponse(page)
+
+
+@app.post("/academy/api/complete")
+async def academy_api_complete(request: Request):
+    """
+    API: marquer une leçon terminée (+ enregistrer score quiz optionnel).
+    """
+    username = (getattr(request.state, "user", None) or {}).get("username") or request.session.get("username")
+    if not username:
+        raise HTTPException(status_code=401, detail="Connecte-toi pour enregistrer ta progression.")
+
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    lesson_id = (payload.get("lesson_id") or "").strip()
+    quiz_score = payload.get("quiz_score")
+
+    if not lesson_id or lesson_id not in LESSONS_DATA:
+        raise HTTPException(status_code=400, detail="lesson_id invalide")
+
+    try:
+        if quiz_score is None:
+            complete_lesson(username, lesson_id)
+        else:
+            # quiz_score est un % (0-100)
+            try:
+                qs = int(quiz_score)
+            except Exception:
+                qs = None
+            complete_lesson(username, lesson_id, quiz_score=qs)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Retour stats légères
+    completed = get_completed_lessons(username)
+    return {
+        "ok": True,
+        "lesson_id": lesson_id,
+        "completed_count": len(completed),
+        "next_lesson": _academy_next_lesson_id(set(completed)),
+    }
+
+
+@app.get("/academy-progress")
+async def academy_progress(request: Request):
+    """
+    Dashboard progression Academy.
+    """
+    username = (getattr(request.state, "user", None) or {}).get("username") or request.session.get("username")
+    if not username:
+        return RedirectResponse(url="/login?redirect=%2Facademy-progress", status_code=303)
+
+    prog = get_user_progress(username)
+    completed = set(get_completed_lessons(username))
+
+    # Modules stats
+    module_stats = _academy_module_stats(completed)
+
+    badges_html = ""
+    try:
+        badges = prog.get("badges") or []
+        if badges:
+            badges_html = "<div class='academy-badges'>" + "".join(
+                f"<div class='academy-badge'>🏅 {_html_escape(b.get('badge_name','Badge'))}</div>" for b in badges
+            ) + "</div>"
+        else:
+            badges_html = "<div class='academy-muted'>Aucun badge pour l’instant. Fais 3 leçons + 1 quiz pour lancer la machine.</div>"
+    except Exception:
+        badges_html = "<div class='academy-muted'>Badges indisponibles.</div>"
+
+    body = f"""
+    {_academy_ui_css()}
+    <div class="academy-wrap">
+      <div class="academy-hero">
+        <div>
+          <div class="academy-kicker">TABLEAU DE BORD</div>
+          <h1 class="academy-h1">Progression Academy</h1>
+          <div class="academy-sub">XP, streak, modules, leçons — tout au même endroit.</div>
+          <div class="academy-cta">
+            <a class="academy-btn" href="/academy/lesson/{_academy_next_lesson_id(completed)}">Continuer →</a>
+            <a class="academy-btn academy-btn--ghost" href="/academy">Retour Academy</a>
+          </div>
+        </div>
+        <div class="academy-statbox">
+          <div class="academy-stat">
+            <div class="academy-stat__n">{int(prog.get('completion_percentage',0))}%</div>
+            <div class="academy-stat__label">Complétion</div>
+          </div>
+          <div class="academy-stat">
+            <div class="academy-stat__n">{int(prog.get('total_xp',0))}</div>
+            <div class="academy-stat__label">XP total</div>
+          </div>
+          <div class="academy-stat">
+            <div class="academy-stat__n">{int(prog.get('streak_days',0))}j</div>
+            <div class="academy-stat__label">Streak</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="academy-cols">
+        <div class="academy-col-main">
+          <div class="academy-card">
+            <div class="academy-card__title">Modules</div>
+            <div class="academy-card__sub">Cible: finir 1 module à la fois (ça évite le chaos).</div>
+            <div class="academy-modules">
+              {"".join(_academy_progress_row(ms) for ms in module_stats)}
+            </div>
+          </div>
+
+          <div class="academy-card">
+            <div class="academy-card__title">Recommandation (IA)</div>
+            <div class="academy-card__sub">“Qu’est-ce que je dois faire maintenant ?” → ici.</div>
+            <div class="academy-rec">
+              <div class="academy-rec__line"><b>Prochaine leçon:</b> {_html_escape(LESSONS_DATA.get(_academy_next_lesson_id(completed),{{}}).get('title',''))}</div>
+              <div class="academy-rec__line"><b>Règle:</b> 1 leçon + 1 action concrète (mini-exercice) = progrès réel.</div>
+              <div class="academy-rec__line"><b>Bonus:</b> Fais 1 quiz/jour pendant 7 jours → discipline boostée.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="academy-col-side">
+          <div class="academy-card">
+            <div class="academy-card__title">Badges</div>
+            <div class="academy-card__sub">Récompenses (gamification saine).</div>
+            {badges_html}
+          </div>
+
+          <div class="academy-card">
+            <div class="academy-card__title">Raccourcis</div>
+            <div class="academy-links">
+              <a class="academy-link" href="/ai-swarm-agents">AI Swarm Agents</a>
+              <a class="academy-link" href="/rug-scam-shield">Rug/Scam Shield</a>
+              <a class="academy-link" href="/altseason-copilot-pro">Altseason Copilot Pro</a>
+              <a class="academy-link" href="/pricing-complete">Plans & accès</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+    page = _simple_page("Academy Progress", body, sidebar_html=SIDEBAR, username=username)
+    return HTMLResponse(page)
 
 @app.get("/crypto-academy")
 async def crypto_academy_redirect():

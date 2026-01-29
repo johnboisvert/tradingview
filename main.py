@@ -33014,3 +33014,383 @@ try:
 except Exception as _e:
     # Ne jamais bloquer le démarrage pour ça
     pass
+
+
+
+### PORTFOLIO_TRACKER_FIX_START
+    # --------------------------------------------------------------------------------------
+    # Portfolio Tracker routes (restores /portfolio-tracker which may be referenced in sidebar/permissions)
+    # Production-safe: SQLite, per-user portfolio, server-side rendered.
+    # --------------------------------------------------------------------------------------
+    import html as _html_mod
+
+    def _portfolio_connect():
+        conn = sqlite3.connect(PORTFOLIO_DB_PATH, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _portfolio_get_user_key(request: Request) -> str:
+        # Session keys used in this project: username / user / role / plan
+        sess = getattr(request, "session", {}) or {}
+        username = (sess.get("username") or sess.get("user") or "").strip()
+        if not username:
+            # Fallback for edge cases (should still work even if session missing)
+            username = "anonymous"
+        return username
+
+    def _portfolio_get_or_create_portfolio(conn: sqlite3.Connection, user_key: str) -> int:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM portfolios WHERE user_email = ? ORDER BY id DESC LIMIT 1", (user_key,))
+        row = cur.fetchone()
+        if row and row["id"]:
+            return int(row["id"])
+        cur.execute("INSERT INTO portfolios (user_email, name) VALUES (?, ?)", (user_key, "Mon Portefeuille"))
+        conn.commit()
+        return int(cur.lastrowid)
+
+    def _portfolio_get_holdings(conn: sqlite3.Connection, portfolio_id: int):
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT symbol, amount, avg_cost, updated_at
+                 FROM holdings
+                 WHERE portfolio_id = ?
+                 ORDER BY symbol ASC""",
+            (portfolio_id,),
+        )
+        return cur.fetchall()
+
+    def _portfolio_get_transactions(conn: sqlite3.Connection, portfolio_id: int, limit: int = 50):
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT symbol, side, quantity, price, fee, note, timestamp
+                 FROM transactions
+                 WHERE portfolio_id = ?
+                 ORDER BY timestamp DESC
+                 LIMIT ?""",
+            (portfolio_id, int(limit)),
+        )
+        return cur.fetchall()
+
+    def _portfolio_apply_transaction(conn: sqlite3.Connection, portfolio_id: int, symbol: str, side: str,
+                                    quantity: float, price: float, fee: float, note: str = "") -> None:
+        symbol = (symbol or "").strip().upper()
+        if not symbol:
+            raise ValueError("Symbole requis.")
+        if quantity <= 0 or price <= 0:
+            raise ValueError("Quantité et prix doivent être > 0.")
+        side = (side or "").strip().upper()
+        if side not in ("BUY", "SELL"):
+            raise ValueError("Side invalide (BUY/SELL).")
+        fee = max(0.0, float(fee or 0.0))
+
+        cur = conn.cursor()
+
+        # Insert transaction
+        cur.execute(
+            """INSERT INTO transactions (portfolio_id, symbol, side, quantity, price, fee, note)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (portfolio_id, symbol, side, float(quantity), float(price), fee, (note or "")[:500]),
+        )
+
+        # Fetch current holding
+        cur.execute(
+            "SELECT amount, avg_cost FROM holdings WHERE portfolio_id = ? AND symbol = ?",
+            (portfolio_id, symbol),
+        )
+        row = cur.fetchone()
+        cur_amount = float(row["amount"]) if row else 0.0
+        cur_avg = float(row["avg_cost"]) if row else 0.0
+
+        if side == "BUY":
+            new_amount = cur_amount + float(quantity)
+            # Weighted average cost including fee
+            new_cost_total = (cur_amount * cur_avg) + (float(quantity) * float(price)) + fee
+            new_avg = (new_cost_total / new_amount) if new_amount > 0 else 0.0
+        else:  # SELL
+            new_amount = cur_amount - float(quantity)
+            if new_amount < -1e-9:
+                raise ValueError("Vente impossible: quantité supérieure au montant détenu.")
+            # Keep avg_cost unchanged on sell
+            new_avg = cur_avg if new_amount > 0 else 0.0
+
+        if new_amount <= 1e-9:
+            cur.execute(
+                "DELETE FROM holdings WHERE portfolio_id = ? AND symbol = ?",
+                (portfolio_id, symbol),
+            )
+        elif row:
+            cur.execute(
+                """UPDATE holdings
+                     SET amount = ?, avg_cost = ?, updated_at = CURRENT_TIMESTAMP
+                     WHERE portfolio_id = ? AND symbol = ?""",
+                (float(new_amount), float(new_avg), portfolio_id, symbol),
+            )
+        else:
+            cur.execute(
+                """INSERT INTO holdings (portfolio_id, symbol, amount, avg_cost)
+                     VALUES (?, ?, ?, ?)""",
+                (portfolio_id, symbol, float(new_amount), float(new_avg)),
+            )
+
+        conn.commit()
+
+    async def portfolio_tracker_view(request: Request, msg: str = ""):
+        user_key = _portfolio_get_user_key(request)
+        try:
+            conn = _portfolio_connect()
+            try:
+                portfolio_id = _portfolio_get_or_create_portfolio(conn, user_key)
+                holdings = _portfolio_get_holdings(conn, portfolio_id)
+                txs = _portfolio_get_transactions(conn, portfolio_id, limit=50)
+            finally:
+                conn.close()
+            error_msg = ""
+        except Exception as e:
+            holdings = []
+            txs = []
+            error_msg = f"Erreur: {_html_mod.escape(str(e))}"
+
+        # Build rows
+        holdings_rows = ""
+        for h in holdings:
+            symbol = _html_mod.escape(str(h["symbol"]))
+            amount = float(h["amount"] or 0.0)
+            avg_cost = float(h["avg_cost"] or 0.0)
+            holdings_rows += f"""<tr>
+                <td style="font-weight:700">{symbol}</td>
+                <td style="text-align:right">{amount:.8f}</td>
+                <td style="text-align:right">{avg_cost:.4f}</td>
+                <td style="text-align:center">
+                    <form method="post" action="/portfolio-tracker/delete-holding" style="margin:0">
+                        <input type="hidden" name="symbol" value="{symbol}">
+                        <button class="btn-danger" type="submit">Supprimer</button>
+                    </form>
+                </td>
+            </tr>"""
+
+        if not holdings_rows:
+            holdings_rows = '<tr><td colspan="4" style="opacity:.8;text-align:center;padding:18px">Aucun actif pour le moment.</td></tr>'
+
+        tx_rows = ""
+        for t in txs:
+            symbol = _html_mod.escape(str(t["symbol"]))
+            side = _html_mod.escape(str(t["side"]))
+            qty = float(t["quantity"] or 0.0)
+            price = float(t["price"] or 0.0)
+            fee = float(t["fee"] or 0.0)
+            note = _html_mod.escape(str(t["note"] or ""))
+            ts = _html_mod.escape(str(t["timestamp"] or ""))
+            tx_rows += f"""<tr>
+                <td>{ts}</td>
+                <td style="font-weight:700">{symbol}</td>
+                <td>{side}</td>
+                <td style="text-align:right">{qty:.8f}</td>
+                <td style="text-align:right">{price:.4f}</td>
+                <td style="text-align:right">{fee:.4f}</td>
+                <td style="max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{note}</td>
+            </tr>"""
+
+        if not tx_rows:
+            tx_rows = '<tr><td colspan="7" style="opacity:.8;text-align:center;padding:18px">Aucune transaction.</td></tr>'
+
+        safe_msg = _html_mod.escape(msg or "")
+        safe_err = error_msg
+
+        html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Tracker — Crypto IA</title>
+    <link rel="icon" href="{SITE_LOGO_URL}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #0a0e27; color: #fff; margin-left: 280px; }}
+        .container {{ padding: 34px 28px; }}
+        .title {{ font-size: 40px; font-weight: 900; letter-spacing: -1px; margin-bottom: 6px; }}
+        .subtitle {{ opacity: .85; margin-bottom: 22px; }}
+        .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }}
+        .card {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); border-radius: 18px; padding: 18px; backdrop-filter: blur(10px); }}
+        .card h2 {{ font-size: 18px; font-weight: 800; margin-bottom: 10px; }}
+        .row {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
+        label {{ display:block; font-size: 12px; opacity:.85; margin: 8px 0 6px; }}
+        input, select {{ width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff; outline: none; }}
+        input:focus, select:focus {{ border-color: rgba(102,126,234,.9); }}
+        .actions {{ display:flex; gap: 10px; margin-top: 14px; }}
+        .btn {{ padding: 10px 14px; border-radius: 12px; border: none; cursor: pointer; font-weight: 800; }}
+        .btn-primary {{ background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }}
+        .btn-danger {{ background: rgba(255,80,80,0.92); color:#fff; padding: 8px 10px; border-radius: 10px; border:none; cursor:pointer; font-weight:800; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
+        th, td {{ padding: 10px 10px; border-bottom: 1px solid rgba(255,255,255,0.10); font-size: 13px; }}
+        th {{ text-align: left; font-size: 12px; opacity: .85; text-transform: uppercase; letter-spacing: .06em; }}
+        .notice {{ margin-top: 10px; padding: 12px 14px; border-radius: 14px; background: rgba(0,0,0,0.30); border: 1px solid rgba(255,255,255,0.10); }}
+        .notice.ok {{ border-color: rgba(0, 255, 170, 0.25); }}
+        .notice.err {{ border-color: rgba(255, 80, 80, 0.35); }}
+        @media (max-width: 1050px) {{
+            body {{ margin-left: 0; }}
+            .grid {{ grid-template-columns: 1fr; }}
+        }}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="title">📊 Portfolio Tracker</div>
+    <div class="subtitle">Suivi simple de ton portefeuille (achats/ventes) avec calcul automatique du coût moyen.</div>
+
+    {(f'<div class="notice ok">✅ {safe_msg}</div>' if safe_msg else '')}
+    {(f'<div class="notice err">⚠️ {safe_err}</div>' if safe_err else '')}
+
+    <div class="grid">
+        <div class="card">
+            <h2>➕ Ajouter une transaction</h2>
+            <form method="post" action="/portfolio-tracker/transaction">
+                <div class="row">
+                    <div>
+                        <label>Symbole (ex: BTC, ETH)</label>
+                        <input name="symbol" required placeholder="BTC" maxlength="20">
+                    </div>
+                    <div>
+                        <label>Type</label>
+                        <select name="side" required>
+                            <option value="BUY">BUY</option>
+                            <option value="SELL">SELL</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div>
+                        <label>Quantité</label>
+                        <input name="quantity" type="number" step="0.00000001" min="0" required placeholder="0.10">
+                    </div>
+                    <div>
+                        <label>Prix (CAD ou USD — ton choix)</label>
+                        <input name="price" type="number" step="0.0001" min="0" required placeholder="50000">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div>
+                        <label>Frais (optionnel)</label>
+                        <input name="fee" type="number" step="0.0001" min="0" value="0">
+                    </div>
+                    <div>
+                        <label>Note (optionnel)</label>
+                        <input name="note" placeholder="Binance / Coinbase / etc.">
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button class="btn btn-primary" type="submit">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>📌 Holdings</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Symbole</th>
+                        <th style="text-align:right">Quantité</th>
+                        <th style="text-align:right">Coût moyen</th>
+                        <th style="text-align:center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {holdings_rows}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>🧾 Dernières transactions</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Symbole</th>
+                        <th>Side</th>
+                        <th style="text-align:right">Quantité</th>
+                        <th style="text-align:right">Prix</th>
+                        <th style="text-align:right">Frais</th>
+                        <th>Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {tx_rows}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>"""
+        return HTMLResponse(SIDEBAR + html)
+
+    async def portfolio_tracker_add_transaction(
+        request: Request,
+        symbol: str = Form(...),
+        side: str = Form(...),
+        quantity: float = Form(...),
+        price: float = Form(...),
+        fee: float = Form(0.0),
+        note: str = Form(""),
+    ):
+        user_key = _portfolio_get_user_key(request)
+        try:
+            conn = _portfolio_connect()
+            try:
+                portfolio_id = _portfolio_get_or_create_portfolio(conn, user_key)
+                _portfolio_apply_transaction(
+                    conn=conn,
+                    portfolio_id=portfolio_id,
+                    symbol=symbol,
+                    side=side,
+                    quantity=float(quantity),
+                    price=float(price),
+                    fee=float(fee or 0.0),
+                    note=note or "",
+                )
+            finally:
+                conn.close()
+            return RedirectResponse(url="/portfolio-tracker?msg=Transaction enregistrée.", status_code=303)
+        except Exception as e:
+            return RedirectResponse(url=f"/portfolio-tracker?msg={_html_mod.escape(str(e))}", status_code=303)
+
+    async def portfolio_tracker_delete_holding(
+        request: Request,
+        symbol: str = Form(...),
+    ):
+        user_key = _portfolio_get_user_key(request)
+        symbol = (symbol or "").strip().upper()
+        if not symbol:
+            return RedirectResponse(url="/portfolio-tracker?msg=Symbole invalide.", status_code=303)
+        try:
+            conn = _portfolio_connect()
+            try:
+                portfolio_id = _portfolio_get_or_create_portfolio(conn, user_key)
+                cur = conn.cursor()
+                cur.execute("DELETE FROM holdings WHERE portfolio_id = ? AND symbol = ?", (portfolio_id, symbol))
+                conn.commit()
+            finally:
+                conn.close()
+            return RedirectResponse(url="/portfolio-tracker?msg=Holding supprimé.", status_code=303)
+        except Exception as e:
+            return RedirectResponse(url=f"/portfolio-tracker?msg={_html_mod.escape(str(e))}", status_code=303)
+
+    def _route_exists(_app: FastAPI, _path: str, _method: str) -> bool:
+        for r in getattr(_app, "routes", []):
+            if getattr(r, "path", None) == _path and _method.upper() in getattr(r, "methods", set()):
+                return True
+        return False
+
+    # Register routes only if missing (avoid duplicates if user has other versions/modules).
+    if not _route_exists(app, "/portfolio-tracker", "GET"):
+        app.add_api_route("/portfolio-tracker", portfolio_tracker_view, methods=["GET"], response_class=HTMLResponse)
+    if not _route_exists(app, "/portfolio-tracker/transaction", "POST"):
+        app.add_api_route("/portfolio-tracker/transaction", portfolio_tracker_add_transaction, methods=["POST"])
+    if not _route_exists(app, "/portfolio-tracker/delete-holding", "POST"):
+        app.add_api_route("/portfolio-tracker/delete-holding", portfolio_tracker_delete_holding, methods=["POST"])
+    ### PORTFOLIO_TRACKER_FIX_END

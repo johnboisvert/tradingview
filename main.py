@@ -5551,8 +5551,10 @@ async def html_placeholder_middleware(request: Request, call_next):
         html = html.replace("{SITE_LOGO_URL}", logo)
         html = html.replace("{{SITE_LOGO_URL}}", logo)
         html = html.replace("${SITE_LOGO_URL}", logo)
+        html = html.replace("__SITE_LOGO_URL__", logo)
 
         html = html.replace("{SITE_NAME}", name)
+        html = html.replace("__SITE_NAME__", name)
         html = html.replace("{{SITE_NAME}}", name)
         html = html.replace("${SITE_NAME}", name)
 
@@ -29358,7 +29360,8 @@ async def get_top_50_cryptos():
 
 @app.get("/ai-signals", response_class=HTMLResponse)
 async def ai_signals():
-    cards_html = ""  # safety: always defined
+    cards_html = ""
+    result_html = ""  # safety: always defined
     """Signaux de trading basés sur analyse technique - TOP 50"""
     
     # Rcuprer le top 50
@@ -29704,7 +29707,8 @@ def _ai_alerts_score(m: dict, style: str = "scalp") -> dict:
 
 @app.get("/ai-alerts", response_class=HTMLResponse)
 async def ai_alerts_inbox(request: Request):
-    cards_html = ""  # safety: always defined
+    cards_html = ""
+    result_html = ""  # safety: always defined
     """AI Alerts / Inbox (données réelles CoinGecko)."""
     style = (request.query_params.get("style") or "scalp").strip().lower()
     if style not in ("scalp", "swing"):
@@ -29762,6 +29766,8 @@ async def ai_alerts_inbox(request: Request):
 
     cards_html = "\n".join(cards) if cards else '<div class="empty">Aucune donnée pour le moment. Réessaie dans 1-2 minutes.</div>'
 
+    result_html = cards_html
+    result_html = cards_html
     html_page = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -32523,7 +32529,15 @@ async def ai_timeframe(request: Request):
 # ✅ Routes manquantes (évite 404) + pages robustes (anti-500)
 # ============================================================
 
-def _simple_page(title: str, body_html: str, sidebar_html: str = "") -> str:
+def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: str = "", **_kwargs) -> str:
+    """Page helper.
+
+    Backward compatible: some callers pass sidebar=... instead of sidebar_html.
+    Extra kwargs are ignored to prevent runtime TypeError.
+    """
+    if sidebar and not sidebar_html:
+        sidebar_html = sidebar
+
     styles = globals().get("GLOBAL_STYLES") or ""
     # GLOBAL_STYLES est du CSS brut; on l'encapsule pour éviter qu'il apparaisse comme texte sur la page
     if styles and not styles.lstrip().lower().startswith('<style'):

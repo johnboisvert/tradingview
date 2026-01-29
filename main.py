@@ -3862,11 +3862,54 @@ NAV_MENU = """
 # ============================================================================
 #  ENREGISTRER LE ROUTER DES ROUTES PROTGES
 # ============================================================================
-# TEMPORAIREMENT DSACTIV POUR TESTER WEBHOOK
-# if PERMISSIONS_AVAILABLE and protected_router:
-#     app.include_router(protected_router)
-#     print(" Routes protges enregistres")
+# # ============================================================================
+# ROUTES PROTÉGÉES (modules externes)
 # ============================================================================
+if PERMISSIONS_AVAILABLE and protected_router:
+    app.include_router(protected_router)
+    print("✅ Routes protégées enregistrées")
+else:
+    print("⚠️ Routes protégées non disponibles (protected_router absent ou PERMISSIONS_AVAILABLE=False)")
+# ============================================================================
+
+# ============================================================================
+# Fallback: routes Academy si le module externe ne les a pas enregistrées
+# (évite les 404 si protected_routes n'est pas chargé ou incomplet)
+# ============================================================================
+from jinja2 import TemplateNotFound
+
+def _render_or_placeholder(request: Request, template_name: str, title: str):
+    try:
+        return templates.TemplateResponse(template_name, {"request": request, "title": title})
+    except Exception:
+        # Si le template n'existe pas (ou autre erreur), on renvoie une page simple.
+        return HTMLResponse(
+            f"""<!doctype html><html><head><meta charset='utf-8'><title>{title}</title></head>
+<body style='font-family:system-ui;padding:24px'>
+<h1>{title}</h1>
+<p>La page est en cours de déploiement. Si tu vois ça, c'est que le template <code>{template_name}</code> est absent.</p>
+</body></html>""", status_code=200
+        )
+
+_existing_paths = {getattr(r, "path", None) for r in getattr(app, "router", {}).routes}
+_existing_paths = {p for p in _existing_paths if p}
+
+def _maybe_add_get(path: str, template_name: str, title: str):
+    if path in _existing_paths:
+        return
+    async def _handler(request: Request):
+        return _render_or_placeholder(request, template_name, title)
+    app.add_api_route(path, _handler, methods=["GET"], response_class=HTMLResponse)
+    _existing_paths.add(path)
+
+_maybe_add_get("/academy", "academy.html", "Academy")
+_maybe_add_get("/academy-progress", "academy_progress.html", "Academy - Progression")
+_maybe_add_get("/altseason-copilot-pro", "altseason_copilot_pro.html", "Altseason Copilot (Pro)")
+_maybe_add_get("/ai-swarm-agents", "ai_swarm_agents.html", "AI Swarm Agents")
+_maybe_add_get("/rug-scam-shield", "rug_scam_shield.html", "Rug & Scam Shield")
+
+# ============================================================================
+
 
 # ===== ROUTE DE DEBUG =====
 @app.get("/debug-files")
@@ -4933,7 +4976,7 @@ DEFAULT_USER_PERMISSIONS = [
 def require_admin(user=Depends(require_auth)):
     """Dependency: require an authenticated *admin* user.
 
-    Accepts users with role 'admin' (in DB), username 'admin', or a truthy 'is_admin' flag.
+    Accepte uniquement les utilisateurs avec role 'admin' (ou un flag is_admin vrai).
     """
     # If require_auth returned a redirect/response, just pass it through (FastAPI will handle).
     # But typically it raises HTTPException instead.
@@ -4942,7 +4985,7 @@ def require_admin(user=Depends(require_auth)):
         role = user.get("role") if isinstance(user, dict) else getattr(user, "role", None)
         is_admin = user.get("is_admin") if isinstance(user, dict) else getattr(user, "is_admin", False)
 
-        if role == "admin" or username == "admin" or bool(is_admin):
+        if (role == "admin") or bool(is_admin):
             return user
 
         # Fallback: check DB role if available
@@ -5711,6 +5754,33 @@ async def login(request: Request, response: Response):
         # Garder le redirect dans l'URL en cas d'erreur
         error_url = f"/login?error=1&redirect={redirect_url}" if redirect_url != "/" else "/login?error=1"
         return RedirectResponse(url=error_url, status_code=303)
+
+
+# ============================================================================
+# Alias /admin-login -> /login (compatibilité)
+# ============================================================================
+@app.get("/admin-login", response_class=HTMLResponse)
+async def admin_login_alias_get(request: Request, next: str = "/admin-dashboard"):
+    # On redirige vers la page de login principale en conservant ?next=
+    try:
+        # Éviter les URLs externes (open redirect)
+        if not next or not str(next).startswith("/"):
+            next = "/admin-dashboard"
+    except Exception:
+        next = "/admin-dashboard"
+    return RedirectResponse(url=f"/login?next={next}", status_code=302)
+
+@app.post("/admin-login")
+async def admin_login_alias_post(request: Request):
+    # Même comportement que /login (form POST) : on délègue en interne.
+    form = await request.form()
+    # Recréer la query next si fournie
+    next_url = (form.get("next") or request.query_params.get("next") or "/admin-dashboard")
+    if not str(next_url).startswith("/"):
+        next_url = "/admin-dashboard"
+    # On appelle la logique de login existante via une redirection POST->GET
+    return RedirectResponse(url=f"/login?next={next_url}", status_code=303)
+
 
 @app.get("/logout")
 async def logout(request: Request):
@@ -24808,130 +24878,28 @@ PLAN_ROUTE_OPTIONS = [r for r, _ in PLAN_ROUTES]
 
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
-    """
-    Dashboard Admin — gestion des prix et accès par forfait.
-    IMPORTANT: DOCTYPE doit être en premier (sinon Quirks Mode + layout cassé).
-    """
-    import html as html_lib
+    # --- Auth admin robuste (cookie session_token uniquement) ---
+    # IMPORTANT: on n'utilise PAS request.session (Starlette) pour l'auth admin
+    # afin d'éviter toute élévation via cookie de session signé avec une clé faible.
+    user = get_user_from_request(request)
 
-    # --- Auth admin robuste ---
-    user = getattr(request.state, "user", None)
-    if not isinstance(user, dict) or not (user.get("username") or user.get("email")):
-        _sess = request.scope.get("session") if "session" in request.scope else {}
-        session_token = (
-            _sess.get("session_token")
-            or request.cookies.get("session_token")
-            or request.cookies.get("session")
-            or ""
-        )
-        if session_token:
-            try:
-                user = get_user_from_token(session_token) or {}
-            except Exception:
-                user = {}
-        else:
-            user = {}
-    # --- Auth / rôles admin (robuste) ---
-    # Si pas connecté: on renvoie vers /login avec redirect
-    if not user or not (user.get('username') or user.get('email')):
-        try:
-            from urllib.parse import quote
-            return RedirectResponse(url=f"/login?redirect={quote('/admin-dashboard')}", status_code=303)
-        except Exception:
-            return RedirectResponse(url="/login?redirect=%2Fadmin-dashboard", status_code=303)
+    if not user or not (user.get("username") or user.get("email")):
+        return RedirectResponse(url="/admin-login?next=/admin-dashboard", status_code=302)
 
     username = (user.get("username") or "").strip()
-    email = (user.get("email") or user.get("user_email") or "").strip()
-    session_role = (request.session.get("role") or request.session.get("user_role") or "").strip()
+    email = (user.get("email") or "").strip()
 
-    admin_roles = {"admin", "administrator", "superadmin", "owner", "root"}
+    # Vérification admin: rôle dans l'objet user (issu du login) uniquement
+    user_role = (user.get("role") or "").strip().lower()
+    is_admin = (user_role == "admin") or bool(user.get("is_admin"))
 
-    # Rôle depuis DB (username et email)
-    db_role_username = ""
-    db_role_email = ""
-    try:
-        db_role_username = (get_user_role(username) or "").strip() if username else ""
-    except Exception:
-        db_role_username = ""
-    try:
-        db_role_email = (get_user_role(email) or "").strip() if email else ""
-    except Exception:
-        db_role_email = ""
-
-    role_candidates = {db_role_username.lower(), db_role_email.lower(), session_role.lower(), (user.get("role") or "").lower()}
-    is_admin = (
-        username.lower() == "admin"
-        or bool(user.get("is_admin"))
-        or any(r in admin_roles for r in role_candidates if r)
+    print(
+        f"🔎 /admin-dashboard auth: username={username!r} email={email!r} "
+        f"user_role={user_role!r} is_admin={is_admin}"
     )
 
-    # Debug (logs Railway) - aucun mot de passe
-    try:
-        print(
-            f"🔎 /admin-dashboard auth: username={username!r} email={email!r} session_role={session_role!r} "
-            f"db_role_username={db_role_username!r} db_role_email={db_role_email!r} user_role={(user.get('role') or '')!r} is_admin={is_admin!r}"
-        )
-    except Exception:
-        pass
-
     if not is_admin:
-        page = html_doc(
-            title="Accès réservé à l'admin",
-            body=f"""{render_sidebar(active='admin-dashboard')}
-            <div style='padding:40px;max-width:900px;margin:0 auto;'>
-              <div class='card' style='padding:24px;'>
-                <h1 style='margin:0 0 6px 0;'>⛔ Accès réservé à l'admin</h1>
-                <p style='margin:0;opacity:.85'>Cette page est disponible uniquement pour un compte administrateur.</p>
-                <div style='margin-top:16px;'>
-                  <a class='btn btn-primary' href='/' style='display:inline-block;padding:10px 16px;border-radius:10px;'>Retour au site</a>
-                </div>
-              </div>
-            </div>""",
-            user=user,
-        )
-        return HTMLResponse(page, status_code=403)
-
-    # --- Fin Auth / rôles admin ---
-    _sb_style = ""
-    _sb_html = SIDEBAR
-    if "</style>" in SIDEBAR:
-        _sb_style, _sb_html = SIDEBAR.split("</style>", 1)
-        _sb_style = _sb_style + "</style>"
-        _sb_html = _sb_html
-
-    # Prices from DB
-    try:
-        premium_price = float(get_plan_price("premium"))
-    except Exception:
-        premium_price = 20.0
-    try:
-        advanced_price = float(get_plan_price("advanced"))
-    except Exception:
-        advanced_price = 50.0
-    try:
-        pro_price = float(get_plan_price("pro"))
-    except Exception:
-        pro_price = 80.0
-    try:
-        elite_price = float(get_plan_price("elite"))
-    except Exception:
-        elite_price = 150.0
-
-    # Routes list must match pricing-complete labels
-    routes = PLAN_ROUTES
-    # Build checkbox list HTML
-    routes_html = ""
-    for route, label in routes:
-        safe_route = html_lib.escape(route)
-        safe_label = html_lib.escape(label)
-        routes_html += f"""
-          <div class="route-item">
-            <label>
-              <input type="checkbox" class="route-checkbox" value="{safe_route}"/>
-              <span>{safe_label}</span>
-            </label>
-          </div>
-        """
+        return RedirectResponse(url="/admin-login?next=/admin-dashboard", status_code=302)
 
     page_html = f"""<!DOCTYPE html>
 <html lang="fr">

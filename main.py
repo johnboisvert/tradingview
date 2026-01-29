@@ -33721,835 +33721,635 @@ async def ai_crypto_coach(request: Request):
     """
     return HTMLResponse(content=_simple_page("AI Crypto Coach", body, sidebar_html=SIDEBAR))
 
-@app.get("/altseason-copilot-pro", response_class=HTMLResponse)
+@app.get("/altseason-copilot-pro")
+@require_login
 async def altseason_copilot_pro(request: Request):
-    """
-    Altseason Copilot Pro — snapshot "macro" basé sur CoinGecko (live),
-    pour guider l'exposition BTC vs alts (heuristique, pas un conseil financier).
-    """
-    # 1) Fetch live data (best effort)
-    err = None
-    g = await _cg_global()
-    if not isinstance(g, dict) or "__error__" in g:
-        err = (g.get("__error__") if isinstance(g, dict) else str(g)) or "Impossible de contacter CoinGecko."
-        g = {}
+    username = request.session.get("username", "user")
 
-    top = []
-    try:
-        top = _coingecko_markets_top50() or []
-    except Exception as e:
-        if not err:
-            err = str(e)
+    snap = get_coingecko_snapshot()
+    btc_dom = float(snap.get("btc_dominance", 0.0) or 0.0)
+    eth_dom = float(snap.get("eth_dominance", 0.0) or 0.0)
+    mcap = float(snap.get("total_market_cap_usd", 0.0) or 0.0)
+    breadth_up = int(snap.get("breadth_up", 0) or 0)
+    breadth_total = int(snap.get("breadth_total", 0) or 0)
+    breadth_ratio = (breadth_up / breadth_total) if breadth_total else 0.0
 
-    # 2) Parse /global
-    total_mcap = None
-    btc_dom = None
-    eth_dom = None
-    try:
-        data = (g.get("data") or {}) if isinstance(g, dict) else {}
-        total_mcap = (data.get("total_market_cap") or {}).get("usd")
-        dom = data.get("market_cap_percentage") or {}
-        btc_dom = dom.get("btc")
-        eth_dom = dom.get("eth")
-    except Exception:
-        pass
+    # Heuristic Altseason Score (educational)
+    score = 50
+    # BTC dominance effect
+    if btc_dom >= 58:
+        score -= 18
+    elif btc_dom >= 54:
+        score -= 10
+    elif btc_dom <= 45:
+        score += 14
+    elif btc_dom <= 49:
+        score += 8
 
-    # 3) Heuristic mode
-    mode = "Inconnu"
-    rationale = []
-    if isinstance(btc_dom, (int, float)):
-        if btc_dom >= 55:
-            mode = "BTC d'abord"
-            rationale.append("Dominance BTC élevée → l'argent est surtout sur BTC.")
-        elif btc_dom <= 45:
-            mode = "Altseason potentielle"
-            rationale.append("Dominance BTC plus basse → conditions plus favorables aux alts.")
-        else:
-            mode = "Rotation / Range"
-            rationale.append("Dominance BTC intermédiaire → alternance BTC ↔ alts fréquente.")
+    # ETH dominance effect
+    if eth_dom >= 18:
+        score += 10
+    elif eth_dom <= 12:
+        score -= 6
 
-    if isinstance(eth_dom, (int, float)):
-        if eth_dom >= 18:
-            rationale.append("Dominance ETH solide → appétit pour les grosses alts / L2.")
-        elif eth_dom <= 12:
-            rationale.append("Dominance ETH faible → prudence sur les alts mid/small.")
+    # Breadth effect
+    if breadth_ratio >= 0.70:
+        score += 14
+    elif breadth_ratio >= 0.58:
+        score += 8
+    elif breadth_ratio <= 0.40:
+        score -= 12
+    elif breadth_ratio <= 0.48:
+        score -= 6
 
-    # 4) Build page
-    stats_html = "<p style='opacity:.85'>Données live CoinGecko (snapshot). Si CoinGecko est limité, certaines valeurs peuvent être manquantes.</p>"
-    if total_mcap is not None:
-        stats_html += f"<li><b>Market cap (USD)</b>: {int(total_mcap):,}".replace(",", " ")
-    if btc_dom is not None:
-        stats_html += f"<li><b>BTC dominance</b>: {btc_dom:.2f}%</li>"
-    if eth_dom is not None:
-        stats_html += f"<li><b>ETH dominance</b>: {eth_dom:.2f}%</li>"
+    score = max(0, min(100, int(round(score))))
 
-    if rationale:
-        rat_html = "<ul>" + "".join([f"<li>{html.escape(x)}</li>" for x in rationale]) + "</ul>"
-    else:
-        rat_html = "<p style='opacity:.85'>Impossible de calculer la dominance (API indisponible).</p>"
-
-    # simple breadth proxy from top50 (how many are green today)
-    breadth_html = ""
-    try:
-        if top:
-            green = sum(1 for c in top if isinstance(c, dict) and (c.get("price_change_percentage_24h") or 0) > 0)
-            breadth_html = f"<p><b>Breath (top50, 24h)</b>: {green}/{len(top)} en hausse.</p>"
-    except Exception:
-        pass
-
-    body = f"""
-    {_academy_ui_css()}
-    <div class="academy-wrap">
-
-    <div class="card mb-3">
-      <h2>Altseason Copilot Pro</h2>
-      <p><b>Mode</b>: <span style="color:#60a5fa">{html.escape(mode)}</span></p>
-      {breadth_html}
-      <h3>Contexte</h3>
-      <ul>
-        {stats_html}
-      </ul>
-      <h3>Lecture</h3>
-      {rat_html}
-      {'<div class="alert alert-error"><b>Erreur API:</b> ' + html.escape(err) + '</div>' if err else ''}
-    </div>
-
-    <div class="card">
-      <h3>Comment l'utiliser</h3>
-      <ul>
-        <li><b>BTC d'abord</b>: privilégie BTC, et alts uniquement sur signaux forts (breakout + volume).</li>
-        <li><b>Rotation / Range</b>: garde un panier réduit d'alts “leaders”, gère activement (TP/SL, sorties rapides).</li>
-        <li><b>Altseason potentielle</b>: augmente progressivement l'exposition alts (priorité: top narratives + liquidité).</li>
-      </ul>
-      <p style="opacity:.85">Note: heuristique simple (snapshot). Ce n’est pas un conseil financier.</p>
-    </div>
-    </div>
-
-    """
-
-    page = _simple_page("Altseason Copilot Pro", body, sidebar_html=SIDEBAR, username=(getattr(request.state, "user", None) or {}).get("username") or request.session.get("username"))
-    return HTMLResponse(content=page)
-
-@app.get("/rug-scam-shield", response_class=HTMLResponse)
-async def rug_scam_shield(request: Request, token: str = "", chain: str = "ETH", go: int = 0):
-    """
-    Rug/Scam Shield — vérifications basées sur données réelles (CoinGecko + explorateurs).
-    - Si 'token' est un symbole (ex: PEPE), on tente de résoudre l'adresse via CoinGecko.
-    - Si 'token' est une adresse (0x...), on analyse directement.
-    """
-    chain = (chain or "ETH").upper().strip()
-    raw = (token or "").strip()
-    username = request.session.get("username")
-
-    supported = {"ETH", "BSC", "POLYGON"}
-    addr = raw if (raw.startswith("0x") and len(raw) == 42) else None
-    meta = {}
-    err = None
-
-    if go and raw and not addr:
-        addr, meta = await _cg_find_contract_by_symbol(raw, chain)
-
-    # Etherscan-family configuration
-    scan = {
-        "ETH": {"base": "https://api.etherscan.io/api", "key_env": "ETHERSCAN_API_KEY", "label": "Etherscan"},
-        "BSC": {"base": "https://api.bscscan.com/api", "key_env": "BSCSCAN_API_KEY", "label": "BscScan"},
-        "POLYGON": {"base": "https://api.polygonscan.com/api", "key_env": "POLYGONSCAN_API_KEY", "label": "PolygonScan"},
-    }.get(chain)
-
-    api_key = (os.getenv(scan["key_env"]) or "").strip() if scan else ""
-
-    async def scan_api(params: dict):
-        if not scan:
-            return {"__error__": "chain_not_supported"}
-        params = dict(params)
-        if api_key:
-            params["apikey"] = api_key
-        data = await _cg_json(scan["base"], params=params, timeout=12.0)  # reuse helper (httpx)
-        return data
-
-    report_html = ""
-    verdict = None
-
-    def _flags_from_source(src: str):
-        s = (src or "").lower()
-        flags = []
-        # heuristiques (source verifié requis)
-        keywords = [
-            ("blacklist", "Présence possible de blacklist"),
-            ("settax", "Fonctions de taxe détectées"),
-            ("tax", "Mécanismes de taxe détectés"),
-            ("mint", "Fonctions de mint détectées"),
-            ("pause", "Fonction pause détectée"),
-            ("owner", "Contrôle owner/admin détecté"),
-            ("setfee", "Fonctions de frais détectées"),
-            ("whitelist", "Présence possible de whitelist"),
+    # Mode
+    if score >= 70:
+        mode = "ALTSEASON"
+        headline = "Rotation forte vers les alts."
+        playbook = [
+            "Augmente progressivement l’exposition aux alts (priorité: liquidité + narratives fortes).",
+            "Garde des règles strictes: stop clair + TP partiels (TP1 sécurise, TP2 laisse courir).",
+            "Évite les micro-caps sans liquidité: privilégie top alts / midcaps solides."
         ]
-        for k, label in keywords:
-            if k in s:
-                flags.append(label)
-        return list(dict.fromkeys(flags))  # unique, keep order
+    elif score >= 45:
+        mode = "ROTATION / MIX"
+        headline = "Marché mixte: sélection stricte."
+        playbook = [
+            "Mix BTC + alts: privilégie les setups les plus propres (breakout + volume, range + confirmation).",
+            "Réduis le nombre de positions simultanées (qualité > quantité).",
+            "Surveille BTC dominance: si elle repart up, réduis les alts les plus faibles."
+        ]
+    else:
+        mode = "BTC D’ABORD"
+        headline = "Contexte défensif pour les alts."
+        playbook = [
+            "Priorité BTC et cash management. Alts uniquement sur signaux forts et rapides.",
+            "Position sizing plus petit sur alts + stops serrés.",
+            "Attends des signes: breadth qui remonte + dominance BTC qui plafonne/baisse."
+        ]
 
-    if go and raw:
-        if chain not in supported:
-            err = "Chaîne non supportée pour l'instant (support: ETH/BSC/POLYGON)."
-        elif not addr:
-            err = "Impossible de résoudre ce token. Essaie avec l'adresse du contrat (0x...) ou un symbole plus précis."
-        else:
-            # 1) get source/verification
-            src = await scan_api({"module": "contract", "action": "getsourcecode", "address": addr})
-            if isinstance(src, dict) and "__error__" in src:
-                err = src["__error__"]
-            else:
-                result = (src.get("result") or []) if isinstance(src, dict) else []
-                item = result[0] if result else {}
-                source_code = item.get("SourceCode") or ""
-                abi = item.get("ABI") or ""
-                contract_name = item.get("ContractName") or ""
-                compiler = item.get("CompilerVersion") or ""
-                verified = bool(source_code and abi and "not verified" not in str(abi).lower())
-
-                flags = _flags_from_source(source_code) if verified else []
-                score = 100
-                reasons = []
-
-                if not verified:
-                    score -= 35
-                    reasons.append("Contrat non vérifié (source/ABI indisponible)")
-                if any("blacklist" in f.lower() for f in flags):
-                    score -= 25
-                    reasons.append("Blacklist possible")
-                if any("taxe" in f.lower() or "tax" in f.lower() for f in flags):
-                    score -= 15
-                    reasons.append("Tax/frais potentiels")
-                if any("mint" in f.lower() for f in flags):
-                    score -= 15
-                    reasons.append("Mint possible (dilution)")
-                if any("pause" in f.lower() for f in flags):
-                    score -= 10
-                    reasons.append("Pause possible (contrôle)")
-                if any("owner" in f.lower() for f in flags):
-                    score -= 5
-                    reasons.append("Owner/admin présent")
-
-                score = max(0, min(100, score))
-
-                if score >= 80:
-                    verdict = "Risque faible (à vérifier quand même)"
-                elif score >= 60:
-                    verdict = "Risque modéré"
-                else:
-                    verdict = "Risque élevé / Prudence"
-
-                flags_html = "<ul>" + "".join(f"<li>{html.escape(x)}</li>" for x in flags) + "</ul>" if flags else "<p style='opacity:.85'>Aucun drapeau détecté (ou contrat non vérifié).</p>"
-                reasons_html = "<ul>" + "".join(f"<li>{html.escape(x)}</li>" for x in reasons) + "</ul>" if reasons else "<p style='opacity:.85'>Aucun signal fort détecté.</p>"
-
-                report_html = f"""
-                <div class="card mb-3">
-                  <h2>Rug / Scam Shield</h2>
-                  <p><b>Chaîne</b>: {html.escape(chain)} — <b>Contrat</b>: <code>{html.escape(addr)}</code></p>
-                  {f"<p style='opacity:.85'>Résolution CoinGecko: {html.escape(meta.get('coin',{}).get('name',''))} ({html.escape(str(meta.get('coin',{}).get('symbol','')).upper())})</p>" if meta.get("coin") else ""}
-                  <p><b>Verdict</b>: <span style="color:#60a5fa">{html.escape(verdict)}</span> — <b>Score</b>: {score}/100</p>
-
-                  <div class="grid grid-2">
-                    <div class="card" style="background:rgba(255,255,255,.03)">
-                      <h3>Contrat</h3>
-                      <ul style="margin-left:18px">
-                        <li><b>Vérifié</b>: {"Oui" if verified else "Non"}</li>
-                        <li><b>Nom</b>: {html.escape(contract_name) if contract_name else "-"}</li>
-                        <li><b>Compilateur</b>: {html.escape(compiler) if compiler else "-"}</li>
-                        <li><b>Explorateur</b>: {html.escape(scan['label']) if scan else "-"}</li>
-                      </ul>
-                    </div>
-                    <div class="card" style="background:rgba(255,255,255,.03)">
-                      <h3>Signaux</h3>
-                      {flags_html}
-                    </div>
-                  </div>
-
-                  <h3>Pourquoi ce score?</h3>
-                  {reasons_html}
-
-                  <p style="opacity:.8">Important: ce module ne peut pas garantir qu’un token est safe. Il aide à repérer des red flags rapidement.</p>
-                </div>
-                """
-
-    form_html = f"""
-    {_academy_ui_css()}
-
-    <div class="card mb-3">
-      <h2>Rug / Scam Shield</h2>
-      <p>Entre un <b>symbole</b> (ex: PEPE) ou une <b>adresse de contrat</b> (0x...).</p>
-      <form method="get" action="/rug-scam-shield" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <input class="v5-input" name="token" value="{html.escape(raw)}" placeholder="PEPE ou 0x..." style="max-width:320px"/>
-        <select class="v5-input" name="chain" style="max-width:160px">
-          {''.join([f"<option value='{c}' {'selected' if chain==c else ''}>{c}</option>" for c in ['ETH','BSC','POLYGON']])}
-        </select>
-        <input type="hidden" name="go" value="1"/>
-        <button class="btn" type="submit">Analyser</button>
-      </form>
-      <p style="opacity:.75;margin-top:10px">
-        Pour des résultats plus riches, ajoute tes clés d’API (optionnel): <code>ETHERSCAN_API_KEY</code>, <code>BSCSCAN_API_KEY</code>, <code>POLYGONSCAN_API_KEY</code>.
-      </p>
-    </div>
-    """
-
-    explain_html = """
-    <div class="card">
-      <h3>À quoi sert cette page?</h3>
-      <p>Elle t'aide à détecter rapidement des signaux de scam/rug en combinant:</p>
-      <ul>
-        <li>Résolution du token via <b>CoinGecko</b> (si tu entres un symbole)</li>
-        <li>Vérification <b>explorateur</b> (contrat vérifié, informations du contrat)</li>
-        <li>Heuristiques sur le code (tax/mint/blacklist/owner…)</li>
-      </ul>
-      <h3>Comment l'utiliser</h3>
-      <ol>
-        <li>Copie/colle le <b>contrat</b> (idéal) ou écris le <b>symbole</b>.</li>
-        <li>Si le contrat n'est <b>pas vérifié</b> → prudence accrue.</li>
-        <li>Si des signaux comme <b>blacklist</b>, <b>mint</b> ou <b>tax</b> apparaissent → réduis le risque / évite.</li>
-      </ol>
-      <p style="opacity:.8">Astuce: combine ce résultat avec volume, liquidité, holders, et la réputation du projet.</p>
-    </div>
-    """
-
-    if err:
-        report_html = f"<div class='alert alert-error'><b>Erreur:</b> {html.escape(err)}</div>" + report_html
-
-    body = form_html + report_html + explain_html
-    page = _simple_page("Rug / Scam Shield", body, sidebar_html=SIDEBAR, username=username)
-    return HTMLResponse(content=page)
-
-@app.get("/ai-swarm-agents", response_class=HTMLResponse)
-async def ai_swarm_agents(request: Request):
-    """Swarm Agents (Binance OHLCV) — même data, structurée en agents.
-
-    Fixes:
-      - Normalise les klines (liste) -> dicts, sinon erreur: list indices must be integers...
-      - Force HTMLResponse pour éviter l'affichage du code HTML + logo 404.
-    """
-    q = request.query_params
-    symbol = (q.get("symbol") or "BTCUSDT").strip().upper()
-    tf = (q.get("tf") or "1h").strip()
-    go = (q.get("go") or "").strip() in ("1", "true", "yes", "on")
-
-    tf_map = {"15m": "15m", "30m": "30m", "1h": "1h", "2h": "2h", "4h": "4h", "1d": "1d"}
-    interval = tf_map.get(tf, "1h")
-
-    def _klines_to_dicts(kl):
-        out = []
-        for row in (kl or []):
-            if isinstance(row, dict):
-                if all(k in row for k in ("open", "high", "low", "close", "volume")):
-                    out.append({
-                        "ts": row.get("ts") or row.get("timestamp"),
-                        "open": float(row["open"]),
-                        "high": float(row["high"]),
-                        "low": float(row["low"]),
-                        "close": float(row["close"]),
-                        "volume": float(row.get("volume", 0.0)),
-                    })
-                continue
-            if isinstance(row, (list, tuple)) and len(row) >= 6:
-                try:
-                    out.append({
-                        "ts": int(row[0]),
-                        "open": float(row[1]),
-                        "high": float(row[2]),
-                        "low": float(row[3]),
-                        "close": float(row[4]),
-                        "volume": float(row[5]),
-                    })
-                except Exception:
-                    pass
-        return out
-
-    def _ema(values, period: int):
-        if not values:
-            return []
-        k = 2.0 / (period + 1.0)
-        ema_vals = [float(values[0])]
-        for v in values[1:]:
-            ema_vals.append(float(v) * k + ema_vals[-1] * (1.0 - k))
-        return ema_vals
-
-    def _rsi(values, period: int = 14):
-        if len(values) < period + 1:
-            return None
-        gains, losses = [], []
-        for i in range(1, period + 1):
-            ch = values[i] - values[i - 1]
-            gains.append(max(ch, 0.0))
-            losses.append(max(-ch, 0.0))
-        avg_gain = sum(gains) / period
-        avg_loss = sum(losses) / period
-        for i in range(period + 1, len(values)):
-            ch = values[i] - values[i - 1]
-            gain = max(ch, 0.0)
-            loss = max(-ch, 0.0)
-            avg_gain = (avg_gain * (period - 1) + gain) / period
-            avg_loss = (avg_loss * (period - 1) + loss) / period
-        if avg_loss == 0:
-            return 100.0
-        rs = avg_gain / avg_loss
-        return 100.0 - (100.0 / (1.0 + rs))
-
-    def _atr(candles, period: int = 14):
-        if len(candles) < period + 1:
-            return None
-        trs = []
-        for i in range(1, len(candles)):
-            h = candles[i]["high"]
-            l = candles[i]["low"]
-            pc = candles[i - 1]["close"]
-            trs.append(max(h - l, abs(h - pc), abs(l - pc)))
-        atr_val = sum(trs[:period]) / period
-        for tr in trs[period:]:
-            atr_val = (atr_val * (period - 1) + tr) / period
-        return atr_val
-
-    error = ""
-    agents_html = ""
-
-    if go:
-        try:
-            kl = await _binance_klines(symbol, interval, limit=300)
-            candles = _klines_to_dicts(kl)
-            if len(candles) < 80:
-                raise ValueError("Pas assez de données OHLCV (essaie un autre timeframe/symbole).")
-
-            closes = [c["close"] for c in candles]
-            vols = [c["volume"] for c in candles]
-
-            ema20 = _ema(closes, 20)[-1]
-            ema50 = _ema(closes, 50)[-1]
-            rsi14 = _rsi(closes, 14)
-            atr14 = _atr(candles, 14)
-            last = closes[-1]
-            avg_vol20 = sum(vols[-20:]) / max(1, len(vols[-20:]))
-
-            agent_trend = "Bullish" if ema20 >= ema50 else "Bearish"
-
-            if rsi14 is None:
-                agent_mom = "Neutre"
-            elif rsi14 >= 65:
-                agent_mom = "Haussier (sur-achat possible)"
-            elif rsi14 <= 35:
-                agent_mom = "Baissier (sur-vente possible)"
-            else:
-                agent_mom = "Neutre / sain"
-
-            if atr14 is None or last <= 0:
-                agent_vol = "Inconnu"
-            else:
-                pct = (atr14 / last) * 100.0
-                agent_vol = "Élevée" if pct >= 2.2 else ("Faible" if pct <= 0.9 else "Normale")
-
-            last_vol = vols[-1]
-            if avg_vol20 <= 0:
-                agent_volume = "Inconnu"
-            elif last_vol > avg_vol20 * 1.6:
-                agent_volume = "En hausse (confirmation possible)"
-            elif last_vol < avg_vol20 * 0.6:
-                agent_volume = "Faible (prudence)"
-            else:
-                agent_volume = "Normal"
-
-            score = 0
-            score += 1 if agent_trend == "Bullish" else -1
-            if "Haussier" in agent_mom:
-                score += 1
-            if "Baissier" in agent_mom:
-                score -= 1
-            if "En hausse" in agent_volume:
-                score += 1
-            if "Faible" in agent_volume:
-                score -= 1
-
-            decision = "WAIT"
-            rationale = "Signal mixte. Attendre une confirmation (cassure, pullback, structure)."
-            if score >= 2:
-                decision = "LONG (conditionnel)"
-                rationale = "Trend + confirmations suffisantes. Chercher un setup propre + gestion du risque."
-            elif score <= -2:
-                decision = "SHORT (conditionnel)"
-                rationale = "Trend baissier + confirmations suffisantes. Attendre un rejet / continuation."
-
-            agents_html = f"""
-            <div class='card mb-3'>
-              <h3>Agents</h3>
-              <div class='grid' style='grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;'>
-                <div class='card' style='margin:0;'>
-                  <div style='opacity:.8;font-size:12px;'>Agent Trend</div>
-                  <div style='font-size:20px;font-weight:700;'>{agent_trend}</div>
-                  <div style='opacity:.8;font-size:12px;'>EMA20 {ema20:.4f} · EMA50 {ema50:.4f}</div>
-                </div>
-                <div class='card' style='margin:0;'>
-                  <div style='opacity:.8;font-size:12px;'>Agent Momentum</div>
-                  <div style='font-size:20px;font-weight:700;'>{agent_mom}</div>
-                  <div style='opacity:.8;font-size:12px;'>RSI14 {'' if rsi14 is None else f'{rsi14:.1f}'}</div>
-                </div>
-                <div class='card' style='margin:0;'>
-                  <div style='opacity:.8;font-size:12px;'>Agent Volatilité</div>
-                  <div style='font-size:20px;font-weight:700;'>{agent_vol}</div>
-                  <div style='opacity:.8;font-size:12px;'>ATR14 {'' if atr14 is None else f'{atr14:.6f}'}</div>
-                </div>
-                <div class='card' style='margin:0;'>
-                  <div style='opacity:.8;font-size:12px;'>Agent Volume</div>
-                  <div style='font-size:20px;font-weight:700;'>{agent_volume}</div>
-                  <div style='opacity:.8;font-size:12px;'>Vol(20) ~ {avg_vol20:.2f}</div>
-                </div>
-              </div>
-            </div>
-
-            <div class='card mb-3'>
-              <h3>Conclusion</h3>
-              <div style='font-size:22px;font-weight:800;'>{decision}</div>
-              <div class='text-slate-300' style='margin-top:6px;'>{rationale}</div>
-              <div style='opacity:.75;font-size:12px;margin-top:8px;'>
-                Symbol: <b>{symbol}</b> · TF: <b>{interval}</b> · Prix: <b>{last:.6f}</b>
-              </div>
-            </div>
-            """
-        except Exception as e:
-            error = str(e)
+    mcap_str = f"{mcap:,.0f}".replace(",", " ")
+    breadth_pct = int(round(breadth_ratio * 100))
 
     body = f"""
-    {_academy_ui_css()}
-    <div class="academy-wrap">
-
-    <div class='card mb-3'>
-      <h2>AI Swarm Agents</h2>
-      <p>Même data, mais organisée en “agents” pour structurer une décision.</p>
-      <form method='get' action='/ai-swarm-agents' style='display:flex; gap:10px; align-items:center; flex-wrap:wrap;'>
-        <input class='v5-input' name='symbol' value='{symbol}' style='max-width:220px;' />
-        <select class='v5-input' name='tf' style='max-width:140px;'>
-          {''.join([f"<option value='{k}' {'selected' if tf==k else ''}>{k}</option>" for k in ['15m','30m','1h','2h','4h','1d']])}
-        </select>
-        <button class='btn' type='submit'>Lancer les agents</button>
-        <input type='hidden' name='go' value='1' />
-      </form>
-    </div>
-
-    {f"<div class='alert alert-error'>Erreur: {error}</div>" if error else ''}
-
-    {agents_html if agents_html else "<div class='card mb-3'><p>Choisis un symbole + timeframe puis lance les agents.</p></div>"}
-
-    <div class='card'>
-      <h3>À quoi sert cette page?</h3>
-      <p>Cette page lance plusieurs “mini-analyses” (agents) sur le même actif pour te donner une lecture plus structurée qu'un texte unique.</p>
-      <ul>
-        <li><b>Trend Agent</b>: détecte le contexte (tendance/range).</li>
-        <li><b>Momentum Agent</b>: mesure la force du mouvement.</li>
-        <li><b>Risk Agent</b>: propose une invalidation logique et un sizing prudent.</li>
-        <li><b>Execution Agent</b>: suggère un plan simple (entrée/TP/SL) selon le timeframe.</li>
-      </ul>
-      <h3>Comment l'utiliser</h3>
-      <ol>
-        <li>Choisis un <b>symbol</b> (ex: BTCUSDT) et un <b>timeframe</b>.</li>
-        <li>Lance les agents et cherche la <b>convergence</b> (plusieurs agents d'accord).</li>
-        <li>Si les agents sont en désaccord → évite le trade ou réduis le risque.</li>
-      </ol>
-      <p style='opacity:.8'>Note: ce sont des indications; utilise toujours ton plan + gestion du risque.</p>
-    </div>
-    </div>
-
-    """
-    page = _simple_page("AI Swarm Agents", body, sidebar_html=SIDEBAR, username=(getattr(request.state, "user", None) or {}).get("username") or request.session.get("username"))
-    return HTMLResponse(content=page)
-
-
-
-
-
-def _html_escape(s: str) -> str:
-    try:
-        import html as _html
-        return _html.escape(str(s or ""))
-    except Exception:
-        return str(s or "")
-
-def _academy_ui_css() -> str:
-    # UI sobre + moderne (sans dépendances)
-    return """
     <style>
-      .academy-wrap{max-width:1200px;margin:0 auto;padding:24px 18px}
-      .academy-hero{display:flex;gap:18px;justify-content:space-between;align-items:stretch;flex-wrap:wrap;margin-bottom:18px}
-      .academy-kicker{letter-spacing:.14em;text-transform:uppercase;font-size:12px;opacity:.85}
-      .academy-h1{font-size:34px;line-height:1.1;margin:8px 0 10px}
-      .academy-h1--lesson{font-size:30px}
-      .academy-h2{font-size:22px;margin:0 0 10px}
-      .academy-sub{opacity:.9}
-      .academy-dot{opacity:.5;margin:0 8px}
-      .academy-cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-      .academy-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);text-decoration:none;color:inherit;font-weight:700}
-      .academy-btn:hover{background:rgba(255,255,255,.14)}
-      .academy-btn--ghost{background:transparent}
-      .academy-statbox{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch}
-      .academy-stat{min-width:160px;padding:14px 14px;border-radius:18px;background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.10)}
-      .academy-stat--small{min-width:220px}
-      .academy-stat__n{font-size:24px;font-weight:900;margin-bottom:4px}
-      .academy-stat__label{opacity:.85;font-size:12px}
-      .academy-alert{padding:14px 14px;border-radius:18px;background:rgba(255, 193, 7,.12);border:1px solid rgba(255, 193, 7,.25);margin:10px 0 18px}
-      .academy-alert__title{font-weight:900;margin-bottom:4px}
-      .academy-alert__text{opacity:.95}
-      .academy-link{text-decoration:none;font-weight:800}
-      .academy-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0 16px}
-      .academy-search{flex:1;min-width:260px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:inherit;outline:none}
-      .academy-pill{padding:10px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);font-weight:800;font-size:12px}
-      .academy-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
-      .academy-card{border-radius:20px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.10);padding:16px}
-      .academy-card__title{font-size:16px;font-weight:900;margin-bottom:6px;display:flex;gap:10px;align-items:center}
-      .academy-card__sub{opacity:.9;font-size:13px;margin-bottom:10px}
-      .academy-module{grid-column:span 6}
-      @media (max-width: 980px){ .academy-module{grid-column:span 12} }
-      .academy-module-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
-      .academy-module-meta{display:flex;gap:10px;align-items:center}
-      .academy-icon{font-size:20px}
-      .academy-progressbar{height:10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);overflow:hidden;margin-top:10px}
-      .academy-progressbar>div{height:100%;background:linear-gradient(90deg, rgba(0,255,180,.85), rgba(0,180,255,.85));width:0%}
-      .academy-lessons{margin-top:12px;display:flex;flex-direction:column;gap:8px}
-      .academy-lesson-row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);text-decoration:none;color:inherit}
-      .academy-lesson-row:hover{background:rgba(255,255,255,.10)}
-      .academy-lesson-left{display:flex;gap:10px;align-items:center}
-      .academy-badge-mini{font-size:12px;font-weight:900;padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.10);opacity:.95}
-      .academy-muted{opacity:.85}
-      .academy-cols{display:grid;grid-template-columns: 8fr 4fr;gap:14px;align-items:start}
-      @media (max-width: 980px){ .academy-cols{grid-template-columns:1fr} }
-      .academy-content p{margin:10px 0;opacity:.95}
-      .academy-content ul{margin:10px 0 10px 18px}
-      .academy-content li{margin:6px 0}
-      .academy-callout{padding:12px 12px;border-radius:16px;background:rgba(0,180,255,.10);border:1px solid rgba(0,180,255,.22);margin:12px 0}
-      .academy-callout b{display:block;margin-bottom:4px}
-      .academy-action{padding:12px 12px;border-radius:16px;background:rgba(0,255,180,.10);border:1px solid rgba(0,255,180,.20);margin:12px 0}
-      .academy-action textarea{width:100%;min-height:90px;margin-top:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.22);color:inherit;outline:none}
-      .academy-chipbox{display:flex;gap:10px;flex-wrap:wrap;align-content:flex-start;justify-content:flex-end}
-      .academy-chip{padding:8px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);font-weight:900;font-size:12px}
-      .academy-quiz-q{padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);margin:10px 0}
-      .academy-quiz-q__title{font-weight:900;margin-bottom:8px}
-      .academy-radio{display:flex;gap:8px;align-items:flex-start;margin:6px 0;cursor:pointer}
-      .academy-radio input{margin-top:3px}
-      .academy-quiz-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
-      .academy-breadcrumbs{opacity:.9;margin-bottom:10px}
-      .academy-lesson-hero{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px}
-      .academy-checklist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-      .academy-check{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10)}
-      .academy-check input{margin-top:3px}
-      .academy-links{display:flex;flex-direction:column;gap:10px}
-      .academy-modules{display:flex;flex-direction:column;gap:10px}
-      .academy-prow{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10)}
-      .academy-prow__name{font-weight:900;min-width:160px}
-      .academy-prow__bar{flex:1;height:10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);overflow:hidden}
-      .academy-prow__bar>div{height:100%;background:linear-gradient(90deg, rgba(0,255,180,.85), rgba(0,180,255,.85));width:0%}
-      .academy-prow__pct{font-weight:900;min-width:54px;text-align:right}
-      .academy-badges{display:flex;flex-wrap:wrap;gap:10px}
-      .academy-badge{padding:10px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);font-weight:900}
-      .academy-rec{padding:12px 12px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10)}
-      .academy-rec__line{margin:8px 0;opacity:.95}
+      {_academy_ui_css()}
+      .pro-hero{{padding:18px 18px 10px 18px; border-radius:20px; border:1px solid rgba(255,255,255,.08);
+        background: radial-gradient(900px 400px at 10% 0%, rgba(93,168,255,.22), transparent 60%),
+                    radial-gradient(900px 400px at 90% 10%, rgba(171,104,255,.18), transparent 60%),
+                    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+        box-shadow: 0 18px 60px rgba(0,0,0,.35);
+      }}
+      .pro-title{{font-size:34px; font-weight:900; line-height:1.05; margin:8px 0 10px;}}
+      .pro-sub{{color:rgba(255,255,255,.75); font-size:14px;}}
+      .pro-card{{border-radius:18px; border:1px solid rgba(255,255,255,.09);
+        background: rgba(255,255,255,.04); box-shadow: 0 16px 40px rgba(0,0,0,.28);
+        padding:16px;
+      }}
+      .pro-row{{display:flex; gap:10px;}}
+      .pro-pill{{display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px;
+        border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.18); color:rgba(255,255,255,.86);
+        font-weight:700; font-size:13px;
+      }}
+      .pro-muted{{color:rgba(255,255,255,.72);}}
+      .pro-accent{{color:#66d9ff;}}
+      .pro-grid{{display:grid; grid-template-columns: 1.1fr .9fr; gap:14px; margin-top:14px;}}
+      @media (max-width: 980px){{.pro-grid{{grid-template-columns:1fr;}}}}
+      .kpis{{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:12px;}}
+      @media (max-width: 980px){{.kpis{{grid-template-columns:1fr;}}}}
+      .kpis .box{{border-radius:16px; padding:14px; border:1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.18);}}
+      .kpis .label{{color:rgba(255,255,255,.65); font-size:12px; letter-spacing:.12em; text-transform:uppercase;}}
+      .kpis .val{{font-size:24px; font-weight:900; margin-top:6px;}}
+      .meter{{height:12px; border-radius:999px; background: rgba(255,255,255,.08); overflow:hidden; border:1px solid rgba(255,255,255,.10);}}
+      .meter > div{{height:100%; width:{score}%; background: linear-gradient(90deg, rgba(102,217,255,.95), rgba(175,107,255,.95));}}
+      .badge{{display:inline-flex; align-items:center; padding:8px 12px; border-radius:14px;
+        border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.18); font-weight:900;
+      }}
+      .steps li{{margin:6px 0; color:rgba(255,255,255,.82);}}
+      .note{{font-size:12px; color:rgba(255,255,255,.68); margin-top:10px;}}
     </style>
-    """
 
-def _academy_render_content(text: str) -> str:
-    """
-    Convertit du texte simple en HTML lisible (paragraphes + listes).
-    """
-    raw = (text or "").strip()
-    if not raw:
-        return "<p class='academy-muted'>Contenu en cours d’amélioration.</p>"
+    <div class="academy-wrap">
+      <div class="pro-hero">
+        <div class="pro-row" style="justify-content:space-between; align-items:center; flex-wrap:wrap;">
+          <div class="pro-pill">🧭 Altseason Copilot Pro</div>
+          <div class="pro-pill">Compte: <span class="pro-accent">{_html_escape(username)}</span></div>
+        </div>
+        <div class="pro-title">Lis le cycle en 10 secondes. Agis avec un playbook clair.</div>
+        <div class="pro-sub">Score “Altseason” basé sur dominance + breadth (snapshot CoinGecko). Ce n’est pas un conseil financier.</div>
 
-    # Mini "markdown" : listes avec "- "
-    lines = raw.splitlines()
-    blocks = []
-    buf = []
-    list_buf = []
-
-    def flush_paragraph():
-        nonlocal buf
-        if buf:
-            p = " ".join(buf).strip()
-            if p:
-                blocks.append(f"<p>{_html_escape(p)}</p>")
-            buf = []
-
-    def flush_list():
-        nonlocal list_buf
-        if list_buf:
-            items = "".join(f"<li>{_html_escape(x)}</li>" for x in list_buf)
-            blocks.append(f"<ul>{items}</ul>")
-            list_buf = []
-
-    for ln in lines:
-        s = ln.strip()
-        if not s:
-            flush_list()
-            flush_paragraph()
-            continue
-        if s.startswith("- "):
-            flush_paragraph()
-            list_buf.append(s[2:].strip())
-        else:
-            flush_list()
-            buf.append(s)
-
-    flush_list()
-    flush_paragraph()
-
-    # Ajoute une callout “à retenir” automatiquement
-    blocks.append("""
-      <div class="academy-callout">
-        <b>À retenir</b>
-        Comprendre = bien. Appliquer = mieux. Fais le mini-exercice juste en bas.
+        <div class="kpis">
+          <div class="box"><div class="label">Altseason score</div><div class="val">{score}/100</div><div class="pro-muted">{_html_escape(headline)}</div></div>
+          <div class="box"><div class="label">BTC dominance</div><div class="val">{btc_dom:.2f}%</div><div class="pro-muted">Quand elle baisse, les alts respirent.</div></div>
+          <div class="box"><div class="label">Breadth top50</div><div class="val">{breadth_pct}%</div><div class="pro-muted">{breadth_up}/{breadth_total} en hausse (24h).</div></div>
+        </div>
       </div>
-    """)
-    return "\n".join(blocks)
 
-def _academy_action_box(lesson_id: str) -> str:
-    tips = {
-        "bases": "Écris en 3 lignes ce que tu as compris et 1 action concrète que tu feras aujourd’hui.",
-        "market": "Choisis 1 crypto et décris: trend/range, niveau clé, scénario A/B.",
-        "risk": "Écris tes règles: stop, risque max, taille de position. Simple et strict.",
-        "strategy": "Décris une stratégie en 5 étapes (conditions d’entrée/sortie).",
-        "ai": "Note comment tu vas utiliser CryptoIA (1 page, 1 métrique, 1 routine).",
-    }
-    prefix = lesson_id.split("_")[0]
-    msg = tips.get(prefix, "Note ton plan d’action pour cette leçon.")
-    return f"""
-      <div class="academy-action">
-        <b>Mini-exercice (2 minutes)</b>
-        <div class="academy-muted">{_html_escape(msg)}</div>
-        <textarea placeholder="Écris ici... (tu peux copier-coller dans ton journal de trading)"></textarea>
-      </div>
-    """
-
-def _academy_checklist(lesson_id: str) -> str:
-    prefix = lesson_id.split("_")[0]
-    ck = {
-        "bases": [
-            "Je peux expliquer le concept à quelqu’un en 30 secondes.",
-            "Je sais ce que je dois éviter (erreurs fréquentes).",
-            "J’ai une action concrète à faire après cette leçon."
-        ],
-        "market": [
-            "Je sais dire si le marché est en trend ou en range.",
-            "Je repère 1 niveau de liquidité / zone clé.",
-            "J’ai un scénario A/B (si ça monte / si ça casse)."
-        ],
-        "risk": [
-            "Je connais mon risque max par trade et par jour.",
-            "Je sais où est mon stop AVANT d’entrer.",
-            "Je ne déplace pas mon stop par émotion."
-        ],
-        "strategy": [
-            "Je connais mes conditions exactes d’entrée.",
-            "Je sais quand je ne trade PAS.",
-            "Je peux backtester 10 exemples rapidement."
-        ],
-        "ai": [
-            "Je sais à quoi sert l’outil (et ses limites).",
-            "Je garde une décision finale humaine.",
-            "Je sauvegarde mes résultats (journal)."
-        ],
-    }.get(prefix, ["Je comprends le concept.", "Je peux l’appliquer.", "Je sais la prochaine étape."])
-
-    items = "".join(f"<label class='academy-check'><input type='checkbox'/> <span>{_html_escape(x)}</span></label>" for x in ck)
-    return f"<div class='academy-checklist'>{items}</div>"
-
-def _academy_module_name(lesson_id: str) -> str:
-    prefix = (lesson_id or "").split("_")[0]
-    names = {"bases":"Fondations", "market":"Marché", "risk":"Risque", "strategy":"Stratégies", "ai":"IA & Outils"}
-    return names.get(prefix, prefix.capitalize() if prefix else "Module")
-
-def _academy_prev_next_ids(current_id: str):
-    ids = sorted(LESSONS_DATA.keys(), key=lambda x: (x.split('_')[0], int(x.split('_')[-1]) if x.split('_')[-1].isdigit() else 9999, x))
-    if current_id not in ids:
-        return (None, None)
-    i = ids.index(current_id)
-    prev_id = ids[i-1] if i-1 >= 0 else None
-    next_id = ids[i+1] if i+1 < len(ids) else None
-    return (next_id, prev_id)
-
-def _academy_next_lesson_id(completed_set) -> str:
-    ids = sorted(LESSONS_DATA.keys(), key=lambda x: (x.split('_')[0], int(x.split('_')[-1]) if x.split('_')[-1].isdigit() else 9999, x))
-    for lid in ids:
-        if lid not in completed_set:
-            return lid
-    return ids[0] if ids else ""
-
-def _academy_module_card(module: dict) -> str:
-    lessons = module.get("lessons") or []
-    total = len(lessons)
-    done = sum(1 for l in lessons if l.get("is_done"))
-    pct = int((done/total)*100) if total else 0
-    bar = f"<div class='academy-progressbar'><div style='width:{pct}%;'></div></div>"
-    rows = []
-    for l in lessons:
-        status = "✅" if l.get("is_done") else "•"
-        badge = "Quiz" if l.get("has_quiz") else l.get("duration","10 min")
-        rows.append(
-            f"""
-            <a class="academy-lesson-row" data-lesson-row="1" data-hay="{_html_escape(module.get('title','') + ' ' + l.get('title',''))}" href="/academy/lesson/{l.get('id')}">
-              <div class="academy-lesson-left">
-                <div class="academy-badge-mini">{status}</div>
-                <div>
-                  <div style="font-weight:900">{_html_escape(l.get('title',''))}</div>
-                  <div class="academy-muted" style="font-size:12px">{_html_escape(l.get('id',''))}</div>
-                </div>
-              </div>
-              <div class="academy-badge-mini">{_html_escape(badge)}</div>
-            </a>
-            """
-        )
-
-    return f"""
-      <div class="academy-card academy-module">
-        <div class="academy-module-top">
-          <div class="academy-module-meta">
-            <div class="academy-icon">{_html_escape(module.get('icon','📚'))}</div>
+      <div class="pro-grid">
+        <div class="pro-card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
             <div>
-              <div class="academy-card__title">{_html_escape(module.get('title','Module'))}</div>
-              <div class="academy-card__sub">{_html_escape(module.get('subtitle',''))}</div>
+              <div class="pro-muted" style="letter-spacing:.14em; font-size:12px;">MODE</div>
+              <div style="font-size:28px; font-weight:900; margin-top:6px;">{_html_escape(mode)}</div>
+              <div class="pro-muted" style="margin-top:6px;">Market cap (USD): <b>{mcap_str}</b> • ETH dominance: <b>{eth_dom:.2f}%</b></div>
+            </div>
+            <div style="min-width:260px;">
+              <div class="pro-muted" style="margin-bottom:8px;">Altseason meter</div>
+              <div class="meter"><div></div></div>
+              <div class="note">Plus le score est haut, plus la rotation vers les alts est probable.</div>
             </div>
           </div>
-          <div class="academy-badge-mini">{done}/{total}</div>
+
+          <div style="margin-top:14px; font-size:18px; font-weight:900;">Playbook</div>
+          <ol class="steps" style="margin:8px 0 0 18px;">
+            {''.join([f"<li>{_html_escape(s)}</li>" for s in playbook])}
+          </ol>
+
+          <div class="note">Heuristique simple (snapshot). Pour du “pro”, ajoute: momentum multi-TF, dominance trend, volume, et une gestion de risque stricte.</div>
         </div>
-        {bar}
-        <div class="academy-lessons">
-          {''.join(rows)}
+
+        <div class="pro-card">
+          <div style="font-size:18px; font-weight:900;">Comment l’utiliser (simple)</div>
+          <div class="pro-muted" style="margin-top:8px;">
+            <ul style="margin:8px 0 0 18px;">
+              <li><b>Score &lt; 45:</b> défensif. Alts seulement sur setups très forts.</li>
+              <li><b>45–69:</b> sélection stricte. 1–3 positions max, qualité d’abord.</li>
+              <li><b>≥ 70:</b> rotation forte. Augmentation progressive + discipline TP/SL.</li>
+            </ul>
+          </div>
+
+          <div style="margin-top:14px; font-size:18px; font-weight:900;">Prochaine étape</div>
+          <div class="pro-muted" style="margin-top:8px;">
+            Tu veux que ça devienne <b>vraiment utile</b>? Ajoute 2 blocs:
+            <ol style="margin:8px 0 0 18px;">
+              <li><b>Watchlist auto</b> (top narratives + liquidité + momentum)</li>
+              <li><b>Alertes</b> (dominance break, breadth spike, rotation triggers)</li>
+            </ol>
+          </div>
         </div>
       </div>
+    </div>
     """
+    page = _simple_page("Altseason Copilot Pro", body, username=username)
+    return HTMLResponse(page)
 
-def _academy_module_stats(completed_set):
-    # calcule stats par module prefix
-    prefixes = {}
-    for lid in LESSONS_DATA.keys():
-        p = lid.split("_")[0]
-        prefixes.setdefault(p, {"prefix": p, "total": 0, "done": 0})
-        prefixes[p]["total"] += 1
-        if lid in completed_set:
-            prefixes[p]["done"] += 1
 
-    order = ["bases", "market", "risk", "strategy", "ai"]
-    items = []
-    for p in order:
-        if p in prefixes:
-            items.append(prefixes[p])
-    for p, v in prefixes.items():
-        if p not in order:
-            items.append(v)
-    return items
+@app.api_route("/rug-scam-shield", methods=["GET","POST"])
+@require_login
+async def rug_scam_shield(request: Request):
+    username = request.session.get("username", "user")
+    # Default form values
+    form_data = {}
+    result_html = ""
+    if request.method == "POST":
+        try:
+            form = await request.form()
+            form_data = dict(form)
+        except Exception:
+            form_data = {}
+        # Simple, user-filled scoring model (no chain calls). Educational / checklist-based.
+        # Risk points: higher = riskier
+        def b(name: str) -> bool:
+            v = str(form_data.get(name, "")).strip().lower()
+            return v in ("1","true","yes","oui","y","on")
 
-def _academy_progress_row(ms: dict) -> str:
-    total = int(ms.get("total") or 0)
-    done = int(ms.get("done") or 0)
-    pct = int((done/total)*100) if total else 0
-    name = _academy_module_name(ms.get("prefix",""))
-    return f"""
-      <div class="academy-prow">
-        <div class="academy-prow__name">{_html_escape(name)}</div>
-        <div class="academy-prow__bar"><div style="width:{pct}%"></div></div>
-        <div class="academy-prow__pct">{pct}%</div>
+        risk = 0
+        # Contract / token basics
+        if not form_data.get("contract"):
+            risk += 8
+        if b("unknown_team"):
+            risk += 12
+        if b("no_audit"):
+            risk += 10
+        if b("admin_can_pause"):
+            risk += 8
+        if b("can_change_fees"):
+            risk += 12
+        if b("honeypot_signs"):
+            risk += 18
+        if b("low_liquidity"):
+            risk += 14
+        if b("liquidity_not_locked"):
+            risk += 18
+        if b("top_holder_big"):
+            risk += 12
+        if b("new_token"):
+            risk += 6
+        if b("aggressive_marketing"):
+            risk += 6
+
+        # Clamp + bucket
+        risk = max(0, min(100, risk))
+        if risk >= 65:
+            level = "ÉLEVÉ"
+            level_note = "Risque élevé. Privilégie l’observation et exige plus de preuves (audit, lock de liquidité, transparence)."
+        elif risk >= 35:
+            level = "MOYEN"
+            level_note = "Risque moyen. Vérifie les points rouges (liquidity lock, taxes, holders, permissions admin) avant d’aller plus loin."
+        else:
+            level = "FAIBLE"
+            level_note = "Risque plutôt faible selon tes réponses. Continue quand même les vérifications de base."
+
+        # Build results
+        meter_w = risk
+        result_html = f"""
+        <div class="pro-card pro-glow" style="margin-top:14px;">
+          <div class="pro-row" style="align-items:flex-end; gap:14px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:260px;">
+              <div class="pro-muted" style="letter-spacing:.14em; font-size:12px;">RUG / SCAM SHIELD</div>
+              <div style="font-size:28px; font-weight:800; margin-top:6px;">Score de risque: <span class="pro-accent">{risk}/100</span></div>
+              <div class="pro-muted" style="margin-top:6px;">Niveau: <b>{level}</b> — {level_note}</div>
+            </div>
+            <div style="min-width:240px;">
+              <div class="pro-meter" aria-label="risk meter">
+                <div class="pro-meter-fill" style="width:{meter_w}%"></div>
+              </div>
+              <div class="pro-muted" style="margin-top:8px;">Astuce: un seul “red flag” critique (honeypot / taxes modifiables / liquidité non lockée) suffit souvent à dire non.</div>
+            </div>
+          </div>
+        </div>
+        """
+
+    # Pre-fill helper
+    def fv(k: str, default: str = "") -> str:
+        v = form_data.get(k, default)
+        return _html_escape(str(v)) if v is not None else ""
+
+    def checked(k: str) -> str:
+        v = str(form_data.get(k, "")).strip().lower()
+        return "checked" if v in ("1","true","yes","oui","y","on") else ""
+
+    body = f"""
+    <style>
+      {_academy_ui_css()}
+      .pro-hero{{padding:18px 18px 10px 18px; border-radius:20px; border:1px solid rgba(255,255,255,.08);
+        background: radial-gradient(900px 400px at 10% 0%, rgba(93,168,255,.22), transparent 60%),
+                    radial-gradient(900px 400px at 90% 10%, rgba(171,104,255,.18), transparent 60%),
+                    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+        box-shadow: 0 18px 60px rgba(0,0,0,.35);
+      }}
+      .pro-title{{font-size:34px; font-weight:900; line-height:1.05; margin:8px 0 10px;}}
+      .pro-sub{{color:rgba(255,255,255,.75); font-size:14px;}}
+      .pro-grid{{display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; margin-top:14px;}}
+      @media (max-width: 980px){{.pro-grid{{grid-template-columns:1fr;}}}}
+      .pro-card{{border-radius:18px; border:1px solid rgba(255,255,255,.09);
+        background: rgba(255,255,255,.04); box-shadow: 0 16px 40px rgba(0,0,0,.28);
+        padding:16px;
+      }}
+      .pro-glow{{position:relative; overflow:hidden;}}
+      .pro-glow:before{{content:""; position:absolute; inset:-2px; background: radial-gradient(600px 220px at 20% 10%, rgba(0,255,255,.18), transparent 60%),
+                                                          radial-gradient(600px 220px at 80% 40%, rgba(255,0,200,.12), transparent 60%);
+                        opacity:.9; pointer-events:none;}}
+      .pro-glow > *{{position:relative;}}
+      .pro-row{{display:flex; gap:10px;}}
+      .pro-pill{{display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px;
+        border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.18); color:rgba(255,255,255,.86);
+        font-weight:700; font-size:13px;
+      }}
+      .pro-kpi{{display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:12px;}}
+      @media (max-width: 980px){{.pro-kpi{{grid-template-columns:1fr;}}}}
+      .pro-kpi .box{{border-radius:16px; padding:14px; border:1px solid rgba(255,255,255,.08);
+        background: rgba(0,0,0,.18);
+      }}
+      .pro-kpi .label{{color:rgba(255,255,255,.65); font-size:12px; letter-spacing:.12em; text-transform:uppercase;}}
+      .pro-kpi .val{{font-size:24px; font-weight:900; margin-top:6px;}}
+      .pro-muted{{color:rgba(255,255,255,.72);}}
+      .pro-accent{{color:#66d9ff;}}
+      .pro-meter{{height:12px; border-radius:999px; background: rgba(255,255,255,.08); overflow:hidden; border:1px solid rgba(255,255,255,.10);}}
+      .pro-meter-fill{{height:100%; background: linear-gradient(90deg, rgba(102,217,255,.95), rgba(175,107,255,.95));}}
+      .pro-form label{{display:block; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.65); margin-top:10px;}}
+      .pro-form input, .pro-form select{{width:100%; margin-top:6px; padding:10px 12px; border-radius:12px;
+        border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.25); color:white; outline:none;
+      }}
+      .pro-form input::placeholder{{color:rgba(255,255,255,.45);}}
+      .pro-check{{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;}}
+      @media (max-width: 980px){{.pro-check{{grid-template-columns:1fr;}}}}
+      .pro-toggle{{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 12px;
+        border-radius:14px; border:1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.18);
+      }}
+      .pro-toggle .t{{font-weight:800;}}
+      .pro-toggle .d{{font-size:12px; color:rgba(255,255,255,.66); margin-top:2px;}}
+      .pro-toggle input{{transform: scale(1.2);}}
+      .pro-btn{{display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:12px 14px;
+        border-radius:14px; border:1px solid rgba(255,255,255,.12); background: linear-gradient(180deg, rgba(102,217,255,.16), rgba(175,107,255,.10));
+        color:white; font-weight:900; cursor:pointer; text-decoration:none;
+      }}
+      .pro-btn:hover{{filter:brightness(1.08);}}
+      .note{{font-size:12px; color:rgba(255,255,255,.68); margin-top:10px;}}
+    </style>
+
+    <div class="academy-wrap">
+      <div class="pro-hero">
+        <div class="pro-row" style="justify-content:space-between; align-items:center; flex-wrap:wrap;">
+          <div class="pro-pill">🛡️ Rug / Scam Shield</div>
+          <div class="pro-pill">Compte: <span class="pro-accent">{_html_escape(username)}</span></div>
+        </div>
+        <div class="pro-title">Détecte les “red flags” avant de te faire piéger.</div>
+        <div class="pro-sub">Outil check-list (sans blabla) — tu réponds aux questions, on calcule un score de risque. Ce n’est pas un conseil financier.</div>
+
+        <div class="pro-kpi">
+          <div class="box"><div class="label">But</div><div class="val">Filtrer vite</div><div class="pro-muted">Éviter les scams évidents.</div></div>
+          <div class="box"><div class="label">Méthode</div><div class="val">Checklist</div><div class="pro-muted">Permissions • Taxes • Liquidité • Holders.</div></div>
+          <div class="box"><div class="label">Résultat</div><div class="val">Score/100</div><div class="pro-muted">Faible • Moyen • Élevé.</div></div>
+        </div>
       </div>
+
+      <div class="pro-grid">
+        <div class="pro-card pro-glow">
+          <div style="font-size:18px; font-weight:900;">1) Infos du token</div>
+          <form class="pro-form" method="post" action="/rug-scam-shield">
+            <label>Chaîne</label>
+            <select name="chain">
+              <option value="ETH" {"selected" if form_data.get("chain","ETH")=="ETH" else ""}>Ethereum</option>
+              <option value="BSC" {"selected" if form_data.get("chain","")=="BSC" else ""}>BSC</option>
+              <option value="SOL" {"selected" if form_data.get("chain","")=="SOL" else ""}>Solana</option>
+              <option value="BASE" {"selected" if form_data.get("chain","")=="BASE" else ""}>Base</option>
+              <option value="ARBITRUM" {"selected" if form_data.get("chain","")=="ARBITRUM" else ""}>Arbitrum</option>
+              <option value="POLYGON" {"selected" if form_data.get("chain","")=="POLYGON" else ""}>Polygon</option>
+              <option value="OTHER" {"selected" if form_data.get("chain","")=="OTHER" else ""}>Autre</option>
+            </select>
+
+            <label>Nom / ticker (optionnel)</label>
+            <input name="token" placeholder="ex: PEPE" value="{fv('token')}"/>
+
+            <label>Contrat (si applicable)</label>
+            <input name="contract" placeholder="0x..." value="{fv('contract')}"/>
+
+            <div style="font-size:18px; font-weight:900; margin-top:14px;">2) Questions rapides</div>
+            <div class="pro-check">
+              <div class="pro-toggle">
+                <div><div class="t">Équipe inconnue</div><div class="d">Aucune preuve / identité / track-record.</div></div>
+                <input type="checkbox" name="unknown_team" value="1" {checked('unknown_team')}/>
+              </div>
+              <div class="pro-toggle">
+                <div><div class="t">Pas d’audit</div><div class="d">Aucun audit sérieux, ou “audit” douteux.</div></div>
+                <input type="checkbox" name="no_audit" value="1" {checked('no_audit')}/>
+              </div>
+              <div class="pro-toggle">
+                <div><div class="t">Liquidité faible</div><div class="d">Slippage énorme / pools minuscules.</div></div>
+                <input type="checkbox" name="low_liquidity" value="1" {checked('low_liquidity')}/>
+              </div>
+              <div class="pro-toggle">
+                <div><div class="t">Liquidité non lockée</div><div class="d">Aucun lock / preuve de lock.</div></div>
+                <input type="checkbox" name="liquidity_not_locked" value="1" {checked('liquidity_not_locked')}/>
+              </div>
+              <div class="pro-toggle">
+                <div><div class="t">Taxes modifiables</div><div class="d">Le contrat peut augmenter les fees.</div></div>
+                <input type="checkbox" name="can_change_fees" value="1" {checked('can_change_fees')}/>
+              </div>
+              <div class="pro-toggle">
+                <div><div class="t">Honeypot / sell bloqué</div><div class="d">Signes qu’on ne peut pas vendre.</div></div>
+                <input type="checkbox" name="honeypot_signs" value="1" {checked('honeypot_signs')}/>
+              </div>
+              <div class="pro-toggle">
+                <div><div class="t">Top holder énorme</div><div class="d">Un wallet contrôle trop du supply.</div></div>
+                <input type="checkbox" name="top_holder_big" value="1" {checked('top_holder_big')}/>
+              </div>
+              <div class="pro-toggle">
+                <div><div class="t">Admin peut geler/pauser</div><div class="d">Permissions très larges.</div></div>
+                <input type="checkbox" name="admin_can_pause" value="1" {checked('admin_can_pause')}/>
+              </div>
+              <div class="pro-toggle">
+                <div><div class="t">Token très récent</div><div class="d">Créé il y a quelques jours/heures.</div></div>
+                <input type="checkbox" name="new_token" value="1" {checked('new_token')}/>
+              </div>
+              <div class="pro-toggle">
+                <div><div class="t">Marketing agressif</div><div class="d">Hype + promesses irréalistes.</div></div>
+                <input type="checkbox" name="aggressive_marketing" value="1" {checked('aggressive_marketing')}/>
+              </div>
+            </div>
+
+            <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="pro-btn" type="submit">🔎 Calculer le score</button>
+              <a class="pro-btn" href="/rug-scam-shield" style="opacity:.9;">↺ Réinitialiser</a>
+            </div>
+            <div class="note">Ce score est basé sur tes réponses. Pour une analyse on-chain complète, ajoute un module d’inspection (holders/liquidity) plus tard.</div>
+          </form>
+        </div>
+
+        <div>
+          <div class="pro-card">
+            <div style="font-size:18px; font-weight:900;">Lecture rapide</div>
+            <div class="pro-muted" style="margin-top:8px;">
+              <ul style="margin:8px 0 0 18px;">
+                <li><b>Honeypot</b> ou “sell bloqué” = souvent <b>NO GO</b>.</li>
+                <li><b>Taxes modifiables</b> = risque d’abus.</li>
+                <li><b>Liquidité non lockée</b> = rug plus facile.</li>
+                <li><b>Top holder</b> trop gros = dump possible.</li>
+              </ul>
+            </div>
+            {result_html}
+          </div>
+
+          <div class="pro-card" style="margin-top:14px;">
+            <div style="font-size:18px; font-weight:900;">Checklist “en 30 secondes”</div>
+            <div class="pro-muted" style="margin-top:8px;">
+              <ol style="margin:8px 0 0 18px;">
+                <li>Tu peux vendre? (pas de honeypot)</li>
+                <li>Liquidité lockée? preuve?</li>
+                <li>Fees raisonnables + non modifiables?</li>
+                <li>Permissions admin limitées?</li>
+                <li>Holders + distribution OK?</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     """
+    page = _simple_page("Rug / Scam Shield", body, username=username)
+    return HTMLResponse(page)
+
+
+@app.api_route("/ai-swarm-agents", methods=["GET","POST"])
+@require_login
+async def ai_swarm_agents(request: Request):
+    username = request.session.get("username", "user")
+
+    form_data = {}
+    output_html = ""
+    if request.method == "POST":
+        try:
+            form = await request.form()
+            form_data = dict(form)
+        except Exception:
+            form_data = {}
+        asset = str(form_data.get("asset","")).strip().upper()[:15]
+        objective = str(form_data.get("objective","")).strip()
+        horizon = str(form_data.get("horizon","swing")).strip().lower()
+        risk_mode = str(form_data.get("risk","balanced")).strip().lower()
+
+        # Heuristic "swarm" output (educational). No live trading, no guarantees.
+        steps = []
+        steps.append("Définis ton risque: stop logique + taille de position avant d’entrer.")
+        if horizon in ("scalp","intraday"):
+            steps.append("Intraday: privilégie la liquidité + confirmations (volume, break/retest).")
+        else:
+            steps.append("Swing: travaille des zones (support/résistance) + invalidation claire.")
+
+        if "btc" in asset.lower() or asset == "BTC":
+            steps.append("BTC: surveille la dominance et la liquidité du marché (ça guide les alts).")
+        elif asset:
+            steps.append(f"{asset}: check narratives + news + liquidité (évite les coins “thin”).")
+
+        if risk_mode == "conservative":
+            steps.append("Mode prudent: 1 setup max à la fois, TP partiels rapides, stop serré.")
+        elif risk_mode == "aggressive":
+            steps.append("Mode agressif: seulement si contexte fort; accepte plus de variance, mais stop obligatoire.")
+        else:
+            steps.append("Mode équilibré: 2 TP (TP1 sécurise, TP2 laisse courir), stop sous invalidation.")
+
+        # “Agents” synthesis cards
+        out = f"""
+        <div class="pro-card pro-glow" style="margin-top:14px;">
+          <div class="pro-row" style="justify-content:space-between; align-items:flex-end; flex-wrap:wrap;">
+            <div>
+              <div class="pro-muted" style="letter-spacing:.14em; font-size:12px;">SWARM OUTPUT</div>
+              <div style="font-size:26px; font-weight:900; margin-top:6px;">Plan d’action (beta)</div>
+              <div class="pro-muted" style="margin-top:6px;">Actif: <b>{_html_escape(asset or "—")}</b> • Horizon: <b>{_html_escape(horizon)}</b> • Risque: <b>{_html_escape(risk_mode)}</b></div>
+            </div>
+            <div class="pro-pill">Compte: <span class="pro-accent">{_html_escape(username)}</span></div>
+          </div>
+
+          <div class="pro-grid" style="grid-template-columns:1fr; margin-top:12px;">
+            <div class="pro-card" style="background:rgba(0,0,0,.16);">
+              <div style="font-weight:900; font-size:16px;">🎯 Objectif</div>
+              <div class="pro-muted" style="margin-top:6px;">{_html_escape(objective or "—")}</div>
+            </div>
+
+            <div class="pro-grid" style="grid-template-columns:repeat(2,1fr); margin-top:12px;">
+              <div class="pro-card" style="background:rgba(0,0,0,.16);">
+                <div style="font-weight:900;">🧠 Agent Narrative</div>
+                <div class="pro-muted" style="margin-top:6px;">Pourquoi ce coin bouge? Quelle “story” attire l’argent?</div>
+              </div>
+              <div class="pro-card" style="background:rgba(0,0,0,.16);">
+                <div style="font-weight:900;">🛡️ Agent Risk</div>
+                <div class="pro-muted" style="margin-top:6px;">Stop logique, taille, invalidation, scénarios.</div>
+              </div>
+              <div class="pro-card" style="background:rgba(0,0,0,.16);">
+                <div style="font-weight:900;">📈 Agent Entry/Exit</div>
+                <div class="pro-muted" style="margin-top:6px;">Setup, triggers, TP partiels, gestion de trade.</div>
+              </div>
+              <div class="pro-card" style="background:rgba(0,0,0,.16);">
+                <div style="font-weight:900;">🧰 Agent Ops</div>
+                <div class="pro-muted" style="margin-top:6px;">Checklist avant trade + routine post-trade (journal).</div>
+              </div>
+            </div>
+
+            <div class="pro-card" style="margin-top:12px; background:rgba(0,0,0,.16);">
+              <div style="font-weight:900; font-size:16px;">✅ Étapes recommandées</div>
+              <ol style="margin:8px 0 0 18px; color:rgba(255,255,255,.82);">
+                {''.join([f'<li>{_html_escape(s)}</li>' for s in steps])}
+              </ol>
+              <div class="note">Pas un conseil financier. Utilise ça comme une <b>checklist</b> et valide avec tes propres règles.</div>
+            </div>
+          </div>
+        </div>
+        """
+        output_html = out
+
+    def fv(k: str, default: str = "") -> str:
+        v = form_data.get(k, default)
+        return _html_escape(str(v)) if v is not None else ""
+
+    def selected(k: str, v: str, default: str) -> str:
+        cur = str(form_data.get(k, default))
+        return "selected" if cur == v else ""
+
+    body = f"""
+    <style>
+      {_academy_ui_css()}
+      .pro-hero{{padding:18px 18px 10px 18px; border-radius:20px; border:1px solid rgba(255,255,255,.08);
+        background: radial-gradient(900px 400px at 10% 0%, rgba(93,168,255,.22), transparent 60%),
+                    radial-gradient(900px 400px at 90% 10%, rgba(171,104,255,.18), transparent 60%),
+                    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+        box-shadow: 0 18px 60px rgba(0,0,0,.35);
+      }}
+      .pro-title{{font-size:34px; font-weight:900; line-height:1.05; margin:8px 0 10px;}}
+      .pro-sub{{color:rgba(255,255,255,.75); font-size:14px;}}
+      .pro-card{{border-radius:18px; border:1px solid rgba(255,255,255,.09);
+        background: rgba(255,255,255,.04); box-shadow: 0 16px 40px rgba(0,0,0,.28);
+        padding:16px;
+      }}
+      .pro-glow{{position:relative; overflow:hidden;}}
+      .pro-glow:before{{content:""; position:absolute; inset:-2px; background: radial-gradient(600px 220px at 20% 10%, rgba(0,255,255,.16), transparent 60%),
+                                                          radial-gradient(600px 220px at 80% 40%, rgba(255,0,200,.10), transparent 60%);
+                        opacity:.9; pointer-events:none;}}
+      .pro-glow > *{{position:relative;}}
+      .pro-row{{display:flex; gap:10px;}}
+      .pro-pill{{display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px;
+        border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.18); color:rgba(255,255,255,.86);
+        font-weight:700; font-size:13px;
+      }}
+      .pro-muted{{color:rgba(255,255,255,.72);}}
+      .pro-accent{{color:#66d9ff;}}
+      .pro-grid{{display:grid; grid-template-columns: 1fr; gap:14px; margin-top:14px;}}
+      .pro-form label{{display:block; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.65); margin-top:10px;}}
+      .pro-form input, .pro-form select, .pro-form textarea{{width:100%; margin-top:6px; padding:10px 12px; border-radius:12px;
+        border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.25); color:white; outline:none;
+      }}
+      .pro-form textarea{{min-height:110px; resize:vertical;}}
+      .pro-form input::placeholder, .pro-form textarea::placeholder{{color:rgba(255,255,255,.45);}}
+      .pro-btn{{display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:12px 14px;
+        border-radius:14px; border:1px solid rgba(255,255,255,.12); background: linear-gradient(180deg, rgba(102,217,255,.16), rgba(175,107,255,.10));
+        color:white; font-weight:900; cursor:pointer; text-decoration:none;
+      }}
+      .pro-btn:hover{{filter:brightness(1.08);}}
+      .note{{font-size:12px; color:rgba(255,255,255,.68); margin-top:10px;}}
+    </style>
+
+    <div class="academy-wrap">
+      <div class="pro-hero">
+        <div class="pro-row" style="justify-content:space-between; align-items:center; flex-wrap:wrap;">
+          <div class="pro-pill">🤖 AI Swarm Agents</div>
+          <div class="pro-pill">Compte: <span class="pro-accent">{_html_escape(username)}</span></div>
+        </div>
+        <div class="pro-title">Ton “copilote” multi-agents pour structurer tes décisions.</div>
+        <div class="pro-sub">Tu décris ton objectif, l’actif et ton style. La Swarm te renvoie un plan clair (checklist). Pas un conseil financier.</div>
+      </div>
+
+      <div class="pro-grid">
+        <div class="pro-card pro-glow">
+          <div style="font-size:18px; font-weight:900;">Console Swarm</div>
+          <form class="pro-form" method="post" action="/ai-swarm-agents">
+            <label>Actif (optionnel)</label>
+            <input name="asset" placeholder="ex: BTC, ETH, SOL..." value="{fv('asset')}"/>
+
+            <label>Horizon</label>
+            <select name="horizon">
+              <option value="scalp" {selected('horizon','scalp','swing')}>Scalp</option>
+              <option value="intraday" {selected('horizon','intraday','swing')}>Intraday</option>
+              <option value="swing" {selected('horizon','swing','swing')}>Swing</option>
+              <option value="position" {selected('horizon','position','swing')}>Position</option>
+            </select>
+
+            <label>Profil risque</label>
+            <select name="risk">
+              <option value="conservative" {selected('risk','conservative','balanced')}>Prudent</option>
+              <option value="balanced" {selected('risk','balanced','balanced')}>Équilibré</option>
+              <option value="aggressive" {selected('risk','aggressive','balanced')}>Agressif</option>
+            </select>
+
+            <label>Objectif / Contexte</label>
+            <textarea name="objective" placeholder="ex: Je veux un plan clair: entrée, stop, TP, et règles pour éviter les erreurs...">{fv('objective')}</textarea>
+
+            <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="pro-btn" type="submit">🧠 Lancer la Swarm</button>
+              <a class="pro-btn" href="/ai-swarm-agents" style="opacity:.9;">↺ Réinitialiser</a>
+            </div>
+            <div class="note">Astuce: plus ton objectif est précis, plus la sortie est utile (ex: “breakout”, “range”, “news pump”, etc.).</div>
+          </form>
+        </div>
+
+        {output_html}
+      </div>
+    </div>
+    """
+    page = _simple_page("AI Swarm Agents", body, username=username)
+    return HTMLResponse(page)
+
 
 @app.get("/academy")
 async def academy(request: Request):
@@ -34894,7 +34694,7 @@ async def academy_lesson(request: Request, lesson_id: str):
             }}
             const pct = Math.round((score / Math.max(1, questions.length)) * 100);
             quizResult.style.display = '';
-            quizResult.textContent = `Score: ${score}/${questions.length} (${pct}%)`;
+            quizResult.textContent = `Score: ${{score}}/${{questions.length}} (${{pct}}%)`;
             await postComplete(pct);
           }});
         }}
@@ -35019,7 +34819,7 @@ async def academy_progress(request: Request):
             <div class="academy-card__title">Recommandation (IA)</div>
             <div class="academy-card__sub">“Qu’est-ce que je dois faire maintenant ?” → ici.</div>
             <div class="academy-rec">
-              <div class="academy-rec__line"><b>Prochaine leçon:</b> {_html_escape(LESSONS_DATA.get(_academy_next_lesson_id(completed),{{}}).get('title',''))}</div>
+              <div class="academy-rec__line"><b>Prochaine leçon:</b> {_html_escape(LESSONS_DATA.get(_academy_next_lesson_id(completed),{}).get('title',''))}</div>
               <div class="academy-rec__line"><b>Règle:</b> 1 leçon + 1 action concrète (mini-exercice) = progrès réel.</div>
               <div class="academy-rec__line"><b>Bonus:</b> Fais 1 quiz/jour pendant 7 jours → discipline boostée.</div>
             </div>

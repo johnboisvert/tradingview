@@ -1734,7 +1734,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 
 # Chemin de la base de donnes
-ACADEMY_DB_PATH = "./academy.db"  # separate DB for academy module (do not override main DB_PATH)
+ACADEMY_DB_PATH = os.path.join(os.getenv("DB_DIR", "/app/data"), "academy.db")  # separate DB for academy module (do not override main DB_PATH)
 
 # ============================================================================
 # INITIALISATION DE LA BASE DE DONNES
@@ -1940,6 +1940,22 @@ def complete_lesson(username: str, lesson_id: str, quiz_score: int = 0, quiz_tot
         "new_level": new_level,
         "quiz_perfect": quiz_score == quiz_total if quiz_total > 0 else False
     }
+
+def get_completed_lessons(username: str) -> set[str]:
+    """Return set of completed lesson_ids for a user."""
+    if not username:
+        return set()
+    try:
+        conn = sqlite3.connect(ACADEMY_DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT lesson_id FROM user_lessons WHERE username = ? AND completed = 1", (username,))
+        rows = cur.fetchall()
+        conn.close()
+        return {r[0] for r in rows if r and r[0]}
+    except Exception:
+        return set()
+
+
 
 def calculate_level(xp: int) -> int:
     """Calcule le niveau en fonction de l'XP"""
@@ -2639,6 +2655,70 @@ LESSONS_DATA = {
     },
 }
 
+
+# ===================== ACADEMY CATALOG =====================
+ACADEMY_CATALOG = [
+    {
+        "module_id": "bases",
+        "title": "1) Bases crypto",
+        "desc": "Wallets, CEX/DEX, sécurité, erreurs classiques.",
+        "lessons": [
+            {"lesson_id": "bases_wallets", "title": "Wallets (hot/cold) + seed phrase", "xp": 10},
+            {"lesson_id": "bases_cex_dex", "title": "CEX vs DEX + slippage", "xp": 10},
+            {"lesson_id": "bases_security", "title": "Sécurité: 2FA, phishing, approvals", "xp": 15},
+        ],
+    },
+    {
+        "module_id": "market",
+        "title": "2) Lecture de marché",
+        "desc": "Structure, tendances, ranges, supports/résistances.",
+        "lessons": [
+            {"lesson_id": "market_structure", "title": "Structure: HH/HL vs LH/LL", "xp": 15},
+            {"lesson_id": "market_range", "title": "Range: borne haute/basse + faux breakouts", "xp": 15},
+            {"lesson_id": "market_volume", "title": "Volume: confirmation vs divergence", "xp": 15},
+        ],
+    },
+    {
+        "module_id": "risk",
+        "title": "3) Gestion du risque",
+        "desc": "Sizing, invalidation, R:R, plan & journal.",
+        "lessons": [
+            {"lesson_id": "risk_rr", "title": "R:R et invalidation (stop logique)", "xp": 20},
+            {"lesson_id": "risk_sizing", "title": "Sizing simple (risque fixe %)", "xp": 20},
+            {"lesson_id": "risk_journal", "title": "Journal: ce qu'il faut noter pour progresser", "xp": 15},
+        ],
+    },
+    {
+        "module_id": "strategies",
+        "title": "4) Stratégies",
+        "desc": "Spot, swing, scalping (principes) + checklists.",
+        "lessons": [
+            {"lesson_id": "strat_spot", "title": "Spot: entrées progressives + DCA intelligent", "xp": 15},
+            {"lesson_id": "strat_swing", "title": "Swing: trend-following + sorties partielles", "xp": 20},
+            {"lesson_id": "strat_scalp", "title": "Scalp: conditions strictes + discipline", "xp": 20},
+        ],
+    },
+    {
+        "module_id": "tools",
+        "title": "5) Outils Crypto IA",
+        "desc": "Comment utiliser les pages IA du site efficacement.",
+        "lessons": [
+            {"lesson_id": "tools_timeframe", "title": "AI Timeframe: choisir le bon contexte", "xp": 10},
+            {"lesson_id": "tools_crypto_coach", "title": "AI Crypto Coach: plan indicatif EMA/RSI/ATR", "xp": 10},
+            {"lesson_id": "tools_swarm", "title": "AI Swarm Agents: décision structurée par agents", "xp": 10},
+            {"lesson_id": "tools_rug", "title": "Rug/Scam Shield: checklist + signaux onchain", "xp": 10},
+        ],
+    },
+]
+
+def _academy_catalog_flat():
+    out = []
+    for m in ACADEMY_CATALOG:
+        for l in m.get("lessons", []):
+            out.append({"module_id": m["module_id"], "module_title": m["title"], **l})
+    return out
+
+
 # Badges disponibles
 BADGES_DATA = {
     "first_lesson": {"name": "Première Leçon", "icon": "🎯", "description": "Complete ta première leçon"},
@@ -2975,6 +3055,86 @@ try:
     ]
 except Exception:
     _STATIC_DIRS = [Path.cwd() / "static"]
+
+
+# ===================== COINGECKO (GLOBAL / SEARCH) =====================
+_CG_CACHE = {"ts": 0.0, "global": None, "search": {}}
+
+async def _cg_json(url: str, params: dict | None = None, timeout: float = 12.0):
+    """Small async helper for CoinGecko calls (safe + timeout)."""
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            r = await client.get(url, params=params or {})
+            r.raise_for_status()
+            return r.json()
+    except Exception as e:
+        return {"__error__": str(e)}
+
+async def _cg_global(ttl_sec: int = 90):
+    """Fetch CoinGecko /global with a short cache."""
+    now = time.time()
+    if _CG_CACHE.get("global") and (now - float(_CG_CACHE.get("ts") or 0.0)) < ttl_sec:
+        return _CG_CACHE["global"]
+    data = await _cg_json("https://api.coingecko.com/api/v3/global")
+    if isinstance(data, dict) and "__error__" not in data:
+        _CG_CACHE["ts"] = now
+        _CG_CACHE["global"] = data
+    return data
+
+async def _cg_find_contract_by_symbol(symbol_or_name: str, chain: str):
+    """
+    Resolve a token symbol/name to a contract address using CoinGecko.
+    Returns (contract_address, meta_dict) or (None, meta_dict).
+    Supported chains: ETH, BSC, POLYGON.
+    """
+    q = (symbol_or_name or "").strip()
+    if not q:
+        return None, {"reason": "empty"}
+    key = f"{q.lower()}::{(chain or '').upper()}"
+    cached = _CG_CACHE["search"].get(key)
+    if cached and (time.time() - cached.get("ts", 0)) < 300:
+        return cached.get("addr"), cached.get("meta", {})
+
+    search = await _cg_json("https://api.coingecko.com/api/v3/search", params={"query": q})
+    if not isinstance(search, dict) or "__error__" in search:
+        meta = {"reason": "search_error", "error": search.get("__error__") if isinstance(search, dict) else str(search)}
+        _CG_CACHE["search"][key] = {"ts": time.time(), "addr": None, "meta": meta}
+        return None, meta
+
+    coins = search.get("coins") or []
+    if not coins:
+        meta = {"reason": "no_match"}
+        _CG_CACHE["search"][key] = {"ts": time.time(), "addr": None, "meta": meta}
+        return None, meta
+
+    target_sym = q.lower()
+    best = None
+    for c in coins[:15]:
+        sym = str(c.get("symbol") or "").lower()
+        name = str(c.get("name") or "").lower()
+        if sym == target_sym or name == target_sym:
+            best = c
+            break
+    if not best:
+        best = coins[0]
+
+    coin_id = best.get("id")
+    details = await _cg_json(f"https://api.coingecko.com/api/v3/coins/{coin_id}",
+                             params={"localization":"false","tickers":"false","market_data":"false","community_data":"false","developer_data":"false","sparkline":"false"})
+    if not isinstance(details, dict) or "__error__" in details:
+        meta = {"reason": "details_error", "coin": best, "error": details.get("__error__") if isinstance(details, dict) else str(details)}
+        _CG_CACHE["search"][key] = {"ts": time.time(), "addr": None, "meta": meta}
+        return None, meta
+
+    platforms = (details.get("platforms") or {}) if isinstance(details, dict) else {}
+    chain_key = {"ETH": "ethereum", "BSC": "binance-smart-chain", "POLYGON": "polygon-pos"}.get((chain or "").upper())
+    addr = (platforms.get(chain_key) or "").strip() if chain_key else ""
+    addr = addr if addr.startswith("0x") and len(addr) == 42 else None
+    meta = {"coin": {"id": coin_id, "name": details.get("name"), "symbol": details.get("symbol")}, "platform_key": chain_key}
+    _CG_CACHE["search"][key] = {"ts": time.time(), "addr": addr, "meta": meta}
+    return addr, meta
+
 
 def _resolve_static_path(base: Path, rel_path: str) -> "Path|None":
     """Résout un chemin statique en protégeant contre le path traversal."""
@@ -33553,289 +33713,298 @@ async def ai_crypto_coach(request: Request):
   </ul>
 </div>
     """
-    return Response(content=_simple_page("AI Crypto Coach", body, sidebar_html=SIDEBAR), media_type="text/html")
+    return HTMLResponse(content=_simple_page("AI Crypto Coach", body, sidebar_html=SIDEBAR))
 
 @app.get("/altseason-copilot-pro", response_class=HTMLResponse)
 async def altseason_copilot_pro(request: Request):
     """
-    Altseason Copilot Pro (v1): lit des métriques globales (CoinGecko) + heuristiques simples.
+    Altseason Copilot Pro — snapshot "macro" basé sur CoinGecko (live),
+    pour guider l'exposition BTC vs alts (heuristique, pas un conseil financier).
     """
-    # Sidebar + page pro (pas "beta")
-    SID = SIDEBAR  # menu complet
-    error = ""
+    # 1) Fetch live data (best effort)
+    err = None
+    g = await _cg_global()
+    if not isinstance(g, dict) or "__error__" in g:
+        err = (g.get("__error__") if isinstance(g, dict) else str(g)) or "Impossible de contacter CoinGecko."
+        g = {}
+
+    top = []
     try:
-        g = await _cg_global()
-        mcap = (g.get("total_market_cap") or {}).get("usd")
-        vol = (g.get("total_volume") or {}).get("usd")
-        mcap_chg = g.get("market_cap_change_percentage_24h_usd")
-        dom = g.get("market_cap_percentage") or {}
+        top = _coingecko_markets_top50() or []
+    except Exception as e:
+        if not err:
+            err = str(e)
+
+    # 2) Parse /global
+    total_mcap = None
+    btc_dom = None
+    eth_dom = None
+    try:
+        data = (g.get("data") or {}) if isinstance(g, dict) else {}
+        total_mcap = (data.get("total_market_cap") or {}).get("usd")
+        dom = data.get("market_cap_percentage") or {}
         btc_dom = dom.get("btc")
         eth_dom = dom.get("eth")
+    except Exception:
+        pass
 
-        # Heuristique de "sentiment"
-        sentiment = "Neutre"
-        if isinstance(mcap_chg, (int, float)) and mcap_chg > 1:
-            sentiment = "Plutôt haussier"
-        if isinstance(mcap_chg, (int, float)) and mcap_chg < -1:
-            sentiment = "Prudent / risk-off"
-        if isinstance(btc_dom, (int, float)) and btc_dom > 55:
-            sentiment = "BTC first (altseason moins probable)"
-        if isinstance(btc_dom, (int, float)) and btc_dom < 50:
-            sentiment = "Altseason potentiel (à confirmer)"
+    # 3) Heuristic mode
+    mode = "Inconnu"
+    rationale = []
+    if isinstance(btc_dom, (int, float)):
+        if btc_dom >= 55:
+            mode = "BTC d'abord"
+            rationale.append("Dominance BTC élevée → l'argent est surtout sur BTC.")
+        elif btc_dom <= 45:
+            mode = "Altseason potentielle"
+            rationale.append("Dominance BTC plus basse → conditions plus favorables aux alts.")
+        else:
+            mode = "Rotation / Range"
+            rationale.append("Dominance BTC intermédiaire → alternance BTC ↔ alts fréquente.")
 
-        def fmt_money(x):
-            try:
-                x = float(x)
-            except Exception:
-                return "N/A"
-            # format compact
-            if x >= 1e12:
-                return f"{x/1e12:.2f} T$"
-            if x >= 1e9:
-                return f"{x/1e9:.2f} B$"
-            if x >= 1e6:
-                return f"{x/1e6:.2f} M$"
-            return f"{x:,.0f} $".replace(",", " ")
+    if isinstance(eth_dom, (int, float)):
+        if eth_dom >= 18:
+            rationale.append("Dominance ETH solide → appétit pour les grosses alts / L2.")
+        elif eth_dom <= 12:
+            rationale.append("Dominance ETH faible → prudence sur les alts mid/small.")
 
-        def fmt_pct(x):
-            try:
-                return f"{float(x):.2f}%"
-            except Exception:
-                return "N/A"
+    # 4) Build page
+    stats_html = "<p style='opacity:.85'>Données live CoinGecko (snapshot). Si CoinGecko est limité, certaines valeurs peuvent être manquantes.</p>"
+    if total_mcap is not None:
+        stats_html += f"<li><b>Market cap (USD)</b>: {int(total_mcap):,}".replace(",", " ")
+    if btc_dom is not None:
+        stats_html += f"<li><b>BTC dominance</b>: {btc_dom:.2f}%</li>"
+    if eth_dom is not None:
+        stats_html += f"<li><b>ETH dominance</b>: {eth_dom:.2f}%</li>"
 
-        body = f"""
-        <div class="card mb-3">
-          <h2>Altseason Copilot Pro</h2>
-          <p style="opacity:.9;">Lecture automatique (données globales) + signaux simples pour savoir quand prioriser BTC/ETH ou les alts.</p>
-        </div>
-
-        <div class="card mb-3">
-          <h2>Contexte marché</h2>
-          <ul>
-            <li><b>Total Market Cap (USD)</b> : {fmt_money(mcap)}</li>
-            <li><b>Volume 24h (USD)</b> : {fmt_money(vol)}</li>
-            <li><b>Variation Market Cap 24h</b> : {fmt_pct(mcap_chg)}</li>
-            <li><b>BTC dominance</b> : {fmt_pct(btc_dom)}</li>
-            <li><b>ETH dominance</b> : {fmt_pct(eth_dom)}</li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <h2>Lecture</h2>
-          <p><b>Sentiment:</b> {sentiment}</p>
-          <ul>
-            <li>Si <b>BTC dominance</b> monte et reste élevée → souvent plus dur pour les alts.</li>
-            <li>Si <b>BTC dominance</b> baisse + market cap monte → rotation possible vers alts (valider avec tes setups).</li>
-            <li>Utilise ça comme <b>filtre</b>, pas comme signal d'entrée.</li>
-          </ul>
-          <p style="opacity:.85;margin-top:10px;">Données: CoinGecko. Ce n’est pas un conseil financier.</p>
-        </div>
-        """
-    except Exception as e:
-        error = f"Impossible de récupérer les données live: {e}"
-        body = """
-        <div class="card mb-3">
-          <h2>Altseason Copilot Pro</h2>
-          <p>Impossible de récupérer les données live pour l'instant.</p>
-        </div>
-        """
-
-    if error:
-        error_html = f'<div class="alert alert-error">Erreur: {html.escape(str(error))}</div>'
+    if rationale:
+        rat_html = "<ul>" + "".join([f"<li>{html.escape(x)}</li>" for x in rationale]) + "</ul>"
     else:
-        error_html = ""
+        rat_html = "<p style='opacity:.85'>Impossible de calculer la dominance (API indisponible).</p>"
 
-    return Response(content=_simple_page("Altseason Copilot Pro", body, error_html=error_html, sidebar_html=SID), media_type="text/html")
+    # simple breadth proxy from top50 (how many are green today)
+    breadth_html = ""
+    try:
+        if top:
+            green = sum(1 for c in top if isinstance(c, dict) and (c.get("price_change_percentage_24h") or 0) > 0)
+            breadth_html = f"<p><b>Breath (top50, 24h)</b>: {green}/{len(top)} en hausse.</p>"
+    except Exception:
+        pass
+
+    body = f"""
+    <div class="card mb-3">
+      <h2>Altseason Copilot Pro</h2>
+      <p><b>Mode</b>: <span style="color:#60a5fa">{html.escape(mode)}</span></p>
+      {breadth_html}
+      <h3>Contexte</h3>
+      <ul>
+        {stats_html}
+      </ul>
+      <h3>Lecture</h3>
+      {rat_html}
+      {'<div class="alert alert-error"><b>Erreur API:</b> ' + html.escape(err) + '</div>' if err else ''}
+    </div>
+
+    <div class="card">
+      <h3>Comment l'utiliser</h3>
+      <ul>
+        <li><b>BTC d'abord</b>: privilégie BTC, et alts uniquement sur signaux forts (breakout + volume).</li>
+        <li><b>Rotation / Range</b>: garde un panier réduit d'alts “leaders”, gère activement (TP/SL, sorties rapides).</li>
+        <li><b>Altseason potentielle</b>: augmente progressivement l'exposition alts (priorité: top narratives + liquidité).</li>
+      </ul>
+      <p style="opacity:.85">Note: heuristique simple (snapshot). Ce n’est pas un conseil financier.</p>
+    </div>
+    """
+
+    page = _simple_page("Altseason Copilot Pro", body, sidebar_html=SIDEBAR, username=request.session.get("username"))
+    return HTMLResponse(content=page)
 
 @app.get("/rug-scam-shield", response_class=HTMLResponse)
-async def rug_scam_shield(request: Request, token: str = "eth", chain: str = "ETH"):
+async def rug_scam_shield(request: Request, token: str = "", chain: str = "ETH", go: int = 0):
     """
-    Rug / Scam Shield (v1): agrège des données live (Dexscreener + (optionnel) honeypot.is) et affiche une checklist.
-    - token: symbole (ex: "pepe") OU adresse de contrat (recommandé).
-    - chain: ETH / BSC / SOL
+    Rug/Scam Shield — vérifications basées sur données réelles (CoinGecko + explorateurs).
+    - Si 'token' est un symbole (ex: PEPE), on tente de résoudre l'adresse via CoinGecko.
+    - Si 'token' est une adresse (0x...), on analyse directement.
     """
-    SID = SIDEBAR
-    token_in = (token or "").strip()
-    chain_in = (chain or "ETH").strip().upper()
+    chain = (chain or "ETH").upper().strip()
+    raw = (token or "").strip()
+    username = request.session.get("username")
 
-    chain_map = {
-        "ETH": {"dex": "ethereum", "hp": 1},
-        "BSC": {"dex": "bsc", "hp": 56},
-        "SOL": {"dex": "solana", "hp": None},
-    }
-    dex_chain = chain_map.get(chain_in, chain_map["ETH"])["dex"]
-    hp_chain_id = chain_map.get(chain_in, chain_map["ETH"])["hp"]
+    supported = {"ETH", "BSC", "POLYGON"}
+    addr = raw if (raw.startswith("0x") and len(raw) == 42) else None
+    meta = {}
+    err = None
 
-    # Detect address
-    is_evm_addr = token_in.lower().startswith("0x") and len(token_in) == 42
-    is_probably_addr = is_evm_addr or (chain_in == "SOL" and 32 <= len(token_in) <= 50 and " " not in token_in)
+    if go and raw and not addr:
+        addr, meta = await _cg_find_contract_by_symbol(raw, chain)
 
-    pair = None
-    hp = {}
-    error = ""
-    try:
-        if is_probably_addr:
-            ds = await _dex_token(token_in)
-            pair = _pick_best_pair((ds.get("pairs") or []), chain=dex_chain)
+    # Etherscan-family configuration
+    scan = {
+        "ETH": {"base": "https://api.etherscan.io/api", "key_env": "ETHERSCAN_API_KEY", "label": "Etherscan"},
+        "BSC": {"base": "https://api.bscscan.com/api", "key_env": "BSCSCAN_API_KEY", "label": "BscScan"},
+        "POLYGON": {"base": "https://api.polygonscan.com/api", "key_env": "POLYGONSCAN_API_KEY", "label": "PolygonScan"},
+    }.get(chain)
+
+    api_key = (os.getenv(scan["key_env"]) or "").strip() if scan else ""
+
+    async def scan_api(params: dict):
+        if not scan:
+            return {"__error__": "chain_not_supported"}
+        params = dict(params)
+        if api_key:
+            params["apikey"] = api_key
+        data = await _cg_json(scan["base"], params=params, timeout=12.0)  # reuse helper (httpx)
+        return data
+
+    report_html = ""
+    verdict = None
+
+    def _flags_from_source(src: str):
+        s = (src or "").lower()
+        flags = []
+        # heuristiques (source verifié requis)
+        keywords = [
+            ("blacklist", "Présence possible de blacklist"),
+            ("settax", "Fonctions de taxe détectées"),
+            ("tax", "Mécanismes de taxe détectés"),
+            ("mint", "Fonctions de mint détectées"),
+            ("pause", "Fonction pause détectée"),
+            ("owner", "Contrôle owner/admin détecté"),
+            ("setfee", "Fonctions de frais détectées"),
+            ("whitelist", "Présence possible de whitelist"),
+        ]
+        for k, label in keywords:
+            if k in s:
+                flags.append(label)
+        return list(dict.fromkeys(flags))  # unique, keep order
+
+    if go and raw:
+        if chain not in supported:
+            err = "Chaîne non supportée pour l'instant (support: ETH/BSC/POLYGON)."
+        elif not addr:
+            err = "Impossible de résoudre ce token. Essaie avec l'adresse du contrat (0x...) ou un symbole plus précis."
         else:
-            ds = await _dex_search(token_in)
-            pair = _pick_best_pair((ds.get("pairs") or []), chain=dex_chain)
+            # 1) get source/verification
+            src = await scan_api({"module": "contract", "action": "getsourcecode", "address": addr})
+            if isinstance(src, dict) and "__error__" in src:
+                err = src["__error__"]
+            else:
+                result = (src.get("result") or []) if isinstance(src, dict) else []
+                item = result[0] if result else {}
+                source_code = item.get("SourceCode") or ""
+                abi = item.get("ABI") or ""
+                contract_name = item.get("ContractName") or ""
+                compiler = item.get("CompilerVersion") or ""
+                verified = bool(source_code and abi and "not verified" not in str(abi).lower())
 
-        if pair and is_evm_addr and hp_chain_id:
-            hp = await _honeypot_check(token_in, hp_chain_id)
+                flags = _flags_from_source(source_code) if verified else []
+                score = 100
+                reasons = []
 
-    except Exception as e:
-        error = str(e)
+                if not verified:
+                    score -= 35
+                    reasons.append("Contrat non vérifié (source/ABI indisponible)")
+                if any("blacklist" in f.lower() for f in flags):
+                    score -= 25
+                    reasons.append("Blacklist possible")
+                if any("taxe" in f.lower() or "tax" in f.lower() for f in flags):
+                    score -= 15
+                    reasons.append("Tax/frais potentiels")
+                if any("mint" in f.lower() for f in flags):
+                    score -= 15
+                    reasons.append("Mint possible (dilution)")
+                if any("pause" in f.lower() for f in flags):
+                    score -= 10
+                    reasons.append("Pause possible (contrôle)")
+                if any("owner" in f.lower() for f in flags):
+                    score -= 5
+                    reasons.append("Owner/admin présent")
 
-    def fmt_money(x):
-        try:
-            x = float(x)
-        except Exception:
-            return "N/A"
-        if x >= 1e12:
-            return f"{x/1e12:.2f} T$"
-        if x >= 1e9:
-            return f"{x/1e9:.2f} B$"
-        if x >= 1e6:
-            return f"{x/1e6:.2f} M$"
-        if x >= 1e3:
-            return f"{x:,.0f} $".replace(",", " ")
-        return f"{x:.2f} $"
+                score = max(0, min(100, score))
 
-    def fmt_pct(x):
-        try:
-            return f"{float(x):.2f}%"
-        except Exception:
-            return "N/A"
+                if score >= 80:
+                    verdict = "Risque faible (à vérifier quand même)"
+                elif score >= 60:
+                    verdict = "Risque modéré"
+                else:
+                    verdict = "Risque élevé / Prudence"
 
-    # Build verdict
-    verdict = "Analyse manuelle requise"
-    risk = "Moyen"
-    details = []
-    if pair:
-        liq_usd = float((pair.get("liquidity") or {}).get("usd") or 0.0)
-        fdv = float(pair.get("fdv") or 0.0)
-        vol24 = float((pair.get("volume") or {}).get("h24") or 0.0)
+                flags_html = "<ul>" + "".join(f"<li>{html.escape(x)}</li>" for x in flags) + "</ul>" if flags else "<p style='opacity:.85'>Aucun drapeau détecté (ou contrat non vérifié).</p>"
+                reasons_html = "<ul>" + "".join(f"<li>{html.escape(x)}</li>" for x in reasons) + "</ul>" if reasons else "<p style='opacity:.85'>Aucun signal fort détecté.</p>"
 
-        # Heuristiques simples
-        if liq_usd < 10000:
-            risk = "Élevé"
-            details.append("Liquidité très faible (< 10k$).")
-        elif liq_usd < 50000:
-            risk = "Moyen"
-            details.append("Liquidité modeste (< 50k$).")
-        else:
-            risk = "Plus faible"
-            details.append("Liquidité correcte.")
+                report_html = f"""
+                <div class="card mb-3">
+                  <h2>Rug / Scam Shield</h2>
+                  <p><b>Chaîne</b>: {html.escape(chain)} — <b>Contrat</b>: <code>{html.escape(addr)}</code></p>
+                  {f"<p style='opacity:.85'>Résolution CoinGecko: {html.escape(meta.get('coin',{}).get('name',''))} ({html.escape(str(meta.get('coin',{}).get('symbol','')).upper())})</p>" if meta.get("coin") else ""}
+                  <p><b>Verdict</b>: <span style="color:#60a5fa">{html.escape(verdict)}</span> — <b>Score</b>: {score}/100</p>
 
-        if fdv and liq_usd and fdv / max(liq_usd, 1) > 200:
-            risk = "Élevé"
-            details.append("FDV très élevé par rapport à la liquidité (déséquilibre).")
+                  <div class="grid grid-2">
+                    <div class="card" style="background:rgba(255,255,255,.03)">
+                      <h3>Contrat</h3>
+                      <ul style="margin-left:18px">
+                        <li><b>Vérifié</b>: {"Oui" if verified else "Non"}</li>
+                        <li><b>Nom</b>: {html.escape(contract_name) if contract_name else "-"}</li>
+                        <li><b>Compilateur</b>: {html.escape(compiler) if compiler else "-"}</li>
+                        <li><b>Explorateur</b>: {html.escape(scan['label']) if scan else "-"}</li>
+                      </ul>
+                    </div>
+                    <div class="card" style="background:rgba(255,255,255,.03)">
+                      <h3>Signaux</h3>
+                      {flags_html}
+                    </div>
+                  </div>
 
-        if vol24 < 5000:
-            details.append("Volume 24h faible (peu de marché).")
+                  <h3>Pourquoi ce score?</h3>
+                  {reasons_html}
 
-        verdict = f"Risque: <b>{risk}</b>"
+                  <p style="opacity:.8">Important: ce module ne peut pas garantir qu’un token est safe. Il aide à repérer des red flags rapidement.</p>
+                </div>
+                """
 
-    # Honeypot insights (best-effort)
-    hp_line = ""
-    try:
-        if isinstance(hp, dict) and hp:
-            # honeypot.is payload varies; best effort extraction
-            is_hp = hp.get("honeypotResult", {}).get("isHoneypot")
-            buy_tax = hp.get("simulationResult", {}).get("buyTax")
-            sell_tax = hp.get("simulationResult", {}).get("sellTax")
-            hp_line = f"<li><b>Honeypot</b>: {('Oui' if is_hp else 'Non' if is_hp is not None else 'N/A')} | <b>Buy tax</b>: {fmt_pct(buy_tax)} | <b>Sell tax</b>: {fmt_pct(sell_tax)}</li>"
-    except Exception:
-        hp_line = ""
-
-    # UI
-    form = f"""
+    form_html = f"""
     <div class="card mb-3">
       <h2>Rug / Scam Shield</h2>
-      <p style="opacity:.9;">Analyse rapide avec données <b>live</b> (Dexscreener) + checks (optionnels) pour réduire les mauvais trades.</p>
-      <form method="get" action="/rug-scam-shield" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <input class="vinput" name="token" value="{html.escape(token_in or '')}" placeholder="Symbole (pepe) ou adresse (0x...)" style="max-width:320px;" />
-        <select class="vinput" name="chain" style="max-width:140px;">
-          <option value="ETH" {'selected' if chain_in=='ETH' else ''}>ETH</option>
-          <option value="BSC" {'selected' if chain_in=='BSC' else ''}>BSC</option>
-          <option value="SOL" {'selected' if chain_in=='SOL' else ''}>SOL</option>
+      <p>Entre un <b>symbole</b> (ex: PEPE) ou une <b>adresse de contrat</b> (0x...).</p>
+      <form method="get" action="/rug-scam-shield" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <input class="v5-input" name="token" value="{html.escape(raw)}" placeholder="PEPE ou 0x..." style="max-width:320px"/>
+        <select class="v5-input" name="chain" style="max-width:160px">
+          {''.join([f"<option value='{c}' {'selected' if chain==c else ''}>{c}</option>" for c in ['ETH','BSC','POLYGON']])}
         </select>
-        <button class="btn" type="submit">Vérifier</button>
+        <input type="hidden" name="go" value="1"/>
+        <button class="btn" type="submit">Analyser</button>
       </form>
-      <p style="opacity:.8;margin-top:8px;">Conseil: mets l'<b>adresse du contrat</b> (plus fiable qu'un symbole).</p>
+      <p style="opacity:.75;margin-top:10px">
+        Pour des résultats plus riches, ajoute tes clés d’API (optionnel): <code>ETHERSCAN_API_KEY</code>, <code>BSCSCAN_API_KEY</code>, <code>POLYGONSCAN_API_KEY</code>.
+      </p>
     </div>
     """
 
-    if error:
-        main = form + f'<div class="alert alert-error">Erreur: {html.escape(error)}</div>'
-        return Response(content=_simple_page("Rug / Scam Shield", main, sidebar_html=SID), media_type="text/html")
-
-    if not pair:
-        main = form + """
-        <div class="card">
-          <h3>Aucune donnée trouvée</h3>
-          <p>Essaie avec l'adresse de contrat exacte, ou change de chaîne.</p>
-        </div>
-        """
-        return Response(content=_simple_page("Rug / Scam Shield", main, sidebar_html=SID), media_type="text/html")
-
-    base = pair.get("baseToken") or {}
-    quote = pair.get("quoteToken") or {}
-    liq = (pair.get("liquidity") or {}).get("usd")
-    vol24 = (pair.get("volume") or {}).get("h24")
-    tx24 = (pair.get("txns") or {}).get("h24") or {}
-    buys = tx24.get("buys")
-    sells = tx24.get("sells")
-    created_at = pair.get("pairCreatedAt")
-
-    link = pair.get("url") or ""
-    dex = pair.get("dexId") or ""
-    price = pair.get("priceUsd")
-    fdv = pair.get("fdv")
-    mc = pair.get("marketCap")
-
-    info = f"""
-    <div class="card mb-3">
-      <h3>Données live</h3>
-      <ul>
-        <li><b>Token</b>: {html.escape(str(base.get('name') or ''))} ({html.escape(str(base.get('symbol') or ''))}) / Quote: {html.escape(str(quote.get('symbol') or ''))}</li>
-        <li><b>DEX</b>: {html.escape(str(dex))} | <b>Chain</b>: {html.escape(chain_in)}</li>
-        <li><b>Prix</b>: {html.escape(str(price or 'N/A'))} USD</li>
-        <li><b>Liquidité</b>: {fmt_money(liq)} | <b>Volume 24h</b>: {fmt_money(vol24)}</li>
-        <li><b>FDV</b>: {fmt_money(fdv)} | <b>Market cap</b>: {fmt_money(mc)}</li>
-        <li><b>Tx 24h</b>: buys={html.escape(str(buys or 'N/A'))} / sells={html.escape(str(sells or 'N/A'))}</li>
-        {hp_line}
-        <li><b>Lien</b>: <a href="{html.escape(link)}" target="_blank" rel="noopener">Dexscreener</a></li>
-      </ul>
-    </div>
-    """
-
-    verdict_html = f"""
-    <div class="card mb-3">
-      <h3>Verdict</h3>
-      <p>{verdict}</p>
-      {'<ul><li>' + '</li><li>'.join(html.escape(x) for x in details) + '</li></ul>' if details else ''}
-    </div>
-    """
-
-    checklist = """
+    explain_html = """
     <div class="card">
-      <h3>Checklist pro (à valider)</h3>
+      <h3>À quoi sert cette page?</h3>
+      <p>Elle t'aide à détecter rapidement des signaux de scam/rug en combinant:</p>
       <ul>
-        <li><b>Contrat vérifié</b> (source visible) + pas de fonctions suspectes.</li>
-        <li><b>Liquidité</b>: idéalement lock/burn + pas de mint illimité.</li>
-        <li><b>Taxes</b>: raisonnables (éviter &gt; 10% buy/sell) + pas de blacklist abusive.</li>
-        <li><b>Répartition</b> (top holders): pas de wallet unique dominant.</li>
-        <li><b>Volume &amp; spreads</b> cohérents (attention aux faux volumes).</li>
-        <li><b>Team / docs</b>: site, X, roadmap, audits si possible.</li>
+        <li>Résolution du token via <b>CoinGecko</b> (si tu entres un symbole)</li>
+        <li>Vérification <b>explorateur</b> (contrat vérifié, informations du contrat)</li>
+        <li>Heuristiques sur le code (tax/mint/blacklist/owner…)</li>
       </ul>
-      <p style="opacity:.85;margin-top:10px;">Ce module aide à filtrer. Toujours faire ta propre due diligence.</p>
+      <h3>Comment l'utiliser</h3>
+      <ol>
+        <li>Copie/colle le <b>contrat</b> (idéal) ou écris le <b>symbole</b>.</li>
+        <li>Si le contrat n'est <b>pas vérifié</b> → prudence accrue.</li>
+        <li>Si des signaux comme <b>blacklist</b>, <b>mint</b> ou <b>tax</b> apparaissent → réduis le risque / évite.</li>
+      </ol>
+      <p style="opacity:.8">Astuce: combine ce résultat avec volume, liquidité, holders, et la réputation du projet.</p>
     </div>
     """
 
-    main = form + verdict_html + info + checklist
-    return Response(content=_simple_page("Rug / Scam Shield", main, sidebar_html=SID), media_type="text/html")
+    if err:
+        report_html = f"<div class='alert alert-error'><b>Erreur:</b> {html.escape(err)}</div>" + report_html
+
+    body = form_html + report_html + explain_html
+    page = _simple_page("Rug / Scam Shield", body, sidebar_html=SIDEBAR, username=username)
+    return HTMLResponse(content=page)
 
 @app.get("/ai-swarm-agents", response_class=HTMLResponse)
 async def ai_swarm_agents(request: Request):
@@ -34048,8 +34217,27 @@ async def ai_swarm_agents(request: Request):
     {f"<div class='alert alert-error'>Erreur: {error}</div>" if error else ''}
 
     {agents_html if agents_html else "<div class='card mb-3'><p>Choisis un symbole + timeframe puis lance les agents.</p></div>"}
+
+    <div class='card'>
+      <h3>À quoi sert cette page?</h3>
+      <p>Cette page lance plusieurs “mini-analyses” (agents) sur le même actif pour te donner une lecture plus structurée qu'un texte unique.</p>
+      <ul>
+        <li><b>Trend Agent</b>: détecte le contexte (tendance/range).</li>
+        <li><b>Momentum Agent</b>: mesure la force du mouvement.</li>
+        <li><b>Risk Agent</b>: propose une invalidation logique et un sizing prudent.</li>
+        <li><b>Execution Agent</b>: suggère un plan simple (entrée/TP/SL) selon le timeframe.</li>
+      </ul>
+      <h3>Comment l'utiliser</h3>
+      <ol>
+        <li>Choisis un <b>symbol</b> (ex: BTCUSDT) et un <b>timeframe</b>.</li>
+        <li>Lance les agents et cherche la <b>convergence</b> (plusieurs agents d'accord).</li>
+        <li>Si les agents sont en désaccord → évite le trade ou réduis le risque.</li>
+      </ol>
+      <p style='opacity:.8'>Note: ce sont des indications; utilise toujours ton plan + gestion du risque.</p>
+    </div>
     """
-    return Response(content=_simple_page("AI Swarm Agents", body, sidebar_html=SIDEBAR), media_type="text/html")
+    page = _simple_page("AI Swarm Agents", body, sidebar_html=SIDEBAR, username=request.session.get("username"))
+    return HTMLResponse(content=page)
 
 
 
@@ -34057,395 +34245,158 @@ async def ai_swarm_agents(request: Request):
 
 @app.get("/academy", response_class=HTMLResponse)
 async def academy(request: Request):
-    user_id = get_current_user_from_request(request)
-    completed = _academy_get_completed(user_id) if user_id else set()
-
-    cards = []
-    for m in ACADEMY_MODULES:
-        lessons = m.get("lessons") or []
-        total = len(lessons)
-        done = sum(1 for l in lessons if l.get("id") in completed)
-        pct = int((done / total) * 100) if total else 0
-
-        cards.append(f"""
-        <div class="card mb-3">
-          <h2 style="margin-bottom:6px">{m.get('title')}</h2>
-          <div style="opacity:.85;margin-bottom:10px">{m.get('subtitle','')}</div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-            <div class="value" style="min-width:200px">
-              <div style="opacity:.8;font-size:12px">Leçons</div>
-              <div style="font-size:18px;font-weight:800">{total}</div>
-            </div>
-            <div class="value" style="min-width:200px">
-              <div style="opacity:.8;font-size:12px">Progression</div>
-              <div style="font-size:18px;font-weight:800">{done}/{total} ({pct}%)</div>
-            </div>
-            <a class="btn" href="/academy/module/{m['id']}">Ouvrir le module</a>
-          </div>
-        </div>
-        """)
-
-    header = """
-    <h1>Academy</h1>
-    <p style="opacity:.9">Des formations courtes, pratiques, orientées “résultats”. Tout est centralisé ici.</p>
     """
+    Crypto Academy — hub de formations (modules + leçons).
+    Progression sauvegardée si l'utilisateur est connecté.
+    """
+    username = request.session.get("username")
+    if not username:
+        try:
+            u = get_current_user(request) or {}
+            username = u.get("username")
+        except Exception:
+            username = None
 
-    if not user_id:
-        note = """
+    completed = get_completed_lessons(username) if username else set()
+
+    modules_html = ""
+    for mod in ACADEMY_CATALOG:
+        lessons_html = ""
+        for lesson in mod.get("lessons", []):
+            lid = lesson["lesson_id"]
+            done = lid in completed
+            badge = "<span class='badge' style='background:rgba(16,185,129,.18);border:1px solid rgba(16,185,129,.35);color:#a7f3d0'>Terminé</span>" if done else "<span class='badge' style='background:rgba(96,165,250,.14);border:1px solid rgba(96,165,250,.35);color:#bfdbfe'>À faire</span>"
+            action = ""
+            if username and not done:
+                action = f"""
+                <form method="post" action="/academy/complete" style="display:inline">
+                  <input type="hidden" name="lesson_id" value="{html.escape(lid)}"/>
+                  <button class="btn" type="submit">Marquer terminé</button>
+                </form>
+                """
+            lessons_html += f"""
+              <li style="margin:10px 0; display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+                <div><b>{html.escape(lesson['title'])}</b><div style="opacity:.8;font-size:13px">XP: {int(lesson.get('xp',10))}</div></div>
+                <div style="display:flex; gap:10px; align-items:center;">{badge}{action}</div>
+              </li>
+            """
+
+        modules_html += f"""
         <div class="card mb-3">
-          <div class="alert">Connecte-toi pour sauvegarder ta progression.</div>
-        </div>
-        """
-    else:
-        note = """
-        <div class="card mb-3">
-          <div class="alert alert-success">Progression activée ✅ <a href="/academy-progress">Voir ma progression</a></div>
+          <h3>{html.escape(mod['title'])}</h3>
+          <p style="opacity:.85">{html.escape(mod.get('desc',''))}</p>
+          <ul style="margin-left:18px">{lessons_html}</ul>
         </div>
         """
 
-    html = _simple_page(
-        title="Academy",
-        content_html=header + note + "".join(cards),
-        sidebar_html=SIDEBAR,
-    )
-    return Response(content=html, media_type="text/html")
-
-
-@app.get("/academy/module/{module_id}", response_class=HTMLResponse)
-async def academy_module(request: Request, module_id: str):
-    user_id = get_current_user_from_request(request)
-    completed = _academy_get_completed(user_id) if user_id else set()
-
-    m = _academy_module(module_id)
-    if not m:
-        html = _simple_page(title="Academy", content_html="<div class='card'><h2>Module introuvable</h2></div>", sidebar_html=SIDEBAR)
-        return Response(content=html, media_type="text/html")
-
-    lessons = m.get("lessons") or []
-    total = len(lessons)
-    done = sum(1 for l in lessons if l.get("id") in completed)
-    pct = int((done / total) * 100) if total else 0
-
-    items = []
-    for l in lessons:
-        lid = l.get("id")
-        is_done = "✅" if lid in completed else "⬜"
-        items.append(f"""
-        <div class="card mb-2" style="padding:14px">
-          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-            <div>
-              <div style="font-weight:800">{is_done} {l.get('title')}</div>
-              <div style="opacity:.8;font-size:12px">Durée: {l.get('duration','—')}</div>
-            </div>
-            <a class="btn" href="/academy/lesson/{lid}">Ouvrir</a>
-          </div>
+    login_note = ""
+    if not username:
+        login_note = """
+        <div class="alert alert-error">
+          Tu peux lire l'Academy sans compte, mais pour <b>sauvegarder ta progression</b>, connecte-toi.
         </div>
-        """)
-
-    header = f"""
-    <h1>{m.get('title')}</h1>
-    <p style="opacity:.9">{m.get('subtitle','')}</p>
-    <div class="card mb-3">
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-        <div class="value" style="min-width:220px">
-          <div style="opacity:.8;font-size:12px">Progression module</div>
-          <div style="font-size:18px;font-weight:800">{done}/{total} ({pct}%)</div>
-        </div>
-        <a class="btn" href="/academy">← Retour Academy</a>
-        <a class="btn" href="/academy-progress">Ma progression</a>
-      </div>
-    </div>
-    """
-
-    html = _simple_page(title="Academy", content_html=header + "".join(items), sidebar_html=SIDEBAR)
-    return Response(content=html, media_type="text/html")
-
-
-@app.get("/academy/lesson/{lesson_id}", response_class=HTMLResponse)
-async def academy_lesson(request: Request, lesson_id: str):
-    user_id = get_current_user_from_request(request)
-    completed = _academy_get_completed(user_id) if user_id else set()
-
-    m, l = _academy_lesson(lesson_id)
-    if not l:
-        html = _simple_page(title="Academy", content_html="<div class='card'><h2>Leçon introuvable</h2></div>", sidebar_html=SIDEBAR)
-        return Response(content=html, media_type="text/html")
-
-    is_done = lesson_id in completed
-    done_badge = "<span class='badge'>Complété ✅</span>" if is_done else "<span class='badge'>Non complété</span>"
-
-    complete_btn = ""
-    if user_id and not is_done:
-        complete_btn = f"""
-        <form method="post" action="/academy/complete" style="margin-top:12px">
-          <input type="hidden" name="lesson_id" value="{lesson_id}"/>
-          <input type="hidden" name="module_id" value="{m.get('id') if m else ''}"/>
-          <button class="btn" type="submit">Marquer comme complété</button>
-        </form>
         """
-    elif not user_id:
-        complete_btn = "<div class='alert'>Connecte-toi pour sauvegarder ta progression.</div>"
 
-    header = f"""
-    <h1>{l.get('title')}</h1>
-    <p style="opacity:.85">Module: <a href="/academy/module/{m.get('id') if m else ''}">{m.get('title') if m else mention_escape('Academy')}</a> · Durée: {l.get('duration','—')}</p>
+    body = f"""
+    <div class="card mb-3">
+      <h2>Crypto Academy</h2>
+      <p>Des modules courts, pratiques, orientés “résultats”. Tout est centralisé ici.</p>
+      {login_note}
+      <p><a href="/academy-progress">➡️ Voir ma progression</a></p>
+    </div>
+    {modules_html}
     """
 
-    content = f"""
-    <div class="card mb-3">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
-        <div>{done_badge}</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <a class="btn" href="/academy/module/{m.get('id') if m else ''}">← Retour module</a>
-          <a class="btn" href="/academy">Academy</a>
-        </div>
-      </div>
-      <div style="margin-top:12px">{l.get('content','')}</div>
-      {complete_btn}
-    </div>
-    <div class="card mb-3">
-      <h3>Astuce</h3>
-      <p style="opacity:.85">Applique cette leçon sur 1 seul coin de ta watchlist, puis note ton résultat dans le journal.</p>
-    </div>
-    """
-
-    html = _simple_page(title="Academy", content_html=header + content, sidebar_html=SIDEBAR)
-    return Response(content=html, media_type="text/html")
+    page = _simple_page("Academy", body, sidebar_html=SIDEBAR, username=username)
+    return HTMLResponse(content=page)
 
 
 @app.post("/academy/complete")
 async def academy_complete(request: Request):
-    user_id = get_current_user_from_request(request)
-    if not user_id:
-        return RedirectResponse(url="/login", status_code=303)
-
     form = await request.form()
     lesson_id = (form.get("lesson_id") or "").strip()
-    module_id = (form.get("module_id") or "").strip()
+    username = request.session.get("username")
+    if not username:
+        return RedirectResponse(url="/login?redirect=%2Facademy", status_code=303)
+    if not lesson_id:
+        return RedirectResponse(url="/academy", status_code=303)
+    try:
+        complete_lesson(username, lesson_id)
+    except Exception:
+        pass
+    return RedirectResponse(url="/academy", status_code=303)
 
-    if lesson_id:
-        try:
-            _academy_mark_completed(user_id, lesson_id)
-        except Exception:
-            pass
 
-    # Retour vers la leçon
-    return RedirectResponse(url=f"/academy/lesson/{lesson_id}", status_code=303)
+@app.get("/crypto-academy")
+async def crypto_academy_redirect():
+    return RedirectResponse(url="/academy", status_code=307)
 
 @app.get("/academy-progress", response_class=HTMLResponse)
 async def academy_progress(request: Request):
-    user_id = get_current_user_from_request(request)
-    if not user_id:
-        html = _simple_page(
-            title="Academy Progress",
-            content_html="""
-            <h1>Ma progression</h1>
-            <div class="card mb-3"><div class="alert">Connecte-toi pour voir ta progression.</div></div>
-            <a class="btn" href="/academy">← Retour Academy</a>
-            """,
-            sidebar_html=SIDEBAR,
-        )
-        return Response(content=html, media_type="text/html")
+    username = request.session.get("username")
+    if not username:
+        return RedirectResponse(url="/login?redirect=%2Facademy-progress", status_code=303)
 
-    completed = _academy_get_completed(user_id)
+    completed = get_completed_lessons(username)
+    flat = _academy_catalog_flat()
+    total = len(flat) if flat else 0
+    done = sum(1 for l in flat if l["lesson_id"] in completed)
 
-    rows = []
-    total_all = 0
-    done_all = 0
-    for m in ACADEMY_MODULES:
-        lessons = m.get("lessons") or []
-        total = len(lessons)
-        done = sum(1 for l in lessons if l.get("id") in completed)
-        total_all += total
-        done_all += done
-        pct = int((done / total) * 100) if total else 0
-        rows.append(f"""
+    pct = int((done / total) * 100) if total else 0
+
+    # module breakdown
+    rows = ""
+    for mod in ACADEMY_CATALOG:
+        lessons = mod.get("lessons", [])
+        t = len(lessons)
+        d = sum(1 for l in lessons if l["lesson_id"] in completed)
+        p = int((d / t) * 100) if t else 0
+        rows += f"""
         <tr>
-          <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06)"><b>{m.get('title')}</b><div style="opacity:.8;font-size:12px">{m.get('subtitle','')}</div></td>
-          <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06)">{done}/{total}</td>
-          <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06)">{pct}%</td>
-          <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06)"><a class="btn" href="/academy/module/{m['id']}">Ouvrir</a></td>
-        </tr>
-        """)
-
-    overall_pct = int((done_all / total_all) * 100) if total_all else 0
-
-    html = _simple_page(
-        title="Academy Progress",
-        content_html=f"""
-        <h1>Ma progression</h1>
-        <div class="card mb-3">
-          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-            <div class="value" style="min-width:240px">
-              <div style="opacity:.8;font-size:12px">Total complété</div>
-              <div style="font-size:20px;font-weight:800">{done_all}/{total_all} ({overall_pct}%)</div>
+          <td><b>{html.escape(mod['title'])}</b><div style="opacity:.75;font-size:13px">{html.escape(mod.get('desc',''))}</div></td>
+          <td style="white-space:nowrap">{d}/{t}</td>
+          <td style="min-width:220px">
+            <div style="background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden">
+              <div style="height:10px;width:{p}%;background:rgba(96,165,250,.65)"></div>
             </div>
-            <a class="btn" href="/academy">← Retour Academy</a>
-          </div>
-        </div>
+            <div style="opacity:.75;font-size:12px;margin-top:6px">{p}%</div>
+          </td>
+        </tr>
+        """
 
-        <div class="card mb-3">
-          <h2>Détail par module</h2>
-          <div style="overflow:auto">
-            <table style="width:100%;border-collapse:collapse">
-              <thead>
-                <tr>
-                  <th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,.12)">Module</th>
-                  <th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,.12)">Progression</th>
-                  <th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,.12)">%</th>
-                  <th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,.12)"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {''.join(rows)}
-              </tbody>
-            </table>
-          </div>
-        </div>
+    body = f"""
+    <div class="card mb-3">
+      <h2>Ma progression</h2>
+      <p>Tu peux reprendre exactement où tu étais rendu.</p>
 
-        <div class="card mb-3">
-          <h3>Prochain pas</h3>
-          <p style="opacity:.85">Choisis 1 module, complète 1 leçon, puis applique-la sur un trade “paper” ou un petit montant.</p>
+      <div style="margin-top:10px">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div><b>Total</b>: {done}/{total} leçons</div>
+          <div><b>Progression</b>: {pct}%</div>
         </div>
-        """,
-        sidebar_html=SIDEBAR,
-    )
-    return Response(content=html, media_type="text/html")
+        <div style="background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden;margin-top:10px">
+          <div style="height:12px;width:{pct}%;background:rgba(16,185,129,.65)"></div>
+        </div>
+      </div>
+
+      <p style="margin-top:14px"><a href="/academy">⬅️ Retour à l'Academy</a></p>
+    </div>
+
+    <div class="card">
+      <h3>Détails par module</h3>
+      <table class="table">
+        <thead><tr><th>Module</th><th>Complété</th><th>Avancement</th></tr></thead>
+        <tbody>
+          {rows}
+        </tbody>
+      </table>
+    </div>
+    """
+
+    page = _simple_page("Academy Progress", body, sidebar_html=SIDEBAR, username=username)
+    return HTMLResponse(content=page)
 
 @app.get("/crypto-academy", response_class=HTMLResponse)
 async def crypto_academy(request: Request):
     """Alias vers /academy (compat)."""
     return RedirectResponse(url="/academy", status_code=302)
-
-# =========================
-# Academy curriculum (formations + progression)
-# =========================
-ACADEMY_MODULES = [
-    {
-        "id": "bases",
-        "title": "Bases crypto",
-        "subtitle": "Wallets, CEX/DEX, sécurité",
-        "lessons": [
-            {"id": "bases_wallets", "title": "Wallets & seed phrase (sécurité)", "duration": "10 min",
-             "content": "<h2>Wallets & seed phrase</h2><p>Objectif: sécuriser tes fonds. Une seed phrase = la clé de ton coffre.</p><ul><li>Hot vs cold wallet</li><li>Règles d'or: jamais partager, jamais screenshot, backup papier/métal</li><li>Phishing: faux sites / fausses extensions</li></ul><p><b>Checklist</b>: 2 backups, 2FA, test de petit transfert.</p>"},
-            {"id": "bases_cex_dex", "title": "CEX vs DEX: avantages & risques", "duration": "10 min",
-             "content": "<h2>CEX vs DEX</h2><ul><li><b>CEX</b>: simple, liquidité, mais risque de plateforme</li><li><b>DEX</b>: self-custody, mais risques smart contracts + slippage</li></ul><p>Quand utiliser quoi, et comment limiter les risques.</p>"},
-            {"id": "bases_networks", "title": "Réseaux, gas & bridges (sans se faire piéger)", "duration": "12 min",
-             "content": "<h2>Réseaux & gas</h2><p>Comprendre L1/L2, frais, et les erreurs classiques (mauvais réseau).</p><ul><li>ERC20 vs BEP20 vs SPL</li><li>Bridges: vérifie l'URL officielle</li><li>Gas: éviter de swap quand le réseau est saturé</li></ul>"},
-            {"id": "bases_security", "title": "Sécurité avancée: scams fréquents", "duration": "12 min",
-             "content": "<h2>Scams fréquents</h2><ul><li>Airdrops fake</li><li>DM sur Discord/Telegram</li><li>Approvals illimités (revoke)</li></ul><p>Réflexe: vérifier domaines, contrats, et permissions.</p>"},
-            {"id": "bases_setup", "title": "Ton setup pro: watchlist + alertes", "duration": "10 min",
-             "content": "<h2>Setup pro</h2><p>Un trader gagne du temps avec un setup clair.</p><ul><li>Watchlist (10-25 actifs)</li><li>Alertes par niveaux</li><li>Journal de trade</li></ul>"},
-        ],
-    },
-    {
-        "id": "market",
-        "title": "Lecture de marché",
-        "subtitle": "Tendance, ranges, structure",
-        "lessons": [
-            {"id": "market_structure", "title": "Structure (HH/HL, LH/LL) en 10 minutes", "duration": "10 min",
-             "content": "<h2>Structure</h2><p>Identifier tendance vs range avec HH/HL et LH/LL.</p><ul><li>Break of structure (BOS)</li><li>Change of character (CHOCH)</li></ul>"},
-            {"id": "market_support_res", "title": "Supports/Résistances utiles (pas 50 lignes)", "duration": "10 min",
-             "content": "<h2>Supports/Résistances</h2><p>Moins de lignes, plus de qualité: niveaux testés + confluence.</p>"},
-            {"id": "market_liquidity", "title": "Liquidité & chasse aux stops (version simple)", "duration": "12 min",
-             "content": "<h2>Liquidité</h2><ul><li>Les stops sont des “pools” de liquidité</li><li>Pourquoi les mèches arrivent</li></ul>"},
-            {"id": "market_volume", "title": "Volume: comment le lire sans se tromper", "duration": "12 min",
-             "content": "<h2>Volume</h2><p>Volume = carburant. Sans volume, méfiance sur les cassures.</p><ul><li>Breakout avec volume</li><li>Divergence volume</li></ul>"},
-            {"id": "market_regime", "title": "Régime de marché (risk-on / risk-off)", "duration": "10 min",
-             "content": "<h2>Régime de marché</h2><p>Quand être agressif vs défensif. Utilise Altseason Copilot Pro + BTC dominance.</p>"},
-        ],
-    },
-    {
-        "id": "risk",
-        "title": "Gestion du risque",
-        "subtitle": "Sizing, invalidation, journal",
-        "lessons": [
-            {"id": "risk_1", "title": "Le risque: la règle #1 (et pourquoi 1% suffit)", "duration": "10 min",
-             "content": "<h2>Risque</h2><p>Ton but: survivre. 1-2% par trade te garde en jeu.</p>"},
-            {"id": "risk_stop", "title": "Stop-loss: où le placer (structure, pas émotion)", "duration": "12 min",
-             "content": "<h2>Stop</h2><ul><li>Stop derrière structure</li><li>Invalide l'idée (pas “je veux pas perdre”)</li></ul>"},
-            {"id": "risk_rr", "title": "R:R & prises de profit (TP1/TP2)", "duration": "12 min",
-             "content": "<h2>R:R</h2><p>Planifier TP avant d'entrer. Exemple: TP1 à 1R, TP2 à 2-3R.</p>"},
-            {"id": "risk_sizing", "title": "Position sizing (calcul rapide)", "duration": "12 min",
-             "content": "<h2>Position sizing</h2><p>Montant = (Capital × risque%) / distance au stop.</p>"},
-            {"id": "risk_journal", "title": "Journal de trade: la méthode simple", "duration": "10 min",
-             "content": "<h2>Journal</h2><p>3 colonnes: Setup / Exécution / Résultat. Le but: améliorer le process.</p>"},
-        ],
-    },
-    {
-        "id": "strategy",
-        "title": "Stratégies",
-        "subtitle": "Spot, swing, scalp (principes)",
-        "lessons": [
-            {"id": "strat_spot", "title": "Spot: accumulation & sorties", "duration": "12 min",
-             "content": "<h2>Spot</h2><p>DCA intelligent + niveaux de sortie.</p>"},
-            {"id": "strat_swing", "title": "Swing: suivre la tendance", "duration": "12 min",
-             "content": "<h2>Swing</h2><p>Entries sur pullbacks, invalidation claire, gestion en pyramide (optionnel).</p>"},
-            {"id": "strat_scalp", "title": "Scalp: ce qu'il faut absolument éviter", "duration": "10 min",
-             "content": "<h2>Scalp</h2><ul><li>Spread / frais</li><li>Overtrade</li><li>Trading en range sans plan</li></ul>"},
-            {"id": "strat_breakout", "title": "Breakout propre vs fakeout", "duration": "10 min",
-             "content": "<h2>Breakout</h2><p>Confluence: structure + volume + retest.</p>"},
-            {"id": "strat_checklist", "title": "Checklist de trade (pro)", "duration": "10 min",
-             "content": "<h2>Checklist</h2><ul><li>Contexte</li><li>Setup</li><li>Risque</li><li>Plan TP/SL</li></ul>"},
-        ],
-    },
-    {
-        "id": "ai",
-        "title": "Outils IA (CryptoIA)",
-        "subtitle": "Comment utiliser les pages IA du site",
-        "lessons": [
-            {"id": "ai_coach", "title": "AI Crypto Coach: transformer analyse → plan", "duration": "10 min",
-             "content": "<h2>AI Crypto Coach</h2><p>Tu entres un symbole + TF, l'IA te propose un plan (scénarios, risques, invalidation).</p><p>Règle: compare avec la structure du chart.</p>"},
-            {"id": "ai_swarm", "title": "AI Swarm Agents: consensus multi-signaux", "duration": "10 min",
-             "content": "<h2>AI Swarm Agents</h2><p>Plusieurs agents analysent des signaux différents. Cherche le consensus.</p>"},
-            {"id": "ai_rug", "title": "Rug / Scam Shield: filtrer les memecoins", "duration": "10 min",
-             "content": "<h2>Rug / Scam Shield</h2><p>Utilise l'adresse de contrat + vérifie liquidité/âge/volume.</p>"},
-            {"id": "ai_altseason", "title": "Altseason Copilot Pro: lecture macro", "duration": "10 min",
-             "content": "<h2>Altseason Copilot Pro</h2><p>BTC dominance & market cap pour décider où mettre ton focus.</p>"},
-            {"id": "ai_workflow", "title": "Workflow pro: de l'idée au trade", "duration": "12 min",
-             "content": "<h2>Workflow</h2><ol><li>Contexte (macro + structure)</li><li>Setup</li><li>Risque</li><li>Exécution</li><li>Journal</li></ol>"},
-        ],
-    },
-]
-
-def _academy_module(mid: str) -> dict | None:
-    mid = (mid or "").strip()
-    for m in ACADEMY_MODULES:
-        if m["id"] == mid:
-            return m
-    return None
-
-def _academy_lesson(lid: str) -> tuple[dict | None, dict | None]:
-    lid = (lid or "").strip()
-    for m in ACADEMY_MODULES:
-        for l in m.get("lessons") or []:
-            if l["id"] == lid:
-                return m, l
-    return None, None
-
-def _academy_get_completed(user_id: str) -> set[str]:
-    if not user_id:
-        return set()
-    try:
-        conn = sqlite3.connect(ACADEMY_DB_PATH)
-        cur = conn.cursor()
-        cur.execute("SELECT lesson_id FROM user_lessons WHERE user_id=? AND completed=1", (user_id,))
-        rows = cur.fetchall()
-        conn.close()
-        return {r[0] for r in rows if r and r[0]}
-    except Exception:
-        return set()
-
-def _academy_mark_completed(user_id: str, lesson_id: str) -> None:
-    if not user_id or not lesson_id:
-        return
-    now = datetime.utcnow().isoformat()
-    conn = sqlite3.connect(ACADEMY_DB_PATH)
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT OR REPLACE INTO user_lessons (user_id, lesson_id, completed, completed_at) VALUES (?, ?, 1, ?)",
-        (user_id, lesson_id, now),
-    )
-    conn.commit()
-    conn.close()
-

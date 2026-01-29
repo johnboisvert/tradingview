@@ -3905,7 +3905,180 @@ def _maybe_add_get(path: str, template_name: str, title: str):
 _maybe_add_get("/academy", "academy.html", "Academy")
 _maybe_add_get("/academy-progress", "academy_progress.html", "Academy - Progression")
 _maybe_add_get("/altseason-copilot-pro", "altseason_copilot_pro.html", "Altseason Copilot (Pro)")
-_maybe_add_get("/ai-swarm-agents", "ai_swarm_agents.html", "AI Swarm Agents")
+
+# ---------------------------------------------------------------------
+# Custom routes added to ensure production pages are not blank/404
+# (keeps /ai-alerts untouched)
+# ---------------------------------------------------------------------
+
+@app.get("/ai-swarm-agents")
+async def ai_swarm_agents_page(request: Request):
+    body = f"""
+    <div class="grid" style="display:grid; grid-template-columns: 1fr; gap:16px;">
+      <div class="card" style="background:#fff; border:1px solid #eee; border-radius:14px; padding:18px;">
+        <h2 style="margin:0 0 6px 0;">AI Swarm Agents</h2>
+        <p style="margin:0 0 10px 0; color:#444;">
+          Cette page sert à orchestrer plusieurs “agents” (analyse, news, sentiment, risk) pour produire une synthèse.
+        </p>
+        <ul style="margin:0; padding-left:18px; color:#444; line-height:1.6;">
+          <li><b>Agent Market</b> : tendance, volatilité, niveaux clés</li>
+          <li><b>Agent News</b> : headlines + impact probable</li>
+          <li><b>Agent Risk</b> : scénario (base / bull / bear) + taille de position</li>
+        </ul>
+      </div>
+
+      <div class="card" style="background:#fff; border:1px solid #eee; border-radius:14px; padding:18px;">
+        <h3 style="margin:0 0 8px 0;">Demo rapide</h3>
+        <form method="get" action="/ai-swarm-agents" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:13px; color:#555;">Symbole</span>
+            <input name="symbol" value="{(request.query_params.get('symbol') or 'BTC').upper()}" style="padding:10px 12px; border:1px solid #ddd; border-radius:10px; min-width:140px;">
+          </label>
+          <button class="btn" type="submit" style="padding:10px 14px; border-radius:10px; border:0; background:#111; color:#fff; cursor:pointer;">Lancer</button>
+        </form>
+        <div style="margin-top:12px; color:#333;">
+          <p style="margin:0;"><b>Résultat (placeholder)</b> : un workflow complet sera branché ici (LLM + données marché).</p>
+          <p style="margin:8px 0 0 0; color:#666; font-size:13px;">Astuce: on gardera ce module léger au départ, puis on activera les agents au fur et à mesure.</p>
+        </div>
+      </div>
+    </div>
+    """
+    return HTMLResponse(_simple_page("AI Swarm Agents", body, request=request, sidebar=SIDEBAR))
+
+@app.get("/portfolio-tracker")
+async def portfolio_tracker_page(request: Request):
+    """Portfolio tracker (SQLite: portfolio.db)."""
+    import sqlite3
+    db_path = PORTFOLIO_DB
+    # ensure db exists
+    try:
+        init_portfolio_db()
+    except Exception:
+        pass
+
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("SELECT id, symbol, amount, avg_cost, last_price, updated_at FROM holdings ORDER BY updated_at DESC, id DESC")
+    rows = cur.fetchall()
+    conn.close()
+
+    def _fmt(x):
+        try:
+            return f"{float(x):,.4f}"
+        except Exception:
+            return str(x) if x is not None else ""
+
+    trs = ""
+    for r in rows:
+        market_value = (r["amount"] or 0) * (r["last_price"] or 0)
+        cost_value = (r["amount"] or 0) * (r["avg_cost"] or 0)
+        pnl = market_value - cost_value
+        pnl_pct = (pnl / cost_value * 100) if cost_value else 0
+        trs += f"""
+        <tr>
+          <td style="padding:10px; border-bottom:1px solid #eee;"><b>{(r['symbol'] or '').upper()}</b></td>
+          <td style="padding:10px; border-bottom:1px solid #eee; text-align:right;">{_fmt(r['amount'])}</td>
+          <td style="padding:10px; border-bottom:1px solid #eee; text-align:right;">{_fmt(r['avg_cost'])}</td>
+          <td style="padding:10px; border-bottom:1px solid #eee; text-align:right;">{_fmt(r['last_price'])}</td>
+          <td style="padding:10px; border-bottom:1px solid #eee; text-align:right;">{_fmt(pnl)} ({_fmt(pnl_pct)}%)</td>
+          <td style="padding:10px; border-bottom:1px solid #eee; text-align:right;">
+            <form method="post" action="/portfolio-tracker/delete/{r['id']}" style="margin:0;">
+              <button type="submit" style="padding:8px 10px; border-radius:10px; border:1px solid #eee; background:#fff; cursor:pointer;">Supprimer</button>
+            </form>
+          </td>
+        </tr>
+        """
+
+    body = f"""
+    <div class="grid" style="display:grid; grid-template-columns: 1fr; gap:16px; max-width: 1100px;">
+      <div class="card" style="background:#fff; border:1px solid #eee; border-radius:14px; padding:18px;">
+        <h2 style="margin:0 0 6px 0;">Portfolio Tracker</h2>
+        <p style="margin:0; color:#444;">Ajoute tes positions manuellement. (Les prix “last_price” peuvent être mis à jour plus tard via une tâche / API.)</p>
+      </div>
+
+      <div class="card" style="background:#fff; border:1px solid #eee; border-radius:14px; padding:18px;">
+        <h3 style="margin:0 0 12px 0;">Ajouter une position</h3>
+        <form method="post" action="/portfolio-tracker/add" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:13px; color:#555;">Symbole</span>
+            <input name="symbol" placeholder="BTC" required style="padding:10px 12px; border:1px solid #ddd; border-radius:10px; min-width:140px;">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:13px; color:#555;">Quantité</span>
+            <input name="amount" type="number" step="any" placeholder="0.25" required style="padding:10px 12px; border:1px solid #ddd; border-radius:10px; min-width:160px;">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:13px; color:#555;">Prix moyen</span>
+            <input name="avg_cost" type="number" step="any" placeholder="42000" required style="padding:10px 12px; border:1px solid #ddd; border-radius:10px; min-width:160px;">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:13px; color:#555;">Dernier prix (optionnel)</span>
+            <input name="last_price" type="number" step="any" placeholder="43000" style="padding:10px 12px; border:1px solid #ddd; border-radius:10px; min-width:180px;">
+          </label>
+          <button type="submit" style="padding:10px 14px; border-radius:10px; border:0; background:#111; color:#fff; cursor:pointer;">Ajouter</button>
+        </form>
+      </div>
+
+      <div class="card" style="background:#fff; border:1px solid #eee; border-radius:14px; padding:18px;">
+        <h3 style="margin:0 0 12px 0;">Positions</h3>
+        <div style="overflow:auto;">
+          <table style="border-collapse:collapse; width:100%; min-width:820px;">
+            <thead>
+              <tr style="text-align:left; color:#666; font-size:13px;">
+                <th style="padding:10px; border-bottom:1px solid #eee;">Symbole</th>
+                <th style="padding:10px; border-bottom:1px solid #eee; text-align:right;">Quantité</th>
+                <th style="padding:10px; border-bottom:1px solid #eee; text-align:right;">Prix moyen</th>
+                <th style="padding:10px; border-bottom:1px solid #eee; text-align:right;">Dernier prix</th>
+                <th style="padding:10px; border-bottom:1px solid #eee; text-align:right;">PnL</th>
+                <th style="padding:10px; border-bottom:1px solid #eee; text-align:right;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trs if trs else '<tr><td colspan="6" style="padding:12px; color:#666;">Aucune position pour le moment.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    """
+    return HTMLResponse(_simple_page("Portfolio Tracker", body, request=request, sidebar=SIDEBAR))
+
+@app.post("/portfolio-tracker/add")
+async def portfolio_tracker_add(request: Request):
+    import sqlite3
+    form = await request.form()
+    symbol = (form.get("symbol") or "").strip().upper()
+    amount = float(form.get("amount") or 0)
+    avg_cost = float(form.get("avg_cost") or 0)
+    last_price_raw = (form.get("last_price") or "").strip()
+    last_price = float(last_price_raw) if last_price_raw else 0.0
+
+    try:
+        init_portfolio_db()
+    except Exception:
+        pass
+
+    conn = sqlite3.connect(PORTFOLIO_DB)
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO holdings(symbol, amount, avg_cost, last_price, updated_at) VALUES (?,?,?,?, datetime('now'))",
+        (symbol, amount, avg_cost, last_price),
+    )
+    conn.commit()
+    conn.close()
+    return RedirectResponse(url="/portfolio-tracker", status_code=303)
+
+@app.post("/portfolio-tracker/delete/{holding_id}")
+async def portfolio_tracker_delete(holding_id: int):
+    import sqlite3
+    conn = sqlite3.connect(PORTFOLIO_DB)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM holdings WHERE id = ?", (holding_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(url="/portfolio-tracker", status_code=303)
+# _maybe_add_get("/ai-swarm-agents", "ai_swarm_agents.html", "AI Swarm Agents")  # disabled: custom route implemented below
 _maybe_add_get("/rug-scam-shield", "rug_scam_shield.html", "Rug & Scam Shield")
 
 # ============================================================================
@@ -32404,7 +32577,7 @@ async def ai_liquidity(request: Request):
 </body></html>"""
         return HTMLResponse(html)
     except Exception as e:
-        return HTMLResponse(f"<h1>Erreur</h1><pre>{e}</pre>", status_code=500)
+        return HTMLResponse(_simple_page("AI Liquidity", f"""<div class='card' style='background:#fff;border:1px solid #eee;border-radius:14px;padding:18px;'><h2 style='margin:0 0 8px 0;'>Données indisponibles</h2><p style='margin:0;color:#444;'>Impossible de charger les données CoinGecko pour le moment.</p><pre style='margin:12px 0 0 0; white-space:pre-wrap; background:#fafafa; border:1px solid #eee; padding:12px; border-radius:12px; color:#666;'>{e}</pre></div>""", request=request, sidebar=SIDEBAR), status_code=200)
 
 @app.get("/ai-timeframe")
 async def ai_timeframe(request: Request):
@@ -32523,7 +32696,7 @@ async def ai_timeframe(request: Request):
         return HTMLResponse(html)
 
     except Exception as e:
-        return HTMLResponse(f"<h1>Erreur</h1><pre>{e}</pre>", status_code=500)
+        return HTMLResponse(_simple_page("AI Liquidity", f"""<div class='card' style='background:#fff;border:1px solid #eee;border-radius:14px;padding:18px;'><h2 style='margin:0 0 8px 0;'>Données indisponibles</h2><p style='margin:0;color:#444;'>Impossible de charger les données CoinGecko pour le moment.</p><pre style='margin:12px 0 0 0; white-space:pre-wrap; background:#fafafa; border:1px solid #eee; padding:12px; border-radius:12px; color:#666;'>{e}</pre></div>""", request=request, sidebar=SIDEBAR), status_code=200)
 
 # ============================================================
 # ✅ Routes manquantes (évite 404) + pages robustes (anti-500)

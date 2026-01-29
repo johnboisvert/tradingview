@@ -32883,7 +32883,7 @@ async def ai_timeframe(request: Request):
 # ✅ Routes manquantes (évite 404) + pages robustes (anti-500)
 # ============================================================
 
-def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: str | None = None) -> str:
+def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: str | None = None, username: str | None = None) -> str:
     styles = globals().get("GLOBAL_STYLES") or ""
     # GLOBAL_STYLES est du CSS brut; on l'encapsule pour éviter qu'il apparaisse comme texte sur la page
     if styles and not styles.lstrip().lower().startswith('<style'):
@@ -32902,6 +32902,11 @@ def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: st
         @media (max-width:900px){aside{display:none}.grid{grid-template-columns:1fr}}
         .muted{color:#94a3b8}
         </style>'''
+
+    user_bar = ""
+    if username:
+        user_bar = f'<div class="muted" style="margin:0 0 12px 0">Connecté: <b>{escape_html(username)}</b> · <a href="/logout">Déconnexion</a></div>'
+
     return f"""<!doctype html>
 <html lang="fr">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">{styles}<title>{escape_html(title)}</title></head>
@@ -32910,6 +32915,7 @@ def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: st
   <aside class="sidebar">{sidebar_html}</aside>
   <main>
     <h1 style="margin:0 0 14px 0">{escape_html(title)}</h1>
+    {user_bar}
     {body_html}
   </main>
 </div>
@@ -33816,7 +33822,7 @@ async def altseason_copilot_pro(request: Request):
     </div>
     """
 
-    page = _simple_page("Altseason Copilot Pro", body, sidebar_html=SIDEBAR, username=request.session.get("username"))
+    page = _simple_page("Altseason Copilot Pro", body, sidebar_html=SIDEBAR, username=(getattr(request.state, "user", None) or {}).get("username") or request.session.get("username"))
     return HTMLResponse(content=page)
 
 @app.get("/rug-scam-shield", response_class=HTMLResponse)
@@ -34236,7 +34242,7 @@ async def ai_swarm_agents(request: Request):
       <p style='opacity:.8'>Note: ce sont des indications; utilise toujours ton plan + gestion du risque.</p>
     </div>
     """
-    page = _simple_page("AI Swarm Agents", body, sidebar_html=SIDEBAR, username=request.session.get("username"))
+    page = _simple_page("AI Swarm Agents", body, sidebar_html=SIDEBAR, username=(getattr(request.state, "user", None) or {}).get("username") or request.session.get("username"))
     return HTMLResponse(content=page)
 
 
@@ -34249,7 +34255,8 @@ async def academy(request: Request):
     Crypto Academy — hub de formations (modules + leçons).
     Progression sauvegardée si l'utilisateur est connecté.
     """
-    username = request.session.get("username")
+    user = getattr(request.state, "user", None) or {}
+    username = (user.get("username") or request.session.get("username") or "").strip()
     if not username:
         try:
             u = get_current_user(request) or {}
@@ -34315,7 +34322,8 @@ async def academy(request: Request):
 async def academy_complete(request: Request):
     form = await request.form()
     lesson_id = (form.get("lesson_id") or "").strip()
-    username = request.session.get("username")
+    user = getattr(request.state, "user", None) or {}
+    username = (user.get("username") or request.session.get("username") or "").strip()
     if not username:
         return RedirectResponse(url="/login?redirect=%2Facademy", status_code=303)
     if not lesson_id:
@@ -34333,7 +34341,9 @@ async def crypto_academy_redirect():
 
 @app.get("/academy-progress", response_class=HTMLResponse)
 async def academy_progress(request: Request):
-    username = request.session.get("username")
+    # Prefer PermissionMiddleware user (session_token) and fall back to signed cookie session
+    user = getattr(request.state, "user", None) or {}
+    username = (user.get("username") or request.session.get("username") or "").strip()
     if not username:
         return RedirectResponse(url="/login?redirect=%2Facademy-progress", status_code=303)
 

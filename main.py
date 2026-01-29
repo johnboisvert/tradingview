@@ -24917,11 +24917,16 @@ async def admin_dashboard(request: Request):
 
     # Génération HTML des routes (évite NameError: routes_html)
     try:
+        # Liste complète des pages configurables (catalogue) sous forme de *route keys*
+        # Ex: "dashboard", "ai-market-regime", etc. (sans "/" au début)
+        # NOTE: Dans ce projet, PLAN_ROUTES est un catalogue (liste de tuples), pas un dict.
         _all_routes = []
-        for _plan, _routes in PLAN_ROUTES.items():
-            for _r in _routes:
-                if _r not in _all_routes:
-                    _all_routes.append(_r)
+        for _r in (PLAN_ROUTE_OPTIONS or []):
+            _r = str(_r).strip()
+            if not _r:
+                continue
+            if _r not in _all_routes:
+                _all_routes.append(_r)
 
         # Plan initial affiché dans l'UI (les valeurs seront ensuite chargées via JS)
         _initial_allowed = set(get_plan_access("free") or [])

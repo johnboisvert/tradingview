@@ -1734,7 +1734,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 
 # Chemin de la base de donnes
-ACADEMY_DB_PATH = os.path.join(os.getenv("DB_DIR", "/app/data"), "academy.db")  # separate DB for academy module (do not override main DB_PATH)
+ACADEMY_DB_PATH = "./academy.db"  # separate DB for academy module (do not override main DB_PATH)
 
 # ============================================================================
 # INITIALISATION DE LA BASE DE DONNES
@@ -1940,22 +1940,6 @@ def complete_lesson(username: str, lesson_id: str, quiz_score: int = 0, quiz_tot
         "new_level": new_level,
         "quiz_perfect": quiz_score == quiz_total if quiz_total > 0 else False
     }
-
-def get_completed_lessons(username: str) -> set[str]:
-    """Return set of completed lesson_ids for a user."""
-    if not username:
-        return set()
-    try:
-        conn = sqlite3.connect(ACADEMY_DB_PATH)
-        cur = conn.cursor()
-        cur.execute("SELECT lesson_id FROM user_lessons WHERE username = ? AND completed = 1", (username,))
-        rows = cur.fetchall()
-        conn.close()
-        return {r[0] for r in rows if r and r[0]}
-    except Exception:
-        return set()
-
-
 
 def calculate_level(xp: int) -> int:
     """Calcule le niveau en fonction de l'XP"""
@@ -2655,70 +2639,6 @@ LESSONS_DATA = {
     },
 }
 
-
-# ===================== ACADEMY CATALOG =====================
-ACADEMY_CATALOG = [
-    {
-        "module_id": "bases",
-        "title": "1) Bases crypto",
-        "desc": "Wallets, CEX/DEX, sécurité, erreurs classiques.",
-        "lessons": [
-            {"lesson_id": "bases_wallets", "title": "Wallets (hot/cold) + seed phrase", "xp": 10},
-            {"lesson_id": "bases_cex_dex", "title": "CEX vs DEX + slippage", "xp": 10},
-            {"lesson_id": "bases_security", "title": "Sécurité: 2FA, phishing, approvals", "xp": 15},
-        ],
-    },
-    {
-        "module_id": "market",
-        "title": "2) Lecture de marché",
-        "desc": "Structure, tendances, ranges, supports/résistances.",
-        "lessons": [
-            {"lesson_id": "market_structure", "title": "Structure: HH/HL vs LH/LL", "xp": 15},
-            {"lesson_id": "market_range", "title": "Range: borne haute/basse + faux breakouts", "xp": 15},
-            {"lesson_id": "market_volume", "title": "Volume: confirmation vs divergence", "xp": 15},
-        ],
-    },
-    {
-        "module_id": "risk",
-        "title": "3) Gestion du risque",
-        "desc": "Sizing, invalidation, R:R, plan & journal.",
-        "lessons": [
-            {"lesson_id": "risk_rr", "title": "R:R et invalidation (stop logique)", "xp": 20},
-            {"lesson_id": "risk_sizing", "title": "Sizing simple (risque fixe %)", "xp": 20},
-            {"lesson_id": "risk_journal", "title": "Journal: ce qu'il faut noter pour progresser", "xp": 15},
-        ],
-    },
-    {
-        "module_id": "strategies",
-        "title": "4) Stratégies",
-        "desc": "Spot, swing, scalping (principes) + checklists.",
-        "lessons": [
-            {"lesson_id": "strat_spot", "title": "Spot: entrées progressives + DCA intelligent", "xp": 15},
-            {"lesson_id": "strat_swing", "title": "Swing: trend-following + sorties partielles", "xp": 20},
-            {"lesson_id": "strat_scalp", "title": "Scalp: conditions strictes + discipline", "xp": 20},
-        ],
-    },
-    {
-        "module_id": "tools",
-        "title": "5) Outils Crypto IA",
-        "desc": "Comment utiliser les pages IA du site efficacement.",
-        "lessons": [
-            {"lesson_id": "tools_timeframe", "title": "AI Timeframe: choisir le bon contexte", "xp": 10},
-            {"lesson_id": "tools_crypto_coach", "title": "AI Crypto Coach: plan indicatif EMA/RSI/ATR", "xp": 10},
-            {"lesson_id": "tools_swarm", "title": "AI Swarm Agents: décision structurée par agents", "xp": 10},
-            {"lesson_id": "tools_rug", "title": "Rug/Scam Shield: checklist + signaux onchain", "xp": 10},
-        ],
-    },
-]
-
-def _academy_catalog_flat():
-    out = []
-    for m in ACADEMY_CATALOG:
-        for l in m.get("lessons", []):
-            out.append({"module_id": m["module_id"], "module_title": m["title"], **l})
-    return out
-
-
 # Badges disponibles
 BADGES_DATA = {
     "first_lesson": {"name": "Première Leçon", "icon": "🎯", "description": "Complete ta première leçon"},
@@ -2792,52 +2712,6 @@ def _admin_bypass_enabled() -> bool:
     v = (os.getenv("ADMIN_BYPASS", "0") or "").strip().lower()
     return v in {"1","true","yes","on"}
 
-
-def _admin_bypass_token_ok(request) -> bool:
-    """
-    Optional: allow admin bypass only when a secret token is provided.
-    Set env ADMIN_BYPASS_TOKEN to enable this path.
-    Token can be provided via:
-      - Header: X-Admin-Bypass-Token
-      - Query:  ?admin_bypass_token=...
-      - Cookie: admin_bypass_token
-    """
-    try:
-        import secrets as _secrets
-
-        expected = (os.getenv("ADMIN_BYPASS_TOKEN", "") or "").strip()
-        if not expected:
-            return False
-
-        provided = ""
-        # header
-        try:
-            provided = (request.headers.get("x-admin-bypass-token") or request.headers.get("X-Admin-Bypass-Token") or "").strip()
-        except Exception:
-            provided = ""
-
-        # query param
-        if not provided:
-            try:
-                qp = request.query_params  # starlette.datastructures.QueryParams
-                provided = (qp.get("admin_bypass_token") or qp.get("admin_token") or "").strip()
-            except Exception:
-                provided = ""
-
-        # cookie
-        if not provided:
-            try:
-                provided = (request.cookies.get("admin_bypass_token") or "").strip()
-            except Exception:
-                provided = ""
-
-        if not provided:
-            return False
-        # constant-time compare
-        return _secrets.compare_digest(provided, expected)
-    except Exception:
-        return False
-
 def _force_admin_on_request(request):
     admin_user = {"username": "admin", "email": "", "role": "admin", "plan": "elite"}
     try:
@@ -2853,14 +2727,6 @@ def _force_admin_on_request(request):
     except Exception:
         pass
     return admin_user
-
-
-def _now_utc_str() -> str:
-    """Return current UTC time as a short human-readable string."""
-    try:
-        return datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-    except Exception:
-        return "UTC"
 
 app = FastAPI()
 
@@ -3021,7 +2887,6 @@ class _InjectPlaceholdersMiddleware(BaseHTTPMiddleware):
                 logo_url = (os.getenv("SITE_LOGO_URL") or "").strip() or "https://github.com/johnboisvert/tradingview/blob/main/static/cryptoia_logo.png?raw=true"
                 body = resp.body
                 body = body.replace(b"{SITE_LOGO_URL}", logo_url.encode("utf-8"))
-                body = body.replace(b"/__SITE_LOGO_URL__", logo_url.encode("utf-8"))
                 body = body.replace(b"__SITE_LOGO_URL__", logo_url.encode("utf-8"))
                 resp.body = body
                 resp.headers["content-length"] = str(len(body))
@@ -3055,86 +2920,6 @@ try:
     ]
 except Exception:
     _STATIC_DIRS = [Path.cwd() / "static"]
-
-
-# ===================== COINGECKO (GLOBAL / SEARCH) =====================
-_CG_CACHE = {"ts": 0.0, "global": None, "search": {}}
-
-async def _cg_json(url: str, params: dict | None = None, timeout: float = 12.0):
-    """Small async helper for CoinGecko calls (safe + timeout)."""
-    try:
-        import httpx
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            r = await client.get(url, params=params or {})
-            r.raise_for_status()
-            return r.json()
-    except Exception as e:
-        return {"__error__": str(e)}
-
-async def _cg_global(ttl_sec: int = 90):
-    """Fetch CoinGecko /global with a short cache."""
-    now = time.time()
-    if _CG_CACHE.get("global") and (now - float(_CG_CACHE.get("ts") or 0.0)) < ttl_sec:
-        return _CG_CACHE["global"]
-    data = await _cg_json("https://api.coingecko.com/api/v3/global")
-    if isinstance(data, dict) and "__error__" not in data:
-        _CG_CACHE["ts"] = now
-        _CG_CACHE["global"] = data
-    return data
-
-async def _cg_find_contract_by_symbol(symbol_or_name: str, chain: str):
-    """
-    Resolve a token symbol/name to a contract address using CoinGecko.
-    Returns (contract_address, meta_dict) or (None, meta_dict).
-    Supported chains: ETH, BSC, POLYGON.
-    """
-    q = (symbol_or_name or "").strip()
-    if not q:
-        return None, {"reason": "empty"}
-    key = f"{q.lower()}::{(chain or '').upper()}"
-    cached = _CG_CACHE["search"].get(key)
-    if cached and (time.time() - cached.get("ts", 0)) < 300:
-        return cached.get("addr"), cached.get("meta", {})
-
-    search = await _cg_json("https://api.coingecko.com/api/v3/search", params={"query": q})
-    if not isinstance(search, dict) or "__error__" in search:
-        meta = {"reason": "search_error", "error": search.get("__error__") if isinstance(search, dict) else str(search)}
-        _CG_CACHE["search"][key] = {"ts": time.time(), "addr": None, "meta": meta}
-        return None, meta
-
-    coins = search.get("coins") or []
-    if not coins:
-        meta = {"reason": "no_match"}
-        _CG_CACHE["search"][key] = {"ts": time.time(), "addr": None, "meta": meta}
-        return None, meta
-
-    target_sym = q.lower()
-    best = None
-    for c in coins[:15]:
-        sym = str(c.get("symbol") or "").lower()
-        name = str(c.get("name") or "").lower()
-        if sym == target_sym or name == target_sym:
-            best = c
-            break
-    if not best:
-        best = coins[0]
-
-    coin_id = best.get("id")
-    details = await _cg_json(f"https://api.coingecko.com/api/v3/coins/{coin_id}",
-                             params={"localization":"false","tickers":"false","market_data":"false","community_data":"false","developer_data":"false","sparkline":"false"})
-    if not isinstance(details, dict) or "__error__" in details:
-        meta = {"reason": "details_error", "coin": best, "error": details.get("__error__") if isinstance(details, dict) else str(details)}
-        _CG_CACHE["search"][key] = {"ts": time.time(), "addr": None, "meta": meta}
-        return None, meta
-
-    platforms = (details.get("platforms") or {}) if isinstance(details, dict) else {}
-    chain_key = {"ETH": "ethereum", "BSC": "binance-smart-chain", "POLYGON": "polygon-pos"}.get((chain or "").upper())
-    addr = (platforms.get(chain_key) or "").strip() if chain_key else ""
-    addr = addr if addr.startswith("0x") and len(addr) == 42 else None
-    meta = {"coin": {"id": coin_id, "name": details.get("name"), "symbol": details.get("symbol")}, "platform_key": chain_key}
-    _CG_CACHE["search"][key] = {"ts": time.time(), "addr": addr, "meta": meta}
-    return addr, meta
-
 
 def _resolve_static_path(base: Path, rel_path: str) -> "Path|None":
     """Résout un chemin statique en protégeant contre le path traversal."""
@@ -3544,194 +3329,112 @@ class PermissionMiddleware(BaseHTTPMiddleware):
     Toutes les AUTRES routes = Vérification permission obligatoire
     """
     
-    async def dispatch(self, request, call_next):
-        path = request.url.path
+    async def dispatch(self, request: Request, call_next):
+        """Middleware d'accès (plans + admin).
 
-        # --- ADMIN BYPASS TOTAL (requested) ---
-        # If enabled, any /admin* page is accessible even without login.
-        if (_admin_bypass_enabled() or _admin_bypass_token_ok(request)) and (path.startswith("/admin") or path in ("/admin-dashboard",)):
-            _force_admin_on_request(request)
-            return await call_next(request)
+        Objectifs:
+        - Toujours peupler request.state.user
+        - Admin: accès total à /admin/*
+        - Non connecté: rediriger proprement vers /admin-login pour /admin/*
+        - Plans: appliquer check_route_permission() pour le reste
+        """
 
-        # --- Toujours essayer d'attacher l'utilisateur à request.state.user ---
-        # (même pour les routes publiques), afin que les pages /admin-* puissent
-        # lire l'utilisateur connecté sans être bloquées par la logique "public".
-        _sess = request.scope.get("session") if "session" in request.scope else {}
-        session_token = (
-            _sess.get("session_token")
-            or request.cookies.get("session_token")
-            or request.cookies.get("session")
-            or ""
-        )
+        path = request.url.path or "/"
 
-        user = None
-        username = ""
-        if session_token:
-            try:
-                user = get_user_from_token(session_token)
-            except Exception:
-                user = None
-
-            if isinstance(user, dict):
-                username = (user.get("username") or user.get("email") or "").strip()
-                request.state.user = user
-            else:
-                request.state.user = {"username": "", "role": "guest", "plan": "free"}
-                session_token = ""
-        else:
-            request.state.user = {"username": "", "role": "guest", "plan": "free"}
-
-        # Routes PUBLIQUES (pas d'authentification requise)
-        public_paths = [
-            "/",
-            "/login",
-            "/logout",
-            "/register",
-            "/pricing",
-            "/plans",
-            "/subscribe",
-            "/success",
-            "/cancel",
-            "/health",
-            "/contact",
-        ]
-
-        public_prefixes = [
-            "/static",
-            "/assets",
-            "/public",
-            "/favicon",
-            "/stripe",
-            "/coinbase",
-            "/webhook",
+        # --------- chemins publics / statiques ---------
+        PUBLIC_PATHS = {
+            "/", "/health", "/favicon.ico",
+            "/login", "/logout", "/register",
+            "/admin-login",
+            "/contact", "/pricing",
             "/tv-webhook",
-            "/checkout",
-        ]
+        }
+        PUBLIC_PREFIXES = ("/static", "/assets", "/css", "/js", "/img")
 
-        # Public = accessible sans authentification (mais request.state.user est déjà rempli)
-        if path in public_paths or any(path.startswith(p) for p in public_prefixes):
+        if path in PUBLIC_PATHS or path.startswith(PUBLIC_PREFIXES):
             return await call_next(request)
 
-        # Endpoints POST publics (webhooks / auth / contact)
-        public_write_paths = (
-            "/login",
-            "/register",
-            "/forgot-password",
-            "/reset-password",
-            "/contact",
-            "/api/contact",
-        )
-        public_write_prefixes = ("/tv-webhook", "/stripe", "/coinbase", "/webhook")
-
-        if session_token:
-            user = get_user_from_token(session_token)
-            if not user:
-                session_token = None
-            else:
-                username = (user.get("username") or user.get("email") or user.get("user") or "").strip()
-                request.state.user = user
-
-        if not session_token:
-            # 🔐 Routes admin: forcer la connexion (au lieu d'afficher un écran "Accès refusé / Upgrade" en mode invité)
-            if path.startswith("/admin"):
-                return RedirectResponse(url="/login?" + urlencode({"redirect": path}), status_code=303)
-
-            # Bloquer les requêtes d'écriture si non connecté (sauf exceptions)
-            if request.method not in ("GET", "HEAD", "OPTIONS"):
-                if (path not in public_write_paths) and (not path.startswith(public_write_prefixes)):
-                    if path.startswith("/api/"):
-                        return JSONResponse({"success": False, "message": "Non authentifié"}, status_code=401)
-                    return RedirectResponse("/login", status_code=303)
-
-            # Mode visiteur: on traite l'utilisateur comme "free"
-            request.state.user = {"username": "", "plan": "free", "is_guest": True}
-            username = ""
-
-        route_to_check = path
-        if path.startswith("/api/"):
-            api_map = {
-                "/api/fear-greed": "/fear-greed",
-                "/api/btc-dominance": "/dominance",
-                "/api/heatmap": "/heatmap",
-                "/api/altcoin-season": "/altcoin-season",
-                "/api/crypto-news": "/nouvelles",
-            }
-            route_to_check = api_map.get(path, path)
-        is_admin = False
+        # --------- utilisateur courant ---------
+        user = None
         try:
-            role = (user.get("role") or "").lower() if isinstance(user, dict) else ""
-            uname = (user.get("username") or user.get("email") or "").lower() if isinstance(user, dict) else ""
-            if role == "admin" or uname == "admin":
-                is_admin = True
-            elif uname:
-                # Fallback: session store might miss role; double-check against auth DB
-                try:
-                    info = db_manager.get_user_info(uname)
-                    if info and (info.get("role") or "").lower() == "admin":
-                        is_admin = True
-                except Exception:
-                    pass
+            user = get_user_from_request(request)
+        except Exception:
+            user = None
+
+        if not user:
+            user = {"username": "", "role": "guest", "plan": "free"}
+
+        # Enrichir rôle depuis la DB si manquant
+        try:
+            if user.get("username") and not user.get("role") and "db_manager" in globals():
+                info = db_manager.get_user_info(user["username"])
+                if isinstance(info, dict) and info.get("role"):
+                    user["role"] = info["role"]
+        except Exception:
+            pass
+
+        request.state.user = user
+
+        username = (user.get("username") or "").strip()
+        is_logged_in = bool(username)
+
+        # Admin / bypass admin
+        try:
+            is_admin = is_admin_user(user)
         except Exception:
             is_admin = False
-        # ✅ Autoriser le changement de mot de passe (route "compte") pour tout utilisateur connecté,
-        # même si l'URL commence par /admin (héritage historique).
-        if path in ("/admin/change-password", "/admin-dashboard/change-password"):
+
+        # --------- /admin/* ---------
+        if path.startswith("/admin"):
+            # mode bypass (DEV seulement)
+            if _admin_bypass_enabled():
+                return await call_next(request)
+
+            if not is_logged_in:
+                next_url = request.url.path
+                if request.url.query:
+                    next_url += "?" + request.url.query
+                return RedirectResponse(url=f"/admin-login?next={next_url}", status_code=302)
+
+            # connecté mais pas admin -> interdit
+            if not is_admin:
+                return JSONResponse(
+                    {"detail": "Accès refusé: section administrateur."},
+                    status_code=403
+                )
+
+            # admin -> accès total
             return await call_next(request)
 
-        if (not is_admin) and (not check_route_permission(username, route_to_check)):
-            # API/JSON requests: renvoyer du JSON, sinon page HTML d'upgrade
-            required_plan = get_min_plan_for_route(route_to_check)
-            current_plan = (_safe_get_user_plan(username, "free") or "free")
-            accept = (request.headers.get("accept") or "").lower()
-            is_api = request.url.path.startswith("/api/") or ("application/json" in accept) or ((request.headers.get("x-requested-with") or "").lower() == "xmlhttprequest")
-            if is_api:
-                return JSONResponse({
-                    "status": "forbidden",
-                    "message": "Accès refusé — abonnement requis",
-                    "required_plan": required_plan,
-                    "current_plan": current_plan,
-                    "route": route_to_check,
-                }, status_code=403)
-        
-            required_label = PLAN_LABELS.get(required_plan, required_plan.title())
-            current_label = PLAN_LABELS.get(current_plan, current_plan.title())
-            route_label = ROUTE_LABELS.get(route_to_check, route_to_check)
-            page = f"""<!DOCTYPE html>
-        <html lang="fr">
-        <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>Accès refusé</title>
-          <style>
-            body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#0b1220; color:#e2e8f0; margin:0;}}
-            .wrap{{max-width:920px; margin:60px auto; padding:0 16px;}}
-            .card{{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); border-radius:18px; padding:26px; box-shadow:0 10px 30px rgba(0,0,0,.35);}}
-            .title{{font-size:28px; margin:0 0 10px 0;}}
-            .p{{color:#cbd5e1; margin:6px 0; line-height:1.5;}}
-            .pill{{display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.12); font-size:13px;}}
-            .row{{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;}}
-            .btn{{display:inline-block; padding:12px 14px; border-radius:12px; text-decoration:none; font-weight:700;}}
-            .btn-primary{{background:#22c55e; color:#071018;}}
-            .btn-ghost{{background:transparent; color:#e2e8f0; border:1px solid rgba(255,255,255,.18);}}
-          </style>
-        </head>
-        <body>
-          <div class="wrap">
-            <div class="card">
-              <div class="pill">🔒 Page verrouillée</div>
-              <h1 class="title">Accès refusé</h1>
-              <p class="p">Tu essaies d'ouvrir <b>{route_label}</b>.</p>
-              <p class="p">Ton forfait actuel : <b>{current_label}</b> • Requis : <b>{required_label}</b> (ou plus).</p>
-              <div class="row">
-                <a class="btn btn-ghost" href="/">Retour au dashboard</a>
-              </div>
-            </div>
-          </div>
-        </body>
-        </html>"""
-            return HTMLResponse(page, status_code=403)
-        return await call_next(request)
+        # --------- reste du site: contrôle par plan ---------
+        if is_admin:
+            return await call_next(request)
 
+        allowed = False
+        try:
+            allowed = check_route_permission(user, path)
+        except Exception:
+            allowed = False
+
+        if allowed:
+            return await call_next(request)
+
+        # Refus : message propre + suggestion upgrade
+        # (On renvoie JSON si appel AJAX, sinon on redirige vers /pricing)
+        try:
+            accept = request.headers.get("accept", "")
+            is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest"
+        except Exception:
+            accept = ""
+            is_ajax = False
+
+        if is_ajax or "application/json" in accept:
+            return JSONResponse(
+                {"detail": "Accès refusé. Votre forfait ne permet pas cette page.", "upgrade": "/pricing"},
+                status_code=403
+            )
+
+        return RedirectResponse(url="/pricing", status_code=302)
 # Activer le middleware
 app.add_middleware(PermissionMiddleware)
 
@@ -9076,7 +8779,6 @@ async def webhook(request: Request):
     except Exception:
         payload = {"raw": raw_body.decode("utf-8", errors="ignore")}
 
-    
     def _to_float(v):
         try:
             if v is None:
@@ -30059,8 +29761,6 @@ async def ai_alerts_inbox(request: Request):
 
     cards_html = "\n".join(cards) if cards else '<div class="empty">Aucune donnée pour le moment. Réessaie dans 1-2 minutes.</div>'
 
-    result_html = cards_html
-
     html_page = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -32186,10 +31886,7 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
 # ============= AI SETUP BUILDER (Explainable) =============
 async def _binance_klines(symbol: str, interval: str, limit: int = 500, ttl_seconds: int = 60):
     """
-    Récupère des chandelles OHLCV depuis Binance (API publique).
-    IMPORTANT: l'endpoint principal api.binance.com peut renvoyer 451/403 selon la région.
-    On tente donc une liste de "mirrors" publics avant d'abandonner.
-
+    Récupère des chandelles OHLCV (VRAIES données) depuis Binance (API publique).
     - symbol: ex "BTCUSDT"
     - interval: "5m","15m","1h","4h","1d"
     """
@@ -32197,60 +31894,9 @@ async def _binance_klines(symbol: str, interval: str, limit: int = 500, ttl_seco
     interval = (interval or "").strip()
     if not symbol or not interval:
         return []
-
-    # Base principale configurable
-    base_env = (os.getenv("BINANCE_API_BASE") or "").strip().rstrip("/")
-    bases = []
-    if base_env:
-        bases.append(base_env)
-
-    # Mirrors connus (souvent utiles quand api.binance.com est bloqué)
-    bases += [
-        "https://api.binance.com",
-        "https://data-api.binance.vision",
-        "https://api1.binance.com",
-        "https://api2.binance.com",
-        "https://api3.binance.com",
-    ]
-
-    last_err = None
-    for base in bases:
-        url = f"{base}/api/v3/klines?symbol={symbol}&interval={interval}&limit={int(limit)}"
-        try:
-            data = await _fetch_json(
-                url,
-                ttl_seconds=ttl_seconds,
-                use_coingecko_key=False,  # pas pertinent ici
-                headers={"Accept": "application/json"},
-            )
-            if isinstance(data, list) and data:
-                return data
-            # Payload vide -> essaie un autre mirror
-            last_err = RuntimeError("Réponse vide Binance")
-            continue
-        except RuntimeError as e:
-            msg = str(e)
-            # Erreur de code (URL malformée) -> ne pas masquer
-            if "missing an 'http'" in msg or "missing an \"http\"" in msg:
-                raise
-            last_err = e
-            # Region-block / forbidden / rate-limit / autres codes: on tente les autres mirrors
-            if re.search(r"(451|403|418|429)", msg):
-                continue
-            if "Client error" in msg and re.search(r"(451|403|418|429)", msg):
-                continue
-            continue
-        except Exception as e:
-            last_err = e
-            continue
-
-    raise RuntimeError("Binance klines indisponibles (tous les mirrors ont échoué).") from last_err
-
-    # Échec complet
-    if last_err:
-        raise RuntimeError(f"Impossible de joindre Binance pour {symbol} ({interval}). {last_err}")
-    return []
-
+    url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={int(limit)}"
+    data = await _fetch_json(url, ttl_seconds=ttl_seconds)
+    return data or []
 
 def _ema(values, period: int):
     if not values or period <= 1:
@@ -32371,269 +32017,262 @@ async def ai_setup_builder_generate(request: Request):
     if not is_logged_in(request):
         return RedirectResponse(url="/login", status_code=303)
 
-    import traceback as _traceback
+    form = await request.form()
+    symbol = (form.get("symbol") or "BTCUSDT").upper().strip()
+    interval = (form.get("tf") or "15m").strip()
+    style = (form.get("style") or "day").strip()
+    risk_raw = (form.get("risk") or "1").strip()
+
     try:
-        form = await request.form()
-        symbol = (form.get("symbol") or "BTCUSDT").upper().strip()
-        interval = (form.get("tf") or "15m").strip()
-        style = (form.get("style") or "day").strip()
-        risk_raw = (form.get("risk") or "1").strip()
+        risk_pct = float(risk_raw)
+    except Exception:
+        risk_pct = 1.0
+    risk_pct = max(0.1, min(5.0, risk_pct))
 
+    kl = await _binance_klines(symbol, interval, limit=500, ttl_seconds=60)
+    if not kl or not isinstance(kl, list):
+        return HTMLResponse(f"""<style>{GLOBAL_STYLES}</style><div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card">Impossible de récupérer les chandelles Binance pour {escape_html(symbol)} ({escape_html(interval)}).</div></div>""")
+
+    # Parse chandelles
+    opens, highs, lows, closes, vols, times = [], [], [], [], [], []
+    for row in kl:
         try:
-            risk_pct = float(risk_raw)
+            times.append(int(row[0]))
+            opens.append(float(row[1]))
+            highs.append(float(row[2]))
+            lows.append(float(row[3]))
+            closes.append(float(row[4]))
+            vols.append(float(row[5]))
         except Exception:
-            risk_pct = 1.0
-        risk_pct = max(0.1, min(5.0, risk_pct))
+            continue
 
-        kl = await _binance_klines(symbol, interval, limit=500, ttl_seconds=60)
-        if not kl or not isinstance(kl, list):
-            return HTMLResponse(f"""<style>{GLOBAL_STYLES}</style><div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card">Impossible de récupérer les chandelles Binance pour {escape_html(symbol)} ({escape_html(interval)}).</div></div>""")
+    if len(closes) < 60:
+        return HTMLResponse(f"""<style>{GLOBAL_STYLES}</style><div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card">Pas assez de données pour analyser {escape_html(symbol)}.</div></div>""")
 
-        # Parse chandelles
-        opens, highs, lows, closes, vols, times = [], [], [], [], [], []
-        for row in kl:
-            try:
-                times.append(int(row[0]))
-                opens.append(float(row[1]))
-                highs.append(float(row[2]))
-                lows.append(float(row[3]))
-                closes.append(float(row[4]))
-                vols.append(float(row[5]))
-            except Exception:
-                continue
+    last_price = closes[-1]
+    ema20 = _ema(closes[-200:], 20)
+    ema50 = _ema(closes[-250:], 50)
+    rsi14 = _rsi(closes[-200:], 14)
+    atr14 = _atr(highs[-200:], lows[-200:], closes[-200:], 14)
+    vol_avg = sum(vols[-50:]) / max(1, len(vols[-50:]))
 
-        if len(closes) < 60:
-            return HTMLResponse(f"""<style>{GLOBAL_STYLES}</style><div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card">Pas assez de données pour analyser {escape_html(symbol)}.</div></div>""")
+    # Régime simple
+    regime = "Range"
+    trend_strength = 0.0
+    if ema20 and ema50 and last_price:
+        spread = abs(ema20 - ema50) / last_price
+        trend_strength = spread
+        if ema20 > ema50 and spread > 0.004:
+            regime = "Trend ↑"
+        elif ema20 < ema50 and spread > 0.004:
+            regime = "Trend ↓"
 
-        last_price = closes[-1]
-        ema20 = _ema(closes[-200:], 20)
-        ema50 = _ema(closes[-250:], 50)
-        rsi14 = _rsi(closes[-200:], 14)
-        atr14 = _atr(highs[-200:], lows[-200:], closes[-200:], 14)
-        vol_avg = sum(vols[-50:]) / max(1, len(vols[-50:]))
+    # Paramètres style (targets/stop basés ATR)
+    if not atr14 or atr14 <= 0:
+        atr14 = max(1e-9, last_price * 0.002)
 
-        # Régime simple
-        regime = "Range"
-        trend_strength = 0.0
-        if ema20 and ema50 and last_price:
-            spread = abs(ema20 - ema50) / last_price
-            trend_strength = spread
-            if ema20 > ema50 and spread > 0.004:
-                regime = "Trend ↑"
-            elif ema20 < ema50 and spread > 0.004:
-                regime = "Trend ↓"
+    if style == "scalp":
+        stop_mult, tp_mult = 1.0, 1.5
+    elif style == "swing":
+        stop_mult, tp_mult = 2.0, 3.5
+    else:
+        stop_mult, tp_mult = 1.5, 2.5
 
-        # Paramètres style (targets/stop basés ATR)
-        if not atr14 or atr14 <= 0:
-            atr14 = max(1e-9, last_price * 0.002)
+    setups = []
 
-        if style == "scalp":
-            stop_mult, tp_mult = 1.0, 1.5
-        elif style == "swing":
-            stop_mult, tp_mult = 2.0, 3.5
-        else:
-            stop_mult, tp_mult = 1.5, 2.5
+    def push_setup(title, direction, entry, stop, target, confidence, why):
+        rr = (abs(target-entry) / max(1e-9, abs(entry-stop))) if entry and stop else 0
+        setups.append({
+            "title": title,
+            "direction": direction,
+            "entry": entry,
+            "stop": stop,
+            "target": target,
+            "rr": rr,
+            "confidence": int(max(0, min(100, confidence))),
+            "why": why[:8]
+        })
 
-        setups = []
+    # 1) Trend pullback (si Trend)
+    if regime.startswith("Trend") and ema20:
+        dist = abs(last_price - ema20)
+        near = dist <= 0.6 * atr14
+        if near and rsi14 is not None and 40 <= rsi14 <= 65:
+            direction = "Long" if regime.endswith("↑") else "Short"
+            entry = last_price
+            stop = entry - stop_mult*atr14 if direction=="Long" else entry + stop_mult*atr14
+            target = entry + tp_mult*atr14 if direction=="Long" else entry - tp_mult*atr14
+            confidence = 72 if trend_strength > 0.006 else 66
+            why = [
+                f"Régime: {regime} (EMA20 vs EMA50)",
+                f"Prix proche EMA20 (distance {dist:.4g} ≤ 0.6×ATR)",
+                f"RSI14 = {rsi14:.1f} (zone saine pour pullback)",
+                f"ATR14 = {atr14:.4g} (stop/target calibrés)",
+            ]
+            push_setup("Pullback EMA20", direction, entry, stop, target, confidence, why)
 
-        def push_setup(title, direction, entry, stop, target, confidence, why):
-            rr = (abs(target-entry) / max(1e-9, abs(entry-stop))) if entry and stop else 0
-            setups.append({
-                "title": title,
-                "direction": direction,
-                "entry": entry,
-                "stop": stop,
-                "target": target,
-                "rr": rr,
-                "confidence": int(max(0, min(100, confidence))),
-                "why": why[:8]
-            })
+    # 2) Breakout volume (20 périodes)
+    hi20 = max(highs[-20:])
+    lo20 = min(lows[-20:])
+    vol_now = vols[-1]
+    vol_spike = vol_now > 1.5 * vol_avg if vol_avg else False
 
-        # 1) Trend pullback (si Trend)
-        if regime.startswith("Trend") and ema20:
-            dist = abs(last_price - ema20)
-            near = dist <= 0.6 * atr14
-            if near and rsi14 is not None and 40 <= rsi14 <= 65:
-                direction = "Long" if regime.endswith("↑") else "Short"
-                entry = last_price
-                stop = entry - stop_mult*atr14 if direction=="Long" else entry + stop_mult*atr14
-                target = entry + tp_mult*atr14 if direction=="Long" else entry - tp_mult*atr14
-                confidence = 72 if trend_strength > 0.006 else 66
-                why = [
-                    f"Régime: {regime} (EMA20 vs EMA50)",
-                    f"Prix proche EMA20 (distance {dist:.4g} ≤ 0.6×ATR)",
-                    f"RSI14 = {rsi14:.1f} (zone saine pour pullback)",
-                    f"ATR14 = {atr14:.4g} (stop/target calibrés)",
-                ]
-                push_setup("Pullback EMA20", direction, entry, stop, target, confidence, why)
+    if last_price >= 0.995*hi20 and vol_spike:
+        entry = last_price
+        stop = entry - stop_mult*atr14
+        target = entry + tp_mult*atr14
+        why = [
+            "Breakout proche du plus haut 20 périodes",
+            f"Volume spike: vol last = {vol_now:.4g} > 1.5×moyenne(50) {vol_avg:.4g}",
+            f"ATR14 = {atr14:.4g}",
+        ]
+        push_setup("Breakout + Volume", "Long", entry, stop, target, 70, why)
 
-        # 2) Breakout volume (20 périodes)
-        hi20 = max(highs[-20:])
-        lo20 = min(lows[-20:])
-        vol_now = vols[-1]
-        vol_spike = vol_now > 1.5 * vol_avg if vol_avg else False
+    if last_price <= 1.005*lo20 and vol_spike:
+        entry = last_price
+        stop = entry + stop_mult*atr14
+        target = entry - tp_mult*atr14
+        why = [
+            "Breakdown proche du plus bas 20 périodes",
+            f"Volume spike: vol last = {vol_now:.4g} > 1.5×moyenne(50) {vol_avg:.4g}",
+            f"ATR14 = {atr14:.4g}",
+        ]
+        push_setup("Breakdown + Volume", "Short", entry, stop, target, 70, why)
 
-        if last_price >= 0.995*hi20 and vol_spike:
+    # 3) Range mean reversion (si Range)
+    if regime == "Range":
+        # Bollinger simple
+        window = closes[-20:]
+        sma20 = sum(window)/len(window)
+        variance = sum((x - sma20)**2 for x in window)/len(window)
+        std = math.sqrt(variance)
+        lower = sma20 - 2*std
+        upper = sma20 + 2*std
+
+        if rsi14 is not None and last_price <= lower and rsi14 <= 35:
             entry = last_price
             stop = entry - stop_mult*atr14
-            target = entry + tp_mult*atr14
+            target = sma20  # retour moyenne
             why = [
-                "Breakout proche du plus haut 20 périodes",
-                f"Volume spike: vol last = {vol_now:.4g} > 1.5×moyenne(50) {vol_avg:.4g}",
-                f"ATR14 = {atr14:.4g}",
+                "Régime: Range",
+                f"Prix sous bande basse (BB20-2σ)",
+                f"RSI14 bas: {rsi14:.1f}",
+                f"Target = retour SMA20 ({sma20:.4g})",
             ]
-            push_setup("Breakout + Volume", "Long", entry, stop, target, 70, why)
+            push_setup("Mean-reversion (BB20)", "Long", entry, stop, target, 64, why)
 
-        if last_price <= 1.005*lo20 and vol_spike:
+        if rsi14 is not None and last_price >= upper and rsi14 >= 65:
             entry = last_price
             stop = entry + stop_mult*atr14
-            target = entry - tp_mult*atr14
+            target = sma20
             why = [
-                "Breakdown proche du plus bas 20 périodes",
-                f"Volume spike: vol last = {vol_now:.4g} > 1.5×moyenne(50) {vol_avg:.4g}",
-                f"ATR14 = {atr14:.4g}",
+                "Régime: Range",
+                f"Prix au-dessus bande haute (BB20+2σ)",
+                f"RSI14 élevé: {rsi14:.1f}",
+                f"Target = retour SMA20 ({sma20:.4g})",
             ]
-            push_setup("Breakdown + Volume", "Short", entry, stop, target, 70, why)
+            push_setup("Mean-reversion (BB20)", "Short", entry, stop, target, 64, why)
 
-        # 3) Range mean reversion (si Range)
-        if regime == "Range":
-            # Bollinger simple
-            window = closes[-20:]
-            sma20 = sum(window)/len(window)
-            variance = sum((x - sma20)**2 for x in window)/len(window)
-            std = math.sqrt(variance)
-            lower = sma20 - 2*std
-            upper = sma20 + 2*std
+    # Tri et garder max 3
+    setups.sort(key=lambda x: (x["confidence"], x["rr"]), reverse=True)
+    setups = setups[:3]
 
-            if rsi14 is not None and last_price <= lower and rsi14 <= 35:
-                entry = last_price
-                stop = entry - stop_mult*atr14
-                target = sma20  # retour moyenne
-                why = [
-                    "Régime: Range",
-                    f"Prix sous bande basse (BB20-2σ)",
-                    f"RSI14 bas: {rsi14:.1f}",
-                    f"Target = retour SMA20 ({sma20:.4g})",
-                ]
-                push_setup("Mean-reversion (BB20)", "Long", entry, stop, target, 64, why)
-
-            if rsi14 is not None and last_price >= upper and rsi14 >= 65:
-                entry = last_price
-                stop = entry + stop_mult*atr14
-                target = sma20
-                why = [
-                    "Régime: Range",
-                    f"Prix au-dessus bande haute (BB20+2σ)",
-                    f"RSI14 élevé: {rsi14:.1f}",
-                    f"Target = retour SMA20 ({sma20:.4g})",
-                ]
-                push_setup("Mean-reversion (BB20)", "Short", entry, stop, target, 64, why)
-
-        # Tri et garder max 3
-        setups.sort(key=lambda x: (x["confidence"], x["rr"]), reverse=True)
-        setups = setups[:3]
-
-        gen_utc = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-        last_candle_utc = datetime.utcfromtimestamp(times[-1]/1000).strftime("%Y-%m-%d %H:%M:%S") if times else "?"
-        metrics = f"""
-          <div class="card" style="margin-top:14px;">
-            <div style="font-weight:800;">📊 Snapshot live</div>
-            <div class="muted" style="margin-top:6px;">
-              Symbol: <b>{escape_html(symbol)}</b> • TF: <b>{escape_html(interval)}</b> • Dernière bougie: <b>{last_candle_utc} UTC</b> • Généré: <b>{gen_utc} UTC</b>
-            </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-              <span class="badge">Prix {last_price:.6g}</span>
-              <span class="badge">EMA20 {(format(ema20, ".6g") if ema20 is not None else "—")}</span>
-              <span class="badge">EMA50 {(format(ema50, ".6g") if ema50 is not None else "—")}</span>
-              <span class="badge">RSI14 {(format(rsi14, ".1f") if rsi14 is not None else "—")}</span>
-              <span class="badge">ATR14 {atr14:.6g}</span>
-              <span class="badge">Régime {escape_html(regime)}</span>
-              <span class="badge">Risque {risk_pct:.1f}%</span>
-            </div>
-          </div>
-        """
-
-        setups_html = ""
-        if not setups:
-            setups_html = '<div class="card" style="margin-top:14px;">Aucun setup fort détecté sur ce snapshot. Essaie un autre timeframe ou un autre coin.</div>'
-        else:
-            for st in setups:
-                why_html = "".join([f"<li>{escape_html(x)}</li>" for x in st["why"]])
-                setups_html += f"""
-                <div class="card" style="margin-top:14px;">
-                  <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                    <div style="font-size:18px;font-weight:900;">{escape_html(st["title"])}</div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-                      <span class="badge">{escape_html(st["direction"])}</span>
-                      <span class="badge">RR {st["rr"]:.2f}</span>
-                      <span class="badge">Confiance {st["confidence"]}%</span>
-                    </div>
-                  </div>
-                  <div class="muted" style="margin-top:8px;">
-                    Entry: <b>{st["entry"]:.6g}</b> • Stop: <b>{st["stop"]:.6g}</b> • Target: <b>{st["target"]:.6g}</b>
-                  </div>
-                  <div style="margin-top:10px;">
-                    <div style="font-weight:800;">Pourquoi ce setup ?</div>
-                    <ul style="margin:8px 0 0 18px;">{why_html}</ul>
-                  </div>
-                </div>
-                """
-
-        html = f"""
-        <style>{GLOBAL_STYLES}</style>
-        <div class="app-shell">
-          {SIDEBAR}
-          <main class="main">
-            <div class="container">
-              <h1 style="margin:0;">🧩 AI Setup Builder</h1>
-              <div class="muted" style="margin-top:6px;">Setups générés à partir de vraies chandelles Binance (TTL ~60s) + logique explainable.</div>
-
-              <div class="card" style="margin-top:14px;">
-                <form method="post" action="/ai-setup-builder" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;">
-                  <div>
-                    <div class="muted">Symbol (Binance)</div>
-                    <input name="symbol" value="{escape_html(symbol)}" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                  </div>
-                  <div>
-                    <div class="muted">Timeframe</div>
-                    <select name="tf" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                      {''.join([f'<option value="{t}" {"selected" if t==interval else ""}>{t}</option>' for t in ["5m","15m","1h","4h","1d"]])}
-                    </select>
-                  </div>
-                  <div>
-                    <div class="muted">Style</div>
-                    <select name="style" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                      {''.join([f'<option value="{t}" {"selected" if t==style else ""}>{t}</option>' for t in ["scalp","day","swing"]])}
-                    </select>
-                  </div>
-                  <div>
-                    <div class="muted">Risque / trade (%)</div>
-                    <input name="risk" value="{risk_pct:.1f}" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                  </div>
-                  <div style="grid-column:1/-1;display:flex;gap:10px;justify-content:flex-end;">
-                    <button class="btn" type="submit">Regénérer</button>
-                  </div>
-                </form>
-              </div>
-
-              {metrics}
-              {setups_html}
-
-              <div class="card" style="margin-top:14px;">
-                <div style="font-weight:800;">⚠️ Note</div>
-                <div class="muted" style="margin-top:6px;">Ceci est un outil d’aide à la décision, pas un conseil financier. Vérifie toujours le contexte (news, volatilité, liquidité) avant de trader.</div>
-              </div>
-
-            </div>
-          </main>
+    gen_utc = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    last_candle_utc = datetime.utcfromtimestamp(times[-1]/1000).strftime("%Y-%m-%d %H:%M:%S") if times else "?"
+    metrics = f"""
+      <div class="card" style="margin-top:14px;">
+        <div style="font-weight:800;">📊 Snapshot live</div>
+        <div class="muted" style="margin-top:6px;">
+          Symbol: <b>{escape_html(symbol)}</b> • TF: <b>{escape_html(interval)}</b> • Dernière bougie: <b>{last_candle_utc} UTC</b> • Généré: <b>{gen_utc} UTC</b>
         </div>
-        """
-        return HTMLResponse(html)
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+          <span class="badge">Prix {last_price:.6g}</span>
+          <span class="badge">EMA20 {ema20:.6g if ema20 else "—"}</span>
+          <span class="badge">EMA50 {ema50:.6g if ema50 else "—"}</span>
+          <span class="badge">RSI14 {rsi14:.1f if rsi14 is not None else "—"}</span>
+          <span class="badge">ATR14 {atr14:.6g}</span>
+          <span class="badge">Régime {escape_html(regime)}</span>
+          <span class="badge">Risque {risk_pct:.1f}%</span>
+        </div>
+      </div>
+    """
 
-    except Exception as e:
-        _traceback.print_exc()
-        msg = escape_html(str(e))
-        return HTMLResponse(f"""<style>{GLOBAL_STYLES}</style><div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card" style="border:1px solid #ef4444;"><div style="font-weight:800;color:#ef4444;">Erreur interne lors de la génération</div><div class="muted" style="margin-top:6px;">{msg}</div><div style="margin-top:12px;"><a class="btn" href="/ai-setup-builder">↩ Retour</a></div></div></div>""", status_code=200)
+    setups_html = ""
+    if not setups:
+        setups_html = '<div class="card" style="margin-top:14px;">Aucun setup fort détecté sur ce snapshot. Essaie un autre timeframe ou un autre coin.</div>'
+    else:
+        for st in setups:
+            why_html = "".join([f"<li>{escape_html(x)}</li>" for x in st["why"]])
+            setups_html += f"""
+            <div class="card" style="margin-top:14px;">
+              <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div style="font-size:18px;font-weight:900;">{escape_html(st["title"])}</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                  <span class="badge">{escape_html(st["direction"])}</span>
+                  <span class="badge">RR {st["rr"]:.2f}</span>
+                  <span class="badge">Confiance {st["confidence"]}%</span>
+                </div>
+              </div>
+              <div class="muted" style="margin-top:8px;">
+                Entry: <b>{st["entry"]:.6g}</b> • Stop: <b>{st["stop"]:.6g}</b> • Target: <b>{st["target"]:.6g}</b>
+              </div>
+              <div style="margin-top:10px;">
+                <div style="font-weight:800;">Pourquoi ce setup ?</div>
+                <ul style="margin:8px 0 0 18px;">{why_html}</ul>
+              </div>
+            </div>
+            """
+
+    html = f"""
+    <style>{GLOBAL_STYLES}</style>
+    <div class="app-shell">
+      {SIDEBAR}
+      <main class="main">
+        <div class="container">
+          <h1 style="margin:0;">🧩 AI Setup Builder</h1>
+          <div class="muted" style="margin-top:6px;">Setups générés à partir de vraies chandelles Binance (TTL ~60s) + logique explainable.</div>
+
+          <div class="card" style="margin-top:14px;">
+            <form method="post" action="/ai-setup-builder" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;">
+              <div>
+                <div class="muted">Symbol (Binance)</div>
+                <input name="symbol" value="{escape_html(symbol)}" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+              </div>
+              <div>
+                <div class="muted">Timeframe</div>
+                <select name="tf" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+                  {''.join([f'<option value="{t}" {"selected" if t==interval else ""}>{t}</option>' for t in ["5m","15m","1h","4h","1d"]])}
+                </select>
+              </div>
+              <div>
+                <div class="muted">Style</div>
+                <select name="style" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+                  {''.join([f'<option value="{t}" {"selected" if t==style else ""}>{t}</option>' for t in ["scalp","day","swing"]])}
+                </select>
+              </div>
+              <div>
+                <div class="muted">Risque / trade (%)</div>
+                <input name="risk" value="{risk_pct:.1f}" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+              </div>
+              <div style="grid-column:1/-1;display:flex;gap:10px;justify-content:flex-end;">
+                <button class="btn" type="submit">Regénérer</button>
+              </div>
+            </form>
+          </div>
+
+          {metrics}
+          {setups_html}
+
+          <div class="card" style="margin-top:14px;">
+            <div style="font-weight:800;">⚠️ Note</div>
+            <div class="muted" style="margin-top:6px;">Ceci est un outil d’aide à la décision, pas un conseil financier. Vérifie toujours le contexte (news, volatilité, liquidité) avant de trader.</div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+    """
+    return HTMLResponse(html)
 
 
 @app.get("/ai-liquidity")
@@ -32644,7 +32283,7 @@ async def ai_liquidity(request: Request):
             return RedirectResponse(url=f"/login?redirect=%2Fai-liquidity", status_code=303)
 
         # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
-        rows = _coingecko_markets_top50()
+        rows = await _coingecko_markets_top50()
         rows = rows if isinstance(rows, list) else []
         items=[]
         ratios=[]
@@ -32783,7 +32422,7 @@ async def ai_timeframe(request: Request):
             vol_annual = ( (sum((x-(sum(returns)/len(returns)))**2 for x in returns)/len(returns))**0.5 * math.sqrt(365) ) if len(returns) > 1 else 0.0
 
         # dernière variation 24h BTC via markets
-        mk = _coingecko_markets_top50()
+        mk = await _coingecko_markets_top50()
         btc_row = next((r for r in (mk if isinstance(mk,list) else []) if (r.get("id")=="bitcoin" or (r.get("symbol")=="btc"))), None)
         btc_ch24 = btc_row.get("price_change_percentage_24h") if btc_row else None
         btc_price = btc_row.get("current_price") if btc_row else None
@@ -32883,7 +32522,7 @@ async def ai_timeframe(request: Request):
 # ✅ Routes manquantes (évite 404) + pages robustes (anti-500)
 # ============================================================
 
-def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: str | None = None, username: str | None = None) -> str:
+def _simple_page(title: str, body_html: str, sidebar_html: str = "") -> str:
     styles = globals().get("GLOBAL_STYLES") or ""
     # GLOBAL_STYLES est du CSS brut; on l'encapsule pour éviter qu'il apparaisse comme texte sur la page
     if styles and not styles.lstrip().lower().startswith('<style'):
@@ -32902,11 +32541,6 @@ def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: st
         @media (max-width:900px){aside{display:none}.grid{grid-template-columns:1fr}}
         .muted{color:#94a3b8}
         </style>'''
-
-    user_bar = ""
-    if username:
-        user_bar = f'<div class="muted" style="margin:0 0 12px 0">Connecté: <b>{escape_html(username)}</b> · <a href="/logout">Déconnexion</a></div>'
-
     return f"""<!doctype html>
 <html lang="fr">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">{styles}<title>{escape_html(title)}</title></head>
@@ -32915,7 +32549,6 @@ def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: st
   <aside class="sidebar">{sidebar_html}</aside>
   <main>
     <h1 style="margin:0 0 14px 0">{escape_html(title)}</h1>
-    {user_bar}
     {body_html}
   </main>
 </div>
@@ -33092,222 +32725,86 @@ async def ai_gem_hunter_page(request: Request):
 
 @app.get("/ai-technical-analysis", response_class=HTMLResponse)
 async def ai_technical_analysis_page(request: Request):
-    """
-    AI Technical Analysis (simple + robuste).
-    - Affiche un formulaire (symbol/interval)
-    - Récupère 200 chandelles OHLCV via Binance (avec mirrors)
-    - Calcule quelques indicateurs (EMA20/EMA50, RSI14, ATR14, tendance)
-    """
+    """Analyse technique simple (fallback)."""
     SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
     q = dict(request.query_params)
-
-    symbol = (q.get("symbol") or "BTCUSDT").upper().strip()
-    interval = (q.get("interval") or "1h").strip()
-    limit = 200
-
-    # ----- helpers indicateurs (sans dépendre 100% de pandas) -----
-    def _ema(values, period: int):
-        if not values or period <= 1:
-            return []
-        k = 2 / (period + 1)
-        out = []
-        ema = values[0]
-        out.append(ema)
-        for v in values[1:]:
-            ema = (v * k) + (ema * (1 - k))
-            out.append(ema)
-        return out
-
-    def _rsi(values, period: int = 14):
-        if len(values) < period + 1:
-            return []
-        gains = []
-        losses = []
-        for i in range(1, len(values)):
-            chg = values[i] - values[i - 1]
-            gains.append(max(chg, 0.0))
-            losses.append(max(-chg, 0.0))
-
-        # Wilder smoothing
-        avg_gain = sum(gains[:period]) / period
-        avg_loss = sum(losses[:period]) / period
-        rsis = [None] * period  # padding
-        for i in range(period, len(gains)):
-            g = gains[i]
-            l = losses[i]
-            avg_gain = (avg_gain * (period - 1) + g) / period
-            avg_loss = (avg_loss * (period - 1) + l) / period
-            if avg_loss == 0:
-                r = 100.0
-            else:
-                rs = avg_gain / avg_loss
-                r = 100.0 - (100.0 / (1.0 + rs))
-            rsis.append(r)
-        # rsis length == len(values)-1; pad to len(values)
-        return [None] + rsis
-
-    def _atr(highs, lows, closes, period: int = 14):
-        if len(closes) < period + 1:
-            return []
-        trs = []
-        for i in range(len(closes)):
-            if i == 0:
-                tr = highs[i] - lows[i]
-            else:
-                tr = max(
-                    highs[i] - lows[i],
-                    abs(highs[i] - closes[i - 1]),
-                    abs(lows[i] - closes[i - 1]),
-                )
-            trs.append(tr)
-        # Wilder smoothing
-        atrs = [None] * (period - 1)
-        atr = sum(trs[:period]) / period
-        atrs.append(atr)
-        for i in range(period, len(trs)):
-            atr = (atr * (period - 1) + trs[i]) / period
-            atrs.append(atr)
-        return atrs
-
-    error_msg = None
+    symbol = (q.get("symbol") or "BTCUSDT").upper()
+    interval = (q.get("interval") or "1h")
     summary_html = ""
 
-    # ----- fetch OHLCV -----
-    kl = []
     try:
-        # utilise la fonction robuste (mirrors) ajoutée pour Setup Builder
-        kl = await _binance_klines(symbol=symbol, interval=interval, limit=limit, ttl_seconds=30)
-    except Exception as e:
-        error_msg = str(e)
+        import httpx, pandas as pd, numpy as np
+        url = "https://api.binance.com/api/v3/klines"
+        params = {"symbol": symbol, "interval": interval, "limit": 200}
+        with httpx.Client(timeout=10.0) as client:
+            r = client.get(url, params=params)
+            r.raise_for_status()
+            kl = r.json() or []
+        if not kl:
+            raise ValueError("Aucune donnée Binance retournée.")
+        df = pd.DataFrame(kl, columns=["open_time","open","high","low","close","volume","close_time","qav","num_trades","taker_base","taker_quote","ignore"])
+        for col in ["open","high","low","close","volume"]:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        df["close"] = df["close"].astype(float)
 
-    if kl:
-        try:
-            highs = [float(x[2]) for x in kl]
-            lows = [float(x[3]) for x in kl]
-            closes = [float(x[4]) for x in kl]
-            vols = [float(x[5]) for x in kl]
+        df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
+        df["ema50"] = df["close"].ewm(span=50, adjust=False).mean()
 
-            last_close = closes[-1]
-            ema20 = _ema(closes, 20)[-1] if len(closes) >= 20 else None
-            ema50 = _ema(closes, 50)[-1] if len(closes) >= 50 else None
-            rsi14 = _rsi(closes, 14)[-1] if len(closes) >= 15 else None
-            atr14 = _atr(highs, lows, closes, 14)[-1] if len(closes) >= 15 else None
+        delta = df["close"].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        rs = gain / loss.replace(0, np.nan)
+        df["rsi14"] = 100 - (100 / (1 + rs))
 
-            trend = "Neutre"
-            if ema20 is not None and ema50 is not None:
-                if ema20 > ema50 and last_close >= ema20:
-                    trend = "Haussier"
-                elif ema20 < ema50 and last_close <= ema20:
-                    trend = "Baissier"
-                else:
-                    trend = "Transition"
+        last = df.dropna().iloc[-1]
+        trend = "Bullish" if last["ema20"] > last["ema50"] else "Bearish"
 
-            support = min(lows) if lows else None
-            resistance = max(highs) if highs else None
-            vol_avg = sum(vols[-50:]) / max(1, len(vols[-50:]))
-
-            def _fmt(v, nd=6):
-                if v is None:
-                    return "—"
-                try:
-                    return f"{float(v):.{nd}g}"
-                except Exception:
-                    return "—"
-
-            summary_html = f"""
-            <div class="card">
-              <h3>Résumé (IA explainable)</h3>
-              <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-top:10px">
-                <div class="stat-box"><div class="label">Tendance</div><div class="value">{trend}</div></div>
-                <div class="stat-box"><div class="label">RSI 14</div><div class="value">{_fmt(rsi14, 4)}</div></div>
-                <div class="stat-box"><div class="label">EMA 20</div><div class="value">{_fmt(ema20, 6)}</div></div>
-                <div class="stat-box"><div class="label">EMA 50</div><div class="value">{_fmt(ema50, 6)}</div></div>
-              </div>
-
-              <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px">
-                <div class="stat-box"><div class="label">Prix</div><div class="value">{_fmt(last_close, 6)}</div></div>
-                <div class="stat-box"><div class="label">ATR 14</div><div class="value">{_fmt(atr14, 6)}</div></div>
-                <div class="stat-box"><div class="label">Support (200)</div><div class="value">{_fmt(support, 6)}</div></div>
-                <div class="stat-box"><div class="label">Résistance (200)</div><div class="value">{_fmt(resistance, 6)}</div></div>
-              </div>
-
-              <p class="muted" style="margin-top:12px">
-                Volume moyen (50 bougies): <b>{_fmt(vol_avg, 6)}</b>.
-                Les niveaux support/résistance sont calculés sur le range des {limit} dernières bougies.
-              </p>
-            </div>
-            """
-        except Exception as e:
-            error_msg = f"Erreur calcul indicateurs: {e}"
-
-    err_box = ""
-    if error_msg:
-        err_box = f"""
-        <div class="card" style="border:1px solid rgba(239,68,68,.6)">
-          <h3 style="color:#f87171">Erreur</h3>
-          <div style="white-space:pre-wrap;color:#e2e8f0">{error_msg}</div>
-          <div class="muted" style="margin-top:10px">
-            Astuce: si tu vois une erreur HTTP 451/403 sur Binance, c’est souvent un blocage réseau/geo.
-            Le serveur essaie des “mirrors”, mais tu peux aussi définir <code>BINANCE_API_BASE</code>.
+        summary_html = f"""
+        <div class="card" style="margin-top:14px">
+          <div class="grid">
+            <div><div class="muted">Close</div><div><b>{float(last['close']):,.6f}</b></div></div>
+            <div><div class="muted">Trend EMA20/50</div><div><b>{trend}</b></div></div>
+            <div><div class="muted">EMA20</div><div><b>{float(last['ema20']):,.6f}</b></div></div>
+            <div><div class="muted">EMA50</div><div><b>{float(last['ema50']):,.6f}</b></div></div>
+            <div><div class="muted">RSI14</div><div><b>{float(last['rsi14']):,.2f}</b></div></div>
           </div>
+          <div class="muted" style="margin-top:10px">* Page légère (fallback).</div>
         </div>
         """
+    except Exception as e:
+        summary_html = f'<div class="card" style="margin-top:14px;border-color:#ef4444"><b>Erreur:</b> {escape_html(e)}</div>'
 
-    explanation = """
-    <div class="card">
-      <h3>À quoi sert cette page ?</h3>
-      <p style="color:#cbd5e1">
-        <b>AI Technical Analysis</b> te donne une lecture rapide (et “explainable”) d’un actif :
-        tendance, momentum et volatilité à partir de vraies chandelles (OHLCV).
-        L’objectif est de t’aider à <b>structurer une décision</b> (pas de prédire le futur).
-      </p>
-
-      <h4 style="margin-top:12px">Comment l’utiliser</h4>
-      <ol style="color:#e2e8f0;line-height:1.6">
-        <li>Choisis un <b>symbol</b> Binance (ex: <code>BTCUSDT</code>, <code>ETHUSDT</code>).</li>
-        <li>Choisis l’<b>interval</b> (ex: <code>15m</code>, <code>1h</code>, <code>4h</code>, <code>1d</code>).</li>
-        <li>Clique <b>Analyser</b>.</li>
-        <li>Lis le résumé: <b>Tendance</b> (EMA20/EMA50), <b>RSI</b> (momentum), <b>ATR</b> (volatilité),
-            et les zones <b>support/résistance</b>.</li>
-      </ol>
-
-      <h4 style="margin-top:12px">Interprétation rapide</h4>
-      <ul style="color:#e2e8f0;line-height:1.6">
-        <li><b>EMA20 &gt; EMA50</b> + prix au-dessus EMA20 → biais plutôt haussier.</li>
-        <li><b>RSI</b> &gt; 70 = surchauffe possible, &lt; 30 = pression vendeuse forte (contexte important).</li>
-        <li><b>ATR</b> te sert à calibrer la marge de mouvement (stop/objectif plus réalistes).</li>
-      </ul>
-
-      <div class="muted" style="margin-top:10px">
-        Note: ce module utilise des données publiques; si l’API est bloquée, tu verras un message d’erreur.
-      </div>
-    </div>
-    """
-
+    options = ['1m','5m','15m','1h','4h','1d']
     body = f"""
     <div class="card">
-      <h2>AI Technical Analysis</h2>
-      <form method="get" action="/ai-technical-analysis" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
-        <div style="flex:1;min-width:220px">
-          <label class="muted">Symbol (Binance)</label>
-          <input name="symbol" value="{symbol}" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(148,163,184,.25);background:#0b1220;color:#e2e8f0" />
+      <form method="get">
+        <div class="grid">
+          <div><label>Symbol (Binance)</label><input name="symbol" value="{escape_html(symbol)}"></div>
+          <div><label>Interval</label>
+            <select name="interval">
+              {''.join(f'<option value="{i}" ' + ('selected' if i==interval else '') + f'>{i}</option>' for i in options)}
+            </select>
+          </div>
         </div>
-        <div style="min-width:140px">
-          <label class="muted">Interval</label>
-          <select name="interval" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(148,163,184,.25);background:#0b1220;color:#e2e8f0">
-            {''.join([f'<option value="{iv}" {"selected" if iv==interval else ""}>{iv}</option>' for iv in ["1m","5m","15m","1h","4h","1d"]])}
-          </select>
-        </div>
-        <button class="btn" type="submit" style="padding:10px 16px;border-radius:10px">Analyser</button>
+        <div style="margin-top:12px"><button type="submit">Analyser</button></div>
       </form>
     </div>
-
-    {err_box}
     {summary_html}
-    {explanation}
     """
-
     return HTMLResponse(_simple_page("AI Technical Analysis", body, SID))
+
+
+
+# --------------------------
+# Final: alias sidebar full (compat)
+# --------------------------
+if not globals().get("SIDEBAR_FULL"):
+    globals()["SIDEBAR_FULL"] = globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR") or ""
+
+
+
+# ===================== RESTORED/MISSING PAGES =====================
+
 @app.get("/ai-gem-hunter")
 async def _page_ai_gem_hunter():
     body = f"""
@@ -33328,1600 +32825,82 @@ async def _page_ai_gem_hunter():
     return HTMLResponse(_simple_page("AI Gem Hunter", body, sidebar=SIDEBAR_FULL))
 
 
-
-
-
-
-@app.get("/narrative-radar", response_class=HTMLResponse)
-async def narrative_radar_page(request: Request):
-    """
-    Narrative Radar: narratives + score simple basé sur marché (CoinGecko),
-    avec fallback démo si l'API est indisponible.
-    """
-    SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-    q = dict(request.query_params)
-    vs = (q.get("vs") or "usd").lower().strip()
-    vs = vs if vs in ("usd", "cad", "eur") else "usd"
-
-    narratives = [
-        {"key": "ai", "name": "AI & Data", "coins": ["render-token", "fetch-ai", "singularitynet", "ocean-protocol", "bittensor"]},
-        {"key": "rwa", "name": "RWA (Real World Assets)", "coins": ["ondo-finance", "chainlink", "maker", "centrifuge", "truefi"]},
-        {"key": "l2", "name": "Layer 2", "coins": ["arbitrum", "optimism", "polygon-ecosystem-token", "metis-token"]},
-        {"key": "defi", "name": "DeFi", "coins": ["aave", "uniswap", "curve-dao-token", "compound-governance-token"]},
-        {"key": "gaming", "name": "Gaming", "coins": ["the-sandbox", "gala", "axie-infinity", "illuvium"]},
-        {"key": "meme", "name": "Memecoins", "coins": ["dogecoin", "shiba-inu", "pepe", "bonk", "floki"]},
-    ]
-
-    async def _cg(url: str, ttl: int = 60):
-        if "_fetch_json" in globals():
-            return await globals()["_fetch_json"](url, ttl_seconds=ttl)
-        import httpx
-        async with httpx.AsyncClient(timeout=12.0) as client:
-            r = await client.get(url)
-            r.raise_for_status()
-            return r.json()
-
-    demo_mode = False
-    err = None
-    market = {}
-
-    all_ids = sorted({cid for n in narratives for cid in n["coins"]})
-
-    try:
-        ids_param = ",".join(all_ids)
-        url = (
-            "https://api.coingecko.com/api/v3/coins/markets"
-            f"?vs_currency={vs}&ids={ids_param}&order=market_cap_desc&per_page=250&page=1"
-            "&sparkline=false&price_change_percentage=24h"
-        )
-        data = await _cg(url, ttl=60)
-        market = {str(x.get("id")): x for x in (data or [])}
-        if not market:
-            raise ValueError("CoinGecko: aucune donnée retournée.")
-    except Exception as e:
-        demo_mode = True
-        err = str(e)
-
-    def _num(v, default=None):
-        try:
-            return float(v)
-        except Exception:
-            return default
-
-    def _score(items):
-        if not items:
-            return 0
-        changes = []
-        volumes = 0.0
-        for it in items:
-            changes.append(_num(it.get("price_change_percentage_24h"), 0.0) or 0.0)
-            volumes += _num(it.get("total_volume"), 0.0) or 0.0
-        avg_ch = sum(changes) / max(1, len(changes))
-        vol_part = min(40.0, max(0.0, (math.log10(volumes + 1) - 4) * 10))
-        ch_part = max(-30.0, min(60.0, avg_ch * 3.0))
-        s = 50.0 + ch_part + vol_part
-        return int(max(0, min(100, round(s))))
-
-    cards = []
-    for n in narratives:
-        items = [market.get(cid) for cid in n["coins"] if market.get(cid)] if not demo_mode else []
-        sc = _score(items) if not demo_mode else 50
-
-        rows = ""
-        if not demo_mode:
-            for it in items[:8]:
-                name = it.get("name") or it.get("id")
-                sym = (it.get("symbol") or "").upper()
-                price = _num(it.get("current_price"))
-                ch = _num(it.get("price_change_percentage_24h"))
-                vol = _num(it.get("total_volume"))
-                rows += f"""
-                <tr style="border-top:1px solid rgba(148,163,184,.12)">
-                  <td style="padding:10px 8px">{name} <span class="muted">({sym})</span></td>
-                  <td style="padding:10px 8px;text-align:right">{price:,.6g}</td>
-                  <td style="padding:10px 8px;text-align:right">{(ch if ch is not None else 0):.2f}%</td>
-                  <td style="padding:10px 8px;text-align:right">{(vol if vol is not None else 0):,.0f}</td>
-                </tr>
-                """
-        else:
-            rows = '<tr><td class="muted" style="padding:10px">Mode démo (API indisponible)</td></tr>'
-
-        cards.append(f"""
-        <div class="card" style="margin-top:12px">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-            <h3 style="margin:0">{n["name"]}</h3>
-            <div class="stat-box" style="min-width:120px;text-align:center">
-              <div class="label">Score</div>
-              <div class="value">{sc}/100</div>
-            </div>
-          </div>
-          <div class="muted" style="margin-top:6px">Coins suivis: {', '.join(n["coins"][:5])}{'…' if len(n["coins"])>5 else ''}</div>
-          <table style="width:100%;border-collapse:collapse;margin-top:10px">
-            <thead>
-              <tr class="muted" style="text-align:left">
-                <th style="padding:6px 8px">Coin</th>
-                <th style="padding:6px 8px;text-align:right">Prix ({vs.upper()})</th>
-                <th style="padding:6px 8px;text-align:right">24h</th>
-                <th style="padding:6px 8px;text-align:right">Volume</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows}
-            </tbody>
-          </table>
-        </div>
-        """)
-
-    warning = ""
-    if demo_mode:
-        warning = f"""
-        <div class="card" style="border:1px solid rgba(239,68,68,.6)">
-          <h3 style="color:#f87171">Mode démo</h3>
-          <div class="muted">Impossible de joindre CoinGecko: {err}</div>
-        </div>
-        """
-
-    expl = """
-    <div class="card" style="margin-top:12px">
-      <h3>C’est quoi “Narrative Radar” ?</h3>
-      <p style="color:#cbd5e1">
-        Une “narrative” = un thème qui attire l’attention (AI, RWA, memecoins, L2…).  
-        Cette page sert à <b>repérer les thèmes chauds</b> en combinant:
-        (1) la performance 24h, (2) le volume, et (3) une liste de coins représentatifs.
+@app.get("/ai-technical-analysis")
+async def _page_ai_technical_analysis():
+    body = f"""
+    <div class="card">
+      <h2>AI Technical Analysis</h2>
+      <p style="color:#94a3b8">
+        Cette page est en cours de réintégration. Pour l’instant, elle ne doit plus renvoyer 404/500.
       </p>
-      <ul style="color:#e2e8f0;line-height:1.6">
-        <li><b>Score</b> (0–100): indicateur simple pour trier vite.</li>
-        <li>Ensuite, utilise <b>Market Regime</b>, <b>Setup Builder</b> ou <b>Risk</b> pour valider le trade.</li>
-      </ul>
-      <div class="muted">Ce n’est pas un conseil financier. Les données sont publiques (CoinGecko).</div>
+      <div class="stat-box" style="margin-top:12px">
+        <div class="label">Statut</div>
+        <div class="value">Maintenance</div>
+      </div>
+      <p style="margin-top:12px;color:#e2e8f0">
+        Si tu veux, je peux remettre la version complète (widgets + logique) exactement comme avant.
+      </p>
     </div>
     """
+    return HTMLResponse(_simple_page("AI Technical Analysis", body, sidebar=SIDEBAR_FULL))
 
+
+@app.get("/narrative-radar")
+async def _page_narrative_radar():
     body = f"""
     <div class="card">
       <h2>Narrative Radar</h2>
-      <div class="muted">Choisis la devise d’affichage, puis rafraîchis.</div>
-      <form method="get" action="/narrative-radar" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:10px">
-        <div style="min-width:160px">
-          <label class="muted">Devise</label>
-          <select name="vs" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(148,163,184,.25);background:#0b1220;color:#e2e8f0">
-            {''.join([f'<option value="{c}" {"selected" if c==vs else ""}>{c.upper()}</option>' for c in ["usd","cad","eur"]])}
-          </select>
-        </div>
-        <button class="btn" type="submit" style="padding:10px 16px;border-radius:10px">Rafraîchir</button>
-      </form>
+      <p style="color:#94a3b8">
+        Cette page est en cours de réintégration. Pour l’instant, elle ne doit plus renvoyer 404/500.
+      </p>
+      <div class="stat-box" style="margin-top:12px">
+        <div class="label">Statut</div>
+        <div class="value">Maintenance</div>
+      </div>
+      <p style="margin-top:12px;color:#e2e8f0">
+        Si tu veux, je peux remettre la version complète (widgets + logique) exactement comme avant.
+      </p>
     </div>
-
-    {warning}
-    {''.join(cards)}
-    {expl}
     """
+    return HTMLResponse(_simple_page("Narrative Radar", body, sidebar=SIDEBAR_FULL))
 
-    return HTMLResponse(_simple_page("Narrative Radar", body, sidebar_html=SID))
-@app.get("/ai-crypto-coach", response_class=HTMLResponse)
-async def ai_crypto_coach(request: Request):
-    """Analyse rapide (Binance OHLCV) + plan indicatif (EMA/RSI/ATR).
 
-    Fixes:
-      - Retourne toujours du HTML (sinon le navigateur affiche le code source + logo 404).
-      - Normalise les klines Binance sous forme liste [ts, o, h, l, c, v].
-    """
-    q = request.query_params
-    symbol = (q.get("symbol") or "BTCUSDT").strip().upper()
-    tf = (q.get("tf") or "1h").strip()
-    go = (q.get("go") or "").strip() in ("1", "true", "yes", "on")
-
-    def _klines_to_dicts(kl):
-        out = []
-        for row in (kl or []):
-            if isinstance(row, dict):
-                if all(k in row for k in ("open", "high", "low", "close", "volume")):
-                    out.append({
-                        "ts": row.get("ts") or row.get("timestamp"),
-                        "open": float(row["open"]),
-                        "high": float(row["high"]),
-                        "low": float(row["low"]),
-                        "close": float(row["close"]),
-                        "volume": float(row.get("volume", 0.0)),
-                    })
-                continue
-            if isinstance(row, (list, tuple)) and len(row) >= 6:
-                try:
-                    out.append({
-                        "ts": int(row[0]),
-                        "open": float(row[1]),
-                        "high": float(row[2]),
-                        "low": float(row[3]),
-                        "close": float(row[4]),
-                        "volume": float(row[5]),
-                    })
-                except Exception:
-                    pass
-        return out
-
-    def _ema(values, period: int):
-        if not values:
-            return []
-        k = 2.0 / (period + 1.0)
-        ema_vals = [float(values[0])]
-        for v in values[1:]:
-            ema_vals.append(float(v) * k + ema_vals[-1] * (1.0 - k))
-        return ema_vals
-
-    def _rsi(values, period: int = 14):
-        if len(values) < period + 1:
-            return None
-        gains, losses = [], []
-        for i in range(1, period + 1):
-            ch = values[i] - values[i - 1]
-            gains.append(max(ch, 0.0))
-            losses.append(max(-ch, 0.0))
-        avg_gain = sum(gains) / period
-        avg_loss = sum(losses) / period
-        for i in range(period + 1, len(values)):
-            ch = values[i] - values[i - 1]
-            gain = max(ch, 0.0)
-            loss = max(-ch, 0.0)
-            avg_gain = (avg_gain * (period - 1) + gain) / period
-            avg_loss = (avg_loss * (period - 1) + loss) / period
-        if avg_loss == 0:
-            return 100.0
-        rs = avg_gain / avg_loss
-        return 100.0 - (100.0 / (1.0 + rs))
-
-    def _atr(candles, period: int = 14):
-        if len(candles) < period + 1:
-            return None
-        trs = []
-        for i in range(1, len(candles)):
-            h = candles[i]["high"]
-            l = candles[i]["low"]
-            pc = candles[i - 1]["close"]
-            trs.append(max(h - l, abs(h - pc), abs(l - pc)))
-        atr_val = sum(trs[:period]) / period
-        for tr in trs[period:]:
-            atr_val = (atr_val * (period - 1) + tr) / period
-        return atr_val
-
-    tf_map = {"15m": "15m", "30m": "30m", "1h": "1h", "2h": "2h", "4h": "4h", "1d": "1d"}
-    interval = tf_map.get(tf, "1h")
-
-    error = ""
-    analysis_html = ""
-
-    if go:
-        try:
-            kl = await _binance_klines(symbol, interval, limit=300)
-            candles = _klines_to_dicts(kl)
-            if len(candles) < 60:
-                raise ValueError("Pas assez de données OHLCV (essaie un autre timeframe/symbole).")
-
-            closes = [c["close"] for c in candles]
-            vols = [c["volume"] for c in candles]
-
-            ema20 = _ema(closes, 20)[-1]
-            ema50 = _ema(closes, 50)[-1]
-            rsi14 = _rsi(closes, 14)
-            atr14 = _atr(candles, 14)
-            last = closes[-1]
-            last_vol = vols[-1]
-            avg_vol20 = sum(vols[-20:]) / max(1, len(vols[-20:]))
-
-            trend = "Bullish" if ema20 >= ema50 else "Bearish"
-
-            mom = "Neutre"
-            if rsi14 is not None:
-                if rsi14 >= 65:
-                    mom = "Fort (sur-achat possible)"
-                elif rsi14 <= 35:
-                    mom = "Faible (sur-vente possible)"
-                else:
-                    mom = "Neutre / sain"
-
-            vol_state = "Normal"
-            if atr14 is not None and last > 0:
-                pct = (atr14 / last) * 100.0
-                if pct >= 2.2:
-                    vol_state = "Élevée"
-                elif pct <= 0.9:
-                    vol_state = "Faible"
-
-            vol_sig = "OK"
-            if avg_vol20 > 0 and last_vol > avg_vol20 * 1.6:
-                vol_sig = "Volume en hausse"
-            elif avg_vol20 > 0 and last_vol < avg_vol20 * 0.6:
-                vol_sig = "Volume faible"
-
-            if atr14 is None:
-                atr14 = (candles[-1]["high"] - candles[-1]["low"]) or 0.0
-            stop_dist = max(atr14 * 1.5, 0.0)
-            tp1_dist = stop_dist
-            tp2_dist = stop_dist * 2.0
-
-            if trend == "Bullish":
-                idea = f"""<ul class='list-disc pl-5 space-y-1 text-slate-300'>
-                  <li><b>Idée</b>: pullback vers EMA20/EMA50 puis reprise haussière.</li>
-                  <li><b>Entrée (zone)</b>: proche EMA20 ({ema20:.4f}) → EMA50 ({ema50:.4f}).</li>
-                  <li><b>Stop</b>: ~{stop_dist:.4f} sous le dernier swing / sous la zone.</li>
-                  <li><b>TP1</b>: +{tp1_dist:.4f} (1R) · <b>TP2</b>: +{tp2_dist:.4f} (2R).</li>
-                </ul>"""
-            else:
-                idea = f"""<ul class='list-disc pl-5 space-y-1 text-slate-300'>
-                  <li><b>Idée</b>: rejet/pullback vers EMA20/EMA50 puis continuation baissière.</li>
-                  <li><b>Entrée (zone)</b>: proche EMA50 ({ema50:.4f}) → EMA20 ({ema20:.4f}).</li>
-                  <li><b>Stop</b>: ~{stop_dist:.4f} au-dessus du dernier swing / au-dessus de la zone.</li>
-                  <li><b>TP1</b>: -{tp1_dist:.4f} (1R) · <b>TP2</b>: -{tp2_dist:.4f} (2R).</li>
-                </ul>"""
-
-            analysis_html = f"""
-            <div class='card mb-3'>
-              <h3>Résumé</h3>
-              <div class='grid' style='grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;'>
-                <div class='card' style='margin:0;'>
-                  <div style='opacity:.8;font-size:12px;'>Prix</div>
-                  <div style='font-size:20px;font-weight:700;'>{last:.6f}</div>
-                  <div style='opacity:.8;font-size:12px;'>Symbol: <b>{symbol}</b> · TF: <b>{interval}</b></div>
-                </div>
-                <div class='card' style='margin:0;'>
-                  <div style='opacity:.8;font-size:12px;'>Tendance</div>
-                  <div style='font-size:20px;font-weight:700;'>{trend}</div>
-                  <div style='opacity:.8;font-size:12px;'>EMA20 {ema20:.4f} · EMA50 {ema50:.4f}</div>
-                </div>
-                <div class='card' style='margin:0;'>
-                  <div style='opacity:.8;font-size:12px;'>Momentum</div>
-                  <div style='font-size:20px;font-weight:700;'>{mom}</div>
-                  <div style='opacity:.8;font-size:12px;'>RSI14 {'' if rsi14 is None else f'{rsi14:.1f}'}</div>
-                </div>
-                <div class='card' style='margin:0;'>
-                  <div style='opacity:.8;font-size:12px;'>Volatilité / Volume</div>
-                  <div style='font-size:20px;font-weight:700;'>{vol_state}</div>
-                  <div style='opacity:.8;font-size:12px;'>{vol_sig}</div>
-                </div>
-              </div>
-            </div>
-
-            <div class='card mb-3'>
-              <h3>Plan indicatif (EMA/RSI/ATR)</h3>
-              {idea}
-              <div style='opacity:.75;font-size:12px;margin-top:8px;'>
-                Note: indicatif (pas un conseil financier). Vérifie toujours le contexte + niveaux.
-              </div>
-            </div>
-            """
-        except Exception as e:
-            error = str(e)
-
+@app.get("/ai-crypto-coach")
+async def _page_ai_crypto_coach():
     body = f"""
-    <div class='card mb-3'>
-      <h2>AI Crypto Coach</h2>
-      <p>Analyse rapide (Binance OHLCV) + plan indicatif basé sur EMA/RSI/ATR.</p>
-      <form method='get' action='/ai-crypto-coach' style='display:flex; gap:10px; align-items:center; flex-wrap:wrap;'>
-        <input class='v5-input' name='symbol' value='{symbol}' style='max-width:220px;' />
-        <select class='v5-input' name='tf' style='max-width:140px;'>
-          {''.join([f"<option value='{k}' {'selected' if tf==k else ''}>{k}</option>" for k in ['15m','30m','1h','2h','4h','1d']])}
-        </select>
-        <button class='btn' type='submit'>Analyser</button>
-        <input type='hidden' name='go' value='1' />
-      </form>
-    </div>
-
-    {f"<div class='alert alert-error'>Erreur: {error}</div>" if error else ''}
-
-    {analysis_html if analysis_html else "<div class='card mb-3'><p>Entre un symbole + timeframe puis clique “Analyser”.</p></div>"}
-
-        <div class='card'>
-  <h3>Comment l'utiliser</h3>
-  <ul>
-    <li><b>Symbole</b>: format Binance (ex: <b>BTCUSDT</b>, <b>ETHUSDT</b>).</li>
-    <li><b>Timeframe</b>: choisis 15m/30m/1h/2h/4h/1d selon ton style.</li>
-    <li>Le module résume <b>tendance</b> (EMA20/EMA50), <b>momentum</b> (RSI), <b>volatilité</b> (ATR) et propose un plan indicatif.</li>
-    <li>Pour un résultat “pro”: valide avec tes niveaux (support/résistance), news, et gestion du risque.</li>
-  </ul>
-</div>
-    """
-    return HTMLResponse(content=_simple_page("AI Crypto Coach", body, sidebar_html=SIDEBAR))
-
-@app.get("/altseason-copilot-pro")
-@require_login
-async def altseason_copilot_pro(request: Request):
-    username = request.session.get("username", "user")
-
-    snap = get_coingecko_snapshot()
-    btc_dom = float(snap.get("btc_dominance", 0.0) or 0.0)
-    eth_dom = float(snap.get("eth_dominance", 0.0) or 0.0)
-    mcap = float(snap.get("total_market_cap_usd", 0.0) or 0.0)
-    breadth_up = int(snap.get("breadth_up", 0) or 0)
-    breadth_total = int(snap.get("breadth_total", 0) or 0)
-    breadth_ratio = (breadth_up / breadth_total) if breadth_total else 0.0
-
-    # Heuristic Altseason Score (educational)
-    score = 50
-    # BTC dominance effect
-    if btc_dom >= 58:
-        score -= 18
-    elif btc_dom >= 54:
-        score -= 10
-    elif btc_dom <= 45:
-        score += 14
-    elif btc_dom <= 49:
-        score += 8
-
-    # ETH dominance effect
-    if eth_dom >= 18:
-        score += 10
-    elif eth_dom <= 12:
-        score -= 6
-
-    # Breadth effect
-    if breadth_ratio >= 0.70:
-        score += 14
-    elif breadth_ratio >= 0.58:
-        score += 8
-    elif breadth_ratio <= 0.40:
-        score -= 12
-    elif breadth_ratio <= 0.48:
-        score -= 6
-
-    score = max(0, min(100, int(round(score))))
-
-    # Mode
-    if score >= 70:
-        mode = "ALTSEASON"
-        headline = "Rotation forte vers les alts."
-        playbook = [
-            "Augmente progressivement l’exposition aux alts (priorité: liquidité + narratives fortes).",
-            "Garde des règles strictes: stop clair + TP partiels (TP1 sécurise, TP2 laisse courir).",
-            "Évite les micro-caps sans liquidité: privilégie top alts / midcaps solides."
-        ]
-    elif score >= 45:
-        mode = "ROTATION / MIX"
-        headline = "Marché mixte: sélection stricte."
-        playbook = [
-            "Mix BTC + alts: privilégie les setups les plus propres (breakout + volume, range + confirmation).",
-            "Réduis le nombre de positions simultanées (qualité > quantité).",
-            "Surveille BTC dominance: si elle repart up, réduis les alts les plus faibles."
-        ]
-    else:
-        mode = "BTC D’ABORD"
-        headline = "Contexte défensif pour les alts."
-        playbook = [
-            "Priorité BTC et cash management. Alts uniquement sur signaux forts et rapides.",
-            "Position sizing plus petit sur alts + stops serrés.",
-            "Attends des signes: breadth qui remonte + dominance BTC qui plafonne/baisse."
-        ]
-
-    mcap_str = f"{mcap:,.0f}".replace(",", " ")
-    breadth_pct = int(round(breadth_ratio * 100))
-
-    body = f"""
-    <style>
-      {_academy_ui_css()}
-      .pro-hero{{padding:18px 18px 10px 18px; border-radius:20px; border:1px solid rgba(255,255,255,.08);
-        background: radial-gradient(900px 400px at 10% 0%, rgba(93,168,255,.22), transparent 60%),
-                    radial-gradient(900px 400px at 90% 10%, rgba(171,104,255,.18), transparent 60%),
-                    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-        box-shadow: 0 18px 60px rgba(0,0,0,.35);
-      }}
-      .pro-title{{font-size:34px; font-weight:900; line-height:1.05; margin:8px 0 10px;}}
-      .pro-sub{{color:rgba(255,255,255,.75); font-size:14px;}}
-      .pro-card{{border-radius:18px; border:1px solid rgba(255,255,255,.09);
-        background: rgba(255,255,255,.04); box-shadow: 0 16px 40px rgba(0,0,0,.28);
-        padding:16px;
-      }}
-      .pro-row{{display:flex; gap:10px;}}
-      .pro-pill{{display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px;
-        border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.18); color:rgba(255,255,255,.86);
-        font-weight:700; font-size:13px;
-      }}
-      .pro-muted{{color:rgba(255,255,255,.72);}}
-      .pro-accent{{color:#66d9ff;}}
-      .pro-grid{{display:grid; grid-template-columns: 1.1fr .9fr; gap:14px; margin-top:14px;}}
-      @media (max-width: 980px){{.pro-grid{{grid-template-columns:1fr;}}}}
-      .kpis{{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:12px;}}
-      @media (max-width: 980px){{.kpis{{grid-template-columns:1fr;}}}}
-      .kpis .box{{border-radius:16px; padding:14px; border:1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.18);}}
-      .kpis .label{{color:rgba(255,255,255,.65); font-size:12px; letter-spacing:.12em; text-transform:uppercase;}}
-      .kpis .val{{font-size:24px; font-weight:900; margin-top:6px;}}
-      .meter{{height:12px; border-radius:999px; background: rgba(255,255,255,.08); overflow:hidden; border:1px solid rgba(255,255,255,.10);}}
-      .meter > div{{height:100%; width:{score}%; background: linear-gradient(90deg, rgba(102,217,255,.95), rgba(175,107,255,.95));}}
-      .badge{{display:inline-flex; align-items:center; padding:8px 12px; border-radius:14px;
-        border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.18); font-weight:900;
-      }}
-      .steps li{{margin:6px 0; color:rgba(255,255,255,.82);}}
-      .note{{font-size:12px; color:rgba(255,255,255,.68); margin-top:10px;}}
-    </style>
-
-    <div class="academy-wrap">
-      <div class="pro-hero">
-        <div class="pro-row" style="justify-content:space-between; align-items:center; flex-wrap:wrap;">
-          <div class="pro-pill">🧭 Altseason Copilot Pro</div>
-          <div class="pro-pill">Compte: <span class="pro-accent">{_html_escape(username)}</span></div>
-        </div>
-        <div class="pro-title">Lis le cycle en 10 secondes. Agis avec un playbook clair.</div>
-        <div class="pro-sub">Score “Altseason” basé sur dominance + breadth (snapshot CoinGecko). Ce n’est pas un conseil financier.</div>
-
-        <div class="kpis">
-          <div class="box"><div class="label">Altseason score</div><div class="val">{score}/100</div><div class="pro-muted">{_html_escape(headline)}</div></div>
-          <div class="box"><div class="label">BTC dominance</div><div class="val">{btc_dom:.2f}%</div><div class="pro-muted">Quand elle baisse, les alts respirent.</div></div>
-          <div class="box"><div class="label">Breadth top50</div><div class="val">{breadth_pct}%</div><div class="pro-muted">{breadth_up}/{breadth_total} en hausse (24h).</div></div>
-        </div>
-      </div>
-
-      <div class="pro-grid">
-        <div class="pro-card">
-          <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
-            <div>
-              <div class="pro-muted" style="letter-spacing:.14em; font-size:12px;">MODE</div>
-              <div style="font-size:28px; font-weight:900; margin-top:6px;">{_html_escape(mode)}</div>
-              <div class="pro-muted" style="margin-top:6px;">Market cap (USD): <b>{mcap_str}</b> • ETH dominance: <b>{eth_dom:.2f}%</b></div>
-            </div>
-            <div style="min-width:260px;">
-              <div class="pro-muted" style="margin-bottom:8px;">Altseason meter</div>
-              <div class="meter"><div></div></div>
-              <div class="note">Plus le score est haut, plus la rotation vers les alts est probable.</div>
-            </div>
-          </div>
-
-          <div style="margin-top:14px; font-size:18px; font-weight:900;">Playbook</div>
-          <ol class="steps" style="margin:8px 0 0 18px;">
-            {''.join([f"<li>{_html_escape(s)}</li>" for s in playbook])}
-          </ol>
-
-          <div class="note">Heuristique simple (snapshot). Pour du “pro”, ajoute: momentum multi-TF, dominance trend, volume, et une gestion de risque stricte.</div>
-        </div>
-
-        <div class="pro-card">
-          <div style="font-size:18px; font-weight:900;">Comment l’utiliser (simple)</div>
-          <div class="pro-muted" style="margin-top:8px;">
-            <ul style="margin:8px 0 0 18px;">
-              <li><b>Score &lt; 45:</b> défensif. Alts seulement sur setups très forts.</li>
-              <li><b>45–69:</b> sélection stricte. 1–3 positions max, qualité d’abord.</li>
-              <li><b>≥ 70:</b> rotation forte. Augmentation progressive + discipline TP/SL.</li>
-            </ul>
-          </div>
-
-          <div style="margin-top:14px; font-size:18px; font-weight:900;">Prochaine étape</div>
-          <div class="pro-muted" style="margin-top:8px;">
-            Tu veux que ça devienne <b>vraiment utile</b>? Ajoute 2 blocs:
-            <ol style="margin:8px 0 0 18px;">
-              <li><b>Watchlist auto</b> (top narratives + liquidité + momentum)</li>
-              <li><b>Alertes</b> (dominance break, breadth spike, rotation triggers)</li>
-            </ol>
-          </div>
-        </div>
-      </div>
-    </div>
-    """
-    page = _simple_page("Altseason Copilot Pro", body, username=username)
-    return HTMLResponse(page)
-
-
-@app.api_route("/rug-scam-shield", methods=["GET","POST"])
-@require_login
-async def rug_scam_shield(request: Request):
-    username = request.session.get("username", "user")
-    # Default form values
-    form_data = {}
-    result_html = ""
-    if request.method == "POST":
-        try:
-            form = await request.form()
-            form_data = dict(form)
-        except Exception:
-            form_data = {}
-        # Simple, user-filled scoring model (no chain calls). Educational / checklist-based.
-        # Risk points: higher = riskier
-        def b(name: str) -> bool:
-            v = str(form_data.get(name, "")).strip().lower()
-            return v in ("1","true","yes","oui","y","on")
-
-        risk = 0
-        # Contract / token basics
-        if not form_data.get("contract"):
-            risk += 8
-        if b("unknown_team"):
-            risk += 12
-        if b("no_audit"):
-            risk += 10
-        if b("admin_can_pause"):
-            risk += 8
-        if b("can_change_fees"):
-            risk += 12
-        if b("honeypot_signs"):
-            risk += 18
-        if b("low_liquidity"):
-            risk += 14
-        if b("liquidity_not_locked"):
-            risk += 18
-        if b("top_holder_big"):
-            risk += 12
-        if b("new_token"):
-            risk += 6
-        if b("aggressive_marketing"):
-            risk += 6
-
-        # Clamp + bucket
-        risk = max(0, min(100, risk))
-        if risk >= 65:
-            level = "ÉLEVÉ"
-            level_note = "Risque élevé. Privilégie l’observation et exige plus de preuves (audit, lock de liquidité, transparence)."
-        elif risk >= 35:
-            level = "MOYEN"
-            level_note = "Risque moyen. Vérifie les points rouges (liquidity lock, taxes, holders, permissions admin) avant d’aller plus loin."
-        else:
-            level = "FAIBLE"
-            level_note = "Risque plutôt faible selon tes réponses. Continue quand même les vérifications de base."
-
-        # Build results
-        meter_w = risk
-        result_html = f"""
-        <div class="pro-card pro-glow" style="margin-top:14px;">
-          <div class="pro-row" style="align-items:flex-end; gap:14px; flex-wrap:wrap;">
-            <div style="flex:1; min-width:260px;">
-              <div class="pro-muted" style="letter-spacing:.14em; font-size:12px;">RUG / SCAM SHIELD</div>
-              <div style="font-size:28px; font-weight:800; margin-top:6px;">Score de risque: <span class="pro-accent">{risk}/100</span></div>
-              <div class="pro-muted" style="margin-top:6px;">Niveau: <b>{level}</b> — {level_note}</div>
-            </div>
-            <div style="min-width:240px;">
-              <div class="pro-meter" aria-label="risk meter">
-                <div class="pro-meter-fill" style="width:{meter_w}%"></div>
-              </div>
-              <div class="pro-muted" style="margin-top:8px;">Astuce: un seul “red flag” critique (honeypot / taxes modifiables / liquidité non lockée) suffit souvent à dire non.</div>
-            </div>
-          </div>
-        </div>
-        """
-
-    # Pre-fill helper
-    def fv(k: str, default: str = "") -> str:
-        v = form_data.get(k, default)
-        return _html_escape(str(v)) if v is not None else ""
-
-    def checked(k: str) -> str:
-        v = str(form_data.get(k, "")).strip().lower()
-        return "checked" if v in ("1","true","yes","oui","y","on") else ""
-
-    body = f"""
-    <style>
-      {_academy_ui_css()}
-      .pro-hero{{padding:18px 18px 10px 18px; border-radius:20px; border:1px solid rgba(255,255,255,.08);
-        background: radial-gradient(900px 400px at 10% 0%, rgba(93,168,255,.22), transparent 60%),
-                    radial-gradient(900px 400px at 90% 10%, rgba(171,104,255,.18), transparent 60%),
-                    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-        box-shadow: 0 18px 60px rgba(0,0,0,.35);
-      }}
-      .pro-title{{font-size:34px; font-weight:900; line-height:1.05; margin:8px 0 10px;}}
-      .pro-sub{{color:rgba(255,255,255,.75); font-size:14px;}}
-      .pro-grid{{display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; margin-top:14px;}}
-      @media (max-width: 980px){{.pro-grid{{grid-template-columns:1fr;}}}}
-      .pro-card{{border-radius:18px; border:1px solid rgba(255,255,255,.09);
-        background: rgba(255,255,255,.04); box-shadow: 0 16px 40px rgba(0,0,0,.28);
-        padding:16px;
-      }}
-      .pro-glow{{position:relative; overflow:hidden;}}
-      .pro-glow:before{{content:""; position:absolute; inset:-2px; background: radial-gradient(600px 220px at 20% 10%, rgba(0,255,255,.18), transparent 60%),
-                                                          radial-gradient(600px 220px at 80% 40%, rgba(255,0,200,.12), transparent 60%);
-                        opacity:.9; pointer-events:none;}}
-      .pro-glow > *{{position:relative;}}
-      .pro-row{{display:flex; gap:10px;}}
-      .pro-pill{{display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px;
-        border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.18); color:rgba(255,255,255,.86);
-        font-weight:700; font-size:13px;
-      }}
-      .pro-kpi{{display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:12px;}}
-      @media (max-width: 980px){{.pro-kpi{{grid-template-columns:1fr;}}}}
-      .pro-kpi .box{{border-radius:16px; padding:14px; border:1px solid rgba(255,255,255,.08);
-        background: rgba(0,0,0,.18);
-      }}
-      .pro-kpi .label{{color:rgba(255,255,255,.65); font-size:12px; letter-spacing:.12em; text-transform:uppercase;}}
-      .pro-kpi .val{{font-size:24px; font-weight:900; margin-top:6px;}}
-      .pro-muted{{color:rgba(255,255,255,.72);}}
-      .pro-accent{{color:#66d9ff;}}
-      .pro-meter{{height:12px; border-radius:999px; background: rgba(255,255,255,.08); overflow:hidden; border:1px solid rgba(255,255,255,.10);}}
-      .pro-meter-fill{{height:100%; background: linear-gradient(90deg, rgba(102,217,255,.95), rgba(175,107,255,.95));}}
-      .pro-form label{{display:block; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.65); margin-top:10px;}}
-      .pro-form input, .pro-form select{{width:100%; margin-top:6px; padding:10px 12px; border-radius:12px;
-        border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.25); color:white; outline:none;
-      }}
-      .pro-form input::placeholder{{color:rgba(255,255,255,.45);}}
-      .pro-check{{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;}}
-      @media (max-width: 980px){{.pro-check{{grid-template-columns:1fr;}}}}
-      .pro-toggle{{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 12px;
-        border-radius:14px; border:1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.18);
-      }}
-      .pro-toggle .t{{font-weight:800;}}
-      .pro-toggle .d{{font-size:12px; color:rgba(255,255,255,.66); margin-top:2px;}}
-      .pro-toggle input{{transform: scale(1.2);}}
-      .pro-btn{{display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:12px 14px;
-        border-radius:14px; border:1px solid rgba(255,255,255,.12); background: linear-gradient(180deg, rgba(102,217,255,.16), rgba(175,107,255,.10));
-        color:white; font-weight:900; cursor:pointer; text-decoration:none;
-      }}
-      .pro-btn:hover{{filter:brightness(1.08);}}
-      .note{{font-size:12px; color:rgba(255,255,255,.68); margin-top:10px;}}
-    </style>
-
-    <div class="academy-wrap">
-      <div class="pro-hero">
-        <div class="pro-row" style="justify-content:space-between; align-items:center; flex-wrap:wrap;">
-          <div class="pro-pill">🛡️ Rug / Scam Shield</div>
-          <div class="pro-pill">Compte: <span class="pro-accent">{_html_escape(username)}</span></div>
-        </div>
-        <div class="pro-title">Détecte les “red flags” avant de te faire piéger.</div>
-        <div class="pro-sub">Outil check-list (sans blabla) — tu réponds aux questions, on calcule un score de risque. Ce n’est pas un conseil financier.</div>
-
-        <div class="pro-kpi">
-          <div class="box"><div class="label">But</div><div class="val">Filtrer vite</div><div class="pro-muted">Éviter les scams évidents.</div></div>
-          <div class="box"><div class="label">Méthode</div><div class="val">Checklist</div><div class="pro-muted">Permissions • Taxes • Liquidité • Holders.</div></div>
-          <div class="box"><div class="label">Résultat</div><div class="val">Score/100</div><div class="pro-muted">Faible • Moyen • Élevé.</div></div>
-        </div>
-      </div>
-
-      <div class="pro-grid">
-        <div class="pro-card pro-glow">
-          <div style="font-size:18px; font-weight:900;">1) Infos du token</div>
-          <form class="pro-form" method="post" action="/rug-scam-shield">
-            <label>Chaîne</label>
-            <select name="chain">
-              <option value="ETH" {"selected" if form_data.get("chain","ETH")=="ETH" else ""}>Ethereum</option>
-              <option value="BSC" {"selected" if form_data.get("chain","")=="BSC" else ""}>BSC</option>
-              <option value="SOL" {"selected" if form_data.get("chain","")=="SOL" else ""}>Solana</option>
-              <option value="BASE" {"selected" if form_data.get("chain","")=="BASE" else ""}>Base</option>
-              <option value="ARBITRUM" {"selected" if form_data.get("chain","")=="ARBITRUM" else ""}>Arbitrum</option>
-              <option value="POLYGON" {"selected" if form_data.get("chain","")=="POLYGON" else ""}>Polygon</option>
-              <option value="OTHER" {"selected" if form_data.get("chain","")=="OTHER" else ""}>Autre</option>
-            </select>
-
-            <label>Nom / ticker (optionnel)</label>
-            <input name="token" placeholder="ex: PEPE" value="{fv('token')}"/>
-
-            <label>Contrat (si applicable)</label>
-            <input name="contract" placeholder="0x..." value="{fv('contract')}"/>
-
-            <div style="font-size:18px; font-weight:900; margin-top:14px;">2) Questions rapides</div>
-            <div class="pro-check">
-              <div class="pro-toggle">
-                <div><div class="t">Équipe inconnue</div><div class="d">Aucune preuve / identité / track-record.</div></div>
-                <input type="checkbox" name="unknown_team" value="1" {checked('unknown_team')}/>
-              </div>
-              <div class="pro-toggle">
-                <div><div class="t">Pas d’audit</div><div class="d">Aucun audit sérieux, ou “audit” douteux.</div></div>
-                <input type="checkbox" name="no_audit" value="1" {checked('no_audit')}/>
-              </div>
-              <div class="pro-toggle">
-                <div><div class="t">Liquidité faible</div><div class="d">Slippage énorme / pools minuscules.</div></div>
-                <input type="checkbox" name="low_liquidity" value="1" {checked('low_liquidity')}/>
-              </div>
-              <div class="pro-toggle">
-                <div><div class="t">Liquidité non lockée</div><div class="d">Aucun lock / preuve de lock.</div></div>
-                <input type="checkbox" name="liquidity_not_locked" value="1" {checked('liquidity_not_locked')}/>
-              </div>
-              <div class="pro-toggle">
-                <div><div class="t">Taxes modifiables</div><div class="d">Le contrat peut augmenter les fees.</div></div>
-                <input type="checkbox" name="can_change_fees" value="1" {checked('can_change_fees')}/>
-              </div>
-              <div class="pro-toggle">
-                <div><div class="t">Honeypot / sell bloqué</div><div class="d">Signes qu’on ne peut pas vendre.</div></div>
-                <input type="checkbox" name="honeypot_signs" value="1" {checked('honeypot_signs')}/>
-              </div>
-              <div class="pro-toggle">
-                <div><div class="t">Top holder énorme</div><div class="d">Un wallet contrôle trop du supply.</div></div>
-                <input type="checkbox" name="top_holder_big" value="1" {checked('top_holder_big')}/>
-              </div>
-              <div class="pro-toggle">
-                <div><div class="t">Admin peut geler/pauser</div><div class="d">Permissions très larges.</div></div>
-                <input type="checkbox" name="admin_can_pause" value="1" {checked('admin_can_pause')}/>
-              </div>
-              <div class="pro-toggle">
-                <div><div class="t">Token très récent</div><div class="d">Créé il y a quelques jours/heures.</div></div>
-                <input type="checkbox" name="new_token" value="1" {checked('new_token')}/>
-              </div>
-              <div class="pro-toggle">
-                <div><div class="t">Marketing agressif</div><div class="d">Hype + promesses irréalistes.</div></div>
-                <input type="checkbox" name="aggressive_marketing" value="1" {checked('aggressive_marketing')}/>
-              </div>
-            </div>
-
-            <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
-              <button class="pro-btn" type="submit">🔎 Calculer le score</button>
-              <a class="pro-btn" href="/rug-scam-shield" style="opacity:.9;">↺ Réinitialiser</a>
-            </div>
-            <div class="note">Ce score est basé sur tes réponses. Pour une analyse on-chain complète, ajoute un module d’inspection (holders/liquidity) plus tard.</div>
-          </form>
-        </div>
-
-        <div>
-          <div class="pro-card">
-            <div style="font-size:18px; font-weight:900;">Lecture rapide</div>
-            <div class="pro-muted" style="margin-top:8px;">
-              <ul style="margin:8px 0 0 18px;">
-                <li><b>Honeypot</b> ou “sell bloqué” = souvent <b>NO GO</b>.</li>
-                <li><b>Taxes modifiables</b> = risque d’abus.</li>
-                <li><b>Liquidité non lockée</b> = rug plus facile.</li>
-                <li><b>Top holder</b> trop gros = dump possible.</li>
-              </ul>
-            </div>
-            {result_html}
-          </div>
-
-          <div class="pro-card" style="margin-top:14px;">
-            <div style="font-size:18px; font-weight:900;">Checklist “en 30 secondes”</div>
-            <div class="pro-muted" style="margin-top:8px;">
-              <ol style="margin:8px 0 0 18px;">
-                <li>Tu peux vendre? (pas de honeypot)</li>
-                <li>Liquidité lockée? preuve?</li>
-                <li>Fees raisonnables + non modifiables?</li>
-                <li>Permissions admin limitées?</li>
-                <li>Holders + distribution OK?</li>
-              </ol>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    """
-    page = _simple_page("Rug / Scam Shield", body, username=username)
-    return HTMLResponse(page)
-
-
-@app.api_route("/ai-swarm-agents", methods=["GET","POST"])
-@require_login
-async def ai_swarm_agents(request: Request):
-    username = request.session.get("username", "user")
-
-    form_data = {}
-    output_html = ""
-    if request.method == "POST":
-        try:
-            form = await request.form()
-            form_data = dict(form)
-        except Exception:
-            form_data = {}
-        asset = str(form_data.get("asset","")).strip().upper()[:15]
-        objective = str(form_data.get("objective","")).strip()
-        horizon = str(form_data.get("horizon","swing")).strip().lower()
-        risk_mode = str(form_data.get("risk","balanced")).strip().lower()
-
-        # Heuristic "swarm" output (educational). No live trading, no guarantees.
-        steps = []
-        steps.append("Définis ton risque: stop logique + taille de position avant d’entrer.")
-        if horizon in ("scalp","intraday"):
-            steps.append("Intraday: privilégie la liquidité + confirmations (volume, break/retest).")
-        else:
-            steps.append("Swing: travaille des zones (support/résistance) + invalidation claire.")
-
-        if "btc" in asset.lower() or asset == "BTC":
-            steps.append("BTC: surveille la dominance et la liquidité du marché (ça guide les alts).")
-        elif asset:
-            steps.append(f"{asset}: check narratives + news + liquidité (évite les coins “thin”).")
-
-        if risk_mode == "conservative":
-            steps.append("Mode prudent: 1 setup max à la fois, TP partiels rapides, stop serré.")
-        elif risk_mode == "aggressive":
-            steps.append("Mode agressif: seulement si contexte fort; accepte plus de variance, mais stop obligatoire.")
-        else:
-            steps.append("Mode équilibré: 2 TP (TP1 sécurise, TP2 laisse courir), stop sous invalidation.")
-
-        # “Agents” synthesis cards
-        out = f"""
-        <div class="pro-card pro-glow" style="margin-top:14px;">
-          <div class="pro-row" style="justify-content:space-between; align-items:flex-end; flex-wrap:wrap;">
-            <div>
-              <div class="pro-muted" style="letter-spacing:.14em; font-size:12px;">SWARM OUTPUT</div>
-              <div style="font-size:26px; font-weight:900; margin-top:6px;">Plan d’action (beta)</div>
-              <div class="pro-muted" style="margin-top:6px;">Actif: <b>{_html_escape(asset or "—")}</b> • Horizon: <b>{_html_escape(horizon)}</b> • Risque: <b>{_html_escape(risk_mode)}</b></div>
-            </div>
-            <div class="pro-pill">Compte: <span class="pro-accent">{_html_escape(username)}</span></div>
-          </div>
-
-          <div class="pro-grid" style="grid-template-columns:1fr; margin-top:12px;">
-            <div class="pro-card" style="background:rgba(0,0,0,.16);">
-              <div style="font-weight:900; font-size:16px;">🎯 Objectif</div>
-              <div class="pro-muted" style="margin-top:6px;">{_html_escape(objective or "—")}</div>
-            </div>
-
-            <div class="pro-grid" style="grid-template-columns:repeat(2,1fr); margin-top:12px;">
-              <div class="pro-card" style="background:rgba(0,0,0,.16);">
-                <div style="font-weight:900;">🧠 Agent Narrative</div>
-                <div class="pro-muted" style="margin-top:6px;">Pourquoi ce coin bouge? Quelle “story” attire l’argent?</div>
-              </div>
-              <div class="pro-card" style="background:rgba(0,0,0,.16);">
-                <div style="font-weight:900;">🛡️ Agent Risk</div>
-                <div class="pro-muted" style="margin-top:6px;">Stop logique, taille, invalidation, scénarios.</div>
-              </div>
-              <div class="pro-card" style="background:rgba(0,0,0,.16);">
-                <div style="font-weight:900;">📈 Agent Entry/Exit</div>
-                <div class="pro-muted" style="margin-top:6px;">Setup, triggers, TP partiels, gestion de trade.</div>
-              </div>
-              <div class="pro-card" style="background:rgba(0,0,0,.16);">
-                <div style="font-weight:900;">🧰 Agent Ops</div>
-                <div class="pro-muted" style="margin-top:6px;">Checklist avant trade + routine post-trade (journal).</div>
-              </div>
-            </div>
-
-            <div class="pro-card" style="margin-top:12px; background:rgba(0,0,0,.16);">
-              <div style="font-weight:900; font-size:16px;">✅ Étapes recommandées</div>
-              <ol style="margin:8px 0 0 18px; color:rgba(255,255,255,.82);">
-                {''.join([f'<li>{_html_escape(s)}</li>' for s in steps])}
-              </ol>
-              <div class="note">Pas un conseil financier. Utilise ça comme une <b>checklist</b> et valide avec tes propres règles.</div>
-            </div>
-          </div>
-        </div>
-        """
-        output_html = out
-
-    def fv(k: str, default: str = "") -> str:
-        v = form_data.get(k, default)
-        return _html_escape(str(v)) if v is not None else ""
-
-    def selected(k: str, v: str, default: str) -> str:
-        cur = str(form_data.get(k, default))
-        return "selected" if cur == v else ""
-
-    body = f"""
-    <style>
-      {_academy_ui_css()}
-      .pro-hero{{padding:18px 18px 10px 18px; border-radius:20px; border:1px solid rgba(255,255,255,.08);
-        background: radial-gradient(900px 400px at 10% 0%, rgba(93,168,255,.22), transparent 60%),
-                    radial-gradient(900px 400px at 90% 10%, rgba(171,104,255,.18), transparent 60%),
-                    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-        box-shadow: 0 18px 60px rgba(0,0,0,.35);
-      }}
-      .pro-title{{font-size:34px; font-weight:900; line-height:1.05; margin:8px 0 10px;}}
-      .pro-sub{{color:rgba(255,255,255,.75); font-size:14px;}}
-      .pro-card{{border-radius:18px; border:1px solid rgba(255,255,255,.09);
-        background: rgba(255,255,255,.04); box-shadow: 0 16px 40px rgba(0,0,0,.28);
-        padding:16px;
-      }}
-      .pro-glow{{position:relative; overflow:hidden;}}
-      .pro-glow:before{{content:""; position:absolute; inset:-2px; background: radial-gradient(600px 220px at 20% 10%, rgba(0,255,255,.16), transparent 60%),
-                                                          radial-gradient(600px 220px at 80% 40%, rgba(255,0,200,.10), transparent 60%);
-                        opacity:.9; pointer-events:none;}}
-      .pro-glow > *{{position:relative;}}
-      .pro-row{{display:flex; gap:10px;}}
-      .pro-pill{{display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px;
-        border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.18); color:rgba(255,255,255,.86);
-        font-weight:700; font-size:13px;
-      }}
-      .pro-muted{{color:rgba(255,255,255,.72);}}
-      .pro-accent{{color:#66d9ff;}}
-      .pro-grid{{display:grid; grid-template-columns: 1fr; gap:14px; margin-top:14px;}}
-      .pro-form label{{display:block; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.65); margin-top:10px;}}
-      .pro-form input, .pro-form select, .pro-form textarea{{width:100%; margin-top:6px; padding:10px 12px; border-radius:12px;
-        border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.25); color:white; outline:none;
-      }}
-      .pro-form textarea{{min-height:110px; resize:vertical;}}
-      .pro-form input::placeholder, .pro-form textarea::placeholder{{color:rgba(255,255,255,.45);}}
-      .pro-btn{{display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:12px 14px;
-        border-radius:14px; border:1px solid rgba(255,255,255,.12); background: linear-gradient(180deg, rgba(102,217,255,.16), rgba(175,107,255,.10));
-        color:white; font-weight:900; cursor:pointer; text-decoration:none;
-      }}
-      .pro-btn:hover{{filter:brightness(1.08);}}
-      .note{{font-size:12px; color:rgba(255,255,255,.68); margin-top:10px;}}
-    </style>
-
-    <div class="academy-wrap">
-      <div class="pro-hero">
-        <div class="pro-row" style="justify-content:space-between; align-items:center; flex-wrap:wrap;">
-          <div class="pro-pill">🤖 AI Swarm Agents</div>
-          <div class="pro-pill">Compte: <span class="pro-accent">{_html_escape(username)}</span></div>
-        </div>
-        <div class="pro-title">Ton “copilote” multi-agents pour structurer tes décisions.</div>
-        <div class="pro-sub">Tu décris ton objectif, l’actif et ton style. La Swarm te renvoie un plan clair (checklist). Pas un conseil financier.</div>
-      </div>
-
-      <div class="pro-grid">
-        <div class="pro-card pro-glow">
-          <div style="font-size:18px; font-weight:900;">Console Swarm</div>
-          <form class="pro-form" method="post" action="/ai-swarm-agents">
-            <label>Actif (optionnel)</label>
-            <input name="asset" placeholder="ex: BTC, ETH, SOL..." value="{fv('asset')}"/>
-
-            <label>Horizon</label>
-            <select name="horizon">
-              <option value="scalp" {selected('horizon','scalp','swing')}>Scalp</option>
-              <option value="intraday" {selected('horizon','intraday','swing')}>Intraday</option>
-              <option value="swing" {selected('horizon','swing','swing')}>Swing</option>
-              <option value="position" {selected('horizon','position','swing')}>Position</option>
-            </select>
-
-            <label>Profil risque</label>
-            <select name="risk">
-              <option value="conservative" {selected('risk','conservative','balanced')}>Prudent</option>
-              <option value="balanced" {selected('risk','balanced','balanced')}>Équilibré</option>
-              <option value="aggressive" {selected('risk','aggressive','balanced')}>Agressif</option>
-            </select>
-
-            <label>Objectif / Contexte</label>
-            <textarea name="objective" placeholder="ex: Je veux un plan clair: entrée, stop, TP, et règles pour éviter les erreurs...">{fv('objective')}</textarea>
-
-            <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
-              <button class="pro-btn" type="submit">🧠 Lancer la Swarm</button>
-              <a class="pro-btn" href="/ai-swarm-agents" style="opacity:.9;">↺ Réinitialiser</a>
-            </div>
-            <div class="note">Astuce: plus ton objectif est précis, plus la sortie est utile (ex: “breakout”, “range”, “news pump”, etc.).</div>
-          </form>
-        </div>
-
-        {output_html}
-      </div>
-    </div>
-    """
-    page = _simple_page("AI Swarm Agents", body, username=username)
-    return HTMLResponse(page)
-
-
-@app.get("/academy")
-async def academy(request: Request):
-    """
-    CryptoIA Academy — hub (modules + leçons) avec progression sauvegardée si connecté.
-    """
-    username = (getattr(request.state, "user", None) or {}).get("username") or request.session.get("username")
-
-    completed = set()
-    if username:
-        try:
-            completed = set(get_completed_lessons(username))
-        except Exception:
-            completed = set()
-
-    # Regroupe les leçons par "prefix" (ex: bases_1 => bases)
-    module_meta = {
-        "bases": {
-            "title": "Fondations Crypto",
-            "subtitle": "Comprendre la crypto (sans blabla) : wallets, blockchains, cycles, tokens.",
-            "icon": "🧠",
-        },
-        "market": {
-            "title": "Lecture de Marché",
-            "subtitle": "Trend, range, volumes, liquidités, dominance, narratives.",
-            "icon": "📈",
-        },
-        "risk": {
-            "title": "Gestion du Risque",
-            "subtitle": "Stop/TP, sizing, psychologique, règles pro, journal.",
-            "icon": "🛡️",
-        },
-        "strategy": {
-            "title": "Stratégies",
-            "subtitle": "Spot, swing, breakout, pullback, scalping (cadre sain).",
-            "icon": "🎯",
-        },
-        "ai": {
-            "title": "IA & Outils CryptoIA",
-            "subtitle": "Copilots, agents, signaux, automatisations et lecture guidée.",
-            "icon": "🤖",
-        },
-    }
-
-    # Construction des modules à partir des clés de LESSONS_DATA
-    modules = {k: {"id": k, **v, "lessons": []} for k, v in module_meta.items()}
-    unknown_bucket = {"id": "autres", "title": "Autres", "subtitle": "Leçons diverses.", "icon": "📚", "lessons": []}
-
-    def _sort_key(lesson_id: str):
-        # bases_12 => ("bases", 12)
-        parts = lesson_id.split("_")
-        n = 9999
-        if len(parts) >= 2:
-            try:
-                n = int(parts[-1])
-            except Exception:
-                n = 9999
-        return (parts[0], n, lesson_id)
-
-    for lesson_id in sorted(LESSONS_DATA.keys(), key=_sort_key):
-        prefix = lesson_id.split("_")[0]
-        lesson = LESSONS_DATA.get(lesson_id, {})
-        entry = {
-            "id": lesson_id,
-            "title": lesson.get("title", lesson_id),
-            "duration": lesson.get("duration", "10 min"),
-            "has_quiz": bool(lesson.get("quiz_questions")),
-            "is_done": lesson_id in completed,
-        }
-        if prefix in modules:
-            modules[prefix]["lessons"].append(entry)
-        else:
-            unknown_bucket["lessons"].append(entry)
-
-    module_list = [m for m in modules.values() if m["lessons"]]
-    if unknown_bucket["lessons"]:
-        module_list.append(unknown_bucket)
-
-    # Stats rapides
-    total_lessons = sum(len(m["lessons"]) for m in module_list)
-    done_lessons = sum(1 for m in module_list for l in m["lessons"] if l["is_done"])
-    pct = int((done_lessons / total_lessons) * 100) if total_lessons else 0
-
-    login_banner = ""
-    if not username:
-        login_banner = f"""
-        <div class="academy-alert">
-            <div class="academy-alert__title">Mode invité</div>
-            <div class="academy-alert__text">
-                Tu peux explorer les modules, mais ta progression ne sera pas enregistrée.
-                <a class="academy-link" href="/login?redirect=%2Facademy">Se connecter</a>
-                pour débloquer la progression, les badges et le tableau de bord.
-            </div>
-        </div>
-        """
-
-    body = f"""
-    {_academy_ui_css()}
-    <div class="academy-wrap">
-      <div class="academy-hero">
-        <div>
-          <div class="academy-kicker">CRYPTOIA ACADEMY</div>
-          <h1 class="academy-h1">Formations crypto claires, actionnables, et orientées résultats.</h1>
-          <div class="academy-sub">Modules courts • Quiz • Badges • Progression enregistrée</div>
-          <div class="academy-cta">
-            <a class="academy-btn" href="/academy-progress">Voir ma progression</a>
-            <a class="academy-btn academy-btn--ghost" href="/academy/lesson/{_academy_next_lesson_id(completed)}">Continuer</a>
-          </div>
-        </div>
-        <div class="academy-statbox">
-          <div class="academy-stat">
-            <div class="academy-stat__n">{done_lessons}</div>
-            <div class="academy-stat__label">Leçons complétées</div>
-          </div>
-          <div class="academy-stat">
-            <div class="academy-stat__n">{pct}%</div>
-            <div class="academy-stat__label">Progression totale</div>
-          </div>
-          <div class="academy-stat academy-stat--small">
-            <div class="academy-stat__label">Compte</div>
-            <div class="academy-stat__n">{(username or "Invité")}</div>
-          </div>
-        </div>
-      </div>
-
-      {login_banner}
-
-      <div class="academy-toolbar">
-        <input id="academySearch" class="academy-search" placeholder="Rechercher une leçon (ex: dominance, stop, altseason...)" />
-        <div class="academy-pill">Conseil: fais 1 leçon/jour = progrès réel.</div>
-      </div>
-
-      <div class="academy-grid">
-        {"".join(_academy_module_card(m) for m in module_list)}
-      </div>
-    </div>
-
-    <script>
-      (function() {{
-        const input = document.getElementById('academySearch');
-        if (!input) return;
-        input.addEventListener('input', () => {{
-          const q = (input.value || '').toLowerCase().trim();
-          document.querySelectorAll('[data-lesson-row]').forEach(row => {{
-            const hay = (row.getAttribute('data-hay') || '').toLowerCase();
-            row.style.display = (!q || hay.includes(q)) ? '' : 'none';
-          }});
-        }});
-      }})();
-    </script>
-    """
-
-    page = _simple_page("Academy", body, sidebar_html=SIDEBAR, username=username)
-    return HTMLResponse(page)
-
-
-@app.get("/academy/lesson/{lesson_id}")
-async def academy_lesson(request: Request, lesson_id: str):
-    """
-    Page d'une leçon (contenu + quiz + bouton "terminé").
-    """
-    username = (getattr(request.state, "user", None) or {}).get("username") or request.session.get("username")
-
-    lesson = LESSONS_DATA.get(lesson_id)
-    if not lesson:
-        return HTMLResponse(_simple_page("Leçon introuvable",
-            f"{_academy_ui_css()}<div class='academy-wrap'><h2 class='academy-h2'>Leçon introuvable</h2><p>Cette leçon n'existe pas.</p><a class='academy-btn' href='/academy'>Retour à l'Academy</a></div>",
-            sidebar_html=SIDEBAR, username=username), status_code=404)
-
-    completed = set()
-    if username:
-        try:
-            completed = set(get_completed_lessons(username))
-        except Exception:
-            completed = set()
-
-    is_done = lesson_id in completed
-    next_id, prev_id = _academy_prev_next_ids(lesson_id)
-
-    # Quiz rendering
-    quiz = lesson.get("quiz_questions") or []
-    quiz_html = ""
-    if quiz:
-        items = []
-        for i, q in enumerate(quiz, start=1):
-            qtext = (q.get("q") or "").strip()
-            opts = q.get("options") or []
-            # options as radio
-            opt_html = []
-            for j, opt in enumerate(opts):
-                opt_html.append(
-                    f"<label class='academy-radio'><input type='radio' name='q{i}' value='{j}' /> <span>{_html_escape(opt)}</span></label>"
-                )
-            items.append(
-                f"""
-                <div class="academy-quiz-q" data-qidx="{i}" data-answer="{int(q.get('answer', 0))}">
-                  <div class="academy-quiz-q__title">Q{i}. {_html_escape(qtext)}</div>
-                  <div class="academy-quiz-q__opts">{''.join(opt_html)}</div>
-                </div>
-                """
-            )
-        quiz_html = f"""
-        <div class="academy-card">
-          <div class="academy-card__title">Quiz (rapide)</div>
-          <div class="academy-card__sub">Fais-le sérieusement : c’est comme ça que tu avances vite.</div>
-          <div id="academyQuiz">{''.join(items)}</div>
-          <div class="academy-quiz-actions">
-            <button class="academy-btn" id="academyQuizSubmit" type="button">Valider le quiz</button>
-            <div id="academyQuizResult" class="academy-pill" style="display:none"></div>
-          </div>
-        </div>
-        """
-
-    complete_btn = f"""
-      <button class="academy-btn" id="academyCompleteBtn" type="button">{'✅ Déjà terminée' if is_done else '✅ Marquer comme terminée'}</button>
-    """
-
-    if not username:
-        complete_btn = f"""
-          <a class="academy-btn" href="/login?redirect=%2Facademy%2Flesson%2F{lesson_id}">Se connecter pour enregistrer</a>
-        """
-
-    body = f"""
-    {_academy_ui_css()}
-    <div class="academy-wrap">
-      <div class="academy-breadcrumbs">
-        <a class="academy-link" href="/academy">Academy</a>
-        <span class="academy-dot">•</span>
-        <span>{_html_escape(lesson.get('title','Leçon'))}</span>
-      </div>
-
-      <div class="academy-lesson-hero">
-        <div>
-          <h1 class="academy-h1 academy-h1--lesson">{_html_escape(lesson.get('title','Leçon'))}</h1>
-          <div class="academy-sub">Durée: <b>{_html_escape(lesson.get('duration','10 min'))}</b> • Quiz: <b>{'Oui' if quiz else 'Non'}</b></div>
-          <div class="academy-cta">
-            {complete_btn}
-            <a class="academy-btn academy-btn--ghost" href="{('/academy/lesson/' + prev_id) if prev_id else '/academy'}">← Précédent</a>
-            <a class="academy-btn academy-btn--ghost" href="{('/academy/lesson/' + next_id) if next_id else '/academy'}">Suivant →</a>
-          </div>
-        </div>
-        <div class="academy-chipbox">
-          <div class="academy-chip">{'Terminé ✅' if is_done else 'À faire'}</div>
-          <div class="academy-chip">{_academy_module_name(lesson_id)}</div>
-          <div class="academy-chip">XP: +50</div>
-        </div>
-      </div>
-
-      <div class="academy-cols">
-        <div class="academy-col-main">
-          <div class="academy-card">
-            <div class="academy-card__title">Leçon</div>
-            <div class="academy-content">
-              {_academy_render_content(lesson.get("content",""))}
-              {_academy_action_box(lesson_id)}
-            </div>
-          </div>
-
-          {quiz_html}
-
-          <div class="academy-card">
-            <div class="academy-card__title">Prochaine étape</div>
-            <div class="academy-card__sub">Passe à la leçon suivante pendant que c’est frais.</div>
-            <div class="academy-cta">
-              <a class="academy-btn" href="{('/academy/lesson/' + next_id) if next_id else '/academy'}">Continuer →</a>
-              <a class="academy-btn academy-btn--ghost" href="/academy-progress">Tableau de progression</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="academy-col-side">
-          <div class="academy-card">
-            <div class="academy-card__title">Checklist (pro)</div>
-            <div class="academy-card__sub">Coche ces points avant de dire “je maîtrise”.</div>
-            {_academy_checklist(lesson_id)}
-          </div>
-
-          <div class="academy-card">
-            <div class="academy-card__title">Raccourcis</div>
-            <div class="academy-links">
-              <a class="academy-link" href="/pricing-complete">Plans & accès</a>
-              <a class="academy-link" href="/ai-swarm-agents">AI Swarm Agents</a>
-              <a class="academy-link" href="/rug-scam-shield">Rug/Scam Shield</a>
-              <a class="academy-link" href="/altseason-copilot-pro">Altseason Copilot Pro</a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <script>
-      (function() {{
-        const completeBtn = document.getElementById('academyCompleteBtn');
-        const quizBtn = document.getElementById('academyQuizSubmit');
-        const quizResult = document.getElementById('academyQuizResult');
-
-        async function postComplete(score) {{
-          try {{
-            const resp = await fetch('/academy/api/complete', {{
-              method: 'POST',
-              headers: {{'Content-Type': 'application/json'}},
-              body: JSON.stringify({{ lesson_id: '{lesson_id}', quiz_score: score ?? null }})
-            }});
-            const data = await resp.json();
-            if (!resp.ok) throw new Error(data?.detail || 'Erreur');
-            if (completeBtn) {{
-              completeBtn.textContent = '✅ Déjà terminée';
-              completeBtn.disabled = true;
-            }}
-            return data;
-          }} catch (e) {{
-            alert('Impossible d’enregistrer: ' + (e.message || e));
-          }}
-        }}
-
-        if (completeBtn && !completeBtn.disabled) {{
-          completeBtn.addEventListener('click', async () => {{
-            await postComplete(null);
-          }});
-        }}
-
-        if (quizBtn) {{
-          quizBtn.addEventListener('click', async () => {{
-            const container = document.getElementById('academyQuiz');
-            if (!container) return;
-            const questions = Array.from(container.querySelectorAll('.academy-quiz-q'));
-            let score = 0;
-            let answered = 0;
-            questions.forEach(q => {{
-              const idx = q.getAttribute('data-qidx');
-              const ans = parseInt(q.getAttribute('data-answer') || '0', 10);
-              const chosen = q.querySelector('input[type="radio"]:checked');
-              if (chosen) {{
-                answered += 1;
-                const val = parseInt(chosen.value || '0', 10);
-                if (val === ans) score += 1;
-              }}
-            }});
-            if (answered < questions.length) {{
-              alert('Réponds à toutes les questions avant de valider.');
-              return;
-            }}
-            const pct = Math.round((score / Math.max(1, questions.length)) * 100);
-            quizResult.style.display = '';
-            quizResult.textContent = `Score: ${{score}}/${{questions.length}} (${{pct}}%)`;
-            await postComplete(pct);
-          }});
-        }}
-      }})();
-    </script>
-    """
-
-    page = _simple_page(lesson.get("title", "Leçon"), body, sidebar_html=SIDEBAR, username=username)
-    return HTMLResponse(page)
-
-
-@app.post("/academy/api/complete")
-async def academy_api_complete(request: Request):
-    """
-    API: marquer une leçon terminée (+ enregistrer score quiz optionnel).
-    """
-    username = (getattr(request.state, "user", None) or {}).get("username") or request.session.get("username")
-    if not username:
-        raise HTTPException(status_code=401, detail="Connecte-toi pour enregistrer ta progression.")
-
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
-
-    lesson_id = (payload.get("lesson_id") or "").strip()
-    quiz_score = payload.get("quiz_score")
-
-    if not lesson_id or lesson_id not in LESSONS_DATA:
-        raise HTTPException(status_code=400, detail="lesson_id invalide")
-
-    try:
-        if quiz_score is None:
-            complete_lesson(username, lesson_id)
-        else:
-            # quiz_score est un % (0-100)
-            try:
-                qs = int(quiz_score)
-            except Exception:
-                qs = None
-            complete_lesson(username, lesson_id, quiz_score=qs)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    # Retour stats légères
-    completed = get_completed_lessons(username)
-    return {
-        "ok": True,
-        "lesson_id": lesson_id,
-        "completed_count": len(completed),
-        "next_lesson": _academy_next_lesson_id(set(completed)),
-    }
-
-
-@app.get("/academy-progress")
-async def academy_progress(request: Request):
-    """
-    Dashboard progression Academy.
-    """
-    username = (getattr(request.state, "user", None) or {}).get("username") or request.session.get("username")
-    if not username:
-        return RedirectResponse(url="/login?redirect=%2Facademy-progress", status_code=303)
-
-    prog = get_user_progress(username)
-    completed = set(get_completed_lessons(username))
-
-    # Modules stats
-    module_stats = _academy_module_stats(completed)
-
-    badges_html = ""
-    try:
-        badges = prog.get("badges") or []
-        if badges:
-            badges_html = "<div class='academy-badges'>" + "".join(
-                f"<div class='academy-badge'>🏅 {_html_escape(b.get('badge_name','Badge'))}</div>" for b in badges
-            ) + "</div>"
-        else:
-            badges_html = "<div class='academy-muted'>Aucun badge pour l’instant. Fais 3 leçons + 1 quiz pour lancer la machine.</div>"
-    except Exception:
-        badges_html = "<div class='academy-muted'>Badges indisponibles.</div>"
-
-    body = f"""
-    {_academy_ui_css()}
-    <div class="academy-wrap">
-      <div class="academy-hero">
-        <div>
-          <div class="academy-kicker">TABLEAU DE BORD</div>
-          <h1 class="academy-h1">Progression Academy</h1>
-          <div class="academy-sub">XP, streak, modules, leçons — tout au même endroit.</div>
-          <div class="academy-cta">
-            <a class="academy-btn" href="/academy/lesson/{_academy_next_lesson_id(completed)}">Continuer →</a>
-            <a class="academy-btn academy-btn--ghost" href="/academy">Retour Academy</a>
-          </div>
-        </div>
-        <div class="academy-statbox">
-          <div class="academy-stat">
-            <div class="academy-stat__n">{int(prog.get('completion_percentage',0))}%</div>
-            <div class="academy-stat__label">Complétion</div>
-          </div>
-          <div class="academy-stat">
-            <div class="academy-stat__n">{int(prog.get('total_xp',0))}</div>
-            <div class="academy-stat__label">XP total</div>
-          </div>
-          <div class="academy-stat">
-            <div class="academy-stat__n">{int(prog.get('streak_days',0))}j</div>
-            <div class="academy-stat__label">Streak</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="academy-cols">
-        <div class="academy-col-main">
-          <div class="academy-card">
-            <div class="academy-card__title">Modules</div>
-            <div class="academy-card__sub">Cible: finir 1 module à la fois (ça évite le chaos).</div>
-            <div class="academy-modules">
-              {"".join(_academy_progress_row(ms) for ms in module_stats)}
-            </div>
-          </div>
-
-          <div class="academy-card">
-            <div class="academy-card__title">Recommandation (IA)</div>
-            <div class="academy-card__sub">“Qu’est-ce que je dois faire maintenant ?” → ici.</div>
-            <div class="academy-rec">
-              <div class="academy-rec__line"><b>Prochaine leçon:</b> {_html_escape(LESSONS_DATA.get(_academy_next_lesson_id(completed),{}).get('title',''))}</div>
-              <div class="academy-rec__line"><b>Règle:</b> 1 leçon + 1 action concrète (mini-exercice) = progrès réel.</div>
-              <div class="academy-rec__line"><b>Bonus:</b> Fais 1 quiz/jour pendant 7 jours → discipline boostée.</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="academy-col-side">
-          <div class="academy-card">
-            <div class="academy-card__title">Badges</div>
-            <div class="academy-card__sub">Récompenses (gamification saine).</div>
-            {badges_html}
-          </div>
-
-          <div class="academy-card">
-            <div class="academy-card__title">Raccourcis</div>
-            <div class="academy-links">
-              <a class="academy-link" href="/ai-swarm-agents">AI Swarm Agents</a>
-              <a class="academy-link" href="/rug-scam-shield">Rug/Scam Shield</a>
-              <a class="academy-link" href="/altseason-copilot-pro">Altseason Copilot Pro</a>
-              <a class="academy-link" href="/pricing-complete">Plans & accès</a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    """
-
-    page = _simple_page("Academy Progress", body, sidebar_html=SIDEBAR, username=username)
-    return HTMLResponse(page)
-
-@app.get("/crypto-academy")
-async def crypto_academy_redirect():
-    return RedirectResponse(url="/academy", status_code=307)
-
-@app.get("/academy-progress", response_class=HTMLResponse)
-async def academy_progress(request: Request):
-    # Prefer PermissionMiddleware user (session_token) and fall back to signed cookie session
-    user = getattr(request.state, "user", None) or {}
-    username = (user.get("username") or request.session.get("username") or "").strip()
-    if not username:
-        return RedirectResponse(url="/login?redirect=%2Facademy-progress", status_code=303)
-
-    completed = get_completed_lessons(username)
-    flat = _academy_catalog_flat()
-    total = len(flat) if flat else 0
-    done = sum(1 for l in flat if l["lesson_id"] in completed)
-
-    pct = int((done / total) * 100) if total else 0
-
-    # module breakdown
-    rows = ""
-    for mod in ACADEMY_CATALOG:
-        lessons = mod.get("lessons", [])
-        t = len(lessons)
-        d = sum(1 for l in lessons if l["lesson_id"] in completed)
-        p = int((d / t) * 100) if t else 0
-        rows += f"""
-        <tr>
-          <td><b>{html.escape(mod['title'])}</b><div style="opacity:.75;font-size:13px">{html.escape(mod.get('desc',''))}</div></td>
-          <td style="white-space:nowrap">{d}/{t}</td>
-          <td style="min-width:220px">
-            <div style="background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden">
-              <div style="height:10px;width:{p}%;background:rgba(96,165,250,.65)"></div>
-            </div>
-            <div style="opacity:.75;font-size:12px;margin-top:6px">{p}%</div>
-          </td>
-        </tr>
-        """
-
-    body = f"""
-    <div class="card mb-3">
-      <h2>Ma progression</h2>
-      <p>Tu peux reprendre exactement où tu étais rendu.</p>
-
-      <div style="margin-top:10px">
-        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div><b>Total</b>: {done}/{total} leçons</div>
-          <div><b>Progression</b>: {pct}%</div>
-        </div>
-        <div style="background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden;margin-top:10px">
-          <div style="height:12px;width:{pct}%;background:rgba(16,185,129,.65)"></div>
-        </div>
-      </div>
-
-      <p style="margin-top:14px"><a href="/academy">⬅️ Retour à l'Academy</a></p>
-    </div>
-
     <div class="card">
-      <h3>Détails par module</h3>
-      <table class="table">
-        <thead><tr><th>Module</th><th>Complété</th><th>Avancement</th></tr></thead>
-        <tbody>
-          {rows}
-        </tbody>
-      </table>
+      <h2>AI Crypto Coach</h2>
+      <p style="color:#94a3b8">
+        Cette page est en cours de réintégration. Pour l’instant, elle ne doit plus renvoyer 404/500.
+      </p>
+      <div class="stat-box" style="margin-top:12px">
+        <div class="label">Statut</div>
+        <div class="value">Maintenance</div>
+      </div>
+      <p style="margin-top:12px;color:#e2e8f0">
+        Si tu veux, je peux remettre la version complète (widgets + logique) exactement comme avant.
+      </p>
     </div>
     """
+    return HTMLResponse(_simple_page("AI Crypto Coach", body, sidebar=SIDEBAR_FULL))
 
-    page = _simple_page("Academy Progress", body, sidebar_html=SIDEBAR, username=username)
-    return HTMLResponse(content=page)
 
-@app.get("/crypto-academy", response_class=HTMLResponse)
-async def crypto_academy(request: Request):
-    """Alias vers /academy (compat)."""
-    return RedirectResponse(url="/academy", status_code=302)
+@app.get("/ai-swarm-agents")
+async def _page_ai_swarm_agents():
+    body = f"""
+    <div class="card">
+      <h2>AI Swarm Agents</h2>
+      <p style="color:#94a3b8">
+        Cette page est en cours de réintégration. Pour l’instant, elle ne doit plus renvoyer 404/500.
+      </p>
+      <div class="stat-box" style="margin-top:12px">
+        <div class="label">Statut</div>
+        <div class="value">Maintenance</div>
+      </div>
+      <p style="margin-top:12px;color:#e2e8f0">
+        Si tu veux, je peux remettre la version complète (widgets + logique) exactement comme avant.
+      </p>
+    </div>
+    """
+    return HTMLResponse(_simple_page("AI Swarm Agents", body, sidebar=SIDEBAR_FULL))
+

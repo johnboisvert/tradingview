@@ -25691,6 +25691,162 @@ def _ebooks_storage_dir() -> str:
 
     return "/tmp/ebooks"
 
+# -------------------------
+# Helpers partagés (plans / emails / fichiers / pepites)
+# -------------------------
+
+# Ordre des plans pour comparer les accès
+PLAN_RANK = {
+    "free": 0,
+    "premium": 1,
+    "advanced": 2,
+    "pro": 3,
+    "elite": 4,
+}
+
+def _human_bytes(n: int) -> str:
+    try:
+        n = int(n or 0)
+    except Exception:
+        n = 0
+    units = ["B", "KB", "MB", "GB", "TB"]
+    size = float(max(n, 0))
+    u = 0
+    while size >= 1024 and u < len(units) - 1:
+        size /= 1024.0
+        u += 1
+    if u == 0:
+        return f"{int(size)} {units[u]}"
+    return f"{size:.1f} {units[u]}"
+
+def _fmt_dt(s: str) -> str:
+    if not s:
+        return "-"
+    try:
+        # support ISO or 'YYYY-MM-DD HH:MM:SS'
+        if "T" in s:
+            dt = datetime.datetime.fromisoformat(s.replace("Z",""))
+        else:
+            dt = datetime.datetime.fromisoformat(s)
+        return dt.strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return str(s)
+
+_email_re = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$")
+
+def _email_is_valid(email: str) -> bool:
+    email = (email or "").strip()
+    if not email:
+        return False
+    if len(email) > 254:
+        return False
+    return bool(_email_re.match(email))
+
+
+# Cache simple en mémoire pour éviter d'appeler CoinGecko à chaque refresh
+_crypto_pepites_cache = {"ts": 0.0, "data": []}
+
+async def _fetch_crypto_pepites(limit: int = 25, vs_currency: str = "usd"):
+    """Retourne un payload dict pour la page Pépites (CoinGecko).
+    Format:
+      {"ok": bool, "items": [...], "updated_at": "...", "error": "..."}
+    """
+    now = time.time()
+    try:
+        limit = int(limit)
+    except Exception:
+        limit = 25
+    limit = max(5, min(limit, 100))
+
+    # Cache 60s
+    if _crypto_pepites_cache.get("data") and (now - float(_crypto_pepites_cache.get("ts") or 0)) < 60:
+        return {
+            "ok": True,
+            "items": _crypto_pepites_cache["data"],
+            "updated_at": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        }
+
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        "vs_currency": vs_currency,
+        "order": "volume_desc",
+        "per_page": 150,
+        "page": 1,
+        "sparkline": "false",
+        "price_change_percentage": "24h,7d",
+    }
+
+    try:
+        data = await _fetch_json(url, params=params, timeout=10)
+        items = data if isinstance(data, list) else []
+        pepites = []
+
+        for it in items:
+            try:
+                mc = float(it.get("market_cap") or 0)
+                vol = float(it.get("total_volume") or 0)
+                ch24 = float(it.get("price_change_percentage_24h_in_currency") or it.get("price_change_percentage_24h") or 0)
+                ch7d = float(it.get("price_change_percentage_7d_in_currency") or 0)
+                rank = int(it.get("market_cap_rank") or 9999)
+                price = float(it.get("current_price") or 0)
+            except Exception:
+                mc, vol, ch24, ch7d, rank, price = 0.0, 0.0, 0.0, 0.0, 9999, 0.0
+
+            # Filtre small/mid caps pour "pépites"
+            if mc <= 0:
+                continue
+            if not (10_000_000 <= mc <= 1_000_000_000):
+                continue
+            if vol <= 0:
+                continue
+
+            liq = vol / max(mc, 1.0)
+
+            # Score simple et stable
+            rank_bonus = 0.0
+            if 50 <= rank <= 300:
+                rank_bonus = 8.0
+            elif 301 <= rank <= 800:
+                rank_bonus = 4.0
+
+            score = (liq * 120.0) + (max(min(ch24, 40.0), -40.0) * 1.2) + rank_bonus
+            trend = "Bullish" if ch24 >= 2 else ("Bearish" if ch24 <= -2 else "Neutre")
+
+            pepites.append({
+                "name": it.get("name") or "",
+                "symbol": (it.get("symbol") or "").upper(),
+                "trend": trend,
+                "score": float(score),
+                "price": price,
+                "market_cap": mc,
+                "volume": vol,
+                "ch24": float(ch24),
+                "ch7d": float(ch7d),
+                "liq": float(liq),
+                "rank": rank,
+            })
+
+        pepites.sort(key=lambda x: x.get("score", 0), reverse=True)
+        pepites = pepites[:limit]
+
+        _crypto_pepites_cache["ts"] = now
+        _crypto_pepites_cache["data"] = pepites
+
+        return {
+            "ok": True,
+            "items": pepites,
+            "updated_at": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        }
+    except Exception as e:
+        if _crypto_pepites_cache.get("data"):
+            return {
+                "ok": False,
+                "items": _crypto_pepites_cache["data"],
+                "updated_at": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+                "error": str(e),
+            }
+        return {"ok": False, "items": [], "updated_at": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"), "error": str(e)}
+
 
 @app.get("/admin-dashboard/revenue-intelligence", response_class=HTMLResponse)
 async def admin_revenue_intelligence_page(request: Request):
@@ -26498,51 +26654,26 @@ async def admin_create_launch_promos(request: Request, session_token: Optional[s
         return JSONResponse({"success": False, "message": "❌ Module promo_codes non disponible"}, status_code=500)
 
     accept = (request.headers.get("accept") or "").lower()
-    wants_html = ("text/html" in accept) and (request.query_params.get("format") != "json")
+    wants_html = (("text/html" in accept) or ("*/*" in accept) or (not accept) or (request.query_params.get("html") == "1")) and (request.query_params.get("format") != "json")
+    wants_json = (request.query_params.get("json") == "1") or (("application/json" in accept) and ("text/html" not in accept) and (request.query_params.get("html") != "1"))
 
     def _list_existing(conn) -> list[str]:
-        """Liste les codes existants avec des colonnes variables (schema tolerant)."""
+        """Liste les codes promo existants (table promo_codes) de façon robuste."""
         try:
             cur = conn.cursor()
-            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='promo_codes'")
-            if not cur.fetchone():
-                return []
-            cur.execute("PRAGMA table_info(promo_codes)")
-            cols = [r[1] for r in (cur.fetchall() or [])]
-            if not cols:
-                return []
-            want = [c for c in ["code","discount_type","discount_value","min_amount","expires_at","active","description"] if c in cols]
-            if not want:
-                want = [cols[0]]
-            cur.execute(f"SELECT {', '.join(want)} FROM promo_codes ORDER BY id DESC LIMIT 50")
+            cur.execute("SELECT code FROM promo_codes ORDER BY datetime(created_at) DESC LIMIT 200")
             rows = cur.fetchall() or []
-            out = []
-            for r in rows:
-                rec = dict(zip(want, r))
-                code = str(rec.get("code") or "").strip() or "—"
-                dt = rec.get("discount_type")
-                dv = rec.get("discount_value")
-                ma = rec.get("min_amount")
-                ex = rec.get("expires_at")
-                ac = rec.get("active")
-                desc = rec.get("description") or ""
-                pieces = [code]
-                if dt is not None and dv is not None:
-                    pieces.append(f"{dt}:{dv}")
-                if ma:
-                    pieces.append(f"min:{ma}")
-                if ex:
-                    pieces.append(f"exp:{str(ex)[:10]}")
-                if ac is not None:
-                    pieces.append("actif" if int(ac) else "inactif")
-                if desc:
-                    pieces.append(str(desc)[:60])
-                out.append(" • ".join(pieces))
-            return out
+            return [r[0] for r in rows if r and r[0]]
         except Exception:
-            return []
+            # Fallback: si created_at n'existe pas (ancien schéma), on essaie sans ORDER BY
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT code FROM promo_codes LIMIT 200")
+                rows = cur.fetchall() or []
+                return [r[0] for r in rows if r and r[0]]
+            except Exception:
+                return []
 
-    # Page HTML (par défaut) : afficher l'état + bouton d'action
     do_create = request.query_params.get("do") == "1"
     try:
         count = int(request.query_params.get("count") or 5)
@@ -33827,7 +33958,7 @@ def _admin_simple_page(title: str, body_html: str) -> str:
     - On passe uniquement le HTML (sans <style>) à _simple_page comme sidebar_html.
     """
     try:
-        sb = globals().get("SIDEBAR") or ""
+        sb = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
         if "</style>" in sb:
             sb_style = sb.split("</style>", 1)[0] + "</style>"
             sb_html = sb.split("</style>", 1)[1]
@@ -35143,4 +35274,3 @@ if not globals().get("_PEPITES_ROUTES_REGISTERED"):
         </script>
         """
         return HTMLResponse(_simple_page("Pépites Crypto", body, sidebar=SIDEBAR_FULL))
-

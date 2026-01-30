@@ -3345,22 +3345,33 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         if allowed:
             return await call_next(request)
 
-        # Refus : message propre + suggestion upgrade
-        # (On renvoie JSON si appel AJAX, sinon on redirige vers /pricing)
+        # Refus : message propre (page 403) au lieu d'une redirection silencieuse
         try:
-            accept = request.headers.get("accept", "")
-            is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest"
+            accept = (request.headers.get("accept") or "").lower()
+            is_ajax = (request.headers.get("x-requested-with") or "") == "XMLHttpRequest"
         except Exception:
             accept = ""
             is_ajax = False
 
+        # Si c'est un appel API/AJAX, renvoyer du JSON
         if is_ajax or "application/json" in accept:
             return JSONResponse(
-                {"detail": "Accès refusé. Votre forfait ne permet pas cette page.", "upgrade": "/pricing"},
-                status_code=403
+                {
+                    "detail": "Accès refusé. Ton forfait ne permet pas cette page.",
+                    "required_plan": required_plan,
+                    "path": path,
+                    "upgrade_url": "/pricing-complete",
+                },
+                status_code=403,
             )
 
-        return RedirectResponse(url="/pricing", status_code=302)
+        # Sinon, page HTML claire avec CTA vers les forfaits
+        return access_denied_page(
+            request,
+            page_title=(ROUTE_LABELS.get(path) if "ROUTE_LABELS" in globals() else path),
+            required_plan=required_plan,
+        )
+
 # Activer le middleware
 app.add_middleware(PermissionMiddleware)
 

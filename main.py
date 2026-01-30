@@ -33936,3 +33936,597 @@ except Exception as _e:
     if not _route_exists(app, "/portfolio-tracker/delete-holding", "POST"):
         app.add_api_route("/portfolio-tracker/delete-holding", portfolio_tracker_delete_holding, methods=["POST"])
     ### PORTFOLIO_TRACKER_FIX_END
+
+
+
+# ==============================
+# FIX: /contact, /telechargements, /crypto-pepites
+# - Ajoute des routes manquantes (évite 404)
+# - Données réelles: SQLite (contact_messages, ebooks) + CoinGecko (pepites)
+# - Robuste: jamais de 500 si API externe down (fallback message)
+# ==============================
+
+def _human_bytes(n: int | None) -> str:
+    try:
+        n = int(n or 0)
+    except Exception:
+        return "—"
+    if n <= 0:
+        return "—"
+    units = ["B", "KB", "MB", "GB", "TB"]
+    i = 0
+    v = float(n)
+    while v >= 1024 and i < len(units) - 1:
+        v /= 1024.0
+        i += 1
+    if i == 0:
+        return f"{int(v)} {units[i]}"
+    return f"{v:.1f} {units[i]}"
+
+def _fmt_dt(val) -> str:
+    try:
+        if val is None:
+            return "—"
+        # sqlite CURRENT_TIMESTAMP => "YYYY-MM-DD HH:MM:SS"
+        s = str(val)
+        # Keep it readable
+        return s.replace("T", " ")[:19]
+    except Exception:
+        return "—"
+
+def _email_is_valid(email: str) -> bool:
+    email = (email or "").strip()
+    if not email or "@" not in email:
+        return False
+    if len(email) > 254:
+        return False
+    return True
+
+async def _fetch_crypto_pepites(vs: str = "usd", per_page: int = 100) -> dict:
+    """Retourne une liste de 'pépites' (small/mid caps) basée sur CoinGecko markets.
+    C'est 100% live (API externe), avec cache TTL pour éviter les rate limits.
+    """
+    try:
+        params = {
+            "vs_currency": vs,
+            "order": "volume_desc",
+            "per_page": int(per_page),
+            "page": 1,
+            "sparkline": "false",
+            "price_change_percentage": "24h,7d",
+        }
+        data = await _fetch_json(
+            "https://api.coingecko.com/api/v3/coins/markets",
+            params=params,
+            timeout=15.0,
+            cache_ttl=30,  # refresh ~30s
+            use_coingecko_key=True,
+        )
+
+        items = []
+        for c in (data or []):
+            try:
+                market_cap = float(c.get("market_cap") or 0.0)
+                vol = float(c.get("total_volume") or 0.0)
+                ch24 = float(c.get("price_change_percentage_24h_in_currency") or 0.0)
+                ch7d = float(c.get("price_change_percentage_7d_in_currency") or 0.0)
+
+                # Heuristiques "pépites"
+                # - évite les mega caps (elles resteront dans Top 50)
+                # - évite les microcaps sans volume
+                if market_cap < 10_000_000:       # < 10M trop illiquide
+                    continue
+                if market_cap > 1_000_000_000:    # > 1B plutôt "mid/large", pas pépite
+                    continue
+                if vol < 2_000_000:              # volume min
+                    continue
+
+                # Liquidity ratio (volume / marketcap)
+                liq = (vol / market_cap) if market_cap > 0 else 0.0
+
+                # Score simple 0-100: momentum + liquidité (limité)
+                score = 0.0
+                score += max(-30.0, min(30.0, ch24)) * 1.0          # -30..+30
+                score += max(-20.0, min(20.0, ch7d)) * 0.6          # -12..+12
+                score += max(0.0, min(25.0, liq * 25.0))            # 0..25
+                score = max(0.0, min(100.0, score + 35.0))          # shift baseline
+
+                trend = "Bullish" if (ch24 > 2 and ch7d > 0) else ("Bearish" if (ch24 < -2 and ch7d < 0) else "Neutral")
+
+                items.append({
+                    "id": c.get("id"),
+                    "symbol": (c.get("symbol") or "").upper(),
+                    "name": c.get("name") or "",
+                    "price": c.get("current_price"),
+                    "market_cap": market_cap,
+                    "volume": vol,
+                    "ch24": ch24,
+                    "ch7d": ch7d,
+                    "liq": liq,
+                    "score": float(score),
+                    "trend": trend,
+                    "image": c.get("image") or "",
+                })
+            except Exception:
+                continue
+
+        # Trier par score puis par volume
+        items.sort(key=lambda x: (x.get("score", 0), x.get("volume", 0)), reverse=True)
+        items = items[:20]
+
+        return {
+            "ok": True,
+            "updated_at": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
+            "count": len(items),
+            "items": items,
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "updated_at": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
+            "error": str(e),
+            "count": 0,
+            "items": [],
+        }
+
+def _render_callout(title: str, text: str) -> str:
+    return f"""
+    <div class="card" style="border-left:4px solid #38bdf8; margin: 0 0 14px 0;">
+      <div style="display:flex; gap:10px; align-items:center;">
+        <div style="font-size:18px;">ℹ️</div>
+        <div>
+          <div style="font-weight:800; margin-bottom:4px;">{_html_mod.escape(title)}</div>
+          <div class="muted">{_html_mod.escape(text)}</div>
+        </div>
+      </div>
+    </div>
+    """
+
+
+def _downloads_dir() -> Path:
+    """Choisit un répertoire de fichiers persistant si possible.
+
+    - Priorité: /app/data/ebooks (volume Railway) si des fichiers existent ou si /tmp/ebooks est vide
+    - Fallback: EBOOKS_DIR (souvent /tmp/ebooks)
+    """
+    try:
+        tmp_dir = globals().get("EBOOKS_DIR")
+        tmp_has_files = False
+        try:
+            if tmp_dir and Path(tmp_dir).exists():
+                tmp_has_files = any(Path(tmp_dir).glob("*"))
+        except Exception:
+            tmp_has_files = False
+
+        base = Path(os.getenv("DB_DIR", "/app/data"))
+        persistent = base / "ebooks"
+        persistent.mkdir(parents=True, exist_ok=True)
+
+        # Si /tmp/ebooks contient déjà des fichiers, on continue de l'utiliser
+        if tmp_has_files:
+            return Path(tmp_dir)
+
+        # Sinon, on préfère le persistant
+        return persistent
+    except Exception:
+        try:
+            return Path(globals().get("EBOOKS_DIR") or "/tmp/ebooks")
+        except Exception:
+            return Path("/tmp/ebooks")
+
+# ---------- /contact ----------
+if not globals().get("_CONTACT_ROUTES_REGISTERED"):
+    _CONTACT_ROUTES_REGISTERED = True
+
+    @app.get("/contact", response_class=HTMLResponse)
+    async def contact_page(request: Request):
+        user = get_user_from_request(request)
+        qs = dict(request.query_params)
+        msg = qs.get("msg") or ""
+        sent = qs.get("sent") == "1"
+
+        pre_name = ""
+        pre_email = ""
+        if isinstance(user, dict):
+            pre_name = (user.get("username") or user.get("name") or "").strip()
+            pre_email = (user.get("email") or "").strip()
+
+        body = ""
+        if sent:
+            body += _render_callout("Message envoyé ✅", "Merci! On te répond dès que possible (généralement en moins de 24h).")
+        elif msg:
+            body += _render_callout("Info", msg)
+
+        body += f"""
+        <div class="card">
+          <h1 style="margin:0 0 6px 0">Contact</h1>
+          <p class="muted" style="margin:0 0 14px 0">Tu as une question, un bug, ou une suggestion? Écris-nous ici.</p>
+
+          <form method="post" action="/contact" style="display:grid; gap:12px; max-width:860px;">
+            <div class="grid">
+              <div>
+                <label class="muted" style="display:block;margin-bottom:6px">Nom</label>
+                <input name="name" placeholder="Ton nom" value="{_html_mod.escape(pre_name)}" required />
+              </div>
+              <div>
+                <label class="muted" style="display:block;margin-bottom:6px">Email</label>
+                <input name="email" type="email" placeholder="ton@email.com" value="{_html_mod.escape(pre_email)}" required />
+              </div>
+            </div>
+
+            <div>
+              <label class="muted" style="display:block;margin-bottom:6px">Sujet</label>
+              <input name="subject" placeholder="Ex: Problème sur /ai-signals" />
+            </div>
+
+            <div>
+              <label class="muted" style="display:block;margin-bottom:6px">Message</label>
+              <textarea name="message" rows="6" style="width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0" placeholder="Décris ton besoin / le bug (avec capture si possible)" required></textarea>
+            </div>
+
+            <div style="display:flex; gap:10px; align-items:center;">
+              <button type="submit" style="font-weight:800;">Envoyer</button>
+              <span class="muted" style="font-size:12px">Les messages sont stockés dans la DB (contact_messages) pour suivi.</span>
+            </div>
+          </form>
+        </div>
+        """
+
+        return HTMLResponse(_simple_page("Contact", body, sidebar=SIDEBAR_FULL))
+
+    @app.post("/contact")
+    async def contact_submit(request: Request):
+        try:
+            form = await request.form()
+            name = (form.get("name") or "").strip()
+            email = (form.get("email") or "").strip()
+            subject = (form.get("subject") or "").strip()
+            message = (form.get("message") or "").strip()
+
+            if not name or not message or not _email_is_valid(email):
+                return RedirectResponse(url="/contact?msg=Données invalides. Vérifie ton nom/email/message.", status_code=303)
+
+            user = get_user_from_request(request)
+            user_id = ""
+            try:
+                if isinstance(user, dict):
+                    user_id = (user.get("username") or user.get("email") or "").strip()
+            except Exception:
+                user_id = ""
+
+            # Enregistrer en DB
+            try:
+                conn = get_db_connection()
+                cur = conn.cursor()
+                if DB_CONFIG.get("type") == "postgres":
+                    cur.execute(
+                        "INSERT INTO contact_messages (name,email,subject,message,user_id,status) VALUES (%s,%s,%s,%s,%s,%s)",
+                        (name, email, subject, message, user_id, "unread"),
+                    )
+                else:
+                    cur.execute(
+                        "INSERT INTO contact_messages (name,email,subject,message,user_id,status) VALUES (?,?,?,?,?,?)",
+                        (name, email, subject, message, user_id, "unread"),
+                    )
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                # fallback: ne pas casser l'utilisateur
+                print(f"❌ contact_submit DB error: {e}")
+                return RedirectResponse(url="/contact?msg=Erreur serveur (DB). Réessaie dans quelques minutes.", status_code=303)
+
+            # Optionnel: envoyer email si EmailService dispo
+            try:
+                svc = globals().get("email_service")
+                if svc and hasattr(svc, "send_email"):
+                    # évite les crashes si la config SMTP est incomplète
+                    await svc.send_email(
+                        to_email=os.getenv("CONTACT_TO_EMAIL", os.getenv("SMTP_TO_EMAIL", "")) or "noreply@tradingdashboard.pro",
+                        subject=f"[CryptoIA Contact] {subject or 'Nouveau message'}",
+                        html_content=f"<p><b>Nom:</b> {_html_mod.escape(name)}<br><b>Email:</b> {_html_mod.escape(email)}</p><pre>{_html_mod.escape(message)}</pre>",
+                    )
+            except Exception as e:
+                print(f"⚠️ contact_submit email skipped: {e}")
+
+            return RedirectResponse(url="/contact?sent=1", status_code=303)
+        except Exception as e:
+            print(f"❌ contact_submit fatal: {e}")
+            return RedirectResponse(url="/contact?msg=Erreur serveur. Réessaie.", status_code=303)
+
+# ---------- /telechargements ----------
+if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
+    _DOWNLOADS_ROUTES_REGISTERED = True
+
+    def _user_plan_lower(request: Request) -> str:
+        user = get_user_from_request(request)
+        if isinstance(user, dict):
+            u = (user.get("username") or user.get("email") or "").strip()
+            if u:
+                return (get_user_effective_plan(u) or "free").lower()
+        return "free"
+
+    @app.get("/telechargements", response_class=HTMLResponse)
+    async def telechargements_page(request: Request):
+        user = get_user_from_request(request)
+        if not user:
+            # si non connecté, on affiche une page propre plutôt que 404/500
+            body = _render_callout("Accès", "Connecte-toi pour accéder aux téléchargements, ou vérifie ton plan.")
+            body += f"""
+            <div class="card">
+              <h1 style="margin:0 0 6px 0">Téléchargements</h1>
+              <p class="muted" style="margin:0 0 14px 0">Ebooks, ressources, templates, et outils. Données réelles: table <b>ebooks</b>.</p>
+              <a href="/login" style="display:inline-block;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#111827;color:#e2e8f0;text-decoration:none;font-weight:800;">Se connecter</a>
+              <a href="/pricing" style="display:inline-block;margin-left:10px;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;text-decoration:none;font-weight:800;">Voir les plans</a>
+            </div>
+            """
+            return HTMLResponse(_simple_page("Téléchargements", body, sidebar=SIDEBAR_FULL))
+
+        # Charger ebooks depuis DB
+        rows = []
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT id,title,description,filename,file_size,min_plan,downloads,active,created_at FROM ebooks ORDER BY created_at DESC")
+            rows = cur.fetchall()
+            conn.close()
+        except Exception as e:
+            print(f"❌ telechargements DB read: {e}")
+            rows = []
+
+        plan = _user_plan_lower(request)
+        plan_label = plan.title()
+
+        cards = []
+        for r in rows:
+            try:
+                (eid, title, desc, filename, fsize, min_plan, downloads, active, created_at) = r
+            except Exception:
+                continue
+            title = str(title or "")
+            desc = str(desc or "")
+            filename = str(filename or "")
+            min_plan = str(min_plan or "Free")
+            downloads = int(downloads or 0)
+            active = bool(active) if active is not None else True
+
+            fpath = None
+            try:
+                fpath = (_downloads_dir() / filename) if filename else None
+            except Exception:
+                fpath = None
+            exists = bool(fpath and fpath.exists())
+
+            # access check by min_plan
+            allow = PLAN_RANK.get(plan, 0) >= PLAN_RANK.get(str(min_plan).lower(), 0)
+
+            badge = "✅ Disponible" if (active and exists and allow) else ("🔒 Plan requis" if (active and exists and not allow) else "⚠️ Indisponible")
+            btn = ""
+            if active and exists and allow:
+                btn = f'<a href="/telechargements/download/{eid}" style="display:inline-block;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#111827;color:#e2e8f0;text-decoration:none;font-weight:800;">Télécharger</a>'
+            elif active and exists and not allow:
+                btn = f'<a href="/pricing" style="display:inline-block;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;text-decoration:none;font-weight:800;">Mettre à niveau</a>'
+
+            cards.append(f"""
+            <div class="card" style="margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+                <div style="min-width:240px;flex:1">
+                  <div style="font-weight:900;font-size:18px;margin-bottom:4px">{_html_mod.escape(title)}</div>
+                  <div class="muted" style="margin-bottom:10px">{_html_mod.escape(desc) if desc else '—'}</div>
+                  <div class="muted" style="font-size:12px">
+                    Fichier: <b>{_html_mod.escape(filename or '—')}</b> • Taille: <b>{_human_bytes(fsize)}</b> • Téléchargements: <b>{downloads}</b><br>
+                    Plan minimal: <b>{_html_mod.escape(min_plan)}</b> • Ajouté: <b>{_fmt_dt(created_at)}</b>
+                  </div>
+                </div>
+                <div style="text-align:right;min-width:200px">
+                  <div style="font-weight:800;margin-bottom:10px">{badge}</div>
+                  {btn}
+                </div>
+              </div>
+            </div>
+            """)
+
+        if not cards:
+            cards_html = _render_callout("Aucun contenu pour l’instant", "Ajoute des ebooks dans la table 'ebooks' (admin) et dépose les fichiers dans /tmp/ebooks.")
+        else:
+            cards_html = "\n".join(cards)
+
+        body = f"""
+        <div class="card" style="margin-bottom:12px">
+          <h1 style="margin:0 0 6px 0">Téléchargements</h1>
+          <p class="muted" style="margin:0">Contenu réel (DB: <b>ebooks</b>). Ton plan: <b>{_html_mod.escape(plan_label)}</b>. Les fichiers sont servis depuis <b>{_html_mod.escape(str(_downloads_dir()))}</b>.</p>
+        </div>
+        {cards_html}
+        """
+        return HTMLResponse(_simple_page("Téléchargements", body, sidebar=SIDEBAR_FULL))
+
+    @app.get("/telechargements/download/{ebook_id}")
+    async def telechargements_download(request: Request, ebook_id: int):
+        user = get_user_from_request(request)
+        if not user:
+            return RedirectResponse(url="/login?next=/telechargements", status_code=303)
+
+        # Lire ebook
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            if DB_CONFIG.get("type") == "postgres":
+                cur.execute("SELECT id,title,filename,file_size,min_plan,active FROM ebooks WHERE id = %s", (ebook_id,))
+            else:
+                cur.execute("SELECT id,title,filename,file_size,min_plan,active FROM ebooks WHERE id = ?", (ebook_id,))
+            row = cur.fetchone()
+            conn.close()
+        except Exception as e:
+            print(f"❌ downloads read: {e}")
+            return RedirectResponse(url="/telechargements?msg=Ebook introuvable.", status_code=303)
+
+        if not row:
+            return RedirectResponse(url="/telechargements?msg=Ebook introuvable.", status_code=303)
+
+        eid, title, filename, fsize, min_plan, active = row
+        if not active:
+            return RedirectResponse(url="/telechargements?msg=Ebook désactivé.", status_code=303)
+
+        filename = str(filename or "")
+        fpath = _downloads_dir() / filename if filename else None
+        if not fpath or not fpath.exists():
+            return RedirectResponse(url="/telechargements?msg=Fichier manquant sur le serveur.", status_code=303)
+
+        plan = _user_plan_lower(request)
+        if PLAN_RANK.get(plan, 0) < PLAN_RANK.get(str(min_plan or "free").lower(), 0):
+            return RedirectResponse(url="/pricing", status_code=303)
+
+        # Increment download count (best effort)
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            if DB_CONFIG.get("type") == "postgres":
+                cur.execute("UPDATE ebooks SET downloads = COALESCE(downloads,0) + 1 WHERE id = %s", (eid,))
+            else:
+                cur.execute("UPDATE ebooks SET downloads = COALESCE(downloads,0) + 1 WHERE id = ?", (eid,))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"⚠️ download count not updated: {e}")
+
+        return FileResponse(str(fpath), filename=os.path.basename(str(fpath)))
+
+# ---------- /crypto-pepites ----------
+if not globals().get("_PEPITES_ROUTES_REGISTERED"):
+    _PEPITES_ROUTES_REGISTERED = True
+
+    @app.get("/api/crypto-pepites-data")
+    async def crypto_pepites_data():
+        data = await _fetch_crypto_pepites()
+        return JSONResponse(data)
+
+    @app.get("/crypto-pepites", response_class=HTMLResponse)
+    async def crypto_pepites_page(request: Request):
+        # Page "pro": table live (CoinGecko) + auto-refresh (30s)
+        data = await _fetch_crypto_pepites()
+
+        callout = _render_callout(
+            "Données LIVE (CoinGecko)",
+            "Cette page liste des small/mid caps filtrées (market cap 10M–1B + volume). Auto-refresh toutes les 30 secondes.",
+        )
+
+        if not data.get("ok"):
+            err = data.get("error") or "API externe indisponible"
+            callout += _render_callout("Info", f"CoinGecko indisponible: {err}. Réessaie dans un instant.")
+
+        rows_html = ""
+        for it in (data.get("items") or []):
+            sym = _html_mod.escape(it.get("symbol") or "")
+            name = _html_mod.escape(it.get("name") or "")
+            trend = _html_mod.escape(it.get("trend") or "—")
+            score = float(it.get("score") or 0.0)
+            price = it.get("price")
+            mc = it.get("market_cap") or 0.0
+            vol = it.get("volume") or 0.0
+            ch24 = float(it.get("ch24") or 0.0)
+            ch7d = float(it.get("ch7d") or 0.0)
+            liq = float(it.get("liq") or 0.0)
+            rows_html += f"""
+            <tr>
+              <td style="padding:10px 8px;border-bottom:1px solid #1f2937"><b>{sym}</b><div class="muted" style="font-size:11px">{name}</div></td>
+              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">{(f"${float(price):,.6f}" if isinstance(price,(int,float)) else "—")}</td>
+              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${mc:,.0f}</td>
+              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${vol:,.0f}</td>
+              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">{ch24:+.2f}%</td>
+              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">{ch7d:+.2f}%</td>
+              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">{liq:.2f}</td>
+              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right"><b>{score:.0f}</b></td>
+              <td style="padding:10px 8px;border-bottom:1px solid #1f2937">{trend}</td>
+            </tr>
+            """
+
+        updated = _html_mod.escape(str(data.get("updated_at") or "—"))
+        body = f"""
+        {callout}
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-end;flex-wrap:wrap">
+            <div>
+              <h1 style="margin:0 0 6px 0">Pépites Crypto 💎</h1>
+              <p class="muted" style="margin:0">Mise à jour: <b id="pepites-updated">{updated}</b></p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <button onclick="refreshPepites()" style="font-weight:800;">Rafraîchir</button>
+              <span class="muted" style="font-size:12px">Auto-refresh 30s</span>
+            </div>
+          </div>
+
+          <div style="overflow:auto;margin-top:12px">
+            <table style="width:100%;border-collapse:collapse;min-width:980px">
+              <thead>
+                <tr class="muted" style="text-align:left">
+                  <th style="padding:10px 8px;border-bottom:1px solid #334155">Coin</th>
+                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">Prix</th>
+                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">Market Cap</th>
+                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">Volume 24h</th>
+                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">24h</th>
+                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">7d</th>
+                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">Vol/MC</th>
+                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">Score</th>
+                  <th style="padding:10px 8px;border-bottom:1px solid #334155">Tendance</th>
+                </tr>
+              </thead>
+              <tbody id="pepites-tbody">
+                {rows_html or '<tr><td colspan="9" class="muted" style="padding:14px">Aucune donnée pour le moment.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <script>
+        async function refreshPepites() {{
+          try {{
+            const r = await fetch('/api/crypto-pepites-data', {{cache:'no-store'}});
+            const data = await r.json();
+            const up = document.getElementById('pepites-updated');
+            if (up && data.updated_at) up.textContent = data.updated_at;
+
+            const tb = document.getElementById('pepites-tbody');
+            if (!tb) return;
+            const items = (data.items || []);
+            if (!items.length) {{
+              tb.innerHTML = '<tr><td colspan="9" class="muted" style="padding:14px">Aucune donnée pour le moment.</td></tr>';
+              return;
+            }}
+            let html = '';
+            for (const it of items) {{
+              const sym = (it.symbol || '').toUpperCase();
+              const name = (it.name || '');
+              const price = (typeof it.price === 'number') ? ('$' + it.price.toLocaleString(undefined, {{maximumFractionDigits: 6}})) : '—';
+              const mc = (typeof it.market_cap === 'number') ? ('$' + Math.round(it.market_cap).toLocaleString()) : '—';
+              const vol = (typeof it.volume === 'number') ? ('$' + Math.round(it.volume).toLocaleString()) : '—';
+              const ch24 = (typeof it.ch24 === 'number') ? (it.ch24.toFixed(2) + '%') : '—';
+              const ch7d = (typeof it.ch7d === 'number') ? (it.ch7d.toFixed(2) + '%') : '—';
+              const liq = (typeof it.liq === 'number') ? it.liq.toFixed(2) : '—';
+              const score = (typeof it.score === 'number') ? Math.round(it.score) : '—';
+              const trend = (it.trend || '—');
+
+              const ch24s = (typeof it.ch24 === 'number' && it.ch24>0) ? ('+'+ch24) : ch24;
+              const ch7ds = (typeof it.ch7d === 'number' && it.ch7d>0) ? ('+'+ch7d) : ch7d;
+
+              html += `
+                <tr>
+                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937"><b>${{sym}}</b><div class="muted" style="font-size:11px">${{name}}</div></td>
+                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${{price}}</td>
+                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${{mc}}</td>
+                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${{vol}}</td>
+                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${{ch24s}}</td>
+                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${{ch7ds}}</td>
+                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${{liq}}</td>
+                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right"><b>${{score}}</b></td>
+                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937">${{trend}}</td>
+                </tr>
+              `;
+            }}
+            tb.innerHTML = html;
+          }} catch (e) {{
+            console.log('refreshPepites error', e);
+          }}
+        }}
+        setInterval(refreshPepites, 30000);
+        </script>
+        """
+        return HTMLResponse(_simple_page("Pépites Crypto", body, sidebar=SIDEBAR_FULL))

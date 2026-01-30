@@ -39,20 +39,39 @@ print('HAS_BODY:', 'Body' in globals())
 
 #  CORRECTION 2: Rate Limiting pour scurit
 # slowapi est optionnel: si le paquet n'est pas install, on dsactive le rate limiting
+# =========================
+# Rate limiting (SlowAPI) — optional
+# =========================
 try:
-    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi import Limiter
     from slowapi.util import get_remote_address
     from slowapi.errors import RateLimitExceeded
     from slowapi.middleware import SlowAPIMiddleware
     SLOWAPI_AVAILABLE = True
-except ImportError:
+except Exception:
     Limiter = None
-    _rate_limit_exceeded_handler = None
     get_remote_address = None
+    RateLimitExceeded = None
     SlowAPIMiddleware = None
+    SLOWAPI_AVAILABLE = False
 
-    class RateLimitExceeded(Exception):
-        pass
+
+class _NoopLimiter:
+    """Fallback limiter when slowapi isn't installed (or fails)."""
+    def limit(self, *args, **kwargs):
+        def _decorator(fn):
+            return fn
+        return _decorator
+
+
+if SLOWAPI_AVAILABLE:
+    try:
+        limiter = Limiter(key_func=get_remote_address)
+    except Exception:
+        limiter = _NoopLimiter()
+        SLOWAPI_AVAILABLE = False
+else:
+    limiter = _NoopLimiter()
 
     SLOWAPI_AVAILABLE = False
 
@@ -2769,6 +2788,25 @@ def _force_admin_on_request(request):
     return admin_user
 
 app = FastAPI()
+
+# =========================
+# SlowAPI middleware wiring (only if available)
+# =========================
+if SLOWAPI_AVAILABLE:
+    try:
+        app.state.limiter = limiter
+        app.add_middleware(SlowAPIMiddleware)
+
+        @app.exception_handler(RateLimitExceeded)
+        async def _rate_limit_exceeded_handler(request: Request, exc: Exception):
+            return JSONResponse(
+                {"status": "error", "message": "Trop de requêtes. Réessaie plus tard."},
+                status_code=429,
+            )
+    except Exception:
+        # Never block startup because of rate limiting
+        SLOWAPI_AVAILABLE = False
+
 
 # =========================
 # Shared helpers (compatibilité / anti-NameError)

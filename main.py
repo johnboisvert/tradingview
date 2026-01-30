@@ -32950,6 +32950,147 @@ async def ai_timeframe(request: Request):
 # ✅ Routes manquantes (évite 404) + pages robustes (anti-500)
 # ============================================================
 
+# ============================================================
+# ✅ Footer commun: instructions + transparence sur les données
+# ============================================================
+
+_PAGE_HELP = {
+    "/ai-signals": {
+        "mode": "LIVE",
+        "purpose": "Affiche tes signaux reçus (TradingView → /tv-webhook) + un snapshot marché.",
+        "how": [
+            "Si la liste est vide: déclenche une alerte TradingView (webhook) pour alimenter la base.",
+            "Utilise « Rafraîchir » / l’auto-refresh pour voir les nouveaux signaux.",
+            "Vérifie le timeframe/leverage/SL/TP avant d’exécuter un trade."
+        ],
+        "data": [
+            "Signaux: table `trades` (DB) alimentée par /tv-webhook.",
+            "Snapshot marché: CoinGecko (cache court côté serveur pour éviter les limites)."
+        ],
+    },
+    "/ai-alerts": {
+        "mode": "LIVE",
+        "purpose": "Boîte de réception des alertes/événements générés par tes signaux et outils.",
+        "how": [
+            "Ouvre une alerte pour voir le contexte et l’action recommandée.",
+            "Filtre/traite les alertes importantes en priorité (risque, liquidation, SL/TP)."
+        ],
+        "data": [
+            "Provient de ton système interne (DB/fichiers) — pas d’estimation externe."
+        ],
+    },
+}
+
+def _format_dt_mtl(value) -> str:
+    """Formate une date/heure (ISO ou datetime) en heure de Montréal."""
+    if not value:
+        return "—"
+    try:
+        tz = pytz.timezone("America/Montreal")
+        if isinstance(value, datetime):
+            dt = value
+        else:
+            s = str(value).strip()
+            # Tolère les formats ISO avec/ sans timezone
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = tz.localize(dt)
+        else:
+            dt = dt.astimezone(tz)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return str(value)
+
+def _get_trades_meta():
+    """Retourne (count, max_timestamp) depuis la DB trades. Best-effort."""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*), MAX(timestamp) FROM trades")
+        row = c.fetchone() or (0, None)
+        conn.close()
+        return int(row[0] or 0), row[1]
+    except Exception:
+        return 0, None
+
+def _render_footer_html(page_path: str, title: str) -> str:
+    help_cfg = _PAGE_HELP.get(page_path) or {
+        "mode": "MIXED",
+        "purpose": "Instructions d’utilisation + transparence sur les sources de données de cette page.",
+        "how": [
+            "Lis d’abord la section « Données & fraîcheur » pour connaître la source.",
+            "Si une section affiche « indisponible », c’est souvent une API limitée (réessaie plus tard).",
+            "Ne trade jamais « aveuglément »: valide toujours le risque (SL/TP) et ta stratégie."
+        ],
+        "data": [
+            "Selon la page: données DB (webhook), données externes (ex: CoinGecko), ou modules démo."
+        ],
+    }
+
+    now_mtl = _format_dt_mtl(datetime.now(pytz.timezone("America/Montreal")))
+    trades_count, trades_last = _get_trades_meta()
+    trades_last_s = _format_dt_mtl(trades_last)
+
+    mode = (help_cfg.get("mode") or "MIXED").upper()
+    mode_style = {
+        "LIVE": "background: rgba(16,185,129,.14); border:1px solid rgba(16,185,129,.35); color:#34d399;",
+        "MIXED": "background: rgba(96,165,250,.14); border:1px solid rgba(96,165,250,.35); color:#93c5fd;",
+        "DEMO": "background: rgba(245,158,11,.14); border:1px solid rgba(245,158,11,.35); color:#fbbf24;",
+    }.get(mode, "background: rgba(148,163,184,.12); border:1px solid rgba(148,163,184,.25); color:#e2e8f0;")
+
+    how_li = "".join([f"<li>{escape_html(x)}</li>" for x in (help_cfg.get("how") or [])])
+    data_li = "".join([f"<li>{escape_html(x)}</li>" for x in (help_cfg.get("data") or [])])
+
+    # Note: on reste volontairement "factuel". Pas de promesse d'être parfait 24/7.
+    return f'''
+    <div class="card" style="margin-top:22px; padding:18px; border:1px solid rgba(148,163,184,0.18); background: rgba(2,6,23,0.25);">
+      <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <strong>📌 Instructions & Sources</strong>
+          <span style="padding:4px 10px; border-radius:999px; font-weight:700; font-size:12px; {mode_style}">{mode}</span>
+        </div>
+        <div class="muted">Serveur (Montréal): {escape_html(now_mtl)}</div>
+      </div>
+
+      <div class="muted" style="margin-top:10px; line-height:1.55;">
+        <strong>{escape_html(title)}</strong> — {escape_html(help_cfg.get("purpose") or "")}
+      </div>
+
+      <div style="margin-top:12px;">
+        <div style="font-weight:700; margin-bottom:6px;">Comment utiliser</div>
+        <ul style="margin:8px 0 0 18px; line-height:1.7;">{how_li}</ul>
+      </div>
+
+      <hr style="border:0; border-top:1px solid rgba(148,163,184,0.16); margin:16px 0;">
+
+      <div style="display:flex; gap:18px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:260px;">
+          <div style="font-weight:700; margin-bottom:6px;">Données & fraîcheur</div>
+          <ul style="margin:8px 0 0 18px; line-height:1.7;">
+            {data_li}
+            <li><b>Signaux TradingView (DB):</b> {trades_count} trade(s) enregistrés — dernier signal: <b>{escape_html(trades_last_s)}</b></li>
+          </ul>
+          <div class="muted" style="margin-top:10px; line-height:1.55;">
+            Astuce: si « dernier signal » reste à « — », c’est que la DB n’a pas encore reçu d’alerte.
+          </div>
+        </div>
+
+        <div style="flex:1; min-width:260px;">
+          <div style="font-weight:700; margin-bottom:6px;">Transparence</div>
+          <div class="muted" style="line-height:1.6;">
+            Je n’affirme pas que tout est “parfaitement à jour” 24/7: les APIs externes peuvent être limitées ou tomber.
+            Le but du badge et de la section ci-dessus est d’indiquer clairement la source (DB vs API externe vs démo).
+          </div>
+        </div>
+      </div>
+    </div>
+    '''
+
+
+# ============================================================
+# ✅ Routes manquantes (évite 404) + pages robustes (anti-500)
+# ============================================================
+
 def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: str = "", **_kwargs) -> str:
     """Page helper.
 
@@ -32958,6 +33099,13 @@ def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: st
     """
     if sidebar and not sidebar_html:
         sidebar_html = sidebar
+
+    # Si request est fourni, on peut détecter le path pour adapter le footer
+    req = _kwargs.get("request")
+    try:
+        page_path = getattr(getattr(req, "url", None), "path", "") or ""
+    except Exception:
+        page_path = ""
 
     styles = globals().get("GLOBAL_STYLES") or ""
     # GLOBAL_STYLES est du CSS brut; on l'encapsule pour éviter qu'il apparaisse comme texte sur la page
@@ -32977,6 +33125,9 @@ def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: st
         @media (max-width:900px){aside{display:none}.grid{grid-template-columns:1fr}}
         .muted{color:#94a3b8}
         </style>'''
+
+    footer_html = _render_footer_html(page_path, title)
+
     return f"""<!doctype html>
 <html lang="fr">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">{styles}<title>{escape_html(title)}</title></head>
@@ -32986,6 +33137,7 @@ def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: st
   <main>
     <h1 style="margin:0 0 14px 0">{escape_html(title)}</h1>
     {body_html}
+    {footer_html}
   </main>
 </div>
 </body>

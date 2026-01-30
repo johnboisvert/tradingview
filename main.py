@@ -16,6 +16,8 @@ from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie, 
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response, PlainTextResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+# Starlette middleware base (needed for PermissionMiddleware)
+from starlette.middleware.base import BaseHTTPMiddleware
 from pathlib import Path
 
 # === Railway debug fingerprint (temp) ===

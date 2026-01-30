@@ -927,6 +927,32 @@ def init_portfolio_db() -> None:
         conn = sqlite3.connect(db_path)
         cur = conn.cursor()
 
+        # --- Migration (ancienne version) ---
+        # Certaines versions créaient la table "portfolio_holdings" au lieu de "holdings".
+        # On migre automatiquement si nécessaire (best-effort).
+        try:
+            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='portfolio_holdings'")
+            has_old = cur.fetchone() is not None
+            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='holdings'")
+            has_new = cur.fetchone() is not None
+            if has_old and not has_new:
+                cur.execute(
+                    """CREATE TABLE IF NOT EXISTS holdings (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        symbol TEXT NOT NULL,
+                        amount REAL NOT NULL DEFAULT 0,
+                        avg_cost REAL NOT NULL DEFAULT 0,
+                        last_price REAL,
+                        updated_at TEXT DEFAULT (datetime('now'))
+                    )"""
+                )
+                try:
+                    cur.execute("INSERT INTO holdings (symbol, amount, avg_cost, last_price, updated_at) SELECT symbol, amount, avg_cost, last_price, updated_at FROM portfolio_holdings")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         # Portfolios (optionnel, permet plusieurs portefeuilles)
         cur.execute(
             """
@@ -943,7 +969,7 @@ def init_portfolio_db() -> None:
         # Holdings (positions actuelles)
         cur.execute(
             """
-            CREATE TABLE IF NOT EXISTS portfolio_holdings (
+            CREATE TABLE IF NOT EXISTS holdings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 portfolio_id INTEGER,
                 symbol TEXT NOT NULL,
@@ -959,7 +985,7 @@ def init_portfolio_db() -> None:
         # Transactions (historique)
         cur.execute(
             """
-            CREATE TABLE IF NOT EXISTS portfolio_transactions (
+            CREATE TABLE IF NOT EXISTS transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 portfolio_id INTEGER,
                 ts TEXT DEFAULT (datetime('now')),
@@ -2772,167 +2798,36 @@ def _fmt_pct(x, decimals: int = 2, empty: str = "—") -> str:
     except Exception:
         return empty
 
-def _coingecko_markets_top50(vs_currency: str = "usd"):
-    """Top 50 markets from CoinGecko. Returns [] on any error."""
+def _coingecko_markets_top50():
+    """Retourne (markets, err_msg). Ne lève pas d'exception.
+
+    - Ajoute un User-Agent explicite.
+    - Remonte le HTTP status (ex: 429 rate-limit) dans err_msg.
+    """
     url = "https://api.coingecko.com/api/v3/coins/markets"
     params = {
-        "vs_currency": vs_currency,
+        "vs_currency": "usd",
         "order": "market_cap_desc",
         "per_page": 50,
         "page": 1,
         "sparkline": "false",
         "price_change_percentage": "1h,24h,7d",
     }
-    # Prefer httpx if available, fallback to requests.
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": "CryptoIA/1.0 (https://cryptoia.ca)",
+    }
     try:
-        import httpx
-        with httpx.Client(timeout=10.0) as client:
-            r = client.get(url, params=params, headers={"accept": "application/json"})
-            r.raise_for_status()
-            return r.json() or []
-    except Exception:
-        try:
-            import requests
-            r = requests.get(url, params=params, timeout=10)
-            r.raise_for_status()
-            return r.json() or []
-        except Exception:
-            return []
-
-
-
-# --- Rate limiting (SlowAPI) ---
-class _NoOpLimiter:
-    def limit(self, *args, **kwargs):
-        def decorator(func):
-            return func
-        return decorator
-
-limiter = _NoOpLimiter()
-
-if 'SLOWAPI_AVAILABLE' in globals() and SLOWAPI_AVAILABLE:
-    try:
-        limiter = Limiter(key_func=get_remote_address)
-        app.state.limiter = limiter
-        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-        app.add_middleware(SlowAPIMiddleware)
-        print("✅ Rate limiter configuré (SlowAPI)")
-    except Exception as _e:
-        limiter = _NoOpLimiter()
-        print(f"⚠️ Rate limiter désactivé: {_e}")
-
-
-# --- Sessions (required for request.session) ---
-try:
-    from starlette.middleware.sessions import SessionMiddleware
-    _SESSION_SECRET = (os.getenv("SESSION_SECRET_KEY") or os.getenv("SESSION_SECRET") or os.getenv("SECRET_KEY") or "").strip()
-    if not _SESSION_SECRET:
-        _SESSION_SECRET = "CHANGE_ME_SESSION_SECRET"  # ⚠️ Définir SESSION_SECRET_KEY dans Railway
-    _HTTPS_ONLY = os.getenv("SESSION_HTTPS_ONLY", "1").strip().lower() not in ("0", "false", "no")
-    app.add_middleware(
-        SessionMiddleware,
-        secret_key=_SESSION_SECRET,
-        same_site="lax",
-        https_only=_HTTPS_ONLY,
-        max_age=60 * 60 * 24 * 30,  # 30 jours
-    )
-    # Optionnel: partager la session entre www et le domaine racine (ex: www.cryptoia.ca <-> cryptoia.ca)
-    # À activer via SESSION_COOKIE_DOMAIN=".cryptoia.ca"
-    _COOKIE_DOMAIN = (os.getenv("SESSION_COOKIE_DOMAIN") or "").strip()
-    if _COOKIE_DOMAIN:
-        try:
-            from starlette.middleware.base import BaseHTTPMiddleware
-
-            class _SessionCookieDomainMiddleware(BaseHTTPMiddleware):
-                def __init__(self, app, cookie_name: str = "session", domain: str = ""):
-                    super().__init__(app)
-                    self.cookie_name = cookie_name
-                    self.domain = domain.strip()
-
-                async def dispatch(self, request, call_next):
-                    response = await call_next(request)
-                    if not self.domain:
-                        return response
-
-                    host = (request.url.hostname or "").lower()
-                    dom = self.domain.lstrip(".").lower()
-                    # On ne force le Domain que si on est sur le bon domaine (évite de casser railway.app / localhost)
-                    if dom and host and (host == dom or host.endswith("." + dom)):
-                        try:
-                            raw = list(getattr(response, "raw_headers", []) or [])
-                            new_raw = []
-                            for k, v in raw:
-                                if k.lower() == b"set-cookie":
-                                    s = v.decode("latin-1")
-                                    if s.startswith(f"{self.cookie_name}=") and "domain=" not in s.lower():
-                                        s = s + f"; Domain={self.domain}"
-                                    new_raw.append((k, s.encode("latin-1")))
-                                else:
-                                    new_raw.append((k, v))
-                            response.raw_headers = new_raw
-                        except Exception:
-                            pass
-                    return response
-
-            app.add_middleware(_SessionCookieDomainMiddleware, cookie_name="session", domain=_COOKIE_DOMAIN)
-        except Exception as _e:
-            print(f"⚠️ CookieDomainMiddleware non activé: {_e}")
-except Exception as _e:
-    print(f"ℹ️ SessionMiddleware absent (OK): {_e}")
-
-
-
-
-# ----------------------------------------------------------------------
-# ✅ HTML placeholder injection (fix {SITE_LOGO_URL} showing as /%7BSITE_LOGO_URL%7D)
-#    Some inline HTML pages in this project use "{SITE_LOGO_URL}" placeholders.
-#    This middleware replaces them at response-time so the logo always loads correctly.
-# ----------------------------------------------------------------------
-from starlette.middleware.base import BaseHTTPMiddleware
-
-class _InjectPlaceholdersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        resp = await call_next(request)
-        try:
-            ct = (resp.headers.get("content-type") or "").lower()
-            if "text/html" in ct and hasattr(resp, "body") and resp.body:
-                logo_url = (os.getenv("SITE_LOGO_URL") or "").strip() or "https://github.com/johnboisvert/tradingview/blob/main/static/cryptoia_logo.png?raw=true"
-                body = resp.body
-                body = body.replace(b"{SITE_LOGO_URL}", logo_url.encode("utf-8"))
-                body = body.replace(b"__SITE_LOGO_URL__", logo_url.encode("utf-8"))
-                resp.body = body
-                resp.headers["content-length"] = str(len(body))
-        except Exception:
-            pass
-        return resp
-
-app.add_middleware(_InjectPlaceholdersMiddleware)
-
-# =====================
-# Static files (logo, css, images)
-# =====================
-# =====================
-# Static files (/static)
-# =====================
-# Sert le dossier static (logo, css, js) : /static/...
-# Important : sur certains hébergeurs, le "working directory" et le chemin de __file__ peuvent varier.
-# On sert donc le statique via une route robuste qui cherche dans plusieurs dossiers possibles.
-
-_STATIC_DIRS = []
-try:
-    _BASE_DIR = Path(__file__).resolve().parent
-    _STATIC_DIRS = [
-        _BASE_DIR / "static",
-        _BASE_DIR / "tradingview" / "static",
-        Path.cwd() / "static",
-        Path("/app/static"),
-        Path("/app/tradingview/static"),
-        Path("/workspace/static"),
-        Path("/var/task/static"),
-    ]
-except Exception:
-    _STATIC_DIRS = [Path.cwd() / "static"]
-
+        resp = requests.get(url, params=params, headers=headers, timeout=12)
+        if resp.status_code != 200:
+            body = (resp.text or "").strip().replace("\n", " ")
+            return [], f"CoinGecko HTTP {resp.status_code}: {body[:200]}"
+        data = resp.json()
+        if not isinstance(data, list):
+            return [], "CoinGecko: réponse inattendue (non-liste)"
+        return data, ""
+    except Exception as e:
+        return [], str(e)
 def _resolve_static_path(base: Path, rel_path: str) -> "Path|None":
     """Résout un chemin statique en protégeant contre le path traversal."""
     try:
@@ -3963,7 +3858,17 @@ async def portfolio_tracker_page(request: Request):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.execute("SELECT id, symbol, amount, avg_cost, last_price, updated_at FROM holdings ORDER BY updated_at DESC, id DESC")
+    try:
+        cur.execute("SELECT id, symbol, amount, avg_cost, last_price, updated_at FROM holdings ORDER BY updated_at DESC, id DESC")
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            try:
+                init_portfolio_db(db_path)
+            except Exception:
+                pass
+            cur.execute("SELECT id, symbol, amount, avg_cost, last_price, updated_at FROM holdings ORDER BY updated_at DESC, id DESC")
+        else:
+            raise
     rows = cur.fetchall()
     conn.close()
 

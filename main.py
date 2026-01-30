@@ -3910,6 +3910,7 @@ async def portfolio_tracker_page(request: Request):
         else:
             raise
     rows = cur.fetchall()
+    csrf = ""  # pas de CSRF global ici; placeholder pour compatibilité formulaire
     conn.close()
 
     def _fmt(x):
@@ -3941,22 +3942,22 @@ async def portfolio_tracker_page(request: Request):
     body = f"""
 <style>
   /* --- Portfolio Tracker overrides (contrast / lisibilité) --- */
-  .pt-wrap { max-width: 1100px; margin: 0 auto; padding: 8px 10px 24px; }
-  .pt-card { background: rgba(255,255,255,0.98); border: 1px solid rgba(15,23,42,0.10); border-radius: 16px;
-             padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.10); }
-  .pt-card h2, .pt-card h3 { color: #0f172a; }
-  .pt-card p, .pt-card li, .pt-card label, .pt-card th, .pt-card td { color: #334155; }
-  .pt-muted { color: #64748b; }
-  .pt-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 10px; }
-  .pt-field { display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
-  .pt-field input { padding: 10px 12px; border: 1px solid rgba(15,23,42,0.15); border-radius: 12px; background: #fff; color: #0f172a; }
-  .pt-field input::placeholder { color: #94a3b8; }
-  .pt-btn { padding: 10px 14px; border-radius: 12px; border: 0; background: #111827; color: #ffffff; cursor: pointer; }
-  .pt-btn:hover { opacity: 0.92; }
-  .pt-table { width: 100%; min-width: 820px; border-collapse: collapse; }
-  .pt-table th { font-size: 13px; color: #475569; font-weight: 600; }
-  .pt-table th, .pt-table td { padding: 10px; border-bottom: 1px solid rgba(15,23,42,0.08); }
-  .pt-right { text-align: right; }
+  .pt-wrap {{ max-width: 1100px; margin: 0 auto; padding: 8px 10px 24px; }}
+  .pt-card {{ background: rgba(255,255,255,0.98); border: 1px solid rgba(15,23,42,0.10); border-radius: 16px;
+             padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.10); }}
+  .pt-card h2, .pt-card h3 {{ color: #0f172a; }}
+  .pt-card p, .pt-card li, .pt-card label, .pt-card th, .pt-card td {{ color: #334155; }}
+  .pt-muted {{ color: #64748b; }}
+  .pt-form {{ display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 10px; }}
+  .pt-field {{ display: flex; flex-direction: column; gap: 6px; min-width: 180px; }}
+  .pt-field input {{ padding: 10px 12px; border: 1px solid rgba(15,23,42,0.15); border-radius: 12px; background: #fff; color: #0f172a; }}
+  .pt-field input::placeholder {{ color: #94a3b8; }}
+  .pt-btn {{ padding: 10px 14px; border-radius: 12px; border: 0; background: #111827; color: #ffffff; cursor: pointer; }}
+  .pt-btn:hover {{ opacity: 0.92; }}
+  .pt-table {{ width: 100%; min-width: 820px; border-collapse: collapse; }}
+  .pt-table th {{ font-size: 13px; color: #475569; font-weight: 600; }}
+  .pt-table th, .pt-table td {{ padding: 10px; border-bottom: 1px solid rgba(15,23,42,0.08); }}
+  .pt-right {{ text-align: right; }}
 </style>
 
 <div class="pt-wrap">

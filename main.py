@@ -622,10 +622,14 @@ try:
     DB_DIR = (DB_CONFIG.get("dir") or os.path.dirname(DB_CONFIG.get("path", "/tmp/cryptoia.db")))
     DB_PATH = DB_CONFIG.get("path", "/tmp/cryptoia.db")
     os.makedirs(DB_DIR, exist_ok=True)
+    PORTFOLIO_DB = os.path.join(DB_DIR, "portfolio.db")
+    PORTFOLIO_DB_PATH = PORTFOLIO_DB
 except Exception as _e:
     print(f"⚠️  Impossible de créer DB_DIR, fallback /tmp: {_e}")
     DB_DIR = "/tmp"
     DB_PATH = "/tmp/cryptoia.db"
+    PORTFOLIO_DB = os.path.join(DB_DIR, "portfolio.db")
+    PORTFOLIO_DB_PATH = PORTFOLIO_DB
 
 # =====================
 # PLAN PRICING (CAD) + SYNC ADMIN / PRICING / PAYMENTS
@@ -32463,7 +32467,7 @@ async def ai_liquidity(request: Request):
             return RedirectResponse(url=f"/login?redirect=%2Fai-liquidity", status_code=303)
 
         # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
-        rows = await _coingecko_markets_top50()
+        rows = _coingecko_markets_top50()
         rows = rows if isinstance(rows, list) else []
         items=[]
         ratios=[]
@@ -32602,7 +32606,7 @@ async def ai_timeframe(request: Request):
             vol_annual = ( (sum((x-(sum(returns)/len(returns)))**2 for x in returns)/len(returns))**0.5 * math.sqrt(365) ) if len(returns) > 1 else 0.0
 
         # dernière variation 24h BTC via markets
-        mk = await _coingecko_markets_top50()
+        mk = _coingecko_markets_top50()
         btc_row = next((r for r in (mk if isinstance(mk,list) else []) if (r.get("id")=="bitcoin" or (r.get("symbol")=="btc"))), None)
         btc_ch24 = btc_row.get("price_change_percentage_24h") if btc_row else None
         btc_price = btc_row.get("current_price") if btc_row else None
@@ -33073,7 +33077,7 @@ async def _page_ai_crypto_coach():
     return HTMLResponse(_simple_page("AI Crypto Coach", body, sidebar=SIDEBAR_FULL))
 
 
-@app.get("/ai-swarm-agents")
+@app.get("/ai-swarm-agents-v2")
 async def _page_ai_swarm_agents():
     body = f"""
     <div class="card">

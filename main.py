@@ -3345,33 +3345,22 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         if allowed:
             return await call_next(request)
 
-        # Refus : message propre (page 403) au lieu d'une redirection silencieuse
+        # Refus : message propre + suggestion upgrade
+        # (On renvoie JSON si appel AJAX, sinon on redirige vers /pricing)
         try:
-            accept = (request.headers.get("accept") or "").lower()
-            is_ajax = (request.headers.get("x-requested-with") or "") == "XMLHttpRequest"
+            accept = request.headers.get("accept", "")
+            is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest"
         except Exception:
             accept = ""
             is_ajax = False
 
-        # Si c'est un appel API/AJAX, renvoyer du JSON
         if is_ajax or "application/json" in accept:
             return JSONResponse(
-                {
-                    "detail": "Accès refusé. Ton forfait ne permet pas cette page.",
-                    "required_plan": required_plan,
-                    "path": path,
-                    "upgrade_url": "/pricing-complete",
-                },
-                status_code=403,
+                {"detail": "Accès refusé. Votre forfait ne permet pas cette page.", "upgrade": "/pricing"},
+                status_code=403
             )
 
-        # Sinon, page HTML claire avec CTA vers les forfaits
-        return access_denied_page(
-            request,
-            page_title=(ROUTE_LABELS.get(path) if "ROUTE_LABELS" in globals() else path),
-            required_plan=required_plan,
-        )
-
+        return RedirectResponse(url="/pricing", status_code=302)
 # Activer le middleware
 app.add_middleware(PermissionMiddleware)
 
@@ -3949,59 +3938,105 @@ async def portfolio_tracker_page(request: Request):
           </td>
         </tr>
         """
-
     body = f"""
-    <div class="grid" style="display:grid; grid-template-columns: 1fr; gap:16px; max-width: 1100px;">
-      <div class="card" style="background:#fff; border:1px solid #eee; border-radius:14px; padding:18px;">
-        <h2 style="margin:0 0 6px 0;">Portfolio Tracker</h2>
-        <p style="margin:0; color:#444;">Ajoute tes positions manuellement. (Les prix “last_price” peuvent être mis à jour plus tard via une tâche / API.)</p>
-      </div>
+<style>
+  /* --- Portfolio Tracker overrides (contrast / lisibilité) --- */
+  .pt-wrap { max-width: 1100px; margin: 0 auto; padding: 8px 10px 24px; }
+  .pt-card { background: rgba(255,255,255,0.98); border: 1px solid rgba(15,23,42,0.10); border-radius: 16px;
+             padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.10); }
+  .pt-card h2, .pt-card h3 { color: #0f172a; }
+  .pt-card p, .pt-card li, .pt-card label, .pt-card th, .pt-card td { color: #334155; }
+  .pt-muted { color: #64748b; }
+  .pt-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 10px; }
+  .pt-field { display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
+  .pt-field input { padding: 10px 12px; border: 1px solid rgba(15,23,42,0.15); border-radius: 12px; background: #fff; color: #0f172a; }
+  .pt-field input::placeholder { color: #94a3b8; }
+  .pt-btn { padding: 10px 14px; border-radius: 12px; border: 0; background: #111827; color: #ffffff; cursor: pointer; }
+  .pt-btn:hover { opacity: 0.92; }
+  .pt-table { width: 100%; min-width: 820px; border-collapse: collapse; }
+  .pt-table th { font-size: 13px; color: #475569; font-weight: 600; }
+  .pt-table th, .pt-table td { padding: 10px; border-bottom: 1px solid rgba(15,23,42,0.08); }
+  .pt-right { text-align: right; }
+</style>
 
-      <div class="card" style="background:#fff; border:1px solid #eee; border-radius:14px; padding:18px;">
-        <h3 style="margin:0 0 12px 0;">Ajouter une position</h3>
-        <form method="post" action="/portfolio-tracker/add" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
-          <label style="display:flex; flex-direction:column; gap:4px;">
-            <span style="font-size:13px; color:#555;">Symbole</span>
-            <input name="symbol" placeholder="BTC" required style="padding:10px 12px; border:1px solid #ddd; border-radius:10px; min-width:140px;">
-          </label>
-          <label style="display:flex; flex-direction:column; gap:4px;">
-            <span style="font-size:13px; color:#555;">Quantité</span>
-            <input name="amount" type="number" step="any" placeholder="0.25" required style="padding:10px 12px; border:1px solid #ddd; border-radius:10px; min-width:160px;">
-          </label>
-          <label style="display:flex; flex-direction:column; gap:4px;">
-            <span style="font-size:13px; color:#555;">Prix moyen</span>
-            <input name="avg_cost" type="number" step="any" placeholder="42000" required style="padding:10px 12px; border:1px solid #ddd; border-radius:10px; min-width:160px;">
-          </label>
-          <label style="display:flex; flex-direction:column; gap:4px;">
-            <span style="font-size:13px; color:#555;">Dernier prix (optionnel)</span>
-            <input name="last_price" type="number" step="any" placeholder="43000" style="padding:10px 12px; border:1px solid #ddd; border-radius:10px; min-width:180px;">
-          </label>
-          <button type="submit" style="padding:10px 14px; border-radius:10px; border:0; background:#111; color:#fff; cursor:pointer;">Ajouter</button>
-        </form>
-      </div>
+<div class="pt-wrap">
+  <div class="pt-card">
+    <h2 style="margin:0 0 6px 0;">Portfolio Tracker</h2>
+    <p class="pt-muted" style="margin:0;">
+      Ajoute tes positions manuellement pour suivre ton <b>PnL</b> (profit/perte). Le champ “Dernier prix” est optionnel :
+      tu peux le mettre à jour plus tard (API / tâche).
+    </p>
+  </div>
 
-      <div class="card" style="background:#fff; border:1px solid #eee; border-radius:14px; padding:18px;">
-        <h3 style="margin:0 0 12px 0;">Positions</h3>
-        <div style="overflow:auto;">
-          <table style="border-collapse:collapse; width:100%; min-width:820px;">
-            <thead>
-              <tr style="text-align:left; color:#666; font-size:13px;">
-                <th style="padding:10px; border-bottom:1px solid #eee;">Symbole</th>
-                <th style="padding:10px; border-bottom:1px solid #eee; text-align:right;">Quantité</th>
-                <th style="padding:10px; border-bottom:1px solid #eee; text-align:right;">Prix moyen</th>
-                <th style="padding:10px; border-bottom:1px solid #eee; text-align:right;">Dernier prix</th>
-                <th style="padding:10px; border-bottom:1px solid #eee; text-align:right;">PnL</th>
-                <th style="padding:10px; border-bottom:1px solid #eee; text-align:right;">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trs if trs else '<tr><td colspan="6" style="padding:12px; color:#666;">Aucune position pour le moment.</td></tr>'}
-            </tbody>
-          </table>
-        </div>
+  <div style="height:16px;"></div>
+
+  <div class="pt-card">
+    <h3 style="margin:0 0 10px 0;">Ajouter une position</h3>
+    <form method="post" action="/portfolio-tracker/add" class="pt-form">
+      <input type="hidden" name="csrf_token" value="{csrf}">
+      <div class="pt-field">
+        <label>Symbole</label>
+        <input name="symbol" placeholder="BTC, ETHUSDT, SOL..." value="BTC" required>
       </div>
+      <div class="pt-field">
+        <label>Quantité</label>
+        <input name="quantity" type="number" step="0.00000001" placeholder="ex: 0.25" required>
+      </div>
+      <div class="pt-field">
+        <label>Prix moyen</label>
+        <input name="avg_price" type="number" step="0.00000001" placeholder="ex: 42000" required>
+      </div>
+      <div class="pt-field">
+        <label>Dernier prix (optionnel)</label>
+        <input name="last_price" type="number" step="0.00000001" placeholder="ex: 43000">
+      </div>
+      <button type="submit" class="pt-btn">Ajouter</button>
+    </form>
+    <p class="pt-muted" style="margin:12px 0 0 0; font-size:13px;">
+      Astuce : utilise un format cohérent (ex: <b>BTC</b> ou <b>BTCUSDT</b>) pour éviter les doublons.
+    </p>
+  </div>
+
+  <div style="height:16px;"></div>
+
+  <div class="pt-card">
+    <h3 style="margin:0 0 12px 0;">Positions</h3>
+    <div style="overflow:auto;">
+      <table class="pt-table">
+        <thead>
+          <tr>
+            <th>Symbole</th>
+            <th class="pt-right">Quantité</th>
+            <th class="pt-right">Prix moyen</th>
+            <th class="pt-right">Dernier prix</th>
+            <th class="pt-right">PnL</th>
+            <th class="pt-right">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {trs if trs else '<tr><td colspan="6" style="padding:12px; color:#64748b;">Aucune position pour le moment.</td></tr>'}
+        </tbody>
+      </table>
     </div>
-    """
+  </div>
+
+  <div style="height:16px;"></div>
+
+  <div class="pt-card">
+    <h3 style="margin:0 0 10px 0;">À quoi ça sert et comment l’utiliser</h3>
+    <ul style="margin:0; padding-left:18px;">
+      <li><b>But :</b> suivre tes entrées (prix moyen) et ton profit/perte estimé (PnL).</li>
+      <li><b>Étape 1 :</b> ajoute une position (symbole, quantité, prix moyen).</li>
+      <li><b>Étape 2 :</b> saisis un <b>Dernier prix</b> pour calculer le PnL (sinon, la ligne reste neutre).</li>
+      <li><b>Étape 3 :</b> supprime/ajuste tes positions au besoin (colonne Action).</li>
+    </ul>
+    <p class="pt-muted" style="margin:12px 0 0 0; font-size:13px;">
+      Si tu veux, je peux ensuite : (1) colorer le PnL en vert/rouge, (2) ajouter un bouton “Mettre à jour les prix”
+      si une API de prix est activée.
+    </p>
+  </div>
+</div>
+"""
     return HTMLResponse(_simple_page("Portfolio Tracker", body, request=request, sidebar=SIDEBAR))
 
 @app.post("/portfolio-tracker/add")

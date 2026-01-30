@@ -78,7 +78,7 @@ else:
 from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 try:
     import ccxt
 except ImportError:
@@ -3954,6 +3954,9 @@ async def portfolio_tracker_page(request: Request):
   .pt-field input::placeholder {{ color: #94a3b8; }}
   .pt-btn {{ padding: 10px 14px; border-radius: 12px; border: 0; background: #111827; color: #ffffff; cursor: pointer; }}
   .pt-btn:hover {{ opacity: 0.92; }}
+  .pt-actions { display:flex; gap:10px; align-items:center; }
+  .pt-switch { display:flex; gap:8px; align-items:center; color: var(--pt-muted); font-size: 13px; user-select:none; }
+  .pt-switch input { accent-color: var(--pt-accent); }
   .pt-table {{ width: 100%; min-width: 820px; border-collapse: collapse; }}
   .pt-table th {{ font-size: 13px; color: #475569; font-weight: 600; }}
   .pt-table th, .pt-table td {{ padding: 10px; border-bottom: 1px solid rgba(15,23,42,0.08); }}
@@ -3961,6 +3964,44 @@ async def portfolio_tracker_page(request: Request):
 </style>
 
 <div class="pt-wrap">
+
+    <div class="pt-card">
+      <div class="pt-card-header">
+        <div>
+          <div class="pt-card-title">Signaux TradingView (Live)</div>
+          <div class="pt-card-sub">Les derniers signaux reçus via tes webhooks TradingView (table <code>trades</code>). Mise à jour automatique.</div>
+        </div>
+        <div class="pt-actions">
+          <label class="pt-switch"><input type="checkbox" id="tvAuto" checked> <span>Auto</span></label>
+          <button class="pt-btn" id="tvRefreshBtn">Rafraîchir</button>
+        </div>
+      </div>
+
+      <div class="pt-table-wrap">
+        <table class="pt-table">
+          <thead>
+            <tr>
+              <th>Temps</th>
+              <th>Symbole</th>
+              <th>Side</th>
+              <th>TF</th>
+              <th>Entry</th>
+              <th>Prix actuel</th>
+              <th>PnL</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody id="tvSignalsBody">
+            <tr><td colspan="8" class="pt-muted">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pt-footnote">
+        Astuce : pour voir des signaux ici, assure-toi que ton Pine Script envoie bien tes alertes vers <code>/tv-webhook</code>.
+      </div>
+    </div>
+
   <div class="pt-card">
     <h2 style="margin:0 0 6px 0;">Portfolio Tracker</h2>
     <p class="pt-muted" style="margin:0;">
@@ -29651,6 +29692,100 @@ async def ai_signals_data():
     except Exception as e:
         return JSONResponse({"error": str(e), "signals": [], "count": 0}, status_code=500)
 
+@app.get("/api/ai-signals-trades")
+async def ai_signals_trades():
+    """Retourne les derniers signaux reçus via /tv-webhook (table trades)."""
+    try:
+        trades = sql_get_all_trades(limit=50) or []
+        now = datetime.utcnow()
+
+        def _parse_dt(ts: str):
+            if not ts:
+                return None
+            try:
+                s = ts.replace("Z", "+00:00")
+                dt = datetime.fromisoformat(s)
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+                return dt
+            except Exception:
+                return None
+
+        def _to_float(x):
+            try:
+                return float(x)
+            except Exception:
+                return None
+
+        def _tone_for_side(side: str):
+            s = (side or "").upper()
+            if "BUY" in s or "LONG" in s:
+                return "green"
+            if "SELL" in s or "SHORT" in s:
+                return "red"
+            return "gray"
+
+        def _tone_for_status(status: str):
+            s = (status or "").upper()
+            if "TP" in s:
+                return "green"
+            if "SL" in s:
+                return "red"
+            if "OPEN" in s:
+                return "blue"
+            if "CLOSE" in s or "CLOSED" in s:
+                return "gray"
+            return "yellow"
+
+        out = []
+        for t in trades:
+            ts_raw = t.get("timestamp") or ""
+            dt = _parse_dt(ts_raw)
+
+            time_ago = "—"
+            if dt:
+                minutes = int(max(0, (now - dt).total_seconds()) // 60)
+                if minutes < 1:
+                    time_ago = "à l'instant"
+                elif minutes < 60:
+                    time_ago = f"il y a {minutes} min"
+                else:
+                    hours = minutes // 60
+                    time_ago = f"il y a {hours} h"
+
+            entry = _to_float(t.get("entry_price"))
+            current = _to_float(t.get("current_price"))
+            pnl_pct = None
+            if entry and current and entry != 0:
+                pnl_pct = ((current - entry) / entry) * 100.0
+
+            side = (t.get("side") or "").upper() or "—"
+            status = (t.get("status") or "").upper() or "—"
+
+            out.append({
+                "id": t.get("id"),
+                "timestamp": ts_raw,
+                "time_ago": time_ago,
+                "symbol": t.get("symbol") or "",
+                "side": side,
+                "side_tone": _tone_for_side(side),
+                "timeframe": t.get("timeframe") or "—",
+                "entry_price": entry,
+                "current_price": current,
+                "pnl_pct": pnl_pct,
+                "status": status,
+                "status_tone": _tone_for_status(status),
+            })
+
+        return JSONResponse({
+            "ok": True,
+            "generated_at": now.isoformat() + "Z",
+            "count": len(out),
+            "trades": out
+        })
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e), "trades": []}, status_code=200)
+
 @app.get("/ai-signals", response_class=HTMLResponse)
 async def ai_signals_page(request: Request):
     payload = await _get_ai_signals_payload()
@@ -29916,12 +30051,81 @@ async def ai_signals_page(request: Request):
         return '$' + n.toFixed(8);
       }}
 
+      
+      // ===== Live TradingView signals (from /tv-webhook -> table trades) =====
+      let tvTimer = null;
+
+      async function loadTvSignals() {{
+        const body = document.getElementById('tvSignalsBody');
+        if (!body) return;
+
+        try {{
+          const res = await fetch('/api/ai-signals-trades', {{ cache: 'no-store' }});
+          const j = await res.json();
+
+          if (!j || !j.ok) {{
+            body.innerHTML = `<tr><td colspan="8" class="pt-muted">Erreur: ${{escapeHtml((j && j.error) ? j.error : 'Impossible de charger les signaux.')}}</td></tr>`;
+            return;
+          }}
+
+          const rows = (j.trades || []);
+          if (!rows.length) {{
+            body.innerHTML = `<tr><td colspan="8" class="pt-muted">Aucun signal reçu pour le moment (webhook). Essaie de déclencher une alerte TradingView.</td></tr>`;
+            return;
+          }}
+
+          body.innerHTML = rows.map(t => {{
+            const sideTone = (t.side_tone || 'gray');
+            const statusTone = (t.status_tone || 'gray');
+            const entry = (t.entry_price == null) ? '—' : fmtPrice(t.entry_price);
+            const cur = (t.current_price == null) ? '—' : fmtPrice(t.current_price);
+            const pnlTxt = (t.pnl_pct == null) ? '—' : `${{(t.pnl_pct >= 0 ? '+' : '')}}${{t.pnl_pct.toFixed(2)}}%`;
+            const ts = t.time_ago || (t.timestamp || '—');
+            const tf = t.timeframe || '—';
+            const symbol = escapeHtml(t.symbol || '');
+            return `
+              <tr>
+                <td>${{escapeHtml(ts)}}</td>
+                <td><strong>${{symbol}}</strong></td>
+                <td><span class="pt-badge pt-badge-${{sideTone}}">${{escapeHtml(t.side || '—')}}</span></td>
+                <td>${{escapeHtml(tf)}}</td>
+                <td>${{entry}}</td>
+                <td>${{cur}}</td>
+                <td>${{escapeHtml(pnlTxt)}}</td>
+                <td><span class="pt-badge pt-badge-${{statusTone}}">${{escapeHtml(t.status || '—')}}</span></td>
+              </tr>
+            `;
+          }}).join('');
+        }} catch (e) {{
+          body.innerHTML = `<tr><td colspan="8" class="pt-muted">Erreur: ${{escapeHtml(String(e))}}</td></tr>`;
+        }}
+      }}
+
+      function startTvAutoRefresh() {{
+        stopTvAutoRefresh();
+        tvTimer = setInterval(loadTvSignals, 15000);
+      }}
+      function stopTvAutoRefresh() {{
+        if (tvTimer) {{ clearInterval(tvTimer); tvTimer = null; }}
+      }}
+
+      const tvAuto = document.getElementById('tvAuto');
+      const tvRefreshBtn = document.getElementById('tvRefreshBtn');
+      if (tvRefreshBtn) tvRefreshBtn.addEventListener('click', loadTvSignals);
+      if (tvAuto) {{
+        tvAuto.addEventListener('change', () => {{
+          if (tvAuto.checked) startTvAutoRefresh();
+          else stopTvAutoRefresh();
+        }});
+      }}
+      loadTvSignals();
+      if (tvAuto && tvAuto.checked) startTvAutoRefresh();
+
       setInterval(refreshSignals, 60000);
     </script>
     '''
-    return HTMLResponse(content=base_template(request, "AI SIGNALS", result_html))
-
-
+    sidebar_html = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
+    return HTMLResponse(content=_simple_page("AI SIGNALS", result_html, sidebar_html, request=request))
 @app.get("/ai-alerts", response_class=HTMLResponse)
 async def ai_alerts_inbox(request: Request):
     cards_html = ""

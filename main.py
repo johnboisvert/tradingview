@@ -12,7 +12,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", limit: int = 12):
     return []
 # -*- coding: utf-8 -*-
 # NOTE: Railway/uvicorn safe. Python comments use '#', not '//'.
-from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie, Body
+from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie, Body, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response, PlainTextResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -3311,7 +3311,7 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             is_admin = False
 
         # --------- /admin/* ---------
-        if path.startswith("/admin"):
+        if path.startswith("/admin") or path.startswith("/admin-dashboard"):
             # mode bypass (DEV seulement)
             if _admin_bypass_enabled():
                 return await call_next(request)
@@ -25409,6 +25409,7 @@ async def admin_dashboard(request: Request):
         <p class="help">Accès direct aux modules qui existaient déjà mais n'étaient pas visibles ici.</p>
         <div class="actions">
           <a class="btn btn-green" href="/admin-dashboard/ebooks" style="text-decoration:none;display:inline-block;">📚 Gestion Ebooks</a>
+          <a class="btn" href="/admin-dashboard/messages" style="text-decoration:none;display:inline-block;">📩 Messages Contact</a>
           <a class="btn" href="/admin-dashboard/list-promos" style="text-decoration:none;display:inline-block;">🏷️ Codes Promo</a>
           <a class="btn" href="/admin-dashboard/update-plan-features" style="text-decoration:none;display:inline-block;">🧩 Features par Plan</a>
           <a class="btn" href="/admin-dashboard/api/revenue-intelligence" target="_blank" style="text-decoration:none;display:inline-block;">📈 Revenue</a>
@@ -25636,6 +25637,323 @@ async def admin_dashboard(request: Request):
 </body>
 </html>"""
     return HTMLResponse(page_html)
+
+
+
+
+# ============================
+# Admin: Messages Contact + Gestion Ebooks (ajout ciblé)
+# ============================
+
+def _require_admin(request: Request):
+    """Retourne (user, None) si admin, sinon (user, RedirectResponse)."""
+    user = None
+    try:
+        user = get_user_from_request(request)
+    except Exception:
+        user = None
+
+    if not user or not (user.get("username") or user.get("email")):
+        next_path = request.url.path or "/admin-dashboard"
+        return None, RedirectResponse(url=f"/admin-login?next={next_path}", status_code=302)
+
+    role = (user.get("role") or "").strip().lower()
+    is_admin = (role == "admin") or bool(user.get("is_admin"))
+    if not is_admin:
+        next_path = request.url.path or "/admin-dashboard"
+        return user, RedirectResponse(url=f"/admin-login?next={next_path}", status_code=302)
+
+    return user, None
+
+
+def _ebooks_storage_dir() -> str:
+    """Choisit un dossier d'ebooks persistant si possible."""
+    # Priorité: DB_DIR/ebooks, puis /app/data/ebooks, puis /tmp/ebooks
+    candidates = []
+    try:
+        env_dir = (os.getenv("DB_DIR") or "").strip()
+        if env_dir:
+            candidates.append(os.path.join(env_dir, "ebooks"))
+    except Exception:
+        pass
+    candidates.extend(["/app/data/ebooks", "/tmp/ebooks"])
+
+    for d in candidates:
+        try:
+            os.makedirs(d, exist_ok=True)
+            test_path = os.path.join(d, ".write_test")
+            with open(test_path, "w", encoding="utf-8") as f:
+                f.write("ok")
+            os.remove(test_path)
+            return d
+        except Exception:
+            continue
+
+    return "/tmp/ebooks"
+
+
+@app.get("/admin-dashboard/messages", response_class=HTMLResponse)
+async def admin_contact_messages(request: Request):
+    user, resp = _require_admin(request)
+    if resp:
+        return resp
+
+    messages = []
+    unread_count = 0
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT id, name, email, subject, message, status, created_at FROM contact_messages ORDER BY created_at DESC LIMIT 200")
+        rows = c.fetchall()
+        conn.close()
+        for r in rows or []:
+            _id, name, email, subject, msg, status, created_at = r
+            status = status or "unread"
+            if str(status).lower() == "unread":
+                unread_count += 1
+            messages.append({
+                "id": _id,
+                "name": name or "",
+                "email": email or "",
+                "subject": subject or "",
+                "message": msg or "",
+                "status": status,
+                "created_at": str(created_at or "")
+            })
+    except Exception as e:
+        return HTMLResponse(f"<h1>Erreur lecture messages</h1><pre>{_html.escape(str(e))}</pre>", status_code=500)
+
+    rows_html = ""
+    for m in messages:
+        badge = "<span style='padding:4px 10px;border-radius:999px;font-weight:900;background:#fee2e2;color:#991b1b;'>NON LU</span>" if str(m["status"]).lower()=="unread" else "<span style='padding:4px 10px;border-radius:999px;font-weight:900;background:#dcfce7;color:#14532d;'>LU</span>"
+        rows_html += f"""
+        <tr style="border-bottom:1px solid #e5e7eb;">
+          <td style="padding:10px 8px; white-space:nowrap;">{badge}</td>
+          <td style="padding:10px 8px;"><b>{_html.escape(m['name'])}</b><div style="color:#64748b;font-size:12px;">{_html.escape(m['email'])}</div></td>
+          <td style="padding:10px 8px;">{_html.escape(m['subject'])}</td>
+          <td style="padding:10px 8px; max-width:520px;">
+            <div style="white-space:pre-wrap; color:#0f172a;">{_html.escape(m['message'])}</div>
+            <div style="color:#64748b;font-size:12px;margin-top:6px;">{_html.escape(m['created_at'])}</div>
+          </td>
+          <td style="padding:10px 8px; white-space:nowrap;">
+            <form method="post" action="/admin-dashboard/messages/mark" style="display:inline;">
+              <input type="hidden" name="id" value="{m['id']}"/>
+              <input type="hidden" name="status" value="{'read' if str(m['status']).lower()=='unread' else 'unread'}"/>
+              <button style="border:none;cursor:pointer;padding:8px 10px;border-radius:10px;font-weight:900;background:#111827;color:#fff;">
+                {'Marquer lu' if str(m['status']).lower()=='unread' else 'Marquer non lu'}
+              </button>
+            </form>
+            <form method="post" action="/admin-dashboard/messages/delete" style="display:inline;margin-left:6px;" onsubmit="return confirm('Supprimer ce message ?');">
+              <input type="hidden" name="id" value="{m['id']}"/>
+              <button style="border:none;cursor:pointer;padding:8px 10px;border-radius:10px;font-weight:900;background:#ef4444;color:#fff;">
+                Supprimer
+              </button>
+            </form>
+          </td>
+        </tr>
+        """
+
+    page = f"""<!doctype html>
+    <html lang="fr"><head>
+      <meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <title>Admin - Messages</title>
+      <style>
+        body{{font-family:Segoe UI,Tahoma,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;margin:0;}}
+        .wrap{{max-width:1200px;margin:24px auto;padding:0 16px 40px 16px;}}
+        .card{{background:rgba(255,255,255,0.98);border-radius:16px;box-shadow:0 10px 22px rgba(0,0,0,0.12);padding:16px;}}
+        table{{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;}}
+        th{{text-align:left;background:#f1f5f9;padding:10px 8px;font-size:12px;color:#334155;}}
+        h1{{margin:0 0 6px 0;}}
+        .sub{{color:#475569;margin:0 0 14px 0;}}
+        .btnlink{{text-decoration:none;display:inline-block;padding:10px 12px;border-radius:12px;background:#111827;color:#fff;font-weight:900;}}
+      </style>
+    </head><body>
+      <div class="wrap">
+        <div class="card">
+          <h1>📩 Messages Contact</h1>
+          <p class="sub"><b>{unread_count}</b> non lus — affichage des 200 plus récents.</p>
+          <div style="margin-bottom:12px;">
+            <a class="btnlink" href="/admin-dashboard">← Retour Dashboard</a>
+          </div>
+          <table>
+            <thead><tr><th>Status</th><th>De</th><th>Sujet</th><th>Message</th><th>Actions</th></tr></thead>
+            <tbody>
+              {rows_html or '<tr><td colspan="5" style="padding:14px;color:#64748b;">Aucun message pour le moment.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </body></html>"""
+    return HTMLResponse(page)
+
+
+@app.post("/admin-dashboard/messages/mark", response_class=HTMLResponse)
+async def admin_contact_messages_mark(request: Request, id: int = Form(...), status: str = Form(...)):
+    user, resp = _require_admin(request)
+    if resp:
+        return resp
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("UPDATE contact_messages SET status=? WHERE id=?", (status, id))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+    return RedirectResponse(url="/admin-dashboard/messages", status_code=303)
+
+
+@app.post("/admin-dashboard/messages/delete", response_class=HTMLResponse)
+async def admin_contact_messages_delete(request: Request, id: int = Form(...)):
+    user, resp = _require_admin(request)
+    if resp:
+        return resp
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("DELETE FROM contact_messages WHERE id=?", (id,))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+    return RedirectResponse(url="/admin-dashboard/messages", status_code=303)
+
+@app.get("/admin-dashboard/ebooks", response_class=HTMLResponse)
+async def admin_ebooks(request: Request):
+    user, resp = _require_admin(request)
+    if resp:
+        return resp
+
+    ebooks = []
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT id, title, description, filename, file_size, min_plan, downloads, active, created_at FROM ebooks ORDER BY created_at DESC")
+        rows = c.fetchall()
+        conn.close()
+        for r in rows or []:
+            (eid, title, desc, filename, fsize, min_plan, downloads, active, created_at) = r
+            ebooks.append({
+                "id": eid,
+                "title": title or "",
+                "description": desc or "",
+                "filename": filename or "",
+                "file_size": fsize or 0,
+                "min_plan": min_plan or "Free",
+                "downloads": downloads or 0,
+                "active": int(active) if active is not None else 1,
+                "created_at": str(created_at or "")
+            })
+    except Exception as e:
+        return HTMLResponse(f"<h1>Erreur ebooks</h1><pre>{_html.escape(str(e))}</pre>", status_code=500)
+
+    rows_html = ""
+    for e in ebooks:
+        active_badge = "<span style='padding:4px 10px;border-radius:999px;font-weight:900;background:#dcfce7;color:#14532d;'>Actif</span>" if e["active"] else "<span style='padding:4px 10px;border-radius:999px;font-weight:900;background:#fee2e2;color:#991b1b;'>Inactif</span>"
+        rows_html += f"""
+        <tr style="border-bottom:1px solid #e5e7eb;">
+          <td style="padding:10px 8px; white-space:nowrap;">{active_badge}</td>
+          <td style="padding:10px 8px;"><b>{_html.escape(e['title'])}</b><div style="color:#64748b;font-size:12px;">{_html.escape(e['description'])}</div></td>
+          <td style="padding:10px 8px;">{_html.escape(e['min_plan'])}</td>
+          <td style="padding:10px 8px;">{int(e['downloads'])}</td>
+          <td style="padding:10px 8px; color:#64748b;font-size:12px;">{_html.escape(e['filename'])}</td>
+          <td style="padding:10px 8px; white-space:nowrap;">
+            <form method="post" action="/admin-dashboard/ebooks/toggle" style="display:inline;">
+              <input type="hidden" name="id" value="{e['id']}"/>
+              <input type="hidden" name="active" value="{0 if e['active'] else 1}"/>
+              <button style="border:none;cursor:pointer;padding:8px 10px;border-radius:10px;font-weight:900;background:#111827;color:#fff;">
+                {"Désactiver" if e["active"] else "Activer"}
+              </button>
+            </form>
+            <form method="post" action="/admin-dashboard/ebooks/delete" style="display:inline;margin-left:6px;" onsubmit="return confirm('Supprimer cet ebook ?');">
+              <input type="hidden" name="id" value="{e['id']}"/>
+              <button style="border:none;cursor:pointer;padding:8px 10px;border-radius:10px;font-weight:900;background:#ef4444;color:#fff;">
+                Supprimer
+              </button>
+            </form>
+          </td>
+        </tr>
+        """
+
+    page = f"""<!doctype html>
+    <html lang="fr"><head>
+      <meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <title>Admin - Ebooks</title>
+      <style>
+        body{{font-family:Segoe UI,Tahoma,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;margin:0;}}
+        .wrap{{max-width:1200px;margin:24px auto;padding:0 16px 40px 16px;}}
+        .card{{background:rgba(255,255,255,0.98);border-radius:16px;box-shadow:0 10px 22px rgba(0,0,0,0.12);padding:16px;}}
+        table{{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;}}
+        th{{text-align:left;background:#f1f5f9;padding:10px 8px;font-size:12px;color:#334155;}}
+        .btnlink{{text-decoration:none;display:inline-block;padding:10px 12px;border-radius:12px;background:#111827;color:#fff;font-weight:900;}}
+      </style>
+    </head><body>
+      <div class="wrap">
+        <div class="card">
+          <h1 style="margin:0 0 6px 0;">📚 Gestion Ebooks</h1>
+          <p style="margin:0 0 14px 0;color:#475569;">Ces ebooks alimentent automatiquement <b>/telechargements</b>.</p>
+          <div style="margin-bottom:12px;">
+            <a class="btnlink" href="/admin-dashboard">← Retour Dashboard</a>
+          </div>
+
+          <table>
+            <thead><tr><th>Status</th><th>Ebook</th><th>Plan min.</th><th>Downloads</th><th>Fichier</th><th>Actions</th></tr></thead>
+            <tbody>
+              {rows_html or '<tr><td colspan="6" style="padding:14px;color:#64748b;">Aucun ebook pour le moment.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </body></html>"""
+    return HTMLResponse(page)
+
+
+@app.post("/admin-dashboard/ebooks/toggle", response_class=HTMLResponse)
+async def admin_ebooks_toggle(request: Request, id: int = Form(...), active: int = Form(...)):
+    user, resp = _require_admin(request)
+    if resp:
+        return resp
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("UPDATE ebooks SET active=? WHERE id=?", (int(active), id))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+    return RedirectResponse(url="/admin-dashboard/ebooks", status_code=303)
+
+
+@app.post("/admin-dashboard/ebooks/delete", response_class=HTMLResponse)
+async def admin_ebooks_delete(request: Request, id: int = Form(...)):
+    user, resp = _require_admin(request)
+    if resp:
+        return resp
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        # Supprime la ligne
+        c.execute("SELECT filename FROM ebooks WHERE id=?", (id,))
+        row = c.fetchone()
+        filename = row[0] if row else None
+        c.execute("DELETE FROM ebooks WHERE id=?", (id,))
+        conn.commit()
+        conn.close()
+
+        # Optionnel: supprimer fichier disque
+        if filename:
+            try:
+                d = _ebooks_storage_dir()
+                p = os.path.join(d, os.path.basename(filename))
+                if os.path.exists(p):
+                    os.remove(p)
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return RedirectResponse(url="/admin-dashboard/ebooks", status_code=303)
 
 
 @app.post("/admin/pricing/update")
@@ -30126,113 +30444,6 @@ async def ai_signals_page(request: Request):
     '''
     sidebar_html = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
     return HTMLResponse(content=_simple_page("AI SIGNALS", result_html, sidebar_html, request=request))
-
-
-# =========================
-# AI ALERTS — scoring helper
-# =========================
-def _ai_alerts_score(m: dict, style: str = "scalp") -> dict:
-    """
-    Calcule un score (0-100) + label (Bullish/Neutral/Bearish) à partir des données CoinGecko.
-    Robuste: ne plante jamais si un champ manque.
-    NOTE: CoinGecko /coins/markets avec price_change_percentage=24h,7d ne renvoie pas le 1h,
-          donc ch1 est estimé prudemment (0.0 si absent).
-    """
-    def _f(x, default=0.0):
-        try:
-            if x is None:
-                return default
-            return float(x)
-        except Exception:
-            return default
-
-    # Variantes possibles selon la réponse CoinGecko
-    ch24 = _f(m.get("price_change_percentage_24h_in_currency", m.get("price_change_percentage_24h", 0.0)), 0.0)
-    ch7  = _f(m.get("price_change_percentage_7d_in_currency",  m.get("price_change_percentage_7d",  0.0)), 0.0)
-
-    # 1h n'est pas demandé dans get_top_50_cryptos(); on le laisse à 0 si absent
-    ch1  = _f(m.get("price_change_percentage_1h_in_currency", m.get("price_change_percentage_1h", 0.0)), 0.0)
-
-    mc   = _f(m.get("market_cap"), 0.0)
-    vol  = _f(m.get("total_volume"), 0.0)
-    v2m  = (vol / mc) if mc > 0 else 0.0  # volume / market cap
-
-    # Momentum / volatilité approximative
-    mom_short = ch24
-    mom_long  = ch7
-    volat = abs(ch24) * 0.7 + abs(ch7) * 0.3
-
-    style = (style or "scalp").strip().lower()
-    if style not in ("scalp", "swing"):
-        style = "scalp"
-
-    # Pondérations
-    if style == "scalp":
-        w_mom = 0.55
-        w_liq = 0.30
-        w_vol = 0.15
-        mom = mom_short
-    else:  # swing
-        w_mom = 0.60
-        w_liq = 0.20
-        w_vol = 0.20
-        mom = (mom_long * 0.7) + (mom_short * 0.3)
-
-    # Normalisations simples -> [0..1] approximatif
-    # momentum: clamp -15..+15 (%)
-    mom_n = max(-15.0, min(15.0, mom)) / 15.0  # [-1..1]
-    mom_score = (mom_n + 1.0) / 2.0  # [0..1]
-
-    # liquidité: v2m 0..0.20 (0..20%) => clamp
-    liq_n = max(0.0, min(0.20, v2m)) / 0.20  # [0..1]
-
-    # volatilité: 0..20 (% mix) => plus c'est élevé, plus on réduit le score
-    vol_n = max(0.0, min(20.0, volat)) / 20.0  # [0..1]
-    vol_score = 1.0 - vol_n  # [0..1]
-
-    score = int(round(100.0 * (w_mom * mom_score + w_liq * liq_n + w_vol * vol_score)))
-    score = max(0, min(100, score))
-
-    # Label + confiance
-    if score >= 65:
-        label = "Bullish"
-    elif score <= 35:
-        label = "Bearish"
-    else:
-        label = "Neutral"
-
-    # Confiance: basée sur amplitude + disponibilité de la liquidité
-    conf = 55.0
-    conf += min(25.0, abs(mom) * 1.2)          # momentum fort => + confiance
-    conf += min(15.0, liq_n * 15.0)            # meilleure liquidité => + confiance
-    conf -= min(15.0, (1.0 - vol_score) * 15)  # trop volatil => - confiance
-    conf = max(25.0, min(95.0, conf))
-
-    reasons = []
-    if style == "scalp":
-        reasons.append(f"Momentum 24h: {ch24:+.2f}%")
-        reasons.append(f"Volume/MCAP: {(v2m*100):.2f}%")
-        reasons.append(f"Volatilité estimée: {volat:.2f}")
-    else:
-        reasons.append(f"Momentum 7j: {ch7:+.2f}%")
-        reasons.append(f"Momentum 24h: {ch24:+.2f}%")
-        reasons.append(f"Volume/MCAP: {(v2m*100):.2f}%")
-
-    # Si c'est clairement un fallback (liste statique), on avertit
-    if m.get("_fallback_static_prices") or m.get("fallback") or m.get("is_fallback"):
-        reasons.insert(0, "⚠️ Données fallback (API indisponible)")
-
-    return {
-        "score": score,
-        "label": label,
-        "confidence": conf,
-        "reasons": reasons,
-        "ch1": ch1,
-        "ch24": ch24,
-        "ch7": ch7,
-        "v2m": v2m,
-    }
-
 @app.get("/ai-alerts", response_class=HTMLResponse)
 async def ai_alerts_inbox(request: Request):
     cards_html = ""
@@ -33936,597 +34147,3 @@ except Exception as _e:
     if not _route_exists(app, "/portfolio-tracker/delete-holding", "POST"):
         app.add_api_route("/portfolio-tracker/delete-holding", portfolio_tracker_delete_holding, methods=["POST"])
     ### PORTFOLIO_TRACKER_FIX_END
-
-
-
-# ==============================
-# FIX: /contact, /telechargements, /crypto-pepites
-# - Ajoute des routes manquantes (évite 404)
-# - Données réelles: SQLite (contact_messages, ebooks) + CoinGecko (pepites)
-# - Robuste: jamais de 500 si API externe down (fallback message)
-# ==============================
-
-def _human_bytes(n: int | None) -> str:
-    try:
-        n = int(n or 0)
-    except Exception:
-        return "—"
-    if n <= 0:
-        return "—"
-    units = ["B", "KB", "MB", "GB", "TB"]
-    i = 0
-    v = float(n)
-    while v >= 1024 and i < len(units) - 1:
-        v /= 1024.0
-        i += 1
-    if i == 0:
-        return f"{int(v)} {units[i]}"
-    return f"{v:.1f} {units[i]}"
-
-def _fmt_dt(val) -> str:
-    try:
-        if val is None:
-            return "—"
-        # sqlite CURRENT_TIMESTAMP => "YYYY-MM-DD HH:MM:SS"
-        s = str(val)
-        # Keep it readable
-        return s.replace("T", " ")[:19]
-    except Exception:
-        return "—"
-
-def _email_is_valid(email: str) -> bool:
-    email = (email or "").strip()
-    if not email or "@" not in email:
-        return False
-    if len(email) > 254:
-        return False
-    return True
-
-async def _fetch_crypto_pepites(vs: str = "usd", per_page: int = 100) -> dict:
-    """Retourne une liste de 'pépites' (small/mid caps) basée sur CoinGecko markets.
-    C'est 100% live (API externe), avec cache TTL pour éviter les rate limits.
-    """
-    try:
-        params = {
-            "vs_currency": vs,
-            "order": "volume_desc",
-            "per_page": int(per_page),
-            "page": 1,
-            "sparkline": "false",
-            "price_change_percentage": "24h,7d",
-        }
-        data = await _fetch_json(
-            "https://api.coingecko.com/api/v3/coins/markets",
-            params=params,
-            timeout=15.0,
-            cache_ttl=30,  # refresh ~30s
-            use_coingecko_key=True,
-        )
-
-        items = []
-        for c in (data or []):
-            try:
-                market_cap = float(c.get("market_cap") or 0.0)
-                vol = float(c.get("total_volume") or 0.0)
-                ch24 = float(c.get("price_change_percentage_24h_in_currency") or 0.0)
-                ch7d = float(c.get("price_change_percentage_7d_in_currency") or 0.0)
-
-                # Heuristiques "pépites"
-                # - évite les mega caps (elles resteront dans Top 50)
-                # - évite les microcaps sans volume
-                if market_cap < 10_000_000:       # < 10M trop illiquide
-                    continue
-                if market_cap > 1_000_000_000:    # > 1B plutôt "mid/large", pas pépite
-                    continue
-                if vol < 2_000_000:              # volume min
-                    continue
-
-                # Liquidity ratio (volume / marketcap)
-                liq = (vol / market_cap) if market_cap > 0 else 0.0
-
-                # Score simple 0-100: momentum + liquidité (limité)
-                score = 0.0
-                score += max(-30.0, min(30.0, ch24)) * 1.0          # -30..+30
-                score += max(-20.0, min(20.0, ch7d)) * 0.6          # -12..+12
-                score += max(0.0, min(25.0, liq * 25.0))            # 0..25
-                score = max(0.0, min(100.0, score + 35.0))          # shift baseline
-
-                trend = "Bullish" if (ch24 > 2 and ch7d > 0) else ("Bearish" if (ch24 < -2 and ch7d < 0) else "Neutral")
-
-                items.append({
-                    "id": c.get("id"),
-                    "symbol": (c.get("symbol") or "").upper(),
-                    "name": c.get("name") or "",
-                    "price": c.get("current_price"),
-                    "market_cap": market_cap,
-                    "volume": vol,
-                    "ch24": ch24,
-                    "ch7d": ch7d,
-                    "liq": liq,
-                    "score": float(score),
-                    "trend": trend,
-                    "image": c.get("image") or "",
-                })
-            except Exception:
-                continue
-
-        # Trier par score puis par volume
-        items.sort(key=lambda x: (x.get("score", 0), x.get("volume", 0)), reverse=True)
-        items = items[:20]
-
-        return {
-            "ok": True,
-            "updated_at": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
-            "count": len(items),
-            "items": items,
-        }
-    except Exception as e:
-        return {
-            "ok": False,
-            "updated_at": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
-            "error": str(e),
-            "count": 0,
-            "items": [],
-        }
-
-def _render_callout(title: str, text: str) -> str:
-    return f"""
-    <div class="card" style="border-left:4px solid #38bdf8; margin: 0 0 14px 0;">
-      <div style="display:flex; gap:10px; align-items:center;">
-        <div style="font-size:18px;">ℹ️</div>
-        <div>
-          <div style="font-weight:800; margin-bottom:4px;">{_html_mod.escape(title)}</div>
-          <div class="muted">{_html_mod.escape(text)}</div>
-        </div>
-      </div>
-    </div>
-    """
-
-
-def _downloads_dir() -> Path:
-    """Choisit un répertoire de fichiers persistant si possible.
-
-    - Priorité: /app/data/ebooks (volume Railway) si des fichiers existent ou si /tmp/ebooks est vide
-    - Fallback: EBOOKS_DIR (souvent /tmp/ebooks)
-    """
-    try:
-        tmp_dir = globals().get("EBOOKS_DIR")
-        tmp_has_files = False
-        try:
-            if tmp_dir and Path(tmp_dir).exists():
-                tmp_has_files = any(Path(tmp_dir).glob("*"))
-        except Exception:
-            tmp_has_files = False
-
-        base = Path(os.getenv("DB_DIR", "/app/data"))
-        persistent = base / "ebooks"
-        persistent.mkdir(parents=True, exist_ok=True)
-
-        # Si /tmp/ebooks contient déjà des fichiers, on continue de l'utiliser
-        if tmp_has_files:
-            return Path(tmp_dir)
-
-        # Sinon, on préfère le persistant
-        return persistent
-    except Exception:
-        try:
-            return Path(globals().get("EBOOKS_DIR") or "/tmp/ebooks")
-        except Exception:
-            return Path("/tmp/ebooks")
-
-# ---------- /contact ----------
-if not globals().get("_CONTACT_ROUTES_REGISTERED"):
-    _CONTACT_ROUTES_REGISTERED = True
-
-    @app.get("/contact", response_class=HTMLResponse)
-    async def contact_page(request: Request):
-        user = get_user_from_request(request)
-        qs = dict(request.query_params)
-        msg = qs.get("msg") or ""
-        sent = qs.get("sent") == "1"
-
-        pre_name = ""
-        pre_email = ""
-        if isinstance(user, dict):
-            pre_name = (user.get("username") or user.get("name") or "").strip()
-            pre_email = (user.get("email") or "").strip()
-
-        body = ""
-        if sent:
-            body += _render_callout("Message envoyé ✅", "Merci! On te répond dès que possible (généralement en moins de 24h).")
-        elif msg:
-            body += _render_callout("Info", msg)
-
-        body += f"""
-        <div class="card">
-          <h1 style="margin:0 0 6px 0">Contact</h1>
-          <p class="muted" style="margin:0 0 14px 0">Tu as une question, un bug, ou une suggestion? Écris-nous ici.</p>
-
-          <form method="post" action="/contact" style="display:grid; gap:12px; max-width:860px;">
-            <div class="grid">
-              <div>
-                <label class="muted" style="display:block;margin-bottom:6px">Nom</label>
-                <input name="name" placeholder="Ton nom" value="{_html_mod.escape(pre_name)}" required />
-              </div>
-              <div>
-                <label class="muted" style="display:block;margin-bottom:6px">Email</label>
-                <input name="email" type="email" placeholder="ton@email.com" value="{_html_mod.escape(pre_email)}" required />
-              </div>
-            </div>
-
-            <div>
-              <label class="muted" style="display:block;margin-bottom:6px">Sujet</label>
-              <input name="subject" placeholder="Ex: Problème sur /ai-signals" />
-            </div>
-
-            <div>
-              <label class="muted" style="display:block;margin-bottom:6px">Message</label>
-              <textarea name="message" rows="6" style="width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0" placeholder="Décris ton besoin / le bug (avec capture si possible)" required></textarea>
-            </div>
-
-            <div style="display:flex; gap:10px; align-items:center;">
-              <button type="submit" style="font-weight:800;">Envoyer</button>
-              <span class="muted" style="font-size:12px">Les messages sont stockés dans la DB (contact_messages) pour suivi.</span>
-            </div>
-          </form>
-        </div>
-        """
-
-        return HTMLResponse(_simple_page("Contact", body, sidebar=SIDEBAR_FULL))
-
-    @app.post("/contact")
-    async def contact_submit(request: Request):
-        try:
-            form = await request.form()
-            name = (form.get("name") or "").strip()
-            email = (form.get("email") or "").strip()
-            subject = (form.get("subject") or "").strip()
-            message = (form.get("message") or "").strip()
-
-            if not name or not message or not _email_is_valid(email):
-                return RedirectResponse(url="/contact?msg=Données invalides. Vérifie ton nom/email/message.", status_code=303)
-
-            user = get_user_from_request(request)
-            user_id = ""
-            try:
-                if isinstance(user, dict):
-                    user_id = (user.get("username") or user.get("email") or "").strip()
-            except Exception:
-                user_id = ""
-
-            # Enregistrer en DB
-            try:
-                conn = get_db_connection()
-                cur = conn.cursor()
-                if DB_CONFIG.get("type") == "postgres":
-                    cur.execute(
-                        "INSERT INTO contact_messages (name,email,subject,message,user_id,status) VALUES (%s,%s,%s,%s,%s,%s)",
-                        (name, email, subject, message, user_id, "unread"),
-                    )
-                else:
-                    cur.execute(
-                        "INSERT INTO contact_messages (name,email,subject,message,user_id,status) VALUES (?,?,?,?,?,?)",
-                        (name, email, subject, message, user_id, "unread"),
-                    )
-                conn.commit()
-                conn.close()
-            except Exception as e:
-                # fallback: ne pas casser l'utilisateur
-                print(f"❌ contact_submit DB error: {e}")
-                return RedirectResponse(url="/contact?msg=Erreur serveur (DB). Réessaie dans quelques minutes.", status_code=303)
-
-            # Optionnel: envoyer email si EmailService dispo
-            try:
-                svc = globals().get("email_service")
-                if svc and hasattr(svc, "send_email"):
-                    # évite les crashes si la config SMTP est incomplète
-                    await svc.send_email(
-                        to_email=os.getenv("CONTACT_TO_EMAIL", os.getenv("SMTP_TO_EMAIL", "")) or "noreply@tradingdashboard.pro",
-                        subject=f"[CryptoIA Contact] {subject or 'Nouveau message'}",
-                        html_content=f"<p><b>Nom:</b> {_html_mod.escape(name)}<br><b>Email:</b> {_html_mod.escape(email)}</p><pre>{_html_mod.escape(message)}</pre>",
-                    )
-            except Exception as e:
-                print(f"⚠️ contact_submit email skipped: {e}")
-
-            return RedirectResponse(url="/contact?sent=1", status_code=303)
-        except Exception as e:
-            print(f"❌ contact_submit fatal: {e}")
-            return RedirectResponse(url="/contact?msg=Erreur serveur. Réessaie.", status_code=303)
-
-# ---------- /telechargements ----------
-if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
-    _DOWNLOADS_ROUTES_REGISTERED = True
-
-    def _user_plan_lower(request: Request) -> str:
-        user = get_user_from_request(request)
-        if isinstance(user, dict):
-            u = (user.get("username") or user.get("email") or "").strip()
-            if u:
-                return (get_user_effective_plan(u) or "free").lower()
-        return "free"
-
-    @app.get("/telechargements", response_class=HTMLResponse)
-    async def telechargements_page(request: Request):
-        user = get_user_from_request(request)
-        if not user:
-            # si non connecté, on affiche une page propre plutôt que 404/500
-            body = _render_callout("Accès", "Connecte-toi pour accéder aux téléchargements, ou vérifie ton plan.")
-            body += f"""
-            <div class="card">
-              <h1 style="margin:0 0 6px 0">Téléchargements</h1>
-              <p class="muted" style="margin:0 0 14px 0">Ebooks, ressources, templates, et outils. Données réelles: table <b>ebooks</b>.</p>
-              <a href="/login" style="display:inline-block;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#111827;color:#e2e8f0;text-decoration:none;font-weight:800;">Se connecter</a>
-              <a href="/pricing" style="display:inline-block;margin-left:10px;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;text-decoration:none;font-weight:800;">Voir les plans</a>
-            </div>
-            """
-            return HTMLResponse(_simple_page("Téléchargements", body, sidebar=SIDEBAR_FULL))
-
-        # Charger ebooks depuis DB
-        rows = []
-        try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("SELECT id,title,description,filename,file_size,min_plan,downloads,active,created_at FROM ebooks ORDER BY created_at DESC")
-            rows = cur.fetchall()
-            conn.close()
-        except Exception as e:
-            print(f"❌ telechargements DB read: {e}")
-            rows = []
-
-        plan = _user_plan_lower(request)
-        plan_label = plan.title()
-
-        cards = []
-        for r in rows:
-            try:
-                (eid, title, desc, filename, fsize, min_plan, downloads, active, created_at) = r
-            except Exception:
-                continue
-            title = str(title or "")
-            desc = str(desc or "")
-            filename = str(filename or "")
-            min_plan = str(min_plan or "Free")
-            downloads = int(downloads or 0)
-            active = bool(active) if active is not None else True
-
-            fpath = None
-            try:
-                fpath = (_downloads_dir() / filename) if filename else None
-            except Exception:
-                fpath = None
-            exists = bool(fpath and fpath.exists())
-
-            # access check by min_plan
-            allow = PLAN_RANK.get(plan, 0) >= PLAN_RANK.get(str(min_plan).lower(), 0)
-
-            badge = "✅ Disponible" if (active and exists and allow) else ("🔒 Plan requis" if (active and exists and not allow) else "⚠️ Indisponible")
-            btn = ""
-            if active and exists and allow:
-                btn = f'<a href="/telechargements/download/{eid}" style="display:inline-block;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#111827;color:#e2e8f0;text-decoration:none;font-weight:800;">Télécharger</a>'
-            elif active and exists and not allow:
-                btn = f'<a href="/pricing" style="display:inline-block;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;text-decoration:none;font-weight:800;">Mettre à niveau</a>'
-
-            cards.append(f"""
-            <div class="card" style="margin-bottom:12px">
-              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
-                <div style="min-width:240px;flex:1">
-                  <div style="font-weight:900;font-size:18px;margin-bottom:4px">{_html_mod.escape(title)}</div>
-                  <div class="muted" style="margin-bottom:10px">{_html_mod.escape(desc) if desc else '—'}</div>
-                  <div class="muted" style="font-size:12px">
-                    Fichier: <b>{_html_mod.escape(filename or '—')}</b> • Taille: <b>{_human_bytes(fsize)}</b> • Téléchargements: <b>{downloads}</b><br>
-                    Plan minimal: <b>{_html_mod.escape(min_plan)}</b> • Ajouté: <b>{_fmt_dt(created_at)}</b>
-                  </div>
-                </div>
-                <div style="text-align:right;min-width:200px">
-                  <div style="font-weight:800;margin-bottom:10px">{badge}</div>
-                  {btn}
-                </div>
-              </div>
-            </div>
-            """)
-
-        if not cards:
-            cards_html = _render_callout("Aucun contenu pour l’instant", "Ajoute des ebooks dans la table 'ebooks' (admin) et dépose les fichiers dans /tmp/ebooks.")
-        else:
-            cards_html = "\n".join(cards)
-
-        body = f"""
-        <div class="card" style="margin-bottom:12px">
-          <h1 style="margin:0 0 6px 0">Téléchargements</h1>
-          <p class="muted" style="margin:0">Contenu réel (DB: <b>ebooks</b>). Ton plan: <b>{_html_mod.escape(plan_label)}</b>. Les fichiers sont servis depuis <b>{_html_mod.escape(str(_downloads_dir()))}</b>.</p>
-        </div>
-        {cards_html}
-        """
-        return HTMLResponse(_simple_page("Téléchargements", body, sidebar=SIDEBAR_FULL))
-
-    @app.get("/telechargements/download/{ebook_id}")
-    async def telechargements_download(request: Request, ebook_id: int):
-        user = get_user_from_request(request)
-        if not user:
-            return RedirectResponse(url="/login?next=/telechargements", status_code=303)
-
-        # Lire ebook
-        try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            if DB_CONFIG.get("type") == "postgres":
-                cur.execute("SELECT id,title,filename,file_size,min_plan,active FROM ebooks WHERE id = %s", (ebook_id,))
-            else:
-                cur.execute("SELECT id,title,filename,file_size,min_plan,active FROM ebooks WHERE id = ?", (ebook_id,))
-            row = cur.fetchone()
-            conn.close()
-        except Exception as e:
-            print(f"❌ downloads read: {e}")
-            return RedirectResponse(url="/telechargements?msg=Ebook introuvable.", status_code=303)
-
-        if not row:
-            return RedirectResponse(url="/telechargements?msg=Ebook introuvable.", status_code=303)
-
-        eid, title, filename, fsize, min_plan, active = row
-        if not active:
-            return RedirectResponse(url="/telechargements?msg=Ebook désactivé.", status_code=303)
-
-        filename = str(filename or "")
-        fpath = _downloads_dir() / filename if filename else None
-        if not fpath or not fpath.exists():
-            return RedirectResponse(url="/telechargements?msg=Fichier manquant sur le serveur.", status_code=303)
-
-        plan = _user_plan_lower(request)
-        if PLAN_RANK.get(plan, 0) < PLAN_RANK.get(str(min_plan or "free").lower(), 0):
-            return RedirectResponse(url="/pricing", status_code=303)
-
-        # Increment download count (best effort)
-        try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            if DB_CONFIG.get("type") == "postgres":
-                cur.execute("UPDATE ebooks SET downloads = COALESCE(downloads,0) + 1 WHERE id = %s", (eid,))
-            else:
-                cur.execute("UPDATE ebooks SET downloads = COALESCE(downloads,0) + 1 WHERE id = ?", (eid,))
-            conn.commit()
-            conn.close()
-        except Exception as e:
-            print(f"⚠️ download count not updated: {e}")
-
-        return FileResponse(str(fpath), filename=os.path.basename(str(fpath)))
-
-# ---------- /crypto-pepites ----------
-if not globals().get("_PEPITES_ROUTES_REGISTERED"):
-    _PEPITES_ROUTES_REGISTERED = True
-
-    @app.get("/api/crypto-pepites-data")
-    async def crypto_pepites_data():
-        data = await _fetch_crypto_pepites()
-        return JSONResponse(data)
-
-    @app.get("/crypto-pepites", response_class=HTMLResponse)
-    async def crypto_pepites_page(request: Request):
-        # Page "pro": table live (CoinGecko) + auto-refresh (30s)
-        data = await _fetch_crypto_pepites()
-
-        callout = _render_callout(
-            "Données LIVE (CoinGecko)",
-            "Cette page liste des small/mid caps filtrées (market cap 10M–1B + volume). Auto-refresh toutes les 30 secondes.",
-        )
-
-        if not data.get("ok"):
-            err = data.get("error") or "API externe indisponible"
-            callout += _render_callout("Info", f"CoinGecko indisponible: {err}. Réessaie dans un instant.")
-
-        rows_html = ""
-        for it in (data.get("items") or []):
-            sym = _html_mod.escape(it.get("symbol") or "")
-            name = _html_mod.escape(it.get("name") or "")
-            trend = _html_mod.escape(it.get("trend") or "—")
-            score = float(it.get("score") or 0.0)
-            price = it.get("price")
-            mc = it.get("market_cap") or 0.0
-            vol = it.get("volume") or 0.0
-            ch24 = float(it.get("ch24") or 0.0)
-            ch7d = float(it.get("ch7d") or 0.0)
-            liq = float(it.get("liq") or 0.0)
-            rows_html += f"""
-            <tr>
-              <td style="padding:10px 8px;border-bottom:1px solid #1f2937"><b>{sym}</b><div class="muted" style="font-size:11px">{name}</div></td>
-              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">{(f"${float(price):,.6f}" if isinstance(price,(int,float)) else "—")}</td>
-              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${mc:,.0f}</td>
-              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${vol:,.0f}</td>
-              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">{ch24:+.2f}%</td>
-              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">{ch7d:+.2f}%</td>
-              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">{liq:.2f}</td>
-              <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right"><b>{score:.0f}</b></td>
-              <td style="padding:10px 8px;border-bottom:1px solid #1f2937">{trend}</td>
-            </tr>
-            """
-
-        updated = _html_mod.escape(str(data.get("updated_at") or "—"))
-        body = f"""
-        {callout}
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-end;flex-wrap:wrap">
-            <div>
-              <h1 style="margin:0 0 6px 0">Pépites Crypto 💎</h1>
-              <p class="muted" style="margin:0">Mise à jour: <b id="pepites-updated">{updated}</b></p>
-            </div>
-            <div style="display:flex; gap:10px; align-items:center;">
-              <button onclick="refreshPepites()" style="font-weight:800;">Rafraîchir</button>
-              <span class="muted" style="font-size:12px">Auto-refresh 30s</span>
-            </div>
-          </div>
-
-          <div style="overflow:auto;margin-top:12px">
-            <table style="width:100%;border-collapse:collapse;min-width:980px">
-              <thead>
-                <tr class="muted" style="text-align:left">
-                  <th style="padding:10px 8px;border-bottom:1px solid #334155">Coin</th>
-                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">Prix</th>
-                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">Market Cap</th>
-                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">Volume 24h</th>
-                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">24h</th>
-                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">7d</th>
-                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">Vol/MC</th>
-                  <th style="padding:10px 8px;border-bottom:1px solid #334155;text-align:right">Score</th>
-                  <th style="padding:10px 8px;border-bottom:1px solid #334155">Tendance</th>
-                </tr>
-              </thead>
-              <tbody id="pepites-tbody">
-                {rows_html or '<tr><td colspan="9" class="muted" style="padding:14px">Aucune donnée pour le moment.</td></tr>'}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <script>
-        async function refreshPepites() {{
-          try {{
-            const r = await fetch('/api/crypto-pepites-data', {{cache:'no-store'}});
-            const data = await r.json();
-            const up = document.getElementById('pepites-updated');
-            if (up && data.updated_at) up.textContent = data.updated_at;
-
-            const tb = document.getElementById('pepites-tbody');
-            if (!tb) return;
-            const items = (data.items || []);
-            if (!items.length) {{
-              tb.innerHTML = '<tr><td colspan="9" class="muted" style="padding:14px">Aucune donnée pour le moment.</td></tr>';
-              return;
-            }}
-            let html = '';
-            for (const it of items) {{
-              const sym = (it.symbol || '').toUpperCase();
-              const name = (it.name || '');
-              const price = (typeof it.price === 'number') ? ('$' + it.price.toLocaleString(undefined, {{maximumFractionDigits: 6}})) : '—';
-              const mc = (typeof it.market_cap === 'number') ? ('$' + Math.round(it.market_cap).toLocaleString()) : '—';
-              const vol = (typeof it.volume === 'number') ? ('$' + Math.round(it.volume).toLocaleString()) : '—';
-              const ch24 = (typeof it.ch24 === 'number') ? (it.ch24.toFixed(2) + '%') : '—';
-              const ch7d = (typeof it.ch7d === 'number') ? (it.ch7d.toFixed(2) + '%') : '—';
-              const liq = (typeof it.liq === 'number') ? it.liq.toFixed(2) : '—';
-              const score = (typeof it.score === 'number') ? Math.round(it.score) : '—';
-              const trend = (it.trend || '—');
-
-              const ch24s = (typeof it.ch24 === 'number' && it.ch24>0) ? ('+'+ch24) : ch24;
-              const ch7ds = (typeof it.ch7d === 'number' && it.ch7d>0) ? ('+'+ch7d) : ch7d;
-
-              html += `
-                <tr>
-                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937"><b>${{sym}}</b><div class="muted" style="font-size:11px">${{name}}</div></td>
-                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${{price}}</td>
-                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${{mc}}</td>
-                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${{vol}}</td>
-                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${{ch24s}}</td>
-                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${{ch7ds}}</td>
-                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right">${{liq}}</td>
-                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937;text-align:right"><b>${{score}}</b></td>
-                  <td style="padding:10px 8px;border-bottom:1px solid #1f2937">${{trend}}</td>
-                </tr>
-              `;
-            }}
-            tb.innerHTML = html;
-          }} catch (e) {{
-            console.log('refreshPepites error', e);
-          }}
-        }}
-        setInterval(refreshPepites, 30000);
-        </script>
-        """
-        return HTMLResponse(_simple_page("Pépites Crypto", body, sidebar=SIDEBAR_FULL))

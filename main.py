@@ -29527,351 +29527,399 @@ async def get_top_50_cryptos():
 
 # ========== 1. AI SIGNALS - SIGNAUX DE TRADING ==========
 
-@app.get("/ai-signals", response_class=HTMLResponse)
-async def ai_signals():
-    cards_html = ""
-    result_html = ""  # safety: always defined
-    """Signaux de trading basés sur analyse technique - TOP 50"""
-    
-    # Rcuprer le top 50
-    cryptos = await get_top_50_cryptos()
-    
-    # Gnrer les cartes pour top 50
-    cards_html = ""
-    for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
-        name = crypto.get('name', 'Unknown')
-        symbol = crypto.get('symbol', '').upper()
-        rank = crypto.get('market_cap_rank', 0)
-        
-        # Formater le prix CORRECTEMENT
-        if price < 1:
-            price_formatted = f"{price:,.6f}"
-        else:
-            price_formatted = f"{price:,.2f}"
-        
-        # Signal bas sur variation
-        if change_24h > 3:
-            signal_class = "buy"
-            signal_text = "🚀 ACHAT"
-            conf = min(int(abs(change_24h) * 10 + 70), 95)
-        elif change_24h < -3:
-            signal_class = "sell"
-            signal_text = "📉 VENTE"
-            conf = min(int(abs(change_24h) * 10 + 60), 90)
-        else:
-            signal_class = "hold"
-            signal_text = "⏸️ ATTENDRE"
-            conf = 50 + int(abs(change_24h) * 5)
-        
-        rsi = 50 + (change_24h * 2)
-        rsi = max(0, min(100, rsi))
-        
-        # Couleurs pour change
-        change_class = "positive" if change_24h > 0 else "negative"
-        rsi_class = "bullish" if rsi < 50 else ("bearish" if rsi > 70 else "")
-        trend_class = "bullish" if change_24h > 0 else "bearish"
-        trend_text = "Haussier" if change_24h > 0 else "Baissier"
-        
-        cards_html += f"""
-        <div class="signal-card">
-            <div class="signal-header">
-                <div>
-                    <div class="crypto-name">#{rank} {symbol}</div>
-                    <div style="font-size:0.85em;color:#94a3b8">{name}</div>
-                </div>
-                <div class="signal-badge {signal_class}">{signal_text}</div>
-            </div>
-            <div class="price-section">
-                <div class="current-price">${price_formatted}</div>
-                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
-            </div>
-            <div class="indicators">
-                <div class="indicator">
-                    <div class="indicator-label">RSI (14)</div>
-                    <div class="indicator-value {rsi_class}">{rsi:.1f}</div>
-                </div>
-                <div class="indicator">
-                    <div class="indicator-label">Tendance</div>
-                    <div class="indicator-value {trend_class}">{trend_text}</div>
-                </div>
-            </div>
-            <div class="confidence">
-                <strong>Confiance: {conf}%</strong>
-                <div class="confidence-bar"><div class="confidence-fill" style="width:{conf}%"></div></div>
-            </div>
-        </div>
-        """
-    
-    return HTMLResponse(SIDEBAR + f"""
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Signals - Top 50 Cryptos</title>
-        <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
-        <style>
-            * {{margin:0;padding:0;box-sizing:border-box}}
-            body {{font-family:'IBM Plex Sans',sans-serif;background:linear-gradient(135deg,#0a0e27 0%,#1a1f3a 100%);color:#e0e7ff;min-height:100vh;padding:40px 20px}}
-            .container {{max-width:1400px;margin:0 auto}}
-            .header {{text-align:center;margin-bottom:50px}}
-            h1 {{font-size:3.5em;font-weight:700;background:linear-gradient(135deg,#60a5fa 0%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px;font-family:'Space Mono',monospace}}
-            .subtitle {{color:#94a3b8;font-size:1.1em;margin-top:10px}}
-            .live-badge {{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:rgba(16,185,129,0.2);border:1px solid #10b981;border-radius:20px;margin:20px 0;animation:pulse 2s infinite}}
-            .live-dot {{width:10px;height:10px;background:#10b981;border-radius:50%}}
-            .signals-grid {{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}}
-            .signal-card {{background:rgba(30,41,59,0.6);backdrop-filter:blur(10px);border:2px solid rgba(96,165,250,0.2);border-radius:15px;padding:20px;transition:all 0.3s}}
-            .signal-card:hover {{transform:translateY(-5px);border-color:rgba(96,165,250,0.5);box-shadow:0 15px 40px rgba(96,165,250,0.3)}}
-            .signal-header {{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}}
-            .crypto-name {{font-size:1.2em;font-weight:700;font-family:'Space Mono',monospace}}
-            .signal-badge {{padding:6px 12px;border-radius:15px;font-weight:700;font-size:0.85em}}
-            .signal-badge.buy {{background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 0 15px rgba(16,185,129,0.5)}}
-            .signal-badge.sell {{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 0 15px rgba(239,68,68,0.5)}}
-            .signal-badge.hold {{background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 0 15px rgba(245,158,11,0.5)}}
-            .price-section {{margin:15px 0;padding:15px;background:rgba(15,23,42,0.6);border-radius:10px;border-left:3px solid #60a5fa}}
-            .current-price {{font-size:1.5em;font-weight:700;color:#60a5fa;font-family:'Space Mono',monospace}}
-            .price-change {{font-size:1em;margin-top:5px}}
-            .price-change.positive {{color:#10b981}}
-            .price-change.negative {{color:#ef4444}}
-            .indicators {{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}}
-            .indicator {{padding:10px;background:rgba(30,41,59,0.4);border-radius:8px}}
-            .indicator-label {{color:#94a3b8;font-size:0.8em;margin-bottom:3px}}
-            .indicator-value {{font-size:1.1em;font-weight:700;font-family:'Space Mono',monospace}}
-            .indicator-value.bullish {{color:#10b981}}
-            .indicator-value.bearish {{color:#ef4444}}
-            .confidence {{margin-top:15px;padding:12px;background:rgba(96,165,250,0.1);border-radius:8px;text-align:center;font-size:0.9em}}
-            .confidence-bar {{width:100%;height:6px;background:rgba(30,41,59,0.6);border-radius:10px;overflow:hidden;margin-top:8px}}
-            .confidence-fill {{height:100%;background:linear-gradient(90deg,#60a5fa,#a78bfa);border-radius:10px;transition:width 1s}}
-            @keyframes pulse {{0%,100%{{opacity:1}}50%{{opacity:0.8}}}}
-        
-        .how-to-use {{
-            margin: 60px auto;
-            max-width: 1200px;
-            padding: 40px;
-            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
-            border: 2px solid #06b6d4;
-            border-radius: 20px;
-        }}
-        
-        .how-to-use h2 {{
-            font-size: 2em;
-            margin-bottom: 30px;
-            color: #06b6d4;
-            text-align: center;
-        }}
-        
-        .use-steps {{
-            display: grid;
-            gap: 25px;
-        }}
-        
-        .step {{
-            display: flex;
-            gap: 20px;
-            align-items: flex-start;
-            padding: 25px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 15px;
-            border-left: 4px solid #06b6d4;
-        }}
-        
-        .step-number {{
-            background: linear-gradient(135deg, #06b6d4, #3b82f6);
-            color: #fff;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5em;
-            font-weight: 700;
-            flex-shrink: 0;
-        }}
-        
-        .step-content h3 {{
-            font-size: 1.3em;
-            margin-bottom: 10px;
-            color: #fff;
-        }}
-        
-        .step-content p {{
-            color: rgba(255,255,255,0.8);
-            line-height: 1.6;
-        }}
-        
-        .use-tips {{
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(251,191,36,0.1);
-            border-left: 4px solid #fbbf24;
-            border-radius: 10px;
-        }}
-        
-        .use-tips h3 {{
-            color: #fbbf24;
-            margin-bottom: 15px;
-        }}
-        
-        .use-tips ul {{
-            list-style: none;
-            padding: 0;
-        }}
-        
-        .use-tips li {{
-            padding: 8px 0;
-            color: rgba(255,255,255,0.9);
-        }}
-        
-        .use-tips li:before {{
-            content: "💡 ";
-            margin-right: 10px;
-        }}
-</style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>🎯 AI SIGNALS</h1>
-                <p class="subtitle">Signaux de trading - TOP 50 Cryptomonnaies par capitalisation</p>
-                <div class="live-badge"><div class="live-dot"></div><span>DONNÉES EN TEMPS RÉEL</span></div>
-            </div>
-            <div class="signals-grid">{result_html}</div>
-        </div>
-        <script>
-            setTimeout(function() {{ window.location.reload(); }}, 60000);
-        </script>
-    
-        <div class="how-to-use">
-            <h2>💡 Comment utiliser les Signaux AI?</h2>
-            <div class="use-steps">
-                <div class="step">
-                    <span class="step-number">1</span>
-                    <div class="step-content">
-                        <h3>Analysez le signal global</h3>
-                        <p>Regardez la tendance générale: BUY (achat), SELL (vente) ou HOLD (conserver). Chaque signal est calculé en temps réel avec plusieurs indicateurs.</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <span class="step-number">2</span>
-                    <div class="step-content">
-                        <h3>Vérifiez la force du signal</h3>
-                        <p>Plus le pourcentage est élevé, plus le signal est fort. Signal >70% = action recommandée. Signal <60% = prudence.</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <span class="step-number">3</span>
-                    <div class="step-content">
-                        <h3>Confirmez avec d'autres indicateurs</h3>
-                        <p>Ne tradez JAMAIS sur un seul signal! Utilisez aussi les patterns, sentiment et whale tracker pour confirmer.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="use-tips">
-                <h3>⚡ Conseils Pro</h3>
-                <ul>
-                    <li>Attendez plusieurs signaux consécutifs dans la même direction</li>
-                    <li>Utilisez toujours un stop-loss pour limiter les pertes</li>
-                    <li>Les signaux se mettent à jour toutes les 5 minutes</li>
-                </ul>
-            </div>
-        </div>
-    
-        </body>
-    </html>
-    """)
+# ---------------------------------------------------------------------
+# AI SIGNALS (v2): données réelles (CoinGecko) + rendu pro + auto-refresh
+# ---------------------------------------------------------------------
+_AI_SIGNALS_CACHE = {"ts": 0.0, "payload": None}
+_AI_SIGNALS_CACHE_TTL = 45  # secondes (évite de spammer l'API avec l'auto-refresh)
 
-print("Route 1/12 créée: AI Signals")
-
-
-
-def _ai_alerts_score(m: dict, style: str = "scalp") -> dict:
-    """Score simple (0-100) basé sur données CoinGecko.
-
-    - scalp: favorise momentum 1h + volume
-    - swing: favorise momentum 24h/7d + stabilité
-    """
+def _fmt_money(x: float) -> str:
     try:
-        ch1 = float(m.get("price_change_percentage_1h_in_currency") or 0.0)
+        x = float(x or 0)
     except Exception:
-        ch1 = 0.0
-    try:
-        ch24 = float(m.get("price_change_percentage_24h_in_currency") or m.get("price_change_percentage_24h") or 0.0)
-    except Exception:
-        ch24 = 0.0
-    try:
-        ch7 = float(m.get("price_change_percentage_7d_in_currency") or 0.0)
-    except Exception:
-        ch7 = 0.0
+        x = 0.0
+    if x >= 1_000_000_000:
+        return f"${x/1_000_000_000:.2f}B"
+    if x >= 1_000_000:
+        return f"${x/1_000_000:.2f}M"
+    if x >= 1_000:
+        return f"${x/1_000:.2f}K"
+    return f"${x:.2f}"
 
-    vol = float(m.get("total_volume") or 0.0)
-    mcap = float(m.get("market_cap") or 0.0)
-    v2m = (vol / mcap) if mcap > 0 else 0.0
+def _fmt_price(x: float) -> str:
+    try:
+        x = float(x or 0)
+    except Exception:
+        x = 0.0
+    if x >= 1000:
+        return f"${x:,.0f}"
+    if x >= 1:
+        return f"${x:,.2f}"
+    if x >= 0.01:
+        return f"${x:,.4f}"
+    return f"${x:.8f}"
 
-    # Pondérations
-    if style == "swing":
-        w1, w24, w7, wv, wvol = 12.0, 16.0, 12.0, 6.0, 8.0
+def _safe_float(v, default: float = 0.0) -> float:
+    try:
+        if v is None:
+            return default
+        return float(v)
+    except Exception:
+        return default
+
+def _ai_signal_from_coin(coin: dict) -> dict:
+    """Calcule un signal simple à partir des variations + liquidité (volume/marketcap)."""
+    ch24 = _safe_float(coin.get("price_change_percentage_24h"), 0.0)
+    ch7 = _safe_float(coin.get("price_change_percentage_7d_in_currency"), 0.0)
+    vol = _safe_float(coin.get("total_volume"), 0.0)
+    mc = _safe_float(coin.get("market_cap"), 0.0)
+    v2m = (vol / mc) if mc > 0 else 0.0
+
+    # Score: momentum court (24h) + tendance (7d) + bonus liquidité
+    score = (ch24 * 0.65) + (ch7 * 0.35)
+    if v2m > 0.08:
+        score += 2.0
+    if v2m > 0.15:
+        score += 1.0
+
+    if score >= 3.0:
+        signal = "ACHAT"
+        badge = "badge-buy"
+    elif score <= -3.0:
+        signal = "VENTE"
+        badge = "badge-sell"
     else:
-        w1, w24, w7, wv, wvol = 18.0, 12.0, 6.0, 10.0, 6.0
+        signal = "SURVEILLER"
+        badge = "badge-watch"
 
-    # Score borné avec tanh pour éviter les extrêmes
-    score = 50.0
-    score += w1 * math.tanh(ch1 / 2.0)
-    score += w24 * math.tanh(ch24 / 6.0)
-    score += w7 * math.tanh(ch7 / 12.0)
-    score += wv * math.tanh((v2m - 0.03) / 0.03)
-
-    # Pénalité volatilité brute (prudence)
-    vol_pen = abs(ch1) * 0.5 + abs(ch24) * 0.15
-    score -= wvol * math.tanh((vol_pen - 3.0) / 3.0)
-
-    score = max(0.0, min(100.0, score))
-
-    # Confiance (heuristique)
-    conf = 25.0 + abs(score - 50.0) * 1.1 + 20.0 * min(max(v2m / 0.08, 0.0), 1.0)
-    conf = max(10.0, min(95.0, conf))
-
-    if score >= 60:
-        label = "Bullish"
-    elif score <= 40:
-        label = "Bearish"
-    else:
-        label = "Neutral"
-
+    confidence = min(95.0, max(55.0, (abs(score) * 10.0) + (10.0 if v2m > 0.10 else 0.0)))
     reasons = []
-    if ch1 >= 0.8:
-        reasons.append(f"Momentum 1h +{ch1:.2f}%")
-    elif ch1 <= -0.8:
-        reasons.append(f"Momentum 1h {ch1:.2f}%")
-
-    if ch24 >= 3:
-        reasons.append(f"Tendance 24h +{ch24:.2f}%")
-    elif ch24 <= -3:
-        reasons.append(f"Tendance 24h {ch24:.2f}%")
-
-    if v2m >= 0.05:
-        reasons.append("Volume élevé vs market cap")
-    elif v2m <= 0.015 and vol > 0:
-        reasons.append("Volume faible (prudence)")
-
-    if vol_pen >= 6:
-        reasons.append("Volatilité élevée")
-
-    if not reasons:
-        reasons.append("Signaux mixtes / pas de conviction forte")
+    reasons.append(f"24h: {ch24:+.2f}%")
+    reasons.append(f"7j: {ch7:+.2f}%")
+    if v2m > 0.10:
+        reasons.append("Liquidité élevée")
+    elif v2m > 0.06:
+        reasons.append("Liquidité correcte")
+    else:
+        reasons.append("Liquidité faible")
 
     return {
-        "label": label,
-        "score": round(score, 1),
-        "confidence": round(conf, 0),
-        "ch1": ch1,
+        "rank": coin.get("market_cap_rank") or "",
+        "id": coin.get("id") or "",
+        "name": coin.get("name") or "",
+        "symbol": (coin.get("symbol") or "").upper(),
+        "price": _safe_float(coin.get("current_price"), 0.0),
         "ch24": ch24,
         "ch7": ch7,
+        "volume": vol,
+        "market_cap": mc,
         "v2m": v2m,
-        "reasons": reasons[:4],
+        "signal": signal,
+        "badge": badge,
+        "score": round(score, 2),
+        "confidence": int(round(confidence, 0)),
+        "reasons": reasons[:3],
     }
+
+async def _get_ai_signals_payload() -> dict:
+    now_ts = time.time()
+    cached = _AI_SIGNALS_CACHE.get("payload")
+    if cached and (now_ts - float(_AI_SIGNALS_CACHE.get("ts", 0.0)) < _AI_SIGNALS_CACHE_TTL):
+        return cached
+
+    coins = await get_top_50_cryptos()
+    signals = [_ai_signal_from_coin(c) for c in (coins or [])]
+
+    # Trier: meilleurs "opportunités" d'abord (|score|, puis market cap rank)
+    signals.sort(key=lambda s: (abs(_safe_float(s.get("score"), 0.0)), -_safe_float(s.get("confidence"), 0.0)), reverse=True)
+
+    payload = {
+        "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "source": "CoinGecko",
+        "count": len(signals),
+        "signals": signals,
+    }
+    _AI_SIGNALS_CACHE["ts"] = now_ts
+    _AI_SIGNALS_CACHE["payload"] = payload
+    return payload
+
+@app.get("/api/ai-signals-data")
+async def ai_signals_data():
+    """Endpoint JSON pour rafraîchir la page sans recharger."""
+    try:
+        return JSONResponse(await _get_ai_signals_payload())
+    except Exception as e:
+        return JSONResponse({"error": str(e), "signals": [], "count": 0}, status_code=500)
+
+@app.get("/ai-signals", response_class=HTMLResponse)
+async def ai_signals_page(request: Request):
+    payload = await _get_ai_signals_payload()
+    signals = payload.get("signals") or []
+
+    # Top 6 en cartes
+    top_cards = signals[:6]
+    cards_html = ""
+    for s in top_cards:
+        ch24 = _safe_float(s.get("ch24"), 0.0)
+        ch7 = _safe_float(s.get("ch7"), 0.0)
+        cards_html += f'''
+        <div class="sig-card">
+          <div class="sig-card-h">
+            <div class="sig-coin">
+              <div class="sig-coin-name">{s.get("name","")} <span class="sig-coin-sym">{s.get("symbol","")}</span></div>
+              <div class="sig-coin-sub">Rank #{s.get("rank","")} • {payload.get("source","")}</div>
+            </div>
+            <div class="sig-badges">
+              <span class="sig-badge {s.get("badge","badge-watch")}">{s.get("signal","")}</span>
+              <span class="sig-badge badge-conf">Confiance {int(s.get("confidence") or 0)}%</span>
+            </div>
+          </div>
+          <div class="sig-card-b">
+            <div class="sig-metric"><div class="k">Prix</div><div class="v">{_fmt_price(s.get("price"))}</div></div>
+            <div class="sig-metric"><div class="k">24h</div><div class="v {('pos' if ch24>=0 else 'neg')}">{ch24:+.2f}%</div></div>
+            <div class="sig-metric"><div class="k">7j</div><div class="v {('pos' if ch7>=0 else 'neg')}">{ch7:+.2f}%</div></div>
+            <div class="sig-metric"><div class="k">Volume</div><div class="v">{_fmt_money(s.get("volume"))}</div></div>
+          </div>
+          <div class="sig-reasons">
+            {" • ".join(s.get("reasons") or [])}
+          </div>
+        </div>
+        '''
+
+    # Table complète
+    rows_html = ""
+    for s in signals:
+        ch24 = _safe_float(s.get("ch24"), 0.0)
+        ch7 = _safe_float(s.get("ch7"), 0.0)
+        rows_html += f'''
+        <tr>
+          <td class="td-rank">#{s.get("rank","")}</td>
+          <td class="td-coin">
+            <div class="c-name">{s.get("name","")}</div>
+            <div class="c-sym">{s.get("symbol","")}</div>
+          </td>
+          <td class="td-num">{_fmt_price(s.get("price"))}</td>
+          <td class="td-num {('pos' if ch24>=0 else 'neg')}">{ch24:+.2f}%</td>
+          <td class="td-num {('pos' if ch7>=0 else 'neg')}">{ch7:+.2f}%</td>
+          <td class="td-num">{_fmt_money(s.get("volume"))}</td>
+          <td><span class="sig-badge {s.get("badge","badge-watch")}">{s.get("signal","")}</span></td>
+          <td class="td-num">{int(s.get("confidence") or 0)}%</td>
+        </tr>
+        '''
+
+    result_html = f'''
+    <style>
+      .sig-wrap {{ max-width: 1200px; margin: 0 auto; padding: 12px 12px 26px; }}
+      .sig-hero {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 16px; }}
+      .sig-hero h1 {{ margin: 0 0 6px; font-size: 28px; font-weight: 800; color: #fff; }}
+      .sig-hero p {{ margin: 0; color: rgba(255,255,255,0.82); line-height: 1.45; }}
+      .sig-meta {{ margin-top: 10px; display:flex; gap:10px; flex-wrap: wrap; align-items:center; }}
+      .sig-pill {{ background: rgba(0,0,0,0.30); border: 1px solid rgba(255,255,255,0.10); color: rgba(255,255,255,0.85); padding: 6px 10px; border-radius: 999px; font-size: 13px; }}
+      .sig-grid {{ display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }}
+      @media (max-width: 900px) {{ .sig-grid {{ grid-template-columns: 1fr; }} }}
+
+      .sig-card {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 14px; box-shadow: 0 10px 26px rgba(0,0,0,0.18); }}
+      .sig-card-h {{ display:flex; justify-content: space-between; gap: 10px; align-items: flex-start; }}
+      .sig-coin-name {{ font-weight: 800; color: #fff; font-size: 16px; }}
+      .sig-coin-sym {{ font-weight: 700; color: rgba(255,255,255,0.75); font-size: 13px; margin-left: 6px; }}
+      .sig-coin-sub {{ color: rgba(255,255,255,0.68); font-size: 12px; margin-top: 2px; }}
+
+      .sig-badges {{ display:flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }}
+      .sig-badge {{ display:inline-flex; align-items:center; gap:6px; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; border: 1px solid rgba(255,255,255,0.14); color: #fff; }}
+      .badge-buy {{ background: rgba(0, 180, 120, 0.22); }}
+      .badge-sell {{ background: rgba(220, 70, 70, 0.22); }}
+      .badge-watch {{ background: rgba(120, 140, 160, 0.20); }}
+      .badge-conf {{ background: rgba(0,0,0,0.25); color: rgba(255,255,255,0.90); }}
+
+      .sig-card-b {{ display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }}
+      .sig-metric {{ background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; padding: 10px; }}
+      .sig-metric .k {{ color: rgba(255,255,255,0.65); font-size: 12px; font-weight: 700; }}
+      .sig-metric .v {{ color: #fff; font-size: 14px; font-weight: 900; margin-top: 2px; }}
+      .pos {{ color: #8ef0c5 !important; }}
+      .neg {{ color: #ff9a9a !important; }}
+
+      .sig-reasons {{ margin-top: 10px; color: rgba(255,255,255,0.78); font-size: 12px; }}
+      .sig-section {{ margin-top: 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 14px; }}
+
+      .sig-table-wrap {{ margin-top: 14px; overflow:auto; border-radius: 16px; border: 1px solid rgba(255,255,255,0.10); }}
+      table.sig-table {{ width: 100%; border-collapse: collapse; min-width: 860px; }}
+      table.sig-table th, table.sig-table td {{ padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }}
+      table.sig-table th {{ text-align: left; font-size: 12px; letter-spacing: .02em; text-transform: uppercase; color: rgba(255,255,255,0.70); background: rgba(0,0,0,0.20); position: sticky; top: 0; }}
+      table.sig-table td {{ color: rgba(255,255,255,0.90); font-size: 14px; }}
+      .td-num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+      .td-rank {{ width: 84px; color: rgba(255,255,255,0.78); }}
+      .td-coin .c-name {{ font-weight: 900; color: #fff; }}
+      .td-coin .c-sym {{ font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 2px; }}
+      .sig-foot {{ margin-top: 10px; color: rgba(255,255,255,0.70); font-size: 12px; line-height: 1.4; }}
+      .sig-actions {{ display:flex; gap:10px; align-items:center; flex-wrap: wrap; margin-top: 10px; }}
+      .btn-mini {{
+        background: rgba(255,255,255,0.10);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 13px;
+        cursor: pointer;
+      }}
+      .btn-mini:hover {{ background: rgba(255,255,255,0.14); }}
+    </style>
+
+    <div class="sig-wrap">
+      <div class="sig-hero">
+        <h1>AI Signals</h1>
+        <p>
+          Signaux de marché calculés à partir de données réelles (prix/variations/volume).
+          Cette page se met à jour automatiquement et te donne une vue rapide des coins les plus “actifs” du moment.
+        </p>
+        <div class="sig-meta">
+          <span class="sig-pill">Dernière mise à jour : <b id="sigUpdated">{payload.get("updated_at","")}</b></span>
+          <span class="sig-pill">Source : <b id="sigSource">{payload.get("source","")}</b></span>
+          <span class="sig-pill">Coins analysés : <b id="sigCount">{payload.get("count",0)}</b></span>
+        </div>
+        <div class="sig-actions">
+          <button class="btn-mini" onclick="refreshSignals()">Rafraîchir maintenant</button>
+          <span class="sig-pill">Auto-refresh : <b>60s</b></span>
+        </div>
+      </div>
+
+      <div class="sig-section">
+        <h3 style="margin:0 0 10px; color:#fff; font-weight:900;">Top opportunités (momentum + liquidité)</h3>
+        <div class="sig-grid" id="sigCards">
+          {cards_html}
+        </div>
+        <div class="sig-foot">
+          <b>Note :</b> “ACHAT/VENTE/SURVEILLER” est un indicateur d’activité (momentum + volume),
+          pas un conseil financier. Utilise-le comme <i>scanner</i>, puis valide avec ton plan (trend, niveaux, risk management).
+        </div>
+      </div>
+
+      <div class="sig-section">
+        <h3 style="margin:0 0 10px; color:#fff; font-weight:900;">Table complète</h3>
+        <div class="sig-table-wrap">
+          <table class="sig-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Coin</th>
+                <th style="text-align:right;">Prix</th>
+                <th style="text-align:right;">24h</th>
+                <th style="text-align:right;">7j</th>
+                <th style="text-align:right;">Volume</th>
+                <th>Signal</th>
+                <th style="text-align:right;">Confiance</th>
+              </tr>
+            </thead>
+            <tbody id="sigTbody">
+              {rows_html}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="sig-foot" style="margin-top:12px;">
+          <b>Comment l’utiliser (simple) :</b>
+          1) Clique “Rafraîchir” si tu veux la donnée live. 2) Repère les coins “ACHAT/VENTE”.
+          3) Va sur tes pages d’analyse (ex: Fear & Greed, Heatmap, Dominance) pour confirmer le contexte.
+          4) Si tu trades, applique toujours ton TP/SL.
+        </div>
+      </div>
+    </div>
+
+    <script>
+      async function refreshSignals() {{
+        try {{
+          const r = await fetch('/api/ai-signals-data', {{ cache: 'no-store' }});
+          const data = await r.json();
+          if (data && data.updated_at) {{
+            document.getElementById('sigUpdated').textContent = data.updated_at;
+            document.getElementById('sigSource').textContent = data.source || '';
+            document.getElementById('sigCount').textContent = data.count || 0;
+          }}
+
+          const signals = data.signals || [];
+          // Cards (top 6)
+          const cards = signals.slice(0,6).map(s => {{
+            const ch24 = (s.ch24 ?? 0);
+            const ch7 = (s.ch7 ?? 0);
+            const pos24 = ch24 >= 0 ? 'pos' : 'neg';
+            const pos7 = ch7 >= 0 ? 'pos' : 'neg';
+            return `
+              <div class="sig-card">
+                <div class="sig-card-h">
+                  <div class="sig-coin">
+                    <div class="sig-coin-name">${{s.name || ''}} <span class="sig-coin-sym">${{(s.symbol || '').toUpperCase()}}</span></div>
+                    <div class="sig-coin-sub">Rank #${{s.rank || ''}} • ${{data.source || ''}}</div>
+                  </div>
+                  <div class="sig-badges">
+                    <span class="sig-badge ${{s.badge || 'badge-watch'}}">${{s.signal || ''}}</span>
+                    <span class="sig-badge badge-conf">Confiance ${{Math.round(s.confidence || 0)}}%</span>
+                  </div>
+                </div>
+                <div class="sig-card-b">
+                  <div class="sig-metric"><div class="k">Prix</div><div class="v">${{formatPrice(s.price)}}</div></div>
+                  <div class="sig-metric"><div class="k">24h</div><div class="v ${{pos24}}">${{formatPct(ch24)}}</div></div>
+                  <div class="sig-metric"><div class="k">7j</div><div class="v ${{pos7}}">${{formatPct(ch7)}}</div></div>
+                  <div class="sig-metric"><div class="k">Volume</div><div class="v">${{formatMoney(s.volume)}}</div></div>
+                </div>
+                <div class="sig-reasons">${{(s.reasons || []).join(' • ')}}</div>
+              </div>
+            `;
+          }}).join('');
+          document.getElementById('sigCards').innerHTML = cards;
+
+          // Table
+          const rows = signals.map(s => {{
+            const ch24 = (s.ch24 ?? 0);
+            const ch7 = (s.ch7 ?? 0);
+            const pos24 = ch24 >= 0 ? 'pos' : 'neg';
+            const pos7 = ch7 >= 0 ? 'pos' : 'neg';
+            return `
+              <tr>
+                <td class="td-rank">#${{s.rank || ''}}</td>
+                <td class="td-coin">
+                  <div class="c-name">${{s.name || ''}}</div>
+                  <div class="c-sym">${{(s.symbol || '').toUpperCase()}}</div>
+                </td>
+                <td class="td-num">${{formatPrice(s.price)}}</td>
+                <td class="td-num ${{pos24}}">${{formatPct(ch24)}}</td>
+                <td class="td-num ${{pos7}}">${{formatPct(ch7)}}</td>
+                <td class="td-num">${{formatMoney(s.volume)}}</td>
+                <td><span class="sig-badge ${{s.badge || 'badge-watch'}}">${{s.signal || ''}}</span></td>
+                <td class="td-num">${{Math.round(s.confidence || 0)}}%</td>
+              </tr>
+            `;
+          }}).join('');
+          document.getElementById('sigTbody').innerHTML = rows;
+
+        }} catch (e) {{
+          console.log('AI Signals refresh error:', e);
+        }}
+      }}
+
+      function formatPct(v) {{
+        const n = Number(v || 0);
+        const sign = n >= 0 ? '+' : '';
+        return sign + n.toFixed(2) + '%';
+      }}
+      function formatMoney(v) {{
+        const n = Number(v || 0);
+        if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
+        if (n >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
+        if (n >= 1e3) return '$' + (n/1e3).toFixed(2) + 'K';
+        return '$' + n.toFixed(2);
+      }}
+      function formatPrice(v) {{
+        const n = Number(v || 0);
+        if (n >= 1000) return '$' + n.toLocaleString(undefined, {{ maximumFractionDigits: 0 }});
+        if (n >= 1) return '$' + n.toLocaleString(undefined, {{ minimumFractionDigits: 2, maximumFractionDigits: 2 }});
+        if (n >= 0.01) return '$' + n.toLocaleString(undefined, {{ minimumFractionDigits: 4, maximumFractionDigits: 4 }});
+        return '$' + n.toFixed(8);
+      }}
+
+      setInterval(refreshSignals, 60000);
+    </script>
+    '''
+    return HTMLResponse(content=base_template(request, "AI SIGNALS", result_html))
 
 
 @app.get("/ai-alerts", response_class=HTMLResponse)

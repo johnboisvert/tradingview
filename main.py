@@ -25412,9 +25412,9 @@ async def admin_dashboard(request: Request):
           <a class="btn" href="/admin-dashboard/messages" style="text-decoration:none;display:inline-block;">📩 Messages Contact</a>
           <a class="btn" href="/admin-dashboard/list-promos" style="text-decoration:none;display:inline-block;">🏷️ Codes Promo</a>
           <a class="btn" href="/admin-dashboard/update-plan-features" style="text-decoration:none;display:inline-block;">🧩 Features par Plan</a>
-          <a class="btn" href="/admin-dashboard/api/revenue-intelligence" target="_blank" style="text-decoration:none;display:inline-block;">📈 Revenue</a>
-          <a class="btn" href="/admin-dashboard/api/retention-dashboard" target="_blank" style="text-decoration:none;display:inline-block;">🔁 Retention</a>
-          <a class="btn" href="/admin-dashboard/api/conversion-funnel" target="_blank" style="text-decoration:none;display:inline-block;">🧲 Funnel</a>
+          <a class="btn" href="/admin-dashboard/revenue-intelligence" style="text-decoration:none;display:inline-block;">📈 Revenue</a>
+          <a class="btn" href="/admin-dashboard/retention-dashboard" style="text-decoration:none;display:inline-block;">🔁 Retention</a>
+          <a class="btn" href="/admin-dashboard/conversion-funnel" style="text-decoration:none;display:inline-block;">🧲 Funnel</a>
         </div>
         <p class="help" style="margin-top:12px;">Si tu vois une erreur sur les promos: lance <b>/admin-dashboard/init-promo-table</b> une fois, puis recharge.</p>
       </div>
@@ -25692,8 +25692,259 @@ def _ebooks_storage_dir() -> str:
     return "/tmp/ebooks"
 
 
+@app.get("/admin-dashboard/revenue-intelligence", response_class=HTMLResponse)
+async def admin_revenue_intelligence_page(request: Request):
+    user, resp = _require_admin(request)
+    if resp:
+        return resp
+
+    body = """
+    <style>
+      .card{background:rgba(255,255,255,0.98);border-radius:16px;box-shadow:0 10px 22px rgba(0,0,0,0.12);padding:16px;}
+      .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+      @media (max-width: 900px){.grid{grid-template-columns:1fr;}}
+      .stat{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:12px;}
+      .k{color:#64748b;font-size:12px;font-weight:800;}
+      .v{font-size:20px;font-weight:1000;color:#0f172a;margin-top:4px;}
+      table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;}
+      th{background:#f1f5f9;padding:10px 8px;font-size:12px;color:#334155;text-align:left;}
+      td{padding:10px 8px;border-bottom:1px solid #e5e7eb;}
+      tr:last-child td{border-bottom:none;}
+      .btn{border:none;cursor:pointer;padding:10px 12px;border-radius:12px;font-weight:900;background:#111827;color:#fff;}
+      .hint{color:#64748b;font-size:12px;}
+      code{background:#0f172a;color:#e2e8f0;padding:2px 6px;border-radius:8px;}
+    </style>
+
+    <div class="card">
+      <h1 style="margin:0 0 6px 0;">📈 Revenue Intelligence</h1>
+      <p class="hint" style="margin:0 0 14px 0;">Données internes (DB) + calculs. Rafraîchit en temps réel via l’API.</p>
+
+      <div class="grid" id="rev_stats">
+        <div class="stat"><div class="k">Total referrals</div><div class="v" id="s_total_ref">—</div></div>
+        <div class="stat"><div class="k">Paid referrals</div><div class="v" id="s_paid_ref">—</div></div>
+        <div class="stat"><div class="k">Revenue généré</div><div class="v" id="s_revenue">—</div></div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <h2 style="margin:0 0 8px 0;font-size:16px;">🏆 Leaderboard</h2>
+        <table>
+          <thead><tr><th>Utilisateur</th><th>Referrals</th><th>Paid</th><th>Revenue</th></tr></thead>
+          <tbody id="rev_leader">
+            <tr><td colspan="4" style="color:#64748b;padding:14px;">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:14px;">
+        <h2 style="margin:0 0 8px 0;font-size:16px;">📡 Sources & CPA</h2>
+        <div class="hint">Source = d’où vient le trafic. CPA = coût par acquisition estimé (si dispo).</div>
+        <div style="margin-top:8px;">
+          <code id="rev_sources">—</code>
+          <code id="rev_cpa" style="margin-left:8px;">—</code>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button class="btn" onclick="loadRev()">Rafraîchir</button>
+        <a class="btn" href="/admin-dashboard" style="text-decoration:none;display:inline-block;margin-left:8px;">← Retour Dashboard</a>
+      </div>
+    </div>
+
+    <script>
+      async function loadRev(){
+        const url = "/admin-dashboard/api/revenue-intelligence";
+        const res = await fetch(url, {credentials:"include"});
+        const j = await res.json();
+        if(!j || !j.success){
+          document.getElementById("rev_leader").innerHTML =
+            `<tr><td colspan="4" style="color:#b91c1c;padding:14px;">Erreur: ${(j&&j.message)||"API indisponible"}</td></tr>`;
+          return;
+        }
+        document.getElementById("s_total_ref").textContent = j.stats?.total_referrals ?? "—";
+        document.getElementById("s_paid_ref").textContent  = j.stats?.paid_referrals ?? "—";
+        document.getElementById("s_revenue").textContent   = (j.stats?.revenue_generated ?? "—");
+
+        const rows = (j.leaderboard||[]).slice(0,20).map(r=>{
+          return `<tr>
+            <td><b>${(r.username||"")}</b></td>
+            <td>${r.referrals??0}</td>
+            <td>${r.paid??0}</td>
+            <td>${r.revenue??0}</td>
+          </tr>`;
+        }).join("");
+        document.getElementById("rev_leader").innerHTML = rows || `<tr><td colspan="4" style="color:#64748b;padding:14px;">Aucune donnée.</td></tr>`;
+
+        const sources = (j.sources||[]).map(s=>`${s.name}:${s.count}`).join(" | ");
+        document.getElementById("rev_sources").textContent = sources ? ("sources: "+sources) : "sources: —";
+        const cpa = j.cpa ? `cpa: ads=${j.cpa.ads} / referral=${j.cpa.referral}` : "cpa: —";
+        document.getElementById("rev_cpa").textContent = cpa;
+      }
+      loadRev();
+      setInterval(loadRev, 30000);
+    </script>
+    """
+    return HTMLResponse(_simple_page("Revenue Intelligence", body, sidebar=SIDEBAR_FULL))
+
+
+@app.get("/admin-dashboard/retention-dashboard", response_class=HTMLResponse)
+async def admin_retention_dashboard_page(request: Request):
+    user, resp = _require_admin(request)
+    if resp:
+        return resp
+
+    body = """
+    <style>
+      .card{background:rgba(255,255,255,0.98);border-radius:16px;box-shadow:0 10px 22px rgba(0,0,0,0.12);padding:16px;}
+      .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+      @media (max-width: 900px){.grid{grid-template-columns:1fr;}}
+      .zone{border-radius:14px;padding:12px;border:1px solid #e2e8f0;background:#f8fafc;}
+      .k{color:#64748b;font-size:12px;font-weight:800;}
+      .v{font-size:20px;font-weight:1000;color:#0f172a;margin-top:4px;}
+      table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;margin-top:10px;}
+      th{background:#f1f5f9;padding:10px 8px;font-size:12px;color:#334155;text-align:left;}
+      td{padding:10px 8px;border-bottom:1px solid #e5e7eb;}
+      tr:last-child td{border-bottom:none;}
+      .btn{border:none;cursor:pointer;padding:10px 12px;border-radius:12px;font-weight:900;background:#111827;color:#fff;}
+      .hint{color:#64748b;font-size:12px;}
+    </style>
+
+    <div class="card">
+      <h1 style="margin:0 0 6px 0;">🧠 Retention Dashboard</h1>
+      <p class="hint" style="margin:0 0 14px 0;">Classement des utilisateurs selon la date d’expiration et le plan.</p>
+
+      <div class="grid">
+        <div class="zone"><div class="k">Zone rouge</div><div class="v" id="z_red">—</div></div>
+        <div class="zone"><div class="k">Zone orange</div><div class="v" id="z_orange">—</div></div>
+        <div class="zone"><div class="k">Zone jaune</div><div class="v" id="z_yellow">—</div></div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <h2 style="margin:0 0 8px 0;font-size:16px;">⚠️ Utilisateurs à risque</h2>
+        <table>
+          <thead><tr><th>Email/Username</th><th>Plan</th><th>Jours restants</th><th>Expiry</th></tr></thead>
+          <tbody id="ret_rows">
+            <tr><td colspan="4" style="color:#64748b;padding:14px;">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button class="btn" onclick="loadRet()">Rafraîchir</button>
+        <a class="btn" href="/admin-dashboard" style="text-decoration:none;display:inline-block;margin-left:8px;">← Retour Dashboard</a>
+      </div>
+    </div>
+
+    <script>
+      async function loadRet(){
+        const res = await fetch("/admin-dashboard/api/retention-dashboard", {credentials:"include"});
+        const j = await res.json();
+        if(!j || !j.success){
+          document.getElementById("ret_rows").innerHTML =
+            `<tr><td colspan="4" style="color:#b91c1c;padding:14px;">Erreur: ${(j&&j.message)||"API indisponible"}</td></tr>`;
+          return;
+        }
+        const red = j.red_zone||[], orange=j.orange_zone||[], yellow=j.yellow_zone||[];
+        document.getElementById("z_red").textContent = red.length;
+        document.getElementById("z_orange").textContent = orange.length;
+        document.getElementById("z_yellow").textContent = yellow.length;
+
+        const all = [...red.map(x=>({...x,_zone:"rouge"})), ...orange.map(x=>({...x,_zone:"orange"})), ...yellow.map(x=>({...x,_zone:"jaune"}))];
+        const rows = all.map(u=>`<tr>
+          <td><b>${u.username||u.email||""}</b></td>
+          <td>${u.plan||""}</td>
+          <td>${u.days_until_expiry??""}</td>
+          <td>${u.expiry_date||""}</td>
+        </tr>`).join("");
+        document.getElementById("ret_rows").innerHTML = rows || `<tr><td colspan="4" style="color:#64748b;padding:14px;">Aucun utilisateur à risque.</td></tr>`;
+      }
+      loadRet();
+      setInterval(loadRet, 30000);
+    </script>
+    """
+    return HTMLResponse(_simple_page("Retention Dashboard", body, sidebar=SIDEBAR_FULL))
+
+
+@app.get("/admin-dashboard/conversion-funnel", response_class=HTMLResponse)
+async def admin_conversion_funnel_page(request: Request):
+    user, resp = _require_admin(request)
+    if resp:
+        return resp
+
+    body = """
+    <style>
+      .card{background:rgba(255,255,255,0.98);border-radius:16px;box-shadow:0 10px 22px rgba(0,0,0,0.12);padding:16px;}
+      .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+      @media (max-width: 900px){.grid{grid-template-columns:1fr;}}
+      .step{border-radius:14px;padding:12px;border:1px solid #e2e8f0;background:#f8fafc;}
+      .k{color:#64748b;font-size:12px;font-weight:800;}
+      .v{font-size:20px;font-weight:1000;color:#0f172a;margin-top:4px;}
+      .btn{border:none;cursor:pointer;padding:10px 12px;border-radius:12px;font-weight:900;background:#111827;color:#fff;}
+      .hint{color:#64748b;font-size:12px;}
+      table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;margin-top:10px;}
+      th{background:#f1f5f9;padding:10px 8px;font-size:12px;color:#334155;text-align:left;}
+      td{padding:10px 8px;border-bottom:1px solid #e5e7eb;}
+      tr:last-child td{border-bottom:none;}
+    </style>
+
+    <div class="card">
+      <h1 style="margin:0 0 6px 0;">🧪 Conversion Funnel</h1>
+      <p class="hint" style="margin:0 0 14px 0;">Vue “visiteurs → pricing → checkout → abonnés”.</p>
+
+      <div class="grid">
+        <div class="step"><div class="k">Visiteurs</div><div class="v" id="f_vis">—</div></div>
+        <div class="step"><div class="k">Pricing</div><div class="v" id="f_pri">—</div></div>
+        <div class="step"><div class="k">Checkout</div><div class="v" id="f_chk">—</div></div>
+        <div class="step"><div class="k">Conversions</div><div class="v" id="f_con">—</div></div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <h2 style="margin:0 0 8px 0;font-size:16px;">📌 Stats</h2>
+        <table>
+          <thead><tr><th>Métrique</th><th>Valeur</th></tr></thead>
+          <tbody id="f_stats">
+            <tr><td colspan="2" style="color:#64748b;padding:14px;">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button class="btn" onclick="loadFunnel()">Rafraîchir</button>
+        <a class="btn" href="/admin-dashboard" style="text-decoration:none;display:inline-block;margin-left:8px;">← Retour Dashboard</a>
+      </div>
+    </div>
+
+    <script>
+      async function loadFunnel(){
+        const res = await fetch("/admin-dashboard/api/conversion-funnel", {credentials:"include"});
+        const j = await res.json();
+        if(!j || !j.success){
+          document.getElementById("f_stats").innerHTML =
+            `<tr><td colspan="2" style="color:#b91c1c;padding:14px;">Erreur: ${(j&&j.message)||"API indisponible"}</td></tr>`;
+          return;
+        }
+        const steps = j.steps||{};
+        document.getElementById("f_vis").textContent = steps.visitors ?? "—";
+        document.getElementById("f_pri").textContent = steps.pricing_views ?? "—";
+        document.getElementById("f_chk").textContent = steps.checkout_starts ?? "—";
+        document.getElementById("f_con").textContent = steps.conversions ?? "—";
+
+        const stats = j.stats||{};
+        const rows = [
+          ["Conversion globale", (stats.global_conversion ?? "—") + "%"],
+          ["Conversion Pricing → Checkout", (stats.pricing_to_checkout ?? "—") + "%"],
+          ["Conversion Checkout → Abonné", (stats.checkout_to_sub ?? "—") + "%"],
+        ].map(x=>`<tr><td><b>${x[0]}</b></td><td>${x[1]}</td></tr>`).join("");
+        document.getElementById("f_stats").innerHTML = rows;
+      }
+      loadFunnel();
+      setInterval(loadFunnel, 30000);
+    </script>
+    """
+    return HTMLResponse(_simple_page("Conversion Funnel", body, sidebar=SIDEBAR_FULL))
+
 @app.get("/admin-dashboard/messages", response_class=HTMLResponse)
 async def admin_contact_messages(request: Request):
+    """Admin: inbox des messages /contact (vrais messages en DB)."""
     user, resp = _require_admin(request)
     if resp:
         return resp
@@ -25708,8 +25959,8 @@ async def admin_contact_messages(request: Request):
         conn.close()
         for r in rows or []:
             _id, name, email, subject, msg, status, created_at = r
-            status = status or "unread"
-            if str(status).lower() == "unread":
+            status = (status or "unread").lower()
+            if status == "unread":
                 unread_count += 1
             messages.append({
                 "id": _id,
@@ -25721,71 +25972,64 @@ async def admin_contact_messages(request: Request):
                 "created_at": str(created_at or "")
             })
     except Exception as e:
-        return HTMLResponse(f"<h1>Erreur lecture messages</h1><pre>{_html.escape(str(e))}</pre>", status_code=500)
+        return HTMLResponse(f"<h1>Erreur messages</h1><pre>{_html.escape(str(e))}</pre>", status_code=500)
 
     rows_html = ""
     for m in messages:
-        badge = "<span style='padding:4px 10px;border-radius:999px;font-weight:900;background:#fee2e2;color:#991b1b;'>NON LU</span>" if str(m["status"]).lower()=="unread" else "<span style='padding:4px 10px;border-radius:999px;font-weight:900;background:#dcfce7;color:#14532d;'>LU</span>"
+        badge = "<span class='badge ok'>Lu</span>" if m["status"] != "unread" else "<span class='badge warn'>Non lu</span>"
         rows_html += f"""
-        <tr style="border-bottom:1px solid #e5e7eb;">
-          <td style="padding:10px 8px; white-space:nowrap;">{badge}</td>
-          <td style="padding:10px 8px;"><b>{_html.escape(m['name'])}</b><div style="color:#64748b;font-size:12px;">{_html.escape(m['email'])}</div></td>
-          <td style="padding:10px 8px;">{_html.escape(m['subject'])}</td>
-          <td style="padding:10px 8px; max-width:520px;">
-            <div style="white-space:pre-wrap; color:#0f172a;">{_html.escape(m['message'])}</div>
-            <div style="color:#64748b;font-size:12px;margin-top:6px;">{_html.escape(m['created_at'])}</div>
-          </td>
-          <td style="padding:10px 8px; white-space:nowrap;">
+        <tr>
+          <td style="white-space:nowrap;">{badge}<div style="color:#94a3b8;font-size:12px;">{_html.escape(m['created_at'][:19])}</div></td>
+          <td><b>{_html.escape(m['name'])}</b><div style="color:#64748b;font-size:12px;">{_html.escape(m['email'])}</div></td>
+          <td>{_html.escape(m['subject'])}</td>
+          <td style="color:#334155;">{_html.escape((m['message'] or '')[:260])}{'…' if (m['message'] and len(m['message'])>260) else ''}</td>
+          <td style="white-space:nowrap;">
             <form method="post" action="/admin-dashboard/messages/mark" style="display:inline;">
               <input type="hidden" name="id" value="{m['id']}"/>
-              <input type="hidden" name="status" value="{'read' if str(m['status']).lower()=='unread' else 'unread'}"/>
-              <button style="border:none;cursor:pointer;padding:8px 10px;border-radius:10px;font-weight:900;background:#111827;color:#fff;">
-                {'Marquer lu' if str(m['status']).lower()=='unread' else 'Marquer non lu'}
-              </button>
+              <input type="hidden" name="status" value="{'unread' if m['status']!='unread' else 'read'}"/>
+              <button class="btn small">{'Marquer non lu' if m['status']!='unread' else 'Marquer lu'}</button>
             </form>
             <form method="post" action="/admin-dashboard/messages/delete" style="display:inline;margin-left:6px;" onsubmit="return confirm('Supprimer ce message ?');">
               <input type="hidden" name="id" value="{m['id']}"/>
-              <button style="border:none;cursor:pointer;padding:8px 10px;border-radius:10px;font-weight:900;background:#ef4444;color:#fff;">
-                Supprimer
-              </button>
+              <button class="btn small danger">Supprimer</button>
             </form>
           </td>
         </tr>
         """
 
-    page = f"""<!doctype html>
-    <html lang="fr"><head>
-      <meta charset="utf-8"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1"/>
-      <title>Admin - Messages</title>
-      <style>
-        body{{font-family:Segoe UI,Tahoma,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;margin:0;}}
-        .wrap{{max-width:1200px;margin:24px auto;padding:0 16px 40px 16px;}}
-        .card{{background:rgba(255,255,255,0.98);border-radius:16px;box-shadow:0 10px 22px rgba(0,0,0,0.12);padding:16px;}}
-        table{{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;}}
-        th{{text-align:left;background:#f1f5f9;padding:10px 8px;font-size:12px;color:#334155;}}
-        h1{{margin:0 0 6px 0;}}
-        .sub{{color:#475569;margin:0 0 14px 0;}}
-        .btnlink{{text-decoration:none;display:inline-block;padding:10px 12px;border-radius:12px;background:#111827;color:#fff;font-weight:900;}}
-      </style>
-    </head><body>
-      <div class="wrap">
-        <div class="card">
-          <h1>📩 Messages Contact</h1>
-          <p class="sub"><b>{unread_count}</b> non lus — affichage des 200 plus récents.</p>
-          <div style="margin-bottom:12px;">
-            <a class="btnlink" href="/admin-dashboard">← Retour Dashboard</a>
-          </div>
-          <table>
-            <thead><tr><th>Status</th><th>De</th><th>Sujet</th><th>Message</th><th>Actions</th></tr></thead>
-            <tbody>
-              {rows_html or '<tr><td colspan="5" style="padding:14px;color:#64748b;">Aucun message pour le moment.</td></tr>'}
-            </tbody>
-          </table>
-        </div>
+    body = f"""
+    <style>
+      .card{{background:rgba(255,255,255,0.98);border-radius:16px;box-shadow:0 10px 22px rgba(0,0,0,0.12);padding:16px;}}
+      table{{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;}}
+      th{{text-align:left;background:#f1f5f9;padding:10px 8px;font-size:12px;color:#334155;}}
+      td{{padding:10px 8px;border-bottom:1px solid #e5e7eb;vertical-align:top;}}
+      tr:last-child td{{border-bottom:none;}}
+      .btn{{border:none;cursor:pointer;padding:10px 12px;border-radius:12px;font-weight:900;background:#111827;color:#fff;}}
+      .btn.small{{padding:8px 10px;border-radius:10px;font-size:12px;}}
+      .btn.danger{{background:#ef4444;}}
+      .badge{{padding:4px 10px;border-radius:999px;font-weight:900;font-size:12px;display:inline-block;}}
+      .badge.ok{{background:#dcfce7;color:#14532d;}}
+      .badge.warn{{background:#fef9c3;color:#854d0e;}}
+      .hint{{color:#64748b;font-size:12px;}}
+    </style>
+
+    <div class="card">
+      <h1 style="margin:0 0 6px 0;">📩 Messages Contact</h1>
+      <p class="hint" style="margin:0 0 14px 0;">Inbox des messages envoyés via <b>/contact</b>. Non lus: <b>{unread_count}</b></p>
+
+      <table>
+        <thead><tr><th>Status</th><th>De</th><th>Sujet</th><th>Message</th><th>Actions</th></tr></thead>
+        <tbody>
+          {rows_html or '<tr><td colspan="5" style="padding:14px;color:#64748b;">Aucun message pour le moment.</td></tr>'}
+        </tbody>
+      </table>
+
+      <div style="margin-top:12px;">
+        <a class="btn" href="/admin-dashboard" style="text-decoration:none;display:inline-block;">← Retour Dashboard</a>
       </div>
-    </body></html>"""
-    return HTMLResponse(page)
+    </div>
+    """
+    return HTMLResponse(_simple_page("Messages Contact", body, sidebar=SIDEBAR_FULL))
 
 
 @app.post("/admin-dashboard/messages/mark", response_class=HTMLResponse)
@@ -25821,10 +26065,12 @@ async def admin_contact_messages_delete(request: Request, id: int = Form(...)):
 
 @app.get("/admin-dashboard/ebooks", response_class=HTMLResponse)
 async def admin_ebooks(request: Request):
+    """Admin: gestion des ebooks (liste + upload). Alimente automatiquement /telechargements."""
     user, resp = _require_admin(request)
     if resp:
         return resp
 
+    # Charger ebooks depuis la DB
     ebooks = []
     try:
         conn = get_db_connection()
@@ -25839,65 +26085,97 @@ async def admin_ebooks(request: Request):
                 "title": title or "",
                 "description": desc or "",
                 "filename": filename or "",
-                "file_size": fsize or 0,
-                "min_plan": min_plan or "Free",
-                "downloads": downloads or 0,
+                "file_size": int(fsize or 0),
+                "min_plan": (min_plan or "free").lower(),
+                "downloads": int(downloads or 0),
                 "active": int(active) if active is not None else 1,
                 "created_at": str(created_at or "")
             })
     except Exception as e:
         return HTMLResponse(f"<h1>Erreur ebooks</h1><pre>{_html.escape(str(e))}</pre>", status_code=500)
 
+    def _fmt_size(n: int) -> str:
+        try:
+            n = int(n or 0)
+        except Exception:
+            n = 0
+        if n <= 0:
+            return "—"
+        units = ["B", "KB", "MB", "GB"]
+        i = 0
+        f = float(n)
+        while f >= 1024 and i < len(units)-1:
+            f /= 1024.0
+            i += 1
+        return f"{f:.1f} {units[i]}"
+
     rows_html = ""
     for e in ebooks:
-        active_badge = "<span style='padding:4px 10px;border-radius:999px;font-weight:900;background:#dcfce7;color:#14532d;'>Actif</span>" if e["active"] else "<span style='padding:4px 10px;border-radius:999px;font-weight:900;background:#fee2e2;color:#991b1b;'>Inactif</span>"
+        active_badge = (
+            "<span class='badge ok'>Actif</span>" if e["active"]
+            else "<span class='badge bad'>Inactif</span>"
+        )
         rows_html += f"""
-        <tr style="border-bottom:1px solid #e5e7eb;">
-          <td style="padding:10px 8px; white-space:nowrap;">{active_badge}</td>
-          <td style="padding:10px 8px;"><b>{_html.escape(e['title'])}</b><div style="color:#64748b;font-size:12px;">{_html.escape(e['description'])}</div></td>
-          <td style="padding:10px 8px;">{_html.escape(e['min_plan'])}</td>
-          <td style="padding:10px 8px;">{int(e['downloads'])}</td>
-          <td style="padding:10px 8px; color:#64748b;font-size:12px;">{_html.escape(e['filename'])}</td>
-          <td style="padding:10px 8px; white-space:nowrap;">
+        <tr>
+          <td style="white-space:nowrap;">{active_badge}</td>
+          <td>
+            <div style="font-weight:900;">{_html.escape(e['title'])}</div>
+            <div style="color:#64748b;font-size:12px;">{_html.escape(e['description'])}</div>
+            <div style="color:#94a3b8;font-size:12px;">Ajouté: {_html.escape(e['created_at'][:19])}</div>
+          </td>
+          <td>{_html.escape(e['min_plan'])}</td>
+          <td>{int(e['downloads'])}</td>
+          <td style="color:#64748b;font-size:12px;">
+            <div>{_html.escape(e['filename'])}</div>
+            <div style="color:#94a3b8;">{_fmt_size(e['file_size'])}</div>
+          </td>
+          <td style="white-space:nowrap;">
             <form method="post" action="/admin-dashboard/ebooks/toggle" style="display:inline;">
               <input type="hidden" name="id" value="{e['id']}"/>
               <input type="hidden" name="active" value="{0 if e['active'] else 1}"/>
-              <button style="border:none;cursor:pointer;padding:8px 10px;border-radius:10px;font-weight:900;background:#111827;color:#fff;">
-                {"Désactiver" if e["active"] else "Activer"}
-              </button>
+              <button class="btn small">{'Désactiver' if e['active'] else 'Activer'}</button>
             </form>
             <form method="post" action="/admin-dashboard/ebooks/delete" style="display:inline;margin-left:6px;" onsubmit="return confirm('Supprimer cet ebook ?');">
               <input type="hidden" name="id" value="{e['id']}"/>
-              <button style="border:none;cursor:pointer;padding:8px 10px;border-radius:10px;font-weight:900;background:#ef4444;color:#fff;">
-                Supprimer
-              </button>
+              <button class="btn small danger">Supprimer</button>
             </form>
           </td>
         </tr>
         """
 
-    page = f"""<!doctype html>
-    <html lang="fr"><head>
-      <meta charset="utf-8"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1"/>
-      <title>Admin - Ebooks</title>
-      <style>
-        body{{font-family:Segoe UI,Tahoma,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;margin:0;}}
-        .wrap{{max-width:1200px;margin:24px auto;padding:0 16px 40px 16px;}}
-        .card{{background:rgba(255,255,255,0.98);border-radius:16px;box-shadow:0 10px 22px rgba(0,0,0,0.12);padding:16px;}}
-        table{{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;}}
-        th{{text-align:left;background:#f1f5f9;padding:10px 8px;font-size:12px;color:#334155;}}
-        .btnlink{{text-decoration:none;display:inline-block;padding:10px 12px;border-radius:12px;background:#111827;color:#fff;font-weight:900;}}
-      </style>
-    </head><body>
-      <div class="wrap">
-        <div class="card">
-          <h1 style="margin:0 0 6px 0;">📚 Gestion Ebooks</h1>
-          <p style="margin:0 0 14px 0;color:#475569;">Ces ebooks alimentent automatiquement <b>/telechargements</b>.</p>
-          <div style="margin-bottom:12px;">
-            <a class="btnlink" href="/admin-dashboard">← Retour Dashboard</a>
-          </div>
+    storage_dir = ""
+    try:
+        storage_dir = _ebooks_storage_dir()
+    except Exception:
+        storage_dir = "/tmp/ebooks"
 
+    body = f"""
+    <style>
+      .card{{background:rgba(255,255,255,0.98);border-radius:16px;box-shadow:0 10px 22px rgba(0,0,0,0.12);padding:16px;}}
+      .grid2{{display:grid;grid-template-columns: 1.1fr 0.9fr;gap:14px;}}
+      @media (max-width: 900px){{.grid2{{grid-template-columns:1fr;}}}}
+      table{{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;}}
+      th{{text-align:left;background:#f1f5f9;padding:10px 8px;font-size:12px;color:#334155;}}
+      td{{padding:10px 8px;border-bottom:1px solid #e5e7eb;vertical-align:top;}}
+      tr:last-child td{{border-bottom:none;}}
+      .btn{{border:none;cursor:pointer;padding:10px 12px;border-radius:12px;font-weight:900;background:#111827;color:#fff;}}
+      .btn.small{{padding:8px 10px;border-radius:10px;font-size:12px;}}
+      .btn.danger{{background:#ef4444;}}
+      .badge{{padding:4px 10px;border-radius:999px;font-weight:900;font-size:12px;display:inline-block;}}
+      .badge.ok{{background:#dcfce7;color:#14532d;}}
+      .badge.bad{{background:#fee2e2;color:#991b1b;}}
+      .hint{{color:#64748b;font-size:12px;}}
+      .input{{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;}}
+      .label{{font-weight:900;font-size:12px;color:#334155;margin:10px 0 6px;}}
+    </style>
+
+    <div class="card">
+      <h1 style="margin:0 0 6px 0;">📚 Gestion Ebooks</h1>
+      <p style="margin:0 0 14px 0;color:#475569;">
+        Ces ebooks alimentent automatiquement <b>/telechargements</b>.
+      </p>
+      <div class="grid2">
+        <div>
           <table>
             <thead><tr><th>Status</th><th>Ebook</th><th>Plan min.</th><th>Downloads</th><th>Fichier</th><th>Actions</th></tr></thead>
             <tbody>
@@ -25905,9 +26183,128 @@ async def admin_ebooks(request: Request):
             </tbody>
           </table>
         </div>
+        <div>
+          <div style="padding:14px;border-radius:14px;background:#f8fafc;border:1px solid #e2e8f0;">
+            <h2 style="margin:0 0 8px 0;font-size:16px;">⬆️ Ajouter un ebook</h2>
+            <p class="hint" style="margin:0 0 10px 0;">
+              Stockage: <code>{_html.escape(storage_dir)}</code> (si possible persistant sur Railway).
+            </p>
+            <form method="post" action="/admin-dashboard/ebooks/upload" enctype="multipart/form-data">
+              <div class="label">Titre</div>
+              <input class="input" type="text" name="title" placeholder="Ex: Guide CryptoIA – Stratégies Pro" required/>
+
+              <div class="label">Description</div>
+              <textarea class="input" name="description" rows="3" placeholder="Résumé court (affiché sur /telechargements)"></textarea>
+
+              <div class="label">Plan minimum</div>
+              <select class="input" name="min_plan">
+                <option value="free">free</option>
+                <option value="premium">premium</option>
+                <option value="advanced">advanced</option>
+                <option value="pro">pro</option>
+                <option value="elite">elite</option>
+              </select>
+
+              <div class="label">Fichier (PDF recommandé)</div>
+              <input class="input" type="file" name="file" accept=".pdf,.zip,.png,.jpg,.jpeg" required/>
+
+              <div style="margin-top:12px;">
+                <button class="btn" type="submit">✅ Uploader</button>
+              </div>
+              <p class="hint" style="margin:10px 0 0 0;">
+                Astuce: si tu veux “désactiver” temporairement un ebook, utilise le bouton Activer/Désactiver.
+              </p>
+            </form>
+          </div>
+        </div>
       </div>
-    </body></html>"""
-    return HTMLResponse(page)
+
+      <div style="margin-top:12px;">
+        <a class="btn" href="/admin-dashboard" style="text-decoration:none;display:inline-block;">← Retour Dashboard</a>
+      </div>
+    </div>
+    """
+    return HTMLResponse(_simple_page("Gestion Ebooks", body, sidebar=SIDEBAR_FULL))
+
+
+@app.post("/admin-dashboard/ebooks/upload", response_class=HTMLResponse)
+async def admin_ebooks_upload(
+    request: Request,
+    title: str = Form(...),
+    description: str = Form(""),
+    min_plan: str = Form("free"),
+    file: UploadFile = File(...),
+):
+    """Upload ebook (admin). Enregistre le fichier et crée l’entrée DB."""
+    user, resp = _require_admin(request)
+    if resp:
+        return resp
+
+    title = (title or "").strip()
+    description = (description or "").strip()
+    min_plan = (min_plan or "free").strip().lower()
+
+    if not title:
+        return RedirectResponse(url="/admin-dashboard/ebooks", status_code=303)
+
+    # Sécurité: whitelist extensions
+    orig_name = (file.filename or "").strip()
+    ext = os.path.splitext(orig_name)[1].lower()
+    allowed = {".pdf", ".zip", ".png", ".jpg", ".jpeg"}
+    if ext not in allowed:
+        return HTMLResponse(
+            _simple_page("Upload ebook", f"<div class='card'><h2>❌ Extension non permise</h2><p>Extensions permises: {', '.join(sorted(allowed))}</p><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL),
+            status_code=400
+        )
+
+    # Nom final unique (évite collisions)
+    safe_base = re.sub(r"[^a-zA-Z0-9._-]+", "_", os.path.splitext(orig_name)[0])[:80] or "ebook"
+    stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    final_name = f"{safe_base}_{stamp}{ext}"
+
+    storage_dir = _ebooks_storage_dir()
+    file_path = os.path.join(storage_dir, final_name)
+
+    # Sauvegarde
+    try:
+        data = await file.read()
+        # limite soft 50MB pour éviter de tuer le container
+        if data and len(data) > 50 * 1024 * 1024:
+            return HTMLResponse(
+                _simple_page("Upload ebook", "<div class='card'><h2>❌ Fichier trop gros</h2><p>Limite: 50MB.</p><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL),
+                status_code=400
+            )
+        with open(file_path, "wb") as f:
+            f.write(data or b"")
+        file_size = os.path.getsize(file_path)
+    except Exception as e:
+        return HTMLResponse(
+            _simple_page("Upload ebook", f"<div class='card'><h2>❌ Erreur upload</h2><pre>{_html.escape(str(e))}</pre><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL),
+            status_code=500
+        )
+
+    # DB insert
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute(
+            "INSERT INTO ebooks (title, description, filename, file_size, min_plan, downloads, active) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (title, description, final_name, int(file_size), min_plan, 0, 1),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        # rollback fichier si DB fail
+        try:
+            os.remove(file_path)
+        except Exception:
+            pass
+        return HTMLResponse(
+            _simple_page("Upload ebook", f"<div class='card'><h2>❌ Erreur DB</h2><pre>{_html.escape(str(e))}</pre><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL),
+            status_code=500
+        )
+
+    return RedirectResponse(url="/admin-dashboard/ebooks", status_code=303)
 
 
 @app.post("/admin-dashboard/ebooks/toggle", response_class=HTMLResponse)
@@ -26129,8 +26526,7 @@ async def admin_create_launch_promos(session_token: Optional[str] = Cookie(None)
         # Code 4: LONGTERM30 - 30% pour plans longs
         success, msg = PromoCodeManager.create_promo_code(
             conn, "LONGTERM30", "percent", 30,
-            plans="6_months,1_year",
-            description="Plans longs: 30% off"
+            description="Plans longs (6m/1an): 30% off"
         )
         if success: codes_created.append("LONGTERM30 (30% off plans 6m+)")
         

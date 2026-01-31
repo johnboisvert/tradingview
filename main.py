@@ -26209,23 +26209,25 @@ async def admin_ebooks(request: Request):
 
     body = f"""
     <style>
-      .card{{background:rgba(255,255,255,0.98);border-radius:16px;box-shadow:0 10px 22px rgba(0,0,0,0.12);padding:16px;}}
-      .grid2{{display:grid;grid-template-columns: 1.1fr 0.9fr;gap:14px;}}
-      @media (max-width: 900px){{.grid2{{grid-template-columns:1fr;}}}}
-      table{{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;}}
+      .ebooks-admin .card{{background:rgba(255,255,255,0.98);border-radius:16px;box-shadow:0 10px 22px rgba(0,0,0,0.12);padding:16px;}}
+      .ebooks-admin .grid2{{display:grid;grid-template-columns: 1.1fr 0.9fr;gap:14px;}}
+      @media (max-width: 900px){{.ebooks-admin .grid2{{grid-template-columns:1fr;}}}}
+      .ebooks-admin table{{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;}}
       th{{text-align:left;background:#f1f5f9;padding:10px 8px;font-size:12px;color:#334155;}}
       td{{padding:10px 8px;border-bottom:1px solid #e5e7eb;vertical-align:top;}}
-      tr:last-child td{{border-bottom:none;}}
-      .btn{{border:none;cursor:pointer;padding:10px 12px;border-radius:12px;font-weight:900;background:#111827;color:#fff;}}
+      .ebooks-admin tr:last-child td{{border-bottom:none;}}
+      .ebooks-admin .btn{{border:none;cursor:pointer;padding:10px 12px;border-radius:12px;font-weight:900;background:#111827;color:#fff;}}
       .btn.small{{padding:8px 10px;border-radius:10px;font-size:12px;}}
-      .btn.danger{{background:#ef4444;}}
+      .ebooks-admin .btn.danger{{background:#ef4444;}}
       .badge{{padding:4px 10px;border-radius:999px;font-weight:900;font-size:12px;display:inline-block;}}
       .badge.ok{{background:#dcfce7;color:#14532d;}}
       .badge.bad{{background:#fee2e2;color:#991b1b;}}
-      .hint{{color:#64748b;font-size:12px;}}
-      .input{{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;}}
-      .label{{font-weight:900;font-size:12px;color:#334155;margin:10px 0 6px;}}
+      .ebooks-admin .hint{{color:#64748b;font-size:12px;}}
+      .ebooks-admin .input{{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;}}
+      .ebooks-admin .label{{font-weight:900;font-size:12px;color:#334155;margin:10px 0 6px;}}
     </style>
+
+    <div class="ebooks-admin">
 
     <div class="card">
       <h1 style="margin:0 0 6px 0;">📚 Gestion Ebooks</h1>
@@ -26281,8 +26283,9 @@ async def admin_ebooks(request: Request):
         <a class="btn" href="/admin-dashboard" style="text-decoration:none;display:inline-block;">← Retour Dashboard</a>
       </div>
     </div>
+    </div>
     """
-    return HTMLResponse(_admin_simple_page("Gestion Ebooks", body))
+    return HTMLResponse(_simple_page("Gestion Ebooks", body, sidebar=SIDEBAR_FULL))
 
 
 @app.post("/admin-dashboard/ebooks/upload", response_class=HTMLResponse)

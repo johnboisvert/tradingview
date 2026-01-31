@@ -35176,13 +35176,12 @@ async def _fetch_crypto_pepites(force: bool = False) -> dict:
 
 
 @app.get("/api/crypto-pepites-data")
-async def crypto_pepites_data():
+    async def crypto_pepites_data():
         data = await _fetch_crypto_pepites()
         return JSONResponse(data)
 
-
-@app.get("/crypto-pepites", response_class=HTMLResponse)
-async def crypto_pepites_page(request: Request):
+    @app.get("/crypto-pepites", response_class=HTMLResponse)
+    async def crypto_pepites_page(request: Request):
         # Page "pro": table live (CoinGecko) + auto-refresh (30s)
         data = await _fetch_crypto_pepites()
 
@@ -35307,35 +35306,35 @@ le="font-weight:800;">Rafraîchir</button>
         <script>
         let pepitesChart = null;
 
-        function _initPepitesChart(labels, scores){{
-          try{{
-            const canvas = document.getElementById('pepitesChart');
-            if(!canvas) return;
-            pepitesChart = new Chart(canvas, {{
+        function _initPepitesChart(labels, scores){
+          try{
+            const ctx = document.getElementById('pepitesChart');
+            if(!ctx) return;
+            pepitesChart = new Chart(ctx, {
               type: 'bar',
-              data: {{
+              data: {
                 labels: labels,
-                datasets: [{{ label: 'Score', data: scores }}]
-              }},
-              options: {{
+                datasets: [{ label: 'Score', data: scores }]
+              },
+              options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {{ legend: {{ display: false }} }},
-                scales: {{
-                  x: {{ ticks: {{ color: '#cbd5e1' }}, grid: {{ display: false }} }},
-                  y: {{ ticks: {{ color: '#cbd5e1' }}, grid: {{ color: 'rgba(148,163,184,0.12)' }} }}
-                }}
-              }}
-            }});
-          }} catch(e){{ console.log('chart init err', e); }}
-        }}
+                plugins: { legend: { display: false } },
+                scales: {
+                  x: { ticks: { color: '#cbd5e1' }, grid: { display: false } },
+                  y: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(148,163,184,0.12)' } }
+                }
+              }
+            });
+          } catch(e){ console.log('chart init err', e); }
+        }
 
-        function _updatePepitesChart(labels, scores){{
-          if(!pepitesChart){{ _initPepitesChart(labels, scores); return; }}
+        function _updatePepitesChart(labels, scores){
+          if(!pepitesChart) { _initPepitesChart(labels, scores); return; }
           pepitesChart.data.labels = labels;
           pepitesChart.data.datasets[0].data = scores;
           pepitesChart.update();
-        }}
+        }
 
         // Seed chart from server-side render
         const _seedLabels = {chart_labels_json};
@@ -35353,7 +35352,7 @@ le="font-weight:800;">Rafraîchir</button>
             if (!tb) return;
             const items = (data.items || []);
             // KPIs + chart
-            try{{
+            try{
               const cnt = items.length;
               const avg = cnt ? (items.reduce((a,b)=>a+(+b.score||0),0)/cnt) : 0;
               const best = cnt ? Math.max(...items.map(x=>+x.score||0)) : 0;
@@ -35368,7 +35367,7 @@ le="font-weight:800;">Rafraîchir</button>
               if(elLiq) elLiq.textContent = avgL.toFixed(2);
               const top10 = items.slice(0,10);
               _updatePepitesChart(top10.map(x=>(x.symbol||'').toUpperCase()), top10.map(x=>+x.score||0));
-            }}catch(e){{}}
+            }catch(e){}
 
             if (!items.length) {{
               tb.innerHTML = '<tr><td colspan="9" class="muted" style="padding:14px">Aucune donnée pour le moment.</td></tr>';

@@ -34846,6 +34846,7 @@ if not globals().get("_CONTACT_ROUTES_REGISTERED"):
             print(f"❌ contact_submit fatal: {e}")
             return RedirectResponse(url="/contact?msg=Erreur serveur. Réessaie.", status_code=303)
 
+
 # ---------- /telechargements ----------
 if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
     _DOWNLOADS_ROUTES_REGISTERED = True
@@ -34858,12 +34859,120 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
                 return (get_user_effective_plan(u) or "free").lower()
         return "free"
 
+    def _plan_badge(plan: str) -> str:
+        p = (plan or "free").lower()
+        return {
+            "free": "Free",
+            "premium": "Premium",
+            "advanced": "Advanced",
+            "pro": "Pro",
+            "elite": "Elite",
+        }.get(p, p.title())
+
+    def _ebook_row_to_dict(r: tuple, request: Request) -> dict:
+        # Compatible with varying schemas (best-effort)
+        keys = ["id","title","description","filename","file_size","min_plan","downloads","active","created_at"]
+        d = {}
+        for i,k in enumerate(keys):
+            d[k] = r[i] if i < len(r) else None
+        d["id"] = int(d.get("id") or 0)
+        d["title"] = str(d.get("title") or "").strip() or f"Ebook #{d['id']}"
+        d["description"] = str(d.get("description") or "").strip()
+        d["filename"] = str(d.get("filename") or "").strip()
+        d["min_plan"] = str(d.get("min_plan") or "free").lower()
+        d["downloads"] = int(d.get("downloads") or 0)
+        d["active"] = bool(d.get("active")) if d.get("active") is not None else True
+
+        # File existence
+        fpath = None
+        try:
+            if d["filename"]:
+                fpath = _downloads_dir() / os.path.basename(d["filename"])
+        except Exception:
+            fpath = None
+        d["exists"] = bool(fpath and fpath.exists())
+
+        # Access
+        plan = _user_plan_lower(request)
+        d["user_plan"] = plan
+        d["allowed"] = PLAN_RANK.get(plan, 0) >= PLAN_RANK.get(d["min_plan"], 0)
+        d["size_h"] = _human_bytes(d.get("file_size"))
+        d["created_h"] = _fmt_dt(d.get("created_at"))
+        return d
+
+    async def _fetch_ebooks_from_db(limit: int = 250) -> list:
+        rows = []
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            # Detect columns to avoid crashes if schema differs
+            cols = []
+            try:
+                if DB_CONFIG.get("type") == "postgres":
+                    cur.execute("""
+                        SELECT column_name FROM information_schema.columns
+                        WHERE table_name='ebooks'
+                    """)
+                    cols = [c[0] for c in cur.fetchall()]
+                else:
+                    cur.execute("PRAGMA table_info(ebooks)")
+                    cols = [c[1] for c in cur.fetchall()]
+            except Exception:
+                cols = []
+
+            want = ["id","title","description","filename","file_size","min_plan","downloads","active","created_at"]
+            have = [c for c in want if (c in cols or not cols)]
+            select_cols = ",".join(have) if have else "id,title,description,filename,file_size,min_plan,downloads,active,created_at"
+            q = f"SELECT {select_cols} FROM ebooks ORDER BY COALESCE(created_at,'') DESC"
+            if DB_CONFIG.get("type") == "postgres":
+                q += " LIMIT %s"
+                cur.execute(q, (limit,))
+            else:
+                q += " LIMIT ?"
+                cur.execute(q, (limit,))
+            rows = cur.fetchall()
+            conn.close()
+        except Exception as e:
+            print(f"❌ telechargements DB read: {e}")
+            rows = []
+        return rows
+
+    @app.get("/api/telechargements-data")
+    async def api_telechargements_data(request: Request):
+        """Données réelles (DB ebooks + existence fichiers). Stable + cache côté client."""
+        user = get_user_from_request(request)
+        if not user:
+            return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+
+        rows = await _fetch_ebooks_from_db()
+        ebooks = [_ebook_row_to_dict(r, request) for r in rows]
+
+        # Metrics
+        active = [e for e in ebooks if e["active"] and e["exists"]]
+        allowed = [e for e in active if e["allowed"]]
+        best = max([e.get("downloads", 0) for e in active], default=0)
+        total_downloads = sum([e.get("downloads", 0) for e in active])
+
+        return JSONResponse({
+            "ok": True,
+            "now_utc": datetime.utcnow().isoformat() + "Z",
+            "user_plan": _user_plan_lower(request),
+            "counts": {
+                "total": len(ebooks),
+                "active": len(active),
+                "accessible": len(allowed),
+                "best_downloads": best,
+                "total_downloads": total_downloads,
+            },
+            "ebooks": ebooks
+        })
+
     @app.get("/telechargements", response_class=HTMLResponse)
     async def telechargements_page(request: Request):
         user = get_user_from_request(request)
         if not user:
-            # si non connecté, on affiche une page propre plutôt que 404/500
-            body = _render_callout("Accès", "Connecte-toi pour accéder aux téléchargements, ou vérifie ton plan.")
+            body = _render_callout("Accès requis", "Connecte-toi pour accéder aux téléchargements, ou vérifie ton plan.")
             body += f"""
             <div class="card">
               <h1 style="margin:0 0 6px 0">Téléchargements</h1>
@@ -34874,82 +34983,188 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
             """
             return HTMLResponse(_simple_page("Téléchargements", body, sidebar=SIDEBAR_FULL))
 
-        # Charger ebooks depuis DB
-        rows = []
-        try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("SELECT id,title,description,filename,file_size,min_plan,downloads,active,created_at FROM ebooks ORDER BY created_at DESC")
-            rows = cur.fetchall()
-            conn.close()
-        except Exception as e:
-            print(f"❌ telechargements DB read: {e}")
-            rows = []
-
         plan = _user_plan_lower(request)
-        plan_label = plan.title()
+
+        # Server-side fallback (in case JS blocked): render a simple list
+        rows = await _fetch_ebooks_from_db()
+        ebooks = [_ebook_row_to_dict(r, request) for r in rows]
+
+        def _status(e):
+            if not (e["active"] and e["exists"]):
+                return ("⚠️ Indisponible", "muted")
+            if e["allowed"]:
+                return ("✅ Disponible", "ok")
+            return ("🔒 Plan requis", "warn")
 
         cards = []
-        for r in rows:
-            try:
-                (eid, title, desc, filename, fsize, min_plan, downloads, active, created_at) = r
-            except Exception:
-                continue
-            title = str(title or "")
-            desc = str(desc or "")
-            filename = str(filename or "")
-            min_plan = str(min_plan or "Free")
-            downloads = int(downloads or 0)
-            active = bool(active) if active is not None else True
-
-            fpath = None
-            try:
-                fpath = (_downloads_dir() / filename) if filename else None
-            except Exception:
-                fpath = None
-            exists = bool(fpath and fpath.exists())
-
-            # access check by min_plan
-            allow = PLAN_RANK.get(plan, 0) >= PLAN_RANK.get(str(min_plan).lower(), 0)
-
-            badge = "✅ Disponible" if (active and exists and allow) else ("🔒 Plan requis" if (active and exists and not allow) else "⚠️ Indisponible")
-            btn = ""
-            if active and exists and allow:
-                btn = f'<a href="/telechargements/download/{eid}" style="display:inline-block;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#111827;color:#e2e8f0;text-decoration:none;font-weight:800;">Télécharger</a>'
-            elif active and exists and not allow:
-                btn = f'<a href="/pricing" style="display:inline-block;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;text-decoration:none;font-weight:800;">Mettre à niveau</a>'
-
+        for e in ebooks:
+            status_txt, _ = _status(e)
+            if e["active"] and e["exists"] and e["allowed"]:
+                btn = f'<a href="/telechargements/download/{e["id"]}" class="btn-primary">Télécharger</a>'
+            elif e["active"] and e["exists"] and not e["allowed"]:
+                btn = f'<a href="/pricing" class="btn-ghost">Mettre à niveau</a>'
+            else:
+                btn = ''
             cards.append(f"""
-            <div class="card" style="margin-bottom:12px">
-              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+            <div class="card dl-card" data-title="{_html_mod.escape(e['title']).lower()}" data-minplan="{_html_mod.escape(e['min_plan'])}" data-active="{str(e['active']).lower()}" data-allowed="{str(e['allowed']).lower()}">
+              <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
                 <div style="min-width:240px;flex:1">
-                  <div style="font-weight:900;font-size:18px;margin-bottom:4px">{_html_mod.escape(title)}</div>
-                  <div class="muted" style="margin-bottom:10px">{_html_mod.escape(desc) if desc else '—'}</div>
-                  <div class="muted" style="font-size:12px">
-                    Fichier: <b>{_html_mod.escape(filename or '—')}</b> • Taille: <b>{_human_bytes(fsize)}</b> • Téléchargements: <b>{downloads}</b><br>
-                    Plan minimal: <b>{_html_mod.escape(min_plan)}</b> • Ajouté: <b>{_fmt_dt(created_at)}</b>
+                  <div style="font-weight:900;font-size:18px;margin-bottom:4px">{_html_mod.escape(e['title'])}</div>
+                  <div class="muted" style="margin-bottom:10px">{_html_mod.escape(e['description']) if e['description'] else '—'}</div>
+                  <div class="muted" style="font-size:12px;line-height:1.6">
+                    Fichier: <b>{_html_mod.escape(e['filename'] or '—')}</b> • Taille: <b>{_html_mod.escape(e['size_h'])}</b> • Téléchargements: <b>{e['downloads']}</b><br>
+                    Plan minimal: <b>{_html_mod.escape(_plan_badge(e['min_plan']))}</b> • Ajouté: <b>{_html_mod.escape(e['created_h'])}</b>
                   </div>
                 </div>
-                <div style="text-align:right;min-width:200px">
-                  <div style="font-weight:800;margin-bottom:10px">{badge}</div>
+                <div style="text-align:right;min-width:220px">
+                  <div style="font-weight:900;margin-bottom:10px">{status_txt}</div>
                   {btn}
                 </div>
               </div>
             </div>
             """)
 
-        if not cards:
-            cards_html = _render_callout("Aucun contenu pour l’instant", "Ajoute des ebooks dans la table 'ebooks' (admin) et dépose les fichiers dans /tmp/ebooks.")
-        else:
-            cards_html = "\n".join(cards)
+        cards_html = "\n".join(cards) if cards else _render_callout("Aucun contenu", "Ajoute des ebooks via l'admin, puis upload les fichiers pour alimenter cette page.")
 
         body = f"""
+        <style>
+          .kpi-grid {{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }}
+          @media(max-width:980px){{ .kpi-grid{{ grid-template-columns:repeat(2,minmax(0,1fr)); }} }}
+          .kpi {{ padding:14px; border-radius:14px; background:rgba(15,23,42,.6); border:1px solid rgba(148,163,184,.18); }}
+          .kpi .label {{ font-size:12px; color:#94a3b8; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }}
+          .kpi .value {{ font-size:22px; font-weight:1000; margin-top:6px; }}
+          .toolbar {{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }}
+          .input {{ padding:10px 12px; border-radius:12px; border:1px solid rgba(148,163,184,.18); background:rgba(2,6,23,.6); color:#e2e8f0; outline:none; }}
+          .btn-primary {{ display:inline-block;padding:10px 14px;border-radius:12px;border:1px solid #334155;background:#111827;color:#e2e8f0;text-decoration:none;font-weight:900; }}
+          .btn-ghost {{ display:inline-block;padding:10px 14px;border-radius:12px;border:1px solid rgba(148,163,184,.18);background:rgba(2,6,23,.4);color:#e2e8f0;text-decoration:none;font-weight:900; }}
+          .pill {{ display:inline-block; padding:6px 10px; border-radius:999px; font-weight:900; font-size:12px; border:1px solid rgba(148,163,184,.18); background:rgba(2,6,23,.35); }}
+        </style>
+
         <div class="card" style="margin-bottom:12px">
-          <h1 style="margin:0 0 6px 0">Téléchargements</h1>
-          <p class="muted" style="margin:0">Contenu réel (DB: <b>ebooks</b>). Ton plan: <b>{_html_mod.escape(plan_label)}</b>. Les fichiers sont servis depuis <b>{_html_mod.escape(str(_downloads_dir()))}</b>.</p>
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+            <div>
+              <h1 style="margin:0 0 6px 0">Téléchargements</h1>
+              <div class="muted" style="margin:0;line-height:1.5">
+                Contenu réel (DB: <b>ebooks</b>). Ton plan: <b>{_html_mod.escape(_plan_badge(plan))}</b> • Dossier fichiers: <b>{_html_mod.escape(str(_downloads_dir()))}</b><br>
+                <span class="pill">Mise à jour auto</span> <span class="pill">Anti-500</span> <span class="pill">Contrôle d'accès par forfait</span>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <a href="/pricing" class="btn-ghost">Plans</a>
+              <a href="/admin-dashboard/ebooks" class="btn-primary" style="margin-left:8px">Admin Ebooks</a>
+            </div>
+          </div>
         </div>
-        {cards_html}
+
+        <div class="kpi-grid" style="margin-bottom:12px">
+          <div class="kpi"><div class="label">Actifs</div><div class="value" id="kpi_active">—</div></div>
+          <div class="kpi"><div class="label">Accessibles</div><div class="value" id="kpi_accessible">—</div></div>
+          <div class="kpi"><div class="label">Téléchargements totaux</div><div class="value" id="kpi_total_dl">—</div></div>
+          <div class="kpi"><div class="label">Max downloads (1 ebook)</div><div class="value" id="kpi_best">—</div></div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <div class="toolbar">
+            <input id="q" class="input" style="min-width:260px;flex:1" placeholder="Rechercher un ebook (titre)...">
+            <select id="filter" class="input">
+              <option value="all">Tous</option>
+              <option value="available">Disponibles</option>
+              <option value="locked">Plan requis</option>
+              <option value="inactive">Indisponibles</option>
+            </select>
+            <button id="refresh" class="btn-primary" type="button">Rafraîchir</button>
+            <span class="muted" style="font-size:12px">Dernière mise à jour: <b id="last_ts">—</b></span>
+          </div>
+          <div style="margin-top:14px">
+            <canvas id="dlChart" height="110"></canvas>
+          </div>
+        </div>
+
+        <div id="dl_list">
+          {cards_html}
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h3 style="margin:0 0 8px 0">Comment utiliser</h3>
+          <div class="muted" style="line-height:1.6">
+            • Cette page affiche les ebooks depuis la DB <b>ebooks</b> et vérifie si le fichier existe sur le serveur.<br>
+            • Si “Plan requis”, ton forfait est inférieur au plan minimal de l’ebook.<br>
+            • “Admin Ebooks” te permet d’uploader/activer/désactiver les fichiers — tout apparaît ici automatiquement.
+          </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+          let dlChart = null;
+
+          function applyFilters() {{
+            const q = (document.getElementById('q').value || '').toLowerCase().trim();
+            const f = document.getElementById('filter').value;
+            const cards = document.querySelectorAll('.dl-card');
+            cards.forEach(el => {{
+              const title = el.getAttribute('data-title') || '';
+              const active = el.getAttribute('data-active') === 'true';
+              const allowed = el.getAttribute('data-allowed') === 'true';
+
+              let ok = true;
+              if (q && !title.includes(q)) ok = false;
+
+              if (f === 'available') ok = ok && active && allowed;
+              if (f === 'locked') ok = ok && active && !allowed;
+              if (f === 'inactive') ok = ok && !active;
+
+              el.style.display = ok ? '' : 'none';
+            }});
+          }}
+
+          async function loadData() {{
+            try {{
+              const res = await fetch('/api/telechargements-data', {{headers: {{'Accept':'application/json'}}}});
+              if (!res.ok) return;
+              const data = await res.json();
+              if (!data.ok) return;
+
+              document.getElementById('kpi_active').textContent = data.counts.active;
+              document.getElementById('kpi_accessible').textContent = data.counts.accessible;
+              document.getElementById('kpi_total_dl').textContent = data.counts.total_downloads;
+              document.getElementById('kpi_best').textContent = data.counts.best_downloads;
+              document.getElementById('last_ts').textContent = data.now_utc;
+
+              // Build chart (top 10 by downloads)
+              const ebooks = (data.ebooks || []).filter(e => e.active && e.exists);
+              ebooks.sort((a,b) => (b.downloads||0) - (a.downloads||0));
+              const top = ebooks.slice(0, 10);
+              const labels = top.map(e => e.title);
+              const values = top.map(e => e.downloads || 0);
+
+              if (dlChart) dlChart.destroy();
+              const ctx = document.getElementById('dlChart').getContext('2d');
+              dlChart = new Chart(ctx, {{
+                type: 'bar',
+                data: {{ labels: labels, datasets: [{{ label: 'Downloads', data: values }}] }},
+                options: {{
+                  responsive: true,
+                  plugins: {{ legend: {{ display: false }} }},
+                  scales: {{
+                    x: {{ ticks: {{ color: '#cbd5e1', maxRotation: 45, minRotation: 0 }} }},
+                    y: {{ beginAtZero: true, ticks: {{ color: '#cbd5e1' }} }}
+                  }}
+                }}
+              }});
+            }} catch (e) {{}}
+          }}
+
+          document.getElementById('q').addEventListener('input', applyFilters);
+          document.getElementById('filter').addEventListener('change', applyFilters);
+          document.getElementById('refresh').addEventListener('click', async () => {{ await loadData(); applyFilters(); }});
+
+          // Initial
+          loadData().then(applyFilters);
+          // Auto refresh: 30s (server side is stable thanks to DB + file checks)
+          setInterval(loadData, 30000);
+        </script>
         """
+
         return HTMLResponse(_simple_page("Téléchargements", body, sidebar=SIDEBAR_FULL))
 
     @app.get("/telechargements/download/{ebook_id}")
@@ -34979,9 +35194,12 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
         if not active:
             return RedirectResponse(url="/telechargements?msg=Ebook désactivé.", status_code=303)
 
-        filename = str(filename or "")
-        fpath = _downloads_dir() / filename if filename else None
-        if not fpath or not fpath.exists():
+        filename = os.path.basename(str(filename or "").strip())
+        if not filename:
+            return RedirectResponse(url="/telechargements?msg=Fichier manquant.", status_code=303)
+
+        fpath = _downloads_dir() / filename
+        if not fpath.exists():
             return RedirectResponse(url="/telechargements?msg=Fichier manquant sur le serveur.", status_code=303)
 
         plan = _user_plan_lower(request)
@@ -35001,8 +35219,7 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
         except Exception as e:
             print(f"⚠️ download count not updated: {e}")
 
-        return FileResponse(str(fpath), filename=os.path.basename(str(fpath)))
-
+        return FileResponse(str(fpath), filename=filename)
 # ---------- /crypto-pepites ----------
 if not globals().get("_PEPITES_ROUTES_REGISTERED"):
     _PEPITES_ROUTES_REGISTERED = True

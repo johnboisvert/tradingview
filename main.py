@@ -3274,6 +3274,8 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             "/contact", "/pricing",
             "/telechargements", "/crypto-pepites",
             "/academy",
+            "/crypto-academy",
+            "/trading-academy",
             "/tv-webhook",
         }
         PUBLIC_PREFIXES = ("/static", "/assets", "/css", "/js", "/img")
@@ -8409,6 +8411,12 @@ risk_management_settings = {
     "daily_loss": 0.0,  # Perte du jour actuel
     "last_reset": datetime.now().strftime("%Y-%m-%d")
 }
+
+# Ordre de privilèges des forfaits (du plus faible au plus élevé)
+PLAN_ORDER = ["free", "premium", "advanced", "pro", "elite", "admin"]
+# Rang numérique pour comparaisons de droits (free=0, admin=5)
+PLAN_RANK = {p: i for i, p in enumerate(PLAN_ORDER)}
+
 
 # Watchlist & Alertes
 watchlist_db = []  # Liste des cryptos surveillées
@@ -34227,6 +34235,17 @@ async def academy(request: Request):
     """
     return HTMLResponse(_simple_page("Academy", body, sidebar=SIDEBAR_FULL))
 
+@app.get("/crypto-academy", response_class=HTMLResponse)
+async def crypto_academy(request: Request):
+    """Alias public de /academy pour le menu 'Crypto Academy'."""
+    return await academy(request)
+
+@app.get("/trading-academy", response_class=HTMLResponse)
+async def trading_academy(request: Request):
+    """Alias public de /academy pour le menu 'Trading Academy'."""
+    return await academy(request)
+
+
 @app.get("/academy-progress", response_class=HTMLResponse)
 async def academy_progress(request: Request):
     user = get_user_from_request(request)
@@ -34896,7 +34915,7 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
         # Access
         plan = _user_plan_lower(request)
         d["user_plan"] = plan
-        d["allowed"] = PLAN_RANK.get(plan, 0) >= PLAN_RANK.get(d["min_plan"], 0)
+        d["allowed"] = PLAN_RANK.get(plan, 0) >= PLAN_RANK.get((d.get("min_plan") or "free").strip().lower(), 0)
         d["size_h"] = _human_bytes(d.get("file_size"))
         d["created_h"] = _fmt_dt(d.get("created_at"))
         return d

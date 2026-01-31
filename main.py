@@ -12033,7 +12033,10 @@ async def spot_trading_page():
                     ]
                 },
                 options: {
-                    responsive: true,
+            responsive: true,
+            maintainAspectRatio: false,
+            maintainAspectRatio: false,
+          maintainAspectRatio: false,
                     maintainAspectRatio: true,
                     plugins: {
                         legend: {
@@ -22576,6 +22579,7 @@ async def market_simulation():
                 },
                 options: {
                     responsive: true,
+          maintainAspectRatio: false,
                     maintainAspectRatio: false,
                     interaction: { intersect: false, mode: 'index' },
                     plugins: {
@@ -28563,6 +28567,7 @@ async def fear_greed_chart():
                         }},
                         options: {{
                             responsive: true,
+          maintainAspectRatio: false,
                             maintainAspectRatio: true,
                             plugins: {{
                                 legend: {{ 
@@ -29286,6 +29291,7 @@ async def backtesting_page(request: Request):
                 }},
                 options: {{
                     responsive: true,
+          maintainAspectRatio: false,
                     maintainAspectRatio: false,
                     plugins: {{
                         legend: {{ display: false }},
@@ -29330,6 +29336,7 @@ async def backtesting_page(request: Request):
                 }},
                 options: {{
                     responsive: true,
+          maintainAspectRatio: false,
                     maintainAspectRatio: false,
                     plugins: {{
                         legend: {{ display: false }},
@@ -33881,7 +33888,8 @@ def _admin_simple_page(title: str, body_html: str) -> str:
     - On passe uniquement le HTML (sans <style>) à _simple_page comme sidebar_html.
     """
     try:
-        sb = globals().get("SIDEBAR") or ""
+        # Prefer the full sidebar if available, to keep admin pages consistent
+    sb = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
         if "</style>" in sb:
             sb_style = sb.split("</style>", 1)[0] + "</style>"
             sb_html = sb.split("</style>", 1)[1]
@@ -35140,15 +35148,17 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
             <button id="refresh" class="btn-primary" type="button">Rafraîchir</button>
             <span class="muted" style="font-size:12px">Dernière mise à jour: <b id="last_ts">—</b></span>
           </div>
-          <div style="margin-top:14px">
-            <canvas id="dlChart" height="110"></canvas>
-          </div>
-        </div>
-
-        <div id="dl_list">
+        <!-- Liste des ebooks (mise en haut) -->
+        <div id="dl_list" style="margin-top:12px">
           {cards_html}
         </div>
 
+        <!-- Graphique (compact) -->
+        <div class="muted" style="margin-top:14px; font-size:12px">Téléchargements (par ebook)</div>
+        <div style="height:140px; max-height:140px; margin-top:6px">
+          <canvas id="dlChart" style="max-height:140px"></canvas>
+        </div>
+      </div>
         <div class="card" style="margin-top:12px">
           <h3 style="margin:0 0 8px 0">Comment utiliser</h3>
           <div class="muted" style="line-height:1.6">
@@ -35209,6 +35219,7 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
                 data: {{ labels: labels, datasets: [{{ label: 'Downloads', data: values }}] }},
                 options: {{
                   responsive: true,
+          maintainAspectRatio: false,
                   plugins: {{ legend: {{ display: false }} }},
                   scales: {{
                     x: {{ ticks: {{ color: '#cbd5e1', maxRotation: 45, minRotation: 0 }} }},
@@ -35601,6 +35612,7 @@ le="font-weight:800;">Rafraîchir</button>
               }},
               options: {{
                 responsive: true,
+          maintainAspectRatio: false,
                 maintainAspectRatio: false,
                 plugins: {{ legend: {{ display: false }} }},
                 scales: {{

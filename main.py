@@ -3272,6 +3272,7 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             "/login", "/logout", "/register",
             "/admin-login",
             "/contact", "/pricing",
+            "/telechargements", "/crypto-pepites",
             "/academy",
             "/tv-webhook",
         }

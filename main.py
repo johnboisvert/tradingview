@@ -8417,6 +8417,51 @@ PLAN_ORDER = ["free", "premium", "advanced", "pro", "elite", "admin"]
 # Rang numérique pour comparaisons de droits (free=0, admin=5)
 PLAN_RANK = {p: i for i, p in enumerate(PLAN_ORDER)}
 
+# =======================
+# Utils: formatting bytes/dates (used across templates)
+# =======================
+def _human_bytes(num):
+    """Return a human friendly file size string. Safe for None/invalid."""
+    try:
+        if num is None:
+            return "-"
+        n = float(num)
+        if n < 0:
+            return "-"
+    except Exception:
+        return "-"
+    if n < 1024:
+        return f"{int(n)} B"
+    for unit in ["KB", "MB", "GB", "TB", "PB"]:
+        n /= 1024.0
+        if n < 1024:
+            return f"{n:.1f} {unit}"
+    return f"{n:.1f} PB"
+
+
+def _fmt_dt(v):
+    """Format datetime/date/ISO string safely for UI."""
+    if v is None or v == "":
+        return "-"
+    try:
+        import datetime as _dt
+        if isinstance(v, (_dt.datetime, _dt.date)):
+            if isinstance(v, _dt.datetime):
+                return v.strftime("%Y-%m-%d %H:%M")
+            return v.strftime("%Y-%m-%d")
+        if isinstance(v, (int, float)) and v > 0:
+            dt = _dt.datetime.fromtimestamp(v)
+            return dt.strftime("%Y-%m-%d %H:%M")
+        s = str(v)
+        try:
+            dt = _dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
+            return dt.strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            return s
+    except Exception:
+        return str(v)
+
+
 
 # Watchlist & Alertes
 watchlist_db = []  # Liste des cryptos surveillées

@@ -25841,7 +25841,7 @@ async def admin_revenue_intelligence_page(request: Request):
       setInterval(loadRev, 30000);
     </script>
     """
-    return HTMLResponse(_simple_page("Revenue Intelligence", body, sidebar=SIDEBAR_FULL))
+    return HTMLResponse(_admin_simple_page("Revenue Intelligence", body))
 
 
 @app.get("/admin-dashboard/retention-dashboard", response_class=HTMLResponse)
@@ -25919,7 +25919,7 @@ async def admin_retention_dashboard_page(request: Request):
       setInterval(loadRet, 30000);
     </script>
     """
-    return HTMLResponse(_simple_page("Retention Dashboard", body, sidebar=SIDEBAR_FULL))
+    return HTMLResponse(_admin_simple_page("Retention Dashboard", body))
 
 
 @app.get("/admin-dashboard/conversion-funnel", response_class=HTMLResponse)
@@ -25998,7 +25998,7 @@ async def admin_conversion_funnel_page(request: Request):
       setInterval(loadFunnel, 30000);
     </script>
     """
-    return HTMLResponse(_simple_page("Conversion Funnel", body, sidebar=SIDEBAR_FULL))
+    return HTMLResponse(_admin_simple_page("Conversion Funnel", body))
 
 @app.get("/admin-dashboard/messages", response_class=HTMLResponse)
 async def admin_contact_messages(request: Request):
@@ -26285,7 +26285,7 @@ async def admin_ebooks(request: Request):
     </div>
     </div>
     """
-    return HTMLResponse(_simple_page("Gestion Ebooks", body, sidebar=SIDEBAR_FULL))
+    return HTMLResponse(_admin_simple_page("Gestion Ebooks", body))
 
 
 @app.post("/admin-dashboard/ebooks/upload", response_class=HTMLResponse)
@@ -35214,6 +35214,14 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
               const top = ebooks.slice(0, 10);
               const labels = top.map(e => e.title);
               const values = top.map(e => e.downloads || 0);
+
+              // Si un seul ebook (ou 0), on évite un gros espace vide
+              if (!labels || labels.length <= 1) {{
+                const cw = document.getElementById('chartWrap');
+                if (cw) cw.style.display = 'none';
+                const cm = document.getElementById('chartMsg');
+                if (cm) cm.style.display = 'block';
+              }}
 
               if (dlChart) dlChart.destroy();
               const ctx = document.getElementById('dlChart').getContext('2d');

@@ -33881,17 +33881,18 @@ def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: st
 </html>"""
 
 def _admin_simple_page(title: str, body_html: str) -> str:
-    """Wrapper admin minimal pages: reuse the *same* left sidebar as the rest of the app.
+    """Rendu admin cohérent (même sidebar que /admin-dashboard).
 
-    We grab SIDEBAR_FULL (or fallback SIDEBAR) and pass it to _simple_page.
-    If the sidebar string contains a <style>...</style> block, we keep the CSS in the page
-    head (merged_body) and only send the HTML portion as sidebar_html.
+    - SIDEBAR contient souvent <style>...</style> + HTML.
+    - On injecte le <style> dans le body pour éviter tout layout cassé.
+    - On passe uniquement le HTML (sans <style>) à _simple_page comme sidebar_html.
     """
     try:
-        sb = (globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or "")
+        # Prefer the full sidebar if available, to keep admin pages consistent
+        sb = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
         if "</style>" in sb:
-            sb_style_part, sb_html = sb.split("</style>", 1)
-            sb_style = sb_style_part + "</style>"
+            sb_style = sb.split("</style>", 1)[0] + "</style>"
+            sb_html = sb.split("</style>", 1)[1]
         else:
             sb_style, sb_html = "", sb
     except Exception:
@@ -33899,7 +33900,6 @@ def _admin_simple_page(title: str, body_html: str) -> str:
 
     merged_body = f"{sb_style}\n{body_html}"
     return _simple_page(title, merged_body, sidebar_html=sb_html)
-
 
 
 

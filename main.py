@@ -540,13 +540,12 @@ except ImportError as e:
         pass
 
 # Router admin pricing (optionnel)
+# Ce projet peut fonctionner sans fichier `admin_pricing.py`. On évite donc de loguer un warning
+# à chaque démarrage si le module n'existe pas.
 try:
-    from admin_pricing import admin_pricing_router
-    print("✅ admin_pricing chargé")
-except ImportError as e:
+    from admin_pricing import admin_pricing_router  # type: ignore
+except Exception:
     admin_pricing_router = None
-    # pas bloquant: le reste du systme d'abonnement peut fonctionner
-    print(f"⚠️  admin_pricing non disponible (OK): {e}")
 # ===========================================================
 
 # PostgreSQL support
@@ -3820,8 +3819,6 @@ protected_router = globals().get("protected_router", None)
 if PERMISSIONS_AVAILABLE and protected_router:
     app.include_router(protected_router)
     print("✅ Routes protégées enregistrées")
-else:
-    print("⚠️ Routes protégées non disponibles (protected_router absent ou PERMISSIONS_AVAILABLE=False)")
 # ============================================================================
 
 # ============================================================================
@@ -4171,13 +4168,9 @@ async def debug_files():
 if SUBSCRIPTION_ENABLED:
     if subscription_router is not None:
         app.include_router(subscription_router)
-    else:
-        print("⚠️ subscription_router est None (routes abonnement non montées)")
-    if admin_pricing_router is not None:
+if admin_pricing_router is not None:
         app.include_router(admin_pricing_router)
-    else:
-        print("⚠️ admin_pricing_router est None (routes admin pricing ignorées)")
-    print("✅ Routes d'abonnement activées")
+print("✅ Routes d'abonnement activées")
 # =====================================================
 
 app.add_middleware(
@@ -4305,31 +4298,34 @@ _ensure_writable_trades_file()
 trades_db = []  # liste de dicts (trades)
 
 def load_trades_from_file():
-    """Charge `trades_db` depuis TRADES_FILE (JSON).
+    """Charge les trades depuis le JSON (tolère fichier absent ou vide)."""
+    global trades_db
+    if not os.path.exists(TRADES_DATA_FILE):
+        print(f"⚠️ Aucun fichier trades JSON trouvé: {TRADES_DATA_FILE}")
+        trades_db = []
+        return
 
-    Tolère:
-    - fichier absent
-    - format {"trades":[...]} ou [...]
-    """
-    global trades_db, TRADES_FILE
     try:
-        _ensure_writable_trades_file()
-        if not TRADES_FILE or not os.path.exists(TRADES_FILE):
+        # Si le fichier est vide (0 octet / espaces), json.load() lève une erreur.
+        with open(TRADES_DATA_FILE, "r", encoding="utf-8") as f:
+            raw = f.read()
+
+        if not raw or not raw.strip():
             trades_db = []
             return
-        with open(TRADES_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        if isinstance(data, dict) and "trades" in data:
-            data = data.get("trades", [])
-        if not isinstance(data, list):
-            data = []
-        # Normaliser: chaque item doit être un dict
-        trades_db = [t for t in data if isinstance(t, dict)]
-        print(f"✅ Trades chargés depuis JSON: {len(trades_db)}")
-    except Exception as e:
-        trades_db = []
-        print(f"⚠️ Impossible de charger les trades depuis JSON: {e}")
 
+        trades_db = json.loads(raw)
+
+        # Normaliser (au cas où le JSON ne serait pas une liste)
+        if not isinstance(trades_db, list):
+            trades_db = []
+
+    except json.JSONDecodeError as e:
+        print(f"⚠️ Trades JSON invalide (on repart vide): {e}")
+        trades_db = []
+    except Exception as e:
+        print(f"⚠️ Impossible de charger les trades depuis JSON: {e}")
+        trades_db = []
 
 def save_trades_to_file():
     """Sauvegarde `trades_db` vers TRADES_FILE (JSON) en écriture atomique."""

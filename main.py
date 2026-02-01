@@ -1,284 +1,190 @@
 
-async def get_real_whale_transactions(symbol: str = "BTC", limit: int = 12):
-    """Fetch whale-like transactions (best-effort).
+async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000000.0, limit: int = 12):
+    """
+    Retourne des "whale transfers" RÉELS quand possible.
 
-    This helper is intentionally resilient: if external APIs fail or rate-limit,
-    it returns an empty list. The Whale Watcher page will then show demo data.
+    - Actuellement, on supporte **BTC** via l'API publique mempool.space (pas de clé API requise).
+    - Pour d'autres assets, on retourne [] (le template basculera en démo).
+
+    Format attendu par la page /ai-whale-watcher:
+      [{"time": "HH:MM", "asset": "BTC", "amount_usd": 1234.0, "details": "addr → addr", "txid": "..."}]
     """
     symbol = (symbol or "BTC").upper().strip()
-    limit = max(1, min(int(limit or 12), 50))
-    # NOTE: We keep this minimal to avoid fragile dependencies.
-    # You can later plug in a dedicated on-chain provider.
-    return []
-# -*- coding: utf-8 -*-
-# NOTE: Railway/uvicorn safe. Python comments use '#', not '//'.
-from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie, Body, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response, PlainTextResponse, FileResponse
-from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-# Starlette middleware base (needed for PermissionMiddleware)
-from starlette.middleware.base import BaseHTTPMiddleware
-from pathlib import Path
+    if symbol not in ("BTC", "XBT"):
+        return []
 
-# === Railway debug fingerprint (temp) ===
-import os, hashlib, pathlib
-import html as _html
-import html  # pour html.escape (AI Token Scanner)
-import re  # regex (AI Token Scanner / permissions)
-_p = pathlib.Path(__file__)
-try:
-    _sha1 = hashlib.sha1(_p.read_bytes()).hexdigest()
-except Exception as e:
-    _sha1 = f'ERR:{e}'
-print('RUNNING_FILE:', str(_p.resolve()))
-print('RUNNING_SHA1:', _sha1)
-print('PORT_ENV:', os.getenv('PORT'))
-print('HAS_BODY:', 'Body' in globals())
-# === /Railway debug fingerprint ===
+    # Imports locaux: évite dépendances au moment de l'import global
+    import os
+    import time
+    import asyncio
+    import httpx
+    import datetime
 
-
-#  CORRECTION 2: Rate Limiting pour scurit
-# slowapi est optionnel: si le paquet n'est pas install, on dsactive le rate limiting
-# =========================
-# Rate limiting (SlowAPI) — optional
-# =========================
-try:
-    from slowapi import Limiter
-    from slowapi.util import get_remote_address
-    from slowapi.errors import RateLimitExceeded
-    from slowapi.middleware import SlowAPIMiddleware
-    SLOWAPI_AVAILABLE = True
-except Exception:
-    Limiter = None
-    get_remote_address = None
-    RateLimitExceeded = None
-    SlowAPIMiddleware = None
-    SLOWAPI_AVAILABLE = False
-
-
-class _NoopLimiter:
-    """Fallback limiter when slowapi isn't installed (or fails)."""
-    def limit(self, *args, **kwargs):
-        def _decorator(fn):
-            return fn
-        return _decorator
-
-
-if SLOWAPI_AVAILABLE:
+    mempool_base = (os.getenv("MEMPOOL_API_BASE") or "https://mempool.space").strip().rstrip("/")
     try:
-        limiter = Limiter(key_func=get_remote_address)
+        min_usd = float((os.getenv("WHALE_MIN_USD") or "").strip() or min_usd)
     except Exception:
-        limiter = _NoopLimiter()
-        SLOWAPI_AVAILABLE = False
-else:
-    limiter = _NoopLimiter()
-
-    SLOWAPI_AVAILABLE = False
-
-from pydantic import BaseModel, validator
-from typing import Optional, Any
-import httpx
-from datetime import datetime, timedelta, timezone
-try:
-    import ccxt
-except ImportError:
-    ccxt = None
-
-from cryptography.fernet import Fernet
-
-# Imports pour systme d'emails et codes promo
-try:
-    from email_service import email_service
-    EMAIL_SERVICE_AVAILABLE = True
-except ImportError:
-    EMAIL_SERVICE_AVAILABLE = False
-    print("⚠️  email_service non disponible")
-
-try:
-    from promo_codes import PromoCodeManager, create_promo_codes_table
-    PROMO_CODES_AVAILABLE = True
-except ImportError:
-    PROMO_CODES_AVAILABLE = False
-    print("⚠️  promo_codes non disponible")
-import pytz
-import random
-import os
-import math
-import asyncio
-import json
-import sqlite3
-import hashlib
-import bcrypt  # 🔐 CORRECTION 1: Sécurité mots de passe
-import secrets
-import hmac
-import requests  # Pour API externe (Fear & Greed, etc.)
-import time
-from urllib.parse import urlencode
-
-#  ANALYSE TECHNIQUE AVANCE - IMPORT
-#  Module d'analyse technique (optionnel)
-# Si le module local n'existe pas dans ton dploiement, on garde l'app fonctionnelle avec un fallback.
-try:
-    from technical_analyzer import analyzer  # type: ignore
-except ImportError:
-    class _DummyAnalyzer:
-        async def get_ohlcv_data(self, *args, **kwargs):
-            return None
-    analyzer = _DummyAnalyzer()
-
-# ============================================================================
-
-# ============================================================================
-#  SYSTME DE PERMISSIONS - IMPORTS
-# ============================================================================
-try:
-    from permissions_system import (
-        Feature, 
-        PermissionManager, 
-        require_feature, 
-        check_feature_access,
-        SubscriptionPlan,
-        PLAN_FEATURES
-    )
-    from protected_routes import router as protected_router, register_template_functions
-    PERMISSIONS_AVAILABLE = True
-    print("✅ Système de permissions chargé")
-except ImportError as e:
-    print(f"⚠️  Système de permissions non disponible: {e}")
-    PERMISSIONS_AVAILABLE = False
-    protected_router = None
-    def register_template_functions(templates):
-        """Enregistre des helpers Jinja2 (mode fallback).
-
-        - has_feature(user, feature): utile pour afficher/masquer des boutons dans le UI
-        - is_authenticated(request): utile pour le menu/login
-        Ce bloc ne doit JAMAIS faire planter l'app au démarrage.
-        """
-        try:
-            env = getattr(templates, "env", None)
-            if env is None:
-                return
-
-            def has_feature(user, feature: str) -> bool:
-                # 1) Si un système de permissions existe (optionnel), on l'utilise
-                try:
-                    ps = (
-                        globals().get("permission_system")
-                        or globals().get("permissions_system")
-                        or globals().get("permissions")
-                    )
-                    if ps is not None:
-                        for attr in ("has_feature", "user_has_feature", "can_access"):
-                            if hasattr(ps, attr):
-                                return bool(getattr(ps, attr)(user, feature))
-                except Exception:
-                    pass
-
-                # 2) Fallback léger: user.features (list/set/tuple/dict)
-                try:
-                    feats = getattr(user, "features", None)
-                    if isinstance(feats, (list, set, tuple)):
-                        return feature in feats
-                    if isinstance(feats, dict):
-                        return bool(feats.get(feature, False))
-                except Exception:
-                    pass
-
-                return False
-
-            def is_authenticated(request) -> bool:
-                try:
-                    sess = getattr(request, "session", {}) or {}
-                    return bool(sess.get("user"))
-                except Exception:
-                    return False
-
-            env.globals.setdefault("has_feature", has_feature)
-            env.globals.setdefault("is_authenticated", is_authenticated)
-
-        except Exception as e:
-            try:
-                print(f"⚠️  Erreur enregistrement template functions: {e}")
-            except Exception:
-                pass
-# ============================================================================
-
-# ===== NOUVEAU: Stripe et Payment System =====
-try:
-    import stripe
-    STRIPE_AVAILABLE = True
-except ImportError:
-    STRIPE_AVAILABLE = False
-    print("⚠️  stripe non installé")
-
-try:
-    # Les fonctions sont dfinies directement dans main.py
-    PAYMENT_SYSTEM_AVAILABLE = True
-    # from payment_system import (
-    #     SUBSCRIPTION_PLANS,
-    #     get_plan_price_display,
-    #     create_stripe_checkout_session,
-    #     create_coinbase_payment,
-    #     get_subscription_expiry
-    # )
-except ImportError:
-    PAYMENT_SYSTEM_AVAILABLE = False
-    print("⚠️  payment_system non disponible")
-# =============================================
-
-# ===== NOUVEAU: Coinbase Commerce (import optionnel) =====
-try:
-    from coinbase_commerce import Client
-    COINBASE_AVAILABLE = True
-except ImportError:
-    COINBASE_AVAILABLE = False
-    print("⚠️  coinbase_commerce non installé - Coinbase désactivé")
-    Client = None
-# ================================================
-
-# ============================================================================
-#  SYSTME COINBASE COMMERCE - NOUVEAU!
-# ============================================================================
-
-COINBASE_API_KEY = os.getenv("COINBASE_COMMERCE_KEY", "")
-COINBASE_WEBHOOK_SECRET = os.getenv("COINBASE_WEBHOOK_SECRET", "")
-
-# ===== NOUVEAU: Configuration Stripe =====
-STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "")
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
-
-if STRIPE_AVAILABLE and STRIPE_SECRET_KEY:
-    stripe.api_key = STRIPE_SECRET_KEY
-    print("✅ Stripe configuré")
-else:
-    print("⚠️  Stripe non configuré")
-
-# ===== Configuration Anthropic Claude API =====
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-if ANTHROPIC_API_KEY:
-    print("✅ Anthropic Claude API configurée")
-else:
-    print("⚠️  Anthropic API key non configurée - AI Coach ne fonctionnera pas")
-# =========================================
-
-
-#  CORRECTION: Configuration ebooks directory
-EBOOKS_DIR = Path("/tmp/ebooks")
-EBOOKS_DIR.mkdir(parents=True, exist_ok=True)
-print(f"✅ Répertoire ebooks créé: {EBOOKS_DIR}")
-
-# Initialiser le client Coinbase Commerce
-coinbase_client = None
-if COINBASE_AVAILABLE and COINBASE_API_KEY and Client:
+        pass
+    # seuil en BTC (optionnel): si défini, on prend le max entre seuil BTC et seuil USD
     try:
-        coinbase_client = Client(api_key=COINBASE_API_KEY)
-        print("✅ Coinbase Commerce initialisé")
-    except Exception as e:
-        print(f"⚠️  Coinbase Commerce erreur: {e}")
+        min_btc_env = float((os.getenv("WHALE_MIN_BTC") or "").strip() or 0)
+    except Exception:
+        min_btc_env = 0.0
 
-# ============================================================================
-# FONCTIONS DE PAIEMENT
-# ============================================================================
+    # Prix BTC -> USD (CoinGecko, fallback Binance)
+    btc_price = None
+    try:
+        async with httpx.AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+            cg = await client.get("https://api.coingecko.com/api/v3/simple/price", params={"ids": "bitcoin", "vs_currencies": "usd"})
+            if cg.status_code == 200:
+                j = cg.json()
+                btc_price = float(j.get("bitcoin", {}).get("usd") or 0) or None
+    except Exception:
+        btc_price = None
+
+    if btc_price is None:
+        try:
+            async with httpx.AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+                bn = await client.get("https://api.binance.com/api/v3/ticker/price", params={"symbol": "BTCUSDT"})
+                if bn.status_code == 200:
+                    j = bn.json()
+                    btc_price = float(j.get("price") or 0) or None
+        except Exception:
+            btc_price = None
+
+    if btc_price is None:
+        return []  # Sans prix, on ne peut pas comparer au seuil USD
+
+    # Récupère des tx récentes du mempool
+    try:
+        async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+            recent = await client.get(f"{mempool_base}/api/mempool/recent")
+            if recent.status_code != 200:
+                return []
+            recent_data = recent.json()
+    except Exception:
+        return []
+
+    # Normalise en liste de txids
+    txids = []
+    if isinstance(recent_data, list):
+        for it in recent_data:
+            if isinstance(it, str):
+                txids.append(it)
+            elif isinstance(it, dict):
+                tid = it.get("txid") or it.get("txId") or it.get("hash")
+                if tid:
+                    txids.append(str(tid))
+    elif isinstance(recent_data, dict):
+        # parfois: {"txids":[...]} ou {"recent":[...]}
+        for k in ("txids", "recent", "transactions"):
+            v = recent_data.get(k)
+            if isinstance(v, list):
+                for it in v:
+                    if isinstance(it, str):
+                        txids.append(it)
+                    elif isinstance(it, dict) and (it.get("txid") or it.get("hash")):
+                        txids.append(str(it.get("txid") or it.get("hash")))
+
+    txids = txids[: max(limit * 6, 60)]  # on prend plus large pour filtrer
+
+    async def fetch_tx(txid: str):
+        try:
+            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+                r = await client.get(f"{mempool_base}/api/tx/{txid}")
+                if r.status_code != 200:
+                    return None
+                return r.json()
+        except Exception:
+            return None
+
+    # Limiter la concurrence
+    sem = asyncio.Semaphore(6)
+
+    async def fetch_with_sem(txid):
+        async with sem:
+            return await fetch_tx(txid)
+
+    # On fetch des détails pour un nombre raisonnable de txids (évite un flood)
+    detail_txids = txids[:120]
+    details = await asyncio.gather(*[fetch_with_sem(tid) for tid in detail_txids])
+
+    events = []
+    now = datetime.datetime.now()
+
+    def short_addr(a: str):
+        if not a:
+            return "—"
+        a = str(a)
+        return a[:6] + "…" + a[-6:] if len(a) > 15 else a
+
+    for tx in details:
+        if not isinstance(tx, dict):
+            continue
+
+        vout = tx.get("vout") or tx.get("outputs") or []
+        vin = tx.get("vin") or tx.get("inputs") or []
+
+        # Trouver la plus grosse sortie (souvent le "montant réel" plus parlant que total_out)
+        best_out_val = 0
+        best_out_addr = None
+        for o in vout if isinstance(vout, list) else []:
+            if not isinstance(o, dict):
+                continue
+            val = o.get("value") or o.get("amount") or 0
+            try:
+                val = int(val)
+            except Exception:
+                try:
+                    val = int(float(val))
+                except Exception:
+                    val = 0
+            if val > best_out_val:
+                best_out_val = val
+                best_out_addr = o.get("scriptpubkey_address") or o.get("address") or o.get("scriptPubKey", {}).get("address")
+
+        # Adresse source (premier input)
+        from_addr = None
+        if isinstance(vin, list) and vin:
+            first_in = vin[0] if isinstance(vin[0], dict) else None
+            if first_in:
+                prevout = first_in.get("prevout") or {}
+                from_addr = prevout.get("scriptpubkey_address") or prevout.get("address") or first_in.get("address")
+
+        if best_out_val <= 0:
+            continue
+
+        amount_btc = best_out_val / 1e8
+        amount_usd = amount_btc * btc_price
+
+        if amount_usd < float(min_usd):
+            continue
+        if min_btc_env and amount_btc < min_btc_env:
+            continue
+
+        # Time
+        t = "mempool"
+        status = tx.get("status") or {}
+        bt = status.get("block_time") or tx.get("block_time") or None
+        if bt:
+            try:
+                dt = datetime.datetime.fromtimestamp(int(bt))
+                t = dt.strftime("%H:%M")
+            except Exception:
+                t = "mempool"
+
+        events.append({
+            "time": t,
+            "asset": "BTC",
+            "amount_usd": float(amount_usd),
+            "details": f"{short_addr(from_addr)} → {short_addr(best_out_addr)}",
+            "txid": tx.get("txid") or tx.get("hash") or "",
+        })
+
+        if len(events) >= limit:
+            break
+
+    return events
 
 
 def create_coinbase_payment(plan, email, client, amount=None):
@@ -12872,7 +12778,8 @@ async def ai_market_regime_page(request: Request):
     eth_chg = float((prices.get("ethereum", {}) or {}).get("usd_24h_change") or 0.0)
 
     mc_chg = float(g.get("market_cap_change_percentage_24h_usd") or 0.0)
-    btc_dom = float((g.get("market_cap_percentage", {}) or {}).get("btc") or 0.0)
+    mc_total = float(((g.get("total_market_cap", {}) or {}).get("usd")) or 0.0)
+    btc_dom = float(((g.get("market_cap_percentage", {}) or {}).get("btc")) or 0.0)
 
     # Heuristique simple (robuste, lisible)
     if mc_chg <= -2.0 and btc_chg <= -1.0:
@@ -12946,6 +12853,8 @@ async def ai_market_regime_page(request: Request):
         badge_cls = "ok"
     elif regime == "Risk-Off":
         badge_cls = "bad"
+
+    now_str = datetime.now().strftime("%H:%M:%S")
 
     body = f"""
     <style>
@@ -13022,6 +12931,7 @@ async def ai_market_regime_page(request: Request):
 
         <div class="mr-h">Régime détecté: <span style="color:{color}">{html.escape(regime)}</span></div>
         <p class="mr-sub">{html.escape(hint)}</p>
+        <p class="mr-sub" style="opacity:.75;">Source: CoinGecko • Mise à jour: {now_str}</p>
 
         <div class="mr-kpis">
           <div class="mr-kpi">
@@ -30210,6 +30120,8 @@ def _fmt_money(x: float) -> str:
         x = float(x or 0)
     except Exception:
         x = 0.0
+    if x <= 0:
+        return "—"
     if x >= 1_000_000_000:
         return f"${x/1_000_000_000:.2f}B"
     if x >= 1_000_000:

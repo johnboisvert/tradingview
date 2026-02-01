@@ -28,6 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 # =============================================================
 
 
@@ -4162,7 +4163,8 @@ app.add_middleware(
 # Starlette/FastAPI middleware order can be surprising: the LAST app.add_middleware() becomes the first executed.
 # Some of our custom middlewares read request.session, so we force SessionMiddleware to be outermost here.
 try:
-    from starlette.middleware.sessions import SessionMiddleware as _SessionMiddleware
+    from starlette.middleware.sessions import SessionMiddleware
+    _SessionMiddleware = SessionMiddleware
     _SESSION_SECRET = (os.getenv("SESSION_SECRET_KEY") or os.getenv("SESSION_SECRET") or os.getenv("SECRET_KEY") or "").strip()
     if not _SESSION_SECRET:
         _SESSION_SECRET = "CHANGE_ME_SESSION_SECRET"  # ⚠️ Définir SESSION_SECRET_KEY dans Railway

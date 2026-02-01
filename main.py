@@ -2760,25 +2760,33 @@ def _force_admin_on_request(request):
 app = FastAPI()
 
 # =========================
-# SlowAPI middleware wiring (only if available)
-# =========================
+# =============================
+# Rate limiting (SlowAPI) — optionnel
+# =============================
+try:
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware
+    SLOWAPI_AVAILABLE = True
+except Exception as _e:
+    SLOWAPI_AVAILABLE = False
+    Limiter = None  # type: ignore
+    get_remote_address = None  # type: ignore
+    RateLimitExceeded = Exception  # type: ignore
+    SlowAPIMiddleware = None  # type: ignore
+    print(f"⚠️ SlowAPI non disponible (OK): {_e}")
+
 if SLOWAPI_AVAILABLE:
-    try:
-        app.state.limiter = limiter
-        app.add_middleware(SlowAPIMiddleware)
+    limiter = Limiter(key_func=get_remote_address)
+    app.state.limiter = limiter
+    app.add_middleware(SlowAPIMiddleware)
 
-        @app.exception_handler(RateLimitExceeded)
-        async def _rate_limit_exceeded_handler(request: Request, exc: Exception):
-            return JSONResponse(
-                {"status": "error", "message": "Trop de requêtes. Réessaie plus tard."},
-                status_code=429,
-            )
-    except Exception:
-        # Never block startup because of rate limiting
-        SLOWAPI_AVAILABLE = False
-
-
-# =========================
+    @app.exception_handler(RateLimitExceeded)
+    async def rate_limit_handler(request, exc):
+        return JSONResponse({"detail": "Trop de requêtes, réessaie plus tard."}, status_code=429)
+else:
+    limiter = None
 # Shared helpers (compatibilité / anti-NameError)
 # =========================
 try:

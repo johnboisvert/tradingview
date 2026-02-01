@@ -2,6 +2,7 @@ from typing import Optional
 import os  # FIX: required for DB_DIR / path operations
 import time  # required for ASSET_VERSION cache-busting
 import asyncio
+import re  # FIX: needed for CSS extraction
 
 # ---- HTTP client (httpx optional) ----
 try:

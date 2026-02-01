@@ -1,3 +1,4 @@
+from typing import Optional
 # ---- Pydantic compatibility (BaseModel / validator) ----
 try:
     from pydantic import BaseModel
@@ -35412,4 +35413,3 @@ le="font-weight:800;">Rafraîchir</button>
         </script>
         """
         return HTMLResponse(_simple_page("Pépites Crypto", body, sidebar=SIDEBAR_FULL))
-

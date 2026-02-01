@@ -43,7 +43,7 @@ except Exception:  # fallback
 import sqlite3
 from fastapi import (
     FastAPI, Request, Response, Depends, HTTPException, status,
-    Form, UploadFile, File, Cookie, Header, Query, Path, BackgroundTasks,
+    Body, Form, UploadFile, File, Cookie, Header, Query, Path, BackgroundTasks,
     APIRouter, WebSocket, WebSocketDisconnect
 )
 from fastapi.responses import (

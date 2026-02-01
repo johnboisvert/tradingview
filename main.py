@@ -1,5 +1,6 @@
 from typing import Optional
 import os  # FIX: required for DB_DIR / path operations
+import time  # required for ASSET_VERSION cache-busting
 # ---- Pydantic compatibility (BaseModel / validator) ----
 try:
     from pydantic import BaseModel

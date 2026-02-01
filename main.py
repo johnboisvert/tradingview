@@ -2,6 +2,30 @@ from typing import Optional
 import os  # FIX: required for DB_DIR / path operations
 import time  # required for ASSET_VERSION cache-busting
 import asyncio
+
+# ---- HTTP client (httpx optional) ----
+try:
+    import httpx  # type: ignore
+except Exception as _e:
+    httpx = None  # type: ignore
+    print(f"⚠️ httpx non disponible, fallback requests: {_e}")
+
+class _FallbackAsyncClient:
+    """Fallback async-like client using requests in a thread.
+
+    Provides .get() and .aclose() so the rest of the code can stay unchanged
+    even if httpx isn't installed."""
+    def __init__(self, timeout: float = 10.0):
+        self.timeout = timeout
+
+    async def get(self, url: str, **kwargs):
+        def _do():
+            return requests.get(url, timeout=self.timeout, **kwargs)
+        return await asyncio.to_thread(_do)
+
+    async def aclose(self):
+        return
+
 # ---- Pydantic compatibility (BaseModel / validator) ----
 try:
     from pydantic import BaseModel
@@ -5397,7 +5421,7 @@ class SmartCache:
         self.whale_timestamp['data'] = datetime.now()
 
 cache = SmartCache()
-http_client = httpx.AsyncClient(timeout=10.0)
+http_client = httpx.AsyncClient(timeout=10.0) if httpx else _FallbackAsyncClient(timeout=10.0)
 
 # ============================================================================
 # CALCUL REAL-TIME ALTCOIN SEASON & DOMINANCE (VRAIES DONNES)

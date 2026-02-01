@@ -1,3 +1,13 @@
+# ---- Pydantic compatibility (BaseModel / validator) ----
+try:
+    from pydantic import BaseModel
+    try:
+        from pydantic import validator
+    except Exception:  # pydantic v2 may require v1 compat
+        from pydantic.v1 import validator
+except Exception:  # fallback
+    from pydantic.v1 import BaseModel, validator
+
 
 async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000000.0, limit: int = 12):
     """
@@ -55,14 +65,33 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
     if btc_price is None:
         return []  # Sans prix, on ne peut pas comparer au seuil USD
 
-    # Récupère des tx récentes du mempool
-    try:
-        async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
-            recent = await client.get(f"{mempool_base}/api/mempool/recent")
-            if recent.status_code != 200:
-                return []
-            recent_data = recent.json()
-    except Exception:
+    # Récupère des tx récentes (sources publiques) + fallback automatique
+    bases = []
+    if mempool_base:
+        bases.append(mempool_base)
+    # fallback Blockstream (API très similaire)
+    if "https://blockstream.info" not in bases:
+        bases.append("https://blockstream.info")
+
+    async def fetch_recent(base: str):
+        try:
+            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+                r = await client.get(f"{base}/api/mempool/recent")
+                if r.status_code != 200:
+                    return None
+                return r.json()
+        except Exception:
+            return None
+
+    recent_data = None
+    used_base = None
+    for b in bases:
+        recent_data = await fetch_recent(b)
+        if recent_data is not None:
+            used_base = b
+            break
+
+    if recent_data is None:
         return []
 
     # Normalise en liste de txids
@@ -76,7 +105,6 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
                 if tid:
                     txids.append(str(tid))
     elif isinstance(recent_data, dict):
-        # parfois: {"txids":[...]} ou {"recent":[...]}
         for k in ("txids", "recent", "transactions"):
             v = recent_data.get(k)
             if isinstance(v, list):
@@ -88,15 +116,30 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
 
     txids = txids[: max(limit * 6, 60)]  # on prend plus large pour filtrer
 
-    async def fetch_tx(txid: str):
+    async def fetch_tx_from(base: str, txid: str):
         try:
             async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
-                r = await client.get(f"{mempool_base}/api/tx/{txid}")
+                r = await client.get(f"{base}/api/tx/{txid}")
                 if r.status_code != 200:
                     return None
                 return r.json()
         except Exception:
             return None
+
+    async def fetch_tx(txid: str):
+        # 1) base qui a marché pour recent
+        if used_base:
+            j = await fetch_tx_from(used_base, txid)
+            if j is not None:
+                return j
+        # 2) autres bases fallback
+        for b in bases:
+            if b == used_base:
+                continue
+            j = await fetch_tx_from(b, txid)
+            if j is not None:
+                return j
+        return None
 
     # Limiter la concurrence
     sem = asyncio.Semaphore(6)

@@ -3787,6 +3787,10 @@ NAV_MENU = """
 # # ============================================================================
 # ROUTES PROTÉGÉES (modules externes)
 # ============================================================================
+# Safety defaults (évite crash au démarrage si variables non définies)
+PERMISSIONS_AVAILABLE = globals().get("PERMISSIONS_AVAILABLE", False)
+protected_router = globals().get("protected_router", None)
+
 if PERMISSIONS_AVAILABLE and protected_router:
     app.include_router(protected_router)
     print("✅ Routes protégées enregistrées")

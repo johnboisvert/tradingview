@@ -12929,78 +12929,137 @@ async def ai_market_regime_page(request: Request):
         spark_eth = _sparkline_svg(eth_vals)
     except Exception:
         spark_eth = ""
-    html_page = f"""
-    <!doctype html>
-<html>
-    <head>
-        <title>AI Market Regime - CryptoIA</title>
-        <style>{GLOBAL_STYLES}</style>
-        <style>
-            .page-wrap {{ padding: 40px; }}
-            .card {{ background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 26px; max-width: 980px; margin: 0 auto; }}
-            .title {{ font-size: 34px; font-weight: 800; margin: 0 0 8px 0; }}
-            .sub {{ opacity: 0.85; margin: 0 0 18px 0; }}
-            .grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }}
-            .kpi {{ padding: 14px; border-radius: 14px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06); }}
-            .kpi .k {{ opacity: 0.8; font-size: 13px; }}
-            .kpi .v {{ font-size: 18px; font-weight: 800; margin-top: 6px; }}
-            .badge {{ display: inline-flex; align-items:center; gap:10px; padding: 10px 14px; border-radius: 999px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); }}
-            .dot {{ width: 10px; height: 10px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 20px var(--accent); }}
-            .cta-row {{ display:flex; gap:10px; margin-top: 20px; flex-wrap: wrap; }}
-            .btn {{ padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.10); background: rgba(0,0,0,0.35); color: #fff; cursor: pointer; text-decoration: none; font-weight: 700; }}
-            .btn.primary {{ background: linear-gradient(135deg, rgba(32,247,199,0.9), rgba(0,190,255,0.7)); border: none; color: #051016; }}
-            .err {{ margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,0,0,0.25); background: rgba(255,0,0,0.10); }}
-            @media (max-width: 920px) {{ .grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} .page-wrap {{ padding: 18px; }} }}
-        
-            .spark-wrap{{margin-top:10px;opacity:.9}}
-            .sparkline{{display:block;width:100%;height:38px;color:#60a5fa}}
-</style>
-    </head>
-    <body>
-        {SIDEBAR_HTML}
-        <div class="main-content">
-            <div class="page-wrap">
-                <div class="card">
-                    <div class="badge"><span class="dot"></span><span><b>Régime:</b> {regime} • <b>Biais:</b> {mood} • <b>Confiance:</b> {int(confidence*100)}%</span></div>
-                    <h1 class="title">AI Market Regime</h1>
-                    <p class="sub">{hint}</p>
-
-                    <div class="grid">
-                        <div class="kpi"><div class="k">Market Cap (Δ 24h)</div><div class="v">{mc_chg:+.2f}%</div></div>
-                        <div class="kpi"><div class="k">BTC (Δ 24h)</div><div class="v">{btc_chg:+.2f}%</div></div>
-                        <div class="kpi"><div class="k">ETH (Δ 24h)</div><div class="v">{eth_chg:+.2f}%</div></div>
-                        <div class="kpi"><div class="k">Dominance BTC</div><div class="v">{btc_dom:.1f}%</div></div>
-                    </div>
-
-                    <div class="cta-row">
-                        <a class="btn" href="/">Retour au dashboard</a>
-                        
-                    </div>
-
-                    {f'<div class="err"><b>Note:</b> données temporairement indisponibles. {html.escape(error)}</div>' if error else ''}
-                    <div style="opacity:0.72; font-size: 12px; margin-top: 12px;">
-                        Données: CoinGecko (prix & global). Heuristique interne (règles simples). Pas une recommandation.
-            <div style="margin-top:18px;padding:16px;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(0,0,0,.18)">
-              <div style="font-weight:800;font-size:14px;margin-bottom:10px">Comment utiliser cette page</div>
-              <ul style="margin:0;padding-left:18px;line-height:1.6;opacity:.92">
-                <li><b>Régime</b> te dit si le marché ressemble plutôt à un <b>Trend</b> (tendance) ou un <b>Range</b> (consolidation).</li>
-                <li><b>Biais</b> résume la direction probable (Bull/Neutre/Bear) à partir de la dynamique BTC + dominance.</li>
-                <li><b>Confiance</b> (0–100%) = force du signal. Sous ~60%: évite d’overtrader, privilégie des tailles plus petites.</li>
-                <li>Utilise les cartes <b>Market Cap / BTC / ETH / Dominance</b> pour contextualiser le mouvement du marché.</li>
-              </ul>
-              <div style="margin-top:10px;opacity:.85;font-size:12px">
-                Astuce: combine ce régime avec ta page <b>Stratégies</b> (ex: en <b>Trend</b> privilégie breakout/continuation; en <b>Range</b> privilégie mean-reversion).
-              </div>
-            </div>
-
-                    </div>
-                </div>
-            </div>
+        # --- UI (intégrée dans le layout global du site) ---
+    warn = ""
+    if error:
+        warn = f"""
+        <div class="mr-warn">
+          ⚠️ Données partielles: {html.escape(error)}. La page affiche le dernier état calculable.
         </div>
-    </body>
-    </html>
+        """
+
+    def _fmt_pct(x: float) -> str:
+        return f"{x:+.2f}%"
+
+    badge_cls = "mid"
+    if regime == "Risk-On":
+        badge_cls = "ok"
+    elif regime == "Risk-Off":
+        badge_cls = "bad"
+
+    body = f"""
+    <style>
+      .mr-page .mr-card {{
+        background: rgba(255,255,255,.06);
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius: 18px;
+        padding: 18px;
+      }}
+      .mr-page .mr-top {{
+        display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+        margin-bottom: 10px;
+      }}
+      .mr-page .mr-badge {{
+        display:inline-flex; align-items:center; gap:8px;
+        padding: 6px 10px; border-radius: 999px; font-weight: 800; letter-spacing:.3px;
+        border: 1px solid rgba(255,255,255,.14);
+        background: rgba(0,0,0,.18);
+      }}
+      .mr-page .mr-dot {{ width:10px; height:10px; border-radius:50%; background:{color}; box-shadow: 0 0 0 3px rgba(255,255,255,.08); }}
+      .mr-page .mr-conf {{ color: rgba(255,255,255,.76); font-weight:700; }}
+      .mr-page .mr-h {{
+        margin: 6px 0 4px 0;
+        font-size: 20px; font-weight: 900;
+      }}
+      .mr-page .mr-sub {{ color: rgba(255,255,255,.80); margin: 0 0 12px 0; }}
+      .mr-page .mr-kpis {{
+        display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px;
+        margin-top: 10px;
+      }}
+      @media (min-width: 900px) {{
+        .mr-page .mr-kpis {{ grid-template-columns: repeat(4, minmax(0,1fr)); }}
+      }}
+      .mr-page .mr-kpi {{
+        background: rgba(0,0,0,.18);
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius: 14px;
+        padding: 12px;
+      }}
+      .mr-page .mr-kpi .t {{ color: rgba(255,255,255,.70); font-weight:700; font-size:12px; }}
+      .mr-page .mr-kpi .v {{ font-weight: 900; font-size: 16px; margin-top: 2px; }}
+      .mr-page .mr-kpi .s {{ color: rgba(255,255,255,.70); font-weight:700; font-size:12px; margin-top: 4px; display:flex; align-items:center; justify-content:space-between; gap:10px; }}
+      .mr-page .spark {{ opacity: .95; }}
+      .mr-page .mr-guide {{
+        margin-top: 14px;
+        background: rgba(0,0,0,.18);
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius: 14px;
+        padding: 12px;
+      }}
+      .mr-page .mr-guide h3 {{ margin:0 0 6px 0; font-size:14px; font-weight:900; }}
+      .mr-page .mr-guide ul {{ margin: 6px 0 0 18px; color: rgba(255,255,255,.82); }}
+      .mr-page .mr-warn {{
+        margin: 0 0 12px 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,140,0,.35);
+        background: rgba(255,140,0,.10);
+        color: rgba(255,255,255,.92);
+        font-weight: 700;
+      }}
+    </style>
+
+    <div class="mr-page">
+      {warn}
+      <div class="mr-card">
+        <div class="mr-top">
+          <div class="mr-badge {badge_cls}">
+            <span class="mr-dot"></span>
+            <span>{html.escape(regime)} · {html.escape(mood)}</span>
+          </div>
+          <div class="mr-conf">Confiance ≈ {confidence*100:.0f}% · Dominance BTC: {btc_dom:.1f}%</div>
+        </div>
+
+        <div class="mr-h">Régime détecté: <span style="color:{color}">{html.escape(regime)}</span></div>
+        <p class="mr-sub">{html.escape(hint)}</p>
+
+        <div class="mr-kpis">
+          <div class="mr-kpi">
+            <div class="t">BTC (24h)</div>
+            <div class="v">{_fmt_pct(btc_chg)}</div>
+            <div class="s"><span>7j</span>{spark_btc}</div>
+          </div>
+          <div class="mr-kpi">
+            <div class="t">ETH (24h)</div>
+            <div class="v">{_fmt_pct(eth_chg)}</div>
+            <div class="s"><span>7j</span>{spark_eth}</div>
+          </div>
+          <div class="mr-kpi">
+            <div class="t">Market Cap (24h)</div>
+            <div class="v">{_fmt_pct(mc_chg)}</div>
+            <div class="s"><span>Global</span><span>—</span></div>
+          </div>
+          <div class="mr-kpi">
+            <div class="t">Dominance BTC</div>
+            <div class="v">{btc_dom:.1f}%</div>
+            <div class="s"><span>Indice</span><span>—</span></div>
+          </div>
+        </div>
+
+        <div class="mr-guide">
+          <h3>Comment utiliser cette page</h3>
+          <ul>
+            <li><b>Risk-On</b> : privilégier des stratégies “tendance” et la rotation altcoins (avec gestion du risque).</li>
+            <li><b>Risk-Off</b> : réduire l’exposition, privilégier BTC / cash, attendre un signal clair.</li>
+            <li><b>Range</b> : stratégies de range (supports/résistances), prises rapides, tailles plus petites.</li>
+            <li>Ce module donne un <b>contexte</b> (régime), pas un signal d’entrée/sortie tout seul.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
     """
-    return HTMLResponse(html_page.lstrip())
+
+    return HTMLResponse(_simple_page("AI Market Regime", body, sidebar_html=SIDEBAR_FULL), status_code=200)
 
 
 # ----------------------------------------------------------------------
@@ -13158,468 +13217,148 @@ async def ai_whale_watcher():
     whale_data_json = json.dumps(whale_data)
     
     # Crer le HTML avec un PLACEHOLDER
-    html_content = """
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Whale Watcher</title>
-        """ + CSS + """
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
-                color: #333;
-                min-height: 100vh;
-            }}
-            
-            .container {
-                max-width: 1400px;
-                margin: 0 auto;
-                padding: 20px;
-            }}
-            
-            header {
-                text-align: center;
-                color: white;
-                margin-bottom: 30px;
-                background: rgba(0,0,0,0.2);
-                padding: 30px;
-                border-radius: 15px;
-                backdrop-filter: blur(10px);
-            }
-            
-            header h1 {
-                font-size: 2.8em;
-                margin-bottom: 10px;
-                text-shadow: 0 0 20px rgba(255,255,255,0.5), 2px 2px 8px rgba(0,0,0,0.3);
-                font-weight: 900;
-                letter-spacing: 2px;
-            }
-            
-            .content {
-                background: white;
-                border-radius: 15px;
-                padding: 40px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            }
-            
-            .alert-banner {
-                background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-                border: 3px solid #ef4444;
-                border-radius: 12px;
-                padding: 20px;
-                margin-bottom: 30px;
-                display: flex;
-                align-items: center;
-                gap: 15px;
-            }
-            
-            .alert-banner.warning {
-                background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-                border-color: #f59e0b;
-            }
-            
-            .alert-banner.success {
-                background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-                border-color: #10b981;
-            }
-            
-            .alert-icon {
-                font-size: 2.5em;
-            }
-            
-            .alert-content h3 {
-                margin: 0 0 5px 0;
-                font-size: 1.3em;
-            }
-            
-            .alert-content p {
-                margin: 0;
-                color: #666;
-            }
-            
-            .stats-bar {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 20px;
-                margin-bottom: 30px;
-            }
-            
-            .stat-box {
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                padding: 20px;
-                border-radius: 12px;
-                border-left: 5px solid #0ea5e9;
-                text-align: center;
-            }
-            
-            .stat-value {
-                font-size: 2em;
-                font-weight: bold;
-                color: #0ea5e9;
-                display: block;
-            }
-            
-            .stat-label {
-                color: #666;
-                font-size: 0.9em;
-                margin-top: 5px;
-            }
-            
-            .whale-feed {
-                background: #f8f9fa;
-                border-radius: 12px;
-                padding: 25px;
-                margin-bottom: 30px;
-                max-height: 600px;
-                overflow-y: auto;
-            }
-            
-            .whale-feed h3 {
-                color: #1f2937;
-                margin-bottom: 20px;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-            
-            .whale-transaction {
-    background: white;
-                border-radius: 10px;
-                padding: 20px;
-                margin-bottom: 15px;
-                border-left: 5px solid #0ea5e9;
-                transition: transform 0.2s, box-shadow 0.2s;
-            }
-            
-            .whale-transaction:hover {
-                transform: translateX(5px);
-                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            }
-            
-            .whale-transaction.bullish {
-                border-left-color: #10b981;
-                background: linear-gradient(135deg, #f0fdf4 0%, white 100%);
-            }
-            
-            .whale-transaction.bearish {
-                border-left-color: #ef4444;
-                background: linear-gradient(135deg, #fef2f2 0%, white 100%);
-            }
-            
-            .transaction-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 10px;
-            }
-            
-            .transaction-coin {
-                font-size: 1.3em;
-                font-weight: bold;
-                color: #1f2937;
-            }
-            
-            .transaction-amount {
-                font-size: 1.5em;
-                font-weight: bold;
-            }
-            
-            .transaction-amount.bullish { color: #10b981; }
-            .transaction-amount.bearish { color: #ef4444; }
-            
-            .transaction-details {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-                gap: 10px;
-                margin-top: 15px;
-            }
-            
-            .detail-item {
-                font-size: 0.9em;
-            }
-            
-            .detail-label {
-                color: #666;
-                font-size: 0.85em;
-            }
-            
-            .detail-value {
-                font-weight: bold;
-                color: #1f2937;
-            }
-            
-            .impact-badge {
-                display: inline-block;
-                padding: 5px 12px;
-                border-radius: 20px;
-                font-size: 0.85em;
-                font-weight: bold;
-                margin-top: 10px;
-            }
-            
-            .impact-badge.bullish {
-                background: #d1fae5;
-                color: #065f46;
-            }
-            
-            .impact-badge.bearish {
-                background: #fecaca;
-                color: #991b1b;
-            }
-            
-            .impact-badge.neutral {
-                background: #e5e7eb;
-                color: #1f2937;
-            }
-            
-            .top-whales {
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                border-radius: 12px;
-                padding: 25px;
-                margin-top: 30px;
-            }
-            
-            .top-whales h3 {
-                color: #1f2937;
-                margin-bottom: 20px;
-            }
-            
-            .whale-item {
-                background: white;
-                padding: 15px;
-                border-radius: 8px;
-                margin-bottom: 12px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-left: 4px solid #0ea5e9;
-            }
-            
-            .whale-rank {
-                font-size: 1.5em;
-                font-weight: bold;
-                color: #0ea5e9;
-                margin-right: 15px;
-            }
-            
-            .whale-info {
-                flex: 1;
-            }
-            
-            .whale-address {
-                font-family: monospace;
-                color: #666;
-                font-size: 0.9em;
-            }
-            
-            .whale-balance {
-                font-size: 1.2em;
-                font-weight: bold;
-                color: #1f2937;
-            }
-            
-            .whale-activity {
-                font-size: 0.85em;
-                color: #666;
-            }
-            
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.6; }
-            }
-            
-            .live-indicator {
-                display: inline-block;
-                width: 10px;
-                height: 10px;
-                background: #10b981;
-                border-radius: 50%;
-                margin-right: 8px;
-                animation: pulse 2s infinite;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <header>
-                <h1>🐋 AI WHALE WATCHER</h1>
-                <p>Surveillance intelligente des mouvements de baleines et volumes anormaux</p>
-                <div style="margin-top: 15px; padding: 12px 20px; background: rgba(255,255,255,0.2); border-radius: 10px; display: inline-block; font-weight: bold; font-size: 1.1em;">
-                    """ + status_badge + """ | """ + source_text + """
-                </div>
-            </header>
-            
-            
-            
-            <div class="content">
-                <div id="alertBanner"></div>
-                
-                <div class="stats-bar">
-                    <div class="stat-box">
-                        <span class="stat-value" id="whaleCount">12</span>
-                        <span class="stat-label">Mouvements Détectés (24h)</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-value" id="totalVolume">$1.2B</span>
-                        <span class="stat-label">Volume Total Baleines</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-value" id="bullishCount">7</span>
-                        <span class="stat-label">Signaux Haussiers</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-value" id="bearishCount">5</span>
-                        <span class="stat-label">Signaux Baissiers</span>
-                    </div>
-                </div>
-                
-                <div class="whale-feed">
-                    <h3>
-                        <span class="live-indicator"></span>
-                        🌊 Feed des Mouvements de Baleines
-                    </h3>
-                    <div id="whaleFeed"></div>
-                </div>
-                
-                <div class="top-whales">
-                    <h3>👑 Top 10 Baleines à Surveiller</h3>
-                    <div id="topWhales"></div>
-                </div>
-            </div>
+        # --- UI (intégrée au layout global) ---
+    try:
+        events = json.loads(whale_data_json) if whale_data_json else []
+    except Exception:
+        events = []
+
+    body = f"""
+    <style>
+      .whale-page .panel {{
+        background: rgba(255,255,255,.06);
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius: 18px;
+        padding: 18px;
+      }}
+      .whale-page .top {{
+        display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+        margin-bottom: 10px;
+      }}
+      .whale-page .sub {{
+        color: rgba(255,255,255,.75);
+        font-weight: 700;
+        margin: 2px 0 0 0;
+      }}
+      .whale-page .actions {{
+        display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      }}
+      .whale-page .btn {{
+        padding: 8px 12px; border-radius: 12px;
+        border: 1px solid rgba(255,255,255,.14);
+        background: rgba(0,0,0,.18);
+        color: rgba(255,255,255,.92);
+        cursor: pointer;
+        font-weight: 800;
+      }}
+      .whale-page .btn:hover {{ background: rgba(0,0,0,.26); }}
+      .whale-page .pill {{
+        display:inline-flex; align-items:center; gap:8px;
+        padding: 6px 10px; border-radius: 999px;
+        border: 1px solid rgba(255,255,255,.12);
+        background: rgba(0,0,0,.18);
+        font-weight: 800;
+      }}
+      .whale-page .grid {{
+        display:grid; gap: 10px;
+        grid-template-columns: 1fr;
+        margin-top: 12px;
+      }}
+      @media (min-width: 900px) {{
+        .whale-page .grid {{ grid-template-columns: 1.2fr .8fr; }}
+      }}
+      .whale-page .feed {{
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,.10);
+        background: rgba(0,0,0,.18);
+        overflow: hidden;
+      }}
+      .whale-page .row {{
+        display:grid;
+        grid-template-columns: 110px 70px 110px 1fr;
+        gap: 10px;
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255,255,255,.08);
+        font-weight: 700;
+      }}
+      .whale-page .row.h {{
+        background: rgba(255,255,255,.05);
+        font-weight: 900;
+      }}
+      .whale-page .row:last-child {{ border-bottom: none; }}
+      .whale-page .muted {{ color: rgba(255,255,255,.70); font-weight: 700; }}
+      .whale-page .guide {{
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,.10);
+        background: rgba(0,0,0,.18);
+        padding: 12px;
+      }}
+      .whale-page .guide h3 {{ margin:0 0 6px 0; font-size: 14px; font-weight: 900; }}
+      .whale-page .guide ul {{ margin: 6px 0 0 18px; color: rgba(255,255,255,.82); }}
+      .whale-page .small {{ font-size: 12px; color: rgba(255,255,255,.70); font-weight: 700; }}
+    </style>
+
+    <div class="whale-page">
+      <div class="panel">
+        <div class="top">
+          <div>
+            <div style="font-weight: 900; font-size: 18px;">AI Whale Watcher</div>
+            <div class="sub">{html.escape(source_text)}</div>
+            <div class="sub" style="margin-top:6px;">Statut: <b>{html.escape(status_badge)}</b></div>
+          </div>
+          <div class="actions">
+            <button class="btn" onclick="location.reload()">Rafraîchir</button>
+            <span class="pill"><span class="muted">Événements:</span> <span id="whaleCount">{len(events)}</span></span>
+          </div>
         </div>
-        
-        <script>
-            // DONNES DIRECTEMENT INTGRES EN JSON
-            window.whaleData = WHALE_DATA_PLACEHOLDER;
-            console.log('🐋 Whale Data loaded:', window.whaleData.length, 'transactions');
-            
-            function renderWhaleTransactions() {
-                const whaleData = window.whaleData;
-                const feed = document.getElementById('whaleFeed');
-                
-                if (!whaleData || whaleData.length === 0) {
-                    feed.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">⚠️ Données indisponibles momentanément. Réessayez dans 30 secondes.</div>';
-                    return;
-                }
-                
-                let bullishCount = 0;
-                let bearishCount = 0;
-                let totalVol = 0;
-                let html = '';
-                
-                whaleData.forEach(tx => {
-                    if (tx.is_bullish) bullishCount++;
-                    else bearishCount++;
-                    
-                    totalVol += tx.usd_value;
-                    
-                    const impactClass = tx.is_bullish ? 'bullish' : 'bearish';
-                    const impactEmoji = tx.is_bullish ? '📈' : '📉';
-                    const impactText = tx.is_bullish ? 'BULLISH' : 'BEARISH';
-                    
-                    html += `
-                        <div class="whale-transaction ${impactClass}">
-                            <div class="transaction-header">
-                                <div class="transaction-coin">₿ BTC / ${tx.type}</div>
-                                <div class="transaction-amount ${impactClass}">
-                                    ${impactEmoji} $${tx.usd_value.toLocaleString()}
-                                </div>
-                            </div>
-                            <div class="transaction-details">
-                                <div class="detail-item">
-                                    <div class="detail-label">Montant</div>
-                                    <div class="detail-value">${tx.amount} BTC</div>
-                                </div>
-                                <div class="detail-item">
-                                    <div class="detail-label">Inputs/Outputs</div>
-                                    <div class="detail-value">${tx.inputs} → ${tx.outputs}</div>
-                                </div>
-                                <div class="detail-item">
-                                    <div class="detail-label">Transaction</div>
-                                    <div class="detail-value">${tx.txid}</div>
-                                </div>
-                                <div class="detail-item">
-                                    <div class="detail-label">Temps</div>
-                                    <div class="detail-value">${tx.time_ago}</div>
-                                </div>
-                            </div>
-                            <div class="transaction-impact ${impactClass}">
-                                ${impactEmoji} ${impactText}
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                feed.innerHTML = html;
-                
-                // Mettre  jour les stats
-                document.getElementById('bullishCount').textContent = bullishCount;
-                document.getElementById('bearishCount').textContent = bearishCount;
-                document.getElementById('totalVolume').textContent = '$' + (totalVol / 1000000).toFixed(1) + 'M';
-            }
-            
-            function generateTopWhales() {
-                const whaleData = window.whaleData;
-                
-                if (!whaleData || whaleData.length === 0) return;
-                
-                const topWhales = whaleData.slice(0, 10);
-                const container = document.getElementById('topWhales');
-                
-                let html = '';
-                
-                topWhales.forEach((whale, idx) => {
-                    html += `
-                        <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 15px; border-radius: 10px; border: 2px solid #0284c7;">
-                            <div style="font-weight: bold; color: #0284c7; margin-bottom: 10px;">🐋 Top #${idx + 1}</div>
-                            <div style="font-size: 0.9em; margin-bottom: 5px;"><strong>Montant:</strong> ${whale.amount} BTC</div>
-                            <div style="font-size: 0.9em; margin-bottom: 5px;"><strong>Valeur:</strong> $${whale.usd_value.toLocaleString()}</div>
-                            <div style="font-size: 0.85em; color: #666; word-break: break-all;">${whale.txid}</div>
-                            <div style="font-size: 0.8em; color: #888; margin-top: 8px;">⏱️ ${whale.time_ago}</div>
-                        </div>
-                    `;
-                });
-                
-                html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">${html}</div>`;
-                container.innerHTML = html;
-            }
-            
-            // Initialiser au chargement
-            document.addEventListener('DOMContentLoaded', function() {
-                renderWhaleTransactions();
-                generateTopWhales();
-                
-                // Rafrachir toutes les 30 secondes (limiter les appels API)
-                setInterval(function() {
-                    console.log('🔄 Rafraîchissement des données Whale...');
-                    location.reload();
-                }, 30000);
-            });
-            
-            // Rafrachir manuellement
-            function refreshWhaleData() {
-                location.reload();
-            }
-            
-            // Data Source: BLOCKCHAIN.INFO API (VRAIES DONNES)
-            console.log('🐋 Whale Watcher connecté à Blockchain.info API');
-            console.log('STATUS_BADGE_PLACEHOLDER');
-        </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'AI Whale Watcher ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Surveillance mouvements gros porteurs (Whales) en temps réel.</p><ul style="line-height: 1.8; color: #555;"><li>🐋 Transactions &gt;$1M détectées</li><li>📊 Flux exchange (in/out)</li><li>🎯 Impact prix potentiel</li><li>⚡ Alertes instantanées</li><li>📈 Historique mouvements</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🔍 Types mouvements</h3><p style="line-height: 1.6; color: #555;"><strong>📤 Exchange → Wallet:</strong> 🟢 BULLISH - Whales accumulent</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📥 Wallet → Exchange:</strong> 🔴 BEARISH - Whales vendent</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>🔄 Wallet → Wallet:</strong> ⚪ NEUTRAL - Réorganisation</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Interprétation</h3><p style="line-height: 1.6; color: #555;"><strong>🟢 Accumulation massive:</strong> Whales sortent exchanges = bullish</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>🔴 Distribution:</strong> Whales déposent = bearish</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>⚠️ Volume anormal:</strong> Mouvement prix imminent</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">⚠️ Attention</h3><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>⚠️ Whale ≠ Toujours raison</li><li>📊 Regardez tendance, pas 1 transaction</li><li>🎯 Confirmez avec analyse technique</li><li>⏱️ Impact peut prendre heures/jours</li></ul><p style="color: #666; margin-top: 15px;"><strong>💡 Meilleur usage:</strong> Confirme analyse, pas signal seul.</p></div></div></div>
-    </body>
-    </html>
+
+        <div class="grid">
+          <div class="feed" id="whaleFeed"></div>
+
+          <div class="guide">
+            <h3>Comment utiliser cette page</h3>
+            <ul>
+              <li>Surveille les <b>grosses transactions</b> et la destination (<b>exchange</b> vs <b>wallet</b>).</li>
+              <li>Vers exchange = pression de vente potentielle (pas garanti).</li>
+              <li>Hors exchange = accumulation/staking possible (pas garanti).</li>
+              <li>Combine avec <b>Market Regime</b> + niveaux techniques.</li>
+            </ul>
+            <div class="small" style="margin-top:10px;">Astuce: plusieurs gros mouvements rapprochés valent souvent plus qu’un seul.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const DATA = {json.dumps(events, ensure_ascii=False)};
+      function short(s, n=14) {{
+        if (!s) return "—";
+        s = String(s);
+        return s.length > n ? s.slice(0,n) + "…" : s;
+      }}
+      function render() {{
+        const el = document.getElementById("whaleFeed");
+        if (!DATA || DATA.length === 0) {{
+          el.innerHTML = '<div class="row"><div class="muted">Aucune donnée pour le moment.</div></div>';
+          return;
+        }}
+        let h = '';
+        h += '<div class="row h"><div>Heure</div><div>Actif</div><div>Montant</div><div>Détails</div></div>';
+        for (const it of DATA.slice(0, 60)) {{
+          const time = (it.time || it.timestamp || "—").toString().slice(0, 16);
+          const asset = (it.asset || it.symbol || "—").toString().toUpperCase();
+          const amt = (it.amount || it.value || it.qty || "—").toString();
+          const from = short(it.from || it.from_owner || it.from_address);
+          const to = short(it.to || it.to_owner || it.to_address);
+          h += '<div class="row"><div class="muted">' + time + '</div><div>' + asset + '</div><div>' + amt + '</div><div><span class="muted">de</span> ' + from + ' <span class="muted">→</span> ' + to + '</div></div>';
+        }}
+        el.innerHTML = h;
+      }}
+      render();
+    </script>
     """
-    
-    # Remplacer les placeholders par les vraies donnes
-    html_content = html_content.replace('WHALE_DATA_PLACEHOLDER', whale_data_json)
-    html_content = html_content.replace('STATUS_BADGE_PLACEHOLDER', status_badge)
-    
-    return HTMLResponse(content=SIDEBAR + html_content)
+
+    return HTMLResponse(_simple_page("AI Whale Watcher", body, sidebar_html=SIDEBAR_FULL), status_code=200)
 
 @app.get("/api/fear-greed-full")
 async def fear_greed_full():

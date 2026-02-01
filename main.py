@@ -11,6 +11,25 @@ except Exception:  # fallback
     from pydantic.v1 import BaseModel, validator
 
 
+# =================== FIX IMPORTS (Railway) ===================
+# Ces imports sont requis au niveau global (sinon NameError lors du boot).
+import sqlite3
+from fastapi import (
+    FastAPI, Request, Response, Depends, HTTPException, status,
+    Form, UploadFile, File, Cookie, Header, Query, Path, BackgroundTasks,
+    APIRouter, WebSocket, WebSocketDisconnect
+)
+from fastapi.responses import (
+    HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse,
+    StreamingResponse, FileResponse
+)
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.templating import Jinja2Templates
+from starlette.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
+# =============================================================
+
+
 async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000000.0, limit: int = 12):
     """
     Retourne des "whale transfers" RÉELS quand possible.

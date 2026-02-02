@@ -3277,6 +3277,13 @@ class PermissionMiddleware(BaseHTTPMiddleware):
 
         path = request.url.path or "/"
 
+        # Uniformiser: /pricing -> /pricing-complete (même design + mêmes forfaits)
+        if path == "/pricing":
+            qp = str(request.url.query).strip()
+            target = "/pricing-complete" + (("?" + qp) if qp else "")
+            return RedirectResponse(url=target, status_code=303)
+
+
         # --------- chemins publics / statiques ---------
         PUBLIC_PATHS = {
             "/", "/health", "/favicon.ico",
@@ -4995,36 +5002,46 @@ def get_user_effective_plan(request: Request) -> str:
     return "free"
 
 def get_user_plan(username: str) -> str:
-    """Retourne le plan d'abonnement d'un utilisateur (free/premium/advanced/pro/elite).
+    """Retourne le plan (free/premium/advanced/pro/elite) pour un username OU un dict user.
 
-    Source de vérité: table users.subscription_plan (SQLite/Postgres via db_manager.get_user_info).
-    Compat: accepte aussi les clés 'plan' ou 'subscription_plan' dans des dicts déjà en mémoire.
+    - Si l'utilisateur n'est pas loggé ou si la DB n'est pas accessible: retourne 'free'.
+    - Supporte les appels existants qui passent un dict (user_info).
     """
     try:
-        # Accepter un dict (ex: request.state.user)
+        # Support legacy: get_user_plan(user_dict)
         if isinstance(username, dict):
-            # Si le dict contient déjà le plan, on le prend
-            p = username.get("subscription_plan") or username.get("plan") or username.get("subscription") or None
-            if p:
-                return normalize_plan(str(p))
-            username = (
-                username.get("username")
-                or username.get("email")
-                or username.get("user")
-                or ""
-            )
+            user = username
+            uname = (user.get("username") or "").strip()
+        else:
+            uname = (username or "").strip()
 
-        uname = normalize_username(username or "")
         if not uname:
             return "free"
 
-        try:
-            info = db_manager.get_user_info(uname)
-            p = (info or {}).get("subscription_plan") or (info or {}).get("plan") or "free"
-            return normalize_plan(str(p))
-        except Exception:
+        db_path = os.getenv("DB_PATH", "/app/data/ai_trader.db")
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("SELECT plan FROM users WHERE username = ? LIMIT 1", (uname,))
+        row = cur.fetchone()
+        conn.close()
+
+        plan = (row["plan"] if row else None) or "free"
+        plan = str(plan).strip().lower()
+        # normalisation
+        if plan in ("gratuit", "free"):
             return "free"
-    except Exception:
+        if plan in ("premium",):
+            return "premium"
+        if plan in ("advanced", "avance", "avancé"):
+            return "advanced"
+        if plan in ("pro",):
+            return "pro"
+        if plan in ("elite", "élit", "élite"):
+            return "elite"
+        return plan or "free"
+    except Exception as e:
+        print(f"⚠️ get_user_plan: fallback 'free' (err={e})")
         return "free"
 
 def html_doc(title: str, body_html: str, extra_head: str = "") -> str:
@@ -5303,51 +5320,49 @@ def normalize_route_key(route: str) -> str:
     rk = alias.get(rk, rk)
     return rk
 
-def check_route_permission(username_or_user, route_path):
-    """
-    Retourne True si l'utilisateur (username/email ou dict user) a accès à la route.
-    Ne dépend PAS de `user_permissions` (qui a causé des NameError).
+def check_route_permission(user: dict, path: str) -> bool:
+    """Décide si une route est accessible.
+
+    Important:
+    - Si l'utilisateur n'est pas loggé, on le traite comme plan 'free' pour les pages
+      autorisées au plan Gratuit via 'Gestion des Accès par Forfait'.
+    - Les routes 'admin' restent réservées aux admins.
     """
     try:
-        route_path = (route_path or "/").split("?")[0]
+        route_path = normalize_route(path)
 
-        # Routes publiques toujours accessibles
-        PUBLIC_PREFIXES = ("/static", "/health", "/login", "/logout", "/pricing", "/stripe", "/tv-webhook", "/favicon")
-        if route_path == "/" or route_path.startswith(PUBLIC_PREFIXES):
+        # Routes réellement publiques
+        PUBLIC_PREFIXES = (
+            "/static", "/health", "/favicon.ico",
+            "/login", "/logout", "/register", "/pricing", "/pricing-complete",
+            "/tv-webhook", "/api", "/webhook", "/contact", "/terms", "/privacy",
+        )
+        if route_path in ("/", ""):
+            return True
+        if route_path.startswith(PUBLIC_PREFIXES):
             return True
 
-        # Extraire user + plan
-        username = ""
-        email = ""
-        role = ""
-        if isinstance(username_or_user, dict):
-            username = (username_or_user.get("username") or "").strip()
-            email = (username_or_user.get("email") or "").strip()
-            role = (username_or_user.get("role") or "").strip()
-        else:
-            username = (str(username_or_user or "")).strip()
+        # Protection des routes admin
+        if route_path.startswith("/admin"):
+            return bool(user and (user.get("is_admin") or (user.get("user_role") == "admin")))
 
-        is_admin = (role.lower() == "admin") or (username.lower() == "admin")
-        if is_admin:
-            return True
+        is_logged_in = bool(user and ((user.get("username") or "").strip() or (user.get("email") or "").strip()))
+        required_plan = get_required_plan_for_route(route_path)
+        required_plan_norm = (str(required_plan).strip().lower() if required_plan else "")
 
-        # Si pas connecté, on bloque les pages protégées
-        if not username and not email:
-            return False
+        # Si la route n'est pas connue dans la matrice, on exige d'être loggé (sauf cas publics déjà gérés)
+        if not required_plan_norm:
+            return is_logged_in
 
-        user_plan = get_user_effective_plan(username or email) or "free"
-        required_plan = get_required_plan_for_route(route_path)  # peut être None
+        if not is_logged_in:
+            # Non loggé = plan free
+            return required_plan_norm in ("free", "gratuit")
 
-        if not required_plan:
-            return True
-
-        return PLAN_RANK.get(user_plan, 0) >= PLAN_RANK.get(required_plan, 0)
+        # Loggé: la comparaison de plan est faite ensuite dans PermissionMiddleware.
+        return True
     except Exception as e:
-        print(f"❌ Erreur check_route_permission({route_path}): {e}")
-        # Fail-safe: on bloque si erreur
+        print(f"⚠️ check_route_permission error: {e}")
         return False
-
-
 
 def start_background_monitor():
     """Démarre le monitor en arrière-plan sans faire planter l'app."""
@@ -34023,7 +34038,7 @@ async def academy(request: Request):
       <p style="margin:0 0 14px 0;color:#cbd5e1;max-width:820px">{subtitle}</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
         <a class="btn" href="/login">Se connecter</a>
-        <a class="btn-outline" href="/pricing">Voir les plans</a>
+        <a class="btn-outline" href="/pricing-complete">Voir les plans</a>
       </div>
     """
     return HTMLResponse(_simple_page("Academy", body, sidebar=SIDEBAR_FULL))
@@ -34603,7 +34618,13 @@ if not globals().get("_CONTACT_ROUTES_REGISTERED"):
     @app.post("/contact")
     async def contact_submit(request: Request):
         try:
-            form = await request.form()
+            # Parse form (robuste)
+            try:
+                form = await request.form()
+            except Exception as _e:
+                print(f"❌ /contact: form parsing error: {_e}")
+                return RedirectResponse(url="/contact?msg=Erreur formulaire. Réessaie.", status_code=303)
+
             name = (form.get("name") or "").strip()
             email = (form.get("email") or "").strip()
             subject = (form.get("subject") or "").strip()
@@ -34656,8 +34677,10 @@ if not globals().get("_CONTACT_ROUTES_REGISTERED"):
 
             return RedirectResponse(url="/contact?sent=1", status_code=303)
         except Exception as e:
+            import traceback as _tb
             print(f"❌ contact_submit fatal: {e}")
-            return RedirectResponse(url="/contact?msg=Erreur serveur. Réessaie.", status_code=303)
+            print(_tb.format_exc())
+            return RedirectResponse(url="/contact?msg=Erreur serveur (contact). Réessaie.", status_code=303)
 
 
 # ---------- /telechargements ----------
@@ -34791,7 +34814,7 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
               <h1 style="margin:0 0 6px 0">Téléchargements</h1>
               <p class="muted" style="margin:0 0 14px 0">Ebooks, ressources, templates, et outils. Données réelles: table <b>ebooks</b>.</p>
               <a href="/login" style="display:inline-block;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#111827;color:#e2e8f0;text-decoration:none;font-weight:800;">Se connecter</a>
-              <a href="/pricing" style="display:inline-block;margin-left:10px;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;text-decoration:none;font-weight:800;">Voir les plans</a>
+              <a href="/pricing-complete" style="display:inline-block;margin-left:10px;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;text-decoration:none;font-weight:800;">Voir les plans</a>
             </div>
             """
             return HTMLResponse(_simple_page("Téléchargements", body, sidebar=SIDEBAR_FULL))
@@ -34815,7 +34838,7 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
             if e["active"] and e["exists"] and e["allowed"]:
                 btn = f'<a href="/telechargements/download/{e["id"]}" class="btn-primary">Télécharger</a>'
             elif e["active"] and e["exists"] and not e["allowed"]:
-                btn = f'<a href="/pricing" class="btn-ghost">Mettre à niveau</a>'
+                btn = f'<a href="/pricing-complete" class="btn-ghost">Mettre à niveau</a>'
             else:
                 btn = ''
             cards.append(f"""
@@ -34863,7 +34886,7 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
               </div>
             </div>
             <div style="text-align:right">
-              <a href="/pricing" class="btn-ghost">Plans</a>
+              <a href="/pricing-complete" class="btn-ghost">Plans</a>
               <a href="/admin-dashboard/ebooks" class="btn-primary" style="margin-left:8px">Admin Ebooks</a>
             </div>
           </div>

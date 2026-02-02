@@ -3370,11 +3370,11 @@ class PermissionMiddleware(BaseHTTPMiddleware):
 
         if is_ajax or "application/json" in accept:
             return JSONResponse(
-                {"detail": "Accès refusé. Votre forfait ne permet pas cette page.", "upgrade": "/pricing"},
+                {"detail": "Accès refusé. Votre forfait ne permet pas cette page.", "upgrade": "/pricing-complete"},
                 status_code=403
             )
 
-        return RedirectResponse(url="/pricing", status_code=302)
+        return RedirectResponse(url="/pricing-complete", status_code=302)
 # Activer le middleware
 app.add_middleware(PermissionMiddleware)
 
@@ -34609,7 +34609,7 @@ if not globals().get("_CONTACT_ROUTES_REGISTERED"):
             subject = (form.get("subject") or "").strip()
             message = (form.get("message") or "").strip()
 
-            if not name or not message or not _email_is_valid(email):
+            if not name or not message or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
                 return RedirectResponse(url="/contact?msg=Données invalides. Vérifie ton nom/email/message.", status_code=303)
 
             user = get_user_from_request(request)
@@ -35028,7 +35028,7 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
 
         plan = _user_plan_lower(request)
         if PLAN_RANK.get(plan, 0) < PLAN_RANK.get(str(min_plan or "free").lower(), 0):
-            return RedirectResponse(url="/pricing", status_code=303)
+            return RedirectResponse(url="/pricing-complete", status_code=303)
 
         # Increment download count (best effort)
         try:

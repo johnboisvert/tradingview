@@ -1,6 +1,7 @@
 from typing import Optional
 import os  # FIX: required for DB_DIR / path operations
 import time  # required for ASSET_VERSION cache-busting
+import secrets  # FIX: required for session token generation
 import asyncio
 import re  # FIX: needed for CSS extraction
 

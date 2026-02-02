@@ -1,3 +1,6 @@
+from typing import Optional
+import html
+
 
 # =========================
 # FOOTER D'AIDE (bas de page)

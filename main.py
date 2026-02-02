@@ -23404,144 +23404,684 @@ loadSettings();
 # ============= PAGE WATCHLIST & ALERTES =============
 @app.get("/watchlist", response_class=HTMLResponse)
 async def watchlist_page():
-    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
+    return HTMLResponse(
+        SIDEBAR
+        + """<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>👀 Watchlist & Alertes</title>
+  <style>
+    :root{
+      --bg: #0b1220;
+      --panel: rgba(255,255,255,0.06);
+      --panel2: rgba(255,255,255,0.08);
+      --stroke: rgba(255,255,255,0.12);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.65);
+      --brand: #4ea1ff;
+      --ok: #34d399;
+      --bad: #fb7185;
+      --warn: #fbbf24;
+      --shadow: 0 18px 50px rgba(0,0,0,0.45);
+      --radius: 18px;
+    }
+
+    body{
+      background: radial-gradient(900px 420px at 20% 0%, rgba(78,161,255,0.22), transparent 60%),
+                  radial-gradient(900px 420px at 90% 15%, rgba(167,139,250,0.18), transparent 60%),
+                  radial-gradient(900px 420px at 60% 100%, rgba(34,197,94,0.12), transparent 60%),
+                  var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      margin: 0;
+    }
+
+    /* Le SIDEBAR est déjà injecté avant ce HTML. On adapte juste l'espace contenu */
+    .content{
+      margin-left: 260px; /* aligné avec sidebar */
+      padding: 26px 24px 60px;
+    }
+    @media (max-width: 980px){
+      .content{ margin-left: 0; padding: 18px 14px 60px; }
+    }
+
+    .wrap{
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    .hero{
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(135deg, rgba(78,161,255,0.20), rgba(167,139,250,0.12));
+      border: 1px solid var(--stroke);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      padding: 18px 18px;
+      backdrop-filter: blur(10px);
+    }
+    .hero-left{
+      display:flex; align-items:center; gap: 12px;
+    }
+    .hero-badge{
+      width: 44px; height: 44px;
+      border-radius: 14px;
+      background: rgba(78,161,255,0.22);
+      border: 1px solid rgba(78,161,255,0.35);
+      display:flex; align-items:center; justify-content:center;
+      box-shadow: 0 12px 30px rgba(78,161,255,0.18);
+      flex: 0 0 auto;
+      font-size: 22px;
+    }
+    .hero h1{
+      margin: 0;
+      font-size: 26px;
+      letter-spacing: 0.4px;
+    }
+    .hero p{
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .hero-right{
+      display:flex; gap:10px; align-items:center; flex-wrap: wrap;
+      justify-content:flex-end;
+    }
+    .chip{
+      display:flex; align-items:center; gap:8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,0.06);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .dot{
+      width: 10px; height: 10px; border-radius: 99px;
+      background: var(--ok);
+      box-shadow: 0 0 0 6px rgba(52,211,153,0.12);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 420px 1fr;
+      gap: 16px;
+      margin-top: 16px;
+      align-items: start;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,0.06);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+    .card-h{
+      padding: 14px 14px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display:flex;
+      justify-content: space-between;
+      align-items:center;
+      gap: 10px;
+    }
+    .card-h h2{
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: 0.2px;
+    }
+    .card-h small{
+      color: var(--muted);
+    }
+    .card-b{
+      padding: 14px;
+    }
+
+    .form-row{
+      display:flex; gap:10px;
+    }
+    .form-row > *{ flex: 1; }
+    label{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 10px 0 6px;
+    }
+    input{
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(5,10,20,0.55);
+      color: var(--text);
+      outline: none;
+    }
+    input::placeholder{ color: rgba(255,255,255,0.35); }
+    input:focus{
+      border-color: rgba(78,161,255,0.55);
+      box-shadow: 0 0 0 4px rgba(78,161,255,0.14);
+    }
+
+    .btn{
+      cursor: pointer;
+      border: 1px solid rgba(78,161,255,0.45);
+      background: linear-gradient(135deg, rgba(78,161,255,0.95), rgba(167,139,250,0.85));
+      color: #06101e;
+      font-weight: 800;
+      padding: 12px 14px;
+      border-radius: 12px;
+      transition: transform .08s ease, filter .2s ease;
+      user-select:none;
+    }
+    .btn:hover{ filter: brightness(1.05); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.secondary{
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border-color: rgba(255,255,255,0.14);
+      font-weight: 700;
+    }
+
+    .helper{
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+      line-height: 1.35;
+    }
+    .helper b{ color: rgba(255,255,255,0.9); }
+
+    .toolbar{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+    .search{
+      flex: 1;
+      min-width: 180px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(5,10,20,0.40);
+    }
+    .search input{
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    table{
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead th{
+      text-align: left;
+      font-size: 12px;
+      color: rgba(255,255,255,0.65);
+      padding: 10px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      position: sticky;
+      top: 0;
+      background: rgba(11,18,32,0.92);
+      backdrop-filter: blur(10px);
+      z-index: 1;
+    }
+    tbody td{
+      padding: 12px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      vertical-align: middle;
+      font-size: 14px;
+    }
+    tbody tr:hover{
+      background: rgba(255,255,255,0.04);
+    }
+
+    .coin{
+      display:flex; gap:10px; align-items:center;
+      min-width: 160px;
+    }
+    .coin img{
+      width: 28px; height: 28px; border-radius: 999px;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.08);
+      flex: 0 0 auto;
+    }
+    .coin .meta{ line-height: 1.15; }
+    .coin .meta .sym{ font-weight: 800; letter-spacing: 0.2px; }
+    .coin .meta .name{ font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      font-size: 12px;
+      color: rgba(255,255,255,0.8);
+      white-space: nowrap;
+    }
+    .pill.green{
+      border-color: rgba(52,211,153,0.35);
+      background: rgba(52,211,153,0.12);
+      color: rgba(180,255,220,0.95);
+    }
+    .pill.red{
+      border-color: rgba(251,113,133,0.35);
+      background: rgba(251,113,133,0.12);
+      color: rgba(255,190,200,0.95);
+    }
+    .pill.yellow{
+      border-color: rgba(251,191,36,0.35);
+      background: rgba(251,191,36,0.12);
+      color: rgba(255,235,170,0.95);
+    }
+
+    .muted{ color: var(--muted); font-size: 12px; }
+
+    .progress{
+      height: 10px;
+      width: 150px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .bar{
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(78,161,255,0.95), rgba(52,211,153,0.95));
+    }
+
+    .actions{
+      display:flex; gap:8px; align-items:center; justify-content:flex-end;
+    }
+    .icon-btn{
+      cursor:pointer;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-weight: 800;
+    }
+    .icon-btn:hover{ background: rgba(255,255,255,0.09); }
+    .icon-btn.danger{
+      border-color: rgba(251,113,133,0.35);
+      background: rgba(251,113,133,0.12);
+      color: rgba(255,220,230,0.96);
+    }
+
+    .empty{
+      padding: 28px 16px;
+      text-align:center;
+      color: var(--muted);
+    }
+    .empty b{ color: rgba(255,255,255,0.9); }
+
+    /* Toast */
+    .toasts{
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 9999;
+    }
+    .toast{
+      min-width: 260px;
+      max-width: 360px;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(15,23,42,0.92);
+      box-shadow: 0 22px 60px rgba(0,0,0,0.50);
+      color: rgba(255,255,255,0.92);
+      font-size: 13px;
+      line-height: 1.3;
+      backdrop-filter: blur(10px);
+    }
+    .toast.good{ border-color: rgba(52,211,153,0.35); }
+    .toast.bad{ border-color: rgba(251,113,133,0.35); }
+    .toast.warn{ border-color: rgba(251,191,36,0.35); }
+    .toast .t{ font-weight: 900; margin-bottom: 4px; }
+    .footnote{
+      margin-top: 14px;
+      color: rgba(255,255,255,0.55);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+  </style>
+</head>
 <body>
-<div class="container">
-<div class="header"><h1>👀 WATCHLIST & ALERTES</h1><p>Surveillez vos cryptos préférées</p></div>
+  <div class="content">
+    <div class="wrap">
 
+      <div class="hero">
+        <div class="hero-left">
+          <div class="hero-badge">👀</div>
+          <div>
+            <h1>Watchlist & Alertes</h1>
+            <p>Surveille tes cryptos — prix en temps réel via CoinGecko (cache court côté serveur).</p>
+          </div>
+        </div>
+        <div class="hero-right">
+          <div class="chip"><span class="dot"></span> Live</div>
+          <div class="chip">Dernière mise à jour : <b id="lastUpdate">—</b></div>
+          <button class="btn secondary" id="btnRefresh" type="button">↻ Rafraîchir</button>
+        </div>
+      </div>
 
-<div class="card">
-<h2>➕ Ajouter à la Watchlist</h2>
-<div style="max-width:600px;">
-    <label style="color:#94a3b8;display:block;margin-bottom:5px;">Symbol (ex: BTCUSDT)</label>
-    <input type="text" id="addSymbol" placeholder="BTCUSDT">
-    
-    <label style="color:#94a3b8;display:block;margin-bottom:5px;">Prix Cible (optionnel)</label>
-    <input type="number" id="addTarget" placeholder="70000" step="0.00000001">
-    
-    <label style="color:#94a3b8;display:block;margin-bottom:5px;">Note (optionnel)</label>
-    <input type="text" id="addNote" placeholder="Résistance importante">
-    
-    <button onclick="addToWatchlist()" style="width:100%;">➕ Ajouter</button>
-</div>
-</div>
+      <div class="grid">
 
-<div class="card">
-<h2>📋 Ma Watchlist</h2>
-<div id="watchlistContainer"></div>
-</div>
+        <!-- Add -->
+        <div class="card">
+          <div class="card-h">
+            <h2>➕ Ajouter un symbole</h2>
+            <small>Ex: <b>BTCUSDT</b> ou <b>ETHUSDT</b></small>
+          </div>
+          <div class="card-b">
+            <label>Symbole (format TradingView)</label>
+            <input id="sym" placeholder="BTCUSDT" autocomplete="off" />
 
-<div class="card">
-<h2>🔔 Alertes Actives</h2>
-<div id="alertsContainer"></div>
-<button onclick="checkAlerts()" style="margin-top:15px;">🔍 Vérifier les Alertes</button>
-</div>
+            <div class="form-row">
+              <div>
+                <label>Prix cible (optionnel)</label>
+                <input id="target" type="number" placeholder="70000" step="0.0001" />
+              </div>
+              <div>
+                <label>Note (optionnel)</label>
+                <input id="note" placeholder="Résistance importante" maxlength="120" />
+              </div>
+            </div>
 
-</div>
+            <div style="margin-top: 12px; display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="btn" id="btnAdd" type="button">＋ Ajouter</button>
+              <button class="btn secondary" id="btnCheck" type="button">🔔 Vérifier les alertes</button>
+            </div>
 
-<script>
-async function loadWatchlist() {{
-    const res = await fetch('/api/watchlist');
-    const data = await res.json();
-    
-    if (data.watchlist.length === 0) {{
-        document.getElementById('watchlistContainer').innerHTML = '<p style="color:#94a3b8;">Aucune crypto dans la watchlist</p>';
+            <div class="helper">
+              <b>Comment ça marche :</b> on garde ta liste, et on récupère le prix actuel depuis CoinGecko au moment du rafraîchissement.
+              Si un <b>prix cible</b> est défini, l’alerte se déclenche quand le prix passe <b>au-dessus</b> (logique simple).<br/>
+              Astuce: commence par <b>10 à 15</b> cryptos maximum pour rester efficace.
+            </div>
+          </div>
+        </div>
+
+        <!-- List -->
+        <div class="card">
+          <div class="card-h">
+            <h2>📌 Ma Watchlist</h2>
+            <div class="toolbar" style="min-width: 360px;">
+              <div class="search">
+                🔎 <input id="q" placeholder="Rechercher (BTC, ETH, Solana...)" />
+              </div>
+              <span class="pill" id="countPill">0</span>
+            </div>
+          </div>
+
+          <div class="card-b" style="padding: 0;">
+            <div style="max-height: 520px; overflow:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Crypto</th>
+                    <th>Prix</th>
+                    <th>24h</th>
+                    <th>Cible</th>
+                    <th>Note</th>
+                    <th style="text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="rows">
+                  <tr><td colspan="6" class="empty">Chargement…</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="footnote" style="padding: 12px 14px;">
+              Données marché : <b>CoinGecko</b> (agrégateur). Si l’API est temporairement limitée, tu peux cliquer sur <b>Rafraîchir</b> après quelques secondes.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="card" style="margin-top: 16px;">
+        <div class="card-h">
+          <h2>📘 Aide rapide</h2>
+          <small>Pour éviter les erreurs et garder des données fiables</small>
+        </div>
+        <div class="card-b">
+          <div class="helper" style="font-size:13px;">
+            • <b>Ajouter</b> : entre un symbole <b>USDT</b> (ex: BTCUSDT). Le serveur convertit automatiquement vers la crypto (BTC).<br/>
+            • <b>Rafraîchir</b> : recharge les prix. C’est ce bouton qui garantit que tu vois les infos les plus récentes.<br/>
+            • <b>Alertes</b> : si tu mets une cible, l’endpoint vérifie si le prix actuel a dépassé la cible (ex: résistance cassée).<br/>
+            • <b>Propre et stable</b> : si une requête échoue, un message clair apparaît au lieu de casser la page.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function fmtPrice(n){
+      if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
+      const v = Number(n);
+      const digits = v >= 1000 ? 2 : (v >= 1 ? 4 : 6);
+      return new Intl.NumberFormat("fr-CA", { maximumFractionDigits: digits }).format(v) + " $";
+    }
+
+    function fmtPct(n){
+      if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
+      const v = Number(n);
+      const s = (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+      return s;
+    }
+
+    function toast(title, msg, kind){
+      const el = document.createElement("div");
+      el.className = "toast " + (kind || "");
+      el.innerHTML = `<div class="t">${title}</div><div>${msg}</div>`;
+      $("toasts").appendChild(el);
+      setTimeout(() => { el.style.opacity = "0"; el.style.transform = "translateY(6px)"; }, 3200);
+      setTimeout(() => el.remove(), 3800);
+    }
+
+    async function api(url, opts){
+      const options = Object.assign({
+        credentials: "include",
+        headers: {"Content-Type":"application/json"}
+      }, (opts || {}));
+
+      const res = await fetch(url, options);
+
+      let data = null;
+      try { data = await res.json(); } catch(e) { data = null; }
+
+      if (!res.ok){
+        const msg = (data && (data.detail || data.message)) ? (data.detail || data.message) : `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
+      return data;
+    }
+
+    let cacheItems = [];
+
+    function render(items){
+      const q = ($("q").value || "").trim().toLowerCase();
+      const filtered = items.filter(it => {
+        const sym = (it.symbol || "").toLowerCase();
+        const name = (it.name || "").toLowerCase();
+        return !q || sym.includes(q) || name.includes(q);
+      });
+
+      $("countPill").textContent = filtered.length;
+
+      const tbody = $("rows");
+      if (!filtered.length){
+        tbody.innerHTML = `<tr><td colspan="6" class="empty">Aucune crypto pour l’instant. <br/><b>Ajoute un symbole</b> à gauche (ex: BTCUSDT).</td></tr>`;
         return;
-    }}
-    
-    let html = '<table><thead><tr><th>Symbol</th><th>Prix Cible</th><th>Note</th><th>Ajouté le</th><th>Action</th></tr></thead><tbody>';
-    
-    data.watchlist.forEach(item => {{
-        const date = new Date(item.created_at).toLocaleString('fr-FR');
-        const target = item.target_price ? '$' + item.target_price.toLocaleString() : '-';
-        const alertIcon = item.alert_triggered ? '✅' : '';
-        
-        html += `<tr>
-            <td><strong>${{item.symbol}}</strong> ${{alertIcon}}</td>
-            <td>${{target}}</td>
-            <td>${{item.note || '-'}}</td>
-            <td style="color:#94a3b8;font-size:12px;">${{date}}</td>
-            <td><button class="btn-danger" style="padding:8px 15px;" onclick="removeFromWatchlist('${{item.symbol}}')">❌ Retirer</button></td>
-        </tr>`;
-    }});
-    
-    html += '</tbody></table>';
-    document.getElementById('watchlistContainer').innerHTML = html;
-}}
+      }
 
-async function addToWatchlist() {{
-    const symbol = document.getElementById('addSymbol').value.toUpperCase();
-    const target = document.getElementById('addTarget').value;
-    const note = document.getElementById('addNote').value;
-    
-    if (!symbol) {{
-        alert('❌ Veuillez entrer un symbol');
+      tbody.innerHTML = filtered.map(it => {
+        const change = it.price_change_percentage_24h;
+        const pillClass = change === null || change === undefined ? "" : (Number(change) >= 0 ? "green" : "red");
+        const img = it.image || "https://www.coingecko.com/favicon-96x96.png";
+        const target = it.target_price;
+        const price = it.current_price;
+
+        let targetHtml = `<span class="muted">—</span>`;
+        if (target !== null && target !== undefined && String(target).trim() !== ""){
+          const t = Number(target);
+          const p = Number(price);
+          let pct = 0;
+          if (!Number.isNaN(p) && p > 0 && !Number.isNaN(t) && t > 0){
+            pct = Math.max(0, Math.min(100, (p / t) * 100));
+          }
+          targetHtml = `
+            <div>
+              <div><b>${fmtPrice(t)}</b></div>
+              <div class="progress"><div class="bar" style="width:${pct.toFixed(0)}%"></div></div>
+              <div class="muted">${pct.toFixed(0)}% vers la cible</div>
+            </div>`;
+        }
+
+        return `
+          <tr>
+            <td>
+              <div class="coin">
+                <img src="${img}" alt="" onerror="this.src='https://www.coingecko.com/favicon-96x96.png';"/>
+                <div class="meta">
+                  <div class="sym">${(it.symbol || "").toUpperCase()}</div>
+                  <div class="name">${it.name || ""}</div>
+                </div>
+              </div>
+            </td>
+            <td><b>${fmtPrice(price)}</b></td>
+            <td><span class="pill ${pillClass}">${fmtPct(change)}</span></td>
+            <td>${targetHtml}</td>
+            <td><span class="muted">${it.note ? String(it.note) : "—"}</span></td>
+            <td>
+              <div class="actions">
+                <button class="icon-btn secondary" title="Rafraîchir" onclick="refreshOne('${(it.symbol || "").replace(/'/g, "")}')">↻</button>
+                <button class="icon-btn danger" title="Retirer" onclick="removeItem('${(it.symbol || "").replace(/'/g, "")}')">🗑</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join("");
+    }
+
+    async function load(){
+      $("rows").innerHTML = `<tr><td colspan="6" class="empty">Chargement…</td></tr>`;
+      try{
+        const data = await api("/api/watchlist/market", { method: "GET" });
+        const items = Array.isArray(data?.items) ? data.items : [];
+        cacheItems = items;
+        render(items);
+        $("lastUpdate").textContent = new Date().toLocaleTimeString("fr-CA");
+      }catch(e){
+        cacheItems = [];
+        $("rows").innerHTML = `<tr><td colspan="6" class="empty">Erreur: ${e.message}</td></tr>`;
+        toast("Erreur", e.message, "bad");
+      }
+    }
+
+    async function addItem(){
+      const sym = ($("sym").value || "").trim().toUpperCase();
+      if (!sym){
+        toast("Info", "Entre un symbole (ex: BTCUSDT).", "warn");
         return;
-    }}
-    
-    const res = await fetch('/api/watchlist/add', {{
-        method: 'POST',
-        headers: {{'Content-Type': 'application/json'}},
-        body: JSON.stringify({{
-            symbol: symbol,
-            target_price: target || null,
-            note: note
-        }})
-    }});
-    
-    const data = await res.json();
-    
-    if (data.ok) {{
-        alert('✅ ' + data.message);
-        document.getElementById('addSymbol').value = '';
-        document.getElementById('addTarget').value = '';
-        document.getElementById('addNote').value = '';
-        loadWatchlist();
-    }} else {{
-        alert('❌ ' + data.error);
-    }}
-}}
+      }
+      const targetRaw = ($("target").value || "").trim();
+      const note = ($("note").value || "").trim();
 
-async function removeFromWatchlist(symbol) {{
-    if (!confirm(`Retirer ${{symbol}} de la watchlist ?`)) return;
-    
-    const res = await fetch(`/api/watchlist/remove?symbol=${{symbol}}`, {{method: 'DELETE'}});
-    const data = await res.json();
-    
-    if (data.ok) {{
-        alert('✅ ' + data.message);
-        loadWatchlist();
-    }}
-}}
+      let payload = { symbol: sym };
+      if (targetRaw !== "") payload.target_price = Number(targetRaw);
+      if (note) payload.note = note;
 
-async function checkAlerts() {{
-    const res = await fetch('/api/watchlist/check-alerts');
-    const data = await res.json();
-    
-    if (data.alerts.length === 0) {{
-        document.getElementById('alertsContainer').innerHTML = '<div class="alert-success">✅ Aucune alerte déclenchée</div>';
-    }} else {{
-        let html = '<div class="alert-error"><h3>🔔 Alertes Déclenchées !</h3>';
-        data.alerts.forEach(alert => {{
-            html += `<p><strong>${{alert.symbol}}</strong> a atteint ${{alert.target}} (prix actuel: ${{alert.current}})</p>`;
-            if (alert.note) html += `<p style="font-size:12px;color:#94a3b8;">Note: ${{alert.note}}</p>`;
-        }});
-        html += '</div>';
-        document.getElementById('alertsContainer').innerHTML = html;
-        
-        // Recharger la watchlist pour montrer les alertes
-        loadWatchlist();
-    }}
-}}
+      try{
+        await api("/api/watchlist/add", { method: "POST", body: JSON.stringify(payload) });
+        toast("Ajouté", `${sym} ajouté à la watchlist.`, "good");
+        $("sym").value = "";
+        $("target").value = "";
+        $("note").value = "";
+        await load();
+      }catch(e){
+        toast("Erreur", e.message, "bad");
+      }
+    }
 
-loadWatchlist();
-</script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Watchlist ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Centre de contrôle pour vos cryptos 24/7.</p><ul style="line-height: 1.8; color: #555;"><li>📊 Surveillance prix temps réel</li><li>🔔 Alertes intelligentes</li><li>📈 Performance multi-timeframes</li><li>💼 Portfolio virtuel</li><li>🎯 Setups trading</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">⚡ Alertes</h3><p style="line-height: 1.8; color: #666;">Types d'alertes:</p><ul style="line-height: 1.6; color: #555;"><li>📍 Prix cible (ex: BTC &gt; $100k)</li><li>📊 % variation (pump/dump &gt;10%)</li><li>📈 Support/Résistance cassés</li><li>🔔 Notifications Email/Telegram</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Données</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>💰 Prix actuel (refresh 30s)</li><li>📈 Variation 24h/7j/30j</li><li>💎 Market Cap + Rank</li><li>💧 Volume 24h</li><li>🚀 ATH/ATL + distance</li><li>🔢 Supply circulation/total</li><li>📈 Mini-chart 7j</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">💡 Organisation</h3><p style="line-height: 1.6; color: #555;"><strong>🔵 Blue Chips:</strong> BTC, ETH, SOL...</p><p style="line-height: 1.6; color: #555;"><strong>🟡 Mid Caps:</strong> Projets prometteurs</p><p style="line-height: 1.6; color: #555;"><strong>🔴 Small Caps:</strong> Haut risque/rendement</p><p style="line-height: 1.6; color: #555;"><strong>🎯 Opportunities:</strong> Setups identifiés</p><p style="color: #f39c12; font-weight: bold; margin-top: 15px;">⚠️ Max 10-15 cryptos pour bien suivre!</p></div></div></div>
-</body></html>""")
+    async function removeItem(sym){
+      if (!sym) return;
+      try{
+        await api("/api/watchlist/remove", { method: "POST", body: JSON.stringify({symbol: sym}) });
+        toast("Supprimé", `${sym} retiré de la watchlist.`, "good");
+        await load();
+      }catch(e){
+        toast("Erreur", e.message, "bad");
+      }
+    }
 
+    async function refreshOne(sym){
+      // Petit refresh UX : on relance simplement load() (le serveur recalcule le market)
+      await load();
+    }
 
-# ============= PAGE AI TRADING ASSISTANT =============
+    async function checkAlerts(){
+      try{
+        const data = await api("/api/watchlist/check_alerts", { method: "POST" });
+        const triggered = Array.isArray(data?.triggered) ? data.triggered : [];
+        if (!triggered.length){
+          toast("Alertes", "Aucune alerte déclenchée pour l’instant.", "good");
+          return;
+        }
+        const lines = triggered.map(t => `• ${(t.symbol || "").toUpperCase()} : ${fmtPrice(t.current_price)} (cible ${fmtPrice(t.target_price)})`).join("<br/>");
+        toast("Alertes déclenchées", lines, "warn");
+      }catch(e){
+        toast("Erreur", e.message, "bad");
+      }
+    }
+
+    $("btnAdd").addEventListener("click", addItem);
+    $("btnRefresh").addEventListener("click", load);
+    $("btnCheck").addEventListener("click", checkAlerts);
+    $("q").addEventListener("input", () => render(cacheItems));
+    $("sym").addEventListener("keydown", (e) => { if (e.key === "Enter") addItem(); });
+
+    // Auto-refresh léger (90s) pour garder à jour sans spammer l’API
+    load();
+    setInterval(() => load(), 90000);
+  </script>
+</body>
+</html>"""
+    )
+
 @app.get("/ai-assistant", response_class=HTMLResponse)
 async def ai_assistant_page():
     return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>

@@ -41,6 +41,7 @@ except Exception:  # fallback
 # =================== FIX IMPORTS (Railway) ===================
 # Ces imports sont requis au niveau global (sinon NameError lors du boot).
 import sqlite3
+import bcrypt
 from fastapi import (
     FastAPI, Request, Response, Depends, HTTPException, status,
     Body, Form, UploadFile, File, Cookie, Header, Query, Path, BackgroundTasks,
@@ -4557,7 +4558,7 @@ class DatabaseManager:
             stored_hash = result[0]
             try:
                 #  CORRECTION 1: Vrification scurise avec bcrypt
-                return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
+                return bcrypt.checkpw(password.encode('utf-8'), (stored_hash if isinstance(stored_hash,(bytes,bytearray)) else stored_hash.encode('utf-8')))
             except Exception as e:
                 print(f"❌ Erreur vérification password: {e}")
                 return False

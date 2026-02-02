@@ -15270,6 +15270,138 @@ async def reset_daily_loss():
 
 
 # ============= API WATCHLIST & ALERTES =============
+
+# =======================
+# RISK API EXTENSIONS (WOW)
+# =======================
+
+_RISK_WOW_MARKET_CACHE = {"ts": 0.0, "data": None}
+_RISK_WOW_MARKET_TTL_SEC = 60
+
+async def _get_risk_market_stats_cached():
+    """Fetches real-time market stats from public APIs with a short in-memory cache."""
+    try:
+        import time as _time
+        now = _time.time()
+    except Exception:
+        now = 0.0
+
+    if _RISK_WOW_MARKET_CACHE.get("data") is not None and now and (now - float(_RISK_WOW_MARKET_CACHE.get("ts", 0.0))) < _RISK_WOW_MARKET_TTL_SEC:
+        return _RISK_WOW_MARKET_CACHE["data"]
+
+    stats = {
+        "btc_price_usd": None,
+        "btc_change_24h_pct": None,
+        "total_market_cap_usd": None,
+        "market_cap_change_24h_pct": None,
+        "btc_dominance_pct": None,
+        "fear_greed": None,  # {value:int, classification:str}
+        "source": {
+            "btc_price": "binance",
+            "global": "coingecko",
+            "fear_greed": "alternative.me"
+        }
+    }
+
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # BTC price + 24h change (Binance)
+            try:
+                r = await client.get("https://api.binance.com/api/v3/ticker/24hr", params={"symbol": "BTCUSDT"})
+                if r.status_code == 200:
+                    j = r.json()
+                    # Binance fields are strings
+                    stats["btc_price_usd"] = float(j.get("lastPrice")) if j.get("lastPrice") is not None else None
+                    stats["btc_change_24h_pct"] = float(j.get("priceChangePercent")) if j.get("priceChangePercent") is not None else None
+            except Exception:
+                pass
+
+            # Global market stats (CoinGecko)
+            try:
+                r = await client.get("https://api.coingecko.com/api/v3/global")
+                if r.status_code == 200:
+                    j = r.json() or {}
+                    data = j.get("data") or {}
+                    total_mc = (data.get("total_market_cap") or {}).get("usd")
+                    mc_chg = data.get("market_cap_change_percentage_24h_usd")
+                    btc_dom = (data.get("market_cap_percentage") or {}).get("btc")
+                    stats["total_market_cap_usd"] = float(total_mc) if total_mc is not None else None
+                    stats["market_cap_change_24h_pct"] = float(mc_chg) if mc_chg is not None else None
+                    stats["btc_dominance_pct"] = float(btc_dom) if btc_dom is not None else None
+            except Exception:
+                pass
+
+            # Fear & Greed index (Alternative.me)
+            try:
+                r = await client.get("https://api.alternative.me/fng/", params={"limit": 1, "format": "json"})
+                if r.status_code == 200:
+                    j = r.json() or {}
+                    d0 = (j.get("data") or [{}])[0] or {}
+                    val = d0.get("value")
+                    cls = d0.get("value_classification")
+                    stats["fear_greed"] = {
+                        "value": int(val) if val is not None else None,
+                        "classification": str(cls) if cls is not None else None
+                    }
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    try:
+        _RISK_WOW_MARKET_CACHE["ts"] = now
+        _RISK_WOW_MARKET_CACHE["data"] = stats
+    except Exception:
+        pass
+
+    return stats
+
+
+@app.get("/api/risk/market-stats")
+async def api_risk_market_stats():
+    """Real market data for the risk-management dashboard (cached ~60s)."""
+    return await _get_risk_market_stats_cached()
+
+
+@app.get("/api/risk/overview")
+async def api_risk_overview():
+    """High-level risk overview from current saved settings."""
+    try:
+        eq = float(risk_settings.get("equity") or 0.0)
+        max_risk_pct = float(risk_settings.get("max_risk_pct") or 1.0)
+        daily_limit = float(risk_settings.get("daily_loss_limit") or 0.0)
+        daily_loss = float(risk_settings.get("daily_loss") or 0.0)
+    except Exception:
+        eq, max_risk_pct, daily_limit, daily_loss = 0.0, 1.0, 0.0, 0.0
+
+    used_pct = 0.0
+    if daily_limit > 0:
+        used_pct = min(100.0, max(0.0, (daily_loss / daily_limit) * 100.0))
+
+    return {
+        "equity": eq,
+        "max_risk_pct": max_risk_pct,
+        "daily_loss_limit": daily_limit,
+        "daily_loss": daily_loss,
+        "daily_used_pct": used_pct,
+        "daily_remaining": max(0.0, daily_limit - daily_loss),
+        "limit_reached": bool(daily_limit > 0 and daily_loss >= daily_limit),
+    }
+
+
+@app.post("/api/risk/reset")
+async def api_risk_reset_alias():
+    """Alias for older frontend calls: resets daily loss counters."""
+    try:
+        from datetime import datetime as _dt
+        risk_settings["daily_loss"] = 0.0
+        risk_settings["daily_last_reset"] = _dt.utcnow().strftime("%Y-%m-%d")
+        save_risk_settings()
+    except Exception:
+        pass
+    return {"ok": True}
+
 @app.get("/api/watchlist")
 async def api_watchlist():
     # Retourne la config watchlist (sans market data)
@@ -23243,178 +23375,659 @@ async def success_stories():
 </html>""")
 
 @app.get("/risk-management", response_class=HTMLResponse)
-async def risk_management_page():
-    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
-<body>
-<div class="container">
-<div class="header"><h1>⚖️ RISK MANAGEMENT</h1><p>Gestion professionnelle du risque</p></div>
+async def risk_management(request: Request):
+    # Auth + plan gate
+    user = get_user_from_request(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
 
+    route_path = "/risk-management"
+    if not check_route_permission(user, route_path):
+        return access_denied_page(user, route_path, request)
 
-<div class="card">
-<h2>📊 Paramètres de Risque</h2>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-bottom:30px;">
-    <div class="stat-box">
-        <div class="label">Capital Total</div>
-        <div class="value" id="totalCapital">$10,000</div>
+    # Current settings (server-side defaults)
+    settings = dict(risk_management_settings or {})
+    risk_pct_default = float(settings.get("risk_pct", 1.0) or 1.0)
+    max_daily_loss_default = float(settings.get("max_daily_loss_pct", 3.0) or 3.0)
+    max_open_trades_default = int(settings.get("max_open_trades", 3) or 3)
+    use_atr_default = bool(settings.get("use_atr", False))
+
+    # Some user context (best-effort)
+    user_email = (user.get("email") or user.get("username") or "").strip() or "Connecté"
+    user_plan = (user.get("plan") or user.get("subscription_plan") or user.get("active_plan") or "").strip() or "—"
+
+    body = """
+    <div class="rm-hero">
+      <div>
+        <div class="rm-kicker">🛡️ Risk Management • Contrôle & discipline</div>
+        <div class="rm-title">Gestion des risques <span class="rm-glow">WOW</span></div>
+        <div class="rm-sub">
+          Tout ce qui suit est basé sur des calculs réels (math + tes réglages) et, pour la section marché,
+          sur des données live <strong>CoinGecko</strong> mises à jour en temps réel.
+        </div>
+        <div class="rm-badges">
+          <span class="rm-badge">Compte: <strong>__USER_EMAIL__</strong></span>
+          <span class="rm-badge">Plan: <strong>__USER_PLAN__</strong></span>
+          <span class="rm-badge">Risque / trade: <strong id="badgeRisk">__RISK_PCT__%</strong></span>
+          <span class="rm-badge">Perte max / jour: <strong id="badgeDaily">__DAILY_LOSS__%</strong></span>
+        </div>
+      </div>
+      <div class="rm-hero-card">
+        <div class="rm-hero-card-title">📌 Règle d’or</div>
+        <div class="rm-hero-card-text">
+          <strong>Survivre</strong> = priorité #1.<br>
+          Si tu protèges ton capital, le marché te donnera des opportunités infinies.
+        </div>
+        <div class="rm-mini">
+          <div class="rm-mini-item">
+            <div class="rm-mini-k">Risque</div>
+            <div class="rm-mini-v" id="miniRisk">__RISK_PCT__%</div>
+          </div>
+          <div class="rm-mini-item">
+            <div class="rm-mini-k">Trades max</div>
+            <div class="rm-mini-v" id="miniTrades">__MAX_TRADES__</div>
+          </div>
+          <div class="rm-mini-item">
+            <div class="rm-mini-k">Mode ATR</div>
+            <div class="rm-mini-v" id="miniAtr">__ATR__</div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="stat-box">
-        <div class="label">Risque par Trade</div>
-        <div class="value" id="riskPerTrade">2%</div>
-    </div>
-    <div class="stat-box">
-        <div class="label">Trades Ouverts</div>
-        <div class="value" id="openTrades">0 / 3</div>
-    </div>
-    <div class="stat-box">
-        <div class="label">Perte Quotidienne</div>
-        <div class="value" id="dailyLoss" style="color:#ef4444;">-0%</div>
-    </div>
-</div>
 
-<h3 style="color:#60a5fa;margin-bottom:15px;">⚙️ Modifier les Paramètres</h3>
-<div style="max-width:600px;">
-    <label style="color:#94a3b8;display:block;margin-bottom:5px;">💰 Capital Total (USD)</label>
-    <input type="number" id="inputCapital" value="10000" min="100" step="100">
-    
-    <label style="color:#94a3b8;display:block;margin-bottom:5px;">📉 Risque par Trade (%)</label>
-    <input type="number" id="inputRisk" value="2" min="0.5" max="10" step="0.5">
-    
-    <label style="color:#94a3b8;display:block;margin-bottom:5px;">📊 Trades Ouverts Maximum</label>
-    <input type="number" id="inputMaxTrades" value="3" min="1" max="10">
-    
-    <label style="color:#94a3b8;display:block;margin-bottom:5px;">🚫 Perte Maximale Quotidienne (%)</label>
-    <input type="number" id="inputMaxDailyLoss" value="5" min="1" max="20" step="0.5">
-    
-    <button onclick="saveSettings()" style="width:100%;margin-top:10px;">💾 Sauvegarder</button>
-    <button onclick="resetDaily()" class="btn-danger" style="width:100%;margin-top:10px;">🔄 Réinitialiser Perte Quotidienne</button>
-</div>
-</div>
+    <div class="rm-grid">
+      <!-- Settings -->
+      <div class="rm-card rm-span-5">
+        <div class="rm-card-head">
+          <div>
+            <div class="rm-card-title">⚙️ Paramètres de risque</div>
+            <div class="rm-card-sub">Tes règles → appliquées aux calculateurs et au sizing.</div>
+          </div>
+          <button class="rm-btn rm-btn-ghost" id="btnLoad">↻ Charger</button>
+        </div>
 
-<div class="card">
-<h2>🧮 Calculateur de Position</h2>
-<div style="max-width:600px;">
-    <label style="color:#94a3b8;display:block;margin-bottom:5px;">Symbol (ex: BTCUSDT)</label>
-    <input type="text" id="calcSymbol" placeholder="BTCUSDT">
-    
-    <label style="color:#94a3b8;display:block;margin-bottom:5px;">Prix d'Entrée</label>
-    <input type="number" id="calcEntry" placeholder="67000" step="0.00000001">
-    
-    <label style="color:#94a3b8;display:block;margin-bottom:5px;">Stop Loss</label>
-    <input type="number" id="calcSL" placeholder="66000" step="0.00000001">
-    
-    <button onclick="calculatePosition()" style="width:100%;">🧮 Calculer la Taille de Position</button>
-</div>
+        <div class="rm-form">
+          <div class="rm-field">
+            <label>Risque par trade (%)</label>
+            <input id="setRiskPct" type="number" step="0.01" min="0.01" max="10" value="__RISK_PCT__">
+            <div class="rm-hint">Ex: 1% = tu risques 10$ pour chaque 1000$.</div>
+          </div>
 
-<div id="calcResult" style="margin-top:20px;"></div>
-</div>
+          <div class="rm-field">
+            <label>Perte max par jour (%)</label>
+            <input id="setDailyLoss" type="number" step="0.01" min="0.1" max="25" value="__DAILY_LOSS__">
+            <div class="rm-hint">Si tu atteins ça → tu arrêtes la journée. Discipline.</div>
+          </div>
 
-<div class="card">
-<h2>📚 Guide du Risk Management</h2>
-<div style="color:#94a3b8;line-height:1.8;">
-    <p style="margin-bottom:15px;"><strong style="color:#60a5fa;">💰 Capital Total:</strong> Le montant total que vous êtes prêt à investir dans le trading.</p>
-    <p style="margin-bottom:15px;"><strong style="color:#60a5fa;">📉 Risque par Trade:</strong> Pourcentage de votre capital que vous risquez sur chaque trade (recommandé: 1-2%).</p>
-    <p style="margin-bottom:15px;"><strong style="color:#60a5fa;">📊 Trades Ouverts Max:</strong> Nombre maximum de positions ouvertes simultanément (recommandé: 3-5).</p>
-    <p style="margin-bottom:15px;"><strong style="color:#60a5fa;">🚫 Perte Max Quotidienne:</strong> Si vous perdez ce % en une journée, arrêtez de trader (recommandé: 5%).</p>
-    <p style="margin-bottom:15px;"><strong style="color:#60a5fa;">🧮 Position Sizing:</strong> Calculez automatiquement la taille idéale de votre position basée sur votre risque.</p>
-</div>
-</div>
+          <div class="rm-field">
+            <label>Nb max de trades ouverts</label>
+            <input id="setMaxTrades" type="number" step="1" min="1" max="25" value="__MAX_TRADES__">
+            <div class="rm-hint">Évite la sur-exposition et le “revenge trading”.</div>
+          </div>
 
-</div>
-
-<script>
-async function loadSettings() {{
-    const res = await fetch('/api/risk/settings');
-    const data = await res.json();
-    
-    document.getElementById('totalCapital').textContent = '$' + data.total_capital.toLocaleString();
-    document.getElementById('riskPerTrade').textContent = data.risk_per_trade + '%';
-    document.getElementById('dailyLoss').textContent = '-' + data.daily_loss.toFixed(2) + '%';
-    
-    // Compter les trades ouverts
-    const tradesRes = await fetch('/api/trades');
-    const tradesData = await tradesRes.json();
-    const openCount = tradesData.trades.filter(t => t.status === 'open').length;
-    document.getElementById('openTrades').textContent = openCount + ' / ' + data.max_open_trades;
-    
-    // Remplir les inputs
-    document.getElementById('inputCapital').value = data.total_capital;
-    document.getElementById('inputRisk').value = data.risk_per_trade;
-    document.getElementById('inputMaxTrades').value = data.max_open_trades;
-    document.getElementById('inputMaxDailyLoss').value = data.max_daily_loss;
-}}
-
-async function saveSettings() {{
-    const capital = parseFloat(document.getElementById('inputCapital').value);
-    const risk = parseFloat(document.getElementById('inputRisk').value);
-    const maxTrades = parseInt(document.getElementById('inputMaxTrades').value);
-    const maxLoss = parseFloat(document.getElementById('inputMaxDailyLoss').value);
-    
-    const res = await fetch('/api/risk/update', {{
-        method: 'POST',
-        headers: {{'Content-Type': 'application/json'}},
-        body: JSON.stringify({{
-            total_capital: capital,
-            risk_per_trade: risk,
-            max_open_trades: maxTrades,
-            max_daily_loss: maxLoss
-        }})
-    }});
-    
-    const data = await res.json();
-    if (data.ok) {{
-        alert('✅ Paramètres sauvegardés !');
-        loadSettings();
-    }}
-}}
-
-async function resetDaily() {{
-    if (!confirm('Voulez-vous réinitialiser la perte quotidienne ?')) return;
-    
-    const res = await fetch('/api/risk/reset-daily', {{method: 'POST'}});
-    const data = await res.json();
-    
-    if (data.ok) {{
-        alert('✅ Perte quotidienne réinitialisée !');
-        loadSettings();
-    }}
-}}
-
-async function calculatePosition() {{
-    const symbol = document.getElementById('calcSymbol').value;
-    const entry = parseFloat(document.getElementById('calcEntry').value);
-    const sl = parseFloat(document.getElementById('calcSL').value);
-    
-    if (!symbol || !entry || !sl) {{
-        alert('❌ Veuillez remplir tous les champs');
-        return;
-    }}
-    
-    const res = await fetch(`/api/risk/position-size?symbol=${{symbol}}&entry=${{entry}}&sl=${{sl}}`);
-    const data = await res.json();
-    
-    if (data.ok) {{
-        document.getElementById('calcResult').innerHTML = `
-            <div class="alert-success">
-                <h3 style="margin-bottom:15px;">✅ Résultat du Calcul</h3>
-                <p><strong>Taille de Position:</strong> ${{data.position_size.toFixed(8)}} ${{symbol.replace('USDT', '')}}</p>
-                <p><strong>Valeur de la Position:</strong> $${{data.position_value.toLocaleString()}}</p>
-                <p><strong>Montant Risqué:</strong> $${{data.risk_amount.toLocaleString()}}</p>
-                <p><strong>Distance du SL:</strong> ${{data.stop_distance_percent.toFixed(2)}}%</p>
+          <div class="rm-field rm-toggle">
+            <label>Stop basé sur ATR (optionnel)</label>
+            <div class="rm-switch">
+              <input id="setUseAtr" type="checkbox" __ATR_CHECKED__>
+              <span class="rm-slider"></span>
             </div>
-        `;
-    }} else {{
-        document.getElementById('calcResult').innerHTML = `<div class="alert-error">❌ Erreur: ${{data.error}}</div>`;
-    }}
-}}
+            <div class="rm-hint">Si OFF: stop = % ou prix exact (ton choix).</div>
+          </div>
+        </div>
 
-loadSettings();
-</script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Risk Management ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">🎯 Pourquoi ?</h3><p style="line-height: 1.8; color: #666;">Gestion risque = compétence #1 en trading!</p><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>❌ 95% traders perdent (mauvaise gestion)</li><li>✅ Ne jamais risquer &gt; 1-2% par trade</li><li>🎯 Survivre pour trader demain</li><li>💰 Protéger capital &gt; Faire profits</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🧮 5 Calculateurs</h3><ul style="line-height: 1.8; color: #555;"><li><strong>1️⃣ Position Size:</strong> Combien acheter?</li><li><strong>2️⃣ Risk/Reward:</strong> Ratio gain/perte</li><li><strong>3️⃣ Stop Loss:</strong> Où placer?</li><li><strong>4️⃣ Take Profit:</strong> Cibles profit</li><li><strong>5️⃣ Portfolio Risk:</strong> Risque total</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">💡 Exemple</h3><p style="line-height: 1.8; color: #666;"><strong>Position Size Calculator:</strong></p><ul style="line-height: 1.6; color: #555; margin-left: 20px;"><li>Capital: $10,000</li><li>Risque: 2% = $200</li><li>Entry: $100, Stop: $95</li><li>→ Acheter 4 BTC!</li></ul><p style="color: #3498db; font-weight: bold; margin-top: 15px;">🎯 Si R/R &lt; 1:2, ne prenez PAS le trade!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">⚠️ 10 Règles d'OR</h3><ol style="line-height: 1.6; color: #555; font-size: 14px;"><li>Max 2% risque par trade</li><li>TOUJOURS stop loss</li><li>R/R minimum 1:2</li><li>Diversifier (max 20%/crypto)</li><li>Calculer size AVANT</li><li>Pas moyenner perte</li><li>Profits partiels</li><li>Pas trader émotionnel</li><li>Plan sortie avant entrée</li><li>Discipline 100%</li></ol></div></div></div>
-</body></html>""")
+        <div class="rm-actions">
+          <button class="rm-btn" id="btnSave">💾 Sauvegarder</button>
+          <button class="rm-btn rm-btn-warn" id="btnReset">↩ Réinitialiser</button>
+          <div class="rm-status" id="settingsStatus"></div>
+        </div>
+      </div>
 
+      <!-- Position sizing -->
+      <div class="rm-card rm-span-7">
+        <div class="rm-card-head">
+          <div>
+            <div class="rm-card-title">📏 Calculateur de position (Position Sizing)</div>
+            <div class="rm-card-sub">Tu entres Entry + Stop → on te donne la taille exacte à prendre.</div>
+          </div>
+          <div class="rm-pill">Objectif: constance > adrénaline</div>
+        </div>
 
-# ============= PAGE WATCHLIST & ALERTES =============
+        <div class="rm-form rm-form-2">
+          <div class="rm-field">
+            <label>Capital (USD)</label>
+            <input id="cap" type="number" step="0.01" min="0" value="1000">
+          </div>
+
+          <div class="rm-field">
+            <label>Symbol (ex: BTCUSDT)</label>
+            <input id="sym" type="text" value="BTCUSDT">
+          </div>
+
+          <div class="rm-field">
+            <label>Entry</label>
+            <input id="entry" type="number" step="0.0001" min="0" value="40000">
+          </div>
+
+          <div class="rm-field">
+            <label>Stop</label>
+            <input id="stop" type="number" step="0.0001" min="0" value="39200">
+          </div>
+
+          <div class="rm-field">
+            <label>Take Profit (optionnel)</label>
+            <input id="tp" type="number" step="0.0001" min="0" placeholder="ex: 42000">
+          </div>
+
+          <div class="rm-field">
+            <label>Direction</label>
+            <select id="side">
+              <option value="long" selected>Long</option>
+              <option value="short">Short</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="rm-actions">
+          <button class="rm-btn" id="btnCalc">⚡ Calculer</button>
+          <div class="rm-status" id="calcStatus"></div>
+        </div>
+
+        <div class="rm-results">
+          <div class="rm-metric">
+            <div class="rm-metric-k">Risque $</div>
+            <div class="rm-metric-v" id="outRisk">$—</div>
+          </div>
+          <div class="rm-metric">
+            <div class="rm-metric-k">Taille position</div>
+            <div class="rm-metric-v" id="outPos">—</div>
+          </div>
+          <div class="rm-metric">
+            <div class="rm-metric-k">Stop distance</div>
+            <div class="rm-metric-v" id="outStop">—</div>
+          </div>
+          <div class="rm-metric">
+            <div class="rm-metric-k">R:R (si TP)</div>
+            <div class="rm-metric-v" id="outRR">—</div>
+          </div>
+        </div>
+
+        <div class="rm-note">
+          🔥 Astuce: si ta taille de position est “trop grosse”, c’est ton stop qui est trop serré (ou ton risque % trop élevé).
+        </div>
+      </div>
+
+      <!-- Live market risk -->
+      <div class="rm-card rm-span-12">
+        <div class="rm-card-head">
+          <div>
+            <div class="rm-card-title">🌐 Risque Marché Live</div>
+            <div class="rm-card-sub">Volatilité + drawdown calculés sur les prix historiques (données live).</div>
+          </div>
+          <div class="rm-market-controls">
+            <select id="mktSymbol"></select>
+            <button class="rm-btn rm-btn-ghost" id="btnRefresh">↻ Rafraîchir</button>
+          </div>
+        </div>
+
+        <div class="rm-market-grid">
+          <div class="rm-chart-wrap">
+            <canvas id="mktChart" height="120"></canvas>
+          </div>
+
+          <div class="rm-market-metrics">
+            <div class="rm-metric big">
+              <div class="rm-metric-k">Prix</div>
+              <div class="rm-metric-v" id="mktPrice">—</div>
+              <div class="rm-metric-s" id="mktChange">—</div>
+            </div>
+
+            <div class="rm-metric">
+              <div class="rm-metric-k">Volatilité 7j</div>
+              <div class="rm-metric-v" id="mktVol7">—</div>
+            </div>
+
+            <div class="rm-metric">
+              <div class="rm-metric-k">Volatilité 30j</div>
+              <div class="rm-metric-v" id="mktVol30">—</div>
+            </div>
+
+            <div class="rm-metric">
+              <div class="rm-metric-k">Max Drawdown 30j</div>
+              <div class="rm-metric-v" id="mktDD">—</div>
+            </div>
+
+            <div class="rm-metric">
+              <div class="rm-metric-k">Risk Score</div>
+              <div class="rm-metric-v" id="mktScore">—</div>
+              <div class="rm-progress"><div id="mktBar" class="rm-bar"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rm-heatmap">
+          <div class="rm-heat-head">
+            <div class="rm-heat-title">🔥 Heatmap rapide (Top coins)</div>
+            <div class="rm-heat-sub">24h / 7j, volume & market cap.</div>
+          </div>
+          <div class="rm-table-wrap">
+            <table class="rm-table">
+              <thead>
+                <tr>
+                  <th>Coin</th>
+                  <th>Prix</th>
+                  <th>24h</th>
+                  <th>7j</th>
+                  <th>Volume</th>
+                  <th>Market Cap</th>
+                </tr>
+              </thead>
+              <tbody id="heatBody"></tbody>
+            </table>
+          </div>
+          <div class="rm-footnote">
+            * Les métriques “volatilité/drawdown” servent à adapter ton sizing/stop. Plus c’est volatile → plus tu réduis la taille.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const fmtUSD = (v) => {
+        if (v === null || v === undefined || isNaN(v)) return "—";
+        return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits: 2 }).format(v);
+      };
+      const fmtPct = (v) => {
+        if (v === null || v === undefined || isNaN(v)) return "—";
+        const s = (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+        return s;
+      };
+      const heatColor = (pct) => {
+        if (pct === null || pct === undefined || isNaN(pct)) return "";
+        // negative = red, positive = green
+        const a = Math.min(0.22, Math.max(0.06, Math.abs(pct) / 100 * 0.22));
+        return pct >= 0 ? `rgba(16,185,129,${a})` : `rgba(239,68,68,${a})`;
+      };
+
+      let chart = null;
+
+      async function loadSettings() {
+        $('settingsStatus').textContent = "Chargement...";
+        try {
+          const r = await fetch('/api/risk/settings');
+          const j = await r.json();
+          if (!r.ok) throw new Error(j?.error || "Erreur");
+          $('setRiskPct').value = (j.risk_pct ?? 1.0);
+          $('setDailyLoss').value = (j.max_daily_loss_pct ?? 3.0);
+          $('setMaxTrades').value = (j.max_open_trades ?? 3);
+          $('setUseAtr').checked = !!j.use_atr;
+
+          $('badgeRisk').textContent = `${Number(j.risk_pct ?? 1.0).toFixed(2)}%`;
+          $('badgeDaily').textContent = `${Number(j.max_daily_loss_pct ?? 3.0).toFixed(2)}%`;
+          $('miniRisk').textContent = `${Number(j.risk_pct ?? 1.0).toFixed(2)}%`;
+          $('miniTrades').textContent = `${Number(j.max_open_trades ?? 3)}`;
+          $('miniAtr').textContent = (j.use_atr ? "ON" : "OFF");
+
+          $('settingsStatus').textContent = "OK ✅";
+        } catch (e) {
+          $('settingsStatus').textContent = "Erreur ⚠️";
+        }
+      }
+
+      async function saveSettings() {
+        $('settingsStatus').textContent = "Sauvegarde...";
+        try {
+          const payload = {
+            risk_pct: Number($('setRiskPct').value || 1.0),
+            max_daily_loss_pct: Number($('setDailyLoss').value || 3.0),
+            max_open_trades: Number($('setMaxTrades').value || 3),
+            use_atr: $('setUseAtr').checked
+          };
+          const r = await fetch('/api/risk/settings', {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j?.error || "Erreur");
+
+          $('badgeRisk').textContent = `${payload.risk_pct.toFixed(2)}%`;
+          $('badgeDaily').textContent = `${payload.max_daily_loss_pct.toFixed(2)}%`;
+          $('miniRisk').textContent = `${payload.risk_pct.toFixed(2)}%`;
+          $('miniTrades').textContent = `${payload.max_open_trades}`;
+          $('miniAtr').textContent = (payload.use_atr ? "ON" : "OFF");
+
+          $('settingsStatus').textContent = "Sauvegardé ✅";
+        } catch (e) {
+          $('settingsStatus').textContent = "Erreur ⚠️";
+        }
+      }
+
+      async function resetSettings() {
+        $('settingsStatus').textContent = "Reset...";
+        try {
+          const r = await fetch('/api/risk/reset', { method:'POST' });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j?.error || "Erreur");
+          await loadSettings();
+          $('settingsStatus').textContent = "Réinitialisé ✅";
+        } catch (e) {
+          $('settingsStatus').textContent = "Erreur ⚠️";
+        }
+      }
+
+      async function calcPosition() {
+        $('calcStatus').textContent = "Calcul...";
+        try {
+          const q = new URLSearchParams({
+            capital: $('cap').value || "0",
+            symbol: $('sym').value || "BTCUSDT",
+            entry: $('entry').value || "0",
+            stop: $('stop').value || "0"
+          });
+          const r = await fetch('/api/risk/position-size?' + q.toString());
+          const j = await r.json();
+          if (!r.ok) throw new Error(j?.error || "Erreur");
+
+          $('outRisk').textContent = fmtUSD(j.risk_amount ?? null);
+          $('outPos').textContent = (j.position_size ?? "—") + (j.units ? ` (${j.units})` : "");
+          $('outStop').textContent = (j.stop_distance_pct ? j.stop_distance_pct.toFixed(2) + "%" : "—");
+
+          // Risk:Reward if TP provided
+          const tp = Number($('tp').value || 0);
+          const entry = Number($('entry').value || 0);
+          const stop = Number($('stop').value || 0);
+          const side = $('side').value || "long";
+          let rr = null;
+          if (tp > 0 && entry > 0 && stop > 0) {
+            const risk = side === "short" ? (stop - entry) : (entry - stop);
+            const reward = side === "short" ? (entry - tp) : (tp - entry);
+            if (risk > 0 && reward > 0) rr = reward / risk;
+          }
+          $('outRR').textContent = rr ? rr.toFixed(2) : "—";
+
+          $('calcStatus').textContent = "OK ✅";
+        } catch (e) {
+          $('calcStatus').textContent = "Erreur ⚠️";
+        }
+      }
+
+      function setRiskBar(score) {
+        const v = Math.max(0, Math.min(100, Number(score || 0)));
+        $('mktBar').style.width = v + "%";
+        if (v < 35) $('mktBar').className = "rm-bar low";
+        else if (v < 70) $('mktBar').className = "rm-bar mid";
+        else $('mktBar').className = "rm-bar high";
+      }
+
+      async function loadHeatmap() {
+        try {
+          const r = await fetch('/api/risk/overview');
+          const j = await r.json();
+          if (!r.ok) throw new Error(j?.error || "Erreur");
+
+          // fill dropdown
+          const sel = $('mktSymbol');
+          sel.innerHTML = "";
+          for (const row of j.coins || []) {
+            const opt = document.createElement('option');
+            opt.value = row.symbol.toUpperCase() + "USDT";
+            opt.textContent = row.name + " (" + row.symbol.toUpperCase() + ")";
+            sel.appendChild(opt);
+          }
+          if (sel.options.length) sel.value = "BTCUSDT";
+
+          // table
+          const tb = $('heatBody');
+          tb.innerHTML = "";
+          for (const row of j.coins || []) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="cname">
+                <span class="dot"></span>
+                <div>
+                  <div class="nm">${row.name}</div>
+                  <div class="sm">${row.symbol.toUpperCase()}</div>
+                </div>
+              </td>
+              <td>${fmtUSD(row.price)}</td>
+              <td class="chg" style="background:${heatColor(row.change_24h)}">${fmtPct(row.change_24h)}</td>
+              <td class="chg" style="background:${heatColor(row.change_7d)}">${fmtPct(row.change_7d)}</td>
+              <td>${fmtUSD(row.volume)}</td>
+              <td>${fmtUSD(row.market_cap)}</td>
+            `;
+            tb.appendChild(tr);
+          }
+        } catch(e) {
+          // silent
+        }
+      }
+
+      async function loadMarketStats() {
+        const sym = $('mktSymbol').value || "BTCUSDT";
+        try {
+          const r = await fetch('/api/risk/market-stats?symbol=' + encodeURIComponent(sym) + '&days=30');
+          const j = await r.json();
+          if (!r.ok) throw new Error(j?.error || "Erreur");
+
+          $('mktPrice').textContent = fmtUSD(j.price);
+          $('mktChange').textContent = "24h: " + fmtPct(j.change_24h_pct);
+          $('mktChange').className = (j.change_24h_pct >= 0 ? "rm-metric-s up" : "rm-metric-s down");
+          $('mktVol7').textContent = fmtPct(j.vol_7d_pct);
+          $('mktVol30').textContent = fmtPct(j.vol_30d_pct);
+          $('mktDD').textContent = fmtPct(j.max_drawdown_30d_pct);
+          $('mktScore').textContent = (j.risk_score ?? 0).toFixed(0) + "/100";
+          setRiskBar(j.risk_score ?? 0);
+
+          const labels = (j.series || []).map(x => x.t);
+          const values = (j.series || []).map(x => x.p);
+
+          if (chart) chart.destroy();
+          const ctx = $('mktChart').getContext('2d');
+          chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [{ label: sym, data: values, borderWidth: 2, tension: 0.25, pointRadius: 0 }]
+            },
+            options: {
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { ticks: { maxTicksLimit: 10 } },
+                y: { ticks: { callback: (v) => v } }
+              }
+            }
+          });
+        } catch(e) {
+          // show minimal fallback
+          $('mktPrice').textContent = "—";
+          $('mktChange').textContent = "—";
+        }
+      }
+
+      // UI bindings
+      $('btnLoad').addEventListener('click', loadSettings);
+      $('btnSave').addEventListener('click', saveSettings);
+      $('btnReset').addEventListener('click', resetSettings);
+      $('btnCalc').addEventListener('click', calcPosition);
+      $('btnRefresh').addEventListener('click', loadMarketStats);
+      $('mktSymbol').addEventListener('change', loadMarketStats);
+
+      // init
+      loadHeatmap().then(loadMarketStats);
+      // load settings in background (not blocking)
+      loadSettings();
+    </script>
+    """
+
+    # Inject server-side values safely
+    body = body.replace("__USER_EMAIL__", _html.escape(user_email))
+    body = body.replace("__USER_PLAN__", _html.escape(user_plan))
+    body = body.replace("__RISK_PCT__", f"{risk_pct_default:.2f}")
+    body = body.replace("__DAILY_LOSS__", f"{max_daily_loss_default:.2f}")
+    body = body.replace("__MAX_TRADES__", str(max_open_trades_default))
+    body = body.replace("__ATR__", "ON" if use_atr_default else "OFF")
+    body = body.replace("__ATR_CHECKED__", "checked" if use_atr_default else "")
+
+    html = _simple_page(
+        title="Gestion des risques",
+        body_html=body,
+        page_key="/risk-management",
+        styles="""
+        /* Hide default H1 to use our hero */
+        h1{display:none !important;}
+
+        .rm-hero{
+          display:grid; grid-template-columns: 1.2fr 0.8fr; gap:16px;
+          padding:18px; border-radius:18px;
+          background: radial-gradient(800px 200px at 30% 0%, rgba(99,102,241,.35), transparent 60%),
+                      linear-gradient(135deg, rgba(15,23,42,.95), rgba(30,41,59,.90));
+          box-shadow: 0 18px 40px rgba(0,0,0,.25);
+          border: 1px solid rgba(255,255,255,.08);
+          margin-bottom:16px;
+        }
+        .rm-kicker{color:rgba(255,255,255,.7); font-weight:700; letter-spacing:.3px;}
+        .rm-title{font-size:40px; font-weight:900; margin-top:6px; line-height:1.08;}
+        .rm-glow{background: linear-gradient(90deg,#60a5fa,#a78bfa,#34d399); -webkit-background-clip:text; color:transparent;}
+        .rm-sub{margin-top:10px; color:rgba(255,255,255,.8); max-width:72ch;}
+        .rm-badges{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+        .rm-badge{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10);
+                 padding:8px 10px; border-radius:999px; color:rgba(255,255,255,.85); font-size:13px;}
+        .rm-hero-card{
+          border-radius:16px;
+          background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+          border: 1px solid rgba(255,255,255,.12);
+          padding:14px;
+        }
+        .rm-hero-card-title{font-weight:900; font-size:14px; color:rgba(255,255,255,.9);}
+        .rm-hero-card-text{margin-top:8px; color:rgba(255,255,255,.78); line-height:1.45;}
+        .rm-mini{display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:12px;}
+        .rm-mini-item{padding:10px; border-radius:14px; background:rgba(0,0,0,.18); border:1px solid rgba(255,255,255,.08);}
+        .rm-mini-k{font-size:12px; color:rgba(255,255,255,.65); font-weight:700;}
+        .rm-mini-v{font-size:18px; font-weight:900; margin-top:3px;}
+
+        .rm-grid{display:grid; grid-template-columns: repeat(12, 1fr); gap:14px;}
+        .rm-card{
+          background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+          border: 1px solid rgba(255,255,255,.10);
+          border-radius:18px;
+          padding:14px;
+          box-shadow: 0 12px 30px rgba(0,0,0,.18);
+        }
+        .rm-card-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
+        .rm-card-title{font-weight:900; font-size:16px; color:rgba(255,255,255,.95);}
+        .rm-card-sub{color:rgba(255,255,255,.70); font-size:13px; margin-top:2px;}
+        .rm-pill{background: rgba(59,130,246,.20); border:1px solid rgba(59,130,246,.35);
+                padding:6px 10px; border-radius:999px; color:rgba(255,255,255,.9); font-weight:800; font-size:12px;}
+        .rm-span-5{grid-column: span 5;}
+        .rm-span-7{grid-column: span 7;}
+        .rm-span-12{grid-column: span 12;}
+
+        .rm-form{display:grid; grid-template-columns: 1fr 1fr; gap:12px;}
+        .rm-form-2{grid-template-columns: repeat(3, 1fr);}
+        .rm-field label{display:block; font-weight:800; font-size:12px; color:rgba(255,255,255,.75); margin-bottom:6px;}
+        .rm-field input, .rm-field select{
+          width:100%;
+          padding:10px 12px;
+          border-radius:12px;
+          border:1px solid rgba(255,255,255,.10);
+          background: rgba(2,6,23,.65);
+          color: rgba(255,255,255,.92);
+          outline:none;
+        }
+        .rm-field input:focus, .rm-field select:focus{border-color: rgba(99,102,241,.55); box-shadow: 0 0 0 3px rgba(99,102,241,.18);}
+        .rm-hint{margin-top:6px; font-size:12px; color:rgba(255,255,255,.55);}
+        .rm-toggle{grid-column: span 2;}
+
+        .rm-actions{display:flex; align-items:center; gap:10px; margin-top:12px;}
+        .rm-btn{
+          padding:10px 12px; border-radius:12px; border:1px solid rgba(99,102,241,.55);
+          background: linear-gradient(180deg, rgba(99,102,241,.85), rgba(99,102,241,.65));
+          color:white; font-weight:900; cursor:pointer;
+        }
+        .rm-btn:hover{filter:brightness(1.05);}
+        .rm-btn-ghost{
+          background: rgba(255,255,255,.06);
+          border: 1px solid rgba(255,255,255,.12);
+        }
+        .rm-btn-warn{
+          background: rgba(239,68,68,.18);
+          border: 1px solid rgba(239,68,68,.35);
+        }
+        .rm-status{color:rgba(255,255,255,.70); font-weight:800; font-size:12px; margin-left:auto;}
+
+        .rm-results{display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-top:10px;}
+        .rm-metric{padding:12px; border-radius:14px; background: rgba(0,0,0,.16); border: 1px solid rgba(255,255,255,.08);}
+        .rm-metric.big{grid-column: span 2;}
+        .rm-metric-k{font-size:12px; color:rgba(255,255,255,.65); font-weight:800;}
+        .rm-metric-v{font-size:18px; font-weight:900; margin-top:4px;}
+        .rm-metric-s{margin-top:4px; font-size:12px; font-weight:900;}
+        .rm-metric-s.up{color:#34d399;}
+        .rm-metric-s.down{color:#fb7185;}
+        .rm-note{margin-top:10px; color:rgba(255,255,255,.72); font-weight:800; font-size:13px;}
+
+        .rm-market-controls{display:flex; gap:8px; align-items:center;}
+        .rm-market-controls select{padding:9px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background: rgba(2,6,23,.55); color:rgba(255,255,255,.92);}
+
+        .rm-market-grid{display:grid; grid-template-columns: 1.2fr 0.8fr; gap:12px;}
+        .rm-chart-wrap{padding:12px; border-radius:16px; background: rgba(0,0,0,.14); border:1px solid rgba(255,255,255,.08);}
+        .rm-market-metrics{display:grid; grid-template-columns: 1fr 1fr; gap:10px;}
+        .rm-progress{height:10px; border-radius:999px; background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10); overflow:hidden; margin-top:8px;}
+        .rm-bar{height:100%; width:0%; border-radius:999px; background: rgba(99,102,241,.85);}
+        .rm-bar.low{background: rgba(34,197,94,.80);}
+        .rm-bar.mid{background: rgba(251,191,36,.85);}
+        .rm-bar.high{background: rgba(239,68,68,.85);}
+
+        .rm-heatmap{margin-top:14px;}
+        .rm-heat-head{display:flex; align-items:flex-end; justify-content:space-between; gap:10px; margin-bottom:10px;}
+        .rm-heat-title{font-weight:900; font-size:15px;}
+        .rm-heat-sub{color:rgba(255,255,255,.70); font-size:12px;}
+        .rm-table-wrap{overflow:auto; border-radius:14px; border:1px solid rgba(255,255,255,.10);}
+        .rm-table{width:100%; border-collapse:separate; border-spacing:0; background: rgba(2,6,23,.45);}
+        .rm-table th{position:sticky; top:0; background: rgba(2,6,23,.85); text-align:left; font-size:12px; padding:10px; color:rgba(255,255,255,.70); border-bottom:1px solid rgba(255,255,255,.10);}
+        .rm-table td{padding:10px; border-bottom:1px solid rgba(255,255,255,.06); font-weight:800; color:rgba(255,255,255,.88);}
+        .rm-table tr:hover td{background: rgba(255,255,255,.04);}
+        .rm-table .chg{border-radius:10px;}
+        .cname{display:flex; align-items:center; gap:10px;}
+        .cname .dot{width:10px; height:10px; border-radius:999px; background: rgba(99,102,241,.85); display:inline-block;}
+        .cname .nm{font-weight:900;}
+        .cname .sm{font-size:12px; color:rgba(255,255,255,.60); font-weight:800;}
+        .rm-footnote{margin-top:10px; color:rgba(255,255,255,.60); font-size:12px;}
+
+        @media (max-width: 1100px){
+          .rm-hero{grid-template-columns:1fr;}
+          .rm-span-5, .rm-span-7{grid-column: span 12;}
+          .rm-form-2{grid-template-columns: repeat(2, 1fr);}
+          .rm-market-grid{grid-template-columns:1fr;}
+          .rm-metric.big{grid-column: span 2;}
+        }
+        @media (max-width: 640px){
+          .rm-form{grid-template-columns:1fr;}
+          .rm-toggle{grid-column: span 1;}
+          .rm-results{grid-template-columns: 1fr 1fr;}
+          .rm-title{font-size:30px;}
+        }
+
+        /* Switch */
+        .rm-switch{position:relative; width:48px; height:28px;}
+        .rm-switch input{opacity:0; width:0; height:0;}
+        .rm-slider{
+          position:absolute; cursor:pointer; inset:0;
+          background: rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.12);
+          transition:.2s; border-radius:999px;
+        }
+        .rm-slider:before{
+          position:absolute; content:""; height:22px; width:22px; left:3px; top:2.5px;
+          background: rgba(255,255,255,.85); transition:.2s; border-radius:999px;
+        }
+        .rm-switch input:checked + .rm-slider{background: rgba(34,197,94,.22); border-color: rgba(34,197,94,.30);}
+        .rm-switch input:checked + .rm-slider:before{transform: translateX(19px); background: rgba(255,255,255,.95);}
+        """,
+        sidebar_html=SIDEBAR
+    )
+    return HTMLResponse(html)
+
 @app.get("/watchlist", response_class=HTMLResponse)
 async def watchlist_page():
     return HTMLResponse(

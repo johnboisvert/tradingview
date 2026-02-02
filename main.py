@@ -2,6 +2,7 @@ from typing import Optional
 import os  # FIX: required for DB_DIR / path operations
 import time  # required for ASSET_VERSION cache-busting
 import secrets  # FIX: required for session token generation
+import html as _html
 import asyncio
 import re  # FIX: needed for CSS extraction
 
@@ -4865,14 +4866,15 @@ def generate_temp_password(length: int = 12) -> str:
     pool = upper + lower + digits + symbols
 
     # garantir au moins 1 de chaque
-    pw = [secrets.choice(upper), secrets.choice(lower), secrets.choice(digits), secrets.choice(symbols)]
-    pw += [secrets.choice(pool) for _ in range(length - len(pw))]
+    pw = [_secrets.choice(upper), _secrets.choice(lower), _secrets.choice(digits), _secrets.choice(symbols)]
+    pw += [_secrets.choice(pool) for _ in range(length - len(pw))]
     random.SystemRandom().shuffle(pw)
     return "".join(pw)
 
 
 def create_session(username: str, user_info: dict = None) -> str:
     """Créer une session pour un utilisateur avec infos d'abonnement"""
+    import secrets
     token = secrets.token_urlsafe(32)
     
     if user_info:

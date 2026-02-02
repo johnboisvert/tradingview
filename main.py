@@ -15228,37 +15228,76 @@ async def update_risk_settings(request: dict):
     return {"ok": True, "settings": risk_management_settings}
 
 @app.get("/api/risk/position-size")
-async def calculate_position_size(symbol: str, entry: float, sl: float):
-    """Calculer la taille de position idéale basée sur le risk management"""
+async def calculate_position_size(
+    # Legacy params (used by older pages)
+    symbol: str | None = None,
+    entry: float = 0.0,
+    sl: float | None = None,
+    # New params (used by /risk-management WOW)
+    capital: float | None = None,
+    risk: float | None = None,   # risk % (e.g., 1.0)
+    stop: float | None = None,
+    side: str = "Long",
+    tp: float | None = None,
+):
+    """Calculer la taille de position idéale (legacy + v2).
+
+    - Legacy: symbol, entry, sl -> utilise risk_management_settings (capital + risk%).
+    - V2: capital, risk, entry, stop, side, tp -> calcule directement avec ces valeurs.
+    """
     try:
-        capital = risk_management_settings["total_capital"]
-        risk_percent = risk_management_settings["risk_per_trade"]
-        
-        # Montant risqu par trade
-        risk_amount = capital * (risk_percent / 100)
-        
-        # Distance entre entry et SL
-        stop_distance = abs(entry - sl)
-        stop_distance_percent = (stop_distance / entry) * 100
-        
-        # Taille de position
-        position_size = risk_amount / stop_distance
-        position_value = position_size * entry
-        
-        # Vrifier si a dpasse le capital
-        if position_value > capital:
-            position_size = capital / entry
-            position_value = capital
-        
+        entry_v = float(entry)
+        stop_v = stop if stop is not None else sl
+        if stop_v is None:
+            return {"ok": False, "error": "Paramètre manquant: stop (ou sl)."}
+        stop_v = float(stop_v)
+
+        capital_v = float(capital) if capital is not None else float(risk_management_settings.get("total_capital", 0) or 0)
+        risk_pct = float(risk) if risk is not None else float(risk_management_settings.get("risk_per_trade", 1) or 1)
+
+        if capital_v <= 0:
+            return {"ok": False, "error": "Capital invalide (doit être > 0)."}
+        if risk_pct <= 0:
+            return {"ok": False, "error": "Risque (%) invalide (doit être > 0)."}
+
+        side_norm = (side or "Long").strip().lower()
+        is_short = side_norm.startswith("s")
+
+        stop_distance = abs(entry_v - stop_v)
+        if stop_distance <= 0:
+            return {"ok": False, "error": "Entry et Stop doivent être différents."}
+
+        risk_amount = capital_v * (risk_pct / 100.0)
+        position_size = risk_amount / stop_distance  # quantité (unités)
+        position_value = position_size * entry_v
+
+        rr = None
+        if tp is not None and str(tp).strip() != "":
+            tp_v = float(tp)
+            reward = abs(tp_v - entry_v)
+            if reward > 0:
+                rr = reward / stop_distance
+
+        stop_distance_percent = (stop_distance / entry_v) * 100.0 if entry_v else None
+
         return {
             "ok": True,
+            "symbol": (symbol or "").upper() if symbol else None,
+            "side": "Short" if is_short else "Long",
+            "capital": round(capital_v, 2),
+            "risk_percent": round(risk_pct, 4),
+            "risk_amount": round(risk_amount, 2),
+            "entry": round(entry_v, 8),
+            "stop": round(stop_v, 8),
+            "stop_distance": round(stop_distance, 8),
+            "stop_distance_percent": round(stop_distance_percent, 4) if stop_distance_percent is not None else None,
             "position_size": round(position_size, 8),
             "position_value": round(position_value, 2),
-            "risk_amount": round(risk_amount, 2),
-            "stop_distance_percent": round(stop_distance_percent, 2)
+            "rr": round(rr, 4) if rr is not None else None,
         }
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
 
 @app.post("/api/risk/reset-daily")
 async def reset_daily_loss():
@@ -47398,8 +47437,8 @@ async def update_risk_settings(request: dict):
     
     return {"ok": True, "settings": risk_management_settings}
 
-@app.get("/api/risk/position-size")
-async def calculate_position_size(symbol: str, entry: float, sl: float):
+@app.get("/api/risk/position-size-legacy")
+async def calculate_position_size_legacy(symbol: str, entry: float, sl: float):
     """Calculer la taille de position idéale basée sur le risk management"""
     try:
         capital = risk_management_settings["total_capital"]

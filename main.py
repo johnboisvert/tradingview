@@ -3070,6 +3070,7 @@ def init_ebooks_table():
                 name TEXT NOT NULL,
                 email TEXT NOT NULL,
                 subject TEXT,
+                page TEXT,
                 message TEXT NOT NULL,
                 user_id TEXT,
                 status TEXT DEFAULT 'unread',
@@ -3081,12 +3082,23 @@ def init_ebooks_table():
                 name TEXT NOT NULL,
                 email TEXT NOT NULL,
                 subject TEXT,
+                page TEXT,
                 message TEXT NOT NULL,
                 user_id TEXT,
                 status TEXT DEFAULT 'unread',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )""")
         
+
+        # Migration: ajouter la colonne 'page' si elle n'existe pas (anciens déploiements)
+        try:
+            if DB_CONFIG["type"] == "postgres":
+                c.execute("ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS page TEXT")
+            else:
+                c.execute("ALTER TABLE contact_messages ADD COLUMN page TEXT")
+        except Exception:
+            pass
+
         conn.commit()
         conn.close()
         print(f"✅ Tables ebooks et contact créées ({DB_CONFIG['type']})")
@@ -3289,7 +3301,7 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             "/", "/health", "/favicon.ico",
             "/login", "/logout", "/register",
             "/admin-login",
-            "/contact", "/pricing",
+            "/contact", "/pricing", "/pricing-complete",
             "/telechargements", "/crypto-pepites",
             "/academy",
             "/crypto-academy",
@@ -5319,6 +5331,13 @@ def normalize_route_key(route: str) -> str:
     # garde la route telle quelle si pas d'alias
     rk = alias.get(rk, rk)
     return rk
+
+def normalize_route(route: str) -> str:
+    """Normalise une route (avec slash initial) pour la comparer aux clés de permissions."""
+    key = normalize_route_key(route)
+    # normalize_route_key renvoie sans slash (ex: 'pricing-complete'); on remet le slash.
+    return '/' + key if key else '/'
+
 
 def check_route_permission(user: dict, path: str) -> bool:
     """Décide si une route est accessible.
@@ -34574,7 +34593,10 @@ if not globals().get("_CONTACT_ROUTES_REGISTERED"):
 
         body = ""
         if sent:
-            body += _render_callout("Message envoyé ✅", "Merci! On te répond dès que possible (généralement en moins de 24h).")
+            if qs.get("fallback") == "1":
+                body += _render_callout("Message reçu ✅", "Message sauvegardé en mode secours (DB temporairement indisponible). On te répond dès que possible.")
+            else:
+                body += _render_callout("Message envoyé ✅", "Merci! On te répond dès que possible (généralement en moins de 24h).")
         elif msg:
             body += _render_callout("Info", msg)
 
@@ -34660,7 +34682,27 @@ if not globals().get("_CONTACT_ROUTES_REGISTERED"):
             except Exception as e:
                 # fallback: ne pas casser l'utilisateur
                 print(f"❌ contact_submit DB error: {e}")
-                return RedirectResponse(url="/contact?msg=Erreur serveur (DB). Réessaie dans quelques minutes.", status_code=303)
+                # En cas de DB down/verrouillée, on sauvegarde quand même le message dans un fichier JSONL
+                try:
+                    import json as _json
+                    from datetime import datetime as _dt
+                    fallback_path = os.getenv("CONTACT_FALLBACK_FILE", "/app/data/contact_fallback.jsonl")
+                    payload = {
+                        "ts": _dt.utcnow().isoformat() + "Z",
+                        "name": name,
+                        "email": email,
+                        "subject": subject,
+                        "message": message,
+                        "user_id": user_id,
+                        "error": str(e),
+                    }
+                    with open(fallback_path, "a", encoding="utf-8") as f:
+                        f.write(_json.dumps(payload, ensure_ascii=False) + "\n")
+                    # On confirme à l'utilisateur quand même
+                    return RedirectResponse(url="/contact?sent=1&fallback=1", status_code=303)
+                except Exception as _e2:
+                    print(f"⚠️ contact_submit fallback file error: {_e2}")
+                    return RedirectResponse(url="/contact?msg=Erreur serveur (DB). Réessaie dans quelques minutes.", status_code=303)
 
             # Optionnel: envoyer email si EmailService dispo
             try:

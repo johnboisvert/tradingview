@@ -4300,14 +4300,14 @@ trades_db = []  # liste de dicts (trades)
 def load_trades_from_file():
     """Charge les trades depuis le JSON (tolère fichier absent ou vide)."""
     global trades_db
-    if not os.path.exists(TRADES_DATA_FILE):
-        print(f"⚠️ Aucun fichier trades JSON trouvé: {TRADES_DATA_FILE}")
+    if not os.path.exists(TRADES_FILE):
+        print(f"⚠️ Aucun fichier trades JSON trouvé: {TRADES_FILE}")
         trades_db = []
         return
 
     try:
         # Si le fichier est vide (0 octet / espaces), json.load() lève une erreur.
-        with open(TRADES_DATA_FILE, "r", encoding="utf-8") as f:
+        with open(TRADES_FILE, "r", encoding="utf-8") as f:
             raw = f.read()
 
         if not raw or not raw.strip():

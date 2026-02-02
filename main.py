@@ -8760,7 +8760,7 @@ async def _wl_fetch_market(vs_currency: str = "usd", ttl_s: int = 25) -> list[di
         "order": "market_cap_desc",
         "per_page": len(key[1]),
         "page": 1,
-        "sparkline": "false",
+        "sparkline": "true",
         "price_change_percentage": "1h,24h,7d",
     }
     try:
@@ -15365,6 +15365,8 @@ async def api_watchlist_market(vs: str = "usd"):
             "price_change_percentage_1h_in_currency": m.get("price_change_percentage_1h_in_currency"),
             "price_change_percentage_24h_in_currency": m.get("price_change_percentage_24h_in_currency"),
             "price_change_percentage_7d_in_currency": m.get("price_change_percentage_7d_in_currency"),
+            "sparkline": (m.get("sparkline_in_7d") or {}).get("price") or [],
+            "last_updated": m.get("last_updated") or m.get("last_updated_at"),
             "target_price": it.get("target_price"),
             "note": it.get("note"),
             "added_at": it.get("added_at"),
@@ -15442,6 +15444,17 @@ async def api_watchlist_check_alerts(vs: str = "usd"):
             continue
 
     return JSONResponse({"ok": True, "triggered": triggered})
+
+# Compat: old endpoint name used by some front-ends
+@app.get("/api/watchlist/check_alerts")
+async def api_watchlist_check_alerts_alias(vs: str = "usd"):
+    return await api_watchlist_check_alerts(vs=vs)
+
+@app.post("/api/watchlist/check_alerts")
+async def api_watchlist_check_alerts_alias_post(payload: dict = Body(default={})):
+    vs = (payload or {}).get("vs") or "usd"
+    return await api_watchlist_check_alerts(vs=vs)
+
 
 @app.get("/api/ai/suggestions")
 async def get_ai_suggestions():
@@ -36462,148 +36475,255 @@ le="font-weight:800;">Rafraîchir</button>
 
 @app.get("/watchlist")
 async def watchlist_page(request: Request):
-    help_block = _build_help_block("/watchlist", "Watchlist")
+    help_block = _build_help_block(
+        title="Watchlist & alertes",
+        bullets=[
+            "Ajoutez un symbole (ex: BTCUSDT) pour le suivre en temps réel.",
+            "Optionnel: définissez un prix cible pour recevoir une alerte quand le prix le touche.",
+            "Cliquez une ligne pour afficher le graphique 7 jours et les variations.",
+            "Les prix/variations proviennent de CoinGecko (données quasi temps réel).",
+        ],
+    )
 
     html = """
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Watchlist — CryptoIA</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Watchlist • CryptoIA</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <style>
-    .glass {
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.12);
-      backdrop-filter: blur(10px);
+    :root{
+      --glass: rgba(15, 23, 42, .62);
+      --stroke: rgba(148, 163, 184, .18);
     }
-    .mono { font-variant-numeric: tabular-nums; }
+    body{
+      background:
+        radial-gradient(900px 500px at 20% 10%, rgba(59,130,246,.20), transparent 60%),
+        radial-gradient(900px 500px at 80% 30%, rgba(168,85,247,.18), transparent 60%),
+        radial-gradient(900px 500px at 50% 110%, rgba(34,197,94,.12), transparent 60%),
+        #020617;
+    }
+    .glass{
+      background: var(--glass);
+      border: 1px solid var(--stroke);
+      box-shadow: 0 16px 50px rgba(0,0,0,.35);
+      backdrop-filter: blur(14px);
+    }
+    .shine{
+      position: relative;
+      overflow: hidden;
+    }
+    .shine:before{
+      content:"";
+      position:absolute; inset:-80px;
+      background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.10), transparent 45%);
+      pointer-events:none;
+      transform: rotate(12deg);
+    }
+    .badge-pos{ background: rgba(34,197,94,.18); border: 1px solid rgba(34,197,94,.35); }
+    .badge-neg{ background: rgba(239,68,68,.16); border: 1px solid rgba(239,68,68,.35); }
+    .badge-neu{ background: rgba(148,163,184,.14); border: 1px solid rgba(148,163,184,.28); }
+    .skeleton{
+      background: linear-gradient(90deg, rgba(148,163,184,.10), rgba(148,163,184,.20), rgba(148,163,184,.10));
+      background-size: 200% 100%;
+      animation: shimmer 1.1s infinite;
+      border-radius: 10px;
+    }
+    @keyframes shimmer{
+      0%{ background-position: 0% 0; }
+      100%{ background-position: -200% 0; }
+    }
+    /* nicer scrollbar */
+    ::-webkit-scrollbar{ width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb{ background: rgba(148,163,184,.22); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover{ background: rgba(148,163,184,.32); }
   </style>
 </head>
 
-<body class="min-h-screen bg-slate-950 text-slate-100">
-  <div class="max-w-7xl mx-auto px-4 py-8">
+<body class="text-slate-100">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="glass shine rounded-3xl p-6 sm:p-8">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div class="inline-flex items-center gap-2 text-slate-300 text-sm">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_14px_rgba(59,130,246,.75)]"></span>
+            Données quasi temps réel • CoinGecko
+          </div>
+          <h1 class="mt-2 text-3xl sm:text-4xl font-extrabold tracking-tight">
+            Watchlist <span class="text-slate-400">&</span> Alertes
+          </h1>
+          <p class="mt-2 text-slate-300">Surveillez vos cryptos préférées, repérez les mouvements, et recevez des alertes de prix.</p>
+        </div>
 
-    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-      <div>
-        <h1 class="text-3xl font-bold tracking-tight">Watchlist</h1>
-        <p class="text-slate-300 mt-1">Ajoute tes coins, suis les prix en temps réel et affiche un graphique propre (données CoinGecko, cache ~25s).</p>
-      </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="vsCurrency" class="glass rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
+            <option value="usd">USD</option>
+            <option value="cad">CAD</option>
+            <option value="eur">EUR</option>
+          </select>
 
-      <div class="flex items-center gap-3">
-        <button id="btnRefresh" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition">
-          Rafraîchir
-        </button>
-        <label class="flex items-center gap-2 text-sm text-slate-300 select-none">
-          <input id="autoRefresh" type="checkbox" class="accent-slate-200" checked/>
-          Auto (30s)
-        </label>
-      </div>
-    </div>
-
-    <!-- Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-      <div class="glass rounded-2xl p-4">
-        <div class="text-slate-300 text-sm">Coins suivis</div>
-        <div id="statCount" class="text-2xl font-semibold mono mt-1">—</div>
-      </div>
-      <div class="glass rounded-2xl p-4">
-        <div class="text-slate-300 text-sm">Moyenne 24h</div>
-        <div id="statAvg24h" class="text-2xl font-semibold mono mt-1">—</div>
-      </div>
-      <div class="glass rounded-2xl p-4">
-        <div class="text-slate-300 text-sm">Top gainer 24h</div>
-        <div id="statTop" class="text-lg font-semibold mono mt-1">—</div>
-        <div id="statTop2" class="text-sm text-slate-300 mono">—</div>
-      </div>
-      <div class="glass rounded-2xl p-4">
-        <div class="text-slate-300 text-sm">Top loser 24h</div>
-        <div id="statLow" class="text-lg font-semibold mono mt-1">—</div>
-        <div id="statLow2" class="text-sm text-slate-300 mono">—</div>
-      </div>
-    </div>
-
-    <!-- Add / Filter -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-      <div class="glass rounded-2xl p-5">
-        <h2 class="text-lg font-semibold">Ajouter un coin</h2>
-        <div class="grid grid-cols-1 gap-3 mt-3">
-          <input id="inSymbol" class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                 placeholder="Symbole (ex: BTC, ETH, SOL)"/>
-          <input id="inTarget" class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                 placeholder="Alerte (USD) optionnel, ex: 70000"/>
-          <input id="inNote" class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                 placeholder="Note optionnelle"/>
-          <button id="btnAdd" class="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition font-semibold">
-            Ajouter / Mettre à jour
+          <button id="btnRefresh" class="rounded-xl px-4 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-500 active:bg-blue-700 transition">
+            Rafraîchir
           </button>
-          <div id="addMsg" class="text-sm text-slate-300"></div>
+
+          <label class="glass rounded-xl px-3 py-2 text-sm flex items-center gap-2 cursor-pointer select-none">
+            <input id="autoRefresh" type="checkbox" class="accent-blue-500" checked />
+            Auto
+          </label>
         </div>
       </div>
 
-      <div class="glass rounded-2xl p-5 lg:col-span-2">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <!-- Stats -->
+      <div class="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="glass rounded-2xl p-4">
+          <div class="text-xs text-slate-400">Éléments</div>
+          <div id="statCount" class="mt-1 text-2xl font-bold">—</div>
+        </div>
+        <div class="glass rounded-2xl p-4">
+          <div class="text-xs text-slate-400">Top gagnant (24h)</div>
+          <div id="statTopGainer" class="mt-1 text-base font-semibold text-slate-100">—</div>
+        </div>
+        <div class="glass rounded-2xl p-4">
+          <div class="text-xs text-slate-400">Top perdant (24h)</div>
+          <div id="statTopLoser" class="mt-1 text-base font-semibold text-slate-100">—</div>
+        </div>
+        <div class="glass rounded-2xl p-4">
+          <div class="text-xs text-slate-400">Alertes actives</div>
+          <div id="statAlerts" class="mt-1 text-2xl font-bold">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <!-- Add -->
+      <div class="glass rounded-3xl p-5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold">Ajouter</h2>
+          <span class="text-xs text-slate-400">Ex: BTCUSDT</span>
+        </div>
+
+        <div class="mt-4 space-y-3">
           <div>
-            <h2 class="text-lg font-semibold">Graphique</h2>
-            <div id="chartTitle" class="text-sm text-slate-300 mt-1">Clique sur un coin dans le tableau pour afficher son prix (7 jours).</div>
+            <label class="text-xs text-slate-300">Symbole</label>
+            <input id="symbolInput" placeholder="BTCUSDT" class="mt-1 w-full rounded-xl px-3 py-2 bg-slate-950/40 border border-slate-700/40 outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
-          <div class="flex items-center gap-2">
-            <input id="search" class="w-64 max-w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                   placeholder="Rechercher (BTC, Ethereum...)"/>
-            <select id="days" class="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800">
-              <option value="1">1j</option>
-              <option value="7" selected>7j</option>
-              <option value="30">30j</option>
-              <option value="90">90j</option>
-            </select>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-slate-300">Prix cible (optionnel)</label>
+              <input id="targetInput" type="number" step="any" placeholder="70000" class="mt-1 w-full rounded-xl px-3 py-2 bg-slate-950/40 border border-slate-700/40 outline-none focus:ring-2 focus:ring-blue-400" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-300">Note (optionnel)</label>
+              <input id="noteInput" placeholder="Zone de résistance" class="mt-1 w-full rounded-xl px-3 py-2 bg-slate-950/40 border border-slate-700/40 outline-none focus:ring-2 focus:ring-blue-400" />
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button class="chip glass rounded-full px-3 py-1 text-xs text-slate-200 hover:bg-slate-800/30" data-sym="BTCUSDT">BTC</button>
+            <button class="chip glass rounded-full px-3 py-1 text-xs text-slate-200 hover:bg-slate-800/30" data-sym="ETHUSDT">ETH</button>
+            <button class="chip glass rounded-full px-3 py-1 text-xs text-slate-200 hover:bg-slate-800/30" data-sym="SOLUSDT">SOL</button>
+            <button class="chip glass rounded-full px-3 py-1 text-xs text-slate-200 hover:bg-slate-800/30" data-sym="BNBUSDT">BNB</button>
+            <button class="chip glass rounded-full px-3 py-1 text-xs text-slate-200 hover:bg-slate-800/30" data-sym="XRPUSDT">XRP</button>
+          </div>
+
+          <button id="btnAdd" class="w-full rounded-xl px-4 py-2 font-semibold bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 transition">
+            + Ajouter à la watchlist
+          </button>
+
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Astuce: vous pouvez écrire BTC, BTCUSDT, BTC-USD… on tente de normaliser automatiquement.
+          </p>
+        </div>
+      </div>
+
+      <!-- Big chart -->
+      <div class="glass rounded-3xl p-5 lg:col-span-2">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-bold">Graphique 7 jours</h2>
+            <p id="chartSubtitle" class="text-xs text-slate-400">Cliquez une crypto dans le tableau pour afficher son graphique.</p>
+          </div>
+          <div class="text-xs text-slate-400">
+            Dernière mise à jour: <span id="lastUpdate">—</span>
           </div>
         </div>
 
         <div class="mt-4">
-          <canvas id="priceChart" height="120"></canvas>
-        </div>
-
-        <div class="text-xs text-slate-400 mt-2">
-          Dernière mise à jour: <span id="lastUpdated">—</span>
+          <canvas id="bigChart" height="110"></canvas>
         </div>
       </div>
     </div>
 
     <!-- Table -->
-    <div class="glass rounded-2xl p-5 mt-6">
-      <div class="flex items-center justify-between gap-3">
-        <h2 class="text-lg font-semibold">Tableau (live)</h2>
-        <div class="text-sm text-slate-300">Source: CoinGecko • Cache ~25s</div>
+    <div class="mt-6 glass rounded-3xl p-5">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <h2 class="text-lg font-bold">Ma watchlist</h2>
+          <span id="pillLoading" class="hidden text-xs px-2 py-1 rounded-full badge-neu">chargement…</span>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input id="searchInput" placeholder="Rechercher (BTC, ETH, ...)" class="w-full sm:w-72 rounded-xl px-3 py-2 bg-slate-950/40 border border-slate-700/40 outline-none focus:ring-2 focus:ring-blue-400" />
+
+          <div class="flex gap-2">
+            <button class="filterBtn rounded-xl px-3 py-2 text-sm glass hover:bg-slate-800/30" data-filter="all">Tout</button>
+            <button class="filterBtn rounded-xl px-3 py-2 text-sm glass hover:bg-slate-800/30" data-filter="alerts">Alertes</button>
+            <button class="filterBtn rounded-xl px-3 py-2 text-sm glass hover:bg-slate-800/30" data-filter="gainers">Gagnants</button>
+            <button class="filterBtn rounded-xl px-3 py-2 text-sm glass hover:bg-slate-800/30" data-filter="losers">Perdants</button>
+          </div>
+        </div>
       </div>
 
-      <div class="overflow-x-auto mt-4">
-        <table class="w-full text-sm">
-          <thead class="text-slate-300">
-            <tr class="border-b border-slate-800">
-              <th class="text-left py-3">Coin</th>
-              <th class="text-right py-3">Prix</th>
-              <th class="text-right py-3">1h</th>
-              <th class="text-right py-3">24h</th>
-              <th class="text-right py-3">7d</th>
-              <th class="text-right py-3">MCap</th>
-              <th class="text-right py-3">Vol 24h</th>
-              <th class="text-right py-3">Alerte</th>
-              <th class="text-right py-3">Actions</th>
+      <div class="mt-4 overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="text-slate-300/90">
+            <tr class="border-b border-slate-700/40">
+              <th class="py-3 pr-4 text-left">Coin</th>
+              <th class="py-3 pr-4 text-right cursor-pointer select-none" data-sort="price">Prix</th>
+              <th class="py-3 pr-4 text-right cursor-pointer select-none" data-sort="chg24">24h</th>
+              <th class="py-3 pr-4 text-right cursor-pointer select-none" data-sort="chg7d">7j</th>
+              <th class="py-3 pr-4 text-right hidden md:table-cell cursor-pointer select-none" data-sort="vol">Vol 24h</th>
+              <th class="py-3 pr-4 text-center hidden sm:table-cell">Trend</th>
+              <th class="py-3 pr-4 text-right hidden lg:table-cell">Cible</th>
+              <th class="py-3 pr-4 text-left hidden lg:table-cell">Note</th>
+              <th class="py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody id="wlBody" class="divide-y divide-slate-900"></tbody>
+          <tbody id="wlBody">
+            <!-- rows -->
+          </tbody>
         </table>
       </div>
 
-      <div id="emptyState" class="text-slate-300 mt-4 hidden">
-        Ta watchlist est vide. Ajoute un symbole (ex: BTC) pour commencer.
+      <div id="emptyState" class="hidden mt-6 text-center text-slate-300">
+        <div class="text-3xl">⭐</div>
+        <div class="mt-2 font-semibold">Aucun élément dans votre watchlist.</div>
+        <div class="text-sm text-slate-400 mt-1">Ajoutez un symbole ci-dessus pour commencer.</div>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="mt-6 glass rounded-3xl p-5">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold">Alertes</h2>
+        <button id="btnCheckAlerts" class="rounded-xl px-4 py-2 text-sm font-semibold bg-purple-600 hover:bg-purple-500 active:bg-purple-700 transition">
+          Vérifier maintenant
+        </button>
       </div>
 
-      <div id="errBox" class="mt-4 text-rose-300 text-sm hidden"></div>
+      <div id="alertsBox" class="mt-4 space-y-2 text-sm text-slate-200"></div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 hidden z-50">
+      <div id="toastInner" class="glass rounded-2xl px-4 py-3 text-sm"></div>
     </div>
 
     <div class="mt-8">
@@ -36612,255 +36732,483 @@ async def watchlist_page(request: Request):
   </div>
 
 <script>
-const fmtUSD = (v) => {
-  if (v === null || v === undefined || v === "") return "—";
-  try {
-    return new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 8 }).format(Number(v));
-  } catch { return String(v); }
-};
+(() => {
+  const $ = (id) => document.getElementById(id);
 
-const fmtNum = (v) => {
-  if (v === null || v === undefined || v === "") return "—";
-  try {
-    return new Intl.NumberFormat('fr-CA', { notation: 'compact', maximumFractionDigits: 2 }).format(Number(v));
-  } catch { return String(v); }
-};
+  const state = {
+    vs: "usd",
+    filter: "all",
+    search: "",
+    sortKey: "chg24",
+    sortDir: "desc",
+    items: [],
+    chart: null,
+    selected: null,
+    autoTimer: null,
+  };
 
-const fmtPct = (v) => {
-  if (v === null || v === undefined || v === "") return "—";
-  const n = Number(v);
-  const s = (n >= 0 ? "+" : "") + n.toFixed(2) + "%";
-  return s;
-};
+  function toast(msg, tone="neu") {
+    const t = $("toast");
+    const inner = $("toastInner");
+    inner.className = "glass rounded-2xl px-4 py-3 text-sm";
+    if (tone === "ok") inner.className += " badge-pos";
+    if (tone === "bad") inner.className += " badge-neg";
+    t.classList.remove("hidden");
+    inner.textContent = msg;
+    setTimeout(() => t.classList.add("hidden"), 2600);
+  }
 
-const pctClass = (v) => {
-  if (v === null || v === undefined || v === "") return "text-slate-300";
-  const n = Number(v);
-  if (Number.isNaN(n)) return "text-slate-300";
-  return n >= 0 ? "text-emerald-300" : "text-rose-300";
-};
+  function fmtNum(n, digits=2) {
+    if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
+    return Number(n).toLocaleString("fr-CA", { maximumFractionDigits: digits });
+  }
 
-let marketItems = [];
-let selectedSymbol = null;
+  function fmtMoney(n) {
+    if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
+    const cur = state.vs.toUpperCase();
+    return Number(n).toLocaleString("fr-CA", { style: "currency", currency: cur, maximumFractionDigits: (Number(n) >= 1 ? 2 : 6) });
+  }
 
-let chart;
-function initChart() {
-  const ctx = document.getElementById("priceChart");
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: { labels: [], datasets: [{ label: 'Prix (USD)', data: [] }] },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: true } },
-      scales: {
-        x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,.08)" } },
-        y: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,.08)" } }
+  function fmtPct(n) {
+    if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
+    const v = Number(n);
+    const sign = v > 0 ? "+" : "";
+    return sign + v.toFixed(2) + "%";
+  }
+
+  function badgePct(n) {
+    const v = Number(n);
+    const cls = (!isFinite(v) || v === 0) ? "badge-neu" : (v > 0 ? "badge-pos" : "badge-neg");
+    return `<span class="inline-flex items-center justify-center min-w-[70px] px-2 py-1 rounded-full text-xs ${cls}">${fmtPct(v)}</span>`;
+  }
+
+  function sparklineSVG(arr, isUp) {
+    try{
+      if (!arr || arr.length < 2) return `<span class="text-xs text-slate-400">—</span>`;
+      const w = 110, h = 28, pad = 2;
+      const min = Math.min(...arr);
+      const max = Math.max(...arr);
+      const span = (max - min) || 1;
+      const pts = arr.map((v, i) => {
+        const x = pad + (i * (w - pad*2) / (arr.length - 1));
+        const y = pad + (h - pad*2) - ((v - min) * (h - pad*2) / span);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(" ");
+      const stroke = isUp ? "rgba(34,197,94,.95)" : "rgba(239,68,68,.95)";
+      const fill = isUp ? "rgba(34,197,94,.10)" : "rgba(239,68,68,.10)";
+      return `
+        <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" class="mx-auto">
+          <polyline fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${pts}"></polyline>
+          <polyline fill="${fill}" stroke="none" points="${pts} ${w-pad},${h-pad} ${pad},${h-pad}"></polyline>
+        </svg>`;
+    } catch(e){
+      return `<span class="text-xs text-slate-400">—</span>`;
+    }
+  }
+
+  function applyFilters(items) {
+    let out = [...items];
+
+    if (state.search.trim()) {
+      const q = state.search.trim().toLowerCase();
+      out = out.filter(x => (x.symbol || "").toLowerCase().includes(q) || (x.name || "").toLowerCase().includes(q));
+    }
+
+    if (state.filter === "alerts") out = out.filter(x => x.target_price);
+    if (state.filter === "gainers") out = out.filter(x => (Number(x.price_change_percentage_24h_in_currency) || 0) > 0);
+    if (state.filter === "losers") out = out.filter(x => (Number(x.price_change_percentage_24h_in_currency) || 0) < 0);
+
+    const dir = state.sortDir === "asc" ? 1 : -1;
+    const key = state.sortKey;
+
+    const getVal = (x) => {
+      if (key === "price") return Number(x.current_price) || 0;
+      if (key === "chg24") return Number(x.price_change_percentage_24h_in_currency) || 0;
+      if (key === "chg7d") return Number(x.price_change_percentage_7d_in_currency) || 0;
+      if (key === "vol") return Number(x.total_volume) || 0;
+      return 0;
+    };
+
+    out.sort((a,b) => (getVal(a) - getVal(b)) * dir);
+    return out;
+  }
+
+  function renderStats(items) {
+    $("statCount").textContent = items.length ? items.length : "0";
+    const withTargets = items.filter(x => x.target_price);
+    $("statAlerts").textContent = withTargets.length ? withTargets.length : "0";
+
+    const sorted = [...items].sort((a,b) => (Number(b.price_change_percentage_24h_in_currency)||0) - (Number(a.price_change_percentage_24h_in_currency)||0));
+    const top = sorted[0];
+    const low = sorted[sorted.length-1];
+
+    $("statTopGainer").innerHTML = top ? `${top.symbol} • <span class="font-bold">${fmtPct(top.price_change_percentage_24h_in_currency)}</span>` : "—";
+    $("statTopLoser").innerHTML = low ? `${low.symbol} • <span class="font-bold">${fmtPct(low.price_change_percentage_24h_in_currency)}</span>` : "—";
+  }
+
+  function renderTable(items) {
+    const body = $("wlBody");
+    body.innerHTML = "";
+
+    if (!items.length) {
+      $("emptyState").classList.remove("hidden");
+      return;
+    }
+    $("emptyState").classList.add("hidden");
+
+    items.forEach((x) => {
+      const chg24 = Number(x.price_change_percentage_24h_in_currency);
+      const chg7d = Number(x.price_change_percentage_7d_in_currency);
+      const isUp = (chg7d || 0) >= 0;
+
+      let targetHtml = "—";
+      if (x.target_price) {
+        const tp = Number(x.target_price);
+        const cp = Number(x.current_price);
+        const distPct = (cp && tp) ? ((tp - cp) / cp) * 100 : null;
+        const badge = distPct === null ? "" : (distPct >= 0 ? "badge-neu" : "badge-neg");
+        targetHtml = `
+          <div class="text-right">
+            <div class="font-semibold">${fmtMoney(tp)}</div>
+            <div class="text-xs text-slate-400">${distPct === null ? "" : `<span class="px-2 py-0.5 rounded-full ${badge}">${distPct >= 0 ? "+" : ""}${distPct.toFixed(2)}%</span>`}</div>
+          </div>`;
+      }
+
+      const row = document.createElement("tr");
+      row.className = "border-b border-slate-800/40 hover:bg-slate-900/25 transition cursor-pointer";
+      row.innerHTML = `
+        <td class="py-3 pr-4">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl overflow-hidden bg-slate-900/40 border border-slate-700/30">
+              ${x.image ? `<img src="${x.image}" class="w-full h-full object-cover" alt="" />` : ``}
+            </div>
+            <div>
+              <div class="font-semibold leading-tight">${x.symbol || "—"}</div>
+              <div class="text-xs text-slate-400">${x.name || ""}</div>
+            </div>
+          </div>
+        </td>
+
+        <td class="py-3 pr-4 text-right font-semibold">${fmtMoney(x.current_price)}</td>
+        <td class="py-3 pr-4 text-right">${badgePct(chg24)}</td>
+        <td class="py-3 pr-4 text-right">${badgePct(chg7d)}</td>
+        <td class="py-3 pr-4 text-right hidden md:table-cell text-slate-200">${fmtMoney(x.total_volume)}</td>
+        <td class="py-3 pr-4 text-center hidden sm:table-cell">
+          ${sparklineSVG(x.sparkline, isUp)}
+        </td>
+        <td class="py-3 pr-4 hidden lg:table-cell">${targetHtml}</td>
+        <td class="py-3 pr-4 hidden lg:table-cell text-slate-200">${(x.note || "").replaceAll("<","&lt;").replaceAll(">","&gt;")}</td>
+        <td class="py-3 text-right">
+          <div class="flex justify-end gap-2">
+            <button class="btnChart rounded-xl px-3 py-2 text-xs font-semibold bg-slate-800/50 hover:bg-slate-700/60 border border-slate-700/40" data-symbol="${x.symbol}">Graph</button>
+            <button class="btnRemove rounded-xl px-3 py-2 text-xs font-semibold bg-red-600/80 hover:bg-red-600 border border-red-500/40" data-symbol="${x.symbol}">Suppr</button>
+          </div>
+        </td>
+      `;
+      body.appendChild(row);
+
+      row.addEventListener("click", (e) => {
+        // avoid row click when action buttons clicked
+        if (e.target && (e.target.classList.contains("btnRemove") || e.target.classList.contains("btnChart"))) return;
+        selectCoin(x.symbol);
+      });
+    });
+
+    // bind action buttons
+    body.querySelectorAll(".btnRemove").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const sym = btn.getAttribute("data-symbol");
+        await removeSymbol(sym);
+      });
+    });
+    body.querySelectorAll(".btnChart").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const sym = btn.getAttribute("data-symbol");
+        await selectCoin(sym, true);
+      });
+    });
+  }
+
+  async function fetchJSON(url, opts={}) {
+    const res = await fetch(url, opts);
+    const ct = (res.headers.get("content-type") || "");
+    let data = null;
+    if (ct.includes("application/json")) data = await res.json().catch(() => null);
+    if (!res.ok) {
+      const msg = (data && (data.detail || data.error || data.message)) ? (data.detail || data.error || data.message) : `Erreur HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  async function loadWatchlist() {
+    $("pillLoading").classList.remove("hidden");
+    try{
+      const data = await fetchJSON(`/api/watchlist/market?vs=${encodeURIComponent(state.vs)}`);
+      const items = (data && data.items) ? data.items : [];
+      state.items = items;
+
+      renderStats(items);
+
+      const visible = applyFilters(items);
+      renderTable(visible);
+
+      // update last update
+      const lu = items.map(x => x.last_updated).filter(Boolean)[0];
+      $("lastUpdate").textContent = lu ? new Date(lu).toLocaleString("fr-CA") : new Date().toLocaleString("fr-CA");
+
+      // keep selection if possible
+      if (state.selected && items.some(x => x.symbol === state.selected)) {
+        selectCoin(state.selected);
+      } else if (items.length) {
+        selectCoin(items[0].symbol);
+      }
+
+    } catch(e){
+      toast(e.message || "Erreur de chargement", "bad");
+      state.items = [];
+      renderStats([]);
+      renderTable([]);
+      $("lastUpdate").textContent = "—";
+    } finally {
+      $("pillLoading").classList.add("hidden");
+    }
+  }
+
+  async function addSymbol() {
+    const symbol = $("symbolInput").value.trim();
+    const target = $("targetInput").value.trim();
+    const note = $("noteInput").value.trim();
+
+    if (!symbol) {
+      toast("Entrez un symbole (ex: BTCUSDT).", "bad");
+      return;
+    }
+
+    const payload = { symbol };
+    if (target) payload.target_price = Number(target);
+    if (note) payload.note = note;
+
+    try{
+      await fetchJSON("/api/watchlist/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      toast("Ajouté à la watchlist ✅", "ok");
+      $("symbolInput").value = "";
+      $("targetInput").value = "";
+      $("noteInput").value = "";
+      await loadWatchlist();
+    } catch(e){
+      toast(e.message || "Impossible d'ajouter", "bad");
+    }
+  }
+
+  async function removeSymbol(symbol) {
+    if (!symbol) return;
+    try{
+      await fetchJSON(`/api/watchlist/remove?symbol=${encodeURIComponent(symbol)}`, { method: "DELETE" });
+      toast("Supprimé ✅", "ok");
+      await loadWatchlist();
+    } catch(e){
+      toast(e.message || "Impossible de supprimer", "bad");
+    }
+  }
+
+  async function selectCoin(symbol, forceHistory=false) {
+    if (!symbol) return;
+    state.selected = symbol;
+
+    const item = state.items.find(x => x.symbol === symbol) || null;
+    if (!item) return;
+
+    $("chartSubtitle").textContent = `${item.name || symbol} • ${fmtMoney(item.current_price)} • 24h ${fmtPct(item.price_change_percentage_24h_in_currency)} • 7j ${fmtPct(item.price_change_percentage_7d_in_currency)}`;
+
+    // If we already have sparkline and not forcing history, render it directly
+    if (item.sparkline && item.sparkline.length > 2 && !forceHistory) {
+      renderBigChartFromSparkline(symbol, item.sparkline);
+      return;
+    }
+
+    // fallback: fetch history for better curve
+    try{
+      const h = await fetchJSON(`/api/watchlist/history?symbol=${encodeURIComponent(symbol)}&days=7&vs=${encodeURIComponent(state.vs)}`);
+      const prices = (h && h.prices) ? h.prices : [];
+      renderBigChart(symbol, prices);
+    } catch(e){
+      // fallback to sparkline if exists
+      if (item.sparkline && item.sparkline.length > 2) {
+        renderBigChartFromSparkline(symbol, item.sparkline);
       }
     }
-  });
-}
+  }
 
-async function loadMarket() {
-  const errBox = document.getElementById("errBox");
-  errBox.classList.add("hidden");
-  errBox.textContent = "";
+  function renderBigChartFromSparkline(symbol, arr) {
+    const now = Date.now();
+    // map N points to ~7 days evenly
+    const N = arr.length;
+    const start = now - 7*24*3600*1000;
+    const step = (now - start) / Math.max(1,(N-1));
+    const data = arr.map((v,i) => ({ x: start + i*step, y: v }));
+    renderBigChart(symbol, data, true);
+  }
 
-  try {
-    const res = await fetch("/api/watchlist/market");
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || "Erreur inconnue");
-    marketItems = data.items || [];
-    document.getElementById("lastUpdated").textContent = new Date(data.updated_at).toLocaleString('fr-CA');
-    renderStats(marketItems);
-    renderTable(marketItems);
-    if (!marketItems.length) document.getElementById("emptyState").classList.remove("hidden");
-    else document.getElementById("emptyState").classList.add("hidden");
+  function renderBigChart(symbol, data, alreadyXY=false) {
+    const ctx = $("bigChart").getContext("2d");
 
-    if (selectedSymbol) {
-      const stillThere = marketItems.find(x => (x.symbol || "").toUpperCase() === selectedSymbol);
-      if (stillThere) await loadHistory(selectedSymbol);
-      else selectedSymbol = null;
+    const pts = alreadyXY ? data : data.map(p => ({ x: p[0], y: p[1] }));
+    const labels = pts.map(p => new Date(p.x));
+    const values = pts.map(p => p.y);
+
+    if (state.chart) state.chart.destroy();
+
+    state.chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: symbol,
+          data: values,
+          borderWidth: 2,
+          tension: 0.25,
+          pointRadius: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => fmtMoney(ctx.parsed.y)
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: "rgba(148,163,184,.85)", maxTicksLimit: 8 },
+            grid: { color: "rgba(148,163,184,.10)" }
+          },
+          y: {
+            ticks: { color: "rgba(148,163,184,.85)" },
+            grid: { color: "rgba(148,163,184,.10)" }
+          }
+        }
+      }
+    });
+  }
+
+  async function checkAlerts() {
+    try{
+      const data = await fetchJSON(`/api/watchlist/check-alerts?vs=${encodeURIComponent(state.vs)}`);
+      const alerts = (data && data.alerts) ? data.alerts : [];
+      const box = $("alertsBox");
+      box.innerHTML = "";
+      if (!alerts.length) {
+        box.innerHTML = `<div class="text-slate-300">Aucune alerte déclenchée pour le moment.</div>`;
+        toast("Aucune alerte déclenchée.", "neu");
+        return;
+      }
+      alerts.forEach(a => {
+        const cls = "badge-pos";
+        const line = document.createElement("div");
+        line.className = "glass rounded-2xl px-4 py-3";
+        line.innerHTML = `<div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="font-semibold">${a.symbol} • cible ${fmtMoney(a.target_price)} • prix ${fmtMoney(a.current_price)}</div>
+            <div class="text-xs text-slate-400 mt-0.5">${a.note || ""}</div>
+          </div>
+          <span class="px-2 py-1 rounded-full text-xs ${cls}">déclenchée</span>
+        </div>`;
+        box.appendChild(line);
+      });
+      toast(`${alerts.length} alerte(s) déclenchée(s) 🔔`, "ok");
+    } catch(e){
+      toast(e.message || "Erreur alertes", "bad");
     }
-  } catch (e) {
-    errBox.classList.remove("hidden");
-    errBox.textContent = "⚠️ " + (e?.message || e);
   }
-}
 
-function renderStats(items) {
-  document.getElementById("statCount").textContent = String(items.length);
+  function bindUI() {
+    $("btnRefresh").addEventListener("click", loadWatchlist);
+    $("btnAdd").addEventListener("click", addSymbol);
+    $("btnCheckAlerts").addEventListener("click", checkAlerts);
 
-  const vals24 = items.map(x => Number(x.price_change_percentage_24h_in_currency)).filter(x => !Number.isNaN(x));
-  const avg = vals24.length ? (vals24.reduce((a,b)=>a+b,0) / vals24.length) : null;
-  const avgEl = document.getElementById("statAvg24h");
-  avgEl.textContent = avg === null ? "—" : fmtPct(avg);
-  avgEl.className = "text-2xl font-semibold mono mt-1 " + pctClass(avg);
-
-  const sorted = [...items].filter(x => x.price_change_percentage_24h_in_currency !== null && x.price_change_percentage_24h_in_currency !== undefined)
-    .sort((a,b)=>Number(b.price_change_percentage_24h_in_currency)-Number(a.price_change_percentage_24h_in_currency));
-
-  const top = sorted[0];
-  const low = sorted[sorted.length - 1];
-
-  document.getElementById("statTop").textContent = top ? `${top.symbol} (${top.name})` : "—";
-  document.getElementById("statTop2").textContent = top ? fmtPct(top.price_change_percentage_24h_in_currency) : "—";
-  document.getElementById("statTop2").className = "text-sm mono " + pctClass(top?.price_change_percentage_24h_in_currency);
-
-  document.getElementById("statLow").textContent = low ? `${low.symbol} (${low.name})` : "—";
-  document.getElementById("statLow2").textContent = low ? fmtPct(low.price_change_percentage_24h_in_currency) : "—";
-  document.getElementById("statLow2").className = "text-sm mono " + pctClass(low?.price_change_percentage_24h_in_currency);
-}
-
-function renderTable(items) {
-  const q = (document.getElementById("search").value || "").trim().toLowerCase();
-  const tbody = document.getElementById("wlBody");
-  tbody.innerHTML = "";
-
-  const filtered = items.filter(x => {
-    if (!q) return true;
-    return (String(x.symbol||"").toLowerCase().includes(q) || String(x.name||"").toLowerCase().includes(q));
-  });
-
-  for (const it of filtered) {
-    const tr = document.createElement("tr");
-    tr.className = "hover:bg-slate-900/40 cursor-pointer";
-
-    tr.addEventListener("click", async (ev) => {
-      if (ev.target?.dataset?.action === "delete") return;
-      selectedSymbol = String(it.symbol || "").toUpperCase();
-      await loadHistory(selectedSymbol);
+    $("vsCurrency").addEventListener("change", async (e) => {
+      state.vs = e.target.value || "usd";
+      await loadWatchlist();
     });
 
-    const coinCell = `
-      <div class="flex items-center gap-3 py-3">
-        <img src="${it.image || ''}" alt="" class="w-7 h-7 rounded-full bg-slate-800" onerror="this.style.display='none'">
-        <div>
-          <div class="font-semibold">${it.symbol || ''}</div>
-          <div class="text-xs text-slate-400">${it.name || ''}</div>
-        </div>
-      </div>
-    `;
-
-    const alertTxt = it.target_price ? fmtUSD(it.target_price) : "—";
-    const note = it.note ? `<div class="text-xs text-slate-400">${it.note}</div>` : "";
-
-    tr.innerHTML = `
-      <td class="pr-3">${coinCell}</td>
-      <td class="text-right mono">${fmtUSD(it.current_price)}</td>
-      <td class="text-right mono ${pctClass(it.price_change_percentage_1h_in_currency)}">${fmtPct(it.price_change_percentage_1h_in_currency)}</td>
-      <td class="text-right mono ${pctClass(it.price_change_percentage_24h_in_currency)}">${fmtPct(it.price_change_percentage_24h_in_currency)}</td>
-      <td class="text-right mono ${pctClass(it.price_change_percentage_7d_in_currency)}">${fmtPct(it.price_change_percentage_7d_in_currency)}</td>
-      <td class="text-right mono">${fmtNum(it.market_cap)}</td>
-      <td class="text-right mono">${fmtNum(it.total_volume)}</td>
-      <td class="text-right mono">
-        ${alertTxt}
-        ${note}
-      </td>
-      <td class="text-right">
-        <button data-action="delete" class="px-3 py-2 rounded-xl bg-rose-600/80 hover:bg-rose-600 transition text-white"
-                onclick="removeCoin('${it.symbol}')">
-          Supprimer
-        </button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  }
-}
-
-async function loadHistory(symbol) {
-  const days = Number(document.getElementById("days").value || 7);
-  const title = document.getElementById("chartTitle");
-  title.textContent = `Chargement du graphique: ${symbol} (${days}j) …`;
-
-  try {
-    const res = await fetch(`/api/watchlist/history?symbol=${encodeURIComponent(symbol)}&days=${days}`);
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || "Erreur");
-
-    const pts = data.prices || [];
-    const labels = pts.map(p => new Date(p[0]).toLocaleDateString('fr-CA', { month: 'short', day: 'numeric' }));
-    const values = pts.map(p => p[1]);
-
-    chart.data.labels = labels;
-    chart.data.datasets[0].label = `${symbol} — Prix (USD)`;
-    chart.data.datasets[0].data = values;
-    chart.update();
-
-    title.textContent = `Graphique: ${symbol} (${days}j)`;
-  } catch (e) {
-    title.textContent = `Graphique: erreur — ${e?.message || e}`;
-  }
-}
-
-async function addCoin() {
-  const msg = document.getElementById("addMsg");
-  msg.textContent = "";
-
-  const symbol = (document.getElementById("inSymbol").value || "").trim();
-  const target = (document.getElementById("inTarget").value || "").trim();
-  const note = (document.getElementById("inNote").value || "").trim();
-
-  if (!symbol) {
-    msg.textContent = "Entre un symbole (ex: BTC).";
-    return;
-  }
-
-  const payload = { symbol, note };
-  if (target) payload.target_price = target;
-
-  try {
-    const res = await fetch("/api/watchlist/add", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+    $("searchInput").addEventListener("input", (e) => {
+      state.search = e.target.value || "";
+      renderTable(applyFilters(state.items));
     });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || "Erreur");
 
-    msg.textContent = data.updated ? "✅ Coin mis à jour." : "✅ Coin ajouté.";
-    document.getElementById("inSymbol").value = "";
-    document.getElementById("inTarget").value = "";
-    document.getElementById("inNote").value = "";
-    await loadMarket();
-  } catch (e) {
-    msg.textContent = "⚠️ " + (e?.message || e);
+    document.querySelectorAll(".filterBtn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.filter = btn.getAttribute("data-filter") || "all";
+        document.querySelectorAll(".filterBtn").forEach(b => b.classList.remove("ring-2","ring-blue-400"));
+        btn.classList.add("ring-2","ring-blue-400");
+        renderTable(applyFilters(state.items));
+      });
+    });
+    // default highlight
+    document.querySelectorAll(".filterBtn")[0].classList.add("ring-2","ring-blue-400");
+
+    // sorting
+    document.querySelectorAll("th[data-sort]").forEach(th => {
+      th.addEventListener("click", () => {
+        const k = th.getAttribute("data-sort");
+        if (state.sortKey === k) {
+          state.sortDir = (state.sortDir === "asc") ? "desc" : "asc";
+        } else {
+          state.sortKey = k;
+          state.sortDir = "desc";
+        }
+        renderTable(applyFilters(state.items));
+      });
+    });
+
+    // chips
+    document.querySelectorAll(".chip").forEach(c => {
+      c.addEventListener("click", () => {
+        $("symbolInput").value = c.getAttribute("data-sym") || "";
+        $("symbolInput").focus();
+      });
+    });
+
+    // auto refresh
+    $("autoRefresh").addEventListener("change", () => {
+      setupAutoRefresh();
+    });
   }
-}
 
-async function removeCoin(symbol) {
-  try {
-    await fetch(`/api/watchlist/remove?symbol=${encodeURIComponent(symbol)}`, { method: "DELETE" });
-    if (selectedSymbol === String(symbol||"").toUpperCase()) selectedSymbol = null;
-    await loadMarket();
-  } catch (e) {
-    alert("Erreur suppression: " + (e?.message || e));
+  function setupAutoRefresh() {
+    if (state.autoTimer) clearInterval(state.autoTimer);
+    if ($("autoRefresh").checked) {
+      state.autoTimer = setInterval(loadWatchlist, 30000);
+    }
   }
-}
 
-function wire() {
-  document.getElementById("btnAdd").addEventListener("click", addCoin);
-  document.getElementById("btnRefresh").addEventListener("click", loadMarket);
-  document.getElementById("search").addEventListener("input", () => renderTable(marketItems));
-  document.getElementById("days").addEventListener("change", async () => {
-    if (selectedSymbol) await loadHistory(selectedSymbol);
-  });
+  async function init() {
+    state.vs = $("vsCurrency").value || "usd";
+    bindUI();
+    setupAutoRefresh();
+    await loadWatchlist();
+  }
 
-  setInterval(() => {
-    if (document.getElementById("autoRefresh").checked) loadMarket();
-  }, 30000);
-}
-
-initChart();
-wire();
-loadMarket();
+  init();
+})();
 </script>
-
 </body>
 </html>
 """
+
     html = html.replace("{{HELP_BLOCK}}", help_block)
     return HTMLResponse(html)
+
 
 @app.get("/static/{file_path:path}")
 async def _serve_static(file_path: str):

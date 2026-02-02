@@ -1,3 +1,113 @@
+
+# =========================
+# FOOTER D'AIDE (bas de page)
+# =========================
+PAGE_HELP: dict = {
+    "/": {
+        "quoi": "Présentation rapide de CryptoIA.",
+        "comment": "Explore le menu pour accéder aux outils. Connecte-toi pour débloquer les pages selon ton forfait."
+    },
+    "/dashboard": {
+        "quoi": "Vue d’ensemble du marché et de tes outils de trading.",
+        "comment": "Commence ici: lis les tendances, puis ouvre les pages (Stratégies/Spot/Backtesting) selon ce que tu veux faire."
+    },
+    "/stats-dashboard": {
+        "quoi": "Statistiques et indicateurs pour mieux comprendre le contexte du marché.",
+        "comment": "Utilise cette page pour confirmer un signal (tendance, momentum, volumes) avant d’entrer en position."
+    },
+    "/trades": {
+        "quoi": "Historique / suivi des trades enregistrés sur la plateforme.",
+        "comment": "Vérifie tes entrées/sorties, tes TP/SL et la cohérence avec tes alertes TradingView."
+    },
+    "/strategie": {
+        "quoi": "Stratégies et recommandations d’approche (trend/range, règles simples).",
+        "comment": "Choisis une stratégie adaptée au régime de marché, puis applique-la avec discipline."
+    },
+    "/spot-trading": {
+        "quoi": "Outils et idées pour le spot trading.",
+        "comment": "Analyse le contexte, définis un plan (entrée, invalidation, TP), puis exécute."
+    },
+    "/watchlist": {
+        "quoi": "Liste de surveillance des actifs.",
+        "comment": "Ajoute tes coins, surveille les changements de tendance et les niveaux clés."
+    },
+    "/risk-management": {
+        "quoi": "Gestion des risques (taille de position, limites, règles).",
+        "comment": "Fixe ton risque par trade, garde des stops réalistes et évite le sur-trading."
+    },
+    "/backtesting": {
+        "quoi": "Backtesting pour tester une stratégie sur l’historique.",
+        "comment": "Teste une règle, observe le taux de réussite, le drawdown et ajuste avant de l’utiliser en réel."
+    },
+    "/ai-opportunity-scanner": {
+        "quoi": "Scanner d’opportunités basé IA.",
+        "comment": "Utilise-le pour générer des idées, puis valide toujours avec une analyse manuelle."
+    },
+    "/ai-market-regime": {
+        "quoi": "Détection du régime de marché (trend/range/transition).",
+        "comment": "Adapte ta stratégie au régime: trend = follow, range = mean reversion, transition = prudence."
+    },
+    "/ai-whale-watcher": {
+        "quoi": "Surveillance des mouvements “whales” et activité inhabituelle.",
+        "comment": "Ne poursuis pas le prix: utilise ces infos comme contexte, pas comme signal unique."
+    },
+    "/ai-signals": {
+        "quoi": "Signaux IA et idées de trade.",
+        "comment": "Considère les signaux comme des probabilités. Toujours confirmer avec ton plan de risque."
+    },
+    "/contact": {
+        "quoi": "Contacter l’équipe: bug, question, suggestion.",
+        "comment": "Explique le problème, copie l’URL et ajoute une capture d’écran si possible."
+    },
+    "/pricing-complete": {
+        "quoi": "Plans & tarifs et accès aux fonctionnalités.",
+        "comment": "Choisis un forfait selon tes besoins. Si une page est bloquée, c’est ici que tu peux upgrader."
+    },
+}
+
+def _build_help_block(page_key: Optional[str], title: str) -> str:
+    key = (page_key or "").strip() or ""
+    # Normalise quelques variations fréquentes
+    if key.endswith("/") and key != "/":
+        key = key[:-1]
+    info = PAGE_HELP.get(key)
+
+    # Fallback par titre si la route n'est pas trouvée
+    if not info:
+        t = (title or "").strip().lower()
+        for k, v in PAGE_HELP.items():
+            if k != "/" and k.strip("/").replace("-", " ") in t:
+                info = v
+                break
+
+    if not info:
+        info = {
+            "quoi": "Description de la page.",
+            "comment": "Utilise cette page pour consulter les informations, puis prends une décision avec ton plan de trading."
+        }
+
+    data_note = (
+        "Note données: certaines infos proviennent de sources externes (APIs, webhooks, données de marché) "
+        "et peuvent avoir un délai ou des variations. Rien ici n’est une garantie: vérifie toujours avant d’exécuter un trade."
+    )
+
+    return f'''
+    <div class="page-help">
+      <div class="page-help-title">📌 Aide – {html.escape(title)}</div>
+      <div class="page-help-grid">
+        <div class="page-help-box">
+          <div class="page-help-h">À quoi sert cette page ?</div>
+          <div class="page-help-p">{html.escape(info.get("quoi",""))}</div>
+        </div>
+        <div class="page-help-box">
+          <div class="page-help-h">Comment l’utiliser ?</div>
+          <div class="page-help-p">{html.escape(info.get("comment",""))}</div>
+        </div>
+      </div>
+      <div class="page-help-note">{html.escape(data_note)}</div>
+    </div>
+    '''
+
 from typing import Optional
 import os  # FIX: required for DB_DIR / path operations
 import time  # required for ASSET_VERSION cache-busting
@@ -33613,7 +33723,7 @@ async def ai_timeframe(request: Request):
 # ✅ Routes manquantes (évite 404) + pages robustes (anti-500)
 # ============================================================
 
-def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: str = "", **_kwargs) -> str:
+def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: str = "", request: Optional["Request"] = None, page_key: Optional[str] = None, **_kwargs) -> str:
     """Page helper.
 
     Backward compatible: some callers pass sidebar=... instead of sidebar_html.
@@ -33623,23 +33733,69 @@ def _simple_page(title: str, body_html: str, sidebar_html: str = "", sidebar: st
         sidebar_html = sidebar
 
     styles = globals().get("GLOBAL_STYLES") or ""
-    # GLOBAL_STYLES est du CSS brut; on l'encapsule pour éviter qu'il apparaisse comme texte sur la page
-    if styles and not styles.lstrip().lower().startswith('<style'):
-        styles = f"<style>{styles}</style>"
-    # fallback mini CSS si GLOBAL_STYLES absent
-    if not styles:
-        styles = r'''<style>
-        body{font-family:Segoe UI,Arial,sans-serif;background:#0f172a;color:#e2e8f0;margin:0}
-        .layout{display:flex;min-height:100vh}
-        aside{width:280px;background:#0b1220;border-right:1px solid #1f2937}
-        main{flex:1;padding:24px}
-        .card{background:#0b1220;border:1px solid #1f2937;border-radius:14px;padding:18px;max-width:1100px}
-        input,select{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0}
-        button{padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#111827;color:#e2e8f0;cursor:pointer}
-        .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-        @media (max-width:900px){aside{display:none}.grid{grid-template-columns:1fr}}
-        .muted{color:#94a3b8}
-        </style>'''
+    # CSS additionnel pour le bloc d'aide en bas de page
+    _help_css = """            /* Footer help block */
+            .page-help{
+                margin-top:20px;
+                padding:16px 18px;
+                border:1px solid rgba(255,255,255,.10);
+                border-radius:16px;
+                background:rgba(12,18,32,.55);
+                box-shadow:0 8px 24px rgba(0,0,0,.25);
+            }
+            .page-help-title{
+                font-size:16px;
+                font-weight:800;
+                margin-bottom:10px;
+            }
+            .page-help-grid{
+                display:grid;
+                grid-template-columns:1fr 1fr;
+                gap:12px;
+            }
+            .page-help-box{
+                padding:12px 12px;
+                border-radius:14px;
+                border:1px solid rgba(255,255,255,.08);
+                background:rgba(255,255,255,.03);
+            }
+            .page-help-h{
+                font-weight:800;
+                margin-bottom:6px;
+            }
+            .page-help-p{
+                opacity:.92;
+                line-height:1.35;
+            }
+            .page-help-note{
+                margin-top:12px;
+                font-size:12px;
+                opacity:.85;
+                border-top:1px solid rgba(255,255,255,.08);
+                padding-top:10px;
+            }
+            @media (max-width: 900px){
+                .page-help-grid{ grid-template-columns:1fr; }
+            }
+    """
+
+    if styles:
+        if styles.lstrip().lower().startswith('<style'):
+            # Insère avant la fermeture </style>
+            styles = styles.replace("</style>", "\n" + _help_css + "\n</style>", 1)
+        else:
+            styles = "<style>" + styles + "\n" + _help_css + "</style>"
+    else:
+        styles = f"<style>{_help_css}</style>"
+
+    # Footer d'aide (bas de page)
+    if not page_key and request is not None:
+        try:
+            page_key = str(request.url.path)
+        except Exception:
+            page_key = page_key or ""
+    help_html = _build_help_block(page_key, title)
+
     return f"""<!doctype html>
 <html lang="fr">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">{styles}<title>{escape_html(title)}</title></head>

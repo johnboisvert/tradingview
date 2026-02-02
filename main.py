@@ -41,7 +41,10 @@ except Exception:  # fallback
 # =================== FIX IMPORTS (Railway) ===================
 # Ces imports sont requis au niveau global (sinon NameError lors du boot).
 import sqlite3
-import bcrypt
+try:
+    import bcrypt
+except Exception:
+    bcrypt = None
 from fastapi import (
     FastAPI, Request, Response, Depends, HTTPException, status,
     Body, Form, UploadFile, File, Cookie, Header, Query, Path, BackgroundTasks,
@@ -4437,20 +4440,30 @@ class DatabaseManager:
         except:
             pass  # Colonnes existent déjà
         
-        # Créer / réparer le compte admin par défaut (pour éviter "Accès réservé à l'admin" si le rôle a été altéré)
-        c.execute("SELECT role FROM users WHERE LOWER(username)=LOWER(?)", ("admin",))
+        # Créer / réparer le compte admin par défaut (évite "Accès réservé à l'admin" + migre les anciens hashes)
+        c.execute("SELECT role, password_hash FROM users WHERE LOWER(username)=LOWER(?)", ("admin",))
         row = c.fetchone()
+        default_password = "admin123"
         if not row:
-            default_password = "admin123"
             password_hash = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            c.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)", 
+            c.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
                       ("admin", password_hash, "admin", datetime.now().isoformat()))
             print("✅ Compte admin par défaut créé: admin / admin123")
         else:
             current_role = (row[0] or "").strip().lower()
+            existing_hash = (row[1] or "").strip()
+
+            # 1) Réparer le rôle si besoin
             if current_role != "admin":
                 c.execute("UPDATE users SET role=? WHERE LOWER(username)=LOWER(?)", ("admin", "admin"))
                 print("✅ Rôle réparé: utilisateur 'admin' => role=admin")
+
+            # 2) Migration: si l'ancien système a stocké un hash non-bcrypt, le login échoue.
+            # Bcrypt commence typiquement par "$2a$", "$2b$" ou "$2y$".
+            if not (existing_hash.startswith("$2a$") or existing_hash.startswith("$2b$") or existing_hash.startswith("$2y$")):
+                new_hash = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                c.execute("UPDATE users SET password_hash=? WHERE LOWER(username)=LOWER(?)", (new_hash, "admin"))
+                print("⚠️  Hash admin migré vers bcrypt: admin / admin123")
         
         conn.commit()
         conn.close()

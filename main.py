@@ -4828,11 +4828,8 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 def verify_user(username: str, password: str) -> bool:
-    """Vérifier les identifiants d'un utilisateur (wrapper compat)."""
-    try:
-        return bool(db_manager.verify_user(username, password))
-    except Exception:
-        return False
+    """Compat: utilise la même base users que le reste du site (ai_trader.db)."""
+    return db_manager.verify_user(username, password)
 
 def generate_temp_password(length: int = 12) -> str:
     """Génère un mot de passe temporaire robuste (admin reset).
@@ -5086,37 +5083,8 @@ def get_logged_user(request: Request) -> Optional[dict]:
 
 
 def get_user_role(username: str) -> str:
-    """Retourne le rôle (ex: 'admin') pour un username.
-
-    NOTE: sur certaines DB, le rôle peut ne pas être rempli pour 'admin'. On
-    applique donc un fallback sûr pour éviter de bloquer l'accès admin.
-    """
-    uname = normalize_username(username or "")
-    if not uname:
-        return "user"
-
-    # Le compte 'admin' doit toujours être admin
-    if uname == "admin":
-        return "admin"
-
-    try:
-        role = db_manager.get_user_role(uname)
-        role = (role or "").strip().lower()
-        if role:
-            return role
-    except Exception:
-        pass
-
-    # fallback: is_admin flag (si dispo)
-    try:
-        info = db_manager.get_user_info(uname)
-        if info and (info.get("is_admin") in (1, True, "1", "true", "True")):
-            return "admin"
-    except Exception:
-        pass
-
-    return "user"
-
+    """Compat: rôle depuis ai_trader.db."""
+    return db_manager.get_user_role(username)
 
 def get_user_permission(username: str, route: str) -> bool:
     """
@@ -5948,7 +5916,7 @@ async def login(request: Request, response: Response):
     password = form_data.get("password")
     redirect_url = form_data.get("redirect", "/")  # Redirection après login
     
-    if verify_user(username, password):
+    if db_manager.verify_user(username, password):
         #  Rcuprer les infos compltes de l'utilisateur
         user_info = db_manager.get_user_info(username)
         

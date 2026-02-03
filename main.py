@@ -13518,465 +13518,463 @@ async def spot_trading_page():
 # ============= AI OPPORTUNITY SCANNER (WOW + LIVE) =============
 @app.get("/ai-opportunity-scanner", response_class=HTMLResponse)
 async def ai_opportunity_scanner(request: Request):
-    # Auth + plan gate (si activé dans ton système)
-    user = get_user_from_request(request)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
-
-    route_path = "/ai-opportunity-scanner"
-    if not check_route_permission(user, route_path):
-        return access_denied_page(user, route_path, request)
-
+    # Page 100% self-contained (pas de jQuery) pour éviter les erreurs "$ is not defined".
     body = """
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Opportunity Scanner — CryptoIA</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AI Opportunity Scanner - CryptoIA</title>
   <style>
-    :root {
-      --bg:#0b1220; --card:#0f1a2e; --card2:#0d1730; --muted:#9aa7bd;
-      --txt:#e7eefc; --line:rgba(255,255,255,.08);
-      --g1:#7c3aed; --g2:#22d3ee; --ok:#10b981; --bad:#ef4444; --warn:#f59e0b;
+    :root{
+      --bg:#0b1220;
+      --card:#0f1a2c;
+      --card2:#101b2f;
+      --text:#e8eefc;
+      --muted:#9fb0d0;
+      --line:rgba(255,255,255,.08);
+      --grad: linear-gradient(90deg, #7c3aed, #22d3ee);
+      --good:#22c55e; --bad:#ef4444; --warn:#f59e0b;
     }
-    body{margin:0;background:radial-gradient(1200px 600px at 25% 0%, rgba(124,58,237,.35), transparent 60%), radial-gradient(900px 500px at 85% 20%, rgba(34,211,238,.25), transparent 55%), var(--bg); color:var(--txt); font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;}
-    .wrap{margin-left:260px; padding:22px 24px 44px;}
-    .hero{display:flex; justify-content:space-between; gap:16px; align-items:flex-end; margin:8px 0 18px;}
-    .kicker{color:var(--muted); font-size:12px; letter-spacing:.18em; text-transform:uppercase; display:flex; align-items:center; gap:10px;}
-    .dot{width:8px; height:8px; border-radius:999px; background:linear-gradient(90deg,var(--g1),var(--g2)); box-shadow:0 0 18px rgba(124,58,237,.6);}
-    h1{margin:6px 0 0; font-size:42px; line-height:1.05; font-weight:900; letter-spacing:-.02em;}
-    .wow{background:linear-gradient(90deg,var(--g1),var(--g2)); -webkit-background-clip:text; background-clip:text; color:transparent;}
-    .sub{margin-top:6px;color:var(--muted); max-width:760px}
-    .badges{display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end;}
-    .badge{border:1px solid var(--line); background:rgba(255,255,255,.03); padding:8px 12px; border-radius:999px; font-size:12px; color:var(--muted)}
-    .badge b{color:var(--txt)}
-    .grid{display:grid; grid-template-columns: 1.35fr 1fr; gap:18px; align-items:start;}
-    .panel{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02)); border:1px solid var(--line); border-radius:18px; padding:16px; box-shadow:0 14px 60px rgba(0,0,0,.35);}
-    .panel h3{margin:0 0 10px; font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
-    .controls{display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;}
-    .field label{display:block; font-size:12px; color:var(--muted); margin:0 0 6px;}
-    .field input,.field select{width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--txt); outline:none; color-scheme: dark;}
-	/* Better readability for dropdown choices (Edge/Chrome) */
-	.field select{color:#e7eefc;}
-	.field select option{background:#0b1220; color:#e7eefc;}
-	.field select optgroup{background:#0b1220; color:#e7eefc;}
-	.field select:disabled{opacity:.75;}
-.field input:focus,.field select:focus{border-color:rgba(124,58,237,.55); box-shadow:0 0 0 4px rgba(124,58,237,.15)}
-    .btnrow{display:flex; gap:10px; margin:10px 0 0;}
-    .btn{flex:1; padding:11px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--txt); cursor:pointer; font-weight:800}
-    .btn.primary{background:linear-gradient(90deg,var(--g1),var(--g2)); border:none;}
-    .btn.small{flex:0 0 auto; padding:10px 12px;}
-    .cards{display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:12px;}
-    .card{border:1px solid var(--line); border-radius:16px; padding:12px; background:radial-gradient(500px 120px at 15% 0%, rgba(124,58,237,.22), transparent 60%), rgba(255,255,255,.02); cursor:pointer;}
-    .card:hover{transform:translateY(-1px); transition:.15s; border-color:rgba(34,211,238,.35)}
-    .sym{font-weight:900; letter-spacing:.02em;}
-    .row{display:flex; justify-content:space-between; align-items:center; gap:10px;}
-    .score{font-weight:900}
-    .pill{font-size:11px; padding:5px 9px; border-radius:999px; border:1px solid var(--line); color:var(--muted)}
-    .pill.ok{color:rgba(16,185,129,.95); border-color:rgba(16,185,129,.35)}
-    .pill.bad{color:rgba(239,68,68,.95); border-color:rgba(239,68,68,.35)}
-    .pill.warn{color:rgba(245,158,11,.95); border-color:rgba(245,158,11,.35)}
-    .mini{margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;}
-    .mini span{font-size:11px; color:var(--muted)}
-    table{width:100%; border-collapse:separate; border-spacing:0 8px; margin-top:12px;}
-    th{text-align:left; font-size:11px; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; padding:0 10px 6px;}
-    td{padding:10px; background:rgba(255,255,255,.02); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
-    tr td:first-child{border-left:1px solid var(--line); border-top-left-radius:12px; border-bottom-left-radius:12px;}
-    tr td:last-child{border-right:1px solid var(--line); border-top-right-radius:12px; border-bottom-right-radius:12px;}
-    tr:hover td{border-color:rgba(124,58,237,.35);}
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(900px 500px at 30% 0%, rgba(124,58,237,.18), transparent),
+                  radial-gradient(900px 500px at 80% 10%, rgba(34,211,238,.14), transparent),
+                  var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:1100px;margin:0 auto;padding:28px 18px 40px}
+    .topline{display:flex;align-items:center;gap:10px;color:var(--muted);letter-spacing:.12em;font-size:12px}
+    .dot{width:8px;height:8px;border-radius:50%;background:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.15)}
+    h1{margin:10px 0 6px;font-size:46px;line-height:1.05}
+    h1 .wow{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .sub{color:var(--muted);max-width:820px}
+    .bar{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 0}
+    .pill{padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.03);color:var(--muted);font-size:12px}
+    .grid{display:grid;grid-template-columns: 1.35fr .9fr;gap:14px;margin-top:18px}
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .card h2{margin:0 0 10px;font-size:13px;letter-spacing:.16em;color:var(--muted)}
+    .controls{display:grid;grid-template-columns: 1fr 1fr 1fr 1fr;gap:10px}
+    @media (max-width: 820px){ .controls{grid-template-columns:1fr 1fr} }
+    label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}
+    select, input{
+      width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);
+      background:rgba(0,0,0,.25);color:var(--text);outline:none
+    }
+    .actions{display:flex;gap:10px;margin-top:10px}
+    .btn{
+      flex:1;padding:12px 14px;border:0;border-radius:12px;color:#fff;font-weight:700;
+      background:var(--grad);cursor:pointer
+    }
+    .toggle{
+      flex:1;padding:12px 14px;border-radius:12px;border:1px solid var(--line);
+      background:rgba(0,0,0,.25);color:var(--text);cursor:pointer;font-weight:700
+    }
+    .iconbtn{width:44px;min-width:44px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--text);cursor:pointer}
+    .status{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:var(--muted);font-size:12px}
+    .list{margin-top:12px;border-top:1px solid var(--line)}
+    .row{display:grid;grid-template-columns: 1.1fr .9fr .55fr .75fr .55fr .55fr .55fr 1fr;
+      gap:10px;padding:10px 8px;border-bottom:1px solid var(--line);align-items:center}
+    .row.head{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.12em}
+    .row.item{cursor:pointer}
+    .row.item:hover{background:rgba(255,255,255,.03)}
+    .sym{font-weight:800}
     .muted{color:var(--muted)}
-    .rightcol .panel{position:sticky; top:18px;}
-    .chartbox{height:280px;}
-    .coach{margin-top:12px; border:1px solid var(--line); border-radius:16px; padding:12px; background:radial-gradient(700px 180px at 25% 0%, rgba(34,211,238,.16), transparent 60%), rgba(255,255,255,.02);}
-    .coach .title{display:flex; justify-content:space-between; align-items:center; gap:10px;}
-    .coach h4{margin:0; font-size:14px}
-    ul{margin:10px 0 0; padding-left:18px; color:var(--muted)}
-    .statusline{margin-top:10px; font-size:12px; color:var(--muted)}
-    .tag{display:inline-flex; align-items:center; gap:6px}
-    .spark{height:44px; width:100%; opacity:.85}
-    @media(max-width:1150px){ .grid{grid-template-columns:1fr;} .wrap{margin-left:0} .rightcol .panel{position:static} .cards{grid-template-columns:1fr} .controls{grid-template-columns:1fr 1fr} }
+    .badge{display:inline-block;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.03);font-size:12px}
+    .score{font-weight:800}
+    .score.good{color:var(--good)} .score.bad{color:var(--bad)} .score.warn{color:var(--warn)}
+    .tags{display:flex;gap:6px;flex-wrap:wrap}
+    .tag{padding:4px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px;color:var(--muted);background:rgba(0,0,0,.18)}
+    .detail{min-height:420px;position:relative}
+    .detail .empty{color:var(--muted);padding:10px 6px}
+    .detail h3{margin:0 0 8px;font-size:13px;letter-spacing:.14em;color:var(--muted)}
+    .panel{margin-top:8px;border-top:1px solid var(--line);padding-top:10px}
+    .kv{display:grid;grid-template-columns: 1fr 1fr;gap:10px;margin-top:10px}
+    .kv .k{color:var(--muted);font-size:12px}
+    .kv .v{font-weight:800}
+    .chartbox{margin-top:10px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:rgba(0,0,0,.20)}
+    canvas{display:block;width:100%;height:220px}
+    .aiBox{position:absolute;bottom:14px;left:14px;right:14px;border:1px solid var(--line);border-radius:14px;padding:12px;background:rgba(0,0,0,.22)}
+    .aiBox .title{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:12px}
+    .aiBox p{margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.35}
+    .help{margin-top:18px}
+    .helpGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width: 900px){ .helpGrid{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
-__SIDEBAR__
-<div class="wrap">
-  <div class="hero">
-    <div>
-      <div class="kicker"><span class="dot"></span> AI OPPORTUNITY SCANNER • détection d'opportunités</div>
-      <h1>Opportunity Scanner <span class="wow">WOW</span></h1>
-      <div class="sub">Scanner IA basé sur données live (CoinGecko) : breakout, trend, reversal, volume spike. Clique une opportunité pour voir le graphique et la justification IA.</div>
-    </div>
-    <div class="badges">
-      <div class="badge">Data: <b>Binance</b> + <b>CoinGecko</b></div>
-      <div class="badge">Dernière maj: <b id="lastUpdate">—</b></div>
-      <div class="badge">Univers: <b id="universeCount">—</b></div>
-      <div class="badge">Sélection: <b id="selectedSym">—</b></div>
-    </div>
-  </div>
-
-  <div class="grid">
-    <div class="panel">
-      <h3>Scan IA (live)</h3>
-
-      <div class="controls">
-        <div class="field">
-          <label>Univers (Top coins)</label>
-          <select id="universe">
-            <option value="20">Top 20</option>
-            <option value="30" selected>Top 30</option>
-            <option value="50">Top 50</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Timeframe</label>
-          <select id="interval">
-            <option value="15m">15m</option>
-            <option value="1h" selected>1h</option>
-            <option value="4h">4h</option>
-            <option value="1d">1d</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Lookback (candles)</label>
-          <select id="lookback">
-            <option value="160">160</option>
-            <option value="240" selected>240</option>
-            <option value="360">360</option>
-            <option value="500">500</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Filtre</label>
-          <select id="mode">
-            <option value="all" selected>Tous</option>
-            <option value="breakout">Breakout</option>
-            <option value="trend">Trend</option>
-            <option value="reversal">Reversal</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="btnrow">
-        <button class="btn primary" id="btnScan">Scanner maintenant</button>
-        <button class="btn" id="btnAuto">Auto: ON</button>
-        <button class="btn small" id="btnRefresh">↻</button>
-      </div>
-
-      <div class="cards" id="topCards"></div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Symbole</th>
-            <th>Mode</th>
-            <th>Score</th>
-            <th>Prix</th>
-            <th>Δ 24h</th>
-            <th>Vol</th>
-            <th>DD</th>
-            <th>Tags</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-
-      <div class="statusline" id="statusLine">Prêt. Les scores sont des probabilités IA (heuristiques) : valide toujours manuellement.</div>
+  <div class="wrap">
+    <div class="topline"><span class="dot"></span><span>AI OPPORTUNITY SCANNER - DETECTION D'OPPORTUNITES</span></div>
+    <h1>Opportunity Scanner <span class="wow">WOW</span></h1>
+    <div class="sub">
+      Scanner IA base sur donnees live (CoinGecko) : breakout, trend, reversal, volume spike.
+      Clique une opportunite pour voir le graphique et la justification IA.
     </div>
 
-    <div class="rightcol">
-      <div class="panel">
-        <h3>Analyse IA détaillée</h3>
+    <div class="bar">
+      <div class="pill" id="dataPill">Data: Binance + CoinGecko</div>
+      <div class="pill" id="lastPill">Derniere maj: -</div>
+      <div class="pill" id="universePill">Univers: -</div>
+      <div class="pill" id="selPill">Selection: -</div>
+    </div>
 
-        <div class="row" style="margin-bottom:8px">
-          <div class="sym" id="detailSym">—</div>
-          <div class="pill" id="detailPill">—</div>
-        </div>
-
-        <div class="chartbox"><canvas id="priceChart"></canvas></div>
-
-        <div class="coach">
-          <div class="title">
-            <h4>🤖 AI Rationale</h4>
-            <div class="pill" id="coachMode">rules</div>
+    <div class="grid">
+      <div class="card">
+        <h2>SCAN IA (LIVE)</h2>
+        <div class="controls">
+          <div>
+            <label>Univers (Top coins)</label>
+            <select id="universe">
+              <option value="20">Top 20</option>
+              <option value="30" selected>Top 30</option>
+              <option value="50">Top 50</option>
+            </select>
           </div>
-          <ul id="coachList"></ul>
-          <div class="statusline" id="coachNote">Astuce: combine avec “Gestion des risques” pour définir ton size et ton stop.</div>
+          <div>
+            <label>Timeframe</label>
+            <select id="interval">
+              <option value="15m">15m</option>
+              <option value="1h" selected>1h</option>
+              <option value="4h">4h</option>
+              <option value="1d">1d</option>
+            </select>
+          </div>
+          <div>
+            <label>Lookback (candles)</label>
+            <select id="lookback">
+              <option value="120">120</option>
+              <option value="160">160</option>
+              <option value="240" selected>240</option>
+              <option value="360">360</option>
+            </select>
+          </div>
+          <div>
+            <label>Filtre</label>
+            <select id="mode">
+              <option value="all" selected>Tous</option>
+              <option value="breakout">Breakout</option>
+              <option value="trend">Trend</option>
+              <option value="reversal">Reversal</option>
+              <option value="spike">Volume spike</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn" id="scanBtn">Scanner maintenant</button>
+          <button class="toggle" id="autoBtn">Auto: OFF</button>
+          <button class="iconbtn" id="refreshBtn" title="Rafraichir">↻</button>
+        </div>
+
+        <div class="list">
+          <div class="row head">
+            <div>Symbole</div><div>Mode</div><div>Score</div><div>Prix</div><div>Δ 24h</div><div>Vol</div><div>DD</div><div>Tags</div>
+          </div>
+          <div id="rows"></div>
+        </div>
+
+        <div class="status">
+          <div id="statusText">Pret. Les scores sont des probabilites IA (heuristiques) : valide toujours manuellement.</div>
+          <div id="rateText"></div>
+        </div>
+      </div>
+
+      <div class="card detail" id="detailCard">
+        <h3>ANALYSE IA DETAILLEE</h3>
+        <div class="empty" id="detailEmpty">Selectionne un coin pour voir le detail.</div>
+
+        <div class="panel" id="detailPanel" style="display:none;">
+          <div class="kv">
+            <div><div class="k">Symbole</div><div class="v" id="dSymbol">-</div></div>
+            <div><div class="k">Prix</div><div class="v" id="dPrice">-</div></div>
+            <div><div class="k">Mode</div><div class="v" id="dMode">-</div></div>
+            <div><div class="k">Score</div><div class="v" id="dScore">-</div></div>
+          </div>
+
+          <div class="chartbox"><canvas id="chart"></canvas></div>
+
+          <div style="margin-top:10px">
+            <div class="k">Justification IA (rationale)</div>
+            <div id="dRationale" style="margin-top:6px;color:var(--muted);line-height:1.4">-</div>
+          </div>
+
+          <div style="margin-top:10px">
+            <div class="k">Signal details</div>
+            <div id="dDetails" style="margin-top:6px;color:var(--muted);line-height:1.4">-</div>
+          </div>
+        </div>
+
+        <div class="aiBox">
+          <div class="title">
+            <span>AI Rationale</span>
+            <span class="badge">rules</span>
+          </div>
+          <p id="coachText">Astuce: combine avec "Gestion des risques" pour definir ton size et ton stop.</p>
         </div>
       </div>
     </div>
+
+    <div class="card help">
+      <h2>Aide - AI Opportunity Scanner - CryptoIA</h2>
+      <div class="helpGrid">
+        <div class="card" style="padding:14px">
+          <h2>A quoi sert cette page ?</h2>
+          <div class="sub" style="max-width:none">
+            Scanner IA d'opportunites (breakout, trend, reversal) sur donnees live Binance/CoinGecko.
+          </div>
+        </div>
+        <div class="card" style="padding:14px">
+          <h2>Comment l'utiliser ?</h2>
+          <div class="sub" style="max-width:none">
+            1) Choisis l'univers (Top 20/30/50) + timeframe. 2) Clique "Scanner" puis selectionne une ligne pour voir le graphique + justification IA.
+            3) Utilise ensuite "Gestion des risques" pour dimensionner la position et fixer un stop. Les scores aident a prioriser, mais ne remplacent pas ton jugement.
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
-</div>
 
 <script>
-  // Helper (no jQuery)
-  const el = (id) => document.getElementById(id);
+(function(){
+  "use strict";
 
-  const API_SCAN = "/api/v2/opportunity/scan";
-  const API_DETAIL = "/api/v2/opportunity/detail";
-
-  let AUTO = true;
-  let TIMER = null;
-  let CURRENT = null;
-
-  const fmtMoney = (v) => {
-    if (v === null || v === undefined) return "—";
-    const n = Number(v);
-    if (!isFinite(n)) return String(v);
-    if (Math.abs(n) >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    if (Math.abs(n) >= 1) return n.toFixed(4);
-    return n.toFixed(6);
-  };
-
-  const fmtPct = (v) => {
-    if (v === null || v === undefined) return "—";
-    const n = Number(v);
-    if (!isFinite(n)) return String(v);
-    const sign = n > 0 ? "+" : "";
-    return sign + (n * 100).toFixed(2) + "%";
-  };
-
-  async function fetchJSON(url) {
-    const r = await fetch(url, { headers: { "Accept": "application/json" } });
-    let j = null;
-    try { j = await r.json(); } catch (e) { j = null; }
-    if (!r.ok) {
-      const msg = (j && (j.error || j.message)) ? (j.error || j.message) : `HTTP ${r.status}`;
-      return { ok: false, error: msg };
-    }
-    return j;
+  function fmt(n, d){
+    if(n === null || n === undefined || isNaN(Number(n))) return "-";
+    return Number(n).toFixed(d);
+  }
+  function pct(n){
+    if(n === null || n === undefined || isNaN(Number(n))) return "-";
+    var v = Number(n);
+    return (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+  }
+  function scoreClass(s){
+    if(s >= 70) return "good";
+    if(s >= 45) return "warn";
+    return "bad";
   }
 
-  function setCoachLines(lines) {
-    const ul = el("coachList");
-    if (!ul) return;
-    ul.innerHTML = "";
-    const arr = Array.isArray(lines) ? lines : (lines ? String(lines).split("\n").filter(Boolean) : []);
-    if (!arr.length) {
-      const li = document.createElement("li");
-      li.textContent = "—";
-      ul.appendChild(li);
+  var universeEl = document.getElementById("universe");
+  var intervalEl = document.getElementById("interval");
+  var lookbackEl = document.getElementById("lookback");
+  var modeEl = document.getElementById("mode");
+
+  var scanBtn = document.getElementById("scanBtn");
+  var autoBtn = document.getElementById("autoBtn");
+  var refreshBtn = document.getElementById("refreshBtn");
+
+  var rowsEl = document.getElementById("rows");
+  var statusText = document.getElementById("statusText");
+
+  var lastPill = document.getElementById("lastPill");
+  var universePill = document.getElementById("universePill");
+  var selPill = document.getElementById("selPill");
+
+  var detailEmpty = document.getElementById("detailEmpty");
+  var detailPanel = document.getElementById("detailPanel");
+  var dSymbol = document.getElementById("dSymbol");
+  var dPrice = document.getElementById("dPrice");
+  var dMode = document.getElementById("dMode");
+  var dScore = document.getElementById("dScore");
+  var dRationale = document.getElementById("dRationale");
+  var dDetails = document.getElementById("dDetails");
+  var coachText = document.getElementById("coachText");
+
+  var canvas = document.getElementById("chart");
+  var ctx = canvas.getContext("2d");
+  var autoTimer = null;
+
+  function setCoachLines(text){
+    coachText.textContent = text;
+  }
+
+  function renderRows(items){
+    rowsEl.innerHTML = "";
+    if(!items || !items.length){
+      rowsEl.innerHTML = "<div class='row item'><div class='muted'>Aucun resultat.</div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>";
       return;
     }
-    arr.slice(0, 8).forEach((t) => {
-      const li = document.createElement("li");
-      li.textContent = t;
-      ul.appendChild(li);
+    items.forEach(function(it){
+      var score = Number(it.score || 0);
+      var tags = (it.tags || []).map(function(t){ return "<span class='tag'>"+t+"</span>"; }).join("");
+      var html = ""
+        + "<div class='row item' data-symbol='"+it.symbol+"' data-interval='"+it.interval+"' data-mode='"+it.mode+"'>"
+        + "  <div><div class='sym'>"+it.symbol+"</div><div class='muted' style='font-size:12px'>"+(it.name||"")+"</div></div>"
+        + "  <div><span class='badge'>"+(it.mode||"-")+"</span></div>"
+        + "  <div class='score "+scoreClass(score)+"'>"+fmt(score,0)+"/100</div>"
+        + "  <div>$"+fmt(it.price,4)+"</div>"
+        + "  <div class='muted'>"+pct(it.change_24h)+"</div>"
+        + "  <div class='muted'>"+fmt(it.vol_rel,1)+"%</div>"
+        + "  <div class='muted'>"+fmt(it.dd,1)+"%</div>"
+        + "  <div class='tags'>"+tags+"</div>"
+        + "</div>";
+      rowsEl.insertAdjacentHTML("beforeend", html);
+    });
+
+    Array.from(rowsEl.querySelectorAll(".row.item")).forEach(function(row){
+      row.addEventListener("click", function(){
+        selectSymbol(
+          row.getAttribute("data-symbol"),
+          row.getAttribute("data-interval"),
+          row.getAttribute("data-mode")
+        );
+      });
     });
   }
 
-  function renderChart(series) {
-    const canvas = el("priceChart");
-    if (!canvas) return;
+  async function scanNow(){
+    var perPage = universeEl.value;
+    var interval = intervalEl.value;
+    var lookback = lookbackEl.value;
+    var mode = modeEl.value;
 
-    const ctx = canvas.getContext("2d");
-    const w = canvas.width = canvas.clientWidth || 600;
-    const h = canvas.height = 220;
+    universePill.textContent = "Univers: " + perPage;
+    statusText.textContent = "Scan en cours...";
+    setCoachLines("Scan en cours...");
 
-    ctx.clearRect(0, 0, w, h);
+    var url = "/api/v2/opportunity/scan?per_page="+encodeURIComponent(perPage)
+            + "&interval="+encodeURIComponent(interval)
+            + "&lookback="+encodeURIComponent(lookback)
+            + "&mode="+encodeURIComponent(mode);
 
-    const pts = (Array.isArray(series) ? series : [])
-      .map(p => ({ x: Number(p.t), y: Number(p.c) }))
-      .filter(p => isFinite(p.x) && isFinite(p.y));
+    try{
+      var t0 = performance.now();
+      var res = await fetch(url, {headers: {"Accept":"application/json"}});
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      var js = await res.json();
+      var t1 = performance.now();
 
-    if (pts.length < 2) {
-      ctx.globalAlpha = 0.7;
-      ctx.fillText("Pas assez de données pour le graphique.", 10, 20);
-      ctx.globalAlpha = 1;
+      var items = js.items || [];
+      renderRows(items);
+
+      lastPill.textContent = "Derniere maj: " + (js.updated_at || "-");
+      statusText.textContent = "OK - " + (items.length||0) + " resultats (" + Math.round(t1-t0) + "ms). Clique une ligne pour le detail.";
+      setCoachLines("Clique un coin pour voir l'analyse IA detaillee.");
+      selPill.textContent = "Selection: -";
+    }catch(e){
+      console.error(e);
+      statusText.textContent = "Erreur scan: " + (e && e.message ? e.message : e);
+      setCoachLines("Erreur. Verifie ta connexion et reessaie.");
+    }
+  }
+
+  function drawLineChart(series){
+    var rect = canvas.getBoundingClientRect();
+    canvas.width = Math.max(640, Math.floor(rect.width * window.devicePixelRatio));
+    canvas.height = Math.max(240, Math.floor(220 * window.devicePixelRatio));
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    if(!series || series.length < 2){
+      ctx.fillStyle = "rgba(255,255,255,.55)";
+      ctx.font = (14*window.devicePixelRatio) + "px system-ui";
+      ctx.fillText("Pas assez de donnees", 20*window.devicePixelRatio, 40*window.devicePixelRatio);
       return;
     }
 
-    const ys = pts.map(p => p.y);
-    let ymin = min(ys);
-    let ymax = max(ys);
-    if (ymin === ymax) { ymin *= 0.999; ymax *= 1.001; }
+    var prices = series.map(function(p){return p.close;});
+    var min = Math.min.apply(null, prices);
+    var max = Math.max.apply(null, prices);
+    var pad = (max - min) * 0.08;
+    min -= pad; max += pad;
 
-    const pad = 10;
-    const x0 = pad, x1 = w - pad, y0 = pad, y1 = h - pad;
+    var W = canvas.width, H = canvas.height;
+    var left = 40*window.devicePixelRatio, right = 14*window.devicePixelRatio;
+    var top = 18*window.devicePixelRatio, bot = 30*window.devicePixelRatio;
+    var plotW = W - left - right;
+    var plotH = H - top - bot;
 
-    // grid
-    ctx.globalAlpha = 0.25;
-    for (let i = 0; i <= 4; i++) {
-      const y = y0 + (i / 4) * (y1 - y0);
-      ctx.beginPath();
-      ctx.moveTo(x0, y);
-      ctx.lineTo(x1, y);
-      ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,.07)";
+    ctx.lineWidth = 1*window.devicePixelRatio;
+    for(var i=0;i<=4;i++){
+      var y = top + (plotH*i/4);
+      ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(W-right, y); ctx.stroke();
     }
-    ctx.globalAlpha = 1;
 
-    const xMin = pts[0].x;
-    const xMax = pts[pts.length - 1].x;
-
-    const sx = (x) => x0 + ((x - xMin) / (xMax - xMin)) * (x1 - x0);
-    const sy = (y) => y1 - ((y - ymin) / (ymax - ymin)) * (y1 - y0);
-
+    ctx.strokeStyle = "rgba(34,211,238,.95)";
+    ctx.lineWidth = 2*window.devicePixelRatio;
     ctx.beginPath();
-    ctx.moveTo(sx(pts[0].x), sy(pts[0].y));
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(sx(pts[i].x), sy(pts[i].y));
+    series.forEach(function(p, i){
+      var x = left + (plotW * (i/(series.length-1)));
+      var y = top + (plotH * (1 - ((p.close - min)/(max-min))));
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
     ctx.stroke();
 
-    function min(a){ let m=a[0]; for(const v of a) if(v<m) m=v; return m; }
-    function max(a){ let m=a[0]; for(const v of a) if(v>m) m=v; return m; }
+    ctx.fillStyle = "rgba(255,255,255,.65)";
+    ctx.font = (12*window.devicePixelRatio) + "px system-ui";
+    ctx.fillText("$"+fmt(max,2), 6*window.devicePixelRatio, (top+10*window.devicePixelRatio));
+    ctx.fillText("$"+fmt(min,2), 6*window.devicePixelRatio, (top+plotH));
   }
 
-  function setAuto(v) {
-    AUTO = !!v;
-    const btn = el("btnAuto");
-    if (btn) btn.textContent = AUTO ? "Auto: ON" : "Auto: OFF";
-    if (TIMER) clearInterval(TIMER);
-    if (AUTO) TIMER = setInterval(() => scanNow(true), 30000);
+  async function selectSymbol(symbol, interval, mode){
+    selPill.textContent = "Selection: " + symbol;
+    statusText.textContent = "Chargement detail " + symbol + "...";
+    setCoachLines("Chargement de l'analyse IA...");
+
+    try{
+      var url = "/api/v2/opportunity/detail?symbol="+encodeURIComponent(symbol)
+              + "&interval="+encodeURIComponent(interval||intervalEl.value)
+              + "&lookback="+encodeURIComponent(lookbackEl.value || 240)
+              + "&mode="+encodeURIComponent(mode||modeEl.value);
+
+      var res = await fetch(url, {headers: {"Accept":"application/json"}});
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      var js = await res.json();
+
+      detailEmpty.style.display = "none";
+      detailPanel.style.display = "block";
+
+      dSymbol.textContent = js.symbol || symbol;
+      dPrice.textContent = "$" + fmt(js.price, 4);
+      dMode.textContent = js.mode || "-";
+      dScore.textContent = fmt(js.score || 0, 0) + "/100";
+      dScore.className = "v score " + scoreClass(Number(js.score||0));
+
+      dRationale.textContent = js.rationale || "Rationale indisponible.";
+      dDetails.textContent = js.details || "Details indisponibles.";
+
+      drawLineChart(js.series || []);
+      statusText.textContent = "Detail charge: " + symbol;
+      setCoachLines(js.rationale || "Analyse chargee.");
+    }catch(e){
+      console.error(e);
+      statusText.textContent = "Erreur detail: " + (e && e.message ? e.message : e);
+      setCoachLines("Erreur. Impossible de charger le detail.");
+    }
   }
 
-  function scoreClass(score){
-    if (score === null || score === undefined) return "pill";
-    const s = Number(score);
-    if (s >= 70) return "pill ok";
-    if (s >= 45) return "pill warn";
-    return "pill bad";
-  }
+  scanBtn.addEventListener("click", scanNow);
+  refreshBtn.addEventListener("click", scanNow);
 
-  function buildCard(it) {
-    const div = document.createElement("div");
-    div.className = "card";
-    const tags = (it.tags||[]).slice(0,3);
-    div.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-        <div>
-          <div class="sym">${it.symbol}</div>
-          <div style="opacity:.85; margin-top:4px;">${it.mode || "—"}</div>
-        </div>
-        <div class="${scoreClass(it.score)}" style="font-weight:900;">${it.score ?? "—"}/100</div>
-      </div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-        <div style="font-size:16px; font-weight:800;">$${fmtMoney(it.price)}</div>
-      </div>
-      <div style="margin-top:8px; font-size:12px; opacity:.9;">
-        Δ24h: ${fmtPct(it.pct24h)}&nbsp;&nbsp;Vol: ${fmtPct(it.vol)}&nbsp;&nbsp;DD: ${fmtPct(it.dd)}
-      </div>
-      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
-        ${tags.map(t=>`<span class="pill">${t}</span>`).join("")}
-      </div>
-    `;
-    div.onclick = () => { selectSymbol(it).catch(console.error); };
-    return div;
-  }
-
-  function buildRow(it){
-    const tr = document.createElement('tr');
-    const tags = (it.tags||[]).join(', ');
-    tr.innerHTML = `
-      <td style="font-weight:800">${it.symbol}</td>
-      <td>${it.mode || '—'}</td>
-      <td><span class="${scoreClass(it.score)}">${it.score ?? '—'}/100</span></td>
-      <td>$${fmtMoney(it.price)}</td>
-      <td>${fmtPct(it.pct24h)}</td>
-      <td>${fmtPct(it.vol)}</td>
-      <td>${fmtPct(it.dd)}</td>
-      <td style="opacity:.9">${tags || '—'}</td>
-    `;
-    tr.style.cursor = 'pointer';
-    tr.onclick = () => { selectSymbol(it).catch(console.error); };
-    return tr;
-  }
-
-  async function scanNow(silent=false) {
-    const per_page = el("universe")?.value || "30";
-    const interval  = el("interval")?.value || "15m";
-    const lookback  = el("lookback")?.value || "240";
-    const mode      = el("mode")?.value || "all";
-
-    const status = el("statusLine");
-    if (status && !silent) status.textContent = "Scan en cours... (données live, cache serveur pour stabilité)";
-
-    const url = `${API_SCAN}?per_page=${encodeURIComponent(per_page)}&interval=${encodeURIComponent(interval)}&lookback=${encodeURIComponent(lookback)}&mode=${encodeURIComponent(mode)}`;
-    const data = await fetchJSON(url);
-
-    const cards = el("topCards");
-    const rows = el("rows");
-    if (!cards || !rows) return;
-
-    if (!data || data.ok === false) {
-      if (status) status.textContent = "Erreur: " + (data?.error || "impossible de scanner");
-      cards.innerHTML = "";
-      rows.innerHTML = "";
+  autoBtn.addEventListener("click", function(){
+    if(autoTimer){
+      clearInterval(autoTimer);
+      autoTimer = null;
+      autoBtn.textContent = "Auto: OFF";
+      statusText.textContent = "Auto OFF.";
       return;
     }
+    autoTimer = setInterval(scanNow, 30000);
+    autoBtn.textContent = "Auto: ON";
+    statusText.textContent = "Auto ON: scan toutes les 30s.";
+    scanNow();
+  });
 
-    const items = data.items || [];
-    cards.innerHTML = "";
-    rows.innerHTML = "";
-    items.forEach(it => {
-      cards.appendChild(buildCard(it));
-      rows.appendChild(buildRow(it));
-    });
-
-    // meta pills
-    el("lastUpdate") && (el("lastUpdate").textContent = data.asof || "—");
-    el("universeCount") && (el("universeCount").textContent = per_page);
-
-    if (status) status.textContent = `OK • ${items.length} opportunités classées (score IA 0–100).`;
-
-    // auto-select first if nothing selected or selected not in list
-    if (items.length && (!CURRENT || !items.find(x => x.symbol === CURRENT.symbol))) {
-      await selectSymbol(items[0], true);
-    }
-  }
-
-  async function selectSymbol(it, silent=false) {
-    CURRENT = it;
-
-    const interval  = el("interval")?.value || "15m";
-
-    const sel = el("selectedSym");
-    if (sel) sel.textContent = it.symbol;
-
-    const title = el("detailSym");
-    if (title) title.textContent = it.symbol;
-
-    const pill = el("detailPill");
-    if (pill) {
-      const tags = (it.tags||[]).slice(0,3).join(', ');
-      pill.textContent = `Score ${it.score ?? '—'}/100 • ${it.mode || '—'}${tags ? ' • ' + tags : ''}`;
-    }
-
-    el("coachMode") && (el("coachMode").textContent = it.mode || "—");
-    setCoachLines("Chargement de l'analyse IA…");
-
-    const url = `${API_DETAIL}?symbol=${encodeURIComponent(it.symbol)}&interval=${encodeURIComponent(interval)}`;
-    const data = await fetchJSON(url);
-
-    if (!data || data.ok === false) {
-      setCoachLines("Erreur: " + (data?.error || "analyse indisponible"));
-      return;
-    }
-
-    setCoachLines(data.rationale || "—");
-    renderChart(data.series || []);
-  }
-
-  // Buttons
-  el("btnScan") && (el("btnScan").onclick = () => scanNow());
-  el("btnRefresh") && (el("btnRefresh").onclick = () => scanNow());
-  el("btnAuto") && (el("btnAuto").onclick = () => setAuto(!AUTO));
-
-  // init
-  (async () => {
-    setAuto(true);
-    await scanNow();
-  })();
+  scanNow();
+})();
 </script>
-
-
-
 </body>
 </html>
-"""
-    body = body.replace("__SIDEBAR__", SIDEBAR)
+    """.strip()
+
     return HTMLResponse(body)
 
-# ============= AI MARKET REGIME DETECTOR =============
+
 @app.get("/ai-market-regime", response_class=HTMLResponse)
 async def ai_market_regime_page(request: Request):
     """AI Market Regime (v2) — basé sur données publiques (CoinGecko).

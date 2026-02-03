@@ -3055,18 +3055,60 @@ def _validate_interval(interval: str) -> str:
         raise ValueError("Interval invalide")
     return i
 
-async def _http_get_json(url: str, timeout: float = 10.0):
-    # Utilise httpx si présent, sinon urllib
+async def _http_get_json(url: str, params: dict | None = None, timeout: float = 10.0, headers: dict | None = None):
+    """GET JSON with small production hardening.
+
+    - Supports query params.
+    - Adds a stable User-Agent (helps avoid some public API blocks).
+    - Converts HTTP 429 into a RateLimitError with a retry_after.
+    """
+    base_headers = {
+        "User-Agent": "CryptoIA/1.0 (+https://www.cryptoia.ca)",
+        "Accept": "application/json",
+    }
+    if headers:
+        base_headers.update(headers)
+
+    class RateLimitError(Exception):
+        def __init__(self, retry_after: int = 60, status_code: int = 429, message: str = "rate limited"):
+            super().__init__(message)
+            self.retry_after = int(retry_after or 60)
+            self.status_code = status_code
+
+    # Keep the exception class accessible to callers
+    globals()["_RateLimitError"] = RateLimitError
+
+    # httpx path (preferred)
     if 'httpx' in globals() and httpx is not None:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            r = await client.get(url, headers={"User-Agent": "CryptoIA/1.0"})
+        async with httpx.AsyncClient(timeout=timeout, headers=base_headers) as client:
+            r = await client.get(url, params=params)
+            if r.status_code == 429:
+                ra = r.headers.get("Retry-After")
+                try:
+                    ra_i = int(ra) if ra is not None else 60
+                except Exception:
+                    ra_i = 60
+                raise RateLimitError(retry_after=ra_i, status_code=429, message=f"HTTP 429 for {url}")
             r.raise_for_status()
             return r.json()
-    else:
-        import urllib.request
-        req = urllib.request.Request(url, headers={"User-Agent": "CryptoIA/1.0"})
+
+    # urllib fallback
+    import urllib.request
+    if params:
+        url = url + ("&" if "?" in url else "?") + urlencode(params)
+
+    req = urllib.request.Request(url, headers=base_headers)
+    try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8", errors="ignore"))
+            body = resp.read().decode("utf-8", errors="ignore")
+            return json.loads(body)
+    except Exception as e:
+        # best effort: detect 429 in urllib errors
+        msg = str(e)
+        if "HTTP Error 429" in msg:
+            raise RateLimitError(retry_after=60, status_code=429, message=msg)
+        raise
+
 
 @app.get("/api/v2/market/ticker")
 async def api_v2_market_ticker(symbol: str = "BTCUSDT"):
@@ -3115,131 +3157,140 @@ async def api_v2_market_klines(symbol: str = "BTCUSDT", interval: str = "1h", li
         return {"ok": False, "error": str(e)}
 
 @app.get("/api/v2/market/top")
-async def api_v2_market_top(per_page: int = 20, vs_currency: str = "usd", include_sparkline: bool = False, price_change_percentage: str = "24h,7d"):
-    """Return top market-cap coins from CoinGecko.
+async def api_v2_market_top(
+    # New-style params
+    vs: str = "usd",
+    limit: int = 50,
+    spark: int = 1,
+    interval: str = "1h",
+    # Backward-compatible params used by Opportunity Scanner UI
+    vs_currency: str | None = None,
+    per_page: int | None = None,
+    include_sparkline: bool | None = None,
+    price_change_percentage: str | None = None,
+):
+    """Top coins from CoinGecko (live), with caching + cooldown on rate-limits.
 
-    Uses a short TTL cache to reduce API calls. When CoinGecko rate-limits (429),
-    we try to serve the most recent cached response (even if stale).
+    Compatibility:
+      - Accepts both (vs, limit, spark) and legacy (vs_currency, per_page, include_sparkline).
+      - Returns item keys expected by Opportunity Scanner: id, symbol, name, price, market_cap, volume,
+        change_24h_pct, change_7d_pct, sparkline.
     """
-    try:
-        per_page = int(per_page or 20)
-        per_page = max(1, min(250, per_page))
-    except Exception:
-        per_page = 20
+    # normalize inputs (support legacy param names)
+    if vs_currency:
+        vs = vs_currency
+    if per_page is not None:
+        limit = per_page
+    if include_sparkline is not None:
+        spark = 1 if include_sparkline else 0
 
-    vs = (vs_currency or "usd").strip().lower()
-    spark = bool(include_sparkline)
-    pcp = (price_change_percentage or "24h,7d").strip()
-
-    cache_key = ("cg_markets", vs, per_page, spark, pcp)
-    now = time.time()
-    # cached fresh
+    vs = (vs or "usd").lower().strip()
     try:
-        ts, ttl, val = _V2_CACHE.get(cache_key, (0, 0, None))
-        if val is not None and (now - ts) < ttl:
-            return val
-        stale_val = val
+        limit = int(limit)
     except Exception:
-        stale_val = None
+        limit = 50
+    limit = max(5, min(250, limit))
+    spark = 1 if str(spark) == "1" else 0
+    interval = (interval or "1h").lower().strip()
+
+    cache_key = ("market_top", vs, limit, spark, interval, price_change_percentage or "")
+
+    # cached response (fresh)
+    cached = _V2_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    import time as _time
+    now = _time.time()
+    cooldown_until = float(globals().get("_CG_COOLDOWN_UNTIL", 0.0) or 0.0)
+    last_ok = globals().get("_CG_LAST_OK_MARKETS")  # full out dict
+    last_ok_ts = float(globals().get("_CG_LAST_OK_MARKETS_TS", 0.0) or 0.0)
+
+    # If we're in cooldown, immediately serve last OK (stale) to avoid hammering the API
+    if now < cooldown_until and last_ok is not None:
+        out = dict(last_ok)
+        out["_stale"] = True
+        out["_meta"] = {
+            "stale": True,
+            "reason": "coingecko_cooldown",
+            "cooldown_remaining_s": int(max(0, cooldown_until - now)),
+            "last_ok_unix": int(last_ok_ts or 0),
+        }
+        return out
 
     url = "https://api.coingecko.com/api/v3/coins/markets"
     params = {
         "vs_currency": vs,
         "order": "market_cap_desc",
-        "per_page": per_page,
+        "per_page": limit,
         "page": 1,
         "sparkline": "true" if spark else "false",
-        "price_change_percentage": pcp,
+        "price_change_percentage": price_change_percentage or "24h,7d",
     }
 
     try:
         data = await _http_get_json(url, params=params, timeout=18)
-    except Exception as e:
-        # If we have stale data, serve it (better UX than failing hard).
-        if stale_val is not None:
-            stale_copy = dict(stale_val)
-            stale_copy["_stale"] = True
-            return stale_copy
-        raise e
+        items = []
+        for c in (data or []):
+            sym = (c.get("symbol") or "").upper()
+            spr = (c.get("sparkline_in_7d") or {}).get("price") if spark else None
+            if spr and interval:
+                spr = _cg_resample_prices(spr, interval)
+            items.append({
+                "id": c.get("id"),
+                "symbol": sym,
+                "name": c.get("name") or sym,
+                "price": c.get("current_price"),
+                "market_cap": c.get("market_cap"),
+                "volume": c.get("total_volume"),
+                "change_24h_pct": c.get("price_change_percentage_24h_in_currency") or c.get("price_change_percentage_24h"),
+                "change_7d_pct": c.get("price_change_percentage_7d_in_currency") or c.get("price_change_percentage_7d"),
+                "sparkline": spr,
+            })
 
-    coins = []
-    for c in (data or []):
-        coins.append({
-            "id": c.get("id"),
-            "symbol": (c.get("symbol") or "").upper(),
-            "name": c.get("name"),
-            "price": c.get("current_price"),
-            "market_cap": c.get("market_cap"),
-            "volume": c.get("total_volume"),
-            "change_24h_pct": c.get("price_change_percentage_24h_in_currency") or c.get("price_change_percentage_24h"),
-            "change_7d_pct": c.get("price_change_percentage_7d_in_currency") or c.get("price_change_percentage_7d"),
-            "sparkline": (c.get("sparkline_in_7d") or {}).get("price") if spark else None,
-        })
+        out = {"ok": True, "vs": vs, "items": items, "_stale": False, "_meta": {"stale": False, "source": "coingecko"}}
 
-    out = {"ok": True, "vs": vs, "items": coins}
-    _cache_set(cache_key, out, ttl=45)
-    return out
+        # update last known good
+        globals()["_CG_LAST_OK_MARKETS"] = out
+        globals()["_CG_LAST_OK_MARKETS_TS"] = now
+        globals()["_CG_COOLDOWN_UNTIL"] = 0.0
 
-
-def _cg_resample_prices(prices, interval: str):
-    """Resample CoinGecko 7d sparkline (hourly-ish) to requested interval.
-
-    Supported:
-      - 1h: as-is
-      - 4h: downsample by 4
-      - 1d: downsample by 24
-      - 15m: upsample each hour into 4 points (linear interpolation)
-    Fallback: return original prices.
-    """
-    if not prices or len(prices) < 2:
-        return prices or []
-
-    itv = (interval or "1h").lower().strip()
-    if itv in ("60m", "1h"):
-        return list(prices)
-
-    if itv in ("240m", "4h"):
-        return list(prices)[::4]
-
-    if itv in ("1d", "1440m"):
-        return list(prices)[::24]
-
-    if itv in ("15m",):
-        out = []
-        p = list(prices)
-        for i in range(len(p) - 1):
-            a, b = p[i], p[i + 1]
-            out.append(a)
-            out.append(a + (b - a) * 0.25)
-            out.append(a + (b - a) * 0.50)
-            out.append(a + (b - a) * 0.75)
-        out.append(p[-1])
+        # cache fresh (slightly longer to reduce rate-limit risk)
+        _cache_set(cache_key, out, ttl=180)
         return out
 
-    return list(prices)
+    except Exception as e:
+        # handle rate-limits specifically (from _http_get_json)
+        RateLimitError = globals().get("_RateLimitError")
+        if RateLimitError and isinstance(e, RateLimitError):
+            retry_after = int(getattr(e, "retry_after", 60) or 60)
+            globals()["_CG_COOLDOWN_UNTIL"] = now + max(10, min(600, retry_after))
 
+            if last_ok is not None:
+                out = dict(last_ok)
+                out["_stale"] = True
+                out["_meta"] = {
+                    "stale": True,
+                    "reason": "coingecko_rate_limited",
+                    "cooldown_remaining_s": int(max(0, globals()["_CG_COOLDOWN_UNTIL"] - now)),
+                    "last_ok_unix": int(last_ok_ts or 0),
+                }
+                # short cache to stop immediate retries from the UI
+                _cache_set(cache_key, out, ttl=30)
+                return out
 
-def _prices_to_klines(prices, vol_total: float = 0.0):
-    """Convert a price series to a simple kline-like structure.
+            return {"ok": False, "error": f"Rate limited by CoinGecko. Réessaie dans {retry_after}s.", "_stale": True}
 
-    CoinGecko sparkline does not include per-candle volume, so we spread total
-    volume across bars (used mainly for formatting / basic heuristics).
-    """
-    if not prices:
-        return []
-    n = len(prices)
-    try:
-        v = float(vol_total or 0.0) / max(1, n)
-    except Exception:
-        v = 0.0
-    kl = []
-    for i, px in enumerate(prices):
-        try:
-            c = float(px)
-        except Exception:
-            continue
-        kl.append({"t": i, "o": c, "h": c, "l": c, "c": c, "v": v})
-    return kl
+        # generic fallback: serve last OK if available
+        if last_ok is not None:
+            out = dict(last_ok)
+            out["_stale"] = True
+            out["_meta"] = {"stale": True, "reason": "coingecko_error", "error": str(e)[:200], "last_ok_unix": int(last_ok_ts or 0)}
+            _cache_set(cache_key, out, ttl=30)
+            return out
+
+        return {"ok": False, "error": str(e)[:200], "_stale": True}
+
 
 @app.get("/api/v2/opportunity/scan")
 async def api_v2_opportunity_scan(
@@ -3318,6 +3369,8 @@ async def api_v2_opportunity_scan(
             s = _score_opportunity(kl, interval=interval)
             s["symbol"] = sym
             s["cg_id"] = cg_id
+            s["coin_id"] = cg_id
+            s["id"] = cg_id
             s["price"] = float(price) if price is not None else None
             s["change_24h_pct"] = float(ch24) if ch24 is not None else None
             s["market_cap"] = float(mc) if mc is not None else None
@@ -3363,7 +3416,14 @@ async def api_v2_opportunity_scan(
             "universe": universe,
             "interval": interval,
             "lookback": lookback,
+            "cooldown_remaining_s": int(((mk.get("_meta") or {}).get("cooldown_remaining_s") or 0)) if stale else 0,
         }
+
+        # Save a quick symbol -> CoinGecko id map for the detail endpoint (click → analysis)
+        try:
+            _cache_set("oppscan:map", {x.get("symbol"): x.get("coin_id") for x in out if x.get("symbol") and x.get("coin_id")}, ttl=3600)
+        except Exception:
+            pass
 
         return {"ok": True, "items": out, "meta": meta}
 

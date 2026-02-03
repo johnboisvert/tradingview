@@ -3037,7 +3037,9 @@ if BaseHTTPMiddleware and Response:
                 pass
             return response
 
-app.add_middleware(HelpFooterMiddleware)
+_app = globals().get("app")
+if _app is not None:
+    _app.add_middleware(HelpFooterMiddleware)
 
 # =============================
 # Meta statut global (affiché dans le footer d'aide)
@@ -3238,7 +3240,7 @@ async def api_v2_market_top(
     cache_key = ("market_top", vs, limit, spark, interval, price_change_percentage or "")
 
     # cached response (fresh)
-    cached = _V2_CACHE.get(cache_key)
+    cached = _cache_get(cache_key)
     if cached is not None:
         return cached
 
@@ -13330,8 +13332,9 @@ async def ai_opportunity_scanner(request: Request):
     .panel h3{margin:0 0 10px; font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
     .controls{display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;}
     .field label{display:block; font-size:12px; color:var(--muted); margin:0 0 6px;}
-    .field input,.field select{width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--txt); outline:none;}
-    .field input:focus,.field select:focus{border-color:rgba(124,58,237,.55); box-shadow:0 0 0 4px rgba(124,58,237,.15)}
+    .field input,.field select{width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--txt); outline:none; color-scheme: dark;}
+.field select option{background:#0b1220; color:#e7eefc;}
+.field input:focus,.field select:focus{border-color:rgba(124,58,237,.55); box-shadow:0 0 0 4px rgba(124,58,237,.15)}
     .btnrow{display:flex; gap:10px; margin:10px 0 0;}
     .btn{flex:1; padding:11px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--txt); cursor:pointer; font-weight:800}
     .btn.primary{background:linear-gradient(90deg,var(--g1),var(--g2)); border:none;}
@@ -13484,7 +13487,8 @@ const API_DETAIL = "/api/v2/opportunity/detail";
 let AUTO = true;
 let timer = null;
 let chart = null;
-let lastSelected = null;
+let LAST_SELECTED = null;
+let LAST_ITEMS = [];
 
 function fmt(n, d=2){ if(n===null||n===undefined||Number.isNaN(n)) return "—"; return Number(n).toFixed(d); }
 function pct(n){ if(n===null||n===undefined||Number.isNaN(n)) return "—"; const s = (n>=0?"+":"") + (n*100).toFixed(2) + "%"; return s; }
@@ -13493,6 +13497,8 @@ function pillClass(score){
   if(score>=55) return "pill warn";
   return "pill bad";
 }
+    .field select option{background:#0b1220;color:#e7eefc;}
+
 
 function setStatus(msg){ document.getElementById("statusLine").textContent = msg; }
 

@@ -3495,6 +3495,30 @@ async def api_v2_opportunity_detail(
 
 
 
+
+# ----------------------------
+# SlowAPI (rate limiting) — OPTIONAL
+# ----------------------------
+# On Railway or some environments, SlowAPI may not be installed.
+# We keep the app fully functional by falling back to a no-op limiter.
+try:
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware
+    SLOWAPI_AVAILABLE = True
+except Exception:
+    SLOWAPI_AVAILABLE = False
+
+    class _NoopLimiter:
+        def limit(self, *args, **kwargs):
+            def _decorator(fn):
+                return fn
+            return _decorator
+
+    # Provide a safe fallback so @limiter.limit(...) decorators don't crash
+    limiter = _NoopLimiter()
+
 if SLOWAPI_AVAILABLE:
     limiter = Limiter(key_func=get_remote_address)
     app.state.limiter = limiter
@@ -3504,7 +3528,8 @@ if SLOWAPI_AVAILABLE:
     async def rate_limit_handler(request, exc):
         return JSONResponse({"detail": "Trop de requêtes, réessaie plus tard."}, status_code=429)
 else:
-    limiter = None
+    # SlowAPI not available: keep the no-op limiter defined above
+    pass
 # Shared helpers (compatibilité / anti-NameError)
 # =========================
 try:

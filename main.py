@@ -220,6 +220,10 @@ from fastapi import (
     Body, Form, UploadFile, File, Cookie, Header, Query, Path, BackgroundTasks,
     APIRouter, WebSocket, WebSocketDisconnect
 )
+
+# --- FastAPI app (doit exister avant les routes/middlewares ci-dessous) ---
+app = FastAPI()
+
 from fastapi.responses import (
     HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse,
     StreamingResponse, FileResponse
@@ -3033,7 +3037,7 @@ if BaseHTTPMiddleware and Response:
                 pass
             return response
 
-    app.add_middleware(HelpFooterMiddleware)
+app.add_middleware(HelpFooterMiddleware)
 
 # =============================
 # Meta statut global (affiché dans le footer d'aide)

@@ -3701,6 +3701,25 @@ async def api_v2_opportunity_scan(
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
+# Compat: the UI uses POST (JSON body). Keep GET for direct URL testing.
+@app.post("/api/v2/opportunity/scan")
+async def api_v2_opportunity_scan_post(body: dict = Body(default={} )):
+    try:
+        # Accept both numeric and string values safely
+        universe = int((body.get("universe") if isinstance(body, dict) else None) or 30)
+        interval = str((body.get("interval") if isinstance(body, dict) else None) or "1h")
+        lookback = int((body.get("lookback") if isinstance(body, dict) else None) or 240)
+        filter_mode = str((body.get("filter") if isinstance(body, dict) else None) or "all")
+        return await api_v2_opportunity_scan(
+            universe=universe,
+            interval=interval,
+            lookback=lookback,
+            filter=filter_mode,
+        )
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 @app.get("/api/v2/opportunity/detail")
 async def api_v2_opportunity_detail(
     symbol: str = "",

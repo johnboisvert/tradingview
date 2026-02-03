@@ -3157,6 +3157,7 @@ async def api_v2_market_top(per_page: int = 20, vs_currency: str = "usd"):
 # =============================
 # Rate limiting (SlowAPI) — optionnel
 # =============================
+SLOWAPI_IMPORT_ERROR = None
 try:
     from slowapi import Limiter
     from slowapi.util import get_remote_address
@@ -3165,11 +3166,15 @@ try:
     SLOWAPI_AVAILABLE = True
 except Exception as _e:
     SLOWAPI_AVAILABLE = False
+    SLOWAPI_IMPORT_ERROR = str(_e)
     Limiter = None  # type: ignore
     get_remote_address = None  # type: ignore
     RateLimitExceeded = Exception  # type: ignore
     SlowAPIMiddleware = None  # type: ignore
     
+
+if not SLOWAPI_AVAILABLE and SLOWAPI_IMPORT_ERROR:
+    print(f"⚠️ SlowAPI non disponible (OK): {SLOWAPI_IMPORT_ERROR}")
 
 # =========================
 # OPPORTUNITY SCANNER API (v2) — LIVE + CACHE + "IA"
@@ -3531,7 +3536,6 @@ async def api_v2_opportunity_detail(symbol: str = "BTCUSDT", interval: str = "1h
         return {"ok": False, "error": str(e)}
 
 
-print(f"⚠️ SlowAPI non disponible (OK): {_e}")
 
 if SLOWAPI_AVAILABLE:
     limiter = Limiter(key_func=get_remote_address)

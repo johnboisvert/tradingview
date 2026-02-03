@@ -1,6 +1,19 @@
 from typing import Optional
 import html
 
+# =========================
+# RATE LIMITER (safe fallback)
+# =========================
+class _NoopLimiterFallback:
+    """Fallback limiter so @limiter.limit(...) never crashes if SlowAPI isn't configured."""
+    def limit(self, *args, **kwargs):
+        def decorator(fn):
+            return fn
+        return decorator
+
+# Always defined (prevents NameError at import-time decorators)
+limiter = _NoopLimiterFallback()
+
 
 # =========================
 # FOOTER D'AIDE (bas de page)
@@ -2945,8 +2958,33 @@ def _force_admin_on_request(request):
         pass
     return admin_user
 
-app = FastAPI()
+# =======================
+# Rate Limiter (optionnel)
+# =======================
+# Le projet utilise parfois @limiter.limit(...) sur certains endpoints.
+# Sur certains déploiements, SlowAPI n'est pas installé -> on évite le crash en fournissant un "no-op" limiter.
+class _NoopLimiter:
+    def limit(self, *args, **kwargs):
+        def _decorator(fn):
+            return fn
+        return _decorator
 
+limiter = _NoopLimiter()
+
+try:
+    from slowapi import Limiter as _SlowLimiter, _rate_limit_exceeded_handler as _slowapi_handler
+    from slowapi.util import get_remote_address as _get_remote_address
+    from slowapi.errors import RateLimitExceeded as _RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware as _SlowAPIMiddleware
+
+    limiter = _SlowLimiter(key_func=_get_remote_address)
+    app.state.limiter = limiter
+    app.add_exception_handler(_RateLimitExceeded, _slowapi_handler)
+    app.add_middleware(_SlowAPIMiddleware)
+    print("✅ Rate limiter (slowapi) initialisé")
+except Exception as _e:
+    # Pas bloquant: on garde le limiter no-op.
+    print(f"⚠️ Rate limiter désactivé ({_e.__class__.__name__})")
 # =============================
 # Auto footer d'aide sur TOUTES les pages HTML
 # (injecte le bloc "À quoi sert / Comment utiliser" en bas de page)

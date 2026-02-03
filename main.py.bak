@@ -3617,62 +3617,6 @@ async def api_v2_opportunity_scan(
 
         top = await api_v2_market_top(limit=limit, interval=interval)
         items = top.get("items") or []
-
-        # Prefetch Binance closes in parallel for coins where CoinGecko sparkline may be missing
-        binance_closes_map = {}
-        try:
-            import asyncio
-            iv = _validate_interval(interval_norm if interval_norm != "24h" else "1d")
-            lim = int(lookback or 240)
-            lim = max(5, min(lim, 1000))
-            need_pairs = []
-            for coin in items:
-                sym0 = (coin.get("symbol") or "").upper().strip()
-                if not sym0:
-                    continue
-                # If CoinGecko sparkline seems unavailable, mark for Binance
-                prices0 = (((coin.get("sparkline_in_7d") or {}).get("price") or []) if isinstance(coin.get("sparkline_in_7d"), dict) else []) if (coin.get("sparkline_in_7d") is not None) else []
-                if not prices0 or len(prices0) < 10:
-                    need_pairs.append(_validate_symbol(f"{sym0}USDT"))
-
-            if need_pairs:
-                sem = asyncio.Semaphore(10)
-
-                async def _fetch_pair(pair: str):
-                    try:
-                        ck = f"klines:{pair}:{iv}:{lim}"
-                        cached = _cache_get(ck)
-                        if cached:
-                            closes = [float(x.get("c")) for x in cached if isinstance(x, dict) and x.get("c") is not None]
-                            return pair, closes
-
-                        url = f"https://api.binance.com/api/v3/klines?symbol={pair}&interval={iv}&limit={lim}"
-                        async with sem:
-                            data = await _http_get_json(url, timeout=20)
-
-                        closes = []
-                        parsed = []
-                        for row in (data or []):
-                            try:
-                                cclose = float(row[4])
-                                cvol = float(row[5])
-                                cts = int(row[0])
-                                closes.append(cclose)
-                                parsed.append({"t": cts, "c": cclose, "v": cvol})
-                            except Exception:
-                                continue
-                        if parsed:
-                            _cache_set(ck, parsed, ttl=60)
-                        return pair, closes
-                    except Exception:
-                        return pair, None
-
-                fetched = await asyncio.gather(*[_fetch_pair(p) for p in need_pairs])
-                for pair, closes in fetched:
-                    if closes:
-                        binance_closes_map[pair] = closes
-        except Exception:
-            binance_closes_map = {}
         meta = top.get("meta") or ""
 
         # update symbol -> coingecko id mapping
@@ -3694,10 +3638,7 @@ async def api_v2_opportunity_scan(
                 closes = _cg_resample_prices(prices, interval_norm)
 
                 if len(closes) < min_candles:
-                    # Fallback: use prefetched Binance closes (if CoinGecko sparkline is missing)
-                    closes = (binance_closes_map.get(symbol) or [])
-                    if len(closes) < min_candles:
-                        continue
+                    continue
 
                 score, tags = _opportunity_score(closes, lookback=lookback)
                 mode_name = _opportunity_mode(tags)

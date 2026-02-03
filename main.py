@@ -3164,10 +3164,10 @@ async def api_v2_market_top(
     spark: int = 1,
     interval: str = "1h",
     # Backward-compatible params used by Opportunity Scanner UI
-    vs_currency: str | None = None,
+    vs_currency: Optional[str] = None,
     per_page: int | None = None,
     include_sparkline: bool | None = None,
-    price_change_percentage: str | None = None,
+    price_change_percentage: Optional[str] = None,
 ):
     """Top coins from CoinGecko (live), with caching + cooldown on rate-limits.
 
@@ -3298,7 +3298,11 @@ async def api_v2_opportunity_scan(
     interval: str = "1h",
     lookback: int = 240,
     mode_filter: str = "all",
-    limit: int = 30
+    limit: int = 30,
+    # compat anciens paramètres front
+    timeframe: Optional[str] = None,
+    filter: Optional[str] = None,
+    mode: Optional[str] = None
 ):
     """Scan opportunities using a *single* CoinGecko markets call (with sparkline).
 
@@ -3326,6 +3330,14 @@ async def api_v2_opportunity_scan(
 
         interval = (interval or "1h").strip().lower()
         mode_filter = (mode_filter or "all").strip().lower()
+
+        # Compat: accepter timeframe/filter/mode provenant d'anciens frontends
+        if timeframe:
+            interval = str(timeframe).strip().lower()
+        if filter:
+            mode_filter = str(filter).strip().lower()
+        if mode and mode_filter == "all":
+            mode_filter = str(mode).strip().lower()
 
         mk = await api_v2_market_top(
             per_page=universe,
@@ -3432,10 +3444,13 @@ async def api_v2_opportunity_scan(
 
 @app.get("/api/v2/opportunity/detail")
 async def api_v2_opportunity_detail(
-    coin_id: str | None = None,
+    coin_id: Optional[str] = None,
     symbol: str = "BTCUSDT",
     interval: str = "1h",
     limit: int = 240,
+    # compat anciens paramètres front
+    timeframe: Optional[str] = None,
+    lookback: Optional[int] = None,
 ):
     """
     Detail + série pour une opportunité.
@@ -3443,6 +3458,12 @@ async def api_v2_opportunity_detail(
     - Fallback: si coin_id absent, on tente de déduire via le dernier scan ou via la liste CoinGecko.
     """
     try:
+        # Compat: accepter timeframe/lookback provenant d'anciens frontends
+        if timeframe:
+            interval = str(timeframe).strip().lower()
+        if lookback is not None:
+            limit = int(lookback)
+
         itv = _validate_interval(interval)
         lim = max(80, min(int(limit), 600))
 
@@ -13339,169 +13360,219 @@ __SIDEBAR__
 const API_SCAN = "/api/v2/opportunity/scan";
 const API_DETAIL = "/api/v2/opportunity/detail";
 
-let AUTO = true;
-let timer = null;
-let chart = null;
-let lastSelected = null;
+const $ = (id) => document.getElementById(id);
 
-function fmt(n, d=2){ if(n===null||n===undefined||Number.isNaN(n)) return "—"; return Number(n).toFixed(d); }
-function pct(n){ if(n===null||n===undefined||Number.isNaN(n)) return "—"; const s = (n>=0?"+":"") + (n*100).toFixed(2) + "%"; return s; }
-function pillClass(score){
-  if(score>=75) return "pill ok";
-  if(score>=55) return "pill warn";
-  return "pill bad";
+let lastItems = [];
+let lastSelected = null;
+let autoTimer = null;
+
+function setStatus(html, ok=true){
+  const el = $("statusLine");
+  if(!el) return;
+  el.innerHTML = html;
+  el.classList.toggle("ok", !!ok);
+  el.classList.toggle("bad", !ok);
 }
 
-function setStatus(msg){ document.getElementById("statusLine").textContent = msg; }
+function fmt(n){
+  if(n === null || n === undefined) return "—";
+  if(typeof n !== "number") return String(n);
+  if(Math.abs(n) >= 1_000_000_000) return (n/1_000_000_000).toFixed(2)+"B";
+  if(Math.abs(n) >= 1_000_000) return (n/1_000_000).toFixed(2)+"M";
+  if(Math.abs(n) >= 1_000) return (n/1_000).toFixed(2)+"K";
+  return n.toFixed(2);
+}
 
-async function scanNow(){
-  const per = document.getElementById("universe").value;
-  const interval = document.getElementById("interval").value;
-  const lookback = document.getElementById("lookback").value;
-  const mode = document.getElementById("mode").value;
+function pct(n){
+  if(n === null || n === undefined || isNaN(n)) return "—";
+  return (n>=0?"+":"") + n.toFixed(2) + "%";
+}
 
-  setStatus("Scan en cours… (données live, cache serveur pour stabilité)");
-  const url = `${API_SCAN}?per_page=${encodeURIComponent(per)}&interval=${encodeURIComponent(interval)}&lookback=${encodeURIComponent(lookback)}&mode=${encodeURIComponent(mode)}`;
-  const r = await fetch(url);
-  const j = await r.json();
-  if(!j.ok){
-    setStatus("Erreur: " + (j.error||"inconnue"));
+function getParams(){
+  const universe = parseInt($("universe")?.value || "30", 10);
+  const interval = $("interval")?.value || "1h";
+  const lookback = parseInt($("lookback")?.value || "240", 10);
+  const mode_filter = $("mode")?.value || "all";
+  return {universe, interval, lookback, mode_filter};
+}
+
+async function fetchJsonWithTimeout(url, ms=20000){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), ms);
+  try{
+    const r = await fetch(url, {credentials:"include", signal: ctrl.signal});
+    if(!r.ok){
+      // essayer de lire le body pour debug
+      let body = "";
+      try{ body = await r.text(); }catch(e){}
+      throw new Error(`HTTP ${r.status}${body?` — ${body.slice(0,160)}`:""}`);
+    }
+    return await r.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function renderRows(items){
+  const tbody = $("rows");
+  if(!tbody) return;
+  if(!items || items.length === 0){
+    tbody.innerHTML = `<tr><td colspan="7" style="padding:14px;color:#9fb3c8">Aucune opportunité trouvée.</td></tr>`;
     return;
   }
-  document.getElementById("lastUpdate").textContent = j.asof || "—";
-  document.getElementById("universeCount").textContent = String(j.universe||j.items.length||"—");
+  tbody.innerHTML = items.map((it, idx)=>`
+    <tr class="row" data-sym="${it.symbol}">
+      <td>${idx+1}</td>
+      <td><b>${it.symbol}</b></td>
+      <td>${it.mode || "—"}</td>
+      <td><b>${(it.score ?? 0).toFixed(1)}</b></td>
+      <td>${it.price ? fmt(it.price) : "—"}</td>
+      <td>${pct(it.change24h)}</td>
+      <td>${it.tags ? it.tags.join(", ") : "—"}</td>
+    </tr>
+  `).join("");
 
-  renderTopCards(j.items.slice(0, 6));
-  renderTable(j.items);
-
-  // auto select top
-  if(!LAST_SELECTED && j.items.length){
-    selectSymbol(j.items[0]);
-  } else if(LAST_SELECTED){
-    // refresh detail
-    await selectSymbol(LAST_SELECTED, true);
-  }
-
-  setStatus(`OK • ${j.items.length} opportunités classées (score IA 0–100).`);
+  tbody.querySelectorAll("tr.row").forEach(tr=>{
+    tr.addEventListener("click", ()=>{
+      const sym = tr.getAttribute("data-sym");
+      if(sym) selectSymbol(sym);
+    });
+  });
 }
 
-function renderTopCards(items){
-  const box = document.getElementById("topCards");
-  box.innerHTML = "";
-  for(const it of items){
-    const div = document.createElement("div");
-    div.className = "card";
-    div.onclick = ()=>selectSymbol(it);
-    const tags = (it.tags||[]).slice(0,3).map(t=>`<span class="pill">${t}</span>`).join(" ");
-    div.innerHTML = `
-      <div class="row">
-        <div class="sym">${it.symbol}</div>
-        <div class="${pillClass(it.score)}"><b>${Math.round(it.score)}</b>/100</div>
-      </div>
-      <div class="row" style="margin-top:6px">
-        <div class="muted">${it.mode||"—"}</div>
-        <div class="muted">$${fmt(it.price, 4)}</div>
-      </div>
-      <div class="mini">
-        <span>Δ24h: <b>${pct(it.change_24h)}</b></span>
-        <span>Vol: <b>${fmt(it.vol_30d,1)}%</b></span>
-        <span>DD: <b>${fmt(it.dd_30d,1)}%</b></span>
-      </div>
-      <div class="mini">${tags}</div>
-    `;
-    box.appendChild(div);
+function updateHeaderMeta(meta){
+  if(meta?.last_update){
+    const el = $("lastUpdate");
+    if(el) el.textContent = meta.last_update;
+  }
+  if(meta?.universe_count !== undefined){
+    const el = $("universeCount");
+    if(el) el.textContent = String(meta.universe_count);
   }
 }
 
-function renderTable(items){
-  LAST_ITEMS = items || [];
+function setSelectedUI(symbol, detail){
+  const sel = $("selectedSym");
+  if(sel) sel.textContent = symbol || "—";
+  const ds = $("detailSym");
+  if(ds) ds.textContent = symbol || "—";
 
-  const tb = document.getElementById("rows");
-  tb.innerHTML = "";
-  for(const it of items){
-    const tr = document.createElement("tr");
-    tr.style.cursor="pointer";
-    tr.onclick = ()=>selectSymbol(it);
-    const tags = (it.tags||[]).slice(0,3).join(", ");
-    tr.innerHTML = `
-      <td><b>${it.symbol}</b><div class="muted" style="font-size:11px">${it.name||""}</div></td>
-      <td>${it.mode||"—"}</td>
-      <td><span class="${pillClass(it.score)}"><b>${Math.round(it.score)}</b>/100</span></td>
-      <td>$${fmt(it.price, 6)}</td>
-      <td>${pct(it.change_24h)}</td>
-      <td>${fmt(it.vol_30d,1)}%</td>
-      <td>${fmt(it.dd_30d,1)}%</td>
-      <td class="muted">${tags||"—"}</td>
-    `;
-    tb.appendChild(tr);
+  const pill = $("detailPill");
+  if(pill){
+    const s = (detail?.score ?? lastSelected?.score);
+    const tags = detail?.tags || lastSelected?.tags || [];
+    pill.textContent = `Score ${s!==undefined ? Number(s).toFixed(1) : "—"}${tags.length ? " • " + tags.join(" • ") : ""}`;
   }
+
+  // coach zone
+  const modeEl = $("coachMode");
+  if(modeEl) modeEl.textContent = detail?.mode || lastSelected?.mode || "—";
+
+  const listEl = $("coachList");
+  if(listEl){
+    const bullets = Array.isArray(detail?.bullets) ? detail.bullets
+                  : Array.isArray(detail?.rationale?.bullets) ? detail.rationale.bullets
+                  : [];
+    listEl.innerHTML = bullets.length ? bullets.map(b=>`<li>${b}</li>`).join("") : `<li style="opacity:.75">Aucune explication disponible.</li>`;
+  }
+  const noteEl = $("coachNote");
+  if(noteEl) noteEl.textContent = detail?.note || detail?.rationale?.note || "Astuce: combine avec “Gestion des risques” pour définir ton size & ton stop.";
 }
 
-async function selectSymbol(x, silent=false){
+function highlightSelected(symbol){
+  const tbody = $("rows");
+  if(!tbody) return;
+  tbody.querySelectorAll("tr.row").forEach(tr=>{
+    tr.classList.toggle("active", tr.getAttribute("data-sym") === symbol);
+  });
+}
+
+async function selectSymbol(symbol){
+  if(!symbol) return;
   try{
-    const it = (typeof x === "string")
-      ? (LAST_ITEMS.find(z=>z.symbol===x) || {symbol:x, cg_id:null})
-      : (x || {symbol:"--", cg_id:null});
+    const {interval, lookback} = getParams();
+    lastSelected = lastItems.find(x=>x.symbol===symbol) || lastSelected || {symbol};
+    setSelectedUI(symbol, null);
+    highlightSelected(symbol);
 
-    LAST_SELECTED = it;
+    // charger détail
+    const url = new URL(API_DETAIL, window.location.origin);
+    url.searchParams.set("symbol", symbol);
+    url.searchParams.set("interval", interval);
+    url.searchParams.set("lookback", String(lookback));
 
-    const sym = it.symbol || "--";
-    const cid = it.cg_id || null;
-
-    $("selection").innerText = sym;
-
-    if(!cid){
-      $("detailSym").innerText = sym;
-      $("scorePill").innerText = "--";
-      $("tagsPill").innerText = "--";
-      $("rationale").textContent = "Coin_id manquant. Relance un scan (CoinGecko) puis réessaie.";
-      return;
-    }
-
-    if(!silent) $("rationale").textContent = "Chargement de l'analyse IA…";
-
-    const url = API_DETAIL
-      + "?coin_id=" + encodeURIComponent(cid)
-      + "&symbol=" + encodeURIComponent(sym)
-      + "&interval=" + encodeURIComponent($("tf").value)
-      + "&limit=" + encodeURIComponent($("lookback").value);
-
-    const j = await fetchJSON(url);
-
+    const j = await fetchJsonWithTimeout(url.toString(), 20000);
     if(!j.ok){
-      $("rationale").textContent = "Erreur: " + (j.error || "inconnue");
+      setStatus(`Erreur détail: ${j.error || "inconnu"}`, false);
       return;
     }
 
-    $("detailSym").innerText = sym;
-    $("scorePill").innerText = Math.round(j.score||0);
-    $("tagsPill").innerText = (j.tags||[]).slice(0,5).join(", ") || "--";
-    renderChart(j.series||[]);
-    $("rationale").textContent = j.rationale || "—";
-  }catch(e){
-    $("rationale").textContent = "Erreur: " + e;
+    setSelectedUI(symbol, j.detail);
+    setStatus(`OK • ${symbol}`, true);
+  }catch(err){
+    setStatus(`Erreur: ${err.message || err}`, false);
+  }
+}
+
+async function scanNow(){
+  try{
+    setStatus("Scan en cours… (données live, cache serveur pour stabilité)", true);
+
+    const {universe, interval, lookback, mode_filter} = getParams();
+    const url = new URL(API_SCAN, window.location.origin);
+    url.searchParams.set("universe", String(universe));
+    url.searchParams.set("interval", interval);
+    url.searchParams.set("lookback", String(lookback));
+    url.searchParams.set("mode_filter", mode_filter);
+    url.searchParams.set("limit", "30");
+
+    const j = await fetchJsonWithTimeout(url.toString(), 20000);
+    if(!j.ok){
+      setStatus(`Erreur: ${j.error || "inconnu"}`, false);
+      return;
+    }
+
+    lastItems = j.items || [];
+    updateHeaderMeta(j.meta || {});
+    renderRows(lastItems);
+
+    // auto-select first item if none
+    if(!lastSelected && lastItems.length){
+      await selectSymbol(lastItems[0].symbol);
+    }else{
+      setStatus("OK", true);
+    }
+  }catch(err){
+    setStatus(`Erreur: ${err.name === "AbortError" ? "Timeout (réessaye)" : (err.message || err)}`, false);
   }
 }
 
 function setAuto(on){
-  AUTO = on;
-  document.getElementById("btnAuto").textContent = "Auto: " + (AUTO ? "ON" : "OFF");
-  if(timer){ clearInterval(timer); timer=null; }
-  if(AUTO){
-    timer = setInterval(scanNow, 30000);
+  const btn = $("btnAuto");
+  if(btn){
+    btn.textContent = on ? "Auto: ON" : "Auto: OFF";
+    btn.classList.toggle("active", !!on);
   }
 }
 
-document.getElementById("btnScan").onclick = ()=>scanNow();
-document.getElementById("btnRefresh").onclick = ()=>scanNow();
-document.getElementById("btnAuto").onclick = ()=>setAuto(!AUTO);
-
-// init
-(async ()=>{
+function toggleAuto(){
+  const isOn = !!autoTimer;
+  if(isOn){
+    clearInterval(autoTimer);
+    autoTimer = null;
+    setAuto(false);
+    return;
+  }
   setAuto(true);
-  await scanNow();
-})();
-</script>
+  autoTimer = setInterval(()=>{ scanNow(); }, 25000);
+  scanNow();
+}
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  $("btnScan")?.addEventListener("click", scanNow);
+  $("btnAuto")?.addEventListener("click", toggleAuto);
+  $("btnRefresh")?.addEventListener("click", scanNow);
+});</script>
 
 </body>
 </html>
@@ -15631,7 +15702,7 @@ async def update_risk_settings(request: dict):
 @app.get("/api/risk/position-size")
 async def calculate_position_size(
     # Legacy params (used by older pages)
-    symbol: str | None = None,
+    symbol: Optional[str] = None,
     entry: float = 0.0,
     sl: float | None = None,
     # New params (used by /risk-management WOW)
@@ -23915,7 +23986,7 @@ def _rmwow_base_asset(symbol: str) -> str:
             return s[:-len(suf)]
     return s
 
-def _rmwow_symbol_to_cg_id_guess(base: str) -> str | None:
+def _rmwow_symbol_to_cg_id_guess(base: str) -> Optional[str]:
     # Mapping stable pour les tops (évite un appel search)
     m = {
         "BTC": "bitcoin",
@@ -23950,7 +24021,7 @@ async def _rmwow_http_get_json(url: str, params: dict | None = None, timeout_s: 
             raise RuntimeError(f"HTTP {r.status_code}")
         return r.json()
 
-async def _rmwow_resolve_cg_id(base: str) -> str | None:
+async def _rmwow_resolve_cg_id(base: str) -> Optional[str]:
     """Résout un symbol (base asset) -> CoinGecko id (cache 24h)."""
     now = _rmwow_now()
     cache = _RMWOW_CACHE.get("cg_map") or {}
@@ -24193,7 +24264,7 @@ async def api_v2_risk_overview(per_page: int = 20):
         return JSONResponse({"ok": False, "error": "Impossible de charger CoinGecko (rate limit ou réseau)."}, status_code=502)
 
 @app.get("/api/v2/risk/market-stats")
-async def api_v2_risk_market_stats(symbol: str = "BTCUSDT", days: int = 30, cg_id: str | None = None):
+async def api_v2_risk_market_stats(symbol: str = "BTCUSDT", days: int = 30, cg_id: Optional[str] = None):
     """Stats marché + timeseries (CoinGecko) + 24h (Binance). Cache 30s/60s."""
     now = _rmwow_now()
     days = int(days or 30)
@@ -34948,7 +35019,7 @@ async def _ai_token_scanner_run(q: str, chain: str = "auto") -> dict:
 # AI TOKEN SCANNER - RENDER
 # =========================
 
-def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error: str | None, cache_hit: bool = False) -> str:
+def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error: Optional[str], cache_hit: bool = False) -> str:
     q_esc = html.escape(q or "")
     chain = _norm_chain(chain)
     cache_badge = '<span class="badge-cache">Résultat en cache</span>' if cache_hit else ''
@@ -65394,7 +65465,7 @@ async def _ai_token_scanner_run(q: str, chain: str = "auto") -> dict:
 # AI TOKEN SCANNER - RENDER
 # =========================
 
-def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error: str | None, cache_hit: bool = False) -> str:
+def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error: Optional[str], cache_hit: bool = False) -> str:
     q_esc = html.escape(q or "")
     chain = _norm_chain(chain)
     cache_badge = '<span class="badge-cache">Résultat en cache</span>' if cache_hit else ''

@@ -3115,517 +3115,258 @@ async def api_v2_market_klines(symbol: str = "BTCUSDT", interval: str = "1h", li
         return {"ok": False, "error": str(e)}
 
 @app.get("/api/v2/market/top")
-async def api_v2_market_top(per_page: int = 20, vs_currency: str = "usd"):
+async def api_v2_market_top(per_page: int = 20, vs_currency: str = "usd", include_sparkline: bool = False, price_change_percentage: str = "24h,7d"):
+    """Return top market-cap coins from CoinGecko.
+
+    Uses a short TTL cache to reduce API calls. When CoinGecko rate-limits (429),
+    we try to serve the most recent cached response (even if stale).
+    """
     try:
-        per_page = int(per_page)
-        per_page = max(5, min(per_page, 50))
-        vs = (vs_currency or "usd").strip().lower()
-        if not re.fullmatch(r"[a-z]{3,10}", vs):
-            vs = "usd"
-
-        cache_key = f"cg_top:{vs}:{per_page}"
-        cached = _cache_get(cache_key)
-        if cached is not None:
-            return {"ok": True, "cached": True, "coins": cached}
-
-        url = "https://api.coingecko.com/api/v3/coins/markets?" + urlencode({
-            "vs_currency": vs,
-            "order": "market_cap_desc",
-            "per_page": per_page,
-            "page": 1,
-            "sparkline": "false",
-            "price_change_percentage": "24h,7d"
-        })
-        data = await _http_get_json(url, timeout=12.0)
-        coins = []
-        for c in data:
-            coins.append({
-                "id": c.get("id"),
-                "name": c.get("name"),
-                "symbol": (c.get("symbol") or "").upper(),
-                "price": float(c.get("current_price") or 0),
-                "change_24h_pct": float(c.get("price_change_percentage_24h") or 0),
-                "change_7d_pct": float(c.get("price_change_percentage_7d_in_currency") or 0),
-                "market_cap": float(c.get("market_cap") or 0),
-                "volume": float(c.get("total_volume") or 0),
-            })
-        _cache_set(cache_key, coins, ttl=60)
-        return {"ok": True, "cached": False, "coins": coins}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-# =========================
-# =============================
-# Rate limiting (SlowAPI) — optionnel
-# =============================
-SLOWAPI_IMPORT_ERROR = None
-try:
-    from slowapi import Limiter
-    from slowapi.util import get_remote_address
-    from slowapi.errors import RateLimitExceeded
-    from slowapi.middleware import SlowAPIMiddleware
-    SLOWAPI_AVAILABLE = True
-except Exception as _e:
-    SLOWAPI_AVAILABLE = False
-    SLOWAPI_IMPORT_ERROR = str(_e)
-    Limiter = None  # type: ignore
-    get_remote_address = None  # type: ignore
-    RateLimitExceeded = Exception  # type: ignore
-    SlowAPIMiddleware = None  # type: ignore
-    
-
-if not SLOWAPI_AVAILABLE and SLOWAPI_IMPORT_ERROR:
-    print(f"⚠️ SlowAPI non disponible (OK): {SLOWAPI_IMPORT_ERROR}")
-
-# =========================
-# OPPORTUNITY SCANNER API (v2) — LIVE + CACHE + "IA"
-# =========================
-
-_STABLE_BASES = {"USDT","USDC","BUSD","DAI","TUSD","FDUSD","USDP","PAX","EUR","GBP"}
-
-def _ema_series(values, period: int):
-    if not values or period <= 1:
-        return []
-    k = 2 / (period + 1)
-    out = []
-    ema = values[0]
-    out.append(ema)
-    for v in values[1:]:
-        ema = (v * k) + (ema * (1 - k))
-        out.append(ema)
-    return out
-
-def _sma_series(values, period: int):
-    if not values or period <= 1:
-        return []
-    out = []
-    s = 0.0
-    q = []
-    for v in values:
-        q.append(v); s += v
-        if len(q) > period:
-            s -= q.pop(0)
-        out.append(s / len(q))
-    return out
-
-def _stdev(values):
-    if not values or len(values) < 2:
-        return 0.0
-    m = sum(values)/len(values)
-    var = sum((x-m)*(x-m) for x in values)/(len(values)-1)
-    return (var ** 0.5)
-
-def _max_drawdown_pct(closes):
-    if not closes:
-        return 0.0
-    peak = closes[0]
-    max_dd = 0.0
-    for c in closes:
-        if c > peak:
-            peak = c
-        dd = (peak - c) / peak if peak else 0.0
-        if dd > max_dd:
-            max_dd = dd
-    return max_dd * 100.0
-
-def _interval_minutes(itv: str) -> int:
-    m = {"1m":1,"3m":3,"5m":5,"15m":15,"30m":30,"1h":60,"2h":120,"4h":240,"1d":1440,"1w":10080}
-    return m.get(itv, 60)
-
-async def _binance_exchangeinfo_bases():
-    cache_key = "binance:exchangeInfo:bases"
-    cached = _cache_get(cache_key)
-    if cached is not None:
-        return set(cached)
-
-    url = "https://api.binance.com/api/v3/exchangeInfo"
-    data = await _http_get_json(url, timeout=10.0)
-    bases = set()
-    for s in (data.get("symbols") or []):
-        if s.get("status") != "TRADING":
-            continue
-        if s.get("quoteAsset") != "USDT":
-            continue
-        base = (s.get("baseAsset") or "").upper()
-        if base and base not in _STABLE_BASES:
-            bases.add(base)
-    bases_list = sorted(bases)
-    _cache_set(cache_key, bases_list, ttl=24*3600)
-    return set(bases_list)
-
-async def _fetch_klines(sym: str, itv: str, limit: int):
-    # reuse existing market endpoint cache pattern
-    ttl = 20 if itv in ("1m","3m","5m") else 60
-    cache_key = f"oppscan:kl:{sym}:{itv}:{limit}"
-    cached = _cache_get(cache_key)
-    if cached is not None:
-        return cached
-
-    url = "https://api.binance.com/api/v3/klines?" + urlencode({"symbol": sym, "interval": itv, "limit": limit})
-    data = await _http_get_json(url, timeout=10.0)
-    kl = [{"t": int(x[0]), "o": float(x[1]), "h": float(x[2]), "l": float(x[3]), "c": float(x[4]), "v": float(x[5])} for x in data]
-    _cache_set(cache_key, kl, ttl=ttl)
-    return kl
-
-# =========================
-# CoinGecko "klines" helper (no Binance dependency)
-# =========================
-
-_CG_COINS_LIST_CACHE_KEY = "cg:coins_list:v1"
-
-async def _cg_coins_list():
-    """Cache the CoinGecko coins list (id/symbol/name) for symbol->id fallback."""
-    cached = _cache_get(_CG_COINS_LIST_CACHE_KEY)
-    if cached is not None:
-        return cached
-    try:
-        data = await _http_get_json("https://api.coingecko.com/api/v3/coins/list", timeout=20)
-        if isinstance(data, list) and data:
-            _cache_set(_CG_COINS_LIST_CACHE_KEY, data, ttl=24*3600)
-            return data
+        per_page = int(per_page or 20)
+        per_page = max(1, min(250, per_page))
     except Exception:
-        pass
-    _cache_set(_CG_COINS_LIST_CACHE_KEY, [], ttl=6*3600)
-    return []
+        per_page = 20
 
-_CG_SYMBOL_ID_HINTS = {
-    "BTC": "bitcoin",
-    "ETH": "ethereum",
-    "BNB": "binancecoin",
-    "SOL": "solana",
-    "XRP": "ripple",
-    "ADA": "cardano",
-    "DOGE": "dogecoin",
-    "TRX": "tron",
-    "AVAX": "avalanche-2",
-    "DOT": "polkadot",
-    "MATIC": "matic-network",
-    "LINK": "chainlink",
-    "LTC": "litecoin",
-    "BCH": "bitcoin-cash",
-    "UNI": "uniswap",
-}
+    vs = (vs_currency or "usd").strip().lower()
+    spark = bool(include_sparkline)
+    pcp = (price_change_percentage or "24h,7d").strip()
 
-def _cg_symbol_to_id(symbol: str) -> str | None:
-    """Best-effort mapping for symbols like BTCUSDT -> 'bitcoin'."""
-    if not symbol:
-        return None
-    s = symbol.upper().strip()
-    for suf in ("USDT", "USD", "-USD", "/USD"):
-        if s.endswith(suf):
-            s = s[: -len(suf)]
-            break
-    base = re.sub(r"[^A-Z0-9]", "", s)
-    if not base:
-        return None
-    if base in _CG_SYMBOL_ID_HINTS:
-        return _CG_SYMBOL_ID_HINTS[base]
-    # fallback from cached list (fast)
-    cached = _cache_get(_CG_COINS_LIST_CACHE_KEY)
-    if not isinstance(cached, list) or not cached:
-        return None
-    base_l = base.lower()
-    for c in cached:
-        if (c.get("symbol") or "").lower() == base_l:
-            return c.get("id")
-    return None
+    cache_key = ("cg_markets", vs, per_page, spark, pcp)
+    now = time.time()
+    # cached fresh
+    try:
+        ts, ttl, val = _V2_CACHE.get(cache_key, (0, 0, None))
+        if val is not None and (now - ts) < ttl:
+            return val
+        stale_val = val
+    except Exception:
+        stale_val = None
 
-async def _fetch_cg_klines(coin_id: str, itv: str, limit: int, vs: str = "usd"):
-    """
-    Build kline-like OHLCV candles from CoinGecko market_chart (prices + total_volumes).
-    Output matches _fetch_klines: [{t,o,h,l,c,v}, ...] with t in ms.
-    """
-    coin_id = (coin_id or "").strip()
-    if not coin_id:
-        raise ValueError("coin_id required")
-
-    mins = _interval_minutes(itv)
-    bucket_ms = int(mins * 60 * 1000)
-    limit = max(80, min(int(limit), 600))
-
-    # days needed to cover requested candles (+1 day buffer)
-    days = int(math.ceil((limit * mins) / 1440.0) + 1)
-    days = max(1, min(days, 90))
-
-    cache_key = f"cgkl:{coin_id}:{itv}:{limit}:{vs}:{days}"
-    cached = _cache_get(cache_key)
-    if cached is not None:
-        return cached
-
-    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency={vs}&days={days}"
-    j = await _http_get_json(url, timeout=20)
-    prices = j.get("prices") or []
-    vols = j.get("total_volumes") or []
-
-    if not prices:
-        raise RuntimeError("CoinGecko returned no price data")
-
-    # map volume timestamp -> value (nearest)
-    vol_map = {}
-    for t, v in vols:
-        try:
-            vol_map[int(t)] = float(v)
-        except Exception:
-            continue
-
-    # group by interval bucket
-    buckets = {}
-    for t, p in prices:
-        try:
-            t = int(t)
-            p = float(p)
-        except Exception:
-            continue
-        b = (t // bucket_ms) * bucket_ms
-        if b not in buckets:
-            buckets[b] = {"t": b, "prices": [], "vols": []}
-        buckets[b]["prices"].append(p)
-
-        # attach a volume point if we have one very close
-        # (CoinGecko provides volumes at same cadence as prices in most cases)
-        if t in vol_map:
-            buckets[b]["vols"].append(vol_map[t])
-
-    # build sorted candles
-    ks = []
-    for b in sorted(buckets.keys()):
-        ps = buckets[b]["prices"]
-        if not ps:
-            continue
-        o = ps[0]
-        c = ps[-1]
-        h = max(ps)
-        l = min(ps)
-        v = 0.0
-        vs_ = buckets[b]["vols"]
-        if vs_:
-            # approximate volume for the bucket by average * count
-            v = (sum(vs_) / len(vs_)) * max(1, len(vs_))
-        ks.append({"t": int(b), "o": float(o), "h": float(h), "l": float(l), "c": float(c), "v": float(v)})
-
-    if len(ks) < 40:
-        raise RuntimeError("Not enough candles from CoinGecko to compute signals")
-
-    ks = ks[-limit:]
-    _cache_set(cache_key, ks, ttl=60)  # short cache to avoid rate limits
-    return ks
-
-def _score_opportunity(klines, itv: str):
-    closes = [k["c"] for k in klines]
-    highs  = [k["h"] for k in klines]
-    lows   = [k["l"] for k in klines]
-    vols   = [k["v"] for k in klines]
-
-    last = closes[-1]
-    prev = closes[-2] if len(closes) > 1 else last
-
-    # returns
-    rets = []
-    for i in range(1, len(closes)):
-        if closes[i-1] != 0:
-            rets.append((closes[i] / closes[i-1]) - 1.0)
-
-    # 24h change approx
-    mins = _interval_minutes(itv)
-    bars_24h = max(1, int(1440 / mins))
-    ch_24h = None
-    if len(closes) > bars_24h:
-        base = closes[-bars_24h-1]
-        if base:
-            ch_24h = (last / base) - 1.0
-
-    # vol proxy (annualisée approx)
-    # stdev sur 60 bars -> convert to annualized using sqrt(periods per year)
-    window = min(60, len(rets))
-    vol = 0.0
-    if window >= 10:
-        sd = _stdev(rets[-window:])
-        per_year = (365*1440) / mins
-        vol = sd * (per_year ** 0.5) * 100.0  # %
-    dd = _max_drawdown_pct(closes[-min(240, len(closes)):])
-
-    # indicators
-    ema20 = _ema_series(closes, 20)
-    ema50 = _ema_series(closes, 50)
-    rsi14 = _rsi(closes, 14) if "_rsi" in globals() else None
-
-    trend = (ema20[-1] > ema50[-1]) if (len(ema20) and len(ema50)) else False
-    slope = 0.0
-    if len(ema20) >= 10:
-        slope = (ema20[-1] - ema20[-10]) / ema20[-10] if ema20[-10] else 0.0
-
-    # breakout (20-bar)
-    breakout = False
-    breakout_mag = 0.0
-    if len(highs) >= 25:
-        hh = max(highs[-21:-1])
-        if hh and last > hh * 1.002:
-            breakout = True
-            breakout_mag = (last / hh) - 1.0
-
-    # volume zscore
-    vz = 0.0
-    if len(vols) >= 60:
-        base = vols[-60:-1]
-        m = sum(base)/len(base) if base else 0.0
-        sd = _stdev(base)
-        if sd > 0:
-            vz = (vols[-1] - m) / sd
-
-    # mean reversion hint
-    reversal = False
-    if rsi14 is not None and rsi14 < 32:
-        reversal = True
-
-    # score composition (0..100)
-    score = 50.0
-    tags = []
-
-    # trend/momentum
-    if trend:
-        score += 12.0
-        tags.append("EMA Trend")
-    if slope > 0.01:
-        score += 6.0
-        tags.append("Slope+")
-    if (last > prev):
-        score += 4.0
-        tags.append("Momentum+")
-
-    # breakout
-    if breakout:
-        score += min(18.0, 300.0 * breakout_mag)  # capped
-        tags.append("Breakout")
-    if vz > 1.8:
-        score += min(14.0, vz * 4.0)
-        tags.append("Volume Spike")
-
-    # reversal
-    if reversal:
-        score += 8.0
-        tags.append("RSI<32")
-
-    # risk penalties
-    if vol > 90:
-        score -= 10.0
-        tags.append("Vol High")
-    if dd > 28:
-        score -= 10.0
-        tags.append("DD High")
-
-    # mode
-    mode = "Neutral"
-    if breakout and vz > 1.2:
-        mode = "Breakout"
-    elif reversal and (not trend):
-        mode = "Reversal"
-    elif trend:
-        mode = "Trend"
-
-    score = max(0.0, min(100.0, score))
-
-    rationale = []
-    if mode == "Breakout":
-        rationale.append("Breakout au-dessus d'un sommet récent + volume inhabituel.")
-        rationale.append("À surveiller: pullback/retest sur le niveau cassé.")
-    elif mode == "Trend":
-        rationale.append("Tendance haussière (EMA20 > EMA50) + momentum.")
-        rationale.append("À surveiller: invalidation si retour sous EMA20 / structure.")
-    elif mode == "Reversal":
-        rationale.append("Signal de survente (RSI faible) : potentiel rebond.")
-        rationale.append("À surveiller: stop strict sous le dernier creux.")
-    else:
-        rationale.append("Signal neutre: pas d'avantage clair (range/transition).")
-
-    # add risk line
-    rationale.append(f"Volatilité estimée ~{vol:.1f}% (annualisée) • Drawdown ~{dd:.1f}% sur la fenêtre.")
-
-    return {
-        "price": float(last),
-        "change_24h": ch_24h,
-        "vol_30d": float(vol),
-        "dd_30d": float(dd),
-        "score": float(score),
-        "mode": mode,
-        "tags": tags[:6],
-        "rationale": rationale[:6],
-        "ema20_series": ema20,
-        "ema50_series": ema50,
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        "vs_currency": vs,
+        "order": "market_cap_desc",
+        "per_page": per_page,
+        "page": 1,
+        "sparkline": "true" if spark else "false",
+        "price_change_percentage": pcp,
     }
 
-@app.get("/api/v2/opportunity/scan")
-async def api_v2_opportunity_scan(per_page: int = 30, interval: str = "1h", lookback: int = 240, mode: str = "all"):
     try:
-        per_page = int(per_page)
-        per_page = max(10, min(per_page, 50))
-        itv = _validate_interval(interval)
-        lookback = int(lookback)
-        lookback = max(80, min(lookback, 600))
-        mode = (mode or "all").strip().lower()
-        if mode not in ("all","breakout","trend","reversal"):
-            mode = "all"
+        data = await _http_get_json(url, params=params, timeout=18)
+    except Exception as e:
+        # If we have stale data, serve it (better UX than failing hard).
+        if stale_val is not None:
+            stale_copy = dict(stale_val)
+            stale_copy["_stale"] = True
+            return stale_copy
+        raise e
 
-        cache_key = f"oppscan:scan:{per_page}:{itv}:{lookback}:{mode}"
-        cached = _cache_get(cache_key)
-        if cached is not None:
-            return {"ok": True, "cached": True, **cached}
-        # CoinGecko universe (no Binance dependency)
-        cg = await api_v2_market_top(per_page=per_page, vs_currency="usd")
-        coins = cg.get("coins") if isinstance(cg, dict) else None
-        if not coins:
-            return {"ok": False, "error": "CoinGecko indisponible."}
+    coins = []
+    for c in (data or []):
+        coins.append({
+            "id": c.get("id"),
+            "symbol": (c.get("symbol") or "").upper(),
+            "name": c.get("name"),
+            "price": c.get("current_price"),
+            "market_cap": c.get("market_cap"),
+            "volume": c.get("total_volume"),
+            "change_24h_pct": c.get("price_change_percentage_24h_in_currency") or c.get("price_change_percentage_24h"),
+            "change_7d_pct": c.get("price_change_percentage_7d_in_currency") or c.get("price_change_percentage_7d"),
+            "sparkline": (c.get("sparkline_in_7d") or {}).get("price") if spark else None,
+        })
 
-        universe = []
-        for c in coins:
-            base = (c.get("symbol") or "").upper()
-            name = c.get("name") or base
-            cg_id = (c.get("id") or "").strip()
-            if not base or base in _STABLE_BASES:
+    out = {"ok": True, "vs": vs, "items": coins}
+    _cache_set(cache_key, out, ttl=45)
+    return out
+
+
+def _cg_resample_prices(prices, interval: str):
+    """Resample CoinGecko 7d sparkline (hourly-ish) to requested interval.
+
+    Supported:
+      - 1h: as-is
+      - 4h: downsample by 4
+      - 1d: downsample by 24
+      - 15m: upsample each hour into 4 points (linear interpolation)
+    Fallback: return original prices.
+    """
+    if not prices or len(prices) < 2:
+        return prices or []
+
+    itv = (interval or "1h").lower().strip()
+    if itv in ("60m", "1h"):
+        return list(prices)
+
+    if itv in ("240m", "4h"):
+        return list(prices)[::4]
+
+    if itv in ("1d", "1440m"):
+        return list(prices)[::24]
+
+    if itv in ("15m",):
+        out = []
+        p = list(prices)
+        for i in range(len(p) - 1):
+            a, b = p[i], p[i + 1]
+            out.append(a)
+            out.append(a + (b - a) * 0.25)
+            out.append(a + (b - a) * 0.50)
+            out.append(a + (b - a) * 0.75)
+        out.append(p[-1])
+        return out
+
+    return list(prices)
+
+
+def _prices_to_klines(prices, vol_total: float = 0.0):
+    """Convert a price series to a simple kline-like structure.
+
+    CoinGecko sparkline does not include per-candle volume, so we spread total
+    volume across bars (used mainly for formatting / basic heuristics).
+    """
+    if not prices:
+        return []
+    n = len(prices)
+    try:
+        v = float(vol_total or 0.0) / max(1, n)
+    except Exception:
+        v = 0.0
+    kl = []
+    for i, px in enumerate(prices):
+        try:
+            c = float(px)
+        except Exception:
+            continue
+        kl.append({"t": i, "o": c, "h": c, "l": c, "c": c, "v": v})
+    return kl
+
+@app.get("/api/v2/opportunity/scan")
+async def api_v2_opportunity_scan(
+    universe: int = 30,
+    interval: str = "1h",
+    lookback: int = 240,
+    mode_filter: str = "all",
+    limit: int = 30
+):
+    """Scan opportunities using a *single* CoinGecko markets call (with sparkline).
+
+    This avoids hitting CoinGecko rate limits that happen when requesting market_chart
+    for dozens of coins in parallel.
+    """
+    try:
+        try:
+            universe = int(universe or 30)
+        except Exception:
+            universe = 30
+        universe = max(5, min(100, universe))
+
+        try:
+            lookback = int(lookback or 240)
+        except Exception:
+            lookback = 240
+        lookback = max(20, min(500, lookback))
+
+        try:
+            limit = int(limit or 30)
+        except Exception:
+            limit = 30
+        limit = max(5, min(100, limit))
+
+        interval = (interval or "1h").strip().lower()
+        mode_filter = (mode_filter or "all").strip().lower()
+
+        mk = await api_v2_market_top(
+            per_page=universe,
+            vs_currency="usd",
+            include_sparkline=True,
+            price_change_percentage="1h,24h,7d"
+        )
+        items = mk.get("items") or []
+        stale = bool(mk.get("_stale"))
+
+        turnovers = []
+        for c in items:
+            try:
+                v = float(c.get("volume") or 0.0)
+                mc = float(c.get("market_cap") or 0.0)
+                if mc > 0:
+                    turnovers.append(v / mc)
+            except Exception:
+                pass
+        turnovers.sort()
+        median_turn = turnovers[len(turnovers)//2] if turnovers else 0.0
+
+        out = []
+        for c in items:
+            cg_id = c.get("id")
+            sym = (c.get("symbol") or "").upper()
+            price = c.get("price")
+            ch24 = c.get("change_24h_pct")
+            vol24 = c.get("volume") or 0.0
+            mc = c.get("market_cap") or 0.0
+
+            prices_raw = c.get("sparkline") or []
+            series = _cg_resample_prices(prices_raw, interval)
+            if series:
+                series = series[-min(lookback, len(series)) :]
+            kl = _prices_to_klines(series, vol_total=vol24)
+
+            if len(kl) < 20:
                 continue
-            if not cg_id:
-                continue
-            sym = f"{base}USDT"  # label only (familiar)
-            universe.append({"symbol": sym, "base": base, "name": name, "cg_id": cg_id})
-            if len(universe) >= per_page:
-                break
 
-        # fetch klines concurrently
-        import asyncio
-        sem = asyncio.Semaphore(8)
+            s = _score_opportunity(kl, interval=interval)
+            s["symbol"] = sym
+            s["cg_id"] = cg_id
+            s["price"] = float(price) if price is not None else None
+            s["change_24h_pct"] = float(ch24) if ch24 is not None else None
+            s["market_cap"] = float(mc) if mc is not None else None
+            s["volume_24h"] = float(vol24) if vol24 is not None else None
 
-        async def work(item):
-            async with sem:
-                kl = await _fetch_cg_klines(item["cg_id"], itv, lookback, vs="usd")
-                sc = _score_opportunity(kl, itv)
-                out = {
-                    "symbol": item["symbol"],
-                    "base": item["base"],
-                    "name": item["name"],
-                    "price": sc["price"],
-                    "change_24h": sc["change_24h"],
-                    "vol_30d": sc["vol_30d"],
-                    "dd_30d": sc["dd_30d"],
-                    "score": sc["score"],
-                    "mode": sc["mode"],
-                    "tags": sc["tags"],
-                    "rationale": sc["rationale"],
-                }
-                return out
+            try:
+                v = float(vol24 or 0.0)
+                mcap = float(mc or 0.0)
+                turn = (v / mcap) if mcap > 0 else 0.0
+            except Exception:
+                turn = 0.0
 
-        items = await asyncio.gather(*(work(it) for it in universe))
-        # filter mode
-        if mode != "all":
-            items = [x for x in items if x.get("mode","").lower() == mode]
+            if turn > max(0.15, median_turn * 2.0):
+                s["score"] = int(s.get("score", 0)) + 8
+                s.setdefault("tags", []).append("High Turnover")
+                s.setdefault("ai_rationale", []).append(f"Turnover élevé (vol/MC ≈ {turn*100:.1f}%).")
 
-        items.sort(key=lambda x: float(x.get("score") or 0.0), reverse=True)
+            try:
+                ch = float(ch24) if ch24 is not None else 0.0
+            except Exception:
+                ch = 0.0
 
-        payload = {
-            "asof": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
-            "universe": len(universe),
-            "items": items,
+            if ch >= 10:
+                s["score"] = int(s.get("score", 0)) + 4
+                s.setdefault("tags", []).append("Momentum +")
+                s.setdefault("ai_rationale", []).append(f"Momentum 24h solide (+{ch:.1f}%).")
+            elif ch <= -10:
+                s.setdefault("tags", []).append("Oversold?")
+                s.setdefault("ai_rationale", []).append(f"Baisse 24h marquée ({ch:.1f}%) — possible rebond/risque.")
+
+            s.setdefault("ai_rationale", []).append("Scan rapide (sparkline 7j). Analyse complète après sélection.")
+            out.append(s)
+
+        if mode_filter and mode_filter != "all":
+            out = [x for x in out if (x.get("mode") or "").lower() == mode_filter]
+
+        out.sort(key=lambda x: int(x.get("score", 0)), reverse=True)
+        out = out[:limit]
+
+        meta = {
+            "source": "CoinGecko (markets + sparkline)",
+            "stale": stale,
+            "universe": universe,
+            "interval": interval,
+            "lookback": lookback,
         }
-        _cache_set("oppscan:map", {it["symbol"]: it.get("cg_id") for it in items if it.get("cg_id")}, ttl=600)
-        _cache_set(cache_key, payload, ttl=25 if itv in ("15m","5m","1m") else 45)
-        return {"ok": True, "cached": False, **payload}
+
+        return {"ok": True, "items": out, "meta": meta}
+
     except Exception as e:
         return {"ok": False, "error": str(e)}
 

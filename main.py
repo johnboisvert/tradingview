@@ -43,8 +43,8 @@ PAGE_HELP: dict = {
         "comment": "Teste une règle, observe le taux de réussite, le drawdown et ajuste avant de l’utiliser en réel."
     },
     "/ai-opportunity-scanner": {
-        "quoi": "Scanner d’opportunités basé IA.",
-        "comment": "Utilise-le pour générer des idées, puis valide toujours avec une analyse manuelle."
+        "quoi": "Scanner IA d’opportunités (breakout, trend, reversal) sur données live Binance/CoinGecko.",
+        "comment": "1) Choisis l’univers (Top 20/30/50) + timeframe. 2) Clique “Scanner” puis sélectionne une ligne pour voir le graphique + justification IA. 3) Utilise ensuite /risk-management pour dimensionner la position et fixer un stop. Les scores aident à prioriser, mais ne remplacent pas ton jugement."
     },
     "/ai-market-regime": {
         "quoi": "Détection du régime de marché (trend/range/transition).",
@@ -3169,7 +3169,369 @@ except Exception as _e:
     get_remote_address = None  # type: ignore
     RateLimitExceeded = Exception  # type: ignore
     SlowAPIMiddleware = None  # type: ignore
-    print(f"⚠️ SlowAPI non disponible (OK): {_e}")
+    
+
+# =========================
+# OPPORTUNITY SCANNER API (v2) — LIVE + CACHE + "IA"
+# =========================
+
+_STABLE_BASES = {"USDT","USDC","BUSD","DAI","TUSD","FDUSD","USDP","PAX","EUR","GBP"}
+
+def _ema_series(values, period: int):
+    if not values or period <= 1:
+        return []
+    k = 2 / (period + 1)
+    out = []
+    ema = values[0]
+    out.append(ema)
+    for v in values[1:]:
+        ema = (v * k) + (ema * (1 - k))
+        out.append(ema)
+    return out
+
+def _sma_series(values, period: int):
+    if not values or period <= 1:
+        return []
+    out = []
+    s = 0.0
+    q = []
+    for v in values:
+        q.append(v); s += v
+        if len(q) > period:
+            s -= q.pop(0)
+        out.append(s / len(q))
+    return out
+
+def _stdev(values):
+    if not values or len(values) < 2:
+        return 0.0
+    m = sum(values)/len(values)
+    var = sum((x-m)*(x-m) for x in values)/(len(values)-1)
+    return (var ** 0.5)
+
+def _max_drawdown_pct(closes):
+    if not closes:
+        return 0.0
+    peak = closes[0]
+    max_dd = 0.0
+    for c in closes:
+        if c > peak:
+            peak = c
+        dd = (peak - c) / peak if peak else 0.0
+        if dd > max_dd:
+            max_dd = dd
+    return max_dd * 100.0
+
+def _interval_minutes(itv: str) -> int:
+    m = {"1m":1,"3m":3,"5m":5,"15m":15,"30m":30,"1h":60,"2h":120,"4h":240,"1d":1440,"1w":10080}
+    return m.get(itv, 60)
+
+async def _binance_exchangeinfo_bases():
+    cache_key = "binance:exchangeInfo:bases"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return set(cached)
+
+    url = "https://api.binance.com/api/v3/exchangeInfo"
+    data = await _http_get_json(url, timeout=10.0)
+    bases = set()
+    for s in (data.get("symbols") or []):
+        if s.get("status") != "TRADING":
+            continue
+        if s.get("quoteAsset") != "USDT":
+            continue
+        base = (s.get("baseAsset") or "").upper()
+        if base and base not in _STABLE_BASES:
+            bases.add(base)
+    bases_list = sorted(bases)
+    _cache_set(cache_key, bases_list, ttl=24*3600)
+    return set(bases_list)
+
+async def _fetch_klines(sym: str, itv: str, limit: int):
+    # reuse existing market endpoint cache pattern
+    ttl = 20 if itv in ("1m","3m","5m") else 60
+    cache_key = f"oppscan:kl:{sym}:{itv}:{limit}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    url = "https://api.binance.com/api/v3/klines?" + urlencode({"symbol": sym, "interval": itv, "limit": limit})
+    data = await _http_get_json(url, timeout=10.0)
+    kl = [{"t": int(x[0]), "o": float(x[1]), "h": float(x[2]), "l": float(x[3]), "c": float(x[4]), "v": float(x[5])} for x in data]
+    _cache_set(cache_key, kl, ttl=ttl)
+    return kl
+
+def _score_opportunity(klines, itv: str):
+    closes = [k["c"] for k in klines]
+    highs  = [k["h"] for k in klines]
+    lows   = [k["l"] for k in klines]
+    vols   = [k["v"] for k in klines]
+
+    last = closes[-1]
+    prev = closes[-2] if len(closes) > 1 else last
+
+    # returns
+    rets = []
+    for i in range(1, len(closes)):
+        if closes[i-1] != 0:
+            rets.append((closes[i] / closes[i-1]) - 1.0)
+
+    # 24h change approx
+    mins = _interval_minutes(itv)
+    bars_24h = max(1, int(1440 / mins))
+    ch_24h = None
+    if len(closes) > bars_24h:
+        base = closes[-bars_24h-1]
+        if base:
+            ch_24h = (last / base) - 1.0
+
+    # vol proxy (annualisée approx)
+    # stdev sur 60 bars -> convert to annualized using sqrt(periods per year)
+    window = min(60, len(rets))
+    vol = 0.0
+    if window >= 10:
+        sd = _stdev(rets[-window:])
+        per_year = (365*1440) / mins
+        vol = sd * (per_year ** 0.5) * 100.0  # %
+    dd = _max_drawdown_pct(closes[-min(240, len(closes)):])
+
+    # indicators
+    ema20 = _ema_series(closes, 20)
+    ema50 = _ema_series(closes, 50)
+    rsi14 = _rsi(closes, 14) if "_rsi" in globals() else None
+
+    trend = (ema20[-1] > ema50[-1]) if (len(ema20) and len(ema50)) else False
+    slope = 0.0
+    if len(ema20) >= 10:
+        slope = (ema20[-1] - ema20[-10]) / ema20[-10] if ema20[-10] else 0.0
+
+    # breakout (20-bar)
+    breakout = False
+    breakout_mag = 0.0
+    if len(highs) >= 25:
+        hh = max(highs[-21:-1])
+        if hh and last > hh * 1.002:
+            breakout = True
+            breakout_mag = (last / hh) - 1.0
+
+    # volume zscore
+    vz = 0.0
+    if len(vols) >= 60:
+        base = vols[-60:-1]
+        m = sum(base)/len(base) if base else 0.0
+        sd = _stdev(base)
+        if sd > 0:
+            vz = (vols[-1] - m) / sd
+
+    # mean reversion hint
+    reversal = False
+    if rsi14 is not None and rsi14 < 32:
+        reversal = True
+
+    # score composition (0..100)
+    score = 50.0
+    tags = []
+
+    # trend/momentum
+    if trend:
+        score += 12.0
+        tags.append("EMA Trend")
+    if slope > 0.01:
+        score += 6.0
+        tags.append("Slope+")
+    if (last > prev):
+        score += 4.0
+        tags.append("Momentum+")
+
+    # breakout
+    if breakout:
+        score += min(18.0, 300.0 * breakout_mag)  # capped
+        tags.append("Breakout")
+    if vz > 1.8:
+        score += min(14.0, vz * 4.0)
+        tags.append("Volume Spike")
+
+    # reversal
+    if reversal:
+        score += 8.0
+        tags.append("RSI<32")
+
+    # risk penalties
+    if vol > 90:
+        score -= 10.0
+        tags.append("Vol High")
+    if dd > 28:
+        score -= 10.0
+        tags.append("DD High")
+
+    # mode
+    mode = "Neutral"
+    if breakout and vz > 1.2:
+        mode = "Breakout"
+    elif reversal and (not trend):
+        mode = "Reversal"
+    elif trend:
+        mode = "Trend"
+
+    score = max(0.0, min(100.0, score))
+
+    rationale = []
+    if mode == "Breakout":
+        rationale.append("Breakout au-dessus d'un sommet récent + volume inhabituel.")
+        rationale.append("À surveiller: pullback/retest sur le niveau cassé.")
+    elif mode == "Trend":
+        rationale.append("Tendance haussière (EMA20 > EMA50) + momentum.")
+        rationale.append("À surveiller: invalidation si retour sous EMA20 / structure.")
+    elif mode == "Reversal":
+        rationale.append("Signal de survente (RSI faible) : potentiel rebond.")
+        rationale.append("À surveiller: stop strict sous le dernier creux.")
+    else:
+        rationale.append("Signal neutre: pas d'avantage clair (range/transition).")
+
+    # add risk line
+    rationale.append(f"Volatilité estimée ~{vol:.1f}% (annualisée) • Drawdown ~{dd:.1f}% sur la fenêtre.")
+
+    return {
+        "price": float(last),
+        "change_24h": ch_24h,
+        "vol_30d": float(vol),
+        "dd_30d": float(dd),
+        "score": float(score),
+        "mode": mode,
+        "tags": tags[:6],
+        "rationale": rationale[:6],
+        "ema20_series": ema20,
+        "ema50_series": ema50,
+    }
+
+@app.get("/api/v2/opportunity/scan")
+async def api_v2_opportunity_scan(per_page: int = 30, interval: str = "1h", lookback: int = 240, mode: str = "all"):
+    try:
+        per_page = int(per_page)
+        per_page = max(10, min(per_page, 50))
+        itv = _validate_interval(interval)
+        lookback = int(lookback)
+        lookback = max(80, min(lookback, 600))
+        mode = (mode or "all").strip().lower()
+        if mode not in ("all","breakout","trend","reversal"):
+            mode = "all"
+
+        cache_key = f"oppscan:scan:{per_page}:{itv}:{lookback}:{mode}"
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return {"ok": True, "cached": True, **cached}
+
+        bases = await _binance_exchangeinfo_bases()
+        cg = await api_v2_market_top(per_page=per_page, vs_currency="usd")
+        coins = cg.get("coins") if isinstance(cg, dict) else None
+        if not coins:
+            return {"ok": False, "error": "CoinGecko indisponible."}
+
+        # build universe from top coins that exist on Binance USDT
+        universe = []
+        for c in coins:
+            base = (c.get("symbol") or "").upper()
+            name = c.get("name") or base
+            if not base or base in _STABLE_BASES:
+                continue
+            if base not in bases:
+                continue
+            sym = f"{base}USDT"
+            universe.append({"symbol": sym, "base": base, "name": name, "cg_id": c.get("id")})
+            if len(universe) >= per_page:
+                break
+
+        # fetch klines concurrently
+        import asyncio
+        sem = asyncio.Semaphore(8)
+
+        async def work(item):
+            async with sem:
+                kl = await _fetch_klines(item["symbol"], itv, lookback)
+                sc = _score_opportunity(kl, itv)
+                out = {
+                    "symbol": item["symbol"],
+                    "base": item["base"],
+                    "name": item["name"],
+                    "price": sc["price"],
+                    "change_24h": sc["change_24h"],
+                    "vol_30d": sc["vol_30d"],
+                    "dd_30d": sc["dd_30d"],
+                    "score": sc["score"],
+                    "mode": sc["mode"],
+                    "tags": sc["tags"],
+                    "rationale": sc["rationale"],
+                }
+                return out
+
+        items = await asyncio.gather(*(work(it) for it in universe))
+        # filter mode
+        if mode != "all":
+            items = [x for x in items if x.get("mode","").lower() == mode]
+
+        items.sort(key=lambda x: float(x.get("score") or 0.0), reverse=True)
+
+        payload = {
+            "asof": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "universe": len(universe),
+            "items": items,
+        }
+        _cache_set(cache_key, payload, ttl=25 if itv in ("15m","5m","1m") else 45)
+        return {"ok": True, "cached": False, **payload}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.get("/api/v2/opportunity/detail")
+async def api_v2_opportunity_detail(symbol: str = "BTCUSDT", interval: str = "1h", limit: int = 240):
+    try:
+        sym = _validate_symbol(symbol)
+        itv = _validate_interval(interval)
+        limit = int(limit)
+        limit = max(80, min(limit, 600))
+
+        cache_key = f"oppscan:detail:{sym}:{itv}:{limit}"
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return {"ok": True, "cached": True, **cached}
+
+        kl = await _fetch_klines(sym, itv, limit)
+        sc = _score_opportunity(kl, itv)
+
+        series = [{"t": k["t"], "c": k["c"]} for k in kl]
+        # indicators same length
+        ema20 = sc["ema20_series"]
+        ema50 = sc["ema50_series"]
+        # align lengths
+        def pad(arr, n):
+            if not arr:
+                return [None]*n
+            if len(arr) < n:
+                return [None]*(n-len(arr)) + arr
+            return arr[-n:]
+        n = len(series)
+        ema20 = pad(ema20, n)
+        ema50 = pad(ema50, n)
+
+        payload = {
+            "symbol": sym,
+            "interval": itv,
+            "score": sc["score"],
+            "mode": sc["mode"],
+            "price": sc["price"],
+            "change_24h": sc["change_24h"],
+            "vol_30d": sc["vol_30d"],
+            "dd_30d": sc["dd_30d"],
+            "series": series,
+            "indicators": {"ema20": ema20, "ema50": ema50},
+            "rationale": sc["rationale"],
+        }
+        _cache_set(cache_key, payload, ttl=20 if itv in ("15m","5m","1m") else 45)
+        return {"ok": True, "cached": False, **payload}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+print(f"⚠️ SlowAPI non disponible (OK): {_e}")
 
 if SLOWAPI_AVAILABLE:
     limiter = Limiter(key_func=get_remote_address)
@@ -12797,564 +13159,377 @@ async def spot_trading_page():
     """
     return HTMLResponse(content=html_content)
 
-# ============= AI OPPORTUNITY SCANNER =============
+# ============= AI OPPORTUNITY SCANNER (WOW + LIVE) =============
 @app.get("/ai-opportunity-scanner", response_class=HTMLResponse)
-async def ai_opportunity_scanner():
-    """
-    Scanner IA des meilleures opportunités de trading en temps réel
-    ✅ DONNÉES RÉELLES EN TEMPS RÉEL DE COINGECKO API (Pas de données simulées!)
-    """
-    html_content = SIDEBAR + """
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Opportunity Scanner</title>
-        """ + CSS + """
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-                color: #333;
-                min-height: 100vh;
-            }}
-            
-            .container {
-                max-width: 1400px;
-                margin: 0 auto;
-                padding: 20px;
-            }}
-            
-            header {
-                text-align: center;
-                color: white;
-                margin-bottom: 30px;
-                background: rgba(0,0,0,0.2);
-                padding: 30px;
-                border-radius: 15px;
-                backdrop-filter: blur(10px);
-            }
-            
-            header h1 {
-                font-size: 2.8em;
-                margin-bottom: 10px;
-                text-shadow: 0 0 20px rgba(255,255,255,0.5), 2px 2px 8px rgba(0,0,0,0.3);
-                font-weight: 900;
-                letter-spacing: 2px;
-            }
-            
-            .content {
-                background: white;
-                border-radius: 15px;
-                padding: 40px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            }
-            
-            .stats-bar {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 20px;
-                margin-bottom: 30px;
-            }
-            
-            .stat-box {
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                padding: 20px;
-                border-radius: 12px;
-                border-left: 5px solid #6366f1;
-                text-align: center;
-            }
-            
-            .stat-value {
-                font-size: 2em;
-                font-weight: bold;
-                color: #6366f1;
-                display: block;
-            }
-            
-            .stat-label {
-                color: #666;
-                font-size: 0.9em;
-                margin-top: 5px;
-            }
-            
-            .opportunities-grid {
-                display: grid;
-                gap: 25px;
-            }
-            
-            .opportunity-card {
-                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                border-radius: 15px;
-                padding: 30px;
-                border: 3px solid #e0e0e0;
-                position: relative;
-                overflow: hidden;
-                transition: transform 0.3s, box-shadow 0.3s;
-            }
-            
-            .opportunity-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 15px 40px rgba(0,0,0,0.15);
-            }
-            
-            .opportunity-card.hot {
-                border-color: #ef4444;
-                background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-            }
-            
-            .opportunity-card.good {
-                border-color: #10b981;
-                background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-            }
-            
-            .opportunity-card.moderate {
-                border-color: #f59e0b;
-                background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-            }
-            
-            .card-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 20px;
-            }
-            
-            .coin-info {
-                display: flex;
-                align-items: center;
-                gap: 15px;
-            }
-            
-            .coin-symbol {
-                font-size: 2em;
-                font-weight: bold;
-                color: #1f2937;
-            }
-            
-            .coin-name {
-                font-size: 1.1em;
-                color: #666;
-            }
-            
-            .score-circle {
-                width: 80px;
-                height: 80px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 1.5em;
-                font-weight: bold;
-                color: white;
-                position: relative;
-            }
-            
-            .score-circle.hot { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
-            .score-circle.good { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-            .score-circle.moderate { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-            
-            .opportunity-details {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 15px;
-                margin: 20px 0;
-            }
-            
-            .detail-box {
-                background: white;
-                padding: 15px;
-                border-radius: 8px;
-                border-left: 3px solid #6366f1;
-            }
-            
-            .detail-label {
-                font-size: 0.85em;
-                color: #666;
-                margin-bottom: 5px;
-            }
-            
-            .detail-value {
-                font-size: 1.2em;
-                font-weight: bold;
-                color: #1f2937;
-            }
-            
-            .ai-reasoning {
-                background: #f8f9fa;
-                padding: 20px;
-                border-radius: 10px;
-                border-left: 5px solid #8b5cf6;
-                margin-top: 20px;
-            }
-            
-            .ai-reasoning h4 {
-                color: #8b5cf6;
-                margin-bottom: 10px;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            
-            .ai-reasoning ul {
-                margin-left: 20px;
-            }
-            
-            .ai-reasoning li {
-                margin: 8px 0;
-                color: #555;
-            }
-            
-            .badge {
-                display: inline-block;
-                padding: 5px 12px;
-                border-radius: 20px;
-                font-size: 0.85em;
-                font-weight: bold;
-                margin: 5px 5px 5px 0;
-            }
-            
-            .badge.breakout { background: #fecaca; color: #991b1b; }
-            .badge.oversold { background: #dbeafe; color: #1e40af; }
-            .badge.momentum { background: #d1fae5; color: #065f46; }
-            .badge.safehaven { background: #e9d5ff; color: #6b21a8; }
-            
-            .action-buttons {
-                display: flex;
-                gap: 10px;
-                margin-top: 20px;
-            }
-            
-            .btn {
-                padding: 12px 24px;
-                border-radius: 8px;
-                border: none;
-                font-weight: bold;
-                cursor: pointer;
-                transition: transform 0.2s;
-                text-decoration: none;
-                display: inline-block;
-                text-align: center;
-            }
-            
-            .btn:hover { transform: scale(1.05); }
-            
-            .btn-primary {
-                background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-                color: white;
-            }
-            
-            .btn-secondary {
-                background: #f3f4f6;
-                color: #1f2937;
-            }
-            
-            .refresh-bar {
-                background: rgba(99, 102, 241, 0.1);
-                padding: 15px;
-                border-radius: 10px;
-                text-align: center;
-                margin-bottom: 25px;
-                border: 2px solid rgba(99, 102, 241, 0.3);
-            }
-            
-            .refresh-bar button {
-                background: #6366f1;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 8px;
-                cursor: pointer;
-                font-weight: bold;
-                margin-left: 10px;
-            }
-            
-            .refresh-bar button:hover {
-                background: #4f46e5;
-            }
-            
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.5; }
-            }
-            
-            .live-indicator {
-                display: inline-block;
-                width: 10px;
-                height: 10px;
-                background: #10b981;
-                border-radius: 50%;
-                margin-right: 8px;
-                animation: pulse 2s infinite;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <header>
-                <h1>🎯 AI OPPORTUNITY SCANNER</h1>
-                <p>Intelligence Artificielle détectant les meilleures opportunités de trading en temps réel</p>
-            </header>
-            
-            
-            
-            <div class="content">
-                <div class="refresh-bar">
-                    <span class="live-indicator"></span>
-                    <strong>Scanner en temps réel (données CoinGecko)</strong> - Dernière analyse : <span id="lastUpdate">-</span>
-                    <button onclick="refreshOpportunities()">🔄 Actualiser</button>
-                    <div class="data-source" style="font-size: 0.85em; color: #666; margin-top: 10px;">
-                        📡 Source: CoinGecko API (mise à jour auto toutes les 2 minutes)
-                    </div>
-                </div>
-                
-                <div class="stats-bar">
-                    <div class="stat-box">
-                        <span class="stat-value" id="totalOpportunities">-</span>
-                        <span class="stat-label">Opportunités Détectées</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-value" id="avgScore">-</span>
-                        <span class="stat-label">Score Moyen</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-value" id="hotDeals">-</span>
-                        <span class="stat-label">Opportunités Chaudes (>85)</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-value" id="marketSentiment">-</span>
-                        <span class="stat-label">Sentiment Global</span>
-                    </div>
-                </div>
-                
-                <div id="loadingDiv" class="loading" style="text-align: center; padding: 40px; color: #666;">
-                    <p>⏳ Chargement des données en temps réel...</p>
-                </div>
-                
-                <div class="opportunities-grid" id="opportunitiesGrid" style="display:none;">
-                    <!-- Filled by JavaScript -->
-                </div>
-            </div>
+async def ai_opportunity_scanner(request: Request):
+    # Auth + plan gate (si activé dans ton système)
+    user = get_user_from_request(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    route_path = "/ai-opportunity-scanner"
+    if not check_route_permission(user, route_path):
+        return access_denied_page(user, route_path, request)
+
+    body = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Opportunity Scanner — CryptoIA</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {{
+      --bg:#0b1220; --card:#0f1a2e; --card2:#0d1730; --muted:#9aa7bd;
+      --txt:#e7eefc; --line:rgba(255,255,255,.08);
+      --g1:#7c3aed; --g2:#22d3ee; --ok:#10b981; --bad:#ef4444; --warn:#f59e0b;
+    }}
+    body{{margin:0;background:radial-gradient(1200px 600px at 25% 0%, rgba(124,58,237,.35), transparent 60%), radial-gradient(900px 500px at 85% 20%, rgba(34,211,238,.25), transparent 55%), var(--bg); color:var(--txt); font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;}}
+    .wrap{{margin-left:260px; padding:22px 24px 44px;}}
+    .hero{{display:flex; justify-content:space-between; gap:16px; align-items:flex-end; margin:8px 0 18px;}}
+    .kicker{{color:var(--muted); font-size:12px; letter-spacing:.18em; text-transform:uppercase; display:flex; align-items:center; gap:10px;}}
+    .dot{{width:8px; height:8px; border-radius:999px; background:linear-gradient(90deg,var(--g1),var(--g2)); box-shadow:0 0 18px rgba(124,58,237,.6);}}
+    h1{{margin:6px 0 0; font-size:42px; line-height:1.05; font-weight:900; letter-spacing:-.02em;}}
+    .wow{{background:linear-gradient(90deg,var(--g1),var(--g2)); -webkit-background-clip:text; background-clip:text; color:transparent;}}
+    .sub{{margin-top:6px;color:var(--muted); max-width:760px}}
+    .badges{{display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end;}}
+    .badge{{border:1px solid var(--line); background:rgba(255,255,255,.03); padding:8px 12px; border-radius:999px; font-size:12px; color:var(--muted)}}
+    .badge b{{color:var(--txt)}}
+    .grid{{display:grid; grid-template-columns: 1.35fr 1fr; gap:18px; align-items:start;}}
+    .panel{{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02)); border:1px solid var(--line); border-radius:18px; padding:16px; box-shadow:0 14px 60px rgba(0,0,0,.35);}}
+    .panel h3{{margin:0 0 10px; font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}}
+    .controls{{display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;}}
+    .field label{{display:block; font-size:12px; color:var(--muted); margin:0 0 6px;}}
+    .field input,.field select{{width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--txt); outline:none;}}
+    .field input:focus,.field select:focus{{border-color:rgba(124,58,237,.55); box-shadow:0 0 0 4px rgba(124,58,237,.15)}}
+    .btnrow{{display:flex; gap:10px; margin:10px 0 0;}}
+    .btn{{flex:1; padding:11px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--txt); cursor:pointer; font-weight:800}}
+    .btn.primary{{background:linear-gradient(90deg,var(--g1),var(--g2)); border:none;}}
+    .btn.small{{flex:0 0 auto; padding:10px 12px;}}
+    .cards{{display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:12px;}}
+    .card{{border:1px solid var(--line); border-radius:16px; padding:12px; background:radial-gradient(500px 120px at 15% 0%, rgba(124,58,237,.22), transparent 60%), rgba(255,255,255,.02); cursor:pointer;}}
+    .card:hover{{transform:translateY(-1px); transition:.15s; border-color:rgba(34,211,238,.35)}}
+    .sym{{font-weight:900; letter-spacing:.02em;}}
+    .row{{display:flex; justify-content:space-between; align-items:center; gap:10px;}}
+    .score{{font-weight:900}}
+    .pill{{font-size:11px; padding:5px 9px; border-radius:999px; border:1px solid var(--line); color:var(--muted)}}
+    .pill.ok{{color:rgba(16,185,129,.95); border-color:rgba(16,185,129,.35)}}
+    .pill.bad{{color:rgba(239,68,68,.95); border-color:rgba(239,68,68,.35)}}
+    .pill.warn{{color:rgba(245,158,11,.95); border-color:rgba(245,158,11,.35)}}
+    .mini{{margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;}}
+    .mini span{{font-size:11px; color:var(--muted)}}
+    table{{width:100%; border-collapse:separate; border-spacing:0 8px; margin-top:12px;}}
+    th{{text-align:left; font-size:11px; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; padding:0 10px 6px;}}
+    td{{padding:10px; background:rgba(255,255,255,.02); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}}
+    tr td:first-child{{border-left:1px solid var(--line); border-top-left-radius:12px; border-bottom-left-radius:12px;}}
+    tr td:last-child{{border-right:1px solid var(--line); border-top-right-radius:12px; border-bottom-right-radius:12px;}}
+    tr:hover td{{border-color:rgba(124,58,237,.35);}}
+    .muted{{color:var(--muted)}}
+    .rightcol .panel{{position:sticky; top:18px;}}
+    .chartbox{{height:280px;}}
+    .coach{{margin-top:12px; border:1px solid var(--line); border-radius:16px; padding:12px; background:radial-gradient(700px 180px at 25% 0%, rgba(34,211,238,.16), transparent 60%), rgba(255,255,255,.02);}}
+    .coach .title{{display:flex; justify-content:space-between; align-items:center; gap:10px;}}
+    .coach h4{{margin:0; font-size:14px}}
+    ul{{margin:10px 0 0; padding-left:18px; color:var(--muted)}}
+    .statusline{{margin-top:10px; font-size:12px; color:var(--muted)}}
+    .tag{{display:inline-flex; align-items:center; gap:6px}}
+    .spark{{height:44px; width:100%; opacity:.85}}
+    @media(max-width:1150px){{ .grid{{grid-template-columns:1fr;}} .wrap{{margin-left:0}} .rightcol .panel{{position:static}} .cards{{grid-template-columns:1fr}} .controls{{grid-template-columns:1fr 1fr}} }}
+  </style>
+</head>
+<body>
+__SIDEBAR__
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <div class="kicker"><span class="dot"></span> AI OPPORTUNITY SCANNER • détection d'opportunités</div>
+      <h1>Opportunity Scanner <span class="wow">WOW</span></h1>
+      <div class="sub">Scanner IA basé sur données live (Binance + CoinGecko) : breakout, trend, reversal, volume spike. Clique une opportunité pour voir le graphique et la justification IA.</div>
+    </div>
+    <div class="badges">
+      <div class="badge">Data: <b>Binance</b> + <b>CoinGecko</b></div>
+      <div class="badge">Dernière maj: <b id="lastUpdate">—</b></div>
+      <div class="badge">Univers: <b id="universeCount">—</b></div>
+      <div class="badge">Sélection: <b id="selectedSym">—</b></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h3>Scan IA (live)</h3>
+
+      <div class="controls">
+        <div class="field">
+          <label>Univers (Top coins)</label>
+          <select id="universe">
+            <option value="20">Top 20</option>
+            <option value="30" selected>Top 30</option>
+            <option value="50">Top 50</option>
+          </select>
         </div>
-        
-        <script>
-            async function fetchRealData() {
-                try {
-                    // Rcuprer les top 50 cryptos avec donnes actuelles
-                    const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h,7d,30d');
-                    const data = await response.json();
-                console.log('Server response:', data);
-                    return data;
-                } catch (error) {
-                    console.error('Erreur lors du chargement des données:', error);
-                    return null;
-                }
-            }
-            
-            function calculateScore(crypto) {
-                let score = 50; // Base
-                
-                // Changement 24h (volatilit positive)
-                const change24h = crypto.price_change_percentage_24h || 0;
-                if (change24h > 5) score += 15;
-                else if (change24h > 2) score += 10;
-                else if (change24h > -2) score += 5;
-                else if (change24h > -5) score += 2;
-                
-                // Changement 7j
-                const change7d = crypto.price_change_percentage_7d_in_currency || 0;
-                if (change7d > 15) score += 12;
-                else if (change7d > 5) score += 8;
-                else if (change7d > -5) score += 5;
-                
-                // Market cap (stabilit)
-                if (crypto.market_cap_rank && crypto.market_cap_rank <= 10) score += 15;
-                else if (crypto.market_cap_rank && crypto.market_cap_rank <= 50) score += 8;
-                else if (crypto.market_cap_rank && crypto.market_cap_rank <= 200) score += 5;
-                
-                // Volume (liquidit)
-                if (crypto.total_volume && crypto.market_cap) {
-                    const volumeRatio = crypto.total_volume / crypto.market_cap;
-                    if (volumeRatio > 0.3) score += 10;
-                    else if (volumeRatio > 0.1) score += 5;
-                }
-                
-                return Math.min(99, Math.max(60, score));
-            }
-            
-            function generateAIReasons(crypto) {
-                const reasons = [];
-                const change24h = crypto.price_change_percentage_24h || 0;
-                const change7d = crypto.price_change_percentage_7d_in_currency || 0;
-                
-                if (change24h > 5) reasons.push(`📈 Hausse 24h: +${change24h.toFixed(2)}%`);
-                if (change7d > 10) reasons.push(`📊 Momentum 7j: +${change7d.toFixed(2)}%`);
-                if (crypto.market_cap_rank && crypto.market_cap_rank <= 20) reasons.push(`👑 Top ${crypto.market_cap_rank} par capitalisation`);
-                if (crypto.total_volume && crypto.market_cap) {
-                    const vol = (crypto.total_volume / crypto.market_cap * 100).toFixed(1);
-                    reasons.push(`💧 Volume/MCap: ${vol}% (liquidité)`);
-                }
-                if (crypto.ath_change_percentage && crypto.ath_change_percentage > -20) {
-                    reasons.push(`🎯 À ${(100 + crypto.ath_change_percentage).toFixed(1)}% du sommet`);
-                }
-                
-                return reasons.length > 0 ? reasons : ['📍 Prix actuel intéressant', '✅ Analyse technique favorable'];
-            }
-            
-            async function generateOpportunities(cryptoData) {
-                if (!cryptoData) return [];
-                
-                // Filtrer et scorer
-                const opportunities = cryptoData
-                    .filter(c => c.current_price && c.market_cap)
-                    .map(c => ({
-                        symbol: c.symbol.toUpperCase(),
-                        name: c.name,
-                        price: c.current_price,
-                        change24h: c.price_change_percentage_24h || 0,
-                        change7d: c.price_change_percentage_7d_in_currency || 0,
-                        marketCapRank: c.market_cap_rank,
-                        ath: c.ath,
-                        athChange: c.ath_change_percentage || 0,
-                        score: calculateScore(c),
-                        volume: c.total_volume,
-                        marketCap: c.market_cap,
-                        reasons: generateAIReasons(c)
-                    }))
-                    .sort((a, b) => b.score - a.score)
-                    .slice(0, 5);
-                
-                // Ajouter Entry/SL/TP
-                opportunities.forEach(opp => {
-                    opp.entry = opp.price.toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
-                    opp.sl = (opp.price * 0.95).toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
-                    opp.tp = (opp.price * 1.12).toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
-                    const rrValue = (parseFloat(opp.tp) - parseFloat(opp.entry)) / (parseFloat(opp.entry) - parseFloat(opp.sl));
-                    opp.rr = rrValue.toFixed(1);
-                });
-                
-                return opportunities;
-            }
-            
-            async function renderOpportunities() {
-                const loadingDiv = document.getElementById('loadingDiv');
-                const grid = document.getElementById('opportunitiesGrid');
-                
-                loadingDiv.style.display = 'block';
-                grid.style.display = 'none';
-                
-                const cryptoData = await fetchRealData();
-                const opportunities = await generateOpportunities(cryptoData);
-                
-                if (opportunities.length === 0) {
-                    loadingDiv.innerHTML = '<p>❌ Impossible de charger les données</p>';
-                    return;
-                }
-                
-                let html = '';
-                let totalScore = 0;
-                let hotCount = 0;
-                
-                opportunities.forEach(opp => {
-                    totalScore += opp.score;
-                    if (opp.score >= 85) hotCount++;
-                    
-                    const scoreClass = opp.score >= 85 ? 'hot' : opp.score >= 75 ? 'good' : 'moderate';
-                    
-                    html += `
-                        <div class="opportunity-card ${scoreClass}">
-                            <div class="card-header">
-                                <div class="coin-info">
-                                    <div>
-                                        <div class="coin-symbol">${opp.symbol}/USDT</div>
-                                        <div class="coin-name">${opp.name}</div>
-                                    </div>
-                                </div>
-                                <div class="score-circle ${scoreClass}">
-                                    ${Math.round(opp.score)}
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <span class="badge momentum">⚡ Temps Réel</span>
-                                <span class="badge" style="background: #f3f4f6; color: #1f2937;">#${opp.marketCapRank}</span>
-                                <span class="badge" style="background: #f0f0f0; color: #666;">${opp.change24h > 0 ? '📈' : '📉'} ${opp.change24h.toFixed(2)}%</span>
-                            </div>
-                            
-                            <div class="opportunity-details">
-                                <div class="detail-box">
-                                    <div class="detail-label">Prix Actuel</div>
-                                    <div class="detail-value">$${opp.price.toLocaleString('fr-FR', {maximumFractionDigits: opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4})}</div>
-                                </div>
-                                <div class="detail-box">
-                                    <div class="detail-label">Entry</div>
-                                    <div class="detail-value">$${opp.entry}</div>
-                                </div>
-                                <div class="detail-box">
-                                    <div class="detail-label">Stop Loss</div>
-                                    <div class="detail-value" style="color: #ef4444;">$${opp.sl}</div>
-                                </div>
-                                <div class="detail-box">
-                                    <div class="detail-label">Take Profit</div>
-                                    <div class="detail-value" style="color: #10b981;">$${opp.tp}</div>
-                                </div>
-                                <div class="detail-box">
-                                    <div class="detail-label">Risk/Reward</div>
-                                    <div class="detail-value">${opp.rr}:1</div>
-                                </div>
-                            </div>
-                            
-                            <div class="ai-reasoning">
-                                <h4>🤖 Analyse IA en Temps Réel</h4>
-                                <ul>
-                                    ${opp.reasons.map(r => `<li>${r}</li>`).join('')}
-                                </ul>
-                            </div>
-                            
-                            <div class="action-buttons">
-                                <a href="/calculatrice" class="btn btn-primary">📊 Calculer Position</a>
-                                <a href="/strategie" class="btn btn-secondary">📚 Voir Stratégie</a>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                grid.innerHTML = html;
-                grid.style.display = 'grid';
-                loadingDiv.style.display = 'none';
-                
-                // Mettre  jour les stats
-                document.getElementById('totalOpportunities').textContent = opportunities.length;
-                document.getElementById('avgScore').textContent = Math.round(totalScore / opportunities.length);
-                document.getElementById('hotDeals').textContent = hotCount;
-                document.getElementById('marketSentiment').textContent = 
-                    (totalScore / opportunities.length) >= 80 ? '📈 Très Positif' :
-                    (totalScore / opportunities.length) >= 70 ? '📊 Positif' : '⚖️ Neutre';
-                
-                // Dernire mise  jour
-                const now = new Date();
-                document.getElementById('lastUpdate').textContent = 
-                    now.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
-            }
-            
-            function refreshOpportunities() {
-                renderOpportunities();
-            }
-            
-            // Initial render
-            renderOpportunities();
-            
-            // Auto-refresh toutes les 2 minutes
-            setInterval(renderOpportunities, 120000);
-        </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'AI Opportunity Scanner ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Scanner automatique détectant opportunités trading 24/7.</p><ul style="line-height: 1.8; color: #555;"><li>🔍 Scan 100+ cryptos en continu</li><li>📊 Détection patterns techniques</li><li>🎯 Scoring opportunités 0-100</li><li>⚡ Alertes temps réel</li><li>📈 Setups confirmés uniquement</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🔍 Critères détection</h3><p style="line-height: 1.6; color: #555;"><strong>📈 Breakouts:</strong> Cassure résistance + volume fort</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📉 Rebounds:</strong> Rebond support + RSI oversold</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>🎯 Divergences:</strong> RSI/MACD diverge du prix</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📊 Patterns:</strong> Triangles, flags, cup & handle</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 Score opportunité</h3><p style="line-height: 1.6; color: #555;">🔥 <strong>80-100:</strong> Setup excellent</p><p style="line-height: 1.6; color: #555;">✅ <strong>60-80:</strong> Setup bon</p><p style="line-height: 1.6; color: #555;">⚠️ <strong>40-60:</strong> Setup moyen</p><p style="line-height: 1.6; color: #555;">❌ <strong>&lt;40:</strong> À éviter</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Comment utiliser</h3><ul style="line-height: 1.8; color: #555;"><li>✅ Vérifiez score &gt;70</li><li>✅ Confirmez sur graphique</li><li>✅ Vérifiez volume</li><li>✅ Calculez risk/reward</li><li>✅ Placez stop loss</li><li>❌ Ne suivez pas aveuglément</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 15px;">💡 Scanner = Filtre initial, pas signal d'achat direct!</p></div></div></div>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content)
+        <div class="field">
+          <label>Timeframe</label>
+          <select id="interval">
+            <option value="15m">15m</option>
+            <option value="1h" selected>1h</option>
+            <option value="4h">4h</option>
+            <option value="1d">1d</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Lookback (candles)</label>
+          <select id="lookback">
+            <option value="160">160</option>
+            <option value="240" selected>240</option>
+            <option value="360">360</option>
+            <option value="500">500</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Filtre</label>
+          <select id="mode">
+            <option value="all" selected>Tous</option>
+            <option value="breakout">Breakout</option>
+            <option value="trend">Trend</option>
+            <option value="reversal">Reversal</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="btnrow">
+        <button class="btn primary" id="btnScan">Scanner maintenant</button>
+        <button class="btn" id="btnAuto">Auto: ON</button>
+        <button class="btn small" id="btnRefresh">↻</button>
+      </div>
+
+      <div class="cards" id="topCards"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Symbole</th>
+            <th>Mode</th>
+            <th>Score</th>
+            <th>Prix</th>
+            <th>Δ 24h</th>
+            <th>Vol</th>
+            <th>DD</th>
+            <th>Tags</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+
+      <div class="statusline" id="statusLine">Prêt. Les scores sont des probabilités IA (heuristiques) : valide toujours manuellement.</div>
+    </div>
+
+    <div class="rightcol">
+      <div class="panel">
+        <h3>Analyse IA détaillée</h3>
+
+        <div class="row" style="margin-bottom:8px">
+          <div class="sym" id="detailSym">—</div>
+          <div class="pill" id="detailPill">—</div>
+        </div>
+
+        <div class="chartbox"><canvas id="priceChart"></canvas></div>
+
+        <div class="coach">
+          <div class="title">
+            <h4>🤖 AI Rationale</h4>
+            <div class="pill" id="coachMode">rules</div>
+          </div>
+          <ul id="coachList"></ul>
+          <div class="statusline" id="coachNote">Astuce: combine avec “Gestion des risques” pour définir ton size et ton stop.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_SCAN = "/api/v2/opportunity/scan";
+const API_DETAIL = "/api/v2/opportunity/detail";
+
+let AUTO = true;
+let timer = null;
+let chart = null;
+let lastSelected = null;
+
+function fmt(n, d=2){ if(n===null||n===undefined||Number.isNaN(n)) return "—"; return Number(n).toFixed(d); }
+function pct(n){ if(n===null||n===undefined||Number.isNaN(n)) return "—"; const s = (n>=0?"+":"") + (n*100).toFixed(2) + "%"; return s; }
+function pillClass(score){
+  if(score>=75) return "pill ok";
+  if(score>=55) return "pill warn";
+  return "pill bad";
+}
+
+function setStatus(msg){ document.getElementById("statusLine").textContent = msg; }
+
+async function scanNow(){
+  const per = document.getElementById("universe").value;
+  const interval = document.getElementById("interval").value;
+  const lookback = document.getElementById("lookback").value;
+  const mode = document.getElementById("mode").value;
+
+  setStatus("Scan en cours… (données live, cache serveur pour stabilité)");
+  const url = `${API_SCAN}?per_page=${encodeURIComponent(per)}&interval=${encodeURIComponent(interval)}&lookback=${encodeURIComponent(lookback)}&mode=${encodeURIComponent(mode)}`;
+  const r = await fetch(url);
+  const j = await r.json();
+  if(!j.ok){
+    setStatus("Erreur: " + (j.error||"inconnue"));
+    return;
+  }
+  document.getElementById("lastUpdate").textContent = j.asof || "—";
+  document.getElementById("universeCount").textContent = String(j.universe||j.items.length||"—");
+
+  renderTopCards(j.items.slice(0, 6));
+  renderTable(j.items);
+
+  // auto select top
+  if(!lastSelected && j.items.length){
+    selectSymbol(j.items[0].symbol);
+  } else if(lastSelected){
+    // refresh detail
+    await selectSymbol(lastSelected, true);
+  }
+
+  setStatus(`OK • ${j.items.length} opportunités classées (score IA 0–100).`);
+}
+
+function renderTopCards(items){
+  const box = document.getElementById("topCards");
+  box.innerHTML = "";
+  for(const it of items){
+    const div = document.createElement("div");
+    div.className = "card";
+    div.onclick = ()=>selectSymbol(it.symbol);
+    const tags = (it.tags||[]).slice(0,3).map(t=>`<span class="pill">${t}</span>`).join(" ");
+    div.innerHTML = `
+      <div class="row">
+        <div class="sym">${it.symbol}</div>
+        <div class="${pillClass(it.score)}"><b>${Math.round(it.score)}</b>/100</div>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <div class="muted">${it.mode||"—"}</div>
+        <div class="muted">$${fmt(it.price, 4)}</div>
+      </div>
+      <div class="mini">
+        <span>Δ24h: <b>${pct(it.change_24h)}</b></span>
+        <span>Vol: <b>${fmt(it.vol_30d,1)}%</b></span>
+        <span>DD: <b>${fmt(it.dd_30d,1)}%</b></span>
+      </div>
+      <div class="mini">${tags}</div>
+    `;
+    box.appendChild(div);
+  }
+}
+
+function renderTable(items){
+  const tb = document.getElementById("rows");
+  tb.innerHTML = "";
+  for(const it of items){
+    const tr = document.createElement("tr");
+    tr.style.cursor="pointer";
+    tr.onclick = ()=>selectSymbol(it.symbol);
+    const tags = (it.tags||[]).slice(0,3).join(", ");
+    tr.innerHTML = `
+      <td><b>${it.symbol}</b><div class="muted" style="font-size:11px">${it.name||""}</div></td>
+      <td>${it.mode||"—"}</td>
+      <td><span class="${pillClass(it.score)}"><b>${Math.round(it.score)}</b>/100</span></td>
+      <td>$${fmt(it.price, 6)}</td>
+      <td>${pct(it.change_24h)}</td>
+      <td>${fmt(it.vol_30d,1)}%</td>
+      <td>${fmt(it.dd_30d,1)}%</td>
+      <td class="muted">${tags||"—"}</td>
+    `;
+    tb.appendChild(tr);
+  }
+}
+
+async function selectSymbol(symbol, silent=false){
+  lastSelected = symbol;
+  document.getElementById("selectedSym").textContent = symbol;
+  if(!silent) setStatus("Chargement détail " + symbol + "…");
+  const interval = document.getElementById("interval").value;
+  const lookback = document.getElementById("lookback").value;
+
+  const r = await fetch(`${API_DETAIL}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(lookback)}`);
+  const j = await r.json();
+  if(!j.ok){
+    setStatus("Erreur détail: " + (j.error||"inconnue"));
+    return;
+  }
+
+  document.getElementById("detailSym").textContent = symbol;
+  const p = document.getElementById("detailPill");
+  p.className = pillClass(j.score||0);
+  p.innerHTML = `<b>${Math.round(j.score||0)}</b>/100`;
+
+  const coach = document.getElementById("coachList");
+  coach.innerHTML = "";
+  for(const b of (j.rationale||[])){
+    const li = document.createElement("li"); li.textContent = b; coach.appendChild(li);
+  }
+
+  // chart
+  const labels = (j.series||[]).map(x => new Date(x.t).toLocaleDateString("fr-CA", {month:"short", day:"2-digit"}));
+  const closes = (j.series||[]).map(x => x.c);
+  const ema20 = (j.indicators?.ema20||[]);
+  const ema50 = (j.indicators?.ema50||[]);
+
+  const ctx = document.getElementById("priceChart").getContext("2d");
+  if(chart){ chart.destroy(); }
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "Close", data: closes, borderWidth: 2, tension: 0.25 },
+        { label: "EMA20", data: ema20, borderWidth: 1, tension: 0.25 },
+        { label: "EMA50", data: ema50, borderWidth: 1, tension: 0.25 },
+      ]
+    },
+    options: {
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins: { legend: { labels: { color: "#e7eefc" } } },
+      scales: {
+        x: { ticks: { color: "#9aa7bd" }, grid: { color: "rgba(255,255,255,.06)" } },
+        y: { ticks: { color: "#9aa7bd" }, grid: { color: "rgba(255,255,255,.06)" } },
+      }
+    }
+  });
+
+  if(!silent) setStatus("OK • " + symbol + " chargé.");
+}
+
+function setAuto(on){
+  AUTO = on;
+  document.getElementById("btnAuto").textContent = "Auto: " + (AUTO ? "ON" : "OFF");
+  if(timer){ clearInterval(timer); timer=null; }
+  if(AUTO){
+    timer = setInterval(scanNow, 30000);
+  }
+}
+
+document.getElementById("btnScan").onclick = ()=>scanNow();
+document.getElementById("btnRefresh").onclick = ()=>scanNow();
+document.getElementById("btnAuto").onclick = ()=>setAuto(!AUTO);
+
+// init
+(async ()=>{
+  setAuto(true);
+  await scanNow();
+})();
+</script>
+
+</body>
+</html>
+"""
+    body = body.replace("__SIDEBAR__", SIDEBAR)
+    return HTMLResponse(body)
 
 # ============= AI MARKET REGIME DETECTOR =============
 @app.get("/ai-market-regime", response_class=HTMLResponse)
@@ -45337,565 +45512,6 @@ async def spot_trading_page():
             generateHeatmap();
         });
     </script>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content)
-
-# ============= AI OPPORTUNITY SCANNER =============
-@app.get("/ai-opportunity-scanner", response_class=HTMLResponse)
-async def ai_opportunity_scanner():
-    """
-    Scanner IA des meilleures opportunités de trading en temps réel
-    ✅ DONNÉES RÉELLES EN TEMPS RÉEL DE COINGECKO API (Pas de données simulées!)
-    """
-    html_content = SIDEBAR + """
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Opportunity Scanner</title>
-        """ + CSS + """
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-                color: #333;
-                min-height: 100vh;
-            }}
-            
-            .container {
-                max-width: 1400px;
-                margin: 0 auto;
-                padding: 20px;
-            }}
-            
-            header {
-                text-align: center;
-                color: white;
-                margin-bottom: 30px;
-                background: rgba(0,0,0,0.2);
-                padding: 30px;
-                border-radius: 15px;
-                backdrop-filter: blur(10px);
-            }
-            
-            header h1 {
-                font-size: 2.8em;
-                margin-bottom: 10px;
-                text-shadow: 0 0 20px rgba(255,255,255,0.5), 2px 2px 8px rgba(0,0,0,0.3);
-                font-weight: 900;
-                letter-spacing: 2px;
-            }
-            
-            .content {
-                background: white;
-                border-radius: 15px;
-                padding: 40px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            }
-            
-            .stats-bar {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 20px;
-                margin-bottom: 30px;
-            }
-            
-            .stat-box {
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                padding: 20px;
-                border-radius: 12px;
-                border-left: 5px solid #6366f1;
-                text-align: center;
-            }
-            
-            .stat-value {
-                font-size: 2em;
-                font-weight: bold;
-                color: #6366f1;
-                display: block;
-            }
-            
-            .stat-label {
-                color: #666;
-                font-size: 0.9em;
-                margin-top: 5px;
-            }
-            
-            .opportunities-grid {
-                display: grid;
-                gap: 25px;
-            }
-            
-            .opportunity-card {
-                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                border-radius: 15px;
-                padding: 30px;
-                border: 3px solid #e0e0e0;
-                position: relative;
-                overflow: hidden;
-                transition: transform 0.3s, box-shadow 0.3s;
-            }
-            
-            .opportunity-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 15px 40px rgba(0,0,0,0.15);
-            }
-            
-            .opportunity-card.hot {
-                border-color: #ef4444;
-                background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-            }
-            
-            .opportunity-card.good {
-                border-color: #10b981;
-                background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-            }
-            
-            .opportunity-card.moderate {
-                border-color: #f59e0b;
-                background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-            }
-            
-            .card-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 20px;
-            }
-            
-            .coin-info {
-                display: flex;
-                align-items: center;
-                gap: 15px;
-            }
-            
-            .coin-symbol {
-                font-size: 2em;
-                font-weight: bold;
-                color: #1f2937;
-            }
-            
-            .coin-name {
-                font-size: 1.1em;
-                color: #666;
-            }
-            
-            .score-circle {
-                width: 80px;
-                height: 80px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 1.5em;
-                font-weight: bold;
-                color: white;
-                position: relative;
-            }
-            
-            .score-circle.hot { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
-            .score-circle.good { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-            .score-circle.moderate { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-            
-            .opportunity-details {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 15px;
-                margin: 20px 0;
-            }
-            
-            .detail-box {
-                background: white;
-                padding: 15px;
-                border-radius: 8px;
-                border-left: 3px solid #6366f1;
-            }
-            
-            .detail-label {
-                font-size: 0.85em;
-                color: #666;
-                margin-bottom: 5px;
-            }
-            
-            .detail-value {
-                font-size: 1.2em;
-                font-weight: bold;
-                color: #1f2937;
-            }
-            
-            .ai-reasoning {
-                background: #f8f9fa;
-                padding: 20px;
-                border-radius: 10px;
-                border-left: 5px solid #8b5cf6;
-                margin-top: 20px;
-            }
-            
-            .ai-reasoning h4 {
-                color: #8b5cf6;
-                margin-bottom: 10px;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            
-            .ai-reasoning ul {
-                margin-left: 20px;
-            }
-            
-            .ai-reasoning li {
-                margin: 8px 0;
-                color: #555;
-            }
-            
-            .badge {
-                display: inline-block;
-                padding: 5px 12px;
-                border-radius: 20px;
-                font-size: 0.85em;
-                font-weight: bold;
-                margin: 5px 5px 5px 0;
-            }
-            
-            .badge.breakout { background: #fecaca; color: #991b1b; }
-            .badge.oversold { background: #dbeafe; color: #1e40af; }
-            .badge.momentum { background: #d1fae5; color: #065f46; }
-            .badge.safehaven { background: #e9d5ff; color: #6b21a8; }
-            
-            .action-buttons {
-                display: flex;
-                gap: 10px;
-                margin-top: 20px;
-            }
-            
-            .btn {
-                padding: 12px 24px;
-                border-radius: 8px;
-                border: none;
-                font-weight: bold;
-                cursor: pointer;
-                transition: transform 0.2s;
-                text-decoration: none;
-                display: inline-block;
-                text-align: center;
-            }
-            
-            .btn:hover { transform: scale(1.05); }
-            
-            .btn-primary {
-                background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-                color: white;
-            }
-            
-            .btn-secondary {
-                background: #f3f4f6;
-                color: #1f2937;
-            }
-            
-            .refresh-bar {
-                background: rgba(99, 102, 241, 0.1);
-                padding: 15px;
-                border-radius: 10px;
-                text-align: center;
-                margin-bottom: 25px;
-                border: 2px solid rgba(99, 102, 241, 0.3);
-            }
-            
-            .refresh-bar button {
-                background: #6366f1;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 8px;
-                cursor: pointer;
-                font-weight: bold;
-                margin-left: 10px;
-            }
-            
-            .refresh-bar button:hover {
-                background: #4f46e5;
-            }
-            
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.5; }
-            }
-            
-            .live-indicator {
-                display: inline-block;
-                width: 10px;
-                height: 10px;
-                background: #10b981;
-                border-radius: 50%;
-                margin-right: 8px;
-                animation: pulse 2s infinite;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <header>
-                <h1>🎯 AI OPPORTUNITY SCANNER</h1>
-                <p>Intelligence Artificielle détectant les meilleures opportunités de trading en temps réel</p>
-            </header>
-            
-            
-            
-            <div class="content">
-                <div class="refresh-bar">
-                    <span class="live-indicator"></span>
-                    <strong>Scanner en temps réel (données CoinGecko)</strong> - Dernière analyse : <span id="lastUpdate">-</span>
-                    <button onclick="refreshOpportunities()">🔄 Actualiser</button>
-                    <div class="data-source" style="font-size: 0.85em; color: #666; margin-top: 10px;">
-                        📡 Source: CoinGecko API (mise à jour auto toutes les 2 minutes)
-                    </div>
-                </div>
-                
-                <div class="stats-bar">
-                    <div class="stat-box">
-                        <span class="stat-value" id="totalOpportunities">-</span>
-                        <span class="stat-label">Opportunités Détectées</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-value" id="avgScore">-</span>
-                        <span class="stat-label">Score Moyen</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-value" id="hotDeals">-</span>
-                        <span class="stat-label">Opportunités Chaudes (>85)</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-value" id="marketSentiment">-</span>
-                        <span class="stat-label">Sentiment Global</span>
-                    </div>
-                </div>
-                
-                <div id="loadingDiv" class="loading" style="text-align: center; padding: 40px; color: #666;">
-                    <p>⏳ Chargement des données en temps réel...</p>
-                </div>
-                
-                <div class="opportunities-grid" id="opportunitiesGrid" style="display:none;">
-                    <!-- Filled by JavaScript -->
-                </div>
-            </div>
-        </div>
-        
-        <script>
-            async function fetchRealData() {
-                try {
-                    // Rcuprer les top 50 cryptos avec donnes actuelles
-                    const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h,7d,30d');
-                    const data = await response.json();
-                console.log('Server response:', data);
-                    return data;
-                } catch (error) {
-                    console.error('Erreur lors du chargement des données:', error);
-                    return null;
-                }
-            }
-            
-            function calculateScore(crypto) {
-                let score = 50; // Base
-                
-                // Changement 24h (volatilit positive)
-                const change24h = crypto.price_change_percentage_24h || 0;
-                if (change24h > 5) score += 15;
-                else if (change24h > 2) score += 10;
-                else if (change24h > -2) score += 5;
-                else if (change24h > -5) score += 2;
-                
-                // Changement 7j
-                const change7d = crypto.price_change_percentage_7d_in_currency || 0;
-                if (change7d > 15) score += 12;
-                else if (change7d > 5) score += 8;
-                else if (change7d > -5) score += 5;
-                
-                // Market cap (stabilit)
-                if (crypto.market_cap_rank && crypto.market_cap_rank <= 10) score += 15;
-                else if (crypto.market_cap_rank && crypto.market_cap_rank <= 50) score += 8;
-                else if (crypto.market_cap_rank && crypto.market_cap_rank <= 200) score += 5;
-                
-                // Volume (liquidit)
-                if (crypto.total_volume && crypto.market_cap) {
-                    const volumeRatio = crypto.total_volume / crypto.market_cap;
-                    if (volumeRatio > 0.3) score += 10;
-                    else if (volumeRatio > 0.1) score += 5;
-                }
-                
-                return Math.min(99, Math.max(60, score));
-            }
-            
-            function generateAIReasons(crypto) {
-                const reasons = [];
-                const change24h = crypto.price_change_percentage_24h || 0;
-                const change7d = crypto.price_change_percentage_7d_in_currency || 0;
-                
-                if (change24h > 5) reasons.push(`📈 Hausse 24h: +${change24h.toFixed(2)}%`);
-                if (change7d > 10) reasons.push(`📊 Momentum 7j: +${change7d.toFixed(2)}%`);
-                if (crypto.market_cap_rank && crypto.market_cap_rank <= 20) reasons.push(`👑 Top ${crypto.market_cap_rank} par capitalisation`);
-                if (crypto.total_volume && crypto.market_cap) {
-                    const vol = (crypto.total_volume / crypto.market_cap * 100).toFixed(1);
-                    reasons.push(`💧 Volume/MCap: ${vol}% (liquidité)`);
-                }
-                if (crypto.ath_change_percentage && crypto.ath_change_percentage > -20) {
-                    reasons.push(`🎯 À ${(100 + crypto.ath_change_percentage).toFixed(1)}% du sommet`);
-                }
-                
-                return reasons.length > 0 ? reasons : ['📍 Prix actuel intéressant', '✅ Analyse technique favorable'];
-            }
-            
-            async function generateOpportunities(cryptoData) {
-                if (!cryptoData) return [];
-                
-                // Filtrer et scorer
-                const opportunities = cryptoData
-                    .filter(c => c.current_price && c.market_cap)
-                    .map(c => ({
-                        symbol: c.symbol.toUpperCase(),
-                        name: c.name,
-                        price: c.current_price,
-                        change24h: c.price_change_percentage_24h || 0,
-                        change7d: c.price_change_percentage_7d_in_currency || 0,
-                        marketCapRank: c.market_cap_rank,
-                        ath: c.ath,
-                        athChange: c.ath_change_percentage || 0,
-                        score: calculateScore(c),
-                        volume: c.total_volume,
-                        marketCap: c.market_cap,
-                        reasons: generateAIReasons(c)
-                    }))
-                    .sort((a, b) => b.score - a.score)
-                    .slice(0, 5);
-                
-                // Ajouter Entry/SL/TP
-                opportunities.forEach(opp => {
-                    opp.entry = opp.price.toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
-                    opp.sl = (opp.price * 0.95).toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
-                    opp.tp = (opp.price * 1.12).toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
-                    const rrValue = (parseFloat(opp.tp) - parseFloat(opp.entry)) / (parseFloat(opp.entry) - parseFloat(opp.sl));
-                    opp.rr = rrValue.toFixed(1);
-                });
-                
-                return opportunities;
-            }
-            
-            async function renderOpportunities() {
-                const loadingDiv = document.getElementById('loadingDiv');
-                const grid = document.getElementById('opportunitiesGrid');
-                
-                loadingDiv.style.display = 'block';
-                grid.style.display = 'none';
-                
-                const cryptoData = await fetchRealData();
-                const opportunities = await generateOpportunities(cryptoData);
-                
-                if (opportunities.length === 0) {
-                    loadingDiv.innerHTML = '<p>❌ Impossible de charger les données</p>';
-                    return;
-                }
-                
-                let html = '';
-                let totalScore = 0;
-                let hotCount = 0;
-                
-                opportunities.forEach(opp => {
-                    totalScore += opp.score;
-                    if (opp.score >= 85) hotCount++;
-                    
-                    const scoreClass = opp.score >= 85 ? 'hot' : opp.score >= 75 ? 'good' : 'moderate';
-                    
-                    html += `
-                        <div class="opportunity-card ${scoreClass}">
-                            <div class="card-header">
-                                <div class="coin-info">
-                                    <div>
-                                        <div class="coin-symbol">${opp.symbol}/USDT</div>
-                                        <div class="coin-name">${opp.name}</div>
-                                    </div>
-                                </div>
-                                <div class="score-circle ${scoreClass}">
-                                    ${Math.round(opp.score)}
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <span class="badge momentum">⚡ Temps Réel</span>
-                                <span class="badge" style="background: #f3f4f6; color: #1f2937;">#${opp.marketCapRank}</span>
-                                <span class="badge" style="background: #f0f0f0; color: #666;">${opp.change24h > 0 ? '📈' : '📉'} ${opp.change24h.toFixed(2)}%</span>
-                            </div>
-                            
-                            <div class="opportunity-details">
-                                <div class="detail-box">
-                                    <div class="detail-label">Prix Actuel</div>
-                                    <div class="detail-value">$${opp.price.toLocaleString('fr-FR', {maximumFractionDigits: opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4})}</div>
-                                </div>
-                                <div class="detail-box">
-                                    <div class="detail-label">Entry</div>
-                                    <div class="detail-value">$${opp.entry}</div>
-                                </div>
-                                <div class="detail-box">
-                                    <div class="detail-label">Stop Loss</div>
-                                    <div class="detail-value" style="color: #ef4444;">$${opp.sl}</div>
-                                </div>
-                                <div class="detail-box">
-                                    <div class="detail-label">Take Profit</div>
-                                    <div class="detail-value" style="color: #10b981;">$${opp.tp}</div>
-                                </div>
-                                <div class="detail-box">
-                                    <div class="detail-label">Risk/Reward</div>
-                                    <div class="detail-value">${opp.rr}:1</div>
-                                </div>
-                            </div>
-                            
-                            <div class="ai-reasoning">
-                                <h4>🤖 Analyse IA en Temps Réel</h4>
-                                <ul>
-                                    ${opp.reasons.map(r => `<li>${r}</li>`).join('')}
-                                </ul>
-                            </div>
-                            
-                            <div class="action-buttons">
-                                <a href="/calculatrice" class="btn btn-primary">📊 Calculer Position</a>
-                                <a href="/strategie" class="btn btn-secondary">📚 Voir Stratégie</a>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                grid.innerHTML = html;
-                grid.style.display = 'grid';
-                loadingDiv.style.display = 'none';
-                
-                // Mettre  jour les stats
-                document.getElementById('totalOpportunities').textContent = opportunities.length;
-                document.getElementById('avgScore').textContent = Math.round(totalScore / opportunities.length);
-                document.getElementById('hotDeals').textContent = hotCount;
-                document.getElementById('marketSentiment').textContent = 
-                    (totalScore / opportunities.length) >= 80 ? '📈 Très Positif' :
-                    (totalScore / opportunities.length) >= 70 ? '📊 Positif' : '⚖️ Neutre';
-                
-                // Dernire mise  jour
-                const now = new Date();
-                document.getElementById('lastUpdate').textContent = 
-                    now.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
-            }
-            
-            function refreshOpportunities() {
-                renderOpportunities();
-            }
-            
-            // Initial render
-            renderOpportunities();
-            
-            // Auto-refresh toutes les 2 minutes
-            setInterval(renderOpportunities, 120000);
-        </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'AI Opportunity Scanner ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Scanner automatique détectant opportunités trading 24/7.</p><ul style="line-height: 1.8; color: #555;"><li>🔍 Scan 100+ cryptos en continu</li><li>📊 Détection patterns techniques</li><li>🎯 Scoring opportunités 0-100</li><li>⚡ Alertes temps réel</li><li>📈 Setups confirmés uniquement</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🔍 Critères détection</h3><p style="line-height: 1.6; color: #555;"><strong>📈 Breakouts:</strong> Cassure résistance + volume fort</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📉 Rebounds:</strong> Rebond support + RSI oversold</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>🎯 Divergences:</strong> RSI/MACD diverge du prix</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📊 Patterns:</strong> Triangles, flags, cup & handle</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 Score opportunité</h3><p style="line-height: 1.6; color: #555;">🔥 <strong>80-100:</strong> Setup excellent</p><p style="line-height: 1.6; color: #555;">✅ <strong>60-80:</strong> Setup bon</p><p style="line-height: 1.6; color: #555;">⚠️ <strong>40-60:</strong> Setup moyen</p><p style="line-height: 1.6; color: #555;">❌ <strong>&lt;40:</strong> À éviter</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Comment utiliser</h3><ul style="line-height: 1.8; color: #555;"><li>✅ Vérifiez score &gt;70</li><li>✅ Confirmez sur graphique</li><li>✅ Vérifiez volume</li><li>✅ Calculez risk/reward</li><li>✅ Placez stop loss</li><li>❌ Ne suivez pas aveuglément</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 15px;">💡 Scanner = Filtre initial, pas signal d'achat direct!</p></div></div></div>
     </body>
     </html>
     """

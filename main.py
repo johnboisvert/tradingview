@@ -3678,9 +3678,9 @@ async def api_v2_opportunity_scan(
                 sym0 = (coin.get("symbol") or "").upper().strip()
                 if not sym0:
                     continue
-                # If CoinGecko sparkline seems unavailable, mark for Binance
-                prices0 = (((coin.get("sparkline_in_7d") or {}).get("price") or []) if isinstance(coin.get("sparkline_in_7d"), dict) else []) if (coin.get("sparkline_in_7d") is not None) else []
-                if not prices0 or len(prices0) < 10:
+                # If normalized sparkline is missing/too short, mark for Binance
+                spr0 = coin.get("sparkline")
+                if (not isinstance(spr0, list)) or (len(spr0) < 10):
                     need_pairs.append(_validate_symbol(f"{sym0}USDT"))
 
             if need_pairs:
@@ -3736,15 +3736,15 @@ async def api_v2_opportunity_scan(
 
         for coin in items:
             try:
-                symbol = (coin.get("symbol") or "").upper() + "USDT"
-                prices = (coin.get("sparkline_in_7d") or {}).get("price") or []
-                closes = _cg_resample_prices(prices, interval_norm)
+                sym0 = (coin.get("symbol") or "").upper().strip()
+                symbol = (sym0 + "USDT") if sym0 else ""
+                closes = coin.get("sparkline") if isinstance(coin.get("sparkline"), list) else []
 
                 if len(closes) < min_candles:
                     # Fallback: use prefetched Binance closes (if CoinGecko sparkline is missing)
                     closes = (binance_closes_map.get(symbol) or [])
-                    if len(closes) < min_candles:
-                        continue
+                if len(closes) < min_candles:
+                    continue
 
                 score, tags = _opportunity_score(closes, lookback=lookback)
                 mode_name = _opportunity_mode(tags)
@@ -3778,8 +3778,8 @@ async def api_v2_opportunity_scan(
                     "cg_id": coin.get("id"),
                     "mode": mode_name,
                     "score": score,
-                    "price": coin.get("current_price"),
-                    "change_24h": coin.get("price_change_percentage_24h"),
+                    "price": (coin.get("price") if coin.get("price") is not None else coin.get("current_price")),
+                    "change_24h": (coin.get("change_24h_pct") if coin.get("change_24h_pct") is not None else coin.get("price_change_percentage_24h")),
                     "vol_30d": vol,
                     "dd_30d": dd,
                     "tags": tags,

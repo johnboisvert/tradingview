@@ -3373,6 +3373,38 @@ _WOW_SYMBOL_TO_CGID = {}
 _WOW_CG_VS = "usd"
 _WOW_CG_MARKETS_URL = "https://api.coingecko.com/api/v3/coins/markets"
 
+# Binance 24h ticker cache (to show real last price and Δ24h without abusing rate limits)
+_WOW_BINANCE_TICKER_CACHE = {"ts": 0.0, "data": {}}
+
+
+async def _binance_24h_tickers_map(ttl_seconds: int = 10) -> dict:
+    """Return a dict keyed by SYMBOL (e.g. BTCUSDT) with Binance 24h stats.
+
+    Uses a short in-memory TTL cache to reduce calls. If Binance is temporarily
+    unavailable, returns the last cached data.
+    """
+    now = time.time()
+    if _WOW_BINANCE_TICKER_CACHE.get("data") and (now - float(_WOW_BINANCE_TICKER_CACHE.get("ts", 0.0)) < ttl_seconds):
+        return _WOW_BINANCE_TICKER_CACHE["data"]
+
+    url = "https://api.binance.com/api/v3/ticker/24hr"
+    try:
+        data = await _fetch_json(url, timeout=10)
+        # Binance returns a list of dicts
+        out = {}
+        if isinstance(data, list):
+            for it in data:
+                sym = str(it.get("symbol") or "").upper()
+                if not sym:
+                    continue
+                out[sym] = it
+        _WOW_BINANCE_TICKER_CACHE["ts"] = now
+        _WOW_BINANCE_TICKER_CACHE["data"] = out
+        return out
+    except Exception:
+        # fallback to cached data
+        return _WOW_BINANCE_TICKER_CACHE.get("data", {})
+
 def _wow_float(x, default=None):
     try:
         if x is None:
@@ -3666,6 +3698,9 @@ async def api_v2_opportunity_scan(
 
         interval_norm = (interval or "1h").strip().lower()
 
+        # Binance 24h tickers (cached) to populate *real* last price and Δ24h
+        tickers_24h = await _binance_24h_tickers_map(ttl_seconds=10)
+
         # Prefetch Binance closes in parallel for coins where CoinGecko sparkline may be missing
         binance_closes_map = {}
         try:
@@ -3772,17 +3807,49 @@ async def api_v2_opportunity_scan(
                 else:
                     vol = 0.0
 
+                # Prefer Binance 24h ticker for last price + 24h % change when available
+                price_val = (coin.get("price") if coin.get("price") is not None else coin.get("current_price"))
+                chg_val = (coin.get("change_24h_pct") if coin.get("change_24h_pct") is not None else coin.get("price_change_percentage_24h"))
+                src = "coingecko"
+                tkr = tickers_24h.get(symbol)
+                if isinstance(tkr, dict):
+                    try:
+                        if tkr.get("lastPrice") is not None:
+                            price_val = float(tkr.get("lastPrice"))
+                            src = "binance"
+                    except Exception:
+                        pass
+                    try:
+                        if tkr.get("priceChangePercent") is not None:
+                            chg_val = float(tkr.get("priceChangePercent"))
+                            src = "binance"
+                    except Exception:
+                        pass
+
+                # sanity: 24h percent cannot be below -100
+                try:
+                    if chg_val is not None and float(chg_val) < -100.0:
+                        chg_val = None
+                        tags = (tags or []) + ["data_error"]
+                except Exception:
+                    pass
+
                 out.append({
                     "symbol": symbol,
                     "name": coin.get("name"),
                     "cg_id": coin.get("id"),
                     "mode": mode_name,
                     "score": score,
-                    "price": (coin.get("price") if coin.get("price") is not None else coin.get("current_price")),
-                    "change_24h": (coin.get("change_24h_pct") if coin.get("change_24h_pct") is not None else coin.get("price_change_percentage_24h")),
+                    "price": price_val,
+                    "change_24h": chg_val,
                     "vol_30d": vol,
                     "dd_30d": dd,
+                    # aliases used by the new UI (fractions; UI formats as %)
+                    "pct24h": (chg_val / 100.0) if isinstance(chg_val, (int, float)) else 0.0,
+                    "vol": (vol / 100.0) if isinstance(vol, (int, float)) else 0.0,
+                    "dd": (dd / 100.0) if isinstance(dd, (int, float)) else 0.0,
                     "tags": tags,
+                    "src": src,
                 })
             except Exception:
                 continue
@@ -3839,15 +3906,47 @@ async def api_v2_opportunity_detail(
         base = sym.replace("USDT", "").strip().lower() if sym else ""
         cid = (coin_id or "").strip().lower()
 
-        if not cid:
-            cid = _WOW_SYMBOL_TO_CGID.get(base)
-        if not cid and sym:
-            cid = await _cg_coin_id_from_symbol(sym)
-        if not cid:
-            return JSONResponse({"ok": False, "error": "coin_id introuvable (fait un scan d'abord)"}, status_code=400)
-
         itv = (interval or "1h").strip().lower()
-        klines = await _fetch_cg_klines(cid, interval=itv, lookback=lookback)
+
+        # Prefer Binance candles when the pair exists: it's the most direct source for
+        # the chart + rationale and stays consistent with the scanner.
+        src = "binance"
+        klines = []
+        if sym:
+            try:
+                klines = await _binance_klines(sym, interval=itv, limit=int(lookback or 240))
+            except Exception:
+                klines = []
+
+        # Fallback to CoinGecko only if Binance is unavailable
+        if not klines:
+            src = "coingecko"
+            if not cid:
+                cid = _WOW_SYMBOL_TO_CGID.get(base)
+            if not cid and sym:
+                cid = await _cg_coin_id_from_symbol(sym)
+            if not cid:
+                return JSONResponse({"ok": False, "error": "coin_id introuvable (fait un scan d'abord)"}, status_code=400)
+            klines = await _fetch_cg_klines(cid, interval=itv, lookback=lookback)
+
+        if not klines:
+            return {
+                "ok": True,
+                "symbol": sym or (base.upper() + "USDT"),
+                "cg_id": cid,
+                "source": src,
+                "interval": itv,
+                "lookback": int(lookback or 240),
+                "series": [],
+                "score": 0,
+                "mode": "N/A",
+                "tags": ["no_data"],
+                "rationale": [
+                    "Aucune bougie récupérée pour ce symbole/timeframe (API temporairement indisponible ou paire non listée).",
+                    "Réessaie dans quelques secondes ou change le timeframe.",
+                ],
+            }
+
         scored = _score_opportunity(klines, interval=itv, lookback=lookback)
 
         # series for Chart.js (t = index)
@@ -3857,6 +3956,7 @@ async def api_v2_opportunity_detail(
             "ok": True,
             "symbol": sym or (base.upper() + "USDT"),
             "cg_id": cid,
+            "source": src,
             "interval": itv,
             "lookback": int(lookback or 240),
             "series": series,

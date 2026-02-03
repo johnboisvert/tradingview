@@ -3266,6 +3266,149 @@ async def _fetch_klines(sym: str, itv: str, limit: int):
     _cache_set(cache_key, kl, ttl=ttl)
     return kl
 
+# =========================
+# CoinGecko "klines" helper (no Binance dependency)
+# =========================
+
+_CG_COINS_LIST_CACHE_KEY = "cg:coins_list:v1"
+
+async def _cg_coins_list():
+    """Cache the CoinGecko coins list (id/symbol/name) for symbol->id fallback."""
+    cached = _cache_get(_CG_COINS_LIST_CACHE_KEY)
+    if cached is not None:
+        return cached
+    try:
+        data = await _http_get_json("https://api.coingecko.com/api/v3/coins/list", timeout=20)
+        if isinstance(data, list) and data:
+            _cache_set(_CG_COINS_LIST_CACHE_KEY, data, ttl=24*3600)
+            return data
+    except Exception:
+        pass
+    _cache_set(_CG_COINS_LIST_CACHE_KEY, [], ttl=6*3600)
+    return []
+
+_CG_SYMBOL_ID_HINTS = {
+    "BTC": "bitcoin",
+    "ETH": "ethereum",
+    "BNB": "binancecoin",
+    "SOL": "solana",
+    "XRP": "ripple",
+    "ADA": "cardano",
+    "DOGE": "dogecoin",
+    "TRX": "tron",
+    "AVAX": "avalanche-2",
+    "DOT": "polkadot",
+    "MATIC": "matic-network",
+    "LINK": "chainlink",
+    "LTC": "litecoin",
+    "BCH": "bitcoin-cash",
+    "UNI": "uniswap",
+}
+
+def _cg_symbol_to_id(symbol: str) -> str | None:
+    """Best-effort mapping for symbols like BTCUSDT -> 'bitcoin'."""
+    if not symbol:
+        return None
+    s = symbol.upper().strip()
+    for suf in ("USDT", "USD", "-USD", "/USD"):
+        if s.endswith(suf):
+            s = s[: -len(suf)]
+            break
+    base = re.sub(r"[^A-Z0-9]", "", s)
+    if not base:
+        return None
+    if base in _CG_SYMBOL_ID_HINTS:
+        return _CG_SYMBOL_ID_HINTS[base]
+    # fallback from cached list (fast)
+    cached = _cache_get(_CG_COINS_LIST_CACHE_KEY)
+    if not isinstance(cached, list) or not cached:
+        return None
+    base_l = base.lower()
+    for c in cached:
+        if (c.get("symbol") or "").lower() == base_l:
+            return c.get("id")
+    return None
+
+async def _fetch_cg_klines(coin_id: str, itv: str, limit: int, vs: str = "usd"):
+    """
+    Build kline-like OHLCV candles from CoinGecko market_chart (prices + total_volumes).
+    Output matches _fetch_klines: [{t,o,h,l,c,v}, ...] with t in ms.
+    """
+    coin_id = (coin_id or "").strip()
+    if not coin_id:
+        raise ValueError("coin_id required")
+
+    mins = _interval_minutes(itv)
+    bucket_ms = int(mins * 60 * 1000)
+    limit = max(80, min(int(limit), 600))
+
+    # days needed to cover requested candles (+1 day buffer)
+    days = int(math.ceil((limit * mins) / 1440.0) + 1)
+    days = max(1, min(days, 90))
+
+    cache_key = f"cgkl:{coin_id}:{itv}:{limit}:{vs}:{days}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency={vs}&days={days}"
+    j = await _http_get_json(url, timeout=20)
+    prices = j.get("prices") or []
+    vols = j.get("total_volumes") or []
+
+    if not prices:
+        raise RuntimeError("CoinGecko returned no price data")
+
+    # map volume timestamp -> value (nearest)
+    vol_map = {}
+    for t, v in vols:
+        try:
+            vol_map[int(t)] = float(v)
+        except Exception:
+            continue
+
+    # group by interval bucket
+    buckets = {}
+    for t, p in prices:
+        try:
+            t = int(t)
+            p = float(p)
+        except Exception:
+            continue
+        b = (t // bucket_ms) * bucket_ms
+        if b not in buckets:
+            buckets[b] = {"t": b, "prices": [], "vols": []}
+        buckets[b]["prices"].append(p)
+
+        # attach a volume point if we have one very close
+        # (CoinGecko provides volumes at same cadence as prices in most cases)
+        if t in vol_map:
+            buckets[b]["vols"].append(vol_map[t])
+
+    # build sorted candles
+    ks = []
+    for b in sorted(buckets.keys()):
+        ps = buckets[b]["prices"]
+        if not ps:
+            continue
+        o = ps[0]
+        c = ps[-1]
+        h = max(ps)
+        l = min(ps)
+        v = 0.0
+        vs_ = buckets[b]["vols"]
+        if vs_:
+            # approximate volume for the bucket by average * count
+            v = (sum(vs_) / len(vs_)) * max(1, len(vs_))
+        ks.append({"t": int(b), "o": float(o), "h": float(h), "l": float(l), "c": float(c), "v": float(v)})
+
+    if len(ks) < 40:
+        raise RuntimeError("Not enough candles from CoinGecko to compute signals")
+
+    ks = ks[-limit:]
+    _cache_set(cache_key, ks, ttl=60)  # short cache to avoid rate limits
+    return ks
+
 def _score_opportunity(klines, itv: str):
     closes = [k["c"] for k in klines]
     highs  = [k["h"] for k in klines]
@@ -3425,24 +3568,23 @@ async def api_v2_opportunity_scan(per_page: int = 30, interval: str = "1h", look
         cached = _cache_get(cache_key)
         if cached is not None:
             return {"ok": True, "cached": True, **cached}
-
-        bases = await _binance_exchangeinfo_bases()
+        # CoinGecko universe (no Binance dependency)
         cg = await api_v2_market_top(per_page=per_page, vs_currency="usd")
         coins = cg.get("coins") if isinstance(cg, dict) else None
         if not coins:
             return {"ok": False, "error": "CoinGecko indisponible."}
 
-        # build universe from top coins that exist on Binance USDT
         universe = []
         for c in coins:
             base = (c.get("symbol") or "").upper()
             name = c.get("name") or base
+            cg_id = (c.get("id") or "").strip()
             if not base or base in _STABLE_BASES:
                 continue
-            if base not in bases:
+            if not cg_id:
                 continue
-            sym = f"{base}USDT"
-            universe.append({"symbol": sym, "base": base, "name": name, "cg_id": c.get("id")})
+            sym = f"{base}USDT"  # label only (familiar)
+            universe.append({"symbol": sym, "base": base, "name": name, "cg_id": cg_id})
             if len(universe) >= per_page:
                 break
 
@@ -3452,7 +3594,7 @@ async def api_v2_opportunity_scan(per_page: int = 30, interval: str = "1h", look
 
         async def work(item):
             async with sem:
-                kl = await _fetch_klines(item["symbol"], itv, lookback)
+                kl = await _fetch_cg_klines(item["cg_id"], itv, lookback, vs="usd")
                 sc = _score_opportunity(kl, itv)
                 out = {
                     "symbol": item["symbol"],
@@ -3481,56 +3623,71 @@ async def api_v2_opportunity_scan(per_page: int = 30, interval: str = "1h", look
             "universe": len(universe),
             "items": items,
         }
+        _cache_set("oppscan:map", {it["symbol"]: it.get("cg_id") for it in items if it.get("cg_id")}, ttl=600)
         _cache_set(cache_key, payload, ttl=25 if itv in ("15m","5m","1m") else 45)
         return {"ok": True, "cached": False, **payload}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
 @app.get("/api/v2/opportunity/detail")
-async def api_v2_opportunity_detail(symbol: str = "BTCUSDT", interval: str = "1h", limit: int = 240):
+async def api_v2_opportunity_detail(
+    coin_id: str | None = None,
+    symbol: str = "BTCUSDT",
+    interval: str = "1h",
+    limit: int = 240,
+):
+    """
+    Detail + série pour une opportunité.
+    - Mode B (recommandé): coin_id (CoinGecko) = données live CoinGecko.
+    - Fallback: si coin_id absent, on tente de déduire via le dernier scan ou via la liste CoinGecko.
+    """
     try:
-        sym = _validate_symbol(symbol)
         itv = _validate_interval(interval)
-        limit = int(limit)
-        limit = max(80, min(limit, 600))
+        lim = max(80, min(int(limit), 600))
 
-        cache_key = f"oppscan:detail:{sym}:{itv}:{limit}"
+        cid = (coin_id or "").strip()
+        if not cid:
+            # try last scan mapping
+            m = _cache_get("oppscan:map")
+            if isinstance(m, dict):
+                cid = (m.get(symbol) or "").strip()
+
+        if not cid:
+            # ensure coins list cached then try symbol->id
+            await _cg_coins_list()
+            cid = _cg_symbol_to_id(symbol) or ""
+
+        if not cid:
+            return {"ok": False, "error": "Coin introuvable (coin_id manquant). Lance un scan puis réessaie."}
+
+        cache_key = f"oppdetail:cg:{cid}:{itv}:{lim}"
         cached = _cache_get(cache_key)
         if cached is not None:
             return {"ok": True, "cached": True, **cached}
 
-        kl = await _fetch_klines(sym, itv, limit)
-        sc = _score_opportunity(kl, itv)
+        kl = await _fetch_cg_klines(cid, itv, lim, vs="usd")
+        sc = _score_opportunity(kl)
 
-        series = [{"t": k["t"], "c": k["c"]} for k in kl]
-        # indicators same length
-        ema20 = sc["ema20_series"]
-        ema50 = sc["ema50_series"]
-        # align lengths
-        def pad(arr, n):
-            if not arr:
-                return [None]*n
-            if len(arr) < n:
-                return [None]*(n-len(arr)) + arr
-            return arr[-n:]
-        n = len(series)
-        ema20 = pad(ema20, n)
-        ema50 = pad(ema50, n)
+        series = [{"t": k["t"], "c": k["c"], "v": k.get("v", 0.0)} for k in kl]
+        closes = [k["c"] for k in kl]
+        ema20 = _ema(closes, 20)
+        ema50 = _ema(closes, 50)
 
         payload = {
-            "symbol": sym,
+            "symbol": symbol,
+            "cg_id": cid,
             "interval": itv,
-            "score": sc["score"],
-            "mode": sc["mode"],
             "price": sc["price"],
             "change_24h": sc["change_24h"],
             "vol_30d": sc["vol_30d"],
             "dd_30d": sc["dd_30d"],
             "series": series,
             "indicators": {"ema20": ema20, "ema50": ema50},
+            "score": sc["score"],
+            "tags": sc["tags"],
             "rationale": sc["rationale"],
         }
-        _cache_set(cache_key, payload, ttl=20 if itv in ("15m","5m","1m") else 45)
+        _cache_set(cache_key, payload, ttl=30 if itv in ("15m","5m","1m") else 60)
         return {"ok": True, "cached": False, **payload}
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -13184,62 +13341,62 @@ async def ai_opportunity_scanner(request: Request):
   <title>AI Opportunity Scanner — CryptoIA</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    :root {{
+    :root {
       --bg:#0b1220; --card:#0f1a2e; --card2:#0d1730; --muted:#9aa7bd;
       --txt:#e7eefc; --line:rgba(255,255,255,.08);
       --g1:#7c3aed; --g2:#22d3ee; --ok:#10b981; --bad:#ef4444; --warn:#f59e0b;
-    }}
-    body{{margin:0;background:radial-gradient(1200px 600px at 25% 0%, rgba(124,58,237,.35), transparent 60%), radial-gradient(900px 500px at 85% 20%, rgba(34,211,238,.25), transparent 55%), var(--bg); color:var(--txt); font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;}}
-    .wrap{{margin-left:260px; padding:22px 24px 44px;}}
-    .hero{{display:flex; justify-content:space-between; gap:16px; align-items:flex-end; margin:8px 0 18px;}}
-    .kicker{{color:var(--muted); font-size:12px; letter-spacing:.18em; text-transform:uppercase; display:flex; align-items:center; gap:10px;}}
-    .dot{{width:8px; height:8px; border-radius:999px; background:linear-gradient(90deg,var(--g1),var(--g2)); box-shadow:0 0 18px rgba(124,58,237,.6);}}
-    h1{{margin:6px 0 0; font-size:42px; line-height:1.05; font-weight:900; letter-spacing:-.02em;}}
-    .wow{{background:linear-gradient(90deg,var(--g1),var(--g2)); -webkit-background-clip:text; background-clip:text; color:transparent;}}
-    .sub{{margin-top:6px;color:var(--muted); max-width:760px}}
-    .badges{{display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end;}}
-    .badge{{border:1px solid var(--line); background:rgba(255,255,255,.03); padding:8px 12px; border-radius:999px; font-size:12px; color:var(--muted)}}
-    .badge b{{color:var(--txt)}}
-    .grid{{display:grid; grid-template-columns: 1.35fr 1fr; gap:18px; align-items:start;}}
-    .panel{{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02)); border:1px solid var(--line); border-radius:18px; padding:16px; box-shadow:0 14px 60px rgba(0,0,0,.35);}}
-    .panel h3{{margin:0 0 10px; font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}}
-    .controls{{display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;}}
-    .field label{{display:block; font-size:12px; color:var(--muted); margin:0 0 6px;}}
-    .field input,.field select{{width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--txt); outline:none;}}
-    .field input:focus,.field select:focus{{border-color:rgba(124,58,237,.55); box-shadow:0 0 0 4px rgba(124,58,237,.15)}}
-    .btnrow{{display:flex; gap:10px; margin:10px 0 0;}}
-    .btn{{flex:1; padding:11px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--txt); cursor:pointer; font-weight:800}}
-    .btn.primary{{background:linear-gradient(90deg,var(--g1),var(--g2)); border:none;}}
-    .btn.small{{flex:0 0 auto; padding:10px 12px;}}
-    .cards{{display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:12px;}}
-    .card{{border:1px solid var(--line); border-radius:16px; padding:12px; background:radial-gradient(500px 120px at 15% 0%, rgba(124,58,237,.22), transparent 60%), rgba(255,255,255,.02); cursor:pointer;}}
-    .card:hover{{transform:translateY(-1px); transition:.15s; border-color:rgba(34,211,238,.35)}}
-    .sym{{font-weight:900; letter-spacing:.02em;}}
-    .row{{display:flex; justify-content:space-between; align-items:center; gap:10px;}}
-    .score{{font-weight:900}}
-    .pill{{font-size:11px; padding:5px 9px; border-radius:999px; border:1px solid var(--line); color:var(--muted)}}
-    .pill.ok{{color:rgba(16,185,129,.95); border-color:rgba(16,185,129,.35)}}
-    .pill.bad{{color:rgba(239,68,68,.95); border-color:rgba(239,68,68,.35)}}
-    .pill.warn{{color:rgba(245,158,11,.95); border-color:rgba(245,158,11,.35)}}
-    .mini{{margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;}}
-    .mini span{{font-size:11px; color:var(--muted)}}
-    table{{width:100%; border-collapse:separate; border-spacing:0 8px; margin-top:12px;}}
-    th{{text-align:left; font-size:11px; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; padding:0 10px 6px;}}
-    td{{padding:10px; background:rgba(255,255,255,.02); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}}
-    tr td:first-child{{border-left:1px solid var(--line); border-top-left-radius:12px; border-bottom-left-radius:12px;}}
-    tr td:last-child{{border-right:1px solid var(--line); border-top-right-radius:12px; border-bottom-right-radius:12px;}}
-    tr:hover td{{border-color:rgba(124,58,237,.35);}}
-    .muted{{color:var(--muted)}}
-    .rightcol .panel{{position:sticky; top:18px;}}
-    .chartbox{{height:280px;}}
-    .coach{{margin-top:12px; border:1px solid var(--line); border-radius:16px; padding:12px; background:radial-gradient(700px 180px at 25% 0%, rgba(34,211,238,.16), transparent 60%), rgba(255,255,255,.02);}}
-    .coach .title{{display:flex; justify-content:space-between; align-items:center; gap:10px;}}
-    .coach h4{{margin:0; font-size:14px}}
-    ul{{margin:10px 0 0; padding-left:18px; color:var(--muted)}}
-    .statusline{{margin-top:10px; font-size:12px; color:var(--muted)}}
-    .tag{{display:inline-flex; align-items:center; gap:6px}}
-    .spark{{height:44px; width:100%; opacity:.85}}
-    @media(max-width:1150px){{ .grid{{grid-template-columns:1fr;}} .wrap{{margin-left:0}} .rightcol .panel{{position:static}} .cards{{grid-template-columns:1fr}} .controls{{grid-template-columns:1fr 1fr}} }}
+    }
+    body{margin:0;background:radial-gradient(1200px 600px at 25% 0%, rgba(124,58,237,.35), transparent 60%), radial-gradient(900px 500px at 85% 20%, rgba(34,211,238,.25), transparent 55%), var(--bg); color:var(--txt); font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;}
+    .wrap{margin-left:260px; padding:22px 24px 44px;}
+    .hero{display:flex; justify-content:space-between; gap:16px; align-items:flex-end; margin:8px 0 18px;}
+    .kicker{color:var(--muted); font-size:12px; letter-spacing:.18em; text-transform:uppercase; display:flex; align-items:center; gap:10px;}
+    .dot{width:8px; height:8px; border-radius:999px; background:linear-gradient(90deg,var(--g1),var(--g2)); box-shadow:0 0 18px rgba(124,58,237,.6);}
+    h1{margin:6px 0 0; font-size:42px; line-height:1.05; font-weight:900; letter-spacing:-.02em;}
+    .wow{background:linear-gradient(90deg,var(--g1),var(--g2)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+    .sub{margin-top:6px;color:var(--muted); max-width:760px}
+    .badges{display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end;}
+    .badge{border:1px solid var(--line); background:rgba(255,255,255,.03); padding:8px 12px; border-radius:999px; font-size:12px; color:var(--muted)}
+    .badge b{color:var(--txt)}
+    .grid{display:grid; grid-template-columns: 1.35fr 1fr; gap:18px; align-items:start;}
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02)); border:1px solid var(--line); border-radius:18px; padding:16px; box-shadow:0 14px 60px rgba(0,0,0,.35);}
+    .panel h3{margin:0 0 10px; font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+    .controls{display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;}
+    .field label{display:block; font-size:12px; color:var(--muted); margin:0 0 6px;}
+    .field input,.field select{width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--txt); outline:none;}
+    .field input:focus,.field select:focus{border-color:rgba(124,58,237,.55); box-shadow:0 0 0 4px rgba(124,58,237,.15)}
+    .btnrow{display:flex; gap:10px; margin:10px 0 0;}
+    .btn{flex:1; padding:11px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--txt); cursor:pointer; font-weight:800}
+    .btn.primary{background:linear-gradient(90deg,var(--g1),var(--g2)); border:none;}
+    .btn.small{flex:0 0 auto; padding:10px 12px;}
+    .cards{display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:12px;}
+    .card{border:1px solid var(--line); border-radius:16px; padding:12px; background:radial-gradient(500px 120px at 15% 0%, rgba(124,58,237,.22), transparent 60%), rgba(255,255,255,.02); cursor:pointer;}
+    .card:hover{transform:translateY(-1px); transition:.15s; border-color:rgba(34,211,238,.35)}
+    .sym{font-weight:900; letter-spacing:.02em;}
+    .row{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+    .score{font-weight:900}
+    .pill{font-size:11px; padding:5px 9px; border-radius:999px; border:1px solid var(--line); color:var(--muted)}
+    .pill.ok{color:rgba(16,185,129,.95); border-color:rgba(16,185,129,.35)}
+    .pill.bad{color:rgba(239,68,68,.95); border-color:rgba(239,68,68,.35)}
+    .pill.warn{color:rgba(245,158,11,.95); border-color:rgba(245,158,11,.35)}
+    .mini{margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;}
+    .mini span{font-size:11px; color:var(--muted)}
+    table{width:100%; border-collapse:separate; border-spacing:0 8px; margin-top:12px;}
+    th{text-align:left; font-size:11px; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; padding:0 10px 6px;}
+    td{padding:10px; background:rgba(255,255,255,.02); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+    tr td:first-child{border-left:1px solid var(--line); border-top-left-radius:12px; border-bottom-left-radius:12px;}
+    tr td:last-child{border-right:1px solid var(--line); border-top-right-radius:12px; border-bottom-right-radius:12px;}
+    tr:hover td{border-color:rgba(124,58,237,.35);}
+    .muted{color:var(--muted)}
+    .rightcol .panel{position:sticky; top:18px;}
+    .chartbox{height:280px;}
+    .coach{margin-top:12px; border:1px solid var(--line); border-radius:16px; padding:12px; background:radial-gradient(700px 180px at 25% 0%, rgba(34,211,238,.16), transparent 60%), rgba(255,255,255,.02);}
+    .coach .title{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+    .coach h4{margin:0; font-size:14px}
+    ul{margin:10px 0 0; padding-left:18px; color:var(--muted)}
+    .statusline{margin-top:10px; font-size:12px; color:var(--muted)}
+    .tag{display:inline-flex; align-items:center; gap:6px}
+    .spark{height:44px; width:100%; opacity:.85}
+    @media(max-width:1150px){ .grid{grid-template-columns:1fr;} .wrap{margin-left:0} .rightcol .panel{position:static} .cards{grid-template-columns:1fr} .controls{grid-template-columns:1fr 1fr} }
   </style>
 </head>
 <body>
@@ -13249,7 +13406,7 @@ __SIDEBAR__
     <div>
       <div class="kicker"><span class="dot"></span> AI OPPORTUNITY SCANNER • détection d'opportunités</div>
       <h1>Opportunity Scanner <span class="wow">WOW</span></h1>
-      <div class="sub">Scanner IA basé sur données live (Binance + CoinGecko) : breakout, trend, reversal, volume spike. Clique une opportunité pour voir le graphique et la justification IA.</div>
+      <div class="sub">Scanner IA basé sur données live (CoinGecko) : breakout, trend, reversal, volume spike. Clique une opportunité pour voir le graphique et la justification IA.</div>
     </div>
     <div class="badges">
       <div class="badge">Data: <b>Binance</b> + <b>CoinGecko</b></div>
@@ -13392,11 +13549,11 @@ async function scanNow(){
   renderTable(j.items);
 
   // auto select top
-  if(!lastSelected && j.items.length){
-    selectSymbol(j.items[0].symbol);
-  } else if(lastSelected){
+  if(!LAST_SELECTED && j.items.length){
+    selectSymbol(j.items[0]);
+  } else if(LAST_SELECTED){
     // refresh detail
-    await selectSymbol(lastSelected, true);
+    await selectSymbol(LAST_SELECTED, true);
   }
 
   setStatus(`OK • ${j.items.length} opportunités classées (score IA 0–100).`);
@@ -13408,7 +13565,7 @@ function renderTopCards(items){
   for(const it of items){
     const div = document.createElement("div");
     div.className = "card";
-    div.onclick = ()=>selectSymbol(it.symbol);
+    div.onclick = ()=>selectSymbol(it);
     const tags = (it.tags||[]).slice(0,3).map(t=>`<span class="pill">${t}</span>`).join(" ");
     div.innerHTML = `
       <div class="row">
@@ -13431,12 +13588,14 @@ function renderTopCards(items){
 }
 
 function renderTable(items){
+  LAST_ITEMS = items || [];
+
   const tb = document.getElementById("rows");
   tb.innerHTML = "";
   for(const it of items){
     const tr = document.createElement("tr");
     tr.style.cursor="pointer";
-    tr.onclick = ()=>selectSymbol(it.symbol);
+    tr.onclick = ()=>selectSymbol(it);
     const tags = (it.tags||[]).slice(0,3).join(", ");
     tr.innerHTML = `
       <td><b>${it.symbol}</b><div class="muted" style="font-size:11px">${it.name||""}</div></td>
@@ -13452,61 +13611,50 @@ function renderTable(items){
   }
 }
 
-async function selectSymbol(symbol, silent=false){
-  lastSelected = symbol;
-  document.getElementById("selectedSym").textContent = symbol;
-  if(!silent) setStatus("Chargement détail " + symbol + "…");
-  const interval = document.getElementById("interval").value;
-  const lookback = document.getElementById("lookback").value;
+async function selectSymbol(x, silent=false){
+  try{
+    const it = (typeof x === "string")
+      ? (LAST_ITEMS.find(z=>z.symbol===x) || {symbol:x, cg_id:null})
+      : (x || {symbol:"--", cg_id:null});
 
-  const r = await fetch(`${API_DETAIL}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(lookback)}`);
-  const j = await r.json();
-  if(!j.ok){
-    setStatus("Erreur détail: " + (j.error||"inconnue"));
-    return;
-  }
+    LAST_SELECTED = it;
 
-  document.getElementById("detailSym").textContent = symbol;
-  const p = document.getElementById("detailPill");
-  p.className = pillClass(j.score||0);
-  p.innerHTML = `<b>${Math.round(j.score||0)}</b>/100`;
+    const sym = it.symbol || "--";
+    const cid = it.cg_id || null;
 
-  const coach = document.getElementById("coachList");
-  coach.innerHTML = "";
-  for(const b of (j.rationale||[])){
-    const li = document.createElement("li"); li.textContent = b; coach.appendChild(li);
-  }
+    $("selection").innerText = sym;
 
-  // chart
-  const labels = (j.series||[]).map(x => new Date(x.t).toLocaleDateString("fr-CA", {month:"short", day:"2-digit"}));
-  const closes = (j.series||[]).map(x => x.c);
-  const ema20 = (j.indicators?.ema20||[]);
-  const ema50 = (j.indicators?.ema50||[]);
-
-  const ctx = document.getElementById("priceChart").getContext("2d");
-  if(chart){ chart.destroy(); }
-  chart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        { label: "Close", data: closes, borderWidth: 2, tension: 0.25 },
-        { label: "EMA20", data: ema20, borderWidth: 1, tension: 0.25 },
-        { label: "EMA50", data: ema50, borderWidth: 1, tension: 0.25 },
-      ]
-    },
-    options: {
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins: { legend: { labels: { color: "#e7eefc" } } },
-      scales: {
-        x: { ticks: { color: "#9aa7bd" }, grid: { color: "rgba(255,255,255,.06)" } },
-        y: { ticks: { color: "#9aa7bd" }, grid: { color: "rgba(255,255,255,.06)" } },
-      }
+    if(!cid){
+      $("detailSym").innerText = sym;
+      $("scorePill").innerText = "--";
+      $("tagsPill").innerText = "--";
+      $("rationale").textContent = "Coin_id manquant. Relance un scan (CoinGecko) puis réessaie.";
+      return;
     }
-  });
 
-  if(!silent) setStatus("OK • " + symbol + " chargé.");
+    if(!silent) $("rationale").textContent = "Chargement de l'analyse IA…";
+
+    const url = API_DETAIL
+      + "?coin_id=" + encodeURIComponent(cid)
+      + "&symbol=" + encodeURIComponent(sym)
+      + "&interval=" + encodeURIComponent($("tf").value)
+      + "&limit=" + encodeURIComponent($("lookback").value);
+
+    const j = await fetchJSON(url);
+
+    if(!j.ok){
+      $("rationale").textContent = "Erreur: " + (j.error || "inconnue");
+      return;
+    }
+
+    $("detailSym").innerText = sym;
+    $("scorePill").innerText = Math.round(j.score||0);
+    $("tagsPill").innerText = (j.tags||[]).slice(0,5).join(", ") || "--";
+    renderChart(j.series||[]);
+    $("rationale").textContent = j.rationale || "—";
+  }catch(e){
+    $("rationale").textContent = "Erreur: " + e;
+  }
 }
 
 function setAuto(on){
@@ -24769,7 +24917,7 @@ async def risk_management(request: Request):
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j?.error || "Erreur market-stats");
 
-      $('srcPill').textContent = "Binance + CoinGecko";
+      $('srcPill').textContent = "CoinGecko";
       $('tsPill').textContent = relTime(j.updated_at);
       $('scorePill').textContent = (j.risk_score ?? "—") + "/100";
       $('srcDetail').textContent = `Ticker 24h: ${{j.sources?.ticker_24h || "—"}} • Historique: ${{j.sources?.timeseries || "—"}}`;

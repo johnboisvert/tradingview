@@ -13610,176 +13610,265 @@ __SIDEBAR__
 </div>
 
 <script>
-    // Helper (no jQuery)
-    const $ = (id)=>document.getElementById(id);
-const API_SCAN = "/api/v2/opportunity/scan";
-const API_DETAIL = "/api/v2/opportunity/detail";
+  // Helper (no jQuery)
+  const el = (id) => document.getElementById(id);
 
-let AUTO = true;
-let timer = null;
-let chart = null;
-let LAST_SELECTED = null;
-let LAST_ITEMS = [];
+  const API_SCAN = "/api/v2/opportunity/scan";
+  const API_DETAIL = "/api/v2/opportunity/detail";
 
-function fmt(n, d=2){ if(n===null||n===undefined||Number.isNaN(n)) return "—"; return Number(n).toFixed(d); }
-function pct(n){ if(n===null||n===undefined||Number.isNaN(n)) return "—"; const s = (n>=0?"+":"") + (n).toFixed(2) + "%"; return s; }
-function pillClass(score){
-  if(score>=75) return "pill ok";
-  if(score>=55) return "pill warn";
-  return "pill bad";
-}
+  let AUTO = true;
+  let TIMER = null;
+  let CURRENT = null;
 
+  const fmtMoney = (v) => {
+    if (v === null || v === undefined) return "—";
+    const n = Number(v);
+    if (!isFinite(n)) return String(v);
+    if (Math.abs(n) >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    if (Math.abs(n) >= 1) return n.toFixed(4);
+    return n.toFixed(6);
+  };
 
-function setStatus(msg){ document.getElementById("statusLine").textContent = msg; }
+  const fmtPct = (v) => {
+    if (v === null || v === undefined) return "—";
+    const n = Number(v);
+    if (!isFinite(n)) return String(v);
+    const sign = n > 0 ? "+" : "";
+    return sign + (n * 100).toFixed(2) + "%";
+  };
 
-async function scanNow(){
-  const per = document.getElementById("universe").value;
-  const interval = document.getElementById("interval").value;
-  const lookback = document.getElementById("lookback").value;
-  const mode = document.getElementById("mode").value;
-
-  setStatus("Scan en cours… (données live, cache serveur pour stabilité)");
-  const url = `${API_SCAN}?per_page=${encodeURIComponent(per)}&interval=${encodeURIComponent(interval)}&lookback=${encodeURIComponent(lookback)}&mode=${encodeURIComponent(mode)}`;
-  const r = await fetch(url);
-  const j = await r.json();
-  if(!j.ok){
-    setStatus("Erreur: " + (j.error||"inconnue"));
-    return;
-  }
-  document.getElementById("lastUpdate").textContent = j.asof || "—";
-  document.getElementById("universeCount").textContent = String(j.universe||j.items.length||"—");
-
-  renderTopCards(j.items.slice(0, 6));
-  renderTable(j.items);
-
-  // auto select top
-  if(!LAST_SELECTED && j.items.length){
-    selectSymbol(j.items[0]);
-  } else if(LAST_SELECTED){
-    // refresh detail
-    await selectSymbol(LAST_SELECTED, true);
+  async function fetchJSON(url) {
+    const r = await fetch(url, { headers: { "Accept": "application/json" } });
+    let j = null;
+    try { j = await r.json(); } catch (e) { j = null; }
+    if (!r.ok) {
+      const msg = (j && (j.error || j.message)) ? (j.error || j.message) : `HTTP ${r.status}`;
+      return { ok: false, error: msg };
+    }
+    return j;
   }
 
-  setStatus(`OK • ${j.items.length} opportunités classées (score IA 0–100).`);
-}
+  function setCoachLines(lines) {
+    const ul = el("coachList");
+    if (!ul) return;
+    ul.innerHTML = "";
+    const arr = Array.isArray(lines) ? lines : (lines ? String(lines).split("\n").filter(Boolean) : []);
+    if (!arr.length) {
+      const li = document.createElement("li");
+      li.textContent = "—";
+      ul.appendChild(li);
+      return;
+    }
+    arr.slice(0, 8).forEach((t) => {
+      const li = document.createElement("li");
+      li.textContent = t;
+      ul.appendChild(li);
+    });
+  }
 
-function renderTopCards(items){
-  const box = document.getElementById("topCards");
-  box.innerHTML = "";
-  for(const it of items){
+  function renderChart(series) {
+    const canvas = el("priceChart");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width = canvas.clientWidth || 600;
+    const h = canvas.height = 220;
+
+    ctx.clearRect(0, 0, w, h);
+
+    const pts = (Array.isArray(series) ? series : [])
+      .map(p => ({ x: Number(p.t), y: Number(p.c) }))
+      .filter(p => isFinite(p.x) && isFinite(p.y));
+
+    if (pts.length < 2) {
+      ctx.globalAlpha = 0.7;
+      ctx.fillText("Pas assez de données pour le graphique.", 10, 20);
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    const ys = pts.map(p => p.y);
+    let ymin = min(ys);
+    let ymax = max(ys);
+    if (ymin === ymax) { ymin *= 0.999; ymax *= 1.001; }
+
+    const pad = 10;
+    const x0 = pad, x1 = w - pad, y0 = pad, y1 = h - pad;
+
+    // grid
+    ctx.globalAlpha = 0.25;
+    for (let i = 0; i <= 4; i++) {
+      const y = y0 + (i / 4) * (y1 - y0);
+      ctx.beginPath();
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x1, y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    const xMin = pts[0].x;
+    const xMax = pts[pts.length - 1].x;
+
+    const sx = (x) => x0 + ((x - xMin) / (xMax - xMin)) * (x1 - x0);
+    const sy = (y) => y1 - ((y - ymin) / (ymax - ymin)) * (y1 - y0);
+
+    ctx.beginPath();
+    ctx.moveTo(sx(pts[0].x), sy(pts[0].y));
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(sx(pts[i].x), sy(pts[i].y));
+    ctx.stroke();
+
+    function min(a){ let m=a[0]; for(const v of a) if(v<m) m=v; return m; }
+    function max(a){ let m=a[0]; for(const v of a) if(v>m) m=v; return m; }
+  }
+
+  function setAuto(v) {
+    AUTO = !!v;
+    const btn = el("btnAuto");
+    if (btn) btn.textContent = AUTO ? "Auto: ON" : "Auto: OFF";
+    if (TIMER) clearInterval(TIMER);
+    if (AUTO) TIMER = setInterval(() => scanNow(true), 30000);
+  }
+
+  function scoreClass(score){
+    if (score === null || score === undefined) return "pill";
+    const s = Number(score);
+    if (s >= 70) return "pill ok";
+    if (s >= 45) return "pill warn";
+    return "pill bad";
+  }
+
+  function buildCard(it) {
     const div = document.createElement("div");
     div.className = "card";
-    div.onclick = ()=>selectSymbol(it);
-    const tags = (it.tags||[]).slice(0,3).map(t=>`<span class="pill">${t}</span>`).join(" ");
+    const tags = (it.tags||[]).slice(0,3);
     div.innerHTML = `
-      <div class="row">
-        <div class="sym">${it.symbol}</div>
-        <div class="${pillClass(it.score)}"><b>${Math.round(it.score)}</b>/100</div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+        <div>
+          <div class="sym">${it.symbol}</div>
+          <div style="opacity:.85; margin-top:4px;">${it.mode || "—"}</div>
+        </div>
+        <div class="${scoreClass(it.score)}" style="font-weight:900;">${it.score ?? "—"}/100</div>
       </div>
-      <div class="row" style="margin-top:6px">
-        <div class="muted">${it.mode||"—"}</div>
-        <div class="muted">$${fmt(it.price, 4)}</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+        <div style="font-size:16px; font-weight:800;">$${fmtMoney(it.price)}</div>
       </div>
-      <div class="mini">
-        <span>Δ24h: <b>${pct(it.change_24h)}</b></span>
-        <span>Vol: <b>${fmt(it.vol_30d,1)}%</b></span>
-        <span>DD: <b>${fmt(it.dd_30d,1)}%</b></span>
+      <div style="margin-top:8px; font-size:12px; opacity:.9;">
+        Δ24h: ${fmtPct(it.pct24h)}&nbsp;&nbsp;Vol: ${fmtPct(it.vol)}&nbsp;&nbsp;DD: ${fmtPct(it.dd)}
       </div>
-      <div class="mini">${tags}</div>
+      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+        ${tags.map(t=>`<span class="pill">${t}</span>`).join("")}
+      </div>
     `;
-    box.appendChild(div);
+    div.onclick = () => selectSymbol(it);
+    return div;
   }
-}
 
-function renderTable(items){
-  LAST_ITEMS = items || [];
-
-  const tb = document.getElementById("rows");
-  tb.innerHTML = "";
-  for(const it of items){
-    const tr = document.createElement("tr");
-    tr.style.cursor="pointer";
-    tr.onclick = ()=>selectSymbol(it);
-    const tags = (it.tags||[]).slice(0,3).join(", ");
+  function buildRow(it){
+    const tr = document.createElement('tr');
+    const tags = (it.tags||[]).join(', ');
     tr.innerHTML = `
-      <td><b>${it.symbol}</b><div class="muted" style="font-size:11px">${it.name||""}</div></td>
-      <td>${it.mode||"—"}</td>
-      <td><span class="${pillClass(it.score)}"><b>${Math.round(it.score)}</b>/100</span></td>
-      <td>$${fmt(it.price, 6)}</td>
-      <td>${pct(it.change_24h)}</td>
-      <td>${fmt(it.vol_30d,1)}%</td>
-      <td>${fmt(it.dd_30d,1)}%</td>
-      <td class="muted">${tags||"—"}</td>
+      <td style="font-weight:800">${it.symbol}</td>
+      <td>${it.mode || '—'}</td>
+      <td><span class="${scoreClass(it.score)}">${it.score ?? '—'}/100</span></td>
+      <td>$${fmtMoney(it.price)}</td>
+      <td>${fmtPct(it.pct24h)}</td>
+      <td>${fmtPct(it.vol)}</td>
+      <td>${fmtPct(it.dd)}</td>
+      <td style="opacity:.9">${tags || '—'}</td>
     `;
-    tb.appendChild(tr);
+    tr.style.cursor = 'pointer';
+    tr.onclick = () => selectSymbol(it);
+    return tr;
   }
-}
 
-async function selectSymbol(x, silent=false){
-  try{
-    const it = (typeof x === "string")
-      ? (LAST_ITEMS.find(z=>z.symbol===x) || {symbol:x, cg_id:null})
-      : (x || {symbol:"--", cg_id:null});
+  async function scanNow(silent=false) {
+    const per_page = el("universe")?.value || "30";
+    const interval  = el("interval")?.value || "15m";
+    const lookback  = el("lookback")?.value || "240";
+    const mode      = el("mode")?.value || "all";
 
-    LAST_SELECTED = it;
+    const status = el("statusLine");
+    if (status && !silent) status.textContent = "Scan en cours... (données live, cache serveur pour stabilité)";
 
-    const sym = it.symbol || "--";
-    const cid = it.cg_id || null;
+    const url = `${API_SCAN}?per_page=${encodeURIComponent(per_page)}&interval=${encodeURIComponent(interval)}&lookback=${encodeURIComponent(lookback)}&mode=${encodeURIComponent(mode)}`;
+    const data = await fetchJSON(url);
 
-    $("selection").innerText = sym;
+    const cards = el("topCards");
+    const rows = el("rows");
+    if (!cards || !rows) return;
 
-    if(!cid){
-      $("detailSym").innerText = sym;
-      $("scorePill").innerText = "--";
-      $("tagsPill").innerText = "--";
-      $("rationale").textContent = "Coin_id manquant. Relance un scan (CoinGecko) puis réessaie.";
+    if (!data || data.ok === false) {
+      if (status) status.textContent = "Erreur: " + (data?.error || "impossible de scanner");
+      cards.innerHTML = "";
+      rows.innerHTML = "";
       return;
     }
 
-    if(!silent) $("rationale").textContent = "Chargement de l'analyse IA…";
+    const items = data.items || [];
+    cards.innerHTML = "";
+    rows.innerHTML = "";
+    items.forEach(it => {
+      cards.appendChild(buildCard(it));
+      rows.appendChild(buildRow(it));
+    });
 
-    const url = API_DETAIL
-      + "?coin_id=" + encodeURIComponent(cid)
-      + "&symbol=" + encodeURIComponent(sym)
-      + "&interval=" + encodeURIComponent($("tf").value)
-      + "&limit=" + encodeURIComponent($("lookback").value);
+    // meta pills
+    el("lastUpdate") && (el("lastUpdate").textContent = data.asof || "—");
+    el("universeCount") && (el("universeCount").textContent = per_page);
 
-    const j = await fetchJSON(url);
+    if (status) status.textContent = `OK • ${items.length} opportunités classées (score IA 0–100).`;
 
-    if(!j.ok){
-      $("rationale").textContent = "Erreur: " + (j.error || "inconnue");
+    // auto-select first if nothing selected or selected not in list
+    if (items.length && (!CURRENT || !items.find(x => x.symbol === CURRENT.symbol))) {
+      await selectSymbol(items[0], true);
+    }
+  }
+
+  async function selectSymbol(it, silent=false) {
+    CURRENT = it;
+
+    const interval  = el("interval")?.value || "15m";
+
+    const sel = el("selectedSym");
+    if (sel) sel.textContent = it.symbol;
+
+    const title = el("detailSym");
+    if (title) title.textContent = it.symbol;
+
+    const pill = el("detailPill");
+    if (pill) {
+      const tags = (it.tags||[]).slice(0,3).join(', ');
+      pill.textContent = `Score ${it.score ?? '—'}/100 • ${it.mode || '—'}${tags ? ' • ' + tags : ''}`;
+    }
+
+    el("coachMode") && (el("coachMode").textContent = it.mode || "—");
+    setCoachLines("Chargement de l'analyse IA…");
+
+    const url = `${API_DETAIL}?symbol=${encodeURIComponent(it.symbol)}&interval=${encodeURIComponent(interval)}`;
+    const data = await fetchJSON(url);
+
+    if (!data || data.ok === false) {
+      setCoachLines("Erreur: " + (data?.error || "analyse indisponible"));
       return;
     }
 
-    $("detailSym").innerText = sym;
-    $("scorePill").innerText = Math.round(j.score||0);
-    $("tagsPill").innerText = (j.tags||[]).slice(0,5).join(", ") || "--";
-    renderChart(j.series||[]);
-    $("rationale").textContent = j.rationale || "—";
-  }catch(e){
-    $("rationale").textContent = "Erreur: " + e;
+    setCoachLines(data.rationale || "—");
+    renderChart(data.series || []);
   }
-}
 
-function setAuto(on){
-  AUTO = on;
-  document.getElementById("btnAuto").textContent = "Auto: " + (AUTO ? "ON" : "OFF");
-  if(timer){ clearInterval(timer); timer=null; }
-  if(AUTO){
-    timer = setInterval(scanNow, 30000);
-  }
-}
+  // Buttons
+  el("btnScan") && (el("btnScan").onclick = () => scanNow());
+  el("btnRefresh") && (el("btnRefresh").onclick = () => scanNow());
+  el("btnAuto") && (el("btnAuto").onclick = () => setAuto(!AUTO));
 
-document.getElementById("btnScan").onclick = ()=>scanNow();
-document.getElementById("btnRefresh").onclick = ()=>scanNow();
-document.getElementById("btnAuto").onclick = ()=>setAuto(!AUTO);
-
-// init
-(async ()=>{
-  setAuto(true);
-  await scanNow();
-})();
+  // init
+  (async () => {
+    setAuto(true);
+    await scanNow();
+  })();
 </script>
+
+
 
 </body>
 </html>

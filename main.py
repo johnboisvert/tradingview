@@ -3242,7 +3242,35 @@ async def api_v2_market_top(
     # cached response (fresh)
     cached = _cache_get(cache_key)
     if cached is not None:
-        return cached
+        # Safety: older cached schemas may contain tuples/strings; normalize/validate.
+        try:
+            if isinstance(cached, dict) and isinstance((cached.get("items") or cached.get("coins")), list):
+                raw_items = cached.get("items") or cached.get("coins") or []
+                norm = []
+                ok = True
+                for c in raw_items:
+                    if isinstance(c, dict):
+                        norm.append(c)
+                    elif isinstance(c, (list, tuple)):
+                        sym = str(c[0]).lower() if len(c) > 0 else ""
+                        name = str(c[1]) if len(c) > 1 and isinstance(c[1], str) else (sym.upper() if sym else "")
+                        nums = [x for x in c[1:] if isinstance(x, (int, float))]
+                        price = nums[0] if len(nums) > 0 else None
+                        mc = nums[1] if len(nums) > 1 else None
+                        chg = nums[2] if len(nums) > 2 else None
+                        vol = nums[3] if len(nums) > 3 else None
+                        norm.append({"symbol": sym, "name": name, "market_cap": mc, "price": price, "change_24h": chg, "volume_24h": vol})
+                    elif isinstance(c, str):
+                        sym = c.strip().lower()
+                        norm.append({"symbol": sym, "name": sym.upper()})
+                    else:
+                        ok = False
+                        break
+                if ok:
+                    cached["items"] = norm
+                    return cached
+        except Exception:
+            pass
 
     import time as _time
     now = _time.time()
@@ -3617,6 +3645,26 @@ async def api_v2_opportunity_scan(
 
         top = await api_v2_market_top(limit=limit, interval=interval)
         items = top.get("items") or []
+        # Normalize items (older cache may contain tuples/strings).
+        norm_items = []
+        for c in items:
+            if isinstance(c, dict):
+                norm_items.append(c)
+            elif isinstance(c, (list, tuple)):
+                sym = str(c[0]).lower() if len(c) > 0 else ""
+                name = str(c[1]) if len(c) > 1 and isinstance(c[1], str) else (sym.upper() if sym else "")
+                nums = [x for x in c[1:] if isinstance(x, (int, float))]
+                price = nums[0] if len(nums) > 0 else None
+                mc = nums[1] if len(nums) > 1 else None
+                chg = nums[2] if len(nums) > 2 else None
+                vol = nums[3] if len(nums) > 3 else None
+                norm_items.append({"symbol": sym, "name": name, "market_cap": mc, "price": price, "change_24h": chg, "volume_24h": vol})
+            elif isinstance(c, str):
+                sym = c.strip().lower()
+                norm_items.append({"symbol": sym, "name": sym.upper()})
+        items = norm_items
+
+        interval_norm = (interval or "1h").strip().lower()
 
         # Prefetch Binance closes in parallel for coins where CoinGecko sparkline may be missing
         binance_closes_map = {}
@@ -3683,7 +3731,6 @@ async def api_v2_opportunity_scan(
                 _WOW_SYMBOL_TO_CGID[sym] = cid
 
         out = []
-        interval_norm = (interval or "1h").strip().lower()
         # minimum candles depends on interval (1d will be short on 7d sparkline)
         min_candles = 5 if interval_norm in ("1d", "24h", "1day", "1440m") else 25
 

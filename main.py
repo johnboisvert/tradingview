@@ -1,6 +1,19 @@
 from typing import Optional
 import html
 
+# =========================
+# RATE LIMITER (safe fallback)
+# =========================
+class _NoopLimiterFallback:
+    """Fallback limiter so @limiter.limit(...) never crashes if SlowAPI isn't configured."""
+    def limit(self, *args, **kwargs):
+        def decorator(fn):
+            return fn
+        return decorator
+
+# Always defined (prevents NameError at import-time decorators)
+limiter = _NoopLimiterFallback()
+
 
 # =========================
 # FOOTER D'AIDE (bas de page)
@@ -207,6 +220,10 @@ from fastapi import (
     Body, Form, UploadFile, File, Cookie, Header, Query, Path, BackgroundTasks,
     APIRouter, WebSocket, WebSocketDisconnect
 )
+
+# --- FastAPI app (doit exister avant les routes/middlewares ci-dessous) ---
+app = FastAPI()
+
 from fastapi.responses import (
     HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse,
     StreamingResponse, FileResponse
@@ -2945,8 +2962,33 @@ def _force_admin_on_request(request):
         pass
     return admin_user
 
-app = FastAPI()
+# =======================
+# Rate Limiter (optionnel)
+# =======================
+# Le projet utilise parfois @limiter.limit(...) sur certains endpoints.
+# Sur certains déploiements, SlowAPI n'est pas installé -> on évite le crash en fournissant un "no-op" limiter.
+class _NoopLimiter:
+    def limit(self, *args, **kwargs):
+        def _decorator(fn):
+            return fn
+        return _decorator
 
+limiter = _NoopLimiter()
+
+try:
+    from slowapi import Limiter as _SlowLimiter, _rate_limit_exceeded_handler as _slowapi_handler
+    from slowapi.util import get_remote_address as _get_remote_address
+    from slowapi.errors import RateLimitExceeded as _RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware as _SlowAPIMiddleware
+
+    limiter = _SlowLimiter(key_func=_get_remote_address)
+    app.state.limiter = limiter
+    app.add_exception_handler(_RateLimitExceeded, _slowapi_handler)
+    app.add_middleware(_SlowAPIMiddleware)
+    print("✅ Rate limiter (slowapi) initialisé")
+except Exception as _e:
+    # Pas bloquant: on garde le limiter no-op.
+    print(f"⚠️ Rate limiter désactivé ({_e.__class__.__name__})")
 # =============================
 # Auto footer d'aide sur TOUTES les pages HTML
 # (injecte le bloc "À quoi sert / Comment utiliser" en bas de page)
@@ -2995,7 +3037,9 @@ if BaseHTTPMiddleware and Response:
                 pass
             return response
 
-    app.add_middleware(HelpFooterMiddleware)
+_app = globals().get("app")
+if _app is not None:
+    _app.add_middleware(HelpFooterMiddleware)
 
 # =============================
 # Meta statut global (affiché dans le footer d'aide)
@@ -3156,18 +3200,6 @@ async def api_v2_market_klines(symbol: str = "BTCUSDT", interval: str = "1h", li
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
-def _normalize_pct(x, threshold=200.0):
-    """Normalize percent values (fix accidental x100 scaling)."""
-    try:
-        v = float(x)
-    except Exception:
-        return None
-    if v != v:  # NaN
-        return None
-    if abs(v) > float(threshold):
-        v = v / 100.0
-    return v
-
 @app.get("/api/v2/market/top")
 async def api_v2_market_top(
     # New-style params
@@ -3176,10 +3208,10 @@ async def api_v2_market_top(
     spark: int = 1,
     interval: str = "1h",
     # Backward-compatible params used by Opportunity Scanner UI
-    vs_currency: Optional[str] = None,
+    vs_currency: str | None = None,
     per_page: int | None = None,
     include_sparkline: bool | None = None,
-    price_change_percentage: Optional[str] = None,
+    price_change_percentage: str | None = None,
 ):
     """Top coins from CoinGecko (live), with caching + cooldown on rate-limits.
 
@@ -3208,9 +3240,37 @@ async def api_v2_market_top(
     cache_key = ("market_top", vs, limit, spark, interval, price_change_percentage or "")
 
     # cached response (fresh)
-    cached = _V2_CACHE.get(cache_key)
+    cached = _cache_get(cache_key)
     if cached is not None:
-        return cached
+        # Safety: older cached schemas may contain tuples/strings; normalize/validate.
+        try:
+            if isinstance(cached, dict) and isinstance((cached.get("items") or cached.get("coins")), list):
+                raw_items = cached.get("items") or cached.get("coins") or []
+                norm = []
+                ok = True
+                for c in raw_items:
+                    if isinstance(c, dict):
+                        norm.append(c)
+                    elif isinstance(c, (list, tuple)):
+                        sym = str(c[0]).lower() if len(c) > 0 else ""
+                        name = str(c[1]) if len(c) > 1 and isinstance(c[1], str) else (sym.upper() if sym else "")
+                        nums = [x for x in c[1:] if isinstance(x, (int, float))]
+                        price = nums[0] if len(nums) > 0 else None
+                        mc = nums[1] if len(nums) > 1 else None
+                        chg = nums[2] if len(nums) > 2 else None
+                        vol = nums[3] if len(nums) > 3 else None
+                        norm.append({"symbol": sym, "name": name, "market_cap": mc, "price": price, "change_24h": chg, "volume_24h": vol})
+                    elif isinstance(c, str):
+                        sym = c.strip().lower()
+                        norm.append({"symbol": sym, "name": sym.upper()})
+                    else:
+                        ok = False
+                        break
+                if ok:
+                    cached["items"] = norm
+                    return cached
+        except Exception:
+            pass
 
     import time as _time
     now = _time.time()
@@ -3255,7 +3315,7 @@ async def api_v2_market_top(
                 "price": c.get("current_price"),
                 "market_cap": c.get("market_cap"),
                 "volume": c.get("total_volume"),
-                "change_24h_pct": _normalize_pct(c.get("price_change_percentage_24h_in_currency") or c.get("price_change_percentage_24h")),
+                "change_24h_pct": c.get("price_change_percentage_24h_in_currency") or c.get("price_change_percentage_24h"),
                 "change_7d_pct": c.get("price_change_percentage_7d_in_currency") or c.get("price_change_percentage_7d"),
                 "sparkline": spr,
             })
@@ -3304,335 +3364,511 @@ async def api_v2_market_top(
         return {"ok": False, "error": str(e)[:200], "_stale": True}
 
 
+
+# ===============================
+# Opportunity Scanner WOW — helpers (stable, CoinGecko-sparkline based)
+# ===============================
+
+_WOW_SYMBOL_TO_CGID = {}
+_WOW_CG_VS = "usd"
+_WOW_CG_MARKETS_URL = "https://api.coingecko.com/api/v3/coins/markets"
+
+def _wow_float(x, default=None):
+    try:
+        if x is None:
+            return default
+        return float(x)
+    except Exception:
+        return default
+
+def _cg_resample_prices(prices, interval: str):
+    """Resample CoinGecko hourly sparkline prices into a close-series.
+
+    Notes:
+    - CoinGecko sparkline_7d is ~hourly. For 15m, we use linear interpolation (synthetic).
+    - Returns a list[float] (close prices).
+    """
+    if not prices:
+        return []
+    series = [p for p in (_wow_float(x) for x in prices) if p is not None and math.isfinite(p)]
+    if not series:
+        return []
+    interval = (interval or "1h").strip().lower()
+
+    if interval in ("1h", "60m", "60min", "1hr", "1hour"):
+        return series
+
+    if interval in ("15m", "15min", "15"):
+        out = []
+        for i in range(len(series) - 1):
+            a, b = series[i], series[i + 1]
+            # 4 segments per hour: 0, 0.25, 0.5, 0.75
+            out.extend([a + (b - a) * (k / 4.0) for k in range(4)])
+        out.append(series[-1])
+        return out
+
+    group = None
+    if interval in ("4h", "240m", "4hr", "4hour"):
+        group = 4
+    elif interval in ("1d", "1day", "24h", "1440m"):
+        group = 24
+
+    if not group or group <= 1:
+        return series
+
+    out = []
+    for i in range(0, len(series), group):
+        chunk = series[i:i + group]
+        if chunk:
+            out.append(chunk[-1])  # close of the grouped candle
+    return out
+
+def _wow_rsi(closes, period=14):
+    closes = [c for c in closes if c is not None and math.isfinite(c)]
+    if len(closes) < period + 2:
+        return None
+    gains = []
+    losses = []
+    for i in range(1, period + 1):
+        d = closes[-(period + 1 - i)] - closes[-(period + 2 - i)]
+        gains.append(max(d, 0.0))
+        losses.append(max(-d, 0.0))
+    avg_gain = sum(gains) / period
+    avg_loss = sum(losses) / period
+    if avg_loss == 0:
+        return 100.0
+    rs = avg_gain / avg_loss
+    return 100.0 - (100.0 / (1.0 + rs))
+
+def _wow_slope(closes):
+    closes = [c for c in closes if c is not None and math.isfinite(c)]
+    n = len(closes)
+    if n < 10:
+        return 0.0
+    # simple linear regression slope on index vs price (normalized)
+    x_mean = (n - 1) / 2.0
+    y_mean = sum(closes) / n
+    num = 0.0
+    den = 0.0
+    for i, y in enumerate(closes):
+        dx = i - x_mean
+        num += dx * (y - y_mean)
+        den += dx * dx
+    if den == 0:
+        return 0.0
+    slope = num / den
+    # normalize by price level to make comparable
+    if y_mean:
+        slope = slope / y_mean
+    return slope
+
+def _opportunity_score(close_series, lookback: int = 240):
+    """Return (score:int, tags:list[str])."""
+    closes = [c for c in close_series if c is not None and math.isfinite(c)]
+    if not closes:
+        return 0, ["no-data"]
+
+    closes = closes[-max(10, int(lookback or 240)):]
+    n = len(closes)
+    if n < 6:
+        return 0, ["too-short"]
+
+    last = closes[-1]
+    prev = closes[-2] if n >= 2 else last
+    ret = (last - prev) / prev if prev else 0.0
+
+    # trend
+    slope = _wow_slope(closes)
+    trend_score = min(30.0, max(0.0, slope * 4000.0))  # tuned for typical crypto magnitudes
+
+    # breakout: last close above recent range
+    window = min(60, n - 1)
+    recent = closes[-(window + 1):-1] if window > 0 else closes[:-1]
+    hi = max(recent) if recent else last
+    lo = min(recent) if recent else last
+    breakout = (last - hi) / hi if hi else 0.0
+    breakdown = (lo - last) / lo if lo else 0.0
+
+    breakout_score = 0.0
+    tags = []
+    if breakout > 0.004:  # +0.4%
+        breakout_score = min(35.0, breakout * 2500.0)
+        tags.append("breakout")
+    elif breakdown > 0.004:
+        breakout_score = min(20.0, breakdown * 1800.0)
+        tags.append("breakdown")
+
+    # reversal: RSI oversold and turning up
+    rsi = _wow_rsi(closes, 14)
+    reversal_score = 0.0
+    if rsi is not None and rsi < 35:
+        # if last move is green, call it reversal
+        if ret > 0:
+            reversal_score = min(25.0, (35.0 - rsi) * 1.2)
+            tags.append("reversal")
+
+    # volatility spike (proxy)
+    vol_score = min(20.0, abs(ret) * 800.0)
+    if abs(ret) > 0.008:
+        tags.append("spike")
+
+    score = 10.0 + trend_score + breakout_score + reversal_score + vol_score
+    score = max(0.0, min(100.0, score))
+
+    if slope > 0.0008:
+        tags.append("trend+")
+    elif slope < -0.0008:
+        tags.append("trend-")
+
+    # de-dup tags
+    tags = list(dict.fromkeys(tags)) if tags else ["neutral"]
+    return int(round(score)), tags
+
+def _opportunity_mode(tags):
+    t = set((tags or []))
+    if "breakout" in t:
+        return "Breakout"
+    if "reversal" in t:
+        return "Reversal"
+    if "trend+" in t:
+        return "Trend"
+    if "breakdown" in t:
+        return "Breakdown"
+    return "Watch"
+
+async def _cg_coin_id_from_symbol(symbol: str):
+    symbol = (symbol or "").strip().lower().replace("usdt", "")
+    if not symbol:
+        return None
+    if symbol in _WOW_SYMBOL_TO_CGID:
+        return _WOW_SYMBOL_TO_CGID[symbol]
+    # fallback: try to refresh mapping from cached top list
+    try:
+        top = await api_v2_market_top(universe="top250", count=250, interval="1h")
+        for c in top.get("coins", []):
+            sid = (c.get("symbol") or "").strip().lower()
+            cid = c.get("id")
+            if sid and cid:
+                _WOW_SYMBOL_TO_CGID[sid] = cid
+        return _WOW_SYMBOL_TO_CGID.get(symbol)
+    except Exception:
+        return None
+
+def _wow_closes_to_klines(closes):
+    closes = [c for c in closes if c is not None and math.isfinite(c)]
+    if len(closes) < 2:
+        return []
+    out = []
+    prev = closes[0]
+    for i, c in enumerate(closes):
+        o = prev
+        h = max(o, c)
+        l = min(o, c)
+        out.append({"t": i, "o": o, "h": h, "l": l, "c": c})
+        prev = c
+    return out
+
+async def _fetch_cg_klines(coin_id: str, interval: str = "1h", lookback: int = 240):
+    """Fetch OHLC-like candles for one coin using CoinGecko sparkline (stable, low quota)."""
+    if not coin_id:
+        return []
+    params = {
+        "vs_currency": _WOW_CG_VS,
+        "ids": coin_id,
+        "sparkline": "true",
+        "price_change_percentage": "24h",
+    }
+    data = await _http_get_json(_WOW_CG_MARKETS_URL, params=params, cache_ttl=45)
+    if not data or not isinstance(data, list):
+        return []
+    coin = data[0]
+    prices = (coin.get("sparkline_in_7d") or {}).get("price") or []
+    closes = _cg_resample_prices(prices, interval)
+    closes = closes[-max(20, int(lookback or 240)):]
+    return _wow_closes_to_klines(closes)
+
+def _score_opportunity(klines, interval: str = "1h", lookback: int = 240):
+    closes = []
+    for k in (klines or []):
+        if isinstance(k, dict):
+            closes.append(_wow_float(k.get("c") if "c" in k else k.get("close")))
+        else:
+            closes.append(_wow_float(k))
+    closes = [c for c in closes if c is not None and math.isfinite(c)]
+    score, tags = _opportunity_score(closes, lookback=lookback)
+    mode = _opportunity_mode(tags)
+    # French rationale
+    bullets = []
+    if "breakout" in tags:
+        bullets.append("Prix au-dessus du range récent (breakout).")
+    if "reversal" in tags:
+        bullets.append("RSI bas + bougie verte : possible retournement.")
+    if "trend+" in tags:
+        bullets.append("Pente positive sur la période : tendance haussière.")
+    if "spike" in tags:
+        bullets.append("Mouvement rapide (spike) : volatilité élevée.")
+    if not bullets:
+        bullets.append("Signal neutre : à surveiller.")
+    justif = " ".join(bullets)
+    return {
+        "score": score,
+        "mode": mode,
+        "tags": tags,
+        "justif": justif,
+    }
+
 @app.get("/api/v2/opportunity/scan")
 async def api_v2_opportunity_scan(
-    universe: int = 30,
+    # New UI params
+    universe: str = "",
     interval: str = "1h",
     lookback: int = 240,
-    mode_filter: str = "all",
-    limit: int = 30,
-    # compat anciens paramètres front
-    timeframe: Optional[str] = None,
-    filter: Optional[str] = None,
-    mode: Optional[str] = None
+    filter: str = "Tous",
+    # Backward-compatible params (older UI)
+    per_page: int = 30,
+    mode: str = "all",
 ):
-    """Scan opportunities using a *single* CoinGecko markets call (with sparkline).
-
-    This avoids hitting CoinGecko rate limits that happen when requesting market_chart
-    for dozens of coins in parallel.
+    """
+    Stable Opportunity Scanner:
+    - Uses CoinGecko /coins/markets + sparkline_7d (hourly) to avoid heavy endpoints.
+    - Resamples to 15m/1h/4h/1d (15m is synthetic interpolation).
     """
     try:
-        try:
-            universe = int(universe or 30)
-        except Exception:
-            universe = 30
-        universe = max(5, min(100, universe))
+        # Determine universe size
+        u_raw = (universe or "").strip().lower()
+        digits = re.findall(r"\d+", u_raw)
+        if digits:
+            limit = int(digits[0])
+        else:
+            limit = int(per_page or 30)
+        limit = max(5, min(250, limit))
 
-        try:
-            lookback = int(lookback or 240)
-        except Exception:
-            lookback = 240
-        lookback = max(20, min(500, lookback))
-
-        try:
-            limit = int(limit or 30)
-        except Exception:
-            limit = 30
-        limit = max(5, min(100, limit))
-
-        interval = (interval or "1h").strip().lower()
-        mode_filter = (mode_filter or "all").strip().lower()
-
-        # Compat: accepter timeframe/filter/mode provenant d'anciens frontends
-        if timeframe:
-            interval = str(timeframe).strip().lower()
-        if filter:
-            mode_filter = str(filter).strip().lower()
-        if mode and mode_filter == "all":
-            mode_filter = str(mode).strip().lower()
-
-        mk = await api_v2_market_top(
-            per_page=universe,
-            vs_currency="usd",
-            include_sparkline=True,
-            price_change_percentage="1h,24h,7d"
-        )
-        items = mk.get("items") or []
-        stale = bool(mk.get("_stale"))
-
-        turnovers = []
+        top = await api_v2_market_top(limit=limit, interval=interval)
+        items = top.get("items") or []
+        # Normalize items (older cache may contain tuples/strings).
+        norm_items = []
         for c in items:
-            try:
-                v = float(c.get("volume") or 0.0)
-                mc = float(c.get("market_cap") or 0.0)
-                if mc > 0:
-                    turnovers.append(v / mc)
-            except Exception:
-                pass
-        turnovers.sort()
-        median_turn = turnovers[len(turnovers)//2] if turnovers else 0.0
+            if isinstance(c, dict):
+                norm_items.append(c)
+            elif isinstance(c, (list, tuple)):
+                sym = str(c[0]).lower() if len(c) > 0 else ""
+                name = str(c[1]) if len(c) > 1 and isinstance(c[1], str) else (sym.upper() if sym else "")
+                nums = [x for x in c[1:] if isinstance(x, (int, float))]
+                price = nums[0] if len(nums) > 0 else None
+                mc = nums[1] if len(nums) > 1 else None
+                chg = nums[2] if len(nums) > 2 else None
+                vol = nums[3] if len(nums) > 3 else None
+                norm_items.append({"symbol": sym, "name": name, "market_cap": mc, "price": price, "change_24h": chg, "volume_24h": vol})
+            elif isinstance(c, str):
+                sym = c.strip().lower()
+                norm_items.append({"symbol": sym, "name": sym.upper()})
+        items = norm_items
+
+        interval_norm = (interval or "1h").strip().lower()
+
+        # Prefetch Binance closes in parallel for coins where CoinGecko sparkline may be missing
+        binance_closes_map = {}
+        try:
+            import asyncio
+            iv = _validate_interval(interval_norm if interval_norm != "24h" else "1d")
+            lim = int(lookback or 240)
+            lim = max(5, min(lim, 1000))
+            need_pairs = []
+            for coin in items:
+                sym0 = (coin.get("symbol") or "").upper().strip()
+                if not sym0:
+                    continue
+                # If normalized sparkline is missing/too short, mark for Binance
+                spr0 = coin.get("sparkline")
+                if (not isinstance(spr0, list)) or (len(spr0) < 10):
+                    need_pairs.append(_validate_symbol(f"{sym0}USDT"))
+
+            if need_pairs:
+                sem = asyncio.Semaphore(10)
+
+                async def _fetch_pair(pair: str):
+                    try:
+                        ck = f"klines:{pair}:{iv}:{lim}"
+                        cached = _cache_get(ck)
+                        if cached:
+                            closes = [float(x.get("c")) for x in cached if isinstance(x, dict) and x.get("c") is not None]
+                            return pair, closes
+
+                        url = f"https://api.binance.com/api/v3/klines?symbol={pair}&interval={iv}&limit={lim}"
+                        async with sem:
+                            data = await _http_get_json(url, timeout=20)
+
+                        closes = []
+                        parsed = []
+                        for row in (data or []):
+                            try:
+                                cclose = float(row[4])
+                                cvol = float(row[5])
+                                cts = int(row[0])
+                                closes.append(cclose)
+                                parsed.append({"t": cts, "c": cclose, "v": cvol})
+                            except Exception:
+                                continue
+                        if parsed:
+                            _cache_set(ck, parsed, ttl=60)
+                        return pair, closes
+                    except Exception:
+                        return pair, None
+
+                fetched = await asyncio.gather(*[_fetch_pair(p) for p in need_pairs])
+                for pair, closes in fetched:
+                    if closes:
+                        binance_closes_map[pair] = closes
+        except Exception:
+            binance_closes_map = {}
+        meta = top.get("meta") or ""
+
+        # update symbol -> coingecko id mapping
+        for c in items:
+            sym = (c.get("symbol") or "").strip().lower()
+            cid = c.get("id")
+            if sym and cid:
+                _WOW_SYMBOL_TO_CGID[sym] = cid
 
         out = []
-        for c in items:
-            cg_id = c.get("id")
-            sym = (c.get("symbol") or "").upper()
-            price = c.get("price")
-            ch24 = c.get("change_24h_pct")
-            vol24 = c.get("volume") or 0.0
-            mc = c.get("market_cap") or 0.0
+        # minimum candles depends on interval (1d will be short on 7d sparkline)
+        min_candles = 5 if interval_norm in ("1d", "24h", "1day", "1440m") else 25
 
-            prices_raw = c.get("sparkline") or []
-            series = _cg_resample_prices(prices_raw, interval)
-            if series:
-                series = series[-min(lookback, len(series)) :]
-            kl = _prices_to_klines(series, vol_total=vol24)
+        for coin in items:
+            try:
+                sym0 = (coin.get("symbol") or "").upper().strip()
+                symbol = (sym0 + "USDT") if sym0 else ""
+                closes = coin.get("sparkline") if isinstance(coin.get("sparkline"), list) else []
 
-            if len(kl) < 20:
+                if len(closes) < min_candles:
+                    # Fallback: use prefetched Binance closes (if CoinGecko sparkline is missing)
+                    closes = (binance_closes_map.get(symbol) or [])
+                if len(closes) < min_candles:
+                    continue
+
+                score, tags = _opportunity_score(closes, lookback=lookback)
+                mode_name = _opportunity_mode(tags)
+
+                # optional legacy mode filter
+                if mode and mode.lower() not in ("all", "tous", ""):
+                    if mode.lower() not in mode_name.lower() and mode.lower() not in ",".join(tags).lower():
+                        continue
+
+                # drawdown + volatility (proxy) over lookback window
+                w = closes[-max(10, min(int(lookback or 240), len(closes))):]
+                peak = max(w) if w else closes[-1]
+                dd = ((w[-1] - peak) / peak * 100.0) if peak else 0.0
+
+                # volatility proxy: stdev of returns (in %)
+                rets = []
+                for i in range(1, len(w)):
+                    a, b = w[i-1], w[i]
+                    if a:
+                        rets.append((b - a) / a)
+                if len(rets) >= 2:
+                    mu = sum(rets) / len(rets)
+                    var = sum((r - mu) ** 2 for r in rets) / (len(rets) - 1)
+                    vol = (var ** 0.5) * 100.0
+                else:
+                    vol = 0.0
+
+                out.append({
+                    "symbol": symbol,
+                    "name": coin.get("name"),
+                    "cg_id": coin.get("id"),
+                    "mode": mode_name,
+                    "score": score,
+                    "price": (coin.get("price") if coin.get("price") is not None else coin.get("current_price")),
+                    "change_24h": (coin.get("change_24h_pct") if coin.get("change_24h_pct") is not None else coin.get("price_change_percentage_24h")),
+                    "vol_30d": vol,
+                    "dd_30d": dd,
+                    "tags": tags,
+                })
+            except Exception:
                 continue
 
-            s = _score_opportunity(kl, interval=interval)
-            s["symbol"] = sym
-            s["cg_id"] = cg_id
-            s["coin_id"] = cg_id
-            s["id"] = cg_id
-            s["price"] = float(price) if price is not None else None
-            s["change_24h_pct"] = _normalize_pct(ch24)
-            s["market_cap"] = float(mc) if mc is not None else None
-            s["volume_24h"] = float(vol24) if vol24 is not None else None
+        # filter (new UI)
+        f = (filter or "").strip().lower()
+        if f and f not in ("tous", "all"):
+            out = [x for x in out if (f in (x.get("mode") or "").lower()) or (f in ",".join(x.get("tags") or []).lower())]
 
-            try:
-                v = float(vol24 or 0.0)
-                mcap = float(mc or 0.0)
-                turn = (v / mcap) if mcap > 0 else 0.0
-            except Exception:
-                turn = 0.0
+        # sort by score
+        out.sort(key=lambda x: x.get("score", 0), reverse=True)
 
-            if turn > max(0.15, median_turn * 2.0):
-                s["score"] = int(s.get("score", 0)) + 8
-                s.setdefault("tags", []).append("High Turnover")
-                s.setdefault("ai_rationale", []).append(f"Turnover élevé (vol/MC ≈ {turn*100:.1f}%).")
-
-            try:
-                ch = float(ch24) if ch24 is not None else 0.0
-            except Exception:
-                ch = 0.0
-
-            if ch >= 10:
-                s["score"] = int(s.get("score", 0)) + 4
-                s.setdefault("tags", []).append("Momentum +")
-                s.setdefault("ai_rationale", []).append(f"Momentum 24h solide (+{ch:.1f}%).")
-            elif ch <= -10:
-                s.setdefault("tags", []).append("Oversold?")
-                s.setdefault("ai_rationale", []).append(f"Baisse 24h marquée ({ch:.1f}%) — possible rebond/risque.")
-
-            s.setdefault("ai_rationale", []).append("Scan rapide (sparkline 7j). Analyse complète après sélection.")
-            out.append(s)
-
-        if mode_filter and mode_filter != "all":
-            out = [x for x in out if (x.get("mode") or "").lower() == mode_filter]
-
-        out.sort(key=lambda x: int(x.get("score", 0)), reverse=True)
-        out = out[:limit]
-
-        meta = {
-            "source": "CoinGecko (markets + sparkline)",
-            "stale": stale,
-            "universe": universe,
-            "interval": interval,
-            "lookback": lookback,
-            "cooldown_remaining_s": int(((mk.get("_meta") or {}).get("cooldown_remaining_s") or 0)) if stale else 0,
+        return {
+            "ok": True,
+            "meta": meta,
+            "items": out[:200],
+            "count": len(out),
+            "interval": interval_norm,
+            "limit": limit,
         }
-
-        # Save a quick symbol -> CoinGecko id map for the detail endpoint (click → analysis)
-        try:
-            _cache_set("oppscan:map", {x.get("symbol"): x.get("coin_id") for x in out if x.get("symbol") and x.get("coin_id")}, ttl=3600)
-        except Exception:
-            pass
-
-        return {"ok": True, "items": out, "meta": meta}
-
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+# Compat: the UI uses POST (JSON body). Keep GET for direct URL testing.
+@app.post("/api/v2/opportunity/scan")
+async def api_v2_opportunity_scan_post(body: dict = Body(default={} )):
+    try:
+        # Accept both numeric and string values safely
+        universe = int((body.get("universe") if isinstance(body, dict) else None) or 30)
+        interval = str((body.get("interval") if isinstance(body, dict) else None) or "1h")
+        lookback = int((body.get("lookback") if isinstance(body, dict) else None) or 240)
+        filter_mode = str((body.get("filter") if isinstance(body, dict) else None) or "all")
+        return await api_v2_opportunity_scan(
+            universe=universe,
+            interval=interval,
+            lookback=lookback,
+            filter=filter_mode,
+        )
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
 
 @app.get("/api/v2/opportunity/detail")
 async def api_v2_opportunity_detail(
-    coin_id: Optional[str] = None,
-    symbol: str = "BTCUSDT",
+    symbol: str = "",
+    coin_id: str = "",
     interval: str = "1h",
-    limit: int = 240,
-    # compat anciens paramètres front
-    timeframe: Optional[str] = None,
-    lookback: Optional[int] = None,
+    lookback: int = 240,
 ):
-    """
-    Detail + série pour une opportunité.
-    - Mode B (recommandé): coin_id (CoinGecko) = données live CoinGecko.
-    - Fallback: si coin_id absent, on tente de déduire via le dernier scan ou via la liste CoinGecko.
-    """
+    """Detailed view for the Opportunity Scanner (returns series + rationale)."""
     try:
-        # Compat: accepter timeframe/lookback provenant d'anciens frontends
-        if timeframe:
-            interval = str(timeframe).strip().lower()
-        if lookback is not None:
-            limit = int(lookback)
-
-        itv = _validate_interval(interval)
-        lim = max(80, min(int(limit), 600))
-
-        cid = (coin_id or "").strip()
-        if not cid:
-            # try last scan mapping
-            m = _cache_get("oppscan:map")
-            if isinstance(m, dict):
-                cid = (m.get(symbol) or "").strip()
+        sym = (symbol or "").strip().upper()
+        base = sym.replace("USDT", "").strip().lower() if sym else ""
+        cid = (coin_id or "").strip().lower()
 
         if not cid:
-            # ensure coins list cached then try symbol->id
-            await _cg_coins_list()
-            cid = _cg_symbol_to_id(symbol) or ""
-
+            cid = _WOW_SYMBOL_TO_CGID.get(base)
+        if not cid and sym:
+            cid = await _cg_coin_id_from_symbol(sym)
         if not cid:
-            return {"ok": False, "error": "Coin introuvable (coin_id manquant). Lance un scan puis réessaie."}
+            return JSONResponse({"ok": False, "error": "coin_id introuvable (fait un scan d'abord)"}, status_code=400)
 
-        cache_key = f"oppdetail:cg:{cid}:{itv}:{lim}"
-        cached = _cache_get(cache_key)
-        if cached is not None:
-            return {"ok": True, "cached": True, **cached}
+        itv = (interval or "1h").strip().lower()
+        klines = await _fetch_cg_klines(cid, interval=itv, lookback=lookback)
+        scored = _score_opportunity(klines, interval=itv, lookback=lookback)
 
-        kl = await _fetch_cg_klines(cid, itv, lim, vs="usd")
-        sc = _score_opportunity(kl)
+        # series for Chart.js (t = index)
+        series = [{"t": k.get("t"), "c": k.get("c")} for k in (klines or []) if isinstance(k, dict) and k.get("c") is not None]
 
-        series = [{"t": k["t"], "c": k["c"], "v": k.get("v", 0.0)} for k in kl]
-        closes = [k["c"] for k in kl]
-        ema20 = _ema(closes, 20)
-        ema50 = _ema(closes, 50)
-
-        payload = {
-            "symbol": symbol,
+        return {
+            "ok": True,
+            "symbol": sym or (base.upper() + "USDT"),
             "cg_id": cid,
             "interval": itv,
-            "price": sc["price"],
-            "change_24h": sc["change_24h"],
-            "vol_30d": sc["vol_30d"],
-            "dd_30d": sc["dd_30d"],
+            "lookback": int(lookback or 240),
             "series": series,
-            "indicators": {"ema20": ema20, "ema50": ema50},
-            "score": sc["score"],
-            "tags": sc["tags"],
-            "rationale": sc["rationale"],
+            "score": scored.get("score"),
+            "mode": scored.get("mode"),
+            "tags": scored.get("tags"),
+            "rationale": scored.get("justif"),
         }
-        _cache_set(cache_key, payload, ttl=30 if itv in ("15m","5m","1m") else 60)
-        return {"ok": True, "cached": False, **payload}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
-
-
-# ----------------------------
-# SlowAPI (rate limiting) — OPTIONAL
-# ----------------------------
-# On Railway or some environments, SlowAPI may not be installed.
-# We keep the app fully functional by falling back to a no-op limiter.
-try:
-    from slowapi import Limiter
-    from slowapi.util import get_remote_address
-    from slowapi.errors import RateLimitExceeded
-    from slowapi.middleware import SlowAPIMiddleware
-    SLOWAPI_AVAILABLE = True
-except Exception:
-    SLOWAPI_AVAILABLE = False
-
-    class _NoopLimiter:
-        def limit(self, *args, **kwargs):
-            def _decorator(fn):
-                return fn
-            return _decorator
-
-    # Provide a safe fallback so @limiter.limit(...) decorators don't crash
-    limiter = _NoopLimiter()
-
-if SLOWAPI_AVAILABLE:
-    limiter = Limiter(key_func=get_remote_address)
-    app.state.limiter = limiter
-    app.add_middleware(SlowAPIMiddleware)
-
-    @app.exception_handler(RateLimitExceeded)
-    async def rate_limit_handler(request, exc):
-        return JSONResponse({"detail": "Trop de requêtes, réessaie plus tard."}, status_code=429)
-else:
-    # SlowAPI not available: keep the no-op limiter defined above
-    pass
-# Shared helpers (compatibilité / anti-NameError)
-# =========================
-try:
-    from html import escape as _html_escape
-except Exception:  # pragma: no cover
-    _html_escape = None
-
-def escape_html(value) -> str:
-    """Escape HTML safely (returns '' for None)."""
-    try:
-        if value is None:
-            return ""
-        s = str(value)
-        if _html_escape:
-            return _html_escape(s, quote=True)
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&#x27;")
-    except Exception:
-        return ""
-
-def _fmt_pct(x, decimals: int = 2, empty: str = "—") -> str:
-    """Format percent number and append '%'."""
-    try:
-        if x is None:
-            return empty
-        v = float(x)
-        return f"{v:.{int(decimals)}f}%"
-    except Exception:
-        return empty
-
-def _coingecko_markets_top50():
-    """Retourne (markets, err_msg). Ne lève pas d'exception.
-
-    - Ajoute un User-Agent explicite.
-    - Remonte le HTTP status (ex: 429 rate-limit) dans err_msg.
-    """
-    url = "https://api.coingecko.com/api/v3/coins/markets"
-    params = {
-        "vs_currency": "usd",
-        "order": "market_cap_desc",
-        "per_page": 50,
-        "page": 1,
-        "sparkline": "false",
-        "price_change_percentage": "1h,24h,7d",
-    }
-    headers = {
-        "Accept": "application/json",
-        "User-Agent": "CryptoIA/1.0 (https://cryptoia.ca)",
-    }
-    try:
-        resp = requests.get(url, params=params, headers=headers, timeout=12)
-        if resp.status_code != 200:
-            body = (resp.text or "").strip().replace("\n", " ")
-            return [], f"CoinGecko HTTP {resp.status_code}: {body[:200]}"
-        data = resp.json()
-        if not isinstance(data, list):
-            return [], "CoinGecko: réponse inattendue (non-liste)"
-        return data, ""
-    except Exception as e:
-        return [], str(e)
-def _resolve_static_path(base: Path, rel_path: str) -> "Path|None":
-    """Résout un chemin statique en protégeant contre le path traversal."""
-    try:
-        base_res = base.resolve()
-        cand = (base_res / rel_path).resolve()
-        # cand doit rester dans base_res
-        if str(cand).startswith(str(base_res) + os.sep) and cand.is_file():
-            return cand
-    except Exception:
-        return None
-    return None
 
 @app.get("/static/{file_path:path}")
 async def _serve_static(file_path: str):
@@ -13221,8 +13457,13 @@ async def ai_opportunity_scanner(request: Request):
     .panel h3{margin:0 0 10px; font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
     .controls{display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;}
     .field label{display:block; font-size:12px; color:var(--muted); margin:0 0 6px;}
-    .field input,.field select{width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--txt); outline:none;}
-    .field input:focus,.field select:focus{border-color:rgba(124,58,237,.55); box-shadow:0 0 0 4px rgba(124,58,237,.15)}
+    .field input,.field select{width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--txt); outline:none; color-scheme: dark;}
+	/* Better readability for dropdown choices (Edge/Chrome) */
+	.field select{color:#e7eefc;}
+	.field select option{background:#0b1220; color:#e7eefc;}
+	.field select optgroup{background:#0b1220; color:#e7eefc;}
+	.field select:disabled{opacity:.75;}
+.field input:focus,.field select:focus{border-color:rgba(124,58,237,.55); box-shadow:0 0 0 4px rgba(124,58,237,.15)}
     .btnrow{display:flex; gap:10px; margin:10px 0 0;}
     .btn{flex:1; padding:11px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--txt); cursor:pointer; font-weight:800}
     .btn.primary{background:linear-gradient(90deg,var(--g1),var(--g2)); border:none;}
@@ -13369,223 +13610,176 @@ __SIDEBAR__
 </div>
 
 <script>
+    // Helper (no jQuery)
+    const $ = (id)=>document.getElementById(id);
 const API_SCAN = "/api/v2/opportunity/scan";
 const API_DETAIL = "/api/v2/opportunity/detail";
 
-function $(id){ return document.getElementById(id); }
-let lastItems = [];
-let lastSelected = null;
-let autoTimer = null;
+let AUTO = true;
+let timer = null;
+let chart = null;
+let LAST_SELECTED = null;
+let LAST_ITEMS = [];
 
-function setStatus(html, ok=true){
-  const el = $("statusLine");
-  if(!el) return;
-  el.innerHTML = html;
-  el.classList.toggle("ok", !!ok);
-  el.classList.toggle("bad", !ok);
+function fmt(n, d=2){ if(n===null||n===undefined||Number.isNaN(n)) return "—"; return Number(n).toFixed(d); }
+function pct(n){ if(n===null||n===undefined||Number.isNaN(n)) return "—"; const s = (n>=0?"+":"") + (n).toFixed(2) + "%"; return s; }
+function pillClass(score){
+  if(score>=75) return "pill ok";
+  if(score>=55) return "pill warn";
+  return "pill bad";
 }
 
-function fmt(n){
-  if(n === null || n === undefined) return "—";
-  if(typeof n !== "number") return String(n);
-  if(Math.abs(n) >= 1_000_000_000) return (n/1_000_000_000).toFixed(2)+"B";
-  if(Math.abs(n) >= 1_000_000) return (n/1_000_000).toFixed(2)+"M";
-  if(Math.abs(n) >= 1_000) return (n/1_000).toFixed(2)+"K";
-  return n.toFixed(2);
-}
 
-function pct(n){
-  if(n === null || n === undefined || isNaN(n)) return "—";
-  let x = Number(n);
-  if (Math.abs(x) > 200) x = x / 100;
-  return (x>=0?"+":"") + x.toFixed(2) + "%";
-}
-
-function getParams(){
-  const universe = parseInt($("universe")?.value || "30", 10);
-  const interval = $("interval")?.value || "1h";
-  const lookback = parseInt($("lookback")?.value || "240", 10);
-  const mode_filter = $("mode")?.value || "all";
-  return {universe, interval, lookback, mode_filter};
-}
-
-async function fetchJsonWithTimeout(url, ms=20000){
-  const ctrl = new AbortController();
-  const t = setTimeout(()=>ctrl.abort(), ms);
-  try{
-    const r = await fetch(url, {credentials:"include", signal: ctrl.signal});
-    if(!r.ok){
-      // essayer de lire le body pour debug
-      let body = "";
-      try{ body = await r.text(); }catch(e){}
-      throw new Error(`HTTP ${r.status}${body?` — ${body.slice(0,160)}`:""}`);
-    }
-    return await r.json();
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-function renderRows(items){
-  const tbody = $("rows");
-  if(!tbody) return;
-  if(!items || items.length === 0){
-    tbody.innerHTML = `<tr><td colspan="7" style="padding:14px;color:#9fb3c8">Aucune opportunité trouvée.</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = items.map((it, idx)=>`
-    <tr class="row" data-sym="${it.symbol}">
-      <td>${idx+1}</td>
-      <td><b>${it.symbol}</b></td>
-      <td>${it.mode || "—"}</td>
-      <td><b>${(it.score ?? 0).toFixed(1)}</b></td>
-      <td>${it.price ? fmt(it.price) : "—"}</td>
-      <td>${pct(it.change24h)}</td>
-      <td>${it.tags ? it.tags.join(", ") : "—"}</td>
-    </tr>
-  `).join("");
-
-  tbody.querySelectorAll("tr.row").forEach(tr=>{
-    tr.addEventListener("click", ()=>{
-      const sym = tr.getAttribute("data-sym");
-      if(sym) selectSymbol(sym);
-    });
-  });
-}
-
-function updateHeaderMeta(meta){
-  if(meta?.last_update){
-    const el = $("lastUpdate");
-    if(el) el.textContent = meta.last_update;
-  }
-  if(meta?.universe_count !== undefined){
-    const el = $("universeCount");
-    if(el) el.textContent = String(meta.universe_count);
-  }
-}
-
-function setSelectedUI(symbol, detail){
-  const sel = $("selectedSym");
-  if(sel) sel.textContent = symbol || "—";
-  const ds = $("detailSym");
-  if(ds) ds.textContent = symbol || "—";
-
-  const pill = $("detailPill");
-  if(pill){
-    const s = (detail?.score ?? lastSelected?.score);
-    const tags = detail?.tags || lastSelected?.tags || [];
-    pill.textContent = `Score ${s!==undefined ? Number(s).toFixed(1) : "—"}${tags.length ? " • " + tags.join(" • ") : ""}`;
-  }
-
-  // coach zone
-  const modeEl = $("coachMode");
-  if(modeEl) modeEl.textContent = detail?.mode || lastSelected?.mode || "—";
-
-  const listEl = $("coachList");
-  if(listEl){
-    const bullets = Array.isArray(detail?.bullets) ? detail.bullets
-                  : Array.isArray(detail?.rationale?.bullets) ? detail.rationale.bullets
-                  : [];
-    listEl.innerHTML = bullets.length ? bullets.map(b=>`<li>${b}</li>`).join("") : `<li style="opacity:.75">Aucune explication disponible.</li>`;
-  }
-  const noteEl = $("coachNote");
-  if(noteEl) noteEl.textContent = detail?.note || detail?.rationale?.note || "Astuce: combine avec “Gestion des risques” pour définir ton size & ton stop.";
-}
-
-function highlightSelected(symbol){
-  const tbody = $("rows");
-  if(!tbody) return;
-  tbody.querySelectorAll("tr.row").forEach(tr=>{
-    tr.classList.toggle("active", tr.getAttribute("data-sym") === symbol);
-  });
-}
-
-async function selectSymbol(symbol){
-  if(!symbol) return;
-  try{
-    const {interval, lookback} = getParams();
-    lastSelected = lastItems.find(x=>x.symbol===symbol) || lastSelected || {symbol};
-    setSelectedUI(symbol, null);
-    highlightSelected(symbol);
-
-    // charger détail
-    const url = new URL(API_DETAIL, window.location.origin);
-    url.searchParams.set("symbol", symbol);
-    url.searchParams.set("interval", interval);
-    url.searchParams.set("lookback", String(lookback));
-
-    const j = await fetchJsonWithTimeout(url.toString(), 20000);
-    if(!j.ok){
-      setStatus(`Erreur détail: ${j.error || "inconnu"}`, false);
-      return;
-    }
-
-    setSelectedUI(symbol, j.detail);
-    setStatus(`OK • ${symbol}`, true);
-  }catch(err){
-    setStatus(`Erreur: ${err.message || err}`, false);
-  }
-}
+function setStatus(msg){ document.getElementById("statusLine").textContent = msg; }
 
 async function scanNow(){
+  const per = document.getElementById("universe").value;
+  const interval = document.getElementById("interval").value;
+  const lookback = document.getElementById("lookback").value;
+  const mode = document.getElementById("mode").value;
+
+  setStatus("Scan en cours… (données live, cache serveur pour stabilité)");
+  const url = `${API_SCAN}?per_page=${encodeURIComponent(per)}&interval=${encodeURIComponent(interval)}&lookback=${encodeURIComponent(lookback)}&mode=${encodeURIComponent(mode)}`;
+  const r = await fetch(url);
+  const j = await r.json();
+  if(!j.ok){
+    setStatus("Erreur: " + (j.error||"inconnue"));
+    return;
+  }
+  document.getElementById("lastUpdate").textContent = j.asof || "—";
+  document.getElementById("universeCount").textContent = String(j.universe||j.items.length||"—");
+
+  renderTopCards(j.items.slice(0, 6));
+  renderTable(j.items);
+
+  // auto select top
+  if(!LAST_SELECTED && j.items.length){
+    selectSymbol(j.items[0]);
+  } else if(LAST_SELECTED){
+    // refresh detail
+    await selectSymbol(LAST_SELECTED, true);
+  }
+
+  setStatus(`OK • ${j.items.length} opportunités classées (score IA 0–100).`);
+}
+
+function renderTopCards(items){
+  const box = document.getElementById("topCards");
+  box.innerHTML = "";
+  for(const it of items){
+    const div = document.createElement("div");
+    div.className = "card";
+    div.onclick = ()=>selectSymbol(it);
+    const tags = (it.tags||[]).slice(0,3).map(t=>`<span class="pill">${t}</span>`).join(" ");
+    div.innerHTML = `
+      <div class="row">
+        <div class="sym">${it.symbol}</div>
+        <div class="${pillClass(it.score)}"><b>${Math.round(it.score)}</b>/100</div>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <div class="muted">${it.mode||"—"}</div>
+        <div class="muted">$${fmt(it.price, 4)}</div>
+      </div>
+      <div class="mini">
+        <span>Δ24h: <b>${pct(it.change_24h)}</b></span>
+        <span>Vol: <b>${fmt(it.vol_30d,1)}%</b></span>
+        <span>DD: <b>${fmt(it.dd_30d,1)}%</b></span>
+      </div>
+      <div class="mini">${tags}</div>
+    `;
+    box.appendChild(div);
+  }
+}
+
+function renderTable(items){
+  LAST_ITEMS = items || [];
+
+  const tb = document.getElementById("rows");
+  tb.innerHTML = "";
+  for(const it of items){
+    const tr = document.createElement("tr");
+    tr.style.cursor="pointer";
+    tr.onclick = ()=>selectSymbol(it);
+    const tags = (it.tags||[]).slice(0,3).join(", ");
+    tr.innerHTML = `
+      <td><b>${it.symbol}</b><div class="muted" style="font-size:11px">${it.name||""}</div></td>
+      <td>${it.mode||"—"}</td>
+      <td><span class="${pillClass(it.score)}"><b>${Math.round(it.score)}</b>/100</span></td>
+      <td>$${fmt(it.price, 6)}</td>
+      <td>${pct(it.change_24h)}</td>
+      <td>${fmt(it.vol_30d,1)}%</td>
+      <td>${fmt(it.dd_30d,1)}%</td>
+      <td class="muted">${tags||"—"}</td>
+    `;
+    tb.appendChild(tr);
+  }
+}
+
+async function selectSymbol(x, silent=false){
   try{
-    setStatus("Scan en cours… (données live, cache serveur pour stabilité)", true);
+    const it = (typeof x === "string")
+      ? (LAST_ITEMS.find(z=>z.symbol===x) || {symbol:x, cg_id:null})
+      : (x || {symbol:"--", cg_id:null});
 
-    const {universe, interval, lookback, mode_filter} = getParams();
-    const url = new URL(API_SCAN, window.location.origin);
-    url.searchParams.set("universe", String(universe));
-    url.searchParams.set("interval", interval);
-    url.searchParams.set("lookback", String(lookback));
-    url.searchParams.set("mode_filter", mode_filter);
-    url.searchParams.set("limit", "30");
+    LAST_SELECTED = it;
 
-    const j = await fetchJsonWithTimeout(url.toString(), 20000);
-    if(!j.ok){
-      setStatus(`Erreur: ${j.error || "inconnu"}`, false);
+    const sym = it.symbol || "--";
+    const cid = it.cg_id || null;
+
+    $("selection").innerText = sym;
+
+    if(!cid){
+      $("detailSym").innerText = sym;
+      $("scorePill").innerText = "--";
+      $("tagsPill").innerText = "--";
+      $("rationale").textContent = "Coin_id manquant. Relance un scan (CoinGecko) puis réessaie.";
       return;
     }
 
-    lastItems = j.items || [];
-    updateHeaderMeta(j.meta || {});
-    renderRows(lastItems);
+    if(!silent) $("rationale").textContent = "Chargement de l'analyse IA…";
 
-    // auto-select first item if none
-    if(!lastSelected && lastItems.length){
-      await selectSymbol(lastItems[0].symbol);
-    }else{
-      setStatus("OK", true);
+    const url = API_DETAIL
+      + "?coin_id=" + encodeURIComponent(cid)
+      + "&symbol=" + encodeURIComponent(sym)
+      + "&interval=" + encodeURIComponent($("tf").value)
+      + "&limit=" + encodeURIComponent($("lookback").value);
+
+    const j = await fetchJSON(url);
+
+    if(!j.ok){
+      $("rationale").textContent = "Erreur: " + (j.error || "inconnue");
+      return;
     }
-  }catch(err){
-    setStatus(`Erreur: ${err.name === "AbortError" ? "Timeout (réessaye)" : (err.message || err)}`, false);
+
+    $("detailSym").innerText = sym;
+    $("scorePill").innerText = Math.round(j.score||0);
+    $("tagsPill").innerText = (j.tags||[]).slice(0,5).join(", ") || "--";
+    renderChart(j.series||[]);
+    $("rationale").textContent = j.rationale || "—";
+  }catch(e){
+    $("rationale").textContent = "Erreur: " + e;
   }
 }
 
 function setAuto(on){
-  const btn = $("btnAuto");
-  if(btn){
-    btn.textContent = on ? "Auto: ON" : "Auto: OFF";
-    btn.classList.toggle("active", !!on);
+  AUTO = on;
+  document.getElementById("btnAuto").textContent = "Auto: " + (AUTO ? "ON" : "OFF");
+  if(timer){ clearInterval(timer); timer=null; }
+  if(AUTO){
+    timer = setInterval(scanNow, 30000);
   }
 }
 
-function toggleAuto(){
-  const isOn = !!autoTimer;
-  if(isOn){
-    clearInterval(autoTimer);
-    autoTimer = null;
-    setAuto(false);
-    return;
-  }
+document.getElementById("btnScan").onclick = ()=>scanNow();
+document.getElementById("btnRefresh").onclick = ()=>scanNow();
+document.getElementById("btnAuto").onclick = ()=>setAuto(!AUTO);
+
+// init
+(async ()=>{
   setAuto(true);
-  autoTimer = setInterval(()=>{ scanNow(); }, 25000);
-  scanNow();
-}
-
-document.addEventListener("DOMContentLoaded", ()=>{
-  $("btnScan")?.addEventListener("click", scanNow);
-  $("btnAuto")?.addEventListener("click", toggleAuto);
-  $("btnRefresh")?.addEventListener("click", scanNow);
-});</script>
+  await scanNow();
+})();
+</script>
 
 </body>
 </html>
@@ -15715,7 +15909,7 @@ async def update_risk_settings(request: dict):
 @app.get("/api/risk/position-size")
 async def calculate_position_size(
     # Legacy params (used by older pages)
-    symbol: Optional[str] = None,
+    symbol: str | None = None,
     entry: float = 0.0,
     sl: float | None = None,
     # New params (used by /risk-management WOW)
@@ -23999,7 +24193,7 @@ def _rmwow_base_asset(symbol: str) -> str:
             return s[:-len(suf)]
     return s
 
-def _rmwow_symbol_to_cg_id_guess(base: str) -> Optional[str]:
+def _rmwow_symbol_to_cg_id_guess(base: str) -> str | None:
     # Mapping stable pour les tops (évite un appel search)
     m = {
         "BTC": "bitcoin",
@@ -24034,7 +24228,7 @@ async def _rmwow_http_get_json(url: str, params: dict | None = None, timeout_s: 
             raise RuntimeError(f"HTTP {r.status_code}")
         return r.json()
 
-async def _rmwow_resolve_cg_id(base: str) -> Optional[str]:
+async def _rmwow_resolve_cg_id(base: str) -> str | None:
     """Résout un symbol (base asset) -> CoinGecko id (cache 24h)."""
     now = _rmwow_now()
     cache = _RMWOW_CACHE.get("cg_map") or {}
@@ -24277,7 +24471,7 @@ async def api_v2_risk_overview(per_page: int = 20):
         return JSONResponse({"ok": False, "error": "Impossible de charger CoinGecko (rate limit ou réseau)."}, status_code=502)
 
 @app.get("/api/v2/risk/market-stats")
-async def api_v2_risk_market_stats(symbol: str = "BTCUSDT", days: int = 30, cg_id: Optional[str] = None):
+async def api_v2_risk_market_stats(symbol: str = "BTCUSDT", days: int = 30, cg_id: str | None = None):
     """Stats marché + timeseries (CoinGecko) + 24h (Binance). Cache 30s/60s."""
     now = _rmwow_now()
     days = int(days or 30)
@@ -35032,7 +35226,7 @@ async def _ai_token_scanner_run(q: str, chain: str = "auto") -> dict:
 # AI TOKEN SCANNER - RENDER
 # =========================
 
-def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error: Optional[str], cache_hit: bool = False) -> str:
+def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error: str | None, cache_hit: bool = False) -> str:
     q_esc = html.escape(q or "")
     chain = _norm_chain(chain)
     cache_badge = '<span class="badge-cache">Résultat en cache</span>' if cache_hit else ''
@@ -65478,7 +65672,7 @@ async def _ai_token_scanner_run(q: str, chain: str = "auto") -> dict:
 # AI TOKEN SCANNER - RENDER
 # =========================
 
-def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error: Optional[str], cache_hit: bool = False) -> str:
+def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error: str | None, cache_hit: bool = False) -> str:
     q_esc = html.escape(q or "")
     chain = _norm_chain(chain)
     cache_badge = '<span class="badge-cache">Résultat en cache</span>' if cache_hit else ''

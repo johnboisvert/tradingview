@@ -13333,7 +13333,11 @@ async def ai_opportunity_scanner(request: Request):
     .controls{display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;}
     .field label{display:block; font-size:12px; color:var(--muted); margin:0 0 6px;}
     .field input,.field select{width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--txt); outline:none; color-scheme: dark;}
-.field select option{background:#0b1220; color:#e7eefc;}
+	/* Better readability for dropdown choices (Edge/Chrome) */
+	.field select{color:#e7eefc;}
+	.field select option{background:#0b1220; color:#e7eefc;}
+	.field select optgroup{background:#0b1220; color:#e7eefc;}
+	.field select:disabled{opacity:.75;}
 .field input:focus,.field select:focus{border-color:rgba(124,58,237,.55); box-shadow:0 0 0 4px rgba(124,58,237,.15)}
     .btnrow{display:flex; gap:10px; margin:10px 0 0;}
     .btn{flex:1; padding:11px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--txt); cursor:pointer; font-weight:800}
@@ -13497,7 +13501,6 @@ function pillClass(score){
   if(score>=55) return "pill warn";
   return "pill bad";
 }
-    .field select option{background:#0b1220;color:#e7eefc;}
 
 
 function setStatus(msg){ document.getElementById("statusLine").textContent = msg; }

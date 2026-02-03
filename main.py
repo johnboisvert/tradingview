@@ -13859,7 +13859,7 @@ __SIDEBAR__
         ${tags.map(t=>`<span class="pill">${t}</span>`).join("")}
       </div>
     `;
-    div.onclick = () => selectSymbol(it);
+    div.onclick = () => { selectSymbol(it).catch(console.error); };
     return div;
   }
 
@@ -13877,7 +13877,7 @@ __SIDEBAR__
       <td style="opacity:.9">${tags || '—'}</td>
     `;
     tr.style.cursor = 'pointer';
-    tr.onclick = () => selectSymbol(it);
+    tr.onclick = () => { selectSymbol(it).catch(console.error); };
     return tr;
   }
 

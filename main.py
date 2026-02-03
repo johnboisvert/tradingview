@@ -23413,6 +23413,500 @@ async def success_stories():
 </body>
 </html>""")
 
+# =========================
+# RISK MANAGEMENT WOW (v2)
+# - Données réelles (CoinGecko + Binance)
+# - Cache + timeouts + validation
+# - Settings persistés (JSON dans DB_DIR)
+# - Frontend /risk-management utilise /api/v2/risk/*
+# =========================
+
+_RMWOW_CACHE = {
+    "coins": {"ts": 0.0, "data": None},
+    "series": {},   # key -> {"ts":..., "data":...}
+    "cg_map": {"ts": 0.0, "data": {}},  # symbol->cg_id
+}
+
+def _rmwow_now():
+    try:
+        import time
+        return float(time.time())
+    except Exception:
+        return 0.0
+
+def _rmwow_db_dir():
+    import os
+    return (os.getenv("DB_DIR") or "/app/data").strip() or "/app/data"
+
+def _rmwow_settings_path():
+    import os
+    return os.path.join(_rmwow_db_dir(), "risk_wow_settings.json")
+
+def _rmwow_load_settings():
+    """Charge les settings (JSON). Defaults safe."""
+    import json, os
+    p = _rmwow_settings_path()
+    default = {
+        "risk_pct": 1.0,
+        "max_daily_loss_pct": 3.0,
+        "max_open_trades": 3,
+        "use_atr": False,
+        "updated_at": None,
+    }
+    try:
+        if os.path.exists(p):
+            with open(p, "r", encoding="utf-8") as f:
+                j = json.load(f) or {}
+            out = dict(default)
+            out.update({
+                "risk_pct": float(j.get("risk_pct", default["risk_pct"])),
+                "max_daily_loss_pct": float(j.get("max_daily_loss_pct", default["max_daily_loss_pct"])),
+                "max_open_trades": int(j.get("max_open_trades", default["max_open_trades"])),
+                "use_atr": bool(j.get("use_atr", default["use_atr"])),
+                "updated_at": j.get("updated_at") or None,
+            })
+            return out
+    except Exception:
+        pass
+    return dict(default)
+
+def _rmwow_save_settings(payload: dict):
+    """Sauvegarde atomique."""
+    import json, os, tempfile
+    from datetime import datetime, timezone
+    p = _rmwow_settings_path()
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+
+    safe = {
+        "risk_pct": float(payload.get("risk_pct", 1.0)),
+        "max_daily_loss_pct": float(payload.get("max_daily_loss_pct", 3.0)),
+        "max_open_trades": int(payload.get("max_open_trades", 3)),
+        "use_atr": bool(payload.get("use_atr", False)),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    fd, tmp = tempfile.mkstemp(prefix="risk_wow_", suffix=".json", dir=os.path.dirname(p))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(safe, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, p)
+    finally:
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except Exception:
+            pass
+    return safe
+
+def _rmwow_validate_symbol(sym: str) -> str:
+    import re
+    s = (sym or "").strip().upper()
+    if not s or len(s) > 24:
+        raise ValueError("Symbol invalide.")
+    if not re.fullmatch(r"[A-Z0-9]{2,24}", s):
+        raise ValueError("Symbol invalide.")
+    return s
+
+def _rmwow_base_asset(symbol: str) -> str:
+    s = _rmwow_validate_symbol(symbol)
+    for suf in ("USDT", "USD", "BUSD", "USDC", "EUR", "BTC", "ETH"):
+        if s.endswith(suf) and len(s) > len(suf):
+            return s[:-len(suf)]
+    return s
+
+def _rmwow_symbol_to_cg_id_guess(base: str) -> str | None:
+    # Mapping stable pour les tops (évite un appel search)
+    m = {
+        "BTC": "bitcoin",
+        "ETH": "ethereum",
+        "BNB": "binancecoin",
+        "SOL": "solana",
+        "XRP": "ripple",
+        "ADA": "cardano",
+        "DOGE": "dogecoin",
+        "AVAX": "avalanche-2",
+        "LINK": "chainlink",
+        "DOT": "polkadot",
+        "TRX": "tron",
+        "TON": "the-open-network",
+        "MATIC": "matic-network",
+        "POL": "polygon-ecosystem-token",
+        "SHIB": "shiba-inu",
+        "LTC": "litecoin",
+        "BCH": "bitcoin-cash",
+        "UNI": "uniswap",
+        "APT": "aptos",
+        "SUI": "sui",
+        "PEPE": "pepe",
+    }
+    return m.get(base)
+
+async def _rmwow_http_get_json(url: str, params: dict | None = None, timeout_s: float = 12.0):
+    import httpx
+    async with httpx.AsyncClient(timeout=timeout_s) as client:
+        r = await client.get(url, params=params)
+        if r.status_code != 200:
+            raise RuntimeError(f"HTTP {r.status_code}")
+        return r.json()
+
+async def _rmwow_resolve_cg_id(base: str) -> str | None:
+    """Résout un symbol (base asset) -> CoinGecko id (cache 24h)."""
+    now = _rmwow_now()
+    cache = _RMWOW_CACHE.get("cg_map") or {}
+    if cache.get("data") is None:
+        cache["data"] = {}
+    # TTL 24h
+    if cache.get("ts") and (now - float(cache.get("ts") or 0.0)) > 86400:
+        cache["data"] = {}
+        cache["ts"] = now
+
+    base_u = (base or "").upper()
+    if base_u in cache["data"]:
+        return cache["data"][base_u]
+
+    # mapping direct
+    guess = _rmwow_symbol_to_cg_id_guess(base_u)
+    if guess:
+        cache["data"][base_u] = guess
+        cache["ts"] = now
+        return guess
+
+    # fallback via CoinGecko search
+    try:
+        j = await _rmwow_http_get_json("https://api.coingecko.com/api/v3/search", params={"query": base_u})
+        coins = j.get("coins") or []
+        # priorise match exact symbol
+        best = None
+        for c in coins:
+            if (c.get("symbol") or "").upper() == base_u:
+                best = c
+                break
+        if not best and coins:
+            best = coins[0]
+        cg_id = best.get("id") if best else None
+        if cg_id:
+            cache["data"][base_u] = cg_id
+            cache["ts"] = now
+            return cg_id
+    except Exception:
+        return None
+    return None
+
+def _rmwow_compute_metrics(prices: list[float]):
+    """Retourne vol7/vol30 + maxDD + risk_score."""
+    import math, statistics
+    if not prices or len(prices) < 8:
+        return {
+            "vol_7d_pct": None,
+            "vol_30d_pct": None,
+            "max_drawdown_30d_pct": None,
+            "risk_score": None,
+        }
+
+    # log returns
+    rets = []
+    for i in range(1, len(prices)):
+        p0 = float(prices[i-1] or 0.0)
+        p1 = float(prices[i] or 0.0)
+        if p0 > 0 and p1 > 0:
+            rets.append(math.log(p1/p0))
+
+    def vol_from(rets_slice):
+        if len(rets_slice) < 2:
+            return None
+        # annualisation approximative (daily samples)
+        try:
+            v = statistics.pstdev(rets_slice) * math.sqrt(365.0)
+            return float(v) * 100.0
+        except Exception:
+            return None
+
+    # last N-1 returns correspond to last N prices
+    vol7 = vol_from(rets[-7:])   # ~7d
+    vol30 = vol_from(rets[-30:]) # ~30d
+
+    # max drawdown on last 30d window
+    window = prices[-31:] if len(prices) >= 31 else prices
+    peak = window[0]
+    max_dd = 0.0
+    for p in window:
+        if p > peak:
+            peak = p
+        if peak > 0:
+            dd = (p - peak) / peak
+            if dd < max_dd:
+                max_dd = dd
+    max_dd_pct = abs(max_dd) * 100.0
+
+    # risk score heuristique 0-100
+    # - vol30 (0-160%) -> 0-60 pts
+    # - maxDD (0-60%) -> 0-40 pts
+    score = None
+    try:
+        s = 0.0
+        if vol30 is not None:
+            s += min(60.0, max(0.0, (vol30 / 160.0) * 60.0))
+        if max_dd_pct is not None:
+            s += min(40.0, max(0.0, (max_dd_pct / 60.0) * 40.0))
+        score = int(round(min(100.0, max(0.0, s))))
+    except Exception:
+        score = None
+
+    return {
+        "vol_7d_pct": round(vol7, 2) if vol7 is not None else None,
+        "vol_30d_pct": round(vol30, 2) if vol30 is not None else None,
+        "max_drawdown_30d_pct": round(max_dd_pct, 2) if max_dd_pct is not None else None,
+        "risk_score": score,
+    }
+
+def _rmwow_coach_from_metrics(risk_score: int | None, vol30: float | None, maxdd: float | None, chg24: float | None):
+    tips = []
+    headline = "Risque modéré"
+    if risk_score is None:
+        return {"headline": "Données insuffisantes", "tips": ["Impossible de calculer le score — réessaie dans quelques secondes."]}
+
+    if risk_score >= 75:
+        headline = "Risque élevé"
+        tips.append("Réduis la taille de position (ex: -30% à -50%) et évite le levier.")
+        tips.append("Privilégie des stops plus larges mais une exposition plus faible.")
+    elif risk_score >= 50:
+        headline = "Risque en hausse"
+        tips.append("Diminue le nombre de trades simultanés et augmente la sélectivité.")
+    else:
+        headline = "Risque contenu"
+        tips.append("Reste discipliné : risque fixe par trade + journal de trades.")
+
+    if vol30 is not None and vol30 >= 120:
+        tips.append("Volatilité 30j très haute : ajuste ton risque/trade à la baisse.")
+    if maxdd is not None and maxdd >= 35:
+        tips.append("Drawdown récent important : attention aux 'catching knives' — attends une structure claire.")
+    if chg24 is not None and abs(chg24) >= 8:
+        tips.append("Variation 24h extrême : risque de fakeout élevé — réduis le size ou attends la confirmation.")
+
+    # tips uniques + limit
+    out = []
+    seen = set()
+    for t in tips:
+        if t not in seen:
+            out.append(t)
+            seen.add(t)
+    return {"headline": headline, "tips": out[:5]}
+
+@app.get("/api/v2/risk/settings")
+async def api_v2_risk_get_settings():
+    s = _rmwow_load_settings()
+    return {
+        "risk_pct": s.get("risk_pct"),
+        "max_daily_loss_pct": s.get("max_daily_loss_pct"),
+        "max_open_trades": s.get("max_open_trades"),
+        "use_atr": s.get("use_atr"),
+        "updated_at": s.get("updated_at"),
+        "source": "server",
+    }
+
+@app.post("/api/v2/risk/settings")
+async def api_v2_risk_set_settings(request: Request):
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    # validation + clamps
+    try:
+        risk_pct = float(payload.get("risk_pct", 1.0))
+        max_daily = float(payload.get("max_daily_loss_pct", 3.0))
+        max_trades = int(payload.get("max_open_trades", 3))
+        use_atr = bool(payload.get("use_atr", False))
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Payload invalide."}, status_code=400)
+
+    # clamps raisonnables
+    risk_pct = min(10.0, max(0.05, risk_pct))
+    max_daily = min(50.0, max(0.1, max_daily))
+    max_trades = min(30, max(1, max_trades))
+
+    saved = _rmwow_save_settings({
+        "risk_pct": risk_pct,
+        "max_daily_loss_pct": max_daily,
+        "max_open_trades": max_trades,
+        "use_atr": use_atr,
+    })
+    return {"ok": True, "settings": saved}
+
+@app.get("/api/v2/risk/overview")
+async def api_v2_risk_overview(per_page: int = 20):
+    """Top coins heatmap (CoinGecko). Cache 60s."""
+    now = _rmwow_now()
+    per_page = int(per_page or 20)
+    per_page = min(50, max(5, per_page))
+
+    cache = _RMWOW_CACHE.get("coins") or {}
+    ttl = 60.0
+    if cache.get("data") is not None and cache.get("ts") and (now - float(cache.get("ts") or 0.0)) < ttl:
+        data = cache["data"]
+        return {"ok": True, **data}
+
+    try:
+        j = await _rmwow_http_get_json(
+            "https://api.coingecko.com/api/v3/coins/markets",
+            params={
+                "vs_currency": "usd",
+                "order": "market_cap_desc",
+                "per_page": per_page,
+                "page": 1,
+                "sparkline": "false",
+                "price_change_percentage": "24h,7d",
+            },
+            timeout_s=12.0
+        )
+
+        coins = []
+        for c in (j or []):
+            coins.append({
+                "name": c.get("name"),
+                "symbol": (c.get("symbol") or "").upper(),
+                "cg_id": c.get("id"),
+                "price": c.get("current_price"),
+                "change_24h": c.get("price_change_percentage_24h_in_currency"),
+                "change_7d": c.get("price_change_percentage_7d_in_currency"),
+                "market_cap": c.get("market_cap"),
+                "volume_24h": c.get("total_volume"),
+                "image": c.get("image"),
+            })
+
+        out = {
+            "coins": coins,
+            "updated_at": now,
+            "source": "coingecko",
+        }
+
+        try:
+            cache["ts"] = now
+            cache["data"] = out
+            _RMWOW_CACHE["coins"] = cache
+        except Exception:
+            pass
+
+        return {"ok": True, **out}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": "Impossible de charger CoinGecko (rate limit ou réseau)."}, status_code=502)
+
+@app.get("/api/v2/risk/market-stats")
+async def api_v2_risk_market_stats(symbol: str = "BTCUSDT", days: int = 30, cg_id: str | None = None):
+    """Stats marché + timeseries (CoinGecko) + 24h (Binance). Cache 30s/60s."""
+    now = _rmwow_now()
+    days = int(days or 30)
+    days = min(365, max(1, days))
+
+    try:
+        sym = _rmwow_validate_symbol(symbol)
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Symbol invalide."}, status_code=400)
+
+    base = _rmwow_base_asset(sym)
+    cg = (cg_id or "").strip()
+    if not cg:
+        cg = await _rmwow_resolve_cg_id(base) or ""
+
+    cache_key = f"{cg}|{days}"
+    ttl = 30.0 if days <= 7 else 60.0
+    scache = _RMWOW_CACHE.get("series") or {}
+    entry = scache.get(cache_key)
+    if entry and entry.get("data") is not None and entry.get("ts") and (now - float(entry.get("ts") or 0.0)) < ttl:
+        return {"ok": True, **entry["data"]}
+
+    # Binance 24h ticker
+    price = None
+    chg24 = None
+    try:
+        j = await _rmwow_http_get_json(
+            "https://api.binance.com/api/v3/ticker/24hr",
+            params={"symbol": sym},
+            timeout_s=10.0
+        )
+        price = float(j.get("lastPrice")) if j and j.get("lastPrice") is not None else None
+        chg24 = float(j.get("priceChangePercent")) if j and j.get("priceChangePercent") is not None else None
+    except Exception:
+        # fallback: if binance fails, leave null
+        pass
+
+    # CoinGecko timeseries
+    series = []
+    metrics = {"vol_7d_pct": None, "vol_30d_pct": None, "max_drawdown_30d_pct": None, "risk_score": None}
+    try:
+        if cg:
+            j = await _rmwow_http_get_json(
+                f"https://api.coingecko.com/api/v3/coins/{cg}/market_chart",
+                params={"vs_currency": "usd", "days": days, "interval": "daily"},
+                timeout_s=14.0
+            )
+            prices = (j.get("prices") or [])
+            # prices: [[ts_ms, price], ...]
+            ps = []
+            for it in prices:
+                if isinstance(it, (list, tuple)) and len(it) >= 2:
+                    ts_ms = int(it[0])
+                    p = float(it[1])
+                    ps.append(p)
+                    # format date (YYYY-MM-DD) UTC
+                    from datetime import datetime, timezone
+                    dt = datetime.fromtimestamp(ts_ms/1000.0, tz=timezone.utc)
+                    series.append({"t": dt.strftime("%Y-%m-%d"), "p": p})
+            metrics = _rmwow_compute_metrics(ps)
+    except Exception:
+        pass
+
+    coach = _rmwow_coach_from_metrics(
+        metrics.get("risk_score"),
+        metrics.get("vol_30d_pct"),
+        metrics.get("max_drawdown_30d_pct"),
+        chg24
+    )
+
+    out = {
+        "symbol": sym,
+        "base": base,
+        "cg_id": cg or None,
+        "price": price,
+        "change_24h_pct": chg24,
+        "series": series,
+        **metrics,
+        "coach": coach,
+        "updated_at": now,
+        "sources": {
+            "ticker_24h": "binance",
+            "timeseries": "coingecko",
+        }
+    }
+
+    try:
+        scache[cache_key] = {"ts": now, "data": out}
+        _RMWOW_CACHE["series"] = scache
+    except Exception:
+        pass
+
+    return {"ok": True, **out}
+
+# Enrich help footer for this page (safe if PAGE_HELP exists)
+try:
+    PAGE_HELP = PAGE_HELP  # noqa
+except Exception:
+    PAGE_HELP = {}
+try:
+    PAGE_HELP["/risk-management"] = {
+        "title": "Gestion des risques",
+        "goal": "Définir un risque fixe par trade, limiter la perte journalière, et adapter ton exposition au régime de marché en temps réel.",
+        "how": [
+            "Règle d’or: risque/trade constant (ex: 0,5% à 1%).",
+            "Définis une limite de perte journalière (ex: 2% à 4%) et respecte-la.",
+            "Utilise le calculateur de taille de position avec Entry/Stop/TP.",
+            "Surveille le score de risque + volatilité + drawdown avant d’augmenter ton exposition.",
+        ],
+        "data": "Données live via CoinGecko et Binance (avec cache serveur pour stabilité)."
+    }
+except Exception:
+    pass
+
 @app.get("/risk-management", response_class=HTMLResponse)
 async def risk_management(request: Request):
     # Auth + plan gate
@@ -23424,649 +23918,490 @@ async def risk_management(request: Request):
     if not check_route_permission(user, route_path):
         return access_denied_page(user, route_path, request)
 
-    # Current settings (server-side defaults)
-    settings = dict(risk_management_settings or {})
-    risk_pct_default = float(settings.get("risk_pct", 1.0) or 1.0)
-    max_daily_loss_default = float(settings.get("max_daily_loss_pct", 3.0) or 3.0)
-    max_open_trades_default = int(settings.get("max_open_trades", 3) or 3)
-    use_atr_default = bool(settings.get("use_atr", False))
+    # Settings defaults (server)
+    s = _rmwow_load_settings()
+    risk_pct_default = float(s.get("risk_pct", 1.0) or 1.0)
+    max_daily_loss_default = float(s.get("max_daily_loss_pct", 3.0) or 3.0)
+    max_open_trades_default = int(s.get("max_open_trades", 3) or 3)
+    use_atr_default = bool(s.get("use_atr", False))
 
-    # Some user context (best-effort)
-    user_email = (user.get("email") or user.get("username") or "").strip() or "Connecté"
-    user_plan = (user.get("plan") or user.get("subscription_plan") or user.get("active_plan") or "").strip() or "—"
+    # Page
+    body = f"""
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Risk Management — CryptoIA</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {{
+      --bg:#0b1220; --card:#0f1a2e; --card2:#0d1730; --muted:#9aa7bd;
+      --txt:#e7eefc; --line:rgba(255,255,255,.08);
+      --g1:#7c3aed; --g2:#22d3ee; --ok:#10b981; --bad:#ef4444; --warn:#f59e0b;
+    }}
+    body{{background: radial-gradient(1200px 600px at 15% 0%, rgba(124,58,237,.25), transparent 55%),
+                  radial-gradient(1000px 650px at 90% 10%, rgba(34,211,238,.18), transparent 55%),
+                  var(--bg); color:var(--txt); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial;}}
+    .wrap{{max-width:1200px; margin:0 auto; padding:24px 18px 40px;}}
+    .hero{{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin:6px 0 18px;}}
+    .kicker{{color:var(--muted); font-size:12px; letter-spacing:.12em; text-transform:uppercase;}}
+    .title{{font-size:34px; line-height:1.1; font-weight:900; margin:6px 0 0;}}
+    .glow{{background: linear-gradient(90deg, var(--g1), var(--g2)); -webkit-background-clip:text; background-clip:text; color:transparent;}}
+    .pillrow{{display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end;}}
+    .pill{{border:1px solid var(--line); background: rgba(255,255,255,.03); border-radius:999px; padding:8px 12px; font-size:12px; color:var(--muted);}}
+    .pill b{{color:var(--txt); font-weight:800;}}
+    .grid{{display:grid; gap:14px; grid-template-columns: 1.15fr .85fr;}}
+    @media(max-width:980px){{.grid{{grid-template-columns:1fr;}} .pillrow{{justify-content:flex-start;}}}}
+    .card{{background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+           border:1px solid var(--line); border-radius:18px; padding:16px; box-shadow: 0 12px 28px rgba(0,0,0,.25);}}
+    .card h3{{margin:0 0 10px; font-size:14px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);}}
+    .row{{display:flex; gap:12px; flex-wrap:wrap;}}
+    .metric{{flex:1; min-width:160px; background: rgba(255,255,255,.03); border:1px solid var(--line); border-radius:14px; padding:12px;}}
+    .metric .v{{font-size:18px; font-weight:900;}}
+    .metric .l{{font-size:12px; color:var(--muted); margin-top:4px;}}
+    .controls{{display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;}}
+    .controls label{{font-size:12px; color:var(--muted);}}
+    input, select{{width:100%; background: rgba(255,255,255,.04); color:var(--txt); border:1px solid var(--line); border-radius:12px; padding:10px 12px;}}
+    .btn{{cursor:pointer; user-select:none; border:1px solid rgba(124,58,237,.35);
+          background: linear-gradient(90deg, rgba(124,58,237,.95), rgba(34,211,238,.85));
+          color:#06101f; font-weight:900; border-radius:12px; padding:10px 12px;}}
+    .btn2{{cursor:pointer; border:1px solid var(--line); background: rgba(255,255,255,.04);
+           color:var(--txt); font-weight:800; border-radius:12px; padding:10px 12px;}}
+    .status{{font-size:12px; color:var(--muted); margin-top:8px;}}
+    .heat{{display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap:10px;}}
+    @media(max-width:980px){{.heat{{grid-template-columns:repeat(3,1fr);}}}}
+    .tile{{border-radius:14px; padding:10px; border:1px solid var(--line); background: rgba(255,255,255,.03);}}
+    .tile .s{{font-weight:900;}}
+    .tile .p{{font-size:12px; color:var(--muted); margin-top:4px;}}
+    .bar{{height:10px; background: rgba(255,255,255,.08); border-radius:999px; overflow:hidden; border:1px solid var(--line);}}
+    .bar > div{{height:100%; width:0%; background: linear-gradient(90deg, var(--ok), var(--warn), var(--bad));}}
+    .coach{{background: radial-gradient(600px 260px at 15% 10%, rgba(124,58,237,.25), transparent 55%),
+                     radial-gradient(520px 260px at 85% 10%, rgba(34,211,238,.18), transparent 55%),
+                     rgba(255,255,255,.03);
+           border:1px solid rgba(255,255,255,.10); border-radius:16px; padding:14px;}}
+    .coach .hd{{display:flex; align-items:center; justify-content:space-between; gap:10px;}}
+    .coach .hd b{{font-size:14px;}}
+    .coach ul{{margin:10px 0 0; padding-left:18px; color:var(--txt);}}
+    .coach li{{margin:6px 0; color:var(--muted);}}
+    .footnote{{margin-top:14px; font-size:12px; color:var(--muted);}}
+    a{{color:inherit;}}
+  </style>
+</head>
+<body>
+{SIDEBAR}
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <div class="kicker">🛡️ Risk Management • Contrôle & discipline</div>
+      <div class="title">Gestion des risques <span class="glow">WOW</span></div>
+    </div>
+    <div class="pillrow">
+      <div class="pill">Data: <b id="srcPill">—</b></div>
+      <div class="pill">Dernière maj: <b id="tsPill">—</b></div>
+      <div class="pill">Score risque: <b id="scorePill">—</b></div>
+    </div>
+  </div>
 
-    body = """
-    <div class="rm-hero">
-      <div>
-        <div class="rm-kicker">🛡️ Risk Management • Contrôle & discipline</div>
-        <div class="rm-title">Gestion des risques <span class="rm-glow">WOW</span></div>
-        <div class="rm-sub">
-          Tout ce qui suit est basé sur des calculs réels (math + tes réglages) et, pour la section marché,
-          sur des données live <strong>CoinGecko</strong> mises à jour en temps réel.
-        </div>
-        <div class="rm-badges">
-          <span class="rm-badge">Compte: <strong>__USER_EMAIL__</strong></span>
-          <span class="rm-badge">Plan: <strong>__USER_PLAN__</strong></span>
-          <span class="rm-badge">Risque / trade: <strong id="badgeRisk">__RISK_PCT__%</strong></span>
-          <span class="rm-badge">Perte max / jour: <strong id="badgeDaily">__DAILY_LOSS__%</strong></span>
-        </div>
+  <div class="grid">
+
+    <div class="card">
+      <h3>Marché Live + Score de risque</h3>
+      <div class="row" style="margin-bottom:10px;">
+        <div class="metric"><div class="v" id="mPrice">—</div><div class="l">Prix ({'BTCUSDT'} par défaut)</div></div>
+        <div class="metric"><div class="v" id="mChg">—</div><div class="l">Variation 24h</div></div>
+        <div class="metric"><div class="v" id="mVol">—</div><div class="l">Volatilité 30j (annualisée)</div></div>
+        <div class="metric"><div class="v" id="mDD">—</div><div class="l">Max Drawdown ~30j</div></div>
       </div>
-      <div class="rm-hero-card">
-        <div class="rm-hero-card-title">📌 Règle d’or</div>
-        <div class="rm-hero-card-text">
-          <strong>Survivre</strong> = priorité #1.<br>
-          Si tu protèges ton capital, le marché te donnera des opportunités infinies.
+
+      <div class="controls" style="margin-bottom:10px;">
+        <div>
+          <label>Pair Binance (ex: BTCUSDT, ETHUSDT)</label>
+          <input id="sym" value="BTCUSDT" />
         </div>
-        <div class="rm-mini">
-          <div class="rm-mini-item">
-            <div class="rm-mini-k">Risque</div>
-            <div class="rm-mini-v" id="miniRisk">__RISK_PCT__%</div>
-          </div>
-          <div class="rm-mini-item">
-            <div class="rm-mini-k">Trades max</div>
-            <div class="rm-mini-v" id="miniTrades">__MAX_TRADES__</div>
-          </div>
-          <div class="rm-mini-item">
-            <div class="rm-mini-k">Mode ATR</div>
-            <div class="rm-mini-v" id="miniAtr">__ATR__</div>
-          </div>
+        <div>
+          <label>Fenêtre (jours)</label>
+          <select id="days">
+            <option value="7">7</option>
+            <option value="30" selected>30</option>
+            <option value="90">90</option>
+            <option value="180">180</option>
+          </select>
         </div>
+        <button class="btn2" id="btnRefresh">Rafraîchir</button>
+        <button class="btn" id="btnAuto">Auto: ON</button>
+      </div>
+
+      <div class="bar" title="Score de risque (0-100)"><div id="scoreBar"></div></div>
+      <div style="margin-top:12px;">
+        <canvas id="priceChart" height="110"></canvas>
+      </div>
+
+      <div class="coach" style="margin-top:12px;">
+        <div class="hd">
+          <div>🤖 <b>AI Risk Coach</b> — <span id="coachHeadline" style="color:var(--muted);">—</span></div>
+          <div class="pill" style="padding:6px 10px;">Mode: <b id="coachMode">rules</b></div>
+        </div>
+        <ul id="coachTips"></ul>
+      </div>
+
+      <div class="footnote">
+        Sources: <span id="srcDetail">Binance (ticker 24h), CoinGecko (historique).</span> • Le cache serveur stabilise l’affichage et évite les rate limits.
       </div>
     </div>
 
-    <div class="rm-grid">
-      <!-- Settings -->
-      <div class="rm-card rm-span-5">
-        <div class="rm-card-head">
-          <div>
-            <div class="rm-card-title">⚙️ Paramètres de risque</div>
-            <div class="rm-card-sub">Tes règles → appliquées aux calculateurs et au sizing.</div>
-          </div>
-          <button class="rm-btn rm-btn-ghost" id="btnLoad">↻ Charger</button>
+    <div class="card">
+      <h3>Paramètres (persistés côté serveur)</h3>
+      <div class="controls">
+        <div>
+          <label>Risque par trade (%)</label>
+          <input id="setRiskPct" type="number" step="0.05" value="{risk_pct_default}">
         </div>
-
-        <div class="rm-form">
-          <div class="rm-field">
-            <label>Risque par trade (%)</label>
-            <input id="setRiskPct" type="number" step="0.01" min="0.01" max="10" value="__RISK_PCT__">
-            <div class="rm-hint">Ex: 1% = tu risques 10$ pour chaque 1000$.</div>
-          </div>
-
-          <div class="rm-field">
-            <label>Perte max par jour (%)</label>
-            <input id="setDailyLoss" type="number" step="0.01" min="0.1" max="25" value="__DAILY_LOSS__">
-            <div class="rm-hint">Si tu atteins ça → tu arrêtes la journée. Discipline.</div>
-          </div>
-
-          <div class="rm-field">
-            <label>Nb max de trades ouverts</label>
-            <input id="setMaxTrades" type="number" step="1" min="1" max="25" value="__MAX_TRADES__">
-            <div class="rm-hint">Évite la sur-exposition et le “revenge trading”.</div>
-          </div>
-
-          <div class="rm-field rm-toggle">
-            <label>Stop basé sur ATR (optionnel)</label>
-            <div class="rm-switch">
-              <input id="setUseAtr" type="checkbox" __ATR_CHECKED__>
-              <span class="rm-slider"></span>
-            </div>
-            <div class="rm-hint">Si OFF: stop = % ou prix exact (ton choix).</div>
-          </div>
+        <div>
+          <label>Limite perte journalière (%)</label>
+          <input id="setDailyLoss" type="number" step="0.1" value="{max_daily_loss_default}">
         </div>
-
-        <div class="rm-actions">
-          <button class="rm-btn" id="btnSave">💾 Sauvegarder</button>
-          <button class="rm-btn rm-btn-warn" id="btnReset">↩ Réinitialiser</button>
-          <div class="rm-status" id="settingsStatus"></div>
+        <div>
+          <label>Trades ouverts max</label>
+          <input id="setMaxTrades" type="number" step="1" value="{max_open_trades_default}">
         </div>
+        <div>
+          <label>Option ATR (placeholder)</label>
+          <select id="setUseAtr">
+            <option value="0" {"selected" if not use_atr_default else ""}>OFF</option>
+            <option value="1" {"selected" if use_atr_default else ""}>ON</option>
+          </select>
+        </div>
+        <button class="btn" id="btnSave">Enregistrer</button>
+        <button class="btn2" id="btnCalc">Calculer taille position</button>
       </div>
 
-      <!-- Position sizing -->
-      <div class="rm-card rm-span-7">
-        <div class="rm-card-head">
+      <div class="status" id="settingsStatus">—</div>
+
+      <div class="card" style="margin-top:12px; background: rgba(255,255,255,.02);">
+        <h3>Calculateur taille de position</h3>
+        <div class="controls">
           <div>
-            <div class="rm-card-title">📏 Calculateur de position (Position Sizing)</div>
-            <div class="rm-card-sub">Tu entres Entry + Stop → on te donne la taille exacte à prendre.</div>
+            <label>Capital ($)</label>
+            <input id="cap" type="number" step="1" value="1000">
           </div>
-          <div class="rm-pill">Objectif: constance > adrénaline</div>
-        </div>
-
-        <div class="rm-form rm-form-2">
-          <div class="rm-field">
-            <label>Capital (USD)</label>
-            <input id="cap" type="number" step="0.01" min="0" value="1000">
-          </div>
-
-          <div class="rm-field">
-            <label>Symbol (ex: BTCUSDT)</label>
-            <input id="sym" type="text" value="BTCUSDT">
-          </div>
-
-          <div class="rm-field">
+          <div>
             <label>Entry</label>
-            <input id="entry" type="number" step="0.0001" min="0" value="40000">
+            <input id="entry" type="number" step="0.0001" value="43000">
           </div>
-
-          <div class="rm-field">
+          <div>
             <label>Stop</label>
-            <input id="stop" type="number" step="0.0001" min="0" value="39200">
+            <input id="stop" type="number" step="0.0001" value="42000">
           </div>
-
-          <div class="rm-field">
-            <label>Take Profit (optionnel)</label>
-            <input id="tp" type="number" step="0.0001" min="0" placeholder="ex: 42000">
+          <div>
+            <label>TP (optionnel)</label>
+            <input id="tp" type="number" step="0.0001" value="">
           </div>
-
-          <div class="rm-field">
-            <label>Direction</label>
+          <div>
+            <label>Side</label>
             <select id="side">
-              <option value="long" selected>Long</option>
-              <option value="short">Short</option>
+              <option>Long</option>
+              <option>Short</option>
             </select>
           </div>
-        </div>
-
-        <div class="rm-actions">
-          <button class="rm-btn" id="btnCalc">⚡ Calculer</button>
-          <div class="rm-status" id="calcStatus"></div>
-        </div>
-
-        <div class="rm-results">
-          <div class="rm-metric">
-            <div class="rm-metric-k">Risque $</div>
-            <div class="rm-metric-v" id="outRisk">$—</div>
-          </div>
-          <div class="rm-metric">
-            <div class="rm-metric-k">Taille position</div>
-            <div class="rm-metric-v" id="outPos">—</div>
-          </div>
-          <div class="rm-metric">
-            <div class="rm-metric-k">Stop distance</div>
-            <div class="rm-metric-v" id="outStop">—</div>
-          </div>
-          <div class="rm-metric">
-            <div class="rm-metric-k">R:R (si TP)</div>
-            <div class="rm-metric-v" id="outRR">—</div>
-          </div>
-        </div>
-
-        <div class="rm-note">
-          🔥 Astuce: si ta taille de position est “trop grosse”, c’est ton stop qui est trop serré (ou ton risque % trop élevé).
-        </div>
-      </div>
-
-      <!-- Live market risk -->
-      <div class="rm-card rm-span-12">
-        <div class="rm-card-head">
           <div>
-            <div class="rm-card-title">🌐 Risque Marché Live</div>
-            <div class="rm-card-sub">Volatilité + drawdown calculés sur les prix historiques (données live).</div>
+            <label>Risque (%) (auto)</label>
+            <input id="riskPctLive" type="number" step="0.05" value="{risk_pct_default}">
           </div>
-          <div class="rm-market-controls">
-            <select id="mktSymbol"></select>
-            <button class="rm-btn rm-btn-ghost" id="btnRefresh">↻ Rafraîchir</button>
-          </div>
+          <button class="btn" id="btnDoCalc">Calculer</button>
+          <button class="btn2" id="btnCopy">Copier résultat</button>
         </div>
-
-        <div class="rm-market-grid">
-          <div class="rm-chart-wrap">
-            <canvas id="mktChart" height="120"></canvas>
-          </div>
-
-          <div class="rm-market-metrics">
-            <div class="rm-metric big">
-              <div class="rm-metric-k">Prix</div>
-              <div class="rm-metric-v" id="mktPrice">—</div>
-              <div class="rm-metric-s" id="mktChange">—</div>
-            </div>
-
-            <div class="rm-metric">
-              <div class="rm-metric-k">Volatilité 7j</div>
-              <div class="rm-metric-v" id="mktVol7">—</div>
-            </div>
-
-            <div class="rm-metric">
-              <div class="rm-metric-k">Volatilité 30j</div>
-              <div class="rm-metric-v" id="mktVol30">—</div>
-            </div>
-
-            <div class="rm-metric">
-              <div class="rm-metric-k">Max Drawdown 30j</div>
-              <div class="rm-metric-v" id="mktDD">—</div>
-            </div>
-
-            <div class="rm-metric">
-              <div class="rm-metric-k">Risk Score</div>
-              <div class="rm-metric-v" id="mktScore">—</div>
-              <div class="rm-progress"><div id="mktBar" class="rm-bar"></div></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="rm-heatmap">
-          <div class="rm-heat-head">
-            <div class="rm-heat-title">🔥 Heatmap rapide (Top coins)</div>
-            <div class="rm-heat-sub">24h / 7j, volume & market cap.</div>
-          </div>
-          <div class="rm-table-wrap">
-            <table class="rm-table">
-              <thead>
-                <tr>
-                  <th>Coin</th>
-                  <th>Prix</th>
-                  <th>24h</th>
-                  <th>7j</th>
-                  <th>Volume</th>
-                  <th>Market Cap</th>
-                </tr>
-              </thead>
-              <tbody id="heatBody"></tbody>
-            </table>
-          </div>
-          <div class="rm-footnote">
-            * Les métriques “volatilité/drawdown” servent à adapter ton sizing/stop. Plus c’est volatile → plus tu réduis la taille.
-          </div>
-        </div>
+        <div class="status" id="calcOut">—</div>
       </div>
     </div>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script>
-      const $ = (id) => document.getElementById(id);
-      const fmtUSD = (v) => {
-        if (v === null || v === undefined || isNaN(v)) return "—";
-        return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits: 2 }).format(v);
-      };
-      const fmtPct = (v) => {
-        if (v === null || v === undefined || isNaN(v)) return "—";
-        const s = (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
-        return s;
-      };
-      const heatColor = (pct) => {
-        if (pct === null || pct === undefined || isNaN(pct)) return "";
-        // negative = red, positive = green
-        const a = Math.min(0.22, Math.max(0.06, Math.abs(pct) / 100 * 0.22));
-        return pct >= 0 ? `rgba(16,185,129,${a})` : `rgba(239,68,68,${a})`;
-      };
+  <div class="card" style="margin-top:14px;">
+    <h3>Heatmap Top Coins (Market Cap)</h3>
+    <div class="status" id="heatStatus">Chargement…</div>
+    <div class="heat" id="heat"></div>
+  </div>
 
-      let chart = null;
+  { _build_help_block("/risk-management", "Gestion des risques") if "_build_help_block" in globals() else "" }
 
-      async function loadSettings() {
-        $('settingsStatus').textContent = "Chargement...";
-        try {
-          const r = await fetch('/api/risk/settings');
-          const j = await r.json();
-          if (!r.ok) throw new Error(j?.error || "Erreur");
-          $('setRiskPct').value = (j.risk_pct ?? 1.0);
-          $('setDailyLoss').value = (j.max_daily_loss_pct ?? 3.0);
-          $('setMaxTrades').value = (j.max_open_trades ?? 3);
-          $('setUseAtr').checked = !!j.use_atr;
+</div>
 
-          $('badgeRisk').textContent = `${Number(j.risk_pct ?? 1.0).toFixed(2)}%`;
-          $('badgeDaily').textContent = `${Number(j.max_daily_loss_pct ?? 3.0).toFixed(2)}%`;
-          $('miniRisk').textContent = `${Number(j.risk_pct ?? 1.0).toFixed(2)}%`;
-          $('miniTrades').textContent = `${Number(j.max_open_trades ?? 3)}`;
-          $('miniAtr').textContent = (j.use_atr ? "ON" : "OFF");
+<script>
+  const $ = (id) => document.getElementById(id);
 
-          $('settingsStatus').textContent = "OK ✅";
-        } catch (e) {
-          $('settingsStatus').textContent = "Erreur ⚠️";
-        }
-      }
+  function fmt(n, d=2) {{
+    if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
+    const x = Number(n);
+    if (!Number.isFinite(x)) return "—";
+    if (Math.abs(x) >= 1e9) return (x/1e9).toFixed(2) + "B";
+    if (Math.abs(x) >= 1e6) return (x/1e6).toFixed(2) + "M";
+    if (Math.abs(x) >= 1e3) return (x/1e3).toFixed(2) + "K";
+    return x.toFixed(d);
+  }}
 
-      async function saveSettings() {
-        $('settingsStatus').textContent = "Sauvegarde...";
-        try {
-          const payload = {
-            risk_pct: Number($('setRiskPct').value || 1.0),
-            max_daily_loss_pct: Number($('setDailyLoss').value || 3.0),
-            max_open_trades: Number($('setMaxTrades').value || 3),
-            use_atr: $('setUseAtr').checked
-          };
-          const r = await fetch('/api/risk/settings', {
-            method: 'POST',
-            headers: { 'Content-Type':'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const j = await r.json();
-          if (!r.ok) throw new Error(j?.error || "Erreur");
+  function pct(n) {{
+    if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
+    const x = Number(n);
+    const s = x >= 0 ? "+" : "";
+    return s + x.toFixed(2) + "%";
+  }}
 
-          $('badgeRisk').textContent = `${payload.risk_pct.toFixed(2)}%`;
-          $('badgeDaily').textContent = `${payload.max_daily_loss_pct.toFixed(2)}%`;
-          $('miniRisk').textContent = `${payload.risk_pct.toFixed(2)}%`;
-          $('miniTrades').textContent = `${payload.max_open_trades}`;
-          $('miniAtr').textContent = (payload.use_atr ? "ON" : "OFF");
+  function relTime(ts) {{
+    if (!ts) return "—";
+    try {{
+      const ms = Number(ts) * 1000;
+      const d = new Date(ms);
+      return d.toLocaleString();
+    }} catch (e) {{
+      return "—";
+    }}
+  }}
 
-          $('settingsStatus').textContent = "Sauvegardé ✅";
-        } catch (e) {
-          $('settingsStatus').textContent = "Erreur ⚠️";
-        }
-      }
+  function heatColor(p) {{
+    if (p === null || p === undefined || Number.isNaN(Number(p))) return "rgba(255,255,255,.03)";
+    const x = Number(p);
+    const a = Math.min(0.24, Math.max(0.06, Math.abs(x) / 100 * 0.22));
+    return x >= 0 ? `rgba(16,185,129,${{a}})` : `rgba(239,68,68,${{a}})`;
+  }}
 
-      async function resetSettings() {
-        $('settingsStatus').textContent = "Reset...";
-        try {
-          const r = await fetch('/api/risk/reset', { method:'POST' });
-          const j = await r.json();
-          if (!r.ok) throw new Error(j?.error || "Erreur");
-          await loadSettings();
-          $('settingsStatus').textContent = "Réinitialisé ✅";
-        } catch (e) {
-          $('settingsStatus').textContent = "Erreur ⚠️";
-        }
-      }
+  let chart = null;
+  let autoOn = true;
+  let autoTimer = null;
 
-      async function calcPosition() {
-        $('calcStatus').textContent = "Calcul...";
-        try {
-          const q = new URLSearchParams({
-            capital: $('cap').value || "0",
-            symbol: $('sym').value || "BTCUSDT",
-            entry: $('entry').value || "0",
-            stop: $('stop').value || "0"
-          });
-          const r = await fetch('/api/risk/position-size?' + q.toString());
-          const j = await r.json();
-          if (!r.ok) throw new Error(j?.error || "Erreur");
+  async function loadHeatmap() {{
+    $('heatStatus').textContent = "Chargement…";
+    try {{
+      const r = await fetch('/api/v2/risk/overview?per_page=20');
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j?.error || "Erreur heatmap");
+      $('heatStatus').textContent = `Source: ${{j.source}} • Maj: ${{relTime(j.updated_at)}}`;
+      const el = $('heat');
+      el.innerHTML = "";
+      (j.coins || []).forEach(c => {{
+        const ch24 = c.change_24h;
+        const ch7 = c.change_7d;
+        const div = document.createElement("div");
+        div.className = "tile";
+        div.style.background = `linear-gradient(180deg, ${{heatColor(ch24)}}, rgba(255,255,255,.03))`;
+        div.innerHTML = `
+          <div class="s">${{(c.symbol || '').toUpperCase()}}</div>
+          <div class="p">24h: <b>${{pct(ch24)}}</b> • 7d: <b>${{pct(ch7)}}</b></div>
+          <div class="p">Prix: ${{fmt(c.price, 4)}} • Vol: ${{fmt(c.volume_24h, 0)}}</div>
+        `;
+        div.addEventListener("click", () => {{
+          // Clique -> charge stats sur ce coin (si possible)
+          if (c.cg_id) {{
+            $('sym').value = (c.symbol || 'BTC') + 'USDT';
+            loadMarketStats(c.cg_id);
+          }}
+        }});
+        el.appendChild(div);
+      }});
+    }} catch (e) {{
+      $('heatStatus').textContent = "Erreur heatmap (CoinGecko). Réessaie.";
+    }}
+  }}
 
-          $('outRisk').textContent = fmtUSD(j.risk_amount ?? null);
-          $('outPos').textContent = (j.position_size ?? "—") + (j.units ? ` (${j.units})` : "");
-          $('outStop').textContent = (j.stop_distance_pct ? j.stop_distance_pct.toFixed(2) + "%" : "—");
+  async function loadSettings() {{
+    $('settingsStatus').textContent = "Chargement des paramètres…";
+    try {{
+      const r = await fetch('/api/v2/risk/settings');
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || "Erreur");
+      $('setRiskPct').value = (j.risk_pct ?? 1.0);
+      $('setDailyLoss').value = (j.max_daily_loss_pct ?? 3.0);
+      $('setMaxTrades').value = (j.max_open_trades ?? 3);
+      $('setUseAtr').value = j.use_atr ? "1" : "0";
+      $('riskPctLive').value = (j.risk_pct ?? 1.0);
+      $('settingsStatus').textContent = `OK • sauvegardé: ${{j.updated_at ? j.updated_at : "—"}}`;
+    }} catch (e) {{
+      $('settingsStatus').textContent = "Erreur chargement settings.";
+    }}
+  }}
 
-          // Risk:Reward if TP provided
-          const tp = Number($('tp').value || 0);
-          const entry = Number($('entry').value || 0);
-          const stop = Number($('stop').value || 0);
-          const side = $('side').value || "long";
-          let rr = null;
-          if (tp > 0 && entry > 0 && stop > 0) {
-            const risk = side === "short" ? (stop - entry) : (entry - stop);
-            const reward = side === "short" ? (entry - tp) : (tp - entry);
-            if (risk > 0 && reward > 0) rr = reward / risk;
-          }
-          $('outRR').textContent = rr ? rr.toFixed(2) : "—";
+  async function saveSettings() {{
+    $('settingsStatus').textContent = "Sauvegarde…";
+    const payload = {{
+      risk_pct: Number($('setRiskPct').value || 1.0),
+      max_daily_loss_pct: Number($('setDailyLoss').value || 3.0),
+      max_open_trades: Number($('setMaxTrades').value || 3),
+      use_atr: $('setUseAtr').value === "1",
+    }};
+    try {{
+      const r = await fetch('/api/v2/risk/settings', {{
+        method: 'POST',
+        headers: {{ 'Content-Type':'application/json' }},
+        body: JSON.stringify(payload)
+      }});
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j?.error || "Erreur");
+      $('settingsStatus').textContent = `✅ Sauvegardé • ${{j.settings.updated_at}}`;
+      $('riskPctLive').value = payload.risk_pct;
+    }} catch (e) {{
+      $('settingsStatus').textContent = "❌ Sauvegarde impossible.";
+    }}
+  }}
 
-          $('calcStatus').textContent = "OK ✅";
-        } catch (e) {
-          $('calcStatus').textContent = "Erreur ⚠️";
-        }
-      }
+  async function doCalc() {{
+    const capital = Number($('cap').value || 0);
+    const risk = Number($('riskPctLive').value || 0);
+    const entry = Number($('entry').value || 0);
+    const stop = Number($('stop').value || 0);
+    const side = $('side').value || "Long";
+    const tp = $('tp').value;
+    $('calcOut').textContent = "Calcul…";
+    try {{
+      const qp = new URLSearchParams();
+      qp.set("capital", capital);
+      qp.set("risk", risk);
+      qp.set("entry", entry);
+      qp.set("stop", stop);
+      qp.set("side", side);
+      if (tp) qp.set("tp", tp);
+      const r = await fetch('/api/risk/position-size?' + qp.toString());
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j?.error || "Erreur calc");
+      const rr = (j.rr !== null && j.rr !== undefined) ? j.rr.toFixed(2) : "—";
+      $('calcOut').textContent =
+        `Taille: ${{j.position_size}} unités • Valeur: $${{j.position_value}} • Risque$: $${{j.risk_amount}} • Stop%: ${{j.stop_distance_percent ?? "—"}}% • R:R ${{rr}}`;
+      window.__lastCalc = $('calcOut').textContent;
+    }} catch (e) {{
+      $('calcOut').textContent = "Erreur: vérifie Entry/Stop/Capital.";
+    }}
+  }}
 
-      function setRiskBar(score) {
-        const v = Math.max(0, Math.min(100, Number(score || 0)));
-        $('mktBar').style.width = v + "%";
-        if (v < 35) $('mktBar').className = "rm-bar low";
-        else if (v < 70) $('mktBar').className = "rm-bar mid";
-        else $('mktBar').className = "rm-bar high";
-      }
+  function renderChart(series) {{
+    const labels = (series || []).map(x => x.t);
+    const data = (series || []).map(x => x.p);
+    const ctx = $('priceChart').getContext('2d');
 
-      async function loadHeatmap() {
-        try {
-          const r = await fetch('/api/risk/overview');
-          const j = await r.json();
-          if (!r.ok) throw new Error(j?.error || "Erreur");
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {{
+      type: 'line',
+      data: {{
+        labels,
+        datasets: [{{
+          label: 'Prix (USD)',
+          data,
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.25,
+        }}]
+      }},
+      options: {{
+        responsive: true,
+        plugins: {{ legend: {{ display: false }} }},
+        scales: {{
+          x: {{ ticks: {{ color: '#9aa7bd', maxRotation: 0, autoSkip: true }} }},
+          y: {{ ticks: {{ color: '#9aa7bd' }} }}
+        }}
+      }}
+    }});
+  }}
 
-          // fill dropdown
-          const sel = $('mktSymbol');
-          sel.innerHTML = "";
-          for (const row of j.coins || []) {
-            const opt = document.createElement('option');
-            opt.value = row.symbol.toUpperCase() + "USDT";
-            opt.textContent = row.name + " (" + row.symbol.toUpperCase() + ")";
-            sel.appendChild(opt);
-          }
-          if (sel.options.length) sel.value = "BTCUSDT";
+  function setRiskUI(score) {{
+    if (score === null || score === undefined) {{
+      $('scorePill').textContent = "—";
+      $('scoreBar').style.width = "0%";
+      return;
+    }}
+    const s = Math.max(0, Math.min(100, Number(score)));
+    $('scorePill').textContent = s.toFixed(0) + "/100";
+    $('scoreBar').style.width = s.toFixed(0) + "%";
+  }}
 
-          // table
-          const tb = $('heatBody');
-          tb.innerHTML = "";
-          for (const row of j.coins || []) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td class="cname">
-                <span class="dot"></span>
-                <div>
-                  <div class="nm">${row.name}</div>
-                  <div class="sm">${row.symbol.toUpperCase()}</div>
-                </div>
-              </td>
-              <td>${fmtUSD(row.price)}</td>
-              <td class="chg" style="background:${heatColor(row.change_24h)}">${fmtPct(row.change_24h)}</td>
-              <td class="chg" style="background:${heatColor(row.change_7d)}">${fmtPct(row.change_7d)}</td>
-              <td>${fmtUSD(row.volume)}</td>
-              <td>${fmtUSD(row.market_cap)}</td>
-            `;
-            tb.appendChild(tr);
-          }
-        } catch(e) {
-          // silent
-        }
-      }
+  function coachUI(coach) {{
+    $('coachHeadline').textContent = coach?.headline || "—";
+    const ul = $('coachTips');
+    ul.innerHTML = "";
+    (coach?.tips || []).forEach(t => {{
+      const li = document.createElement("li");
+      li.textContent = t;
+      ul.appendChild(li);
+    }});
+  }}
 
-      async function loadMarketStats() {
-        const sym = $('mktSymbol').value || "BTCUSDT";
-        try {
-          const r = await fetch('/api/risk/market-stats?symbol=' + encodeURIComponent(sym) + '&days=30');
-          const j = await r.json();
-          if (!r.ok) throw new Error(j?.error || "Erreur");
+  async function loadMarketStats(cgId=null) {{
+    const symbol = $('sym').value || "BTCUSDT";
+    const days = $('days').value || "30";
 
-          $('mktPrice').textContent = fmtUSD(j.price);
-          $('mktChange').textContent = "24h: " + fmtPct(j.change_24h_pct);
-          $('mktChange').className = (j.change_24h_pct >= 0 ? "rm-metric-s up" : "rm-metric-s down");
-          $('mktVol7').textContent = fmtPct(j.vol_7d_pct);
-          $('mktVol30').textContent = fmtPct(j.vol_30d_pct);
-          $('mktDD').textContent = fmtPct(j.max_drawdown_30d_pct);
-          $('mktScore').textContent = (j.risk_score ?? 0).toFixed(0) + "/100";
-          setRiskBar(j.risk_score ?? 0);
+    $('srcPill').textContent = "—";
+    $('tsPill').textContent = "—";
+    $('mPrice').textContent = "—";
+    $('mChg').textContent = "—";
+    $('mVol').textContent = "—";
+    $('mDD').textContent = "—";
 
-          const labels = (j.series || []).map(x => x.t);
-          const values = (j.series || []).map(x => x.p);
+    try {{
+      const qp = new URLSearchParams();
+      qp.set("symbol", symbol);
+      qp.set("days", days);
+      if (cgId) qp.set("cg_id", cgId);
 
-          if (chart) chart.destroy();
-          const ctx = $('mktChart').getContext('2d');
-          chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: labels,
-              datasets: [{ label: sym, data: values, borderWidth: 2, tension: 0.25, pointRadius: 0 }]
-            },
-            options: {
-              plugins: { legend: { display: false } },
-              scales: {
-                x: { ticks: { maxTicksLimit: 10 } },
-                y: { ticks: { callback: (v) => v } }
-              }
-            }
-          });
-        } catch(e) {
-          // show minimal fallback
-          $('mktPrice').textContent = "—";
-          $('mktChange').textContent = "—";
-        }
-      }
+      const r = await fetch('/api/v2/risk/market-stats?' + qp.toString());
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j?.error || "Erreur market-stats");
 
-      // UI bindings
-      $('btnLoad').addEventListener('click', loadSettings);
-      $('btnSave').addEventListener('click', saveSettings);
-      $('btnReset').addEventListener('click', resetSettings);
-      $('btnCalc').addEventListener('click', calcPosition);
-      $('btnRefresh').addEventListener('click', loadMarketStats);
-      $('mktSymbol').addEventListener('change', loadMarketStats);
+      $('srcPill').textContent = "Binance + CoinGecko";
+      $('tsPill').textContent = relTime(j.updated_at);
+      $('scorePill').textContent = (j.risk_score ?? "—") + "/100";
+      $('srcDetail').textContent = `Ticker 24h: ${{j.sources?.ticker_24h || "—"}} • Historique: ${{j.sources?.timeseries || "—"}}`;
 
-      // init
-      loadHeatmap().then(loadMarketStats);
-      // load settings in background (not blocking)
-      loadSettings();
-    </script>
-    """
+      $('mPrice').textContent = (j.price !== null && j.price !== undefined) ? ("$" + fmt(j.price, 2)) : "—";
+      $('mChg').textContent = pct(j.change_24h_pct);
+      $('mVol').textContent = (j.vol_30d_pct !== null && j.vol_30d_pct !== undefined) ? (j.vol_30d_pct.toFixed(2) + "%") : "—";
+      $('mDD').textContent = (j.max_drawdown_30d_pct !== null && j.max_drawdown_30d_pct !== undefined) ? (j.max_drawdown_30d_pct.toFixed(2) + "%") : "—";
 
-    # Inject server-side values safely
-    body = body.replace("__USER_EMAIL__", _html.escape(user_email))
-    body = body.replace("__USER_PLAN__", _html.escape(user_plan))
-    body = body.replace("__RISK_PCT__", f"{risk_pct_default:.2f}")
-    body = body.replace("__DAILY_LOSS__", f"{max_daily_loss_default:.2f}")
-    body = body.replace("__MAX_TRADES__", str(max_open_trades_default))
-    body = body.replace("__ATR__", "ON" if use_atr_default else "OFF")
-    body = body.replace("__ATR_CHECKED__", "checked" if use_atr_default else "")
+      setRiskUI(j.risk_score);
+      renderChart(j.series || []);
+      coachUI(j.coach || {{}});
 
-    html = _simple_page(
-        title="Gestion des risques",
-        body_html=body,
-        page_key="/risk-management",
-        styles="""
-        /* Hide default H1 to use our hero */
-        h1{display:none !important;}
+    }} catch (e) {{
+      $('srcPill').textContent = "Erreur";
+      $('tsPill').textContent = "—";
+      setRiskUI(null);
+      coachUI({{headline:"Erreur", tips:["Impossible de charger les données live. Réessaie."]}});
+    }}
+  }}
 
-        .rm-hero{
-          display:grid; grid-template-columns: 1.2fr 0.8fr; gap:16px;
-          padding:18px; border-radius:18px;
-          background: radial-gradient(800px 200px at 30% 0%, rgba(99,102,241,.35), transparent 60%),
-                      linear-gradient(135deg, rgba(15,23,42,.95), rgba(30,41,59,.90));
-          box-shadow: 0 18px 40px rgba(0,0,0,.25);
-          border: 1px solid rgba(255,255,255,.08);
-          margin-bottom:16px;
-        }
-        .rm-kicker{color:rgba(255,255,255,.7); font-weight:700; letter-spacing:.3px;}
-        .rm-title{font-size:40px; font-weight:900; margin-top:6px; line-height:1.08;}
-        .rm-glow{background: linear-gradient(90deg,#60a5fa,#a78bfa,#34d399); -webkit-background-clip:text; color:transparent;}
-        .rm-sub{margin-top:10px; color:rgba(255,255,255,.8); max-width:72ch;}
-        .rm-badges{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
-        .rm-badge{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10);
-                 padding:8px 10px; border-radius:999px; color:rgba(255,255,255,.85); font-size:13px;}
-        .rm-hero-card{
-          border-radius:16px;
-          background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
-          border: 1px solid rgba(255,255,255,.12);
-          padding:14px;
-        }
-        .rm-hero-card-title{font-weight:900; font-size:14px; color:rgba(255,255,255,.9);}
-        .rm-hero-card-text{margin-top:8px; color:rgba(255,255,255,.78); line-height:1.45;}
-        .rm-mini{display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:12px;}
-        .rm-mini-item{padding:10px; border-radius:14px; background:rgba(0,0,0,.18); border:1px solid rgba(255,255,255,.08);}
-        .rm-mini-k{font-size:12px; color:rgba(255,255,255,.65); font-weight:700;}
-        .rm-mini-v{font-size:18px; font-weight:900; margin-top:3px;}
+  function setAuto(on) {{
+    autoOn = !!on;
+    $('btnAuto').textContent = "Auto: " + (autoOn ? "ON" : "OFF");
+    if (autoTimer) clearInterval(autoTimer);
+    if (autoOn) {{
+      autoTimer = setInterval(() => {{
+        loadMarketStats(null);
+        loadHeatmap();
+      }}, 30000);
+    }}
+  }}
 
-        .rm-grid{display:grid; grid-template-columns: repeat(12, 1fr); gap:14px;}
-        .rm-card{
-          background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
-          border: 1px solid rgba(255,255,255,.10);
-          border-radius:18px;
-          padding:14px;
-          box-shadow: 0 12px 30px rgba(0,0,0,.18);
-        }
-        .rm-card-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
-        .rm-card-title{font-weight:900; font-size:16px; color:rgba(255,255,255,.95);}
-        .rm-card-sub{color:rgba(255,255,255,.70); font-size:13px; margin-top:2px;}
-        .rm-pill{background: rgba(59,130,246,.20); border:1px solid rgba(59,130,246,.35);
-                padding:6px 10px; border-radius:999px; color:rgba(255,255,255,.9); font-weight:800; font-size:12px;}
-        .rm-span-5{grid-column: span 5;}
-        .rm-span-7{grid-column: span 7;}
-        .rm-span-12{grid-column: span 12;}
+  $('btnSave').addEventListener("click", saveSettings);
+  $('btnDoCalc').addEventListener("click", doCalc);
+  $('btnCalc').addEventListener("click", () => document.querySelector('#cap')?.scrollIntoView({{behavior:'smooth', block:'center'}}));
+  $('btnCopy').addEventListener("click", async () => {{
+    try {{
+      const t = window.__lastCalc || $('calcOut').textContent || "";
+      await navigator.clipboard.writeText(t);
+      $('calcOut').textContent = "✅ Copié : " + t;
+    }} catch (e) {{}}
+  }});
+  $('btnRefresh').addEventListener("click", () => loadMarketStats(null));
+  $('btnAuto').addEventListener("click", () => setAuto(!autoOn));
 
-        .rm-form{display:grid; grid-template-columns: 1fr 1fr; gap:12px;}
-        .rm-form-2{grid-template-columns: repeat(3, 1fr);}
-        .rm-field label{display:block; font-weight:800; font-size:12px; color:rgba(255,255,255,.75); margin-bottom:6px;}
-        .rm-field input, .rm-field select{
-          width:100%;
-          padding:10px 12px;
-          border-radius:12px;
-          border:1px solid rgba(255,255,255,.10);
-          background: rgba(2,6,23,.65);
-          color: rgba(255,255,255,.92);
-          outline:none;
-        }
-        .rm-field input:focus, .rm-field select:focus{border-color: rgba(99,102,241,.55); box-shadow: 0 0 0 3px rgba(99,102,241,.18);}
-        .rm-hint{margin-top:6px; font-size:12px; color:rgba(255,255,255,.55);}
-        .rm-toggle{grid-column: span 2;}
+  // init
+  (async () => {{
+    await loadSettings();
+    await loadMarketStats(null);
+    await loadHeatmap();
+    setAuto(true);
+  }})();
+</script>
 
-        .rm-actions{display:flex; align-items:center; gap:10px; margin-top:12px;}
-        .rm-btn{
-          padding:10px 12px; border-radius:12px; border:1px solid rgba(99,102,241,.55);
-          background: linear-gradient(180deg, rgba(99,102,241,.85), rgba(99,102,241,.65));
-          color:white; font-weight:900; cursor:pointer;
-        }
-        .rm-btn:hover{filter:brightness(1.05);}
-        .rm-btn-ghost{
-          background: rgba(255,255,255,.06);
-          border: 1px solid rgba(255,255,255,.12);
-        }
-        .rm-btn-warn{
-          background: rgba(239,68,68,.18);
-          border: 1px solid rgba(239,68,68,.35);
-        }
-        .rm-status{color:rgba(255,255,255,.70); font-weight:800; font-size:12px; margin-left:auto;}
-
-        .rm-results{display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-top:10px;}
-        .rm-metric{padding:12px; border-radius:14px; background: rgba(0,0,0,.16); border: 1px solid rgba(255,255,255,.08);}
-        .rm-metric.big{grid-column: span 2;}
-        .rm-metric-k{font-size:12px; color:rgba(255,255,255,.65); font-weight:800;}
-        .rm-metric-v{font-size:18px; font-weight:900; margin-top:4px;}
-        .rm-metric-s{margin-top:4px; font-size:12px; font-weight:900;}
-        .rm-metric-s.up{color:#34d399;}
-        .rm-metric-s.down{color:#fb7185;}
-        .rm-note{margin-top:10px; color:rgba(255,255,255,.72); font-weight:800; font-size:13px;}
-
-        .rm-market-controls{display:flex; gap:8px; align-items:center;}
-        .rm-market-controls select{padding:9px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background: rgba(2,6,23,.55); color:rgba(255,255,255,.92);}
-
-        .rm-market-grid{display:grid; grid-template-columns: 1.2fr 0.8fr; gap:12px;}
-        .rm-chart-wrap{padding:12px; border-radius:16px; background: rgba(0,0,0,.14); border:1px solid rgba(255,255,255,.08);}
-        .rm-market-metrics{display:grid; grid-template-columns: 1fr 1fr; gap:10px;}
-        .rm-progress{height:10px; border-radius:999px; background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10); overflow:hidden; margin-top:8px;}
-        .rm-bar{height:100%; width:0%; border-radius:999px; background: rgba(99,102,241,.85);}
-        .rm-bar.low{background: rgba(34,197,94,.80);}
-        .rm-bar.mid{background: rgba(251,191,36,.85);}
-        .rm-bar.high{background: rgba(239,68,68,.85);}
-
-        .rm-heatmap{margin-top:14px;}
-        .rm-heat-head{display:flex; align-items:flex-end; justify-content:space-between; gap:10px; margin-bottom:10px;}
-        .rm-heat-title{font-weight:900; font-size:15px;}
-        .rm-heat-sub{color:rgba(255,255,255,.70); font-size:12px;}
-        .rm-table-wrap{overflow:auto; border-radius:14px; border:1px solid rgba(255,255,255,.10);}
-        .rm-table{width:100%; border-collapse:separate; border-spacing:0; background: rgba(2,6,23,.45);}
-        .rm-table th{position:sticky; top:0; background: rgba(2,6,23,.85); text-align:left; font-size:12px; padding:10px; color:rgba(255,255,255,.70); border-bottom:1px solid rgba(255,255,255,.10);}
-        .rm-table td{padding:10px; border-bottom:1px solid rgba(255,255,255,.06); font-weight:800; color:rgba(255,255,255,.88);}
-        .rm-table tr:hover td{background: rgba(255,255,255,.04);}
-        .rm-table .chg{border-radius:10px;}
-        .cname{display:flex; align-items:center; gap:10px;}
-        .cname .dot{width:10px; height:10px; border-radius:999px; background: rgba(99,102,241,.85); display:inline-block;}
-        .cname .nm{font-weight:900;}
-        .cname .sm{font-size:12px; color:rgba(255,255,255,.60); font-weight:800;}
-        .rm-footnote{margin-top:10px; color:rgba(255,255,255,.60); font-size:12px;}
-
-        @media (max-width: 1100px){
-          .rm-hero{grid-template-columns:1fr;}
-          .rm-span-5, .rm-span-7{grid-column: span 12;}
-          .rm-form-2{grid-template-columns: repeat(2, 1fr);}
-          .rm-market-grid{grid-template-columns:1fr;}
-          .rm-metric.big{grid-column: span 2;}
-        }
-        @media (max-width: 640px){
-          .rm-form{grid-template-columns:1fr;}
-          .rm-toggle{grid-column: span 1;}
-          .rm-results{grid-template-columns: 1fr 1fr;}
-          .rm-title{font-size:30px;}
-        }
-
-        /* Switch */
-        .rm-switch{position:relative; width:48px; height:28px;}
-        .rm-switch input{opacity:0; width:0; height:0;}
-        .rm-slider{
-          position:absolute; cursor:pointer; inset:0;
-          background: rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.12);
-          transition:.2s; border-radius:999px;
-        }
-        .rm-slider:before{
-          position:absolute; content:""; height:22px; width:22px; left:3px; top:2.5px;
-          background: rgba(255,255,255,.85); transition:.2s; border-radius:999px;
-        }
-        .rm-switch input:checked + .rm-slider{background: rgba(34,197,94,.22); border-color: rgba(34,197,94,.30);}
-        .rm-switch input:checked + .rm-slider:before{transform: translateX(19px); background: rgba(255,255,255,.95);}
-        """,
-        sidebar_html=SIDEBAR
-    )
-    return HTMLResponse(html)
-
+</body>
+</html>
+"""
+    return HTMLResponse(body)
 @app.get("/watchlist", response_class=HTMLResponse)
 async def watchlist_page():
     return HTMLResponse(

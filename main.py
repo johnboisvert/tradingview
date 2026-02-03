@@ -95,7 +95,25 @@ def _build_help_block(page_key: Optional[str], title: str) -> str:
     )
 
     return f'''
-    <div class="page-help">
+    <div id="cryptoia-help-footer" class="page-help" data-page="{html.escape(key)}">
+      <style>
+        /* Help footer (auto-injected) */
+        #cryptoia-help-footer.page-help{{margin:28px auto 18px;max-width:1200px;padding:18px 18px 14px;border-radius:18px;
+          background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+          border:1px solid rgba(255,255,255,.10);box-shadow:0 10px 30px rgba(0,0,0,.25);}}
+        #cryptoia-help-footer .page-help-title{{font-weight:800;letter-spacing:.2px;font-size:16px;margin-bottom:10px;opacity:.95}}
+        #cryptoia-help-footer .page-help-grid{{display:grid;grid-template-columns:1fr 1fr;gap:12px}}
+        @media (max-width: 900px){{#cryptoia-help-footer .page-help-grid{{grid-template-columns:1fr}}}}
+        #cryptoia-help-footer .page-help-box{{padding:14px;border-radius:14px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08)}}
+        #cryptoia-help-footer .page-help-h{{font-weight:750;margin-bottom:6px;opacity:.95}}
+        #cryptoia-help-footer .page-help-p{{line-height:1.45;opacity:.90}}
+        #cryptoia-help-footer .page-help-note{{margin-top:10px;font-size:12.5px;opacity:.75}}
+        #cryptoia-help-footer .page-help-status{{margin-top:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}}
+        #cryptoia-help-footer .badge{{display:inline-flex;gap:8px;align-items:center;padding:7px 10px;border-radius:999px;
+          border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.18);font-size:12px;opacity:.92}}
+        #cryptoia-help-footer .muted{{opacity:.75}}
+      </style>
+
       <div class="page-help-title">📌 Aide – {html.escape(title)}</div>
       <div class="page-help-grid">
         <div class="page-help-box">
@@ -107,7 +125,31 @@ def _build_help_block(page_key: Optional[str], title: str) -> str:
           <div class="page-help-p">{html.escape(info.get("comment",""))}</div>
         </div>
       </div>
+
+      <div class="page-help-status">
+        <div class="badge">📡 <span class="muted">Données</span>&nbsp;<span id="cryptoia-data-sources">—</span></div>
+        <div class="badge">🕒 <span class="muted">Dernière maj</span>&nbsp;<span id="cryptoia-data-updated">—</span></div>
+        <div class="badge">🛡️ <span class="muted">Statut</span>&nbsp;<span id="cryptoia-data-status">OK</span></div>
+      </div>
+
       <div class="page-help-note">{html.escape(data_note)}</div>
+
+      <script>
+        (function(){{
+          if (window.__cryptoiaHelpInit) return;
+          window.__cryptoiaHelpInit = true;
+          function setText(id, txt){{ var el=document.getElementById(id); if(el) el.textContent = txt; }}
+          fetch('/api/v2/meta/status', {{cache:'no-store'}}).then(r=>r.json()).then(d=>{{
+            setText('cryptoia-data-sources', (d && d.sources) ? d.sources.join(' + ') : 'APIs externes');
+            setText('cryptoia-data-updated', (d && d.server_time_local) ? d.server_time_local : (d && d.server_time_utc ? d.server_time_utc : '—'));
+            setText('cryptoia-data-status', (d && d.ok) ? 'OK' : 'Dégradé');
+          }}).catch(_=>{{
+            setText('cryptoia-data-sources', 'APIs externes');
+            setText('cryptoia-data-updated', '—');
+            setText('cryptoia-data-status', 'Dégradé');
+          }});
+        }})();
+      </script>
     </div>
     '''
 
@@ -2905,6 +2947,212 @@ def _force_admin_on_request(request):
 
 app = FastAPI()
 
+# =============================
+# Auto footer d'aide sur TOUTES les pages HTML
+# (injecte le bloc "À quoi sert / Comment utiliser" en bas de page)
+# =============================
+try:
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.responses import Response
+except Exception:
+    BaseHTTPMiddleware = None  # type: ignore
+    Response = None  # type: ignore
+
+if BaseHTTPMiddleware and Response:
+    class HelpFooterMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            response = await call_next(request)
+            try:
+                ct = (response.headers.get("content-type") or "").lower()
+                path = (request.url.path or "")
+                # Seulement HTML (pas API/static)
+                if ("text/html" in ct) and (not path.startswith("/api")) and (not path.startswith("/static")):
+                    body = b""
+                    # Starlette responses can be streamed; gather safely
+                    if hasattr(response, "body_iterator") and response.body_iterator is not None:
+                        async for chunk in response.body_iterator:
+                            body += chunk
+                    else:
+                        body = getattr(response, "body", b"") or b""
+                    html_text = body.decode("utf-8", errors="ignore")
+                    modified = False
+                    if ("</body>" in html_text.lower()) and ("cryptoia-help-footer" not in html_text):
+                        # Titre via <title> si possible
+                        m = re.search(r"<title>(.*?)</title>", html_text, re.IGNORECASE | re.DOTALL)
+                        title_guess = (re.sub(r"\s+", " ", m.group(1)).strip() if m else "CryptoIA")
+                        insert = _build_help_block(path, title_guess)
+                        # Insérer juste avant </body>
+                        html_text = re.sub(r"</body>", insert + "\n</body>", html_text, flags=re.IGNORECASE)
+                        body = html_text.encode("utf-8")
+                        modified = True
+
+                    # IMPORTANT: si la réponse était streamée, on doit la reconstruire (sinon body consommé)
+                    new_headers = dict(response.headers)
+                    new_headers.pop("content-length", None)
+                    return Response(content=body, status_code=response.status_code, headers=new_headers, media_type="text/html")
+            except Exception:
+                # En cas de souci, on renvoie la réponse originale sans casser le site
+                pass
+            return response
+
+    app.add_middleware(HelpFooterMiddleware)
+
+# =============================
+# Meta statut global (affiché dans le footer d'aide)
+# =============================
+@app.get("/api/v2/meta/status")
+async def api_meta_status():
+    try:
+        # Heures (UTC + locale simple)
+        import datetime
+        now_utc = datetime.datetime.utcnow().replace(microsecond=0)
+        # timezone locale via env TZ/offset n'est pas garanti; on donne une string lisible
+        return {
+            "ok": True,
+            "server_time_utc": now_utc.isoformat() + "Z",
+            "server_time_local": now_utc.isoformat().replace("T", " ") + " UTC",
+            "sources": ["Binance", "CoinGecko"],
+        }
+    except Exception:
+        return {"ok": False, "sources": ["APIs externes"]}
+
+
+# =============================
+# Market Data API v2 (réutilisable par toutes les pages)
+# - Données réelles Binance/CoinGecko
+# - Cache serveur + validations
+# =============================
+import math
+from urllib.parse import urlencode
+
+_V2_CACHE = {}  # key -> (ts, ttl, value)
+
+def _cache_get(key: str):
+    try:
+        ts, ttl, val = _V2_CACHE.get(key, (0, 0, None))
+        if val is not None and (time.time() - ts) < ttl:
+            return val
+    except Exception:
+        pass
+    return None
+
+def _cache_set(key: str, val, ttl: int):
+    try:
+        _V2_CACHE[key] = (time.time(), ttl, val)
+    except Exception:
+        pass
+
+def _validate_symbol(symbol: str) -> str:
+    s = (symbol or "").strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{2,20}", s):
+        raise ValueError("Symbol invalide")
+    return s
+
+def _validate_interval(interval: str) -> str:
+    i = (interval or "").strip()
+    allowed = {"1m","3m","5m","15m","30m","1h","2h","4h","6h","8h","12h","1d","3d","1w"}
+    if i not in allowed:
+        raise ValueError("Interval invalide")
+    return i
+
+async def _http_get_json(url: str, timeout: float = 10.0):
+    # Utilise httpx si présent, sinon urllib
+    if 'httpx' in globals() and httpx is not None:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            r = await client.get(url, headers={"User-Agent": "CryptoIA/1.0"})
+            r.raise_for_status()
+            return r.json()
+    else:
+        import urllib.request
+        req = urllib.request.Request(url, headers={"User-Agent": "CryptoIA/1.0"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8", errors="ignore"))
+
+@app.get("/api/v2/market/ticker")
+async def api_v2_market_ticker(symbol: str = "BTCUSDT"):
+    try:
+        sym = _validate_symbol(symbol)
+        cache_key = f"ticker:{sym}"
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return {"ok": True, "cached": True, **cached}
+
+        url = "https://api.binance.com/api/v3/ticker/24hr?" + urlencode({"symbol": sym})
+        data = await _http_get_json(url, timeout=8.0)
+        out = {
+            "symbol": sym,
+            "price": float(data.get("lastPrice") or 0),
+            "change_24h_pct": float(data.get("priceChangePercent") or 0),
+            "volume": float(data.get("volume") or 0),
+            "quote_volume": float(data.get("quoteVolume") or 0),
+        }
+        _cache_set(cache_key, out, ttl=20)
+        return {"ok": True, "cached": False, **out}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.get("/api/v2/market/klines")
+async def api_v2_market_klines(symbol: str = "BTCUSDT", interval: str = "1h", limit: int = 500):
+    try:
+        sym = _validate_symbol(symbol)
+        itv = _validate_interval(interval)
+        limit = int(limit)
+        limit = max(10, min(limit, 1000))
+
+        ttl = 20 if itv in ("1m","3m","5m") else 60
+        cache_key = f"klines:{sym}:{itv}:{limit}"
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return {"ok": True, "cached": True, "symbol": sym, "interval": itv, "klines": cached}
+
+        url = "https://api.binance.com/api/v3/klines?" + urlencode({"symbol": sym, "interval": itv, "limit": limit})
+        data = await _http_get_json(url, timeout=10.0)
+        # Format simplifié
+        kl = [{"t": int(x[0]), "o": float(x[1]), "h": float(x[2]), "l": float(x[3]), "c": float(x[4]), "v": float(x[5])} for x in data]
+        _cache_set(cache_key, kl, ttl=ttl)
+        return {"ok": True, "cached": False, "symbol": sym, "interval": itv, "klines": kl}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.get("/api/v2/market/top")
+async def api_v2_market_top(per_page: int = 20, vs_currency: str = "usd"):
+    try:
+        per_page = int(per_page)
+        per_page = max(5, min(per_page, 50))
+        vs = (vs_currency or "usd").strip().lower()
+        if not re.fullmatch(r"[a-z]{3,10}", vs):
+            vs = "usd"
+
+        cache_key = f"cg_top:{vs}:{per_page}"
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return {"ok": True, "cached": True, "coins": cached}
+
+        url = "https://api.coingecko.com/api/v3/coins/markets?" + urlencode({
+            "vs_currency": vs,
+            "order": "market_cap_desc",
+            "per_page": per_page,
+            "page": 1,
+            "sparkline": "false",
+            "price_change_percentage": "24h,7d"
+        })
+        data = await _http_get_json(url, timeout=12.0)
+        coins = []
+        for c in data:
+            coins.append({
+                "id": c.get("id"),
+                "name": c.get("name"),
+                "symbol": (c.get("symbol") or "").upper(),
+                "price": float(c.get("current_price") or 0),
+                "change_24h_pct": float(c.get("price_change_percentage_24h") or 0),
+                "change_7d_pct": float(c.get("price_change_percentage_7d_in_currency") or 0),
+                "market_cap": float(c.get("market_cap") or 0),
+                "volume": float(c.get("total_volume") or 0),
+            })
+        _cache_set(cache_key, coins, ttl=60)
+        return {"ok": True, "cached": False, "coins": coins}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 # =========================
 # =============================
 # Rate limiting (SlowAPI) — optionnel

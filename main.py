@@ -3893,83 +3893,456 @@ async def api_v2_opportunity_scan_post(body: dict = Body(default={} )):
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
-@app.get("/api/v2/opportunity/detail")
-async def api_v2_opportunity_detail(
-    symbol: str = "",
-    coin_id: str = "",
-    interval: str = "1h",
-    lookback: int = 240,
-):
-    """Detailed view for the Opportunity Scanner (returns series + rationale)."""
-    try:
-        sym = (symbol or "").strip().upper()
-        base = sym.replace("USDT", "").strip().lower() if sym else ""
-        cid = (coin_id or "").strip().lower()
+@app.get("/ai-opportunity-scanner")
+async def ai_opportunity_scanner(request: Request):
+    """
+    Opportunity Scanner (WOW) — UI.
+    Wrapped with the global sidebar layout to keep the left menu consistent.
+    """
+    body_html = """
+    <style>
+    :root{
+      --bg:#0b1220;
+      --card:#0f1a2c;
+      --card2:#101b2f;
+      --text:#e8eefc;
+      --muted:#9fb0d0;
+      --line:rgba(255,255,255,.08);
+      --grad: linear-gradient(90deg, #7c3aed, #22d3ee);
+      --good:#22c55e; --bad:#ef4444; --warn:#f59e0b;
+    }
+    *{box-sizing:border-box}
 
-        itv = (interval or "1h").strip().lower()
+    .wrap{max-width:1100px;margin:0 auto;padding:28px 18px 40px}
+    .topline{display:flex;align-items:center;gap:10px;color:var(--muted);letter-spacing:.12em;font-size:12px}
+    .dot{width:8px;height:8px;border-radius:50%;background:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.15)}
+    h1{margin:10px 0 6px;font-size:46px;line-height:1.05}
+    h1 .wow{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .sub{color:var(--muted);max-width:820px}
+    .bar{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 0}
+    .pill{padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.03);color:var(--muted);font-size:12px}
+    .grid{display:grid;grid-template-columns: 1.35fr .9fr;gap:14px;margin-top:18px}
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .card h2{margin:0 0 10px;font-size:13px;letter-spacing:.16em;color:var(--muted)}
+    .controls{display:grid;grid-template-columns: 1fr 1fr 1fr 1fr;gap:10px}
+    @media (max-width: 820px){ .controls{grid-template-columns:1fr 1fr} }
+    label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}
+    select, input{
+      width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);
+      background:rgba(0,0,0,.25);color:var(--text);outline:none
+    }
+    .actions{display:flex;gap:10px;margin-top:10px}
+    .btn{
+      flex:1;padding:12px 14px;border:0;border-radius:12px;color:#fff;font-weight:700;
+      background:var(--grad);cursor:pointer
+    }
+    .toggle{
+      flex:1;padding:12px 14px;border-radius:12px;border:1px solid var(--line);
+      background:rgba(0,0,0,.25);color:var(--text);cursor:pointer;font-weight:700
+    }
+    .iconbtn{width:44px;min-width:44px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--text);cursor:pointer}
+    .status{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:var(--muted);font-size:12px}
+    .list{margin-top:12px;border-top:1px solid var(--line)}
+    .row{display:grid;grid-template-columns: 1.1fr .9fr .55fr .75fr .55fr .55fr .55fr 1fr;
+      gap:10px;padding:10px 8px;border-bottom:1px solid var(--line);align-items:center}
+    .row.head{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.12em}
+    .row.item{cursor:pointer}
+    .row.item:hover{background:rgba(255,255,255,.03)}
+    .sym{font-weight:800}
+    .muted{color:var(--muted)}
+    .badge{display:inline-block;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.03);font-size:12px}
+    .score{font-weight:800}
+    .score.good{color:var(--good)} .score.bad{color:var(--bad)} .score.warn{color:var(--warn)}
+    .tags{display:flex;gap:6px;flex-wrap:wrap}
+    .tag{padding:4px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px;color:var(--muted);background:rgba(0,0,0,.18)}
+    .detail{min-height:420px;position:relative}
+    .detail .empty{color:var(--muted);padding:10px 6px}
+    .detail h3{margin:0 0 8px;font-size:13px;letter-spacing:.14em;color:var(--muted)}
+    .panel{margin-top:8px;border-top:1px solid var(--line);padding-top:10px}
+    .kv{display:grid;grid-template-columns: 1fr 1fr;gap:10px;margin-top:10px}
+    .kv .k{color:var(--muted);font-size:12px}
+    .kv .v{font-weight:800}
+    .chartbox{margin-top:10px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:rgba(0,0,0,.20)}
+    canvas{display:block;width:100%;height:220px}
+    .aiBox{position:absolute;bottom:14px;left:14px;right:14px;border:1px solid var(--line);border-radius:14px;padding:12px;background:rgba(0,0,0,.22)}
+    .aiBox .title{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:12px}
+    .aiBox p{margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.35}
+    .help{margin-top:18px}
+    .helpGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width: 900px){ .helpGrid{grid-template-columns:1fr} }
+    </style>
+    <div class="wrap">
+    <div class="topline"><span class="dot"></span><span>AI OPPORTUNITY SCANNER - DETECTION D'OPPORTUNITES</span></div>
+    <h1>Opportunity Scanner <span class="wow">WOW</span></h1>
+    <div class="sub">
+      Scanner IA base sur donnees live (CoinGecko) : breakout, trend, reversal, volume spike.
+      Clique une opportunite pour voir le graphique et la justification IA.
+    </div>
 
-        # Prefer Binance candles when the pair exists: it's the most direct source for
-        # the chart + rationale and stays consistent with the scanner.
-        src = "binance"
-        klines = []
-        if sym:
-            try:
-                klines = await _binance_klines(sym, interval=itv, limit=int(lookback or 240))
-            except Exception:
-                klines = []
+    <div class="bar">
+      <div class="pill" id="dataPill">Data: Binance + CoinGecko</div>
+      <div class="pill" id="lastPill">Derniere maj: -</div>
+      <div class="pill" id="universePill">Univers: -</div>
+      <div class="pill" id="selPill">Selection: -</div>
+    </div>
 
-        # Fallback to CoinGecko only if Binance is unavailable
-        if not klines:
-            src = "coingecko"
-            if not cid:
-                cid = _WOW_SYMBOL_TO_CGID.get(base)
-            if not cid and sym:
-                cid = await _cg_coin_id_from_symbol(sym)
-            if not cid:
-                return JSONResponse({"ok": False, "error": "coin_id introuvable (fait un scan d'abord)"}, status_code=400)
-            klines = await _fetch_cg_klines(cid, interval=itv, lookback=lookback)
+    <div class="grid">
+      <div class="card">
+        <h2>SCAN IA (LIVE)</h2>
+        <div class="controls">
+          <div>
+            <label>Univers (Top coins)</label>
+            <select id="universe">
+              <option value="20">Top 20</option>
+              <option value="30" selected>Top 30</option>
+              <option value="50">Top 50</option>
+            </select>
+          </div>
+          <div>
+            <label>Timeframe</label>
+            <select id="interval">
+              <option value="15m">15m</option>
+              <option value="1h" selected>1h</option>
+              <option value="4h">4h</option>
+              <option value="1d">1d</option>
+            </select>
+          </div>
+          <div>
+            <label>Lookback (candles)</label>
+            <select id="lookback">
+              <option value="120">120</option>
+              <option value="160">160</option>
+              <option value="240" selected>240</option>
+              <option value="360">360</option>
+            </select>
+          </div>
+          <div>
+            <label>Filtre</label>
+            <select id="mode">
+              <option value="all" selected>Tous</option>
+              <option value="breakout">Breakout</option>
+              <option value="trend">Trend</option>
+              <option value="reversal">Reversal</option>
+              <option value="spike">Volume spike</option>
+            </select>
+          </div>
+        </div>
 
-        if not klines:
-            return {
-                "ok": True,
-                "symbol": sym or (base.upper() + "USDT"),
-                "cg_id": cid,
-                "source": src,
-                "interval": itv,
-                "lookback": int(lookback or 240),
-                "series": [],
-                "score": 0,
-                "mode": "N/A",
-                "tags": ["no_data"],
-                "rationale": [
-                    "Aucune bougie récupérée pour ce symbole/timeframe (API temporairement indisponible ou paire non listée).",
-                    "Réessaie dans quelques secondes ou change le timeframe.",
-                ],
-            }
+        <div class="actions">
+          <button class="btn" id="scanBtn">Scanner maintenant</button>
+          <button class="toggle" id="autoBtn">Auto: OFF</button>
+          <button class="iconbtn" id="refreshBtn" title="Rafraichir">↻</button>
+        </div>
 
-        scored = _score_opportunity(klines, interval=itv, lookback=lookback)
+        <div class="list">
+          <div class="row head">
+            <div>Symbole</div><div>Mode</div><div>Score</div><div>Prix</div><div>Δ 24h</div><div>Vol</div><div>DD</div><div>Tags</div>
+          </div>
+          <div id="rows"></div>
+        </div>
 
-        # series for Chart.js (t = index)
-        series = [{"t": k.get("t"), "c": k.get("c")} for k in (klines or []) if isinstance(k, dict) and k.get("c") is not None]
+        <div class="status">
+          <div id="statusText">Pret. Les scores sont des probabilites IA (heuristiques) : valide toujours manuellement.</div>
+          <div id="rateText"></div>
+        </div>
+      </div>
 
-        return {
-            "ok": True,
-            "symbol": sym or (base.upper() + "USDT"),
-            "cg_id": cid,
-            "source": src,
-            "interval": itv,
-            "lookback": int(lookback or 240),
-            "series": series,
-            "score": scored.get("score"),
-            "mode": scored.get("mode"),
-            "tags": scored.get("tags"),
-            "rationale": scored.get("justif"),
-        }
-    except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+      <div class="card detail" id="detailCard">
+        <h3>ANALYSE IA DETAILLEE</h3>
+        <div class="empty" id="detailEmpty">Selectionne un coin pour voir le detail.</div>
 
+        <div class="panel" id="detailPanel" style="display:none;">
+          <div class="kv">
+            <div><div class="k">Symbole</div><div class="v" id="dSymbol">-</div></div>
+            <div><div class="k">Prix</div><div class="v" id="dPrice">-</div></div>
+            <div><div class="k">Mode</div><div class="v" id="dMode">-</div></div>
+            <div><div class="k">Score</div><div class="v" id="dScore">-</div></div>
+          </div>
 
+          <div class="chartbox"><canvas id="chart"></canvas></div>
 
+          <div style="margin-top:10px">
+            <div class="k">Justification IA (rationale)</div>
+            <div id="dRationale" style="margin-top:6px;color:var(--muted);line-height:1.4">-</div>
+          </div>
+
+          <div style="margin-top:10px">
+            <div class="k">Signal details</div>
+            <div id="dDetails" style="margin-top:6px;color:var(--muted);line-height:1.4">-</div>
+          </div>
+        </div>
+
+        <div class="aiBox">
+          <div class="title">
+            <span>AI Rationale</span>
+            <span class="badge">rules</span>
+          </div>
+          <p id="coachText">Astuce: combine avec "Gestion des risques" pour definir ton size et ton stop.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card help">
+      <h2>Aide - AI Opportunity Scanner - CryptoIA</h2>
+      <div class="helpGrid">
+        <div class="card" style="padding:14px">
+          <h2>A quoi sert cette page ?</h2>
+          <div class="sub" style="max-width:none">
+            Scanner IA d'opportunites (breakout, trend, reversal) sur donnees live Binance/CoinGecko.
+          </div>
+        </div>
+        <div class="card" style="padding:14px">
+          <h2>Comment l'utiliser ?</h2>
+          <div class="sub" style="max-width:none">
+            1) Choisis l'univers (Top 20/30/50) + timeframe. 2) Clique "Scanner" puis selectionne une ligne pour voir le graphique + justification IA.
+            3) Utilise ensuite "Gestion des risques" pour dimensionner la position et fixer un stop. Les scores aident a prioriser, mais ne remplacent pas ton jugement.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+    <script>
+
+(function(){
+  "use strict";
+
+  function fmt(n, d){
+    if(n === null || n === undefined || isNaN(Number(n))) return "-";
+    return Number(n).toFixed(d);
+  }
+  function pct(n){
+    if(n === null || n === undefined || isNaN(Number(n))) return "-";
+    var v = Number(n);
+    return (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+  }
+  function scoreClass(s){
+    if(s >= 70) return "good";
+    if(s >= 45) return "warn";
+    return "bad";
+  }
+
+  var universeEl = document.getElementById("universe");
+  var intervalEl = document.getElementById("interval");
+  var lookbackEl = document.getElementById("lookback");
+  var modeEl = document.getElementById("mode");
+
+  var scanBtn = document.getElementById("scanBtn");
+  var autoBtn = document.getElementById("autoBtn");
+  var refreshBtn = document.getElementById("refreshBtn");
+
+  var rowsEl = document.getElementById("rows");
+  var statusText = document.getElementById("statusText");
+
+  var lastPill = document.getElementById("lastPill");
+  var universePill = document.getElementById("universePill");
+  var selPill = document.getElementById("selPill");
+
+  var detailEmpty = document.getElementById("detailEmpty");
+  var detailPanel = document.getElementById("detailPanel");
+  var dSymbol = document.getElementById("dSymbol");
+  var dPrice = document.getElementById("dPrice");
+  var dMode = document.getElementById("dMode");
+  var dScore = document.getElementById("dScore");
+  var dRationale = document.getElementById("dRationale");
+  var dDetails = document.getElementById("dDetails");
+  var coachText = document.getElementById("coachText");
+
+  var canvas = document.getElementById("chart");
+  var ctx = canvas.getContext("2d");
+  var autoTimer = null;
+
+  function setCoachLines(text){
+    coachText.textContent = text;
+  }
+
+  function renderRows(items){
+    rowsEl.innerHTML = "";
+    if(!items || !items.length){
+      rowsEl.innerHTML = "<div class='row item'><div class='muted'>Aucun resultat.</div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>";
+      return;
+    }
+    items.forEach(function(it){
+      var score = Number(it.score || 0);
+      var tags = (it.tags || []).map(function(t){ return "<span class='tag'>"+t+"</span>"; }).join("");
+      var html = ""
+        + "<div class='row item' data-symbol='"+it.symbol+"' data-interval='"+it.interval+"' data-mode='"+it.mode+"'>"
+        + "  <div><div class='sym'>"+it.symbol+"</div><div class='muted' style='font-size:12px'>"+(it.name||"")+"</div></div>"
+        + "  <div><span class='badge'>"+(it.mode||"-")+"</span></div>"
+        + "  <div class='score "+scoreClass(score)+"'>"+fmt(score,0)+"/100</div>"
+        + "  <div>$"+fmt(it.price,4)+"</div>"
+        + "  <div class='muted'>"+pct(it.change_24h)+"</div>"
+        + "  <div class='muted'>"+fmt(it.vol_rel,1)+"%</div>"
+        + "  <div class='muted'>"+fmt(it.dd,1)+"%</div>"
+        + "  <div class='tags'>"+tags+"</div>"
+        + "</div>";
+      rowsEl.insertAdjacentHTML("beforeend", html);
+    });
+
+    Array.from(rowsEl.querySelectorAll(".row.item")).forEach(function(row){
+      row.addEventListener("click", function(){
+        selectSymbol(
+          row.getAttribute("data-symbol"),
+          row.getAttribute("data-interval"),
+          row.getAttribute("data-mode")
+        );
+      });
+    });
+  }
+
+  async function scanNow(){
+    var perPage = universeEl.value;
+    var interval = intervalEl.value;
+    var lookback = lookbackEl.value;
+    var mode = modeEl.value;
+
+    universePill.textContent = "Univers: " + perPage;
+    statusText.textContent = "Scan en cours...";
+    setCoachLines("Scan en cours...");
+
+    var url = "/api/v2/opportunity/scan?per_page="+encodeURIComponent(perPage)
+            + "&interval="+encodeURIComponent(interval)
+            + "&lookback="+encodeURIComponent(lookback)
+            + "&mode="+encodeURIComponent(mode);
+
+    try{
+      var t0 = performance.now();
+      var res = await fetch(url, {headers: {"Accept":"application/json"}});
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      var js = await res.json();
+
+      if (js && js.ok === false) {
+        detailEmpty.style.display = "block";
+        detailPanel.style.display = "none";
+        detailEmpty.textContent = "Détail indisponible : " + (js.error || "Erreur inconnue");
+        return;
+      }
+var t1 = performance.now();
+
+      var items = js.items || [];
+      renderRows(items);
+
+      lastPill.textContent = "Derniere maj: " + (js.updated_at || "-");
+      statusText.textContent = "OK - " + (items.length||0) + " resultats (" + Math.round(t1-t0) + "ms). Clique une ligne pour le detail.";
+      setCoachLines("Clique un coin pour voir l'analyse IA detaillee.");
+      selPill.textContent = "Selection: -";
+    }catch(e){
+      console.error(e);
+      statusText.textContent = "Erreur scan: " + (e && e.message ? e.message : e);
+      setCoachLines("Erreur. Verifie ta connexion et reessaie.");
+    }
+  }
+
+  function drawLineChart(series){
+    var rect = canvas.getBoundingClientRect();
+    canvas.width = Math.max(640, Math.floor(rect.width * window.devicePixelRatio));
+    canvas.height = Math.max(240, Math.floor(220 * window.devicePixelRatio));
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    if(!series || series.length < 2){
+      ctx.fillStyle = "rgba(255,255,255,.55)";
+      ctx.font = (14*window.devicePixelRatio) + "px system-ui";
+      ctx.fillText("Pas assez de donnees", 20*window.devicePixelRatio, 40*window.devicePixelRatio);
+      return;
+    }
+
+    var prices = series.map(function(p){return p.close;});
+    var min = Math.min.apply(null, prices);
+    var max = Math.max.apply(null, prices);
+    var pad = (max - min) * 0.08;
+    min -= pad; max += pad;
+
+    var W = canvas.width, H = canvas.height;
+    var left = 40*window.devicePixelRatio, right = 14*window.devicePixelRatio;
+    var top = 18*window.devicePixelRatio, bot = 30*window.devicePixelRatio;
+    var plotW = W - left - right;
+    var plotH = H - top - bot;
+
+    ctx.strokeStyle = "rgba(255,255,255,.07)";
+    ctx.lineWidth = 1*window.devicePixelRatio;
+    for(var i=0;i<=4;i++){
+      var y = top + (plotH*i/4);
+      ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(W-right, y); ctx.stroke();
+    }
+
+    ctx.strokeStyle = "rgba(34,211,238,.95)";
+    ctx.lineWidth = 2*window.devicePixelRatio;
+    ctx.beginPath();
+    series.forEach(function(p, i){
+      var x = left + (plotW * (i/(series.length-1)));
+      var y = top + (plotH * (1 - ((p.close - min)/(max-min))));
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255,255,255,.65)";
+    ctx.font = (12*window.devicePixelRatio) + "px system-ui";
+    ctx.fillText("$"+fmt(max,2), 6*window.devicePixelRatio, (top+10*window.devicePixelRatio));
+    ctx.fillText("$"+fmt(min,2), 6*window.devicePixelRatio, (top+plotH));
+  }
+
+  async async function selectSymbol(symbol, interval, mode){
+    selPill.textContent = "Selection: " + symbol;
+    statusText.textContent = "Chargement detail " + symbol + "...";
+    setCoachLines("Chargement de l'analyse IA...");
+
+    try{
+      var url = "/api/v2/opportunity/detail?symbol="+encodeURIComponent(symbol)
+              + "&interval="+encodeURIComponent(interval||intervalEl.value)
+              + "&lookback="+encodeURIComponent(lookbackEl.value || 240)
+              + "&mode="+encodeURIComponent(mode||modeEl.value);
+
+      var res = await fetch(url, {headers: {"Accept":"application/json"}});
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      var js = await res.json();
+
+      detailEmpty.style.display = "none";
+      detailPanel.style.display = "block";
+
+      dSymbol.textContent = js.symbol || symbol;
+      dPrice.textContent = "$" + fmt(js.price, 4);
+      dMode.textContent = js.mode || "-";
+      dScore.textContent = fmt(js.score || 0, 0) + "/100";
+      dScore.className = "v score " + scoreClass(Number(js.score||0));
+
+      dRationale.textContent = js.rationale || "Rationale indisponible.";
+      dDetails.textContent = js.details || "Details indisponibles.";
+
+      drawLineChart(js.series || []);
+      statusText.textContent = "Detail charge: " + symbol;
+      setCoachLines(js.rationale || "Analyse chargee.");
+    }catch(e){
+      console.error(e);
+      statusText.textContent = "Erreur detail: " + (e && e.message ? e.message : e);
+      setCoachLines("Erreur. Impossible de charger le detail.");
+    }
+  }
+
+  scanBtn.addEventListener("click", scanNow);
+  refreshBtn.addEventListener("click", scanNow);
+
+  autoBtn.addEventListener("click", function(){
+    if(autoTimer){
+      clearInterval(autoTimer);
+      autoTimer = null;
+      autoBtn.textContent = "Auto: OFF";
+      statusText.textContent = "Auto OFF.";
+      return;
+    }
+    autoTimer = setInterval(scanNow, 30000);
+    autoBtn.textContent = "Auto: ON";
+    statusText.textContent = "Auto ON: scan toutes les 30s.";
+    scanNow();
+  });
+
+  scanNow();
+})();
+
+    </script>
+    """
+    return _simple_page("AI Opportunity Scanner", body_html, request=request, show_title=False)
 @app.get("/static/{file_path:path}")
 async def _serve_static(file_path: str):
     """Sert les fichiers statiques (logo/CSS/JS) depuis les répertoires candidats."""

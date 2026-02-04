@@ -3116,7 +3116,7 @@ def _validate_interval(interval: str) -> str:
         raise ValueError("Interval invalide")
     return i
 
-async def _http_get_json(url: str, params: dict | None = None, timeout: float = 10.0, headers: dict | None = None):
+async def _http_get_json(url: str, params: dict | None = None, timeout: float = 10.0, headers: dict | None = None, cache_ttl: int = 0, **_kw):
     """GET JSON with small production hardening.
 
     - Supports query params.
@@ -3593,8 +3593,8 @@ async def _cg_coin_id_from_symbol(symbol: str):
         return _WOW_SYMBOL_TO_CGID[symbol]
     # fallback: try to refresh mapping from cached top list
     try:
-        top = await api_v2_market_top(universe="top250", count=250, interval="1h")
-        for c in top.get("coins", []):
+        top = await api_v2_market_top(limit=250, interval="1h")
+        for c in (top.get("items") or []):
             sid = (c.get("symbol") or "").strip().lower()
             cid = c.get("id")
             if sid and cid:
@@ -3627,7 +3627,7 @@ async def _fetch_cg_klines(coin_id: str, interval: str = "1h", lookback: int = 2
         "sparkline": "true",
         "price_change_percentage": "24h",
     }
-    data = await _http_get_json(_WOW_CG_MARKETS_URL, params=params, cache_ttl=45)
+    data = await _fetch_json(_WOW_CG_MARKETS_URL, params=params, timeout=18, cache_ttl=45)
     if not data or not isinstance(data, list):
         return []
     coin = data[0]
@@ -3673,7 +3673,7 @@ async def _fetch_cg_klines_market_chart(coin_id: str, interval: str = "1h", look
 
     url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
     params = {"vs_currency": _WOW_CG_VS, "days": days}
-    data = await _http_get_json(url, params=params, cache_ttl=35)
+    data = await _fetch_json(url, params=params, timeout=18, cache_ttl=35)
     prices = (data or {}).get("prices") if isinstance(data, dict) else None
     if not prices or not isinstance(prices, list):
         return []
@@ -3960,7 +3960,16 @@ async def api_v2_opportunity_scan(
             "updated_at": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
         }
     except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+        # Never hard-crash the UI: return a JSON payload (HTTP 200) with the error.
+        return {
+            "ok": False,
+            "error": str(e),
+            "items": [],
+            "count": 0,
+            "interval": (interval or "1h"),
+            "limit": int(per_page or 30),
+            "updated_at": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+        }
 
 
 # Compat: the UI uses POST (JSON body). Keep GET for direct URL testing.
@@ -3979,7 +3988,16 @@ async def api_v2_opportunity_scan_post(body: dict = Body(default={} )):
             filter=filter_mode,
         )
     except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+        # Never hard-crash the UI: return a JSON payload (HTTP 200) with the error.
+        return {
+            "ok": False,
+            "error": str(e),
+            "items": [],
+            "count": 0,
+            "interval": (interval or "1h"),
+            "limit": int(per_page or 30),
+            "updated_at": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+        }
 
 
 @app.get("/api/v2/opportunity/detail")
@@ -4003,7 +4021,7 @@ async def api_v2_opportunity_detail(
     try:
         sym = (symbol or "").strip().upper()
         if not sym:
-            return JSONResponse({"ok": False, "error": "Missing symbol"}, status_code=400)
+            return {"ok": False, "error": "Missing symbol"}
 
         interval_norm = str(interval or "1h").strip().lower()
         lb = max(30, min(int(lookback or 240), 2000))
@@ -4026,7 +4044,7 @@ async def api_v2_opportunity_detail(
                     globals()["_WOW_SYMBOL_TO_CGID"][sym] = cid
 
         if not cid:
-            return JSONResponse({"ok": False, "error": f"Unknown symbol: {sym}"}, status_code=404)
+            return {"ok": False, "error": f"Unknown symbol: {sym}"}
 
         # 2) Fetch series (market_chart -> resample) then fallback on sparkline
         klines = await _fetch_cg_klines_market_chart(cid, interval_norm, lb)
@@ -4036,7 +4054,7 @@ async def api_v2_opportunity_detail(
             src = "coingecko_sparkline_7d"
 
         if not klines or len(klines) < 10:
-            return JSONResponse({"ok": False, "error": "Not enough data"}, status_code=502)
+            return {"ok": False, "error": "Not enough data"}
 
         closes = []
         series = []
@@ -4052,7 +4070,7 @@ async def api_v2_opportunity_detail(
                 continue
 
         if len(closes) < 10:
-            return JSONResponse({"ok": False, "error": "Not enough data"}, status_code=502)
+            return {"ok": False, "error": "Not enough data"}
 
         price = closes[-1]
 
@@ -4115,7 +4133,7 @@ async def api_v2_opportunity_detail(
             "series": series,
         }
     except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+        return {"ok": False, "error": str(e)}
 
 @app.get("/ai-opportunity-scanner")
 async def ai_opportunity_scanner(request: Request):
@@ -14115,7 +14133,7 @@ async def spot_trading_page():
     return HTMLResponse(content=html_content)
 
 # ============= AI OPPORTUNITY SCANNER (WOW + LIVE) =============
-@app.get("/ai-opportunity-scanner", response_class=HTMLResponse)
+@app.get("/ai-opportunity-scanner-legacy", response_class=HTMLResponse)
 async def ai_opportunity_scanner(request: Request):
     # Page 100% self-contained (pas de jQuery) pour éviter les erreurs "$ is not defined".
     body = """
@@ -14517,6 +14535,7 @@ async def ai_opportunity_scanner(request: Request):
 
     try{
       var url = "/api/v2/opportunity/detail?symbol="+encodeURIComponent(symbol)
+              + "&cg_id="+encodeURIComponent(cgId||"")
               + "&interval="+encodeURIComponent(interval||intervalEl.value)
               + "&lookback="+encodeURIComponent(lookbackEl.value || 240)
               + "&mode="+encodeURIComponent(mode||modeEl.value);

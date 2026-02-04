@@ -3972,6 +3972,247 @@ async def api_v2_opportunity_scan(
 
 
 # Compat: the UI uses POST (JSON body). Keep GET for direct URL testing.
+
+
+
+# =========================
+# AI Market Regime (v2 API)
+# =========================
+
+_MARKET_REGIME_CACHE = {}  # key -> {"ts": float, "payload": dict}
+_MARKET_REGIME_TTL_SEC = 25
+
+def _clamp(v: float, lo: float, hi: float) -> float:
+    try:
+        v = float(v)
+    except Exception:
+        return lo
+    return max(lo, min(hi, v))
+
+def _std(values):
+    vals = [float(x) for x in values if x is not None]
+    n = len(vals)
+    if n < 2:
+        return 0.0
+    mu = sum(vals) / n
+    var = sum((x - mu) ** 2 for x in vals) / (n - 1)
+    return var ** 0.5
+
+def _pct_change(a: float, b: float) -> float:
+    try:
+        a = float(a); b = float(b)
+        if b == 0:
+            return 0.0
+        return (a / b - 1.0) * 100.0
+    except Exception:
+        return 0.0
+
+def _safe_float(x, default=0.0):
+    try:
+        return float(x)
+    except Exception:
+        return float(default)
+
+async def _compute_market_regime(interval: str = "4h", lookback: int = 240) -> dict:
+    """
+    Compute a market regime using live exchange data (Binance) + global market context (CoinGecko).
+    Returns a JSON-serializable payload used by /ai-market-regime.
+    """
+    interval = (interval or "4h").lower().strip()
+    if interval not in {"1h", "4h", "1d"}:
+        interval = "4h"
+
+    try:
+        lookback = int(lookback)
+    except Exception:
+        lookback = 240
+    lookback = max(120, min(lookback, 1000))
+
+    # --- Fetch series ---
+    btc_kl = await _binance_klines("BTCUSDT", interval, limit=lookback)
+    eth_kl = await _binance_klines("ETHUSDT", interval, limit=lookback)
+    ethbtc_kl = await _binance_klines("ETHBTC", interval, limit=lookback)
+
+    if not btc_kl or len(btc_kl) < 80:
+        raise RuntimeError("Données Binance insuffisantes pour calculer le régime (BTC).")
+
+    btc_close = [float(k[4]) for k in btc_kl]
+    eth_close = [float(k[4]) for k in eth_kl] if eth_kl else []
+    ethbtc_close = [float(k[4]) for k in ethbtc_kl] if ethbtc_kl else []
+
+    # --- Indicators ---
+    ema20 = _ema(btc_close, 20)
+    ema50 = _ema(btc_close, 50)
+    ema200 = _ema(btc_close, 200) if len(btc_close) >= 200 else _ema(btc_close, max(80, len(btc_close)//2))
+
+    px = btc_close[-1]
+    trend_vs_ema50 = _pct_change(px, ema50)
+    trend_vs_ema200 = _pct_change(px, ema200)
+
+    # momentum over last ~10 candles (timeframe dependent)
+    mom_n = 10 if len(btc_close) > 20 else max(3, len(btc_close)//3)
+    momentum = _pct_change(btc_close[-1], btc_close[-mom_n])
+
+    # volatility: std of returns (last 30 candles)
+    rets = []
+    for i in range(-31, -1):
+        if abs(i) <= len(btc_close):
+            prev = btc_close[i-1]
+            cur = btc_close[i]
+            if prev != 0:
+                rets.append((cur/prev - 1.0) * 100.0)
+    vol = _std(rets)  # in %
+
+    # alt strength proxy: ETHBTC momentum
+    alt_momentum = 0.0
+    if len(ethbtc_close) >= mom_n + 2:
+        alt_momentum = _pct_change(ethbtc_close[-1], ethbtc_close[-mom_n])
+
+    # --- Global context (CoinGecko) ---
+    cg = await _fetch_json("https://api.coingecko.com/api/v3/global", timeout=10)
+    cg_data = (cg or {}).get("data") or {}
+    total_mcap = _safe_float((cg_data.get("total_market_cap") or {}).get("usd"), 0.0)
+    mcap_chg_24h = _safe_float(cg_data.get("market_cap_change_percentage_24h_usd"), 0.0)
+    dom = cg_data.get("market_cap_percentage") or {}
+    btc_dom = _safe_float(dom.get("btc"), 0.0)
+    eth_dom = _safe_float(dom.get("eth"), 0.0)
+
+    # --- Scoring (AI-like heuristic; transparent factors) ---
+    # Trend
+    s_trend = _clamp(trend_vs_ema50 * 4.0, -40, 40)
+    s_cross = 15.0 if ema20 > ema50 else -15.0
+    s_mom = _clamp(momentum * 2.0, -20, 20)
+
+    # Volatility: lower vol = better risk-on. Typical intraday vol range ~0.5-3%
+    s_vol = _clamp((1.6 - vol) * 12.0, -20, 20)
+
+    # Alt strength: ETH/BTC up => risk-on (alts bid)
+    s_alt = _clamp(alt_momentum * 250.0, -25, 25)
+
+    # Dominance context: higher BTC dominance often = risk-off; use deviation vs 50% pivot softly
+    s_dom = _clamp((50.0 - btc_dom) * 0.8, -15, 15)
+
+    raw_score = s_trend + s_cross + s_mom + s_vol + s_alt + s_dom
+    score = float(_clamp(raw_score, -100, 100))
+
+    # Agreement/confidence
+    factor_signs = [
+        1 if s_trend > 0 else (-1 if s_trend < 0 else 0),
+        1 if s_cross > 0 else (-1 if s_cross < 0 else 0),
+        1 if s_mom > 0 else (-1 if s_mom < 0 else 0),
+        1 if s_vol > 0 else (-1 if s_vol < 0 else 0),
+        1 if s_alt > 0 else (-1 if s_alt < 0 else 0),
+        1 if s_dom > 0 else (-1 if s_dom < 0 else 0),
+    ]
+    pos = sum(1 for x in factor_signs if x > 0)
+    neg = sum(1 for x in factor_signs if x < 0)
+    agreement = abs(pos - neg) / 6.0  # 0..1
+    conf = int(_clamp((abs(score) / 100.0) * 70.0 + agreement * 30.0, 5, 95))
+
+    # Labels
+    if score >= 60:
+        regime = "RISK-ON (BULL)"
+        vibe = "🚀"
+        badge = "success"
+    elif score >= 20:
+        regime = "RISK-ON"
+        vibe = "🟢"
+        badge = "success"
+    elif score <= -60:
+        regime = "RISK-OFF (DEFENSIF)"
+        vibe = "🧊"
+        badge = "danger"
+    elif score <= -20:
+        regime = "RISK-OFF"
+        vibe = "🔴"
+        badge = "danger"
+    else:
+        regime = "NEUTRE"
+        vibe = "🟡"
+        badge = "warning"
+
+    # Sparkline (BTC close) - use last 80 pts
+    sp = _sparkline_svg(btc_close[-80:], w=260, h=56, stroke="rgba(255,255,255,0.85)")
+    sp_alt = _sparkline_svg(ethbtc_close[-80:], w=260, h=56, stroke="rgba(176,220,255,0.9)") if len(ethbtc_close) >= 40 else ""
+
+    # Rationale bullets
+    reasons = []
+    reasons.append(f"BTC vs EMA50: {trend_vs_ema50:+.2f}%")
+    reasons.append(f"Momentum ({mom_n} bougies): {momentum:+.2f}%")
+    reasons.append(f"Volatilité (≈30 bougies): {vol:.2f}%")
+    if len(ethbtc_close) >= mom_n + 2:
+        reasons.append(f"Force ALT (ETH/BTC): {alt_momentum:+.3f}%")
+    reasons.append(f"Dominance BTC: {btc_dom:.1f}% (ETH: {eth_dom:.1f}%)")
+    reasons.append(f"Market cap 24h: {mcap_chg_24h:+.2f}%")
+
+    factors = [
+        {"name": "Trend (EMA50)", "value": trend_vs_ema50, "score": s_trend, "hint": "Prix vs EMA50"},
+        {"name": "Cross (EMA20/50)", "value": 1 if ema20 > ema50 else -1, "score": s_cross, "hint": "EMA20 au-dessus / en-dessous"},
+        {"name": "Momentum", "value": momentum, "score": s_mom, "hint": f"Variation sur {mom_n} bougies"},
+        {"name": "Volatilité", "value": vol, "score": s_vol, "hint": "Plus bas = mieux (risk-on)"},
+        {"name": "Force ALT", "value": alt_momentum, "score": s_alt, "hint": "ETH/BTC monte = alts bid"},
+        {"name": "Dominance", "value": btc_dom, "score": s_dom, "hint": "Dominance BTC élevée = plus défensif"},
+    ]
+
+    now_iso = dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    payload = {
+        "ok": True,
+        "interval": interval,
+        "lookback": lookback,
+        "updated_at": now_iso,
+        "regime": regime,
+        "badge": badge,
+        "vibe": vibe,
+        "score": round(score, 1),
+        "confidence": conf,
+        "btc_price": px,
+        "total_mcap_usd": total_mcap,
+        "mcap_change_24h_pct": round(mcap_chg_24h, 2),
+        "btc_dominance_pct": round(btc_dom, 2),
+        "eth_dominance_pct": round(eth_dom, 2),
+        "spark_btc_svg": sp,
+        "spark_alt_svg": sp_alt,
+        "reasons": reasons,
+        "factors": factors,
+        "notes": [
+            "Sources: Binance (prix/klines), CoinGecko (market cap & dominance).",
+            "Ce score est un modèle heuristique (IA) pour donner une lecture rapide — pas un conseil financier."
+        ],
+    }
+    return payload
+
+@app.get("/api/v2/market-regime", response_class=JSONResponse)
+async def api_v2_market_regime(interval: str = "4h", lookback: int = 240):
+    """
+    Live market regime endpoint used by /ai-market-regime.
+    Cached briefly to avoid rate-limits.
+    """
+    try:
+        key = f"{(interval or '4h').lower()}|{int(lookback) if str(lookback).isdigit() else 240}"
+    except Exception:
+        key = "4h|240"
+
+    now = time.time()
+    cached = _MARKET_REGIME_CACHE.get(key)
+    if cached and (now - cached.get("ts", 0)) < _MARKET_REGIME_TTL_SEC:
+        return JSONResponse(cached["payload"])
+
+    try:
+        payload = await _compute_market_regime(interval=interval, lookback=lookback)
+    except Exception as e:
+        payload = {
+            "ok": False,
+            "error": "market_regime_failed",
+            "message": str(e)[:300],
+            "interval": (interval or "4h"),
+            "lookback": lookback,
+            "updated_at": dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+        }
+
+    _MARKET_REGIME_CACHE[key] = {"ts": now, "payload": payload}
+    return JSONResponse(payload)
+
+
 @app.post("/api/v2/opportunity/scan")
 async def api_v2_opportunity_scan_post(body: dict = Body(default={} )):
     try:
@@ -14592,305 +14833,441 @@ async def ai_opportunity_scanner(request: Request):
     return HTMLResponse(body)
 
 
+
 @app.get("/ai-market-regime", response_class=HTMLResponse)
 async def ai_market_regime_page(request: Request):
-    """AI Market Regime (v2) — basé sur données publiques (CoinGecko).
-
-    Objectif: donner un "régime" (Risk-On / Risk-Off / Range) à partir de métriques globales.
-    (Ce n’est pas un conseil financier; ce sont des indicateurs agrégés.)
     """
-    user = get_current_user_from_session(request)
-    try:
-        _u = user or {}
-        _uname = (_u.get("username") or _u.get("email") or "").strip()
-        _role = (_u.get("role") or _u.get("session_role") or "").strip()
-        _plan = (get_user_effective_plan(_uname) or "") if _uname else ""
-        print(f"🔎 /ai-market-regime auth: username={_uname!r} role={_role!r} plan={_plan!r}")
-    except Exception as _e:
-        print(f"⚠️ /ai-market-regime auth debug failed: {_e}")
+    AI Market Regime (WOW): live regime computed from Binance + CoinGecko via /api/v2/market-regime.
+    """
+    body = r"""
+<style>
+  .mr-hero{
+    position:relative; overflow:hidden;
+    border:1px solid rgba(255,255,255,.10);
+    background: radial-gradient(1200px 360px at 10% 0%, rgba(120,180,255,.20), transparent 60%),
+                radial-gradient(900px 300px at 90% 20%, rgba(170,120,255,.14), transparent 60%),
+                linear-gradient(180deg, rgba(18,24,38,.92), rgba(12,18,30,.92));
+    border-radius:18px; padding:18px 18px 14px;
+    box-shadow: 0 18px 60px rgba(0,0,0,.45);
+  }
+  .mr-hero:before{
+    content:""; position:absolute; inset:-2px;
+    background: linear-gradient(90deg, rgba(120,180,255,.22), rgba(170,120,255,.18), rgba(120,180,255,.22));
+    filter: blur(28px); opacity:.35; pointer-events:none;
+  }
+  .mr-title{ position:relative; display:flex; gap:12px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;}
+  .mr-title h1{ margin:0; font-size:20px; letter-spacing:.3px;}
+  .mr-title p{ margin:6px 0 0; opacity:.86; font-size:13px; max-width:820px; line-height:1.5;}
+  .mr-controls{ position:relative; display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px;}
+  .mr-pill{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:8px 10px; border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.06);
+    backdrop-filter: blur(8px);
+    font-size:12px; color: rgba(255,255,255,.92);
+  }
+  .mr-pill select, .mr-pill input{
+    background: rgba(0,0,0,.25);
+    border:1px solid rgba(255,255,255,.14);
+    color: rgba(255,255,255,.95);
+    border-radius:10px;
+    padding:6px 8px;
+    outline:none;
+  }
+  .mr-btn{
+    cursor:pointer;
+    padding:9px 12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.14);
+    background: linear-gradient(90deg, rgba(120,180,255,.22), rgba(170,120,255,.18));
+    color:#fff; font-weight:700; font-size:12px;
+    box-shadow: 0 10px 26px rgba(0,0,0,.35);
+  }
+  .mr-btn:active{ transform: translateY(1px); }
+  .mr-grid{
+    display:grid; grid-template-columns: 1.05fr .95fr; gap:12px;
+    margin-top:12px;
+  }
+  @media (max-width: 980px){
+    .mr-grid{ grid-template-columns: 1fr; }
+  }
+  .mr-card{
+    border:1px solid rgba(255,255,255,.10);
+    background: rgba(10,14,25,.62);
+    border-radius:16px;
+    padding:14px;
+    box-shadow: 0 14px 50px rgba(0,0,0,.35);
+  }
+  .mr-card h3{ margin:0 0 10px; font-size:13px; opacity:.92; letter-spacing:.2px; }
+  .mr-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .mr-badge{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 10px; border-radius:999px;
+    border:1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.06);
+    font-size:12px; font-weight:800;
+  }
+  .mr-badge.success{ background: rgba(46, 204, 113, .12); border-color: rgba(46, 204, 113, .22); }
+  .mr-badge.warning{ background: rgba(241, 196, 15, .12); border-color: rgba(241, 196, 15, .22); }
+  .mr-badge.danger{  background: rgba(231, 76, 60, .12);  border-color: rgba(231, 76, 60, .22); }
+  .mr-score{
+    display:flex; flex-direction:column; gap:6px;
+    padding:12px; border-radius:14px;
+    border:1px solid rgba(255,255,255,.10);
+    background: radial-gradient(600px 220px at 10% 10%, rgba(120,180,255,.18), transparent 60%),
+                radial-gradient(520px 220px at 90% 0%, rgba(170,120,255,.14), transparent 60%),
+                rgba(0,0,0,.18);
+  }
+  .mr-score .big{ font-size:34px; font-weight:900; letter-spacing:.4px; }
+  .mr-score .sub{ font-size:12px; opacity:.86; }
+  .mr-meter{
+    height:10px; border-radius:999px; overflow:hidden;
+    background: rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.10);
+  }
+  .mr-meter > div{ height:100%; width:50%; background: linear-gradient(90deg, rgba(231,76,60,.85), rgba(241,196,15,.85), rgba(46,204,113,.85)); }
+  .mr-kpi{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;
+    margin-top:10px;
+  }
+  @media (max-width: 700px){
+    .mr-kpi{ grid-template-columns: 1fr; }
+  }
+  .mr-kpi .k{
+    border:1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.05);
+    border-radius:14px; padding:10px;
+  }
+  .mr-kpi .k .t{ font-size:11px; opacity:.78; margin-bottom:4px;}
+  .mr-kpi .k .v{ font-size:14px; font-weight:800;}
+  .mr-sparks{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}
+  .mr-spark{
+    flex: 1 1 260px;
+    border:1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.04);
+    border-radius:14px; padding:10px;
+  }
+  .mr-spark .lbl{ font-size:11px; opacity:.78; margin-bottom:6px;}
+  .mr-list{ margin:0; padding-left:18px; }
+  .mr-list li{ margin:6px 0; opacity:.92; font-size:12px; line-height:1.45; }
+  .mr-factors{ display:flex; flex-direction:column; gap:8px; }
+  .mr-factor{
+    border:1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.04);
+    border-radius:14px; padding:10px;
+  }
+  .mr-factor .top{ display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .mr-factor .name{ font-size:12px; font-weight:800; }
+  .mr-factor .hint{ font-size:11px; opacity:.76; margin-top:4px;}
+  .mr-bar{
+    margin-top:8px;
+    height:10px; border-radius:999px; overflow:hidden;
+    background: rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.10);
+    position:relative;
+  }
+  .mr-bar:after{
+    content:""; position:absolute; left:50%; top:-2px; bottom:-2px; width:2px;
+    background: rgba(255,255,255,.22);
+  }
+  .mr-bar > div{
+    position:absolute; top:0; bottom:0;
+    background: rgba(120,180,255,.75);
+    border-radius:999px;
+  }
+  .mr-foot{
+    margin-top:12px;
+    border:1px dashed rgba(255,255,255,.16);
+    background: rgba(255,255,255,.04);
+    border-radius:16px;
+    padding:14px;
+  }
+  .mr-foot h3{ margin:0 0 8px; font-size:13px;}
+  .mr-foot p, .mr-foot li{ font-size:12px; opacity:.9; line-height:1.55;}
+  .mr-muted{ opacity:.75; font-size:12px; }
+  .mr-error{
+    padding:10px 12px;
+    border-radius:14px;
+    border:1px solid rgba(231,76,60,.25);
+    background: rgba(231,76,60,.10);
+    color: rgba(255,255,255,.92);
+    font-size:12px;
+  }
+</style>
 
-    # Admin = accès total
-    if user and str(user.get("username", "")).lower() == "admin":
-        can_access = True
-    else:
-        can_access = check_route_permission(user, "/ai-market-regime")
-    if not can_access:
-        return access_denied_page(
-            request,
-            page_title="AI Market Regime",
-            required_plan=get_required_plan_for_route("/ai-market-regime") or "Premium"
-        )
+<div class="mr-hero">
+  <div class="mr-title">
+    <div>
+      <h1>🧠 AI Market Regime</h1>
+      <p>
+        Lecture “intelligente” du marché crypto (Risk-On / Neutre / Risk-Off) basée sur des données <b>en temps réel</b>.
+        Le moteur combine <b>tendance</b>, <b>momentum</b>, <b>volatilité</b>, <b>dominance</b> et <b>force des alts</b> pour te donner une direction claire.
+      </p>
+      <div class="mr-muted">Sources live: Binance (prix/klines) + CoinGecko (market cap & dominance). Dernière mise à jour: <span id="mrUpdated">—</span></div>
+    </div>
+    <div class="mr-badge" id="mrBadge">Chargement…</div>
+  </div>
 
-    # --- Fetch (avec cache/clé CoinGecko via _fetch_json) ---
-    error = None
-    data = {}
-    try:
-        # Prix + variations 24h BTC/ETH
-        prices = await _fetch_json(
-            "https://api.coingecko.com/api/v3/simple/price",
-            params={"ids": "bitcoin,ethereum", "vs_currencies": "usd", "include_24hr_change": "true"},
-            ttl_seconds=90,
-            use_coingecko_key=True,
-        )
-        # Données globales (dominance BTC + variation market cap)
-        globald = await _fetch_json(
-            "https://api.coingecko.com/api/v3/global",
-            params={},
-            ttl_seconds=180,
-            use_coingecko_key=True,
-        )
-        data = {"prices": prices or {}, "global": (globald or {}).get("data", {})}
-    except Exception as e:
-        error = str(e)
+  <div class="mr-controls" role="group" aria-label="Contrôles du régime">
+    <span class="mr-pill">
+      Timeframe
+      <select id="mrTf" aria-label="Timeframe">
+        <option value="1h">1H (très réactif)</option>
+        <option value="4h" selected>4H (équilibré)</option>
+        <option value="1d">1D (tendance macro)</option>
+      </select>
+    </span>
+    <span class="mr-pill">
+      Lookback
+      <input id="mrLookback" type="number" min="120" max="1000" value="240" style="width:92px" aria-label="Lookback (nombre de bougies)"/>
+    </span>
+    <button class="mr-btn" id="mrRefreshBtn" type="button">🔄 Analyser maintenant</button>
+    <span class="mr-pill">
+      Auto
+      <input id="mrAuto" type="checkbox" checked aria-label="Auto refresh"/>
+      <span class="mr-muted">/ 25s</span>
+    </span>
+  </div>
 
-    # --- Compute regime ---
-    prices = data.get("prices", {}) or {}
-    g = data.get("global", {}) or {}
-    btc_chg = float((prices.get("bitcoin", {}) or {}).get("usd_24h_change") or 0.0)
-    eth_chg = float((prices.get("ethereum", {}) or {}).get("usd_24h_change") or 0.0)
+  <div class="mr-grid" style="position:relative;">
+    <div class="mr-card">
+      <div class="mr-row">
+        <h3 style="margin:0;">Régime & Score</h3>
+        <span class="mr-badge" id="mrConf">Confiance —%</span>
+      </div>
 
-    mc_chg = float(g.get("market_cap_change_percentage_24h_usd") or 0.0)
-    mc_total = float(((g.get("total_market_cap", {}) or {}).get("usd")) or 0.0)
-    btc_dom = float(((g.get("market_cap_percentage", {}) or {}).get("btc")) or 0.0)
-
-    # Heuristique simple (robuste, lisible)
-    if mc_chg <= -2.0 and btc_chg <= -1.0:
-        regime = "Risk-Off"
-        mood = "Baissier"
-        hint = "Marché sous pression (capitulation / aversion au risque)."
-        color = "#ff5a5a"
-        confidence = 0.78
-    elif mc_chg >= 2.0 and btc_chg >= 1.0:
-        regime = "Risk-On"
-        mood = "Haussier"
-        hint = "Flux positifs (appétit pour le risque)."
-        color = "#20f7c7"
-        confidence = 0.78
-    else:
-        regime = "Range"
-        mood = "Neutre"
-        hint = "Pas de signal clair: consolidation / régime mixte."
-        color = "#9aa6b2"
-        confidence = 0.55
-
-    # Ajustements: dominance BTC très élevée => prudence sur alt season
-    if btc_dom >= 55.0 and regime == "Risk-On":
-        hint += " Dominance BTC élevée: les alts peuvent sous-performer."
-        confidence = min(0.85, confidence + 0.05)
-    if btc_dom <= 45.0 and regime == "Risk-On":
-        hint += " Dominance BTC plus basse: contexte souvent favorable aux alts."
-        confidence = min(0.85, confidence + 0.05)
-
-
-    # Mini-sparklines (24h) pour un visuel plus pro (cache serveur)
-    spark_btc = ""
-    spark_eth = ""
-    try:
-        btc_chart = await _fetch_json(
-            "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart",
-            params={"vs_currency": "usd", "days": "1", "interval": "hourly"},
-            ttl_seconds=180,
-            use_coingecko_key=True,
-        )
-        btc_vals = [p[1] for p in (btc_chart.get("prices") or [])][-60:]
-        spark_btc = _sparkline_svg(btc_vals)
-    except Exception:
-        spark_btc = ""
-
-    try:
-        eth_chart = await _fetch_json(
-            "https://api.coingecko.com/api/v3/coins/ethereum/market_chart",
-            params={"vs_currency": "usd", "days": "1", "interval": "hourly"},
-            ttl_seconds=180,
-            use_coingecko_key=True,
-        )
-        eth_vals = [p[1] for p in (eth_chart.get("prices") or [])][-60:]
-        spark_eth = _sparkline_svg(eth_vals)
-    except Exception:
-        spark_eth = ""
-        # --- UI (intégrée dans le layout global du site) ---
-    warn = ""
-    if error:
-        warn = f"""
-        <div class="mr-warn">
-          ⚠️ Données partielles: {html.escape(error)}. La page affiche le dernier état calculable.
-        </div>
-        """
-
-    def _fmt_pct(x: float) -> str:
-        return f"{x:+.2f}%"
-
-    badge_cls = "mid"
-    if regime == "Risk-On":
-        badge_cls = "ok"
-    elif regime == "Risk-Off":
-        badge_cls = "bad"
-
-    now_str = datetime.now().strftime("%H:%M:%S")
-
-    body = f"""
-    <style>
-      .mr-page .mr-card {{
-        background: rgba(255,255,255,.06);
-        border: 1px solid rgba(255,255,255,.10);
-        border-radius: 18px;
-        padding: 18px;
-      }}
-      .mr-page .mr-top {{
-        display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
-        margin-bottom: 10px;
-      }}
-      .mr-page .mr-badge {{
-        display:inline-flex; align-items:center; gap:8px;
-        padding: 6px 10px; border-radius: 999px; font-weight: 800; letter-spacing:.3px;
-        border: 1px solid rgba(255,255,255,.14);
-        background: rgba(0,0,0,.18);
-      }}
-      .mr-page .mr-dot {{ width:10px; height:10px; border-radius:50%; background:{color}; box-shadow: 0 0 0 3px rgba(255,255,255,.08); }}
-      .mr-page .mr-conf {{ color: rgba(255,255,255,.76); font-weight:700; }}
-      .mr-page .mr-h {{
-        margin: 6px 0 4px 0;
-        font-size: 20px; font-weight: 900;
-      }}
-      .mr-page .mr-sub {{ color: rgba(255,255,255,.80); margin: 0 0 12px 0; }}
-      .mr-page .mr-kpis {{
-        display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px;
-        margin-top: 10px;
-      }}
-      @media (min-width: 900px) {{
-        .mr-page .mr-kpis {{ grid-template-columns: repeat(4, minmax(0,1fr)); }}
-      }}
-      .mr-page .mr-kpi {{
-        background: rgba(0,0,0,.18);
-        border: 1px solid rgba(255,255,255,.10);
-        border-radius: 14px;
-        padding: 12px;
-      }}
-      .mr-page .mr-kpi .t {{ color: rgba(255,255,255,.70); font-weight:700; font-size:12px; }}
-      .mr-page .mr-kpi .v {{ font-weight: 900; font-size: 16px; margin-top: 2px; }}
-      .mr-page .mr-kpi .s {{ color: rgba(255,255,255,.70); font-weight:700; font-size:12px; margin-top: 4px; display:flex; align-items:center; justify-content:space-between; gap:10px; }}
-      .mr-page .spark {{ opacity: .95; }}
-      .mr-page .mr-guide {{
-        margin-top: 14px;
-        background: rgba(0,0,0,.18);
-        border: 1px solid rgba(255,255,255,.10);
-        border-radius: 14px;
-        padding: 12px;
-      }}
-      .mr-page .mr-guide h3 {{ margin:0 0 6px 0; font-size:14px; font-weight:900; }}
-      .mr-page .mr-guide ul {{ margin: 6px 0 0 18px; color: rgba(255,255,255,.82); }}
-      .mr-page .mr-warn {{
-        margin: 0 0 12px 0;
-        padding: 10px 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,140,0,.35);
-        background: rgba(255,140,0,.10);
-        color: rgba(255,255,255,.92);
-        font-weight: 700;
-      }}
-    </style>
-
-    <div class="mr-page">
-      {warn}
-      <div class="mr-card">
-        <div class="mr-top">
-          <div class="mr-badge {badge_cls}">
-            <span class="mr-dot"></span>
-            <span>{html.escape(regime)} · {html.escape(mood)}</span>
+      <div class="mr-score" style="margin-top:10px;">
+        <div class="mr-row">
+          <div>
+            <div class="big" id="mrScore">—</div>
+            <div class="sub" id="mrRegime">—</div>
           </div>
-          <div class="mr-conf">Confiance ≈ {confidence*100:.0f}% · Dominance BTC: {btc_dom:.1f}%</div>
-        </div>
-
-        <div class="mr-h">Régime détecté: <span style="color:{color}">{html.escape(regime)}</span></div>
-        <p class="mr-sub">{html.escape(hint)}</p>
-        <p class="mr-sub" style="opacity:.75;">Source: CoinGecko • Mise à jour: {now_str}</p>
-
-        <div class="mr-kpis">
-          <div class="mr-kpi">
-            <div class="t">BTC (24h)</div>
-            <div class="v">{_fmt_pct(btc_chg)}</div>
-            <div class="s"><span>7j</span>{spark_btc}</div>
-          </div>
-          <div class="mr-kpi">
-            <div class="t">ETH (24h)</div>
-            <div class="v">{_fmt_pct(eth_chg)}</div>
-            <div class="s"><span>7j</span>{spark_eth}</div>
-          </div>
-          <div class="mr-kpi">
-            <div class="t">Market Cap (24h)</div>
-            <div class="v">{_fmt_pct(mc_chg)}</div>
-            <div class="s"><span>Global</span><span>—</span></div>
-          </div>
-          <div class="mr-kpi">
-            <div class="t">Dominance BTC</div>
-            <div class="v">{btc_dom:.1f}%</div>
-            <div class="s"><span>Indice</span><span>—</span></div>
+          <div style="text-align:right;">
+            <div class="sub">BTC spot</div>
+            <div style="font-weight:900; font-size:16px;" id="mrBtc">—</div>
           </div>
         </div>
+        <div class="mr-meter" aria-label="Score meter" title="Score -100 à +100 (gauche: risk-off, droite: risk-on)">
+          <div id="mrMeterFill"></div>
+        </div>
+        <div class="mr-muted" id="mrNotes" style="margin-top:8px;"></div>
+      </div>
 
-        <div class="mr-guide">
-          <h3>Comment utiliser cette page</h3>
-          <ul>
-            <li><b>Risk-On</b> : privilégier des stratégies “tendance” et la rotation altcoins (avec gestion du risque).</li>
-            <li><b>Risk-Off</b> : réduire l’exposition, privilégier BTC / cash, attendre un signal clair.</li>
-            <li><b>Range</b> : stratégies de range (supports/résistances), prises rapides, tailles plus petites.</li>
-            <li>Ce module donne un <b>contexte</b> (régime), pas un signal d’entrée/sortie tout seul.</li>
-          </ul>
+      <div class="mr-kpi">
+        <div class="k"><div class="t">Market Cap (USD)</div><div class="v" id="mrMcap">—</div></div>
+        <div class="k"><div class="t">Market Cap 24h</div><div class="v" id="mrMcapChg">—</div></div>
+        <div class="k"><div class="t">Dominance BTC / ETH</div><div class="v" id="mrDom">—</div></div>
+      </div>
+
+      <div class="mr-sparks">
+        <div class="mr-spark">
+          <div class="lbl">BTC (spark)</div>
+          <div id="mrSparkBtc">—</div>
+        </div>
+        <div class="mr-spark">
+          <div class="lbl">Force ALT (ETH/BTC)</div>
+          <div id="mrSparkAlt" class="mr-muted">—</div>
         </div>
       </div>
     </div>
-    """
 
-    return HTMLResponse(_simple_page("AI Market Regime", body, sidebar_html=SIDEBAR_FULL), status_code=200)
+    <div class="mr-card">
+      <h3>Pourquoi l’IA dit ça</h3>
+      <div id="mrErr" style="display:none;" class="mr-error"></div>
 
+      <div style="margin-top:8px;">
+        <ul class="mr-list" id="mrReasons"></ul>
+      </div>
 
-# ----------------------------------------------------------------------
-# Whale Watcher helpers (fallback) — évite 500 si les modules externes ne sont pas présents
-# ----------------------------------------------------------------------
-async def _real_whale_transactions(symbol: str = "BTC", limit: int = 25):
-    """Récupère des transactions 'whales'.
-    
-    Fallback sans clé/API externe : retourne une liste vide (la page reste fonctionnelle).
-    Tu peux brancher ici WhaleAlert, Arkham, Glassnode, etc. plus tard.
-    """
-    try:
-        # Pas d'API externe par défaut (pas de clé).
-        return []
-    except Exception:
-        return []
+      <div style="margin-top:10px;">
+        <h3 style="margin-bottom:8px;">Facteurs (contribution)</h3>
+        <div class="mr-factors" id="mrFactors"></div>
+      </div>
 
-def _whale_watcher(transactions):
-    """Construit un payload simple pour l'UI (summary + transactions)."""
-    txs = []
-    for t in (transactions or []):
-        if not isinstance(t, dict):
-            continue
-        # normalise et rend JSON-safe
-        tx = {
-            "time": str(t.get("time", "")),
-            "symbol": str(t.get("symbol", "")),
-            "amount": float(t.get("amount", 0) or 0),
-            "usd": float(t.get("usd", 0) or 0),
-            "direction": str(t.get("direction", "")),
-            "from": str(t.get("from", "")),
-            "to": str(t.get("to", "")),
-            "txid": str(t.get("txid", "")),
-        }
-        txs.append(tx)
-    total_usd = 0.0
-    biggest = None
-    for tx in txs:
-        total_usd += float(tx.get("usd", 0) or 0)
-        if biggest is None or float(tx.get("usd", 0) or 0) > float(biggest.get("usd", 0) or 0):
-            biggest = tx
-    return {
-        "summary": {
-            "count": len(txs),
-            "total_usd": round(total_usd, 2),
-            "biggest": biggest or {},
-        },
-        "transactions": txs,
+      <div class="mr-foot">
+        <h3>Actions rapides (guide)</h3>
+        <ul class="mr-list" style="margin-top:6px;">
+          <li><b>Risk‑On</b> → privilégie setups long + rotation alts (mais garde un stop).</li>
+          <li><b>Neutre</b> → réduis la taille, prends uniquement les A+ setups, attends la cassure.</li>
+          <li><b>Risk‑Off</b> → focus BTC/ETH, protège le capital, évite les alts fragiles.</li>
+        </ul>
+        <div class="mr-muted" style="margin-top:8px;">Astuce: compare 4H (réactivité) vs 1D (macro). Quand les deux sont alignés, les décisions sont souvent plus faciles.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mr-foot" style="margin-top:14px;">
+    <h3>À quoi sert cette page</h3>
+    <p>
+      <b>/ai-market-regime</b> te donne une lecture unique: “le marché est-il en mode prise de risque (Risk‑On) ou protection (Risk‑Off) ?”
+      Ça aide à choisir <b>le type de trades</b> (agressif vs prudent), <b>la taille</b> et <b>le niveau de stop</b>.
+    </p>
+    <h3 style="margin-top:12px;">Comment l’utiliser</h3>
+    <ul class="mr-list" style="margin-top:6px;">
+      <li>Choisis un <b>timeframe</b> (4H recommandé) et clique <b>Analyser maintenant</b>.</li>
+      <li>Regarde <b>Régime</b> + <b>Confiance</b> + <b>Score</b> (‑100 → +100).</li>
+      <li>Lis “<b>Pourquoi l’IA dit ça</b>” pour comprendre les facteurs (trend, momentum, vol…).</li>
+      <li>Si tu trades court terme: 1H. Si tu trades swing: 4H / 1D.</li>
+      <li>Ne prends pas un trade contre le régime sans raison (ex: contre‑tendance) et une gestion du risque stricte.</li>
+    </ul>
+    <p class="mr-muted" style="margin-top:10px;">
+      Disclaimer: indicateur d’aide à la décision (données réelles, calculs heuristiques). Ce n’est pas un conseil financier.
+    </p>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+
+  function fmtUSD(x){
+    try{
+      const n = Number(x);
+      if(!isFinite(n)) return "—";
+      return n.toLocaleString(undefined,{maximumFractionDigits: n>1000?0:2}) + " $";
+    }catch(e){ return "—"; }
+  }
+  function fmtBigUSD(x){
+    try{
+      const n = Number(x);
+      if(!isFinite(n) || n<=0) return "—";
+      const abs = Math.abs(n);
+      const units = [
+        {v:1e12,s:"T"},
+        {v:1e9,s:"B"},
+        {v:1e6,s:"M"},
+        {v:1e3,s:"K"},
+      ];
+      for(const u of units){
+        if(abs>=u.v) return (n/u.v).toFixed(2) + " " + u.s;
+      }
+      return n.toFixed(2);
+    }catch(e){ return "—"; }
+  }
+  function pct(x){
+    const n = Number(x);
+    if(!isFinite(n)) return "—";
+    const sign = n>0 ? "+" : "";
+    return sign + n.toFixed(2) + "%";
+  }
+
+  function setBadge(badge, txt){
+    const el = $("mrBadge");
+    el.className = "mr-badge " + (badge || "");
+    el.textContent = txt || "—";
+  }
+
+  function renderFactors(list){
+    const root = $("mrFactors");
+    root.innerHTML = "";
+    if(!Array.isArray(list) || !list.length){
+      root.innerHTML = '<div class="mr-muted">Aucun facteur.</div>';
+      return;
     }
+    for(const f of list){
+      const score = Number(f.score || 0);
+      const left = score < 0 ? 50 + score/2 : 50;
+      const width = Math.min(50, Math.abs(score)/2);
+      const bar = document.createElement("div");
+      bar.className = "mr-factor";
+      bar.innerHTML = `
+        <div class="top">
+          <div>
+            <div class="name">${(f.name || "Facteur")}</div>
+            <div class="hint">${(f.hint || "")}</div>
+          </div>
+          <div style="font-weight:900;">${score>0?"+":""}${score.toFixed(1)}</div>
+        </div>
+        <div class="mr-bar" aria-label="Contribution">
+          <div style="left:${left}%; width:${width}%; ${score<0?'background: rgba(231,76,60,.75);':''}"></div>
+        </div>
+      `;
+      root.appendChild(bar);
+    }
+  }
+
+  async function load(){
+    const tf = ($("mrTf").value || "4h").trim();
+    const lookback = Math.max(120, Math.min(1000, parseInt($("mrLookback").value || "240", 10)));
+    $("mrLookback").value = String(lookback);
+
+    $("mrErr").style.display = "none";
+
+    try{
+      setBadge("", "Chargement…");
+      const url = `/api/v2/market-regime?interval=${encodeURIComponent(tf)}&lookback=${encodeURIComponent(lookback)}`;
+      const r = await fetch(url, {headers: {"Accept": "application/json"}});
+      const data = await r.json();
+
+      if(!data || !data.ok){
+        const msg = (data && (data.message || data.error)) ? (data.message || data.error) : "Impossible de charger les données.";
+        $("mrErr").textContent = msg;
+        $("mrErr").style.display = "block";
+        setBadge("danger", "Erreur");
+        return;
+      }
+
+      $("mrUpdated").textContent = (data.updated_at || "—").replace("T"," ").replace("Z"," UTC");
+      setBadge(data.badge || "", `${data.vibe || "🧠"} ${data.regime || "—"}`);
+
+      const sc = Number(data.score || 0);
+      $("mrScore").textContent = sc.toFixed(1);
+      $("mrRegime").textContent = `Score -100 → +100 • ${data.regime}`;
+      $("mrConf").textContent = `Confiance ${data.confidence}%`;
+
+      // meter fill: map [-100..100] => [0..100]
+      const pctFill = Math.max(0, Math.min(100, (sc + 100) / 2));
+      $("mrMeterFill").style.width = pctFill + "%";
+
+      $("mrBtc").textContent = fmtUSD(data.btc_price);
+      $("mrMcap").textContent = fmtBigUSD(data.total_mcap_usd);
+      $("mrMcapChg").textContent = pct(data.mcap_change_24h_pct);
+      $("mrDom").textContent = `${Number(data.btc_dominance_pct||0).toFixed(1)}% / ${Number(data.eth_dominance_pct||0).toFixed(1)}%`;
+
+      $("mrSparkBtc").innerHTML = data.spark_btc_svg || "—";
+      $("mrSparkAlt").innerHTML = data.spark_alt_svg || '<span class="mr-muted">Pas assez de données ETH/BTC.</span>';
+
+      const reasons = $("mrReasons");
+      reasons.innerHTML = "";
+      (data.reasons || []).forEach((x) => {
+        const li = document.createElement("li");
+        li.textContent = x;
+        reasons.appendChild(li);
+      });
+
+      renderFactors(data.factors || []);
+
+      const notes = (data.notes || []).slice(0,2).join(" • ");
+      $("mrNotes").textContent = notes || "";
+
+    }catch(e){
+      $("mrErr").textContent = "Erreur réseau. Réessaie.";
+      $("mrErr").style.display = "block";
+      setBadge("danger", "Erreur");
+    }
+  }
+
+  $("mrRefreshBtn").addEventListener("click", load);
+  $("mrTf").addEventListener("change", load);
+
+  let timer = null;
+  function startAuto(){
+    if(timer) clearInterval(timer);
+    timer = setInterval(() => {
+      if($("mrAuto").checked) load();
+    }, 25000);
+  }
+  $("mrAuto").addEventListener("change", startAuto);
+
+  startAuto();
+  load();
+})();
+</script>
+    """
+    # Sidebar: keep the global navigation consistent
+    return HTMLResponse(_simple_page("AI Market Regime", body, sidebar_html=SIDEBAR_HTML))
+
 
 @app.get("/ai-whale-watcher", response_class=HTMLResponse)
 async def ai_whale_watcher():

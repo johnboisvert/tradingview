@@ -69723,3 +69723,460 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html: str = "
     )
     return _HTMLResponse(html)
 
+
+# ============================================================
+# AI OPPORTUNITY SCANNER — FINAL FIX (intraday + detail panel)
+# - Fixes 15m/1h/4h intervals with real intraday data via CoinGecko market_chart
+# - Fixes detailed panel always "not enough data"
+# - Keeps Binance as best-effort, but provides robust fallback (Railway US-safe)
+# - De-dupes duplicate routes in this monolithic file (keeps LAST definition)
+# ============================================================
+
+import math as _math
+import time as _time
+import asyncio as _asyncio
+
+def _aiosc__interval_minutes(iv: str) -> int:
+    iv = (iv or "").strip().lower()
+    return {
+        "1m": 1, "3m": 3, "5m": 5, "15m": 15, "30m": 30,
+        "1h": 60, "2h": 120, "4h": 240, "6h": 360, "8h": 480, "12h": 720,
+        "1d": 1440, "3d": 4320, "1w": 10080
+    }.get(iv, 60)
+
+def _aiosc__pick_days_for_cg(lookback: int, interval: str) -> int:
+    '''Pick CoinGecko `days` parameter to ensure enough samples for the requested lookback.
+
+    We choose a conservative days bucket to:
+    - have enough history for the requested number of candles
+    - keep resolution high for intraday (15m, 1h) by avoiding too-large days
+    '''
+    try:
+        lb = int(lookback or 240)
+    except Exception:
+        lb = 240
+    lb = max(5, min(1000, lb))
+
+    minutes = _aiosc__interval_minutes(interval)
+    needed_days = (lb * minutes) / 1440.0
+    needed_days = max(1.0, needed_days * 1.15)  # buffer
+
+    buckets = [1, 2, 3, 7, 14, 30, 90, 180, 365]
+    for d in buckets:
+        if needed_days <= d:
+            return d
+    return 365
+
+def _aiosc__resample_market_chart_to_candles(prices, volumes, interval: str):
+    '''Convert CoinGecko market_chart arrays to candle-like dicts: {t,o,h,l,c,v}.'''
+    iv_min = _aiosc__interval_minutes(interval)
+    if not prices or iv_min <= 0:
+        return []
+
+    pts = []
+    for p in prices:
+        try:
+            ts = int(p[0])
+            val = float(p[1])
+            if _math.isfinite(val):
+                pts.append((ts, val))
+        except Exception:
+            continue
+    if not pts:
+        return []
+    pts.sort(key=lambda x: x[0])
+
+    vol_map = {}
+    if volumes:
+        for v in volumes:
+            try:
+                vol_map[int(v[0])] = float(v[1])
+            except Exception:
+                continue
+
+    bucket_ms = int(iv_min * 60_000)
+    candles = []
+    cur_bucket = None
+    o = h = l = c = None
+    v_sum = 0.0
+
+    def flush():
+        nonlocal cur_bucket, o, h, l, c, v_sum
+        if cur_bucket is None or c is None:
+            return
+        candles.append({"t": cur_bucket, "o": o, "h": h, "l": l, "c": c, "v": v_sum})
+        cur_bucket = None
+        o = h = l = c = None
+        v_sum = 0.0
+
+    for ts, val in pts:
+        b = (ts // bucket_ms) * bucket_ms
+        if cur_bucket is None:
+            cur_bucket = b
+            o = h = l = c = val
+            v_sum = 0.0
+        elif b != cur_bucket:
+            flush()
+            cur_bucket = b
+            o = h = l = c = val
+            v_sum = 0.0
+        else:
+            if val > h: h = val
+            if val < l: l = val
+            c = val
+
+        vv = vol_map.get(ts)
+        if vv is not None and _math.isfinite(vv):
+            v_sum += float(vv)
+
+    flush()
+    return candles
+
+async def _aiosc__cg_market_chart_candles(coin_id: str, interval: str, lookback: int, ttl: int = 35):
+    '''Fetch candles from CoinGecko market_chart and resample to the requested interval.'''
+    cid = (coin_id or "").strip()
+    if not cid:
+        return []
+    interval = (interval or "1h").strip().lower()
+    days = _aiosc__pick_days_for_cg(lookback, interval)
+
+    ck = f"cg:mc:{cid}:{days}"
+    try:
+        cached = _cache_get(ck)
+        if cached is not None:
+            raw = cached
+        else:
+            url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
+            params = {"vs_currency": "usd", "days": str(days)}
+            raw = await _fetch_json(url, params=params, timeout=18, cache_ttl=ttl, use_coingecko_key=True)
+            if isinstance(raw, dict):
+                _cache_set(ck, raw, ttl=ttl)
+    except Exception:
+        raw = None
+
+    if not isinstance(raw, dict):
+        return []
+    prices = raw.get("prices") or []
+    vols = raw.get("total_volumes") or raw.get("volumes") or []
+    candles = _aiosc__resample_market_chart_to_candles(prices, vols, interval)
+
+    try:
+        lb = int(lookback or 240)
+    except Exception:
+        lb = 240
+    lb = max(5, min(1000, lb))
+    if len(candles) > lb:
+        candles = candles[-lb:]
+    return candles
+
+async def _aiosc__binance_klines_best_effort(symbol: str, interval: str, limit: int = 500, ttl: int = 20):
+    '''Best-effort Binance klines with multiple base URLs (some hosts are US-safe).'''
+    symbol = (symbol or "").upper().strip()
+    interval = (interval or "").lower().strip()
+    if not symbol or not interval:
+        return []
+    limit = max(5, min(int(limit or 500), 1000))
+
+    bases = [
+        "https://api.binance.com",
+        "https://data-api.binance.vision",
+        "https://fapi.binance.com",
+    ]
+    for base in bases:
+        path = "/api/v3/klines" if "fapi" not in base else "/fapi/v1/klines"
+        url = f"{base}{path}"
+        try:
+            data = await _fetch_json(
+                url,
+                params={"symbol": symbol, "interval": interval, "limit": str(limit)},
+                timeout=15,
+                cache_ttl=ttl,
+                use_coingecko_key=False
+            )
+            if isinstance(data, list) and data:
+                out = []
+                for row in data:
+                    try:
+                        if isinstance(row, (list, tuple)) and len(row) >= 6:
+                            out.append({"t": int(row[0]), "o": float(row[1]), "h": float(row[2]), "l": float(row[3]), "c": float(row[4]), "v": float(row[5])})
+                        elif isinstance(row, dict) and ("c" in row or "close" in row):
+                            out.append({
+                                "t": int(row.get("t") or row.get("time") or 0),
+                                "o": float(row.get("o") or row.get("open") or 0),
+                                "h": float(row.get("h") or row.get("high") or 0),
+                                "l": float(row.get("l") or row.get("low") or 0),
+                                "c": float(row.get("c") or row.get("close") or 0),
+                                "v": float(row.get("v") or row.get("volume") or 0)
+                            })
+                    except Exception:
+                        continue
+                if out:
+                    return out
+        except Exception:
+            continue
+    return []
+
+# --- Override CoinGecko klines helper to use market_chart (intraday-friendly) ---
+async def _fetch_cg_klines(coin_id: str, interval: str = "1h", lookback: int = 240):
+    return await _aiosc__cg_market_chart_candles(coin_id, interval=interval, lookback=lookback, ttl=35)
+
+# --- Override Opportunity Scan endpoint (timeframe-sensitive scan) ---
+@app.get("/api/v2/opportunity/scan")
+async def api_v2_opportunity_scan(universe: str = "", interval: str = "1h", lookback: int = 240, filter: str = "Tous", per_page: int = 30, mode: str = "all"):
+    try:
+        u_raw = (universe or "").strip().lower()
+        digits = re.findall(r"\d+", u_raw)
+        limit = int(digits[0]) if digits else int(per_page or 30)
+        limit = max(5, min(80, limit))  # perf guardrail
+
+        interval_norm = (interval or "1h").strip().lower()
+        try:
+            interval_norm = _validate_interval(interval_norm if interval_norm != "24h" else "1d")
+        except Exception:
+            interval_norm = "1h"
+
+        try:
+            lb = int(lookback or 240)
+        except Exception:
+            lb = 240
+        lb = max(20, min(800, lb))
+
+        top = await api_v2_market_top(limit=limit, spark=0, interval=interval_norm)
+        items = top.get("items") or []
+        for c in items:
+            try:
+                sym = (c.get("symbol") or "").strip().lower()
+                cid = c.get("id")
+                if sym and cid:
+                    _WOW_SYMBOL_TO_CGID[sym] = cid
+            except Exception:
+                pass
+
+        tickers_24h = await _binance_24h_tickers_map(ttl_seconds=12)
+
+        sem = _asyncio.Semaphore(8)
+        out = []
+
+        async def _one(coin: dict):
+            sym0 = (coin.get("symbol") or "").upper().strip()
+            cid = coin.get("id") or _WOW_SYMBOL_TO_CGID.get((sym0 or "").lower())
+            if not sym0 or not cid:
+                return None
+
+            async with sem:
+                candles = await _aiosc__cg_market_chart_candles(cid, interval=interval_norm, lookback=lb, ttl=35)
+
+            if len(candles) < 10:
+                pair = _validate_symbol(f"{sym0}USDT")
+                candles = await _aiosc__binance_klines_best_effort(pair, interval_norm, limit=lb, ttl=15)
+
+            if len(candles) < 10:
+                return None
+
+            closes = [float(k.get("c")) for k in candles if isinstance(k, dict) and k.get("c") is not None]
+            if len(closes) < 10:
+                return None
+
+            score, tags = _opportunity_score(closes, lookback=min(len(closes), lb))
+            mode_name = _opportunity_mode(tags)
+
+            if mode and mode.lower() not in ("all", "tous", ""):
+                if mode.lower() not in mode_name.lower() and mode.lower() not in ",".join(tags).lower():
+                    return None
+
+            last_price = closes[-1]
+            pair = f"{sym0}USDT"
+            t = tickers_24h.get(pair) if isinstance(tickers_24h, dict) else None
+            if isinstance(t, dict):
+                p_bin = _wow_float(t.get("lastPrice"), None)
+                if p_bin is not None and _math.isfinite(p_bin):
+                    last_price = p_bin
+                chg24 = _wow_float(t.get("priceChangePercent"), None)
+            else:
+                chg24 = coin.get("change_24h_pct")
+
+            w = closes[-min(len(closes), lb):]
+            peak = max(w) if w else closes[-1]
+            dd = ((w[-1] / peak - 1.0) * 100.0) if peak else 0.0
+
+            rets = []
+            for i in range(1, len(w)):
+                if w[i-1]:
+                    rets.append((w[i] / w[i-1] - 1.0) * 100.0)
+            vol_rel = (sum(abs(r) for r in rets) / len(rets)) if rets else 0.0
+
+            return {
+                "symbol": pair,
+                "cg_id": cid,
+                "name": coin.get("name") or sym0,
+                "interval": interval_norm,
+                "mode": mode_name,
+                "score": int(score or 0),
+                "price": float(last_price) if last_price is not None else None,
+                "change_24h": chg24,
+                "vol_rel": float(vol_rel),
+                "dd": float(dd),
+                "tags": tags,
+            }
+
+        gathered = await _asyncio.gather(*[_one(c) for c in items])
+        for it in gathered:
+            if it:
+                out.append(it)
+
+        out.sort(key=lambda x: (x.get("score") or 0), reverse=True)
+        updated_at = _dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+        return {"ok": True, "updated_at": updated_at, "items": out, "meta": {"interval": interval_norm, "lookback": lb, "universe": limit}}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)[:220]}, status_code=200)
+
+@app.post("/api/v2/opportunity/scan")
+async def api_v2_opportunity_scan_post(body: dict = Body(default={})):
+    body = body or {}
+    return await api_v2_opportunity_scan(
+        universe=str(body.get("universe") or ""),
+        interval=str(body.get("interval") or "1h"),
+        lookback=int(body.get("lookback") or 240),
+        filter=str(body.get("filter") or "Tous"),
+        per_page=int(body.get("per_page") or 30),
+        mode=str(body.get("mode") or "all"),
+    )
+
+@app.get("/api/v2/opportunity/detail")
+async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback: int = 240, mode: str = "all", cg_id: str = ""):
+    sym = (symbol or "").upper().strip()
+    if not sym or not re.fullmatch(r"[A-Z0-9]{2,20}", sym):
+        return JSONResponse({"ok": False, "error": "Symbol invalide"}, status_code=200)
+
+    interval_norm = (interval or "1h").strip().lower()
+    try:
+        interval_norm = _validate_interval(interval_norm if interval_norm != "24h" else "1d")
+    except Exception:
+        interval_norm = "1h"
+
+    try:
+        lb = int(lookback or 240)
+    except Exception:
+        lb = 240
+    lb = max(20, min(800, lb))
+
+    cid = (cg_id or "").strip()
+    if not cid:
+        base = sym.replace("USDT", "").replace("USD", "").lower()
+        cid = _WOW_SYMBOL_TO_CGID.get(base)
+
+    klines = await _aiosc__binance_klines_best_effort(sym, interval_norm, limit=lb, ttl=20)
+
+    if (not klines or len(klines) < 10) and cid:
+        klines = await _aiosc__cg_market_chart_candles(cid, interval=interval_norm, lookback=lb, ttl=35)
+
+    if not klines or len(klines) < 10:
+        return JSONResponse({
+            "ok": False,
+            "symbol": sym,
+            "error": "Pas assez de données pour ce timeframe. Essaie un lookback plus petit ou un coin plus liquide.",
+            "details": {"interval": interval_norm, "lookback": lb, "cg_id": cid or None}
+        }, status_code=200)
+
+    closes = []
+    for k in klines:
+        try:
+            closes.append(float(k.get("c")))
+        except Exception:
+            continue
+    closes = [c for c in closes if c is not None and _math.isfinite(c)]
+    if len(closes) < 10:
+        return JSONResponse({"ok": False, "symbol": sym, "error": "Pas assez de données de clôture."}, status_code=200)
+
+    price = closes[-1]
+    score, tags = _opportunity_score(closes, lookback=min(len(closes), lb))
+    mode2 = _opportunity_mode(tags)
+
+    sc = _score_opportunity([{"c": c} for c in closes], interval=interval_norm, lookback=min(len(closes), lb)) or {}
+    justif = str(sc.get("justif") or "").strip()
+    tag_txt = ", ".join(tags) if tags else "aucun signal fort"
+
+    ret_approx = None
+    try:
+        if closes[0]:
+            ret_approx = (closes[-1] / closes[0] - 1.0) * 100.0
+    except Exception:
+        ret_approx = None
+
+    dd_pct = 0.0
+    vol = 0.0
+    try:
+        w = closes[-min(len(closes), lb):]
+        peak = w[0]
+        max_dd = 0.0
+        for c in w:
+            if c > peak:
+                peak = c
+            dd = (c / peak - 1.0) * 100.0
+            if dd < max_dd:
+                max_dd = dd
+        dd_pct = max_dd
+        rets = [(w[i] / w[i-1] - 1.0) for i in range(1, len(w)) if w[i-1]]
+        if rets:
+            mean = sum(rets) / len(rets)
+            var = sum((r - mean) ** 2 for r in rets) / len(rets)
+            vol = var ** 0.5
+    except Exception:
+        pass
+
+    rationale = (justif if justif else "Signal neutre : à surveiller.")
+    rationale += "\n\n" + (
+        f"Mode détecté: {mode2}.\nTags: {tag_txt}.\n"
+        + (f"Retour approx: {ret_approx:.2f}%" if ret_approx is not None else "Retour approx: n/a")
+        + f" | Drawdown approx: {dd_pct:.1f}% | Volatilité: {vol:.4f}."
+    )
+
+    details = {
+        "interval": interval_norm,
+        "lookback": lb,
+        "cg_id": cid,
+        "tags": tags,
+        "ret_approx": ret_approx,
+        "drawdown_pct": dd_pct,
+        "volatility": vol,
+    }
+
+    return JSONResponse({
+        "ok": True,
+        "symbol": sym,
+        "price": price,
+        "mode": mode2,
+        "score": int(score or 0),
+        "rationale": rationale,
+        "details": details,
+        "series": [{"t": k.get("t"), "o": k.get("o"), "h": k.get("h"), "l": k.get("l"), "c": k.get("c"), "v": k.get("v")} for k in klines],
+    }, status_code=200)
+
+def _dedupe_routes_keep_last(_app):
+    '''Remove duplicate routes (same path + methods) keeping the LAST definition.'''
+    try:
+        routes = list(getattr(_app.router, "routes", []) or [])
+        seen = {}
+        for idx, r in enumerate(routes):
+            path = getattr(r, "path", None)
+            methods = tuple(sorted(getattr(r, "methods", []) or []))
+            if not path or not methods:
+                continue
+            seen[(path, methods)] = idx  # last wins
+
+        new_routes = []
+        for idx, r in enumerate(routes):
+            path = getattr(r, "path", None)
+            methods = tuple(sorted(getattr(r, "methods", []) or []))
+            if path and methods and (path, methods) in seen and seen[(path, methods)] != idx:
+                continue
+            new_routes.append(r)
+        _app.router.routes = new_routes
+    except Exception:
+        pass
+
+try:
+    _dedupe_routes_keep_last(app)
+except Exception:
+    pass
+

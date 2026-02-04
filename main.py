@@ -3961,7 +3961,32 @@ async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback:
                 ret_24 = (closes[-1] / closes[0] - 1.0) * 100.0
             except Exception:
                 ret_24 = None
-        # Rationale (human readable)
+
+        # Volatilité (std des returns) + Drawdown max sur la fenêtre (pour alimenter l'analyse IA)
+        dd_pct = 0.0
+        vol = 0.0
+        try:
+            if closes and len(closes) > 2:
+                w = closes[-min(len(closes), lookback):]
+                peak = w[0]
+                max_dd = 0.0
+                for c in w:
+                    if c > peak:
+                        peak = c
+                    dd = (c / peak - 1.0) * 100.0
+                    if dd < max_dd:
+                        max_dd = dd
+                dd_pct = max_dd
+                rets = [(w[i] / w[i-1] - 1.0) for i in range(1, len(w)) if w[i-1]]
+                if rets:
+                    mean = sum(rets) / len(rets)
+                    var = sum((r - mean) ** 2 for r in rets) / len(rets)
+                    vol = var ** 0.5
+        except Exception:
+            dd_pct = 0.0
+            vol = 0.0
+
+# Rationale (human readable)
         tag_txt = ", ".join(tags) if tags else "aucun signal fort"
         rationale = (
             f"Mode détecté: {mode2}.\n"
@@ -69199,3 +69224,102 @@ le="font-weight:800;">Rafraîchir</button>
         </script>
         """
         return HTMLResponse(_simple_page("Pépites Crypto", body, sidebar=SIDEBAR_FULL))
+
+
+# ==========================================================
+# HOTFIX_STABLE_SIMPLE_PAGE_2026_02_04
+# Objectif: éviter les pages qui affichent le HTML en texte brut
+# et stabiliser le layout (sidebar) si un ancien bloc du fichier
+# a redéfini _simple_page de façon incorrecte.
+# ==========================================================
+try:
+    from html import escape as _html_escape  # noqa
+except Exception:
+    def _html_escape(x):  # type: ignore
+        return str(x)
+
+try:
+    from starlette.responses import HTMLResponse as _HTMLResponse  # noqa
+except Exception:
+    from fastapi.responses import HTMLResponse as _HTMLResponse  # type: ignore
+
+def _simple_page(title: str, body_html: str, request=None, sidebar_html: str = "", show_title: bool = True):
+    """Wrapper HTML stable (retourne toujours une HTMLResponse).
+
+    - sidebar_html: HTML du menu gauche (optionnel).
+    - show_title: affiche ou non le titre dans le contenu.
+    """
+    # Si body_html contient déjà un document complet, on le renvoie tel quel.
+    if body_html.lstrip().lower().startswith("<!doctype") or "<html" in body_html[:400].lower():
+        return _HTMLResponse(body_html)
+
+    safe_title = _html_escape(title or "CryptoIA")
+    sidebar_block = ""
+    main_margin = "0"
+    if sidebar_html:
+        sidebar_block = "<aside class='sidebar'>%s</aside>" % sidebar_html
+        main_margin = "280px"
+
+    title_block = ("<div class='page-title'>%s</div>" % safe_title) if show_title else ""
+
+    html = """<!doctype html>
+<html lang='fr'>
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='width=device-width,initial-scale=1'/>
+  <title>{{safe_title}}</title>
+  <style>
+    :root {{
+      --bg:#0b1020;
+      --text:#e6e9f5;
+      --border: rgba(255,255,255,.10);
+    }}
+    body {{
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background: radial-gradient(900px 500px at 30% 0%, rgba(124,58,237,.18), transparent),
+                  radial-gradient(900px 500px at 80% 10%, rgba(34,211,238,.14), transparent),
+                  var(--bg);
+      color:var(--text);
+    }}
+    .sidebar {{
+      position:fixed; left:0; top:0; bottom:0; width:280px;
+      overflow:auto;
+      background: rgba(9, 14, 28, .85);
+      border-right:1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }}
+    .main {{
+      margin-left:{{main_margin}};
+      padding: 22px 22px 60px;
+    }}
+    .page-wrap {{
+      max-width: 1400px;
+      margin: 0 auto;
+    }}
+    .page-title {{
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: .2px;
+      margin: 8px 0 14px;
+    }}
+  </style>
+</head>
+<body>
+  {{sidebar_block}}
+  <main class='main'>
+    <div class='page-wrap'>
+      {{title_block}}
+      {{body_html}}
+    </div>
+  </main>
+</body>
+</html>""".format(
+        safe_title=safe_title,
+        main_margin=main_margin,
+        sidebar_block=sidebar_block,
+        title_block=title_block,
+        body_html=body_html,
+    )
+    return _HTMLResponse(html)
+

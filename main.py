@@ -4000,120 +4000,207 @@ async def api_v2_opportunity_scan_post(body: dict = Body(default={} )):
 
 @app.get("/api/v2/opportunity/detail")
 async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback: int = 240, mode: str = "all"):
-    """Return detailed analysis + a simple close-price series for a selected symbol.
+    """Détail d'une opportunité (graph + justification).
 
-    Notes:
-    - Uses CoinGecko prices (same source as the WOW scanner cards) to stay consistent.
-    - This is best-effort live data; can be delayed by upstream APIs.
+    Objectif:
+    - Ne JAMAIS crasher (pas de 500 "gratuit") : on renvoie ok:false + message clair.
+    - Données *réelles* : priorité Binance (klines) puis fallback CoinGecko si besoin.
+    - Compatible avec l'UI: renvoie series[] avec {t, close, c, open, high, low, v}.
     """
+    sym = (symbol or "").strip().upper()
+    if not sym:
+        return JSONResponse({"ok": False, "error": "Missing symbol"}, status_code=200)
+
+    # Normaliser intervalle
+    interval_norm = str(interval or "1h").strip().lower()
+    # L'UI peut envoyer "1H", "1h", "60m", etc.
+    interval_map = {
+        "60m": "1h", "1hour": "1h", "1hr": "1h",
+        "240m": "4h", "4hour": "4h", "4hr": "4h",
+        "1440m": "1d", "1day": "1d",
+    }
+    interval_norm = interval_map.get(interval_norm, interval_norm)
+
+    # Lookback sécurisé
     try:
-        sym = (symbol or "").strip().upper()
-        if not sym:
-            return JSONResponse({"ok": False, "error": "Missing symbol"}, status_code=400)
+        lb = int(lookback or 240)
+    except Exception:
+        lb = 240
+    lb = max(30, min(lb, 1000))
 
-        interval_norm = str(interval or "1h").strip()
-        lb = max(30, min(int(lookback or 240), 2000))
+    # Le client peut envoyer un "mode" décoré (ex "breakdown:1") → on assainit
+    try:
+        mode_raw = (mode or "all").strip().lower()
+        mode_raw = mode_raw.split(":", 1)[0]
+        mode_safe = re.sub(r"[^a-z0-9_\-]", "", mode_raw) or "all"
+    except Exception:
+        mode_safe = "all"
 
-        # Build / refresh mapping from symbol->CoinGecko id if needed
-        if not isinstance(globals().get("_WOW_SYMBOL_TO_CGID"), dict):
-            globals()["_WOW_SYMBOL_TO_CGID"] = {}
-        cid = globals()["_WOW_SYMBOL_TO_CGID"].get(sym)
-        if not cid:
-            # Try infer from base symbol (e.g., BTCUSDT -> btc)
-            base = sym
-            for q in ("USDT", "USD", "BUSD", "USDC"):
-                if base.endswith(q):
-                    base = base[:-len(q)]
-                    break
-            cid = await _cg_coin_id_from_symbol(base)
+    klines = []
+    source = None
+
+    # 1) Binance (priorité) : données OHLCV ultra stables pour le chart
+    try:
+        b = await _binance_klines(sym, interval_norm, limit=lb, ttl_seconds=10)
+        # Binance renvoie parfois un dict d'erreur → on valide bien "list"
+        if isinstance(b, list) and b and isinstance(b[0], (list, tuple)) and len(b[0]) >= 6:
+            for row in b:
+                try:
+                    klines.append({
+                        "t": int(row[0]),
+                        "o": float(row[1]),
+                        "h": float(row[2]),
+                        "l": float(row[3]),
+                        "c": float(row[4]),
+                        "v": float(row[5]),
+                    })
+                except Exception:
+                    continue
+            if len(klines) >= 10:
+                source = "binance"
+    except Exception:
+        klines = []
+
+    # 2) Fallback CoinGecko (si Binance KO ou symbole non dispo)
+    if len(klines) < 10:
+        try:
+            if not isinstance(globals().get("_WOW_SYMBOL_TO_CGID"), dict):
+                globals()["_WOW_SYMBOL_TO_CGID"] = {}
+
+            cid = globals()["_WOW_SYMBOL_TO_CGID"].get(sym)
+            if not cid:
+                base = sym
+                for q in ("USDT", "USD", "BUSD", "USDC"):
+                    if base.endswith(q):
+                        base = base[:-len(q)]
+                        break
+                cid = await _cg_coin_id_from_symbol(base)
+                if cid:
+                    globals()["_WOW_SYMBOL_TO_CGID"][sym] = cid
+
             if cid:
-                globals()["_WOW_SYMBOL_TO_CGID"][sym] = cid
+                cg = await _fetch_cg_klines(cid, interval_norm, lb)
+                if isinstance(cg, list) and len(cg) >= 10:
+                    klines = cg
+                    source = "coingecko"
+        except Exception:
+            pass
 
-        if not cid:
-            return JSONResponse({"ok": False, "error": f"Unknown symbol: {sym}"}, status_code=404)
+    if not klines or len(klines) < 10:
+        return JSONResponse({
+            "ok": False,
+            "symbol": sym,
+            "error": "Impossible de récupérer assez de données pour ce symbole (Binance/CoinGecko).",
+        }, status_code=200)
 
-        klines = await _fetch_cg_klines(cid, interval_norm, lb)
-        if not klines or len(klines) < 10:
-            return JSONResponse({"ok": False, "error": "Not enough data"}, status_code=502)
+    # Série close
+    closes = []
+    for k in klines:
+        try:
+            c = k.get("c", None)
+            if c is None:
+                continue
+            closes.append(float(c))
+        except Exception:
+            continue
 
-        closes = [float(k.get("c", 0) or 0) for k in klines if (k.get("c") is not None)]
-        price = closes[-1] if closes else None
+    if len(closes) < 10:
+        return JSONResponse({"ok": False, "symbol": sym, "error": "Not enough close data"}, status_code=200)
 
-        # Compute same heuristics as the scanner (fonction partagée)
-        score, tags = _opportunity_score(closes, lookback=lb)
+    price = closes[-1]
+
+    # Heuristiques (robustes)
+    score = 0
+    tags = []
+    mode2 = "Watch"
+    try:
+        score, tags = _opportunity_score(closes, lookback=min(len(closes), lb))
         mode2 = _opportunity_mode(tags)
-        justif = (_score_opportunity(klines, interval=interval_norm, lookback=lb) or {}).get("justif")
+    except Exception:
+        tags = []
+        mode2 = "Watch"
+        score = 0
 
-        # Extra metrics
+    # Justification
+    justif = ""
+    try:
+        sc = _score_opportunity(klines, interval=interval_norm, lookback=min(len(klines), lb)) or {}
+        justif = str(sc.get("justif") or "").strip()
+    except Exception:
+        justif = ""
+
+    # 24h (approx sur la fenêtre)
+    ret_24 = None
+    try:
+        if closes and len(closes) >= 2 and closes[0]:
+            ret_24 = (closes[-1] / closes[0] - 1.0) * 100.0
+    except Exception:
         ret_24 = None
-        if len(closes) >= 2:
-            try:
-                ret_24 = (closes[-1] / closes[0] - 1.0) * 100.0
-            except Exception:
-                ret_24 = None
 
-        # Volatilité (std des returns) + Drawdown max sur la fenêtre (pour alimenter l'analyse IA)
+    # Volatilité + drawdown (approx)
+    dd_pct = 0.0
+    vol = 0.0
+    try:
+        w = closes[-min(len(closes), lb):]
+        if w:
+            peak = w[0]
+            max_dd = 0.0
+            for c in w:
+                if c > peak:
+                    peak = c
+                dd = (c / peak - 1.0) * 100.0
+                if dd < max_dd:
+                    max_dd = dd
+            dd_pct = max_dd
+
+            rets = [(w[i] / w[i-1] - 1.0) for i in range(1, len(w)) if w[i-1]]
+            if rets:
+                mean = sum(rets) / len(rets)
+                var = sum((r - mean) ** 2 for r in rets) / len(rets)
+                vol = var ** 0.5
+    except Exception:
         dd_pct = 0.0
         vol = 0.0
-        try:
-            if closes and len(closes) > 2:
-                w = closes[-min(len(closes), lookback):]
-                peak = w[0]
-                max_dd = 0.0
-                for c in w:
-                    if c > peak:
-                        peak = c
-                    dd = (c / peak - 1.0) * 100.0
-                    if dd < max_dd:
-                        max_dd = dd
-                dd_pct = max_dd
-                rets = [(w[i] / w[i-1] - 1.0) for i in range(1, len(w)) if w[i-1]]
-                if rets:
-                    mean = sum(rets) / len(rets)
-                    var = sum((r - mean) ** 2 for r in rets) / len(rets)
-                    vol = var ** 0.5
-        except Exception:
-            dd_pct = 0.0
-            vol = 0.0
 
-# Rationale (human readable)
-        tag_txt = ", ".join(tags) if tags else "aucun signal fort"
-        rationale = ""
-        if justif:
-            rationale = str(justif).strip()
-        else:
-            rationale = "Signal neutre : à surveiller."
-        rationale += "\n\n" + (
-            f"Mode détecté: {mode2}.\n"
-            f"Tags: {tag_txt}.\n"
-            "Interprétation: ces tags sont des heuristiques (pas une certitude)."
-        )
+    tag_txt = ", ".join(tags) if tags else "aucun signal fort"
+    rationale = justif if justif else "Signal neutre : à surveiller."
+    rationale += "\n\n" + (
+        f"Source: {source}. Mode détecté: {mode2}.\n"
+        f"Tags: {tag_txt}.\n"
+        f"Retour approx: {ret_24:.2f}% | Drawdown approx: {dd_pct:.1f}% | Volatilité: {vol:.4f}."
+    )
 
-        if ret_24 is not None:
-            details = (
-                f"Source: CoinGecko (série de prix). Intervalle: {interval_norm}. Lookback: {lb}.\n"
-                f"Score: {score}/100. Variation fenêtre: {ret_24:.2f}%.\n"
-                f"Drawdown approx: {dd_pct:.1f}%. Volatilité (std ret): {vol:.4f}."
-            )
-        else:
-            details = (
-                f"Source: CoinGecko (série de prix). Intervalle: {interval_norm}. Lookback: {lb}.\n"
-                f"Score: {score}/100.\n"
-                f"Drawdown approx: {dd_pct:.1f}%. Volatilité (std ret): {vol:.4f}."
-            )
+    details = {
+        "interval": interval_norm,
+        "lookback": lb,
+        "mode_requested": mode_safe,
+        "source": source,
+        "ret_approx": ret_24,
+        "drawdown_pct": dd_pct,
+        "volatility": vol,
+        "tags": tags,
+    }
 
-        return JSONResponse({
-            "ok": True,
-            "symbol": sym,
-            "price": price,
-            "mode": mode2,
-            "score": score,
-            "rationale": rationale,
-            "details": details,
-            "series": [{"t": k.get("t"), "close": k.get("c"), "c": k.get("c"), "open": k.get("o"), "high": k.get("h"), "low": k.get("l")} for k in klines],
-        })
-    except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+    return JSONResponse({
+        "ok": True,
+        "symbol": sym,
+        "price": price,
+        "mode": mode2,
+        "score": score,
+        "rationale": rationale,
+        "details": details,
+        "series": [
+            {
+                "t": k.get("t"),
+                "close": k.get("c"),
+                "c": k.get("c"),
+                "open": k.get("o"),
+                "high": k.get("h"),
+                "low": k.get("l"),
+                "v": k.get("v"),
+            } for k in klines
+        ],
+    }, status_code=200)
 
 
 @app.get("/ai-opportunity-scanner")
@@ -4601,6 +4688,17 @@ var t1 = performance.now();
     statusText.textContent = "Chargement detail " + symbol + "...";
     setCoachLines("Chargement de l'analyse IA...");
 
+    // Affiche le panneau de droite immédiatement (UX)
+    detailEmpty.style.display = "none";
+    detailPanel.style.display = "block";
+    dSymbol.textContent = symbol;
+    dPrice.textContent = "-";
+    dMode.textContent = "-";
+    dScore.textContent = "-";
+    dRationale.textContent = "Chargement...";
+    dDetails.textContent = "";
+    drawLineChart([]);
+
     try{
       var url = "/api/v2/opportunity/detail?symbol="+encodeURIComponent(symbol)
               + "&interval="+encodeURIComponent(interval||intervalEl.value)
@@ -4608,11 +4706,22 @@ var t1 = performance.now();
               + "&mode="+encodeURIComponent(mode||modeEl.value);
 
       var res = await fetch(url, {headers: {"Accept":"application/json"}});
-      if(!res.ok) throw new Error("HTTP " + res.status);
-      var js = await res.json();
+      var js = null;
+      try{ js = await res.json(); }catch(_){ js = null; }
 
-      detailEmpty.style.display = "none";
-      detailPanel.style.display = "block";
+      if(!res.ok){
+        var msg = (js && (js.error || js.detail)) ? (js.error || js.detail) : ("HTTP " + res.status);
+        throw new Error(msg);
+      }
+
+      if(!js || js.ok === false){
+        var msg2 = (js && js.error) ? js.error : "Detail indisponible.";
+        dRationale.textContent = msg2;
+        dDetails.textContent = (js && js.details) ? (typeof js.details === "string" ? js.details : JSON.stringify(js.details, null, 2)) : "";
+        statusText.textContent = "Detail indisponible: " + symbol;
+        setCoachLines(msg2);
+        return;
+      }
 
       dSymbol.textContent = js.symbol || symbol;
       dPrice.textContent = "$" + fmt(js.price, 4);
@@ -4621,19 +4730,22 @@ var t1 = performance.now();
       dScore.className = "v score " + scoreClass(Number(js.score||0));
 
       dRationale.textContent = js.rationale || "Rationale indisponible.";
-      dDetails.textContent = js.details || "Details indisponibles.";
+      dDetails.textContent = (typeof js.details === "string") ? js.details : JSON.stringify(js.details || {}, null, 2);
 
       drawLineChart(js.series || []);
       statusText.textContent = "Detail charge: " + symbol;
       setCoachLines(js.rationale || "Analyse chargee.");
     }catch(e){
       console.error(e);
-      statusText.textContent = "Erreur detail: " + (e && e.message ? e.message : e);
+      var em = (e && e.message) ? e.message : (""+e);
+      statusText.textContent = "Erreur detail: " + em;
+      dRationale.textContent = "Erreur: " + em;
+      dDetails.textContent = "";
       setCoachLines("Erreur. Impossible de charger le detail.");
     }
   }
 
-  scanBtn.addEventListener("click", scanNow);
+scanBtn.addEventListener("click", scanNow);
   refreshBtn.addEventListener("click", scanNow);
 
   autoBtn.addEventListener("click", function(){

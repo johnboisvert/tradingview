@@ -4254,9 +4254,9 @@ async def ai_opportunity_scanner(request: Request):
         </div>
 
         <div class="actions">
-          <button class="btn" id="scanBtn">Scanner maintenant</button>
-          <button class="toggle" id="autoBtn">Auto: OFF</button>
-          <button class="iconbtn" id="refreshBtn" title="Rafraichir">↻</button>
+          <button class="btn" id="scanBtn" type="button">Scanner maintenant</button>
+          <button class="toggle" id="autoBtn" type="button">Auto: OFF</button>
+          <button class="iconbtn" id="refreshBtn" type="button" title="Rafraichir">↻</button>
         </div>
 
         <div class="list">
@@ -4380,6 +4380,7 @@ async def ai_opportunity_scanner(request: Request):
   // --- Live mode (WebSocket) ---
   var ws = null;
   var wsConnected = false;
+  var lastScanReceivedAt = 0;
 
   function _wsUrl(){
     var proto = (location.protocol === "https:") ? "wss" : "ws";
@@ -4410,6 +4411,7 @@ async def ai_opportunity_scanner(request: Request):
             var js = msg.payload;
             var items = js.items || [];
             renderRows(items);
+            lastScanReceivedAt = Date.now();
             lastPill.textContent = "Derniere maj: " + (js.updated_at || "-");
             statusText.textContent = "OK - " + (items.length||0) + " resultats (live). Clique une ligne pour le detail.";
             setCoachLines("Live OK. Clique un coin pour voir l'analyse IA detaillee.");
@@ -4478,12 +4480,45 @@ async def ai_opportunity_scanner(request: Request):
             + "&lookback="+encodeURIComponent(lookback)
             + "&mode="+encodeURIComponent(mode);
 
+    
+    // Si WS est "connecté" mais pas vraiment OPEN, on force le fallback REST.
+    try{
+      if(ws && ws.readyState !== 1){ wsConnected = false; }
+    }catch(e){ wsConnected = false; }
+
     if(wsConnected){
+      var before = lastScanReceivedAt;
       _wsSend({action:"scan", per_page: perPage, interval: interval, lookback: lookback, mode: mode});
       statusText.textContent = "Scan live en cours...";
       setCoachLines("Live: scan en cours...");
+
+      // Fallback: si on ne reçoit rien du WS rapidement, on bascule sur REST.
+      setTimeout(function(){
+        try{
+          if(!wsConnected) return;
+          if(lastScanReceivedAt === before){
+            // Pas de réponse WS -> REST
+            fetch(url, {headers: {"Accept":"application/json"}})
+              .then(function(res){ if(!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+              .then(function(js){
+                var items = (js && js.items) ? js.items : [];
+                renderRows(items);
+                lastPill.textContent = "Derniere maj: " + ((js && js.updated_at) ? js.updated_at : "-");
+                statusText.textContent = "OK - " + (items.length||0) + " resultats (fallback REST). Clique une ligne pour le detail.";
+                setCoachLines("Clique un coin pour voir l'analyse IA detaillee.");
+                selPill.textContent = "Selection: -";
+              })
+              .catch(function(e){
+                statusText.textContent = "Erreur scan: " + (e && e.message ? e.message : e);
+                setCoachLines("Erreur. Verifie ta connexion et reessaie.");
+              });
+          }
+        }catch(e){}
+      }, 1800);
+
       return;
     }
+
 
     try{
       var t0 = performance.now();
@@ -14318,9 +14353,9 @@ async def ai_opportunity_scanner(request: Request):
         </div>
 
         <div class="actions">
-          <button class="btn" id="scanBtn">Scanner maintenant</button>
-          <button class="toggle" id="autoBtn">Auto: OFF</button>
-          <button class="iconbtn" id="refreshBtn" title="Rafraichir">↻</button>
+          <button class="btn" id="scanBtn" type="button">Scanner maintenant</button>
+          <button class="toggle" id="autoBtn" type="button">Auto: OFF</button>
+          <button class="iconbtn" id="refreshBtn" type="button" title="Rafraichir">↻</button>
         </div>
 
         <div class="list">
@@ -14542,12 +14577,45 @@ async def ai_opportunity_scanner(request: Request):
             + "&lookback="+encodeURIComponent(lookback)
             + "&mode="+encodeURIComponent(mode);
 
+    
+    // Si WS est "connecté" mais pas vraiment OPEN, on force le fallback REST.
+    try{
+      if(ws && ws.readyState !== 1){ wsConnected = false; }
+    }catch(e){ wsConnected = false; }
+
     if(wsConnected){
+      var before = lastScanReceivedAt;
       _wsSend({action:"scan", per_page: perPage, interval: interval, lookback: lookback, mode: mode});
       statusText.textContent = "Scan live en cours...";
       setCoachLines("Live: scan en cours...");
+
+      // Fallback: si on ne reçoit rien du WS rapidement, on bascule sur REST.
+      setTimeout(function(){
+        try{
+          if(!wsConnected) return;
+          if(lastScanReceivedAt === before){
+            // Pas de réponse WS -> REST
+            fetch(url, {headers: {"Accept":"application/json"}})
+              .then(function(res){ if(!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+              .then(function(js){
+                var items = (js && js.items) ? js.items : [];
+                renderRows(items);
+                lastPill.textContent = "Derniere maj: " + ((js && js.updated_at) ? js.updated_at : "-");
+                statusText.textContent = "OK - " + (items.length||0) + " resultats (fallback REST). Clique une ligne pour le detail.";
+                setCoachLines("Clique un coin pour voir l'analyse IA detaillee.");
+                selPill.textContent = "Selection: -";
+              })
+              .catch(function(e){
+                statusText.textContent = "Erreur scan: " + (e && e.message ? e.message : e);
+                setCoachLines("Erreur. Verifie ta connexion et reessaie.");
+              });
+          }
+        }catch(e){}
+      }, 1800);
+
       return;
     }
+
 
     try{
       var t0 = performance.now();

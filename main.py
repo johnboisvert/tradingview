@@ -1,8 +1,7 @@
 import pathlib
 from typing import Optional
 import html
-import datetime
-
+import datetime as dt
 # --- HTML escaping helper (used by _simple_page and templates) ---
 # Ensures we never crash with NameError if a page calls _html_escape.
 def _html_escape(value):
@@ -397,7 +396,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
     details = await asyncio.gather(*[fetch_with_sem(tid) for tid in detail_txids])
 
     events = []
-    now = datetime.datetime.now()
+    now = dt.datetime.now()
 
     def short_addr(a: str):
         if not a:
@@ -455,7 +454,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
         bt = status.get("block_time") or tx.get("block_time") or None
         if bt:
             try:
-                dt = datetime.datetime.fromtimestamp(int(bt))
+                dt = dt.datetime.fromtimestamp(int(bt))
                 t = dt.strftime("%H:%M")
             except Exception:
                 t = "mempool"
@@ -3066,7 +3065,7 @@ async def api_meta_status():
     try:
         # Heures (UTC + locale simple)
         import datetime
-        now_utc = datetime.datetime.utcnow().replace(microsecond=0)
+        now_utc = dt.datetime.utcnow().replace(microsecond=0)
         # timezone locale via env TZ/offset n'est pas garanti; on donne une string lisible
         return {
             "ok": True,
@@ -3957,7 +3956,7 @@ async def api_v2_opportunity_scan(
             "count": len(out),
             "interval": interval_norm,
             "limit": limit,
-            "updated_at": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+            "updated_at": dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
         }
     except Exception as e:
         # Never hard-crash the UI: return a JSON payload (HTTP 200) with the error.
@@ -3968,7 +3967,7 @@ async def api_v2_opportunity_scan(
             "count": 0,
             "interval": (interval or "1h"),
             "limit": int(per_page or 30),
-            "updated_at": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+            "updated_at": dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
         }
 
 
@@ -3996,7 +3995,7 @@ async def api_v2_opportunity_scan_post(body: dict = Body(default={} )):
             "count": 0,
             "interval": (interval or "1h"),
             "limit": int(per_page or 30),
-            "updated_at": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+            "updated_at": dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
         }
 
 

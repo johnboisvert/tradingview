@@ -5853,7 +5853,7 @@ async def ai_swarm_agents_page(request: Request):
       </div>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Swarm Agents", body, request=request, sidebar=SIDEBAR))
+    return _simple_page("AI Swarm Agents", body, request=request, sidebar=SIDEBAR)
 
 @app.get("/portfolio-tracker")
 async def portfolio_tracker_page(request: Request):
@@ -6050,7 +6050,7 @@ async def portfolio_tracker_page(request: Request):
   </div>
 </div>
 """
-    return HTMLResponse(_simple_page("Portfolio Tracker", body, request=request, sidebar=SIDEBAR))
+    return _simple_page("Portfolio Tracker", body, request=request, sidebar=SIDEBAR)
 
 @app.post("/portfolio-tracker/add")
 async def portfolio_tracker_add(request: Request):
@@ -15266,7 +15266,7 @@ async def ai_market_regime_page(request: Request):
 </script>
     """
     # Sidebar: keep the global navigation consistent
-    return HTMLResponse(_simple_page("AI Market Regime", body, sidebar_html=SIDEBAR_HTML))
+    return _simple_page("AI Market Regime", body, sidebar_html=SIDEBAR_HTML)
 
 
 @app.get("/ai-whale-watcher", response_class=HTMLResponse)
@@ -15517,7 +15517,7 @@ async def ai_whale_watcher():
     </script>
     """
 
-    return HTMLResponse(_simple_page("AI Whale Watcher", body, sidebar_html=SIDEBAR_FULL), status_code=200)
+    return _simple_page("AI Whale Watcher", body, sidebar_html=SIDEBAR_FULL)
 
 @app.get("/api/fear-greed-full")
 async def fear_greed_full():
@@ -29835,10 +29835,9 @@ async def admin_ebooks_upload(
     ext = os.path.splitext(orig_name)[1].lower()
     allowed = {".pdf", ".zip", ".png", ".jpg", ".jpeg"}
     if ext not in allowed:
-        return HTMLResponse(
-            _simple_page("Upload ebook", f"<div class='card'><h2>❌ Extension non permise</h2><p>Extensions permises: {', '.join(sorted(allowed))}</p><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL),
-            status_code=400
-        )
+        resp = _simple_page("Upload ebook", f"<div class='card'><h2>❌ Extension non permise</h2><p>Extensions permises: {', '.join(sorted(allowed))}</p><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL)
+        resp.status_code = 400
+        return resp
 
     # Nom final unique (évite collisions)
     safe_base = re.sub(r"[^a-zA-Z0-9._-]+", "_", os.path.splitext(orig_name)[0])[:80] or "ebook"
@@ -29853,18 +29852,16 @@ async def admin_ebooks_upload(
         data = await file.read()
         # limite soft 50MB pour éviter de tuer le container
         if data and len(data) > 50 * 1024 * 1024:
-            return HTMLResponse(
-                _simple_page("Upload ebook", "<div class='card'><h2>❌ Fichier trop gros</h2><p>Limite: 50MB.</p><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL),
-                status_code=400
-            )
+            resp = _simple_page("Upload ebook", "<div class='card'><h2>❌ Fichier trop gros</h2><p>Limite: 50MB.</p><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL)
+            resp.status_code = 400
+            return resp
         with open(file_path, "wb") as f:
             f.write(data or b"")
         file_size = os.path.getsize(file_path)
     except Exception as e:
-        return HTMLResponse(
-            _simple_page("Upload ebook", f"<div class='card'><h2>❌ Erreur upload</h2><pre>{_html.escape(str(e))}</pre><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL),
-            status_code=500
-        )
+        resp = _simple_page("Upload ebook", f"<div class='card'><h2>❌ Erreur upload</h2><pre>{_html.escape(str(e))}</pre><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL)
+        resp.status_code = 500
+        return resp
 
     # DB insert
     try:
@@ -29882,10 +29879,9 @@ async def admin_ebooks_upload(
             os.remove(file_path)
         except Exception:
             pass
-        return HTMLResponse(
-            _simple_page("Upload ebook", f"<div class='card'><h2>❌ Erreur DB</h2><pre>{_html.escape(str(e))}</pre><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL),
-            status_code=500
-        )
+        resp = _simple_page("Upload ebook", f"<div class='card'><h2>❌ Erreur DB</h2><pre>{_html.escape(str(e))}</pre><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL)
+        resp.status_code = 500
+        return resp
 
     return RedirectResponse(url="/admin-dashboard/ebooks", status_code=303)
 
@@ -37241,7 +37237,7 @@ async def ai_liquidity(request: Request):
 </body></html>"""
         return HTMLResponse(html)
     except Exception as e:
-        return HTMLResponse(_simple_page("AI Liquidity", f"""<div class='card' style='background:#fff;border:1px solid #eee;border-radius:14px;padding:18px;'><h2 style='margin:0 0 8px 0;'>Données indisponibles</h2><p style='margin:0;color:#444;'>Impossible de charger les données CoinGecko pour le moment.</p><pre style='margin:12px 0 0 0; white-space:pre-wrap; background:#fafafa; border:1px solid #eee; padding:12px; border-radius:12px; color:#666;'>{e}</pre></div>""", request=request, sidebar=SIDEBAR), status_code=200)
+        return _simple_page("AI Liquidity", f"""<div class='card' style='background:#fff;border:1px solid #eee;border-radius:14px;padding:18px;'><h2 style='margin:0 0 8px 0;'>Données indisponibles</h2><p style='margin:0;color:#444;'>Impossible de charger les données CoinGecko pour le moment.</p><pre style='margin:12px 0 0 0; white-space:pre-wrap; background:#fafafa; border:1px solid #eee; padding:12px; border-radius:12px; color:#666;'>{e}</pre></div>""", request=request, sidebar=SIDEBAR)
 
 @app.get("/ai-timeframe")
 async def ai_timeframe(request: Request):
@@ -37360,7 +37356,7 @@ async def ai_timeframe(request: Request):
         return HTMLResponse(html)
 
     except Exception as e:
-        return HTMLResponse(_simple_page("AI Liquidity", f"""<div class='card' style='background:#fff;border:1px solid #eee;border-radius:14px;padding:18px;'><h2 style='margin:0 0 8px 0;'>Données indisponibles</h2><p style='margin:0;color:#444;'>Impossible de charger les données CoinGecko pour le moment.</p><pre style='margin:12px 0 0 0; white-space:pre-wrap; background:#fafafa; border:1px solid #eee; padding:12px; border-radius:12px; color:#666;'>{e}</pre></div>""", request=request, sidebar=SIDEBAR), status_code=200)
+        return _simple_page("AI Liquidity", f"""<div class='card' style='background:#fff;border:1px solid #eee;border-radius:14px;padding:18px;'><h2 style='margin:0 0 8px 0;'>Données indisponibles</h2><p style='margin:0;color:#444;'>Impossible de charger les données CoinGecko pour le moment.</p><pre style='margin:12px 0 0 0; white-space:pre-wrap; background:#fafafa; border:1px solid #eee; padding:12px; border-radius:12px; color:#666;'>{e}</pre></div>""", request=request, sidebar=SIDEBAR)
 
 # ============================================================
 # ✅ Routes manquantes (évite 404) + pages robustes (anti-500)
@@ -38435,7 +38431,7 @@ async def ai_swarm_agents_page(request: Request):
       </div>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Swarm Agents", body, request=request, sidebar=SIDEBAR))
+    return _simple_page("AI Swarm Agents", body, request=request, sidebar=SIDEBAR)
 
 @app.get("/portfolio-tracker")
 async def portfolio_tracker_page(request: Request):
@@ -38632,7 +38628,7 @@ async def portfolio_tracker_page(request: Request):
   </div>
 </div>
 """
-    return HTMLResponse(_simple_page("Portfolio Tracker", body, request=request, sidebar=SIDEBAR))
+    return _simple_page("Portfolio Tracker", body, request=request, sidebar=SIDEBAR)
 
 @app.post("/portfolio-tracker/add")
 async def portfolio_tracker_add(request: Request):
@@ -47204,7 +47200,7 @@ async def ai_market_regime_page(request: Request):
     </div>
     """
 
-    return HTMLResponse(_simple_page("AI Market Regime", body, sidebar_html=SIDEBAR_FULL), status_code=200)
+    return _simple_page("AI Market Regime", body, sidebar_html=SIDEBAR_FULL)
 
 
 # ----------------------------------------------------------------------
@@ -47503,7 +47499,7 @@ async def ai_whale_watcher():
     </script>
     """
 
-    return HTMLResponse(_simple_page("AI Whale Watcher", body, sidebar_html=SIDEBAR_FULL), status_code=200)
+    return _simple_page("AI Whale Watcher", body, sidebar_html=SIDEBAR_FULL)
 
 @app.get("/api/fear-greed-full")
 async def fear_greed_full():
@@ -60281,10 +60277,9 @@ async def admin_ebooks_upload(
     ext = os.path.splitext(orig_name)[1].lower()
     allowed = {".pdf", ".zip", ".png", ".jpg", ".jpeg"}
     if ext not in allowed:
-        return HTMLResponse(
-            _simple_page("Upload ebook", f"<div class='card'><h2>❌ Extension non permise</h2><p>Extensions permises: {', '.join(sorted(allowed))}</p><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL),
-            status_code=400
-        )
+        resp = _simple_page("Upload ebook", f"<div class='card'><h2>❌ Extension non permise</h2><p>Extensions permises: {', '.join(sorted(allowed))}</p><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL)
+        resp.status_code = 400
+        return resp
 
     # Nom final unique (évite collisions)
     safe_base = re.sub(r"[^a-zA-Z0-9._-]+", "_", os.path.splitext(orig_name)[0])[:80] or "ebook"
@@ -60299,18 +60294,16 @@ async def admin_ebooks_upload(
         data = await file.read()
         # limite soft 50MB pour éviter de tuer le container
         if data and len(data) > 50 * 1024 * 1024:
-            return HTMLResponse(
-                _simple_page("Upload ebook", "<div class='card'><h2>❌ Fichier trop gros</h2><p>Limite: 50MB.</p><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL),
-                status_code=400
-            )
+            resp = _simple_page("Upload ebook", "<div class='card'><h2>❌ Fichier trop gros</h2><p>Limite: 50MB.</p><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL)
+            resp.status_code = 400
+            return resp
         with open(file_path, "wb") as f:
             f.write(data or b"")
         file_size = os.path.getsize(file_path)
     except Exception as e:
-        return HTMLResponse(
-            _simple_page("Upload ebook", f"<div class='card'><h2>❌ Erreur upload</h2><pre>{_html.escape(str(e))}</pre><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL),
-            status_code=500
-        )
+        resp = _simple_page("Upload ebook", f"<div class='card'><h2>❌ Erreur upload</h2><pre>{_html.escape(str(e))}</pre><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL)
+        resp.status_code = 500
+        return resp
 
     # DB insert
     try:
@@ -60328,10 +60321,9 @@ async def admin_ebooks_upload(
             os.remove(file_path)
         except Exception:
             pass
-        return HTMLResponse(
-            _simple_page("Upload ebook", f"<div class='card'><h2>❌ Erreur DB</h2><pre>{_html.escape(str(e))}</pre><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL),
-            status_code=500
-        )
+        resp = _simple_page("Upload ebook", f"<div class='card'><h2>❌ Erreur DB</h2><pre>{_html.escape(str(e))}</pre><a class='btn' href='/admin-dashboard/ebooks'>Retour</a></div>", sidebar=SIDEBAR_FULL)
+        resp.status_code = 500
+        return resp
 
     return RedirectResponse(url="/admin-dashboard/ebooks", status_code=303)
 
@@ -67687,7 +67679,7 @@ async def ai_liquidity(request: Request):
 </body></html>"""
         return HTMLResponse(html)
     except Exception as e:
-        return HTMLResponse(_simple_page("AI Liquidity", f"""<div class='card' style='background:#fff;border:1px solid #eee;border-radius:14px;padding:18px;'><h2 style='margin:0 0 8px 0;'>Données indisponibles</h2><p style='margin:0;color:#444;'>Impossible de charger les données CoinGecko pour le moment.</p><pre style='margin:12px 0 0 0; white-space:pre-wrap; background:#fafafa; border:1px solid #eee; padding:12px; border-radius:12px; color:#666;'>{e}</pre></div>""", request=request, sidebar=SIDEBAR), status_code=200)
+        return _simple_page("AI Liquidity", f"""<div class='card' style='background:#fff;border:1px solid #eee;border-radius:14px;padding:18px;'><h2 style='margin:0 0 8px 0;'>Données indisponibles</h2><p style='margin:0;color:#444;'>Impossible de charger les données CoinGecko pour le moment.</p><pre style='margin:12px 0 0 0; white-space:pre-wrap; background:#fafafa; border:1px solid #eee; padding:12px; border-radius:12px; color:#666;'>{e}</pre></div>""", request=request, sidebar=SIDEBAR)
 
 @app.get("/ai-timeframe")
 async def ai_timeframe(request: Request):
@@ -67806,7 +67798,7 @@ async def ai_timeframe(request: Request):
         return HTMLResponse(html)
 
     except Exception as e:
-        return HTMLResponse(_simple_page("AI Liquidity", f"""<div class='card' style='background:#fff;border:1px solid #eee;border-radius:14px;padding:18px;'><h2 style='margin:0 0 8px 0;'>Données indisponibles</h2><p style='margin:0;color:#444;'>Impossible de charger les données CoinGecko pour le moment.</p><pre style='margin:12px 0 0 0; white-space:pre-wrap; background:#fafafa; border:1px solid #eee; padding:12px; border-radius:12px; color:#666;'>{e}</pre></div>""", request=request, sidebar=SIDEBAR), status_code=200)
+        return _simple_page("AI Liquidity", f"""<div class='card' style='background:#fff;border:1px solid #eee;border-radius:14px;padding:18px;'><h2 style='margin:0 0 8px 0;'>Données indisponibles</h2><p style='margin:0;color:#444;'>Impossible de charger les données CoinGecko pour le moment.</p><pre style='margin:12px 0 0 0; white-space:pre-wrap; background:#fafafa; border:1px solid #eee; padding:12px; border-radius:12px; color:#666;'>{e}</pre></div>""", request=request, sidebar=SIDEBAR)
 
 # ============================================================
 # ✅ Routes manquantes (évite 404) + pages robustes (anti-500)
@@ -67938,7 +67930,7 @@ async def ai_sizer_page(request: Request):
     </div>
     {result_html}
     """
-    return HTMLResponse(_simple_page("AI Sizer — Position sizing", body, SID))
+    return _simple_page("AI Sizer — Position sizing", body, SID)
 
 @app.get("/ai-exit", response_class=HTMLResponse)
 async def ai_exit_page(request: Request):
@@ -67992,7 +67984,7 @@ async def ai_exit_page(request: Request):
     </div>
     {out}
     """
-    return HTMLResponse(_simple_page("AI Exit — TP/SL simple", body, SID))
+    return _simple_page("AI Exit — TP/SL simple", body, SID)
 
 @app.get("/ai-gem-hunter", response_class=HTMLResponse)
 async def ai_gem_hunter_page(request: Request):
@@ -68040,7 +68032,7 @@ async def ai_gem_hunter_page(request: Request):
         </div>
         """
 
-    return HTMLResponse(_simple_page("AI Gem Hunter — Trending", body, SID))
+    return _simple_page("AI Gem Hunter — Trending", body, SID)
 
 @app.get("/ai-technical-analysis", response_class=HTMLResponse)
 async def ai_technical_analysis_page(request: Request):
@@ -68110,7 +68102,7 @@ async def ai_technical_analysis_page(request: Request):
     </div>
     {summary_html}
     """
-    return HTMLResponse(_simple_page("AI Technical Analysis", body, SID))
+    return _simple_page("AI Technical Analysis", body, SID)
 
 
 
@@ -68141,7 +68133,7 @@ async def _page_ai_gem_hunter():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Gem Hunter", body, sidebar=SIDEBAR_FULL))
+    return _simple_page("AI Gem Hunter", body, sidebar=SIDEBAR_FULL)
 
 
 @app.get("/ai-technical-analysis")
@@ -68161,7 +68153,7 @@ async def _page_ai_technical_analysis():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Technical Analysis", body, sidebar=SIDEBAR_FULL))
+    return _simple_page("AI Technical Analysis", body, sidebar=SIDEBAR_FULL)
 
 
 @app.get("/narrative-radar")
@@ -68181,7 +68173,7 @@ async def _page_narrative_radar():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("Narrative Radar", body, sidebar=SIDEBAR_FULL))
+    return _simple_page("Narrative Radar", body, sidebar=SIDEBAR_FULL)
 
 
 @app.get("/ai-crypto-coach")
@@ -68201,7 +68193,7 @@ async def _page_ai_crypto_coach():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Crypto Coach", body, sidebar=SIDEBAR_FULL))
+    return _simple_page("AI Crypto Coach", body, sidebar=SIDEBAR_FULL)
 
 
 @app.get("/ai-swarm-agents-v2")
@@ -68221,7 +68213,7 @@ async def _page_ai_swarm_agents():
       </p>
     </div>
     """
-    return HTMLResponse(_simple_page("AI Swarm Agents", body, sidebar=SIDEBAR_FULL))
+    return _simple_page("AI Swarm Agents", body, sidebar=SIDEBAR_FULL)
 
 
 # ==============================
@@ -68257,7 +68249,7 @@ async def academy(request: Request):
         <a class="btn-outline" href="/pricing-complete">Voir les plans</a>
       </div>
     """
-    return HTMLResponse(_simple_page("Academy", body, sidebar=SIDEBAR_FULL))
+    return _simple_page("Academy", body, sidebar=SIDEBAR_FULL)
 
 @app.get("/crypto-academy", response_class=HTMLResponse)
 async def crypto_academy(request: Request):
@@ -68832,7 +68824,7 @@ if not globals().get("_CONTACT_ROUTES_REGISTERED"):
         </div>
         """
 
-        return HTMLResponse(_simple_page("Contact", body, sidebar=SIDEBAR_FULL))
+        return _simple_page("Contact", body, sidebar=SIDEBAR_FULL)
 
     @app.post("/contact")
     async def contact_submit(request: Request):
@@ -69056,7 +69048,7 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
               <a href="/pricing-complete" style="display:inline-block;margin-left:10px;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;text-decoration:none;font-weight:800;">Voir les plans</a>
             </div>
             """
-            return HTMLResponse(_simple_page("Téléchargements", body, sidebar=SIDEBAR_FULL))
+            return _simple_page("Téléchargements", body, sidebar=SIDEBAR_FULL)
 
         plan = _user_plan_lower(request)
 
@@ -69251,7 +69243,7 @@ if not globals().get("_DOWNLOADS_ROUTES_REGISTERED"):
         </script>
         """
 
-        return HTMLResponse(_simple_page("Téléchargements", body, sidebar=SIDEBAR_FULL))
+        return _simple_page("Téléchargements", body, sidebar=SIDEBAR_FULL)
 
     @app.get("/telechargements/download/{ebook_id}")
     async def telechargements_download(request: Request, ebook_id: int):
@@ -69716,7 +69708,7 @@ le="font-weight:800;">Rafraîchir</button>
         setInterval(refreshPepites, 30000);
         </script>
         """
-        return HTMLResponse(_simple_page("Pépites Crypto", body, sidebar=SIDEBAR_FULL))
+        return _simple_page("Pépites Crypto", body, sidebar=SIDEBAR_FULL)
 
 
 # ==========================================================

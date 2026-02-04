@@ -3999,7 +3999,7 @@ async def api_v2_opportunity_scan_post(body: dict = Body(default={} )):
 
 
 @app.get("/api/v2/opportunity/detail")
-async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback: int = 240, mode: str = "all"):
+async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback: int = 240, mode: str = "all", cg_id: Optional[str] = None):
     """Détail d'une opportunité (graph + justification).
 
     Objectif:
@@ -4067,16 +4067,27 @@ async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback:
             if not isinstance(globals().get("_WOW_SYMBOL_TO_CGID"), dict):
                 globals()["_WOW_SYMBOL_TO_CGID"] = {}
 
-            cid = globals()["_WOW_SYMBOL_TO_CGID"].get(sym)
-            if not cid:
-                base = sym
-                for q in ("USDT", "USD", "BUSD", "USDC"):
-                    if base.endswith(q):
-                        base = base[:-len(q)]
-                        break
-                cid = await _cg_coin_id_from_symbol(base)
+            sym_l = sym.lower()
+            base_l = sym_l
+            for q in ("usdt", "usd", "busd", "usdc"):
+                if base_l.endswith(q):
+                    base_l = base_l[:-len(q)]
+                    break
+
+            # Si le scan a déjà fourni cg_id, on l'utilise directement (évite les lookups fragiles)
+            cid = (cg_id or "").strip() if cg_id else ""
+            if cid:
+                globals()["_WOW_SYMBOL_TO_CGID"][base_l] = cid
+                globals()["_WOW_SYMBOL_TO_CGID"][sym_l] = cid
+            else:
+                cid = globals()["_WOW_SYMBOL_TO_CGID"].get(base_l) or globals()["_WOW_SYMBOL_TO_CGID"].get(sym_l)
+
+            # Dernier recours: recherche par symbole sur CoinGecko
+            if not cid and base_l:
+                cid = await _cg_coin_id_from_symbol(base_l)
                 if cid:
-                    globals()["_WOW_SYMBOL_TO_CGID"][sym] = cid
+                    globals()["_WOW_SYMBOL_TO_CGID"][base_l] = cid
+                    globals()["_WOW_SYMBOL_TO_CGID"][sym_l] = cid
 
             if cid:
                 cg = await _fetch_cg_klines(cid, interval_norm, lb)
@@ -4528,7 +4539,7 @@ async def ai_opportunity_scanner(request: Request):
       var score = Number(it.score || 0);
       var tags = (it.tags || []).map(function(t){ return "<span class='tag'>"+t+"</span>"; }).join("");
       var html = ""
-        + "<div class='row item' data-symbol='"+it.symbol+"' data-interval='"+it.interval+"' data-mode='"+it.mode+"'>"
+        + "<div class='row item' data-symbol='"+it.symbol+"' data-interval='"+it.interval+"' data-mode='"+it.mode+"' data-cgid='"+(it.cg_id||"")+"'>"
         + "  <div><div class='sym'>"+it.symbol+"</div><div class='muted' style='font-size:12px'>"+(it.name||"")+"</div></div>"
         + "  <div><span class='badge'>"+(it.mode||"-")+"</span></div>"
         + "  <div class='score "+scoreClass(score)+"'>"+fmt(score,0)+"/100</div>"
@@ -4546,7 +4557,8 @@ async def ai_opportunity_scanner(request: Request):
         selectSymbol(
           row.getAttribute("data-symbol"),
           row.getAttribute("data-interval"),
-          row.getAttribute("data-mode")
+          row.getAttribute("data-mode"),
+          row.getAttribute("data-cgid")
         );
       });
     });
@@ -4683,7 +4695,7 @@ var t1 = performance.now();
     ctx.fillText("$"+fmt(min,2), 6*window.devicePixelRatio, (top+plotH));
   }
 
-  async function selectSymbol(symbol, interval, mode){
+  async function selectSymbol(symbol, interval, mode, cgId){
     selPill.textContent = "Selection: " + symbol;
     statusText.textContent = "Chargement detail " + symbol + "...";
     setCoachLines("Chargement de l'analyse IA...");
@@ -4704,8 +4716,8 @@ var t1 = performance.now();
               + "&interval="+encodeURIComponent(interval||intervalEl.value)
               + "&lookback="+encodeURIComponent(lookbackEl.value || 240)
               + "&mode="+encodeURIComponent(mode||modeEl.value);
-
-      var res = await fetch(url, {headers: {"Accept":"application/json"}});
+      if(cgId){ url += "&cg_id="+encodeURIComponent(cgId); }
+var res = await fetch(url, {headers: {"Accept":"application/json"}});
       var js = null;
       try{ js = await res.json(); }catch(_){ js = null; }
 
@@ -14650,7 +14662,7 @@ async def ai_opportunity_scanner(request: Request):
       var score = Number(it.score || 0);
       var tags = (it.tags || []).map(function(t){ return "<span class='tag'>"+t+"</span>"; }).join("");
       var html = ""
-        + "<div class='row item' data-symbol='"+it.symbol+"' data-interval='"+it.interval+"' data-mode='"+it.mode+"'>"
+        + "<div class='row item' data-symbol='"+it.symbol+"' data-interval='"+it.interval+"' data-mode='"+it.mode+"' data-cgid='"+(it.cg_id||"")+"'>"
         + "  <div><div class='sym'>"+it.symbol+"</div><div class='muted' style='font-size:12px'>"+(it.name||"")+"</div></div>"
         + "  <div><span class='badge'>"+(it.mode||"-")+"</span></div>"
         + "  <div class='score "+scoreClass(score)+"'>"+fmt(score,0)+"/100</div>"
@@ -14668,7 +14680,8 @@ async def ai_opportunity_scanner(request: Request):
         selectSymbol(
           row.getAttribute("data-symbol"),
           row.getAttribute("data-interval"),
-          row.getAttribute("data-mode")
+          row.getAttribute("data-mode"),
+          row.getAttribute("data-cgid")
         );
       });
     });
@@ -14798,7 +14811,7 @@ async def ai_opportunity_scanner(request: Request):
     ctx.fillText("$"+fmt(min,2), 6*window.devicePixelRatio, (top+plotH));
   }
 
-  async function selectSymbol(symbol, interval, mode){
+  async function selectSymbol(symbol, interval, mode, cgId){
     selPill.textContent = "Selection: " + symbol;
     statusText.textContent = "Chargement detail " + symbol + "...";
     setCoachLines("Chargement de l'analyse IA...");
@@ -14808,8 +14821,8 @@ async def ai_opportunity_scanner(request: Request):
               + "&interval="+encodeURIComponent(interval||intervalEl.value)
               + "&lookback="+encodeURIComponent(lookbackEl.value || 240)
               + "&mode="+encodeURIComponent(mode||modeEl.value);
-
-      var res = await fetch(url, {headers: {"Accept":"application/json"}});
+      if(cgId){ url += "&cg_id="+encodeURIComponent(cgId); }
+var res = await fetch(url, {headers: {"Accept":"application/json"}});
       if(!res.ok) throw new Error("HTTP " + res.status);
       var js = await res.json();
 

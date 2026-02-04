@@ -3858,14 +3858,23 @@ async def api_v2_opportunity_scan(
                     "score": score,
                     "price": price_val,
                     "change_24h": chg_val,
+
+                    # Metrics (pour l'UI)
+                    "vol_rel": vol,   # volatilité proxy (stdev des returns) en %
+                    "dd": dd,         # drawdown max approx sur la fenêtre en %
+
+                    # Champs conservés (compat / debug)
                     "vol_30d": vol,
                     "dd_30d": dd,
-                    # aliases used by the new UI (fractions; UI formats as %)
-                    "pct24h": (chg_val / 100.0) if isinstance(chg_val, (int, float)) else 0.0,
-                    "vol": (vol / 100.0) if isinstance(vol, (int, float)) else 0.0,
-                    "dd": (dd / 100.0) if isinstance(dd, (int, float)) else 0.0,
-                    "tags": tags,
+                    "interval": interval_norm,
                     "src": src,
+
+                    # Fractions (si une autre UI veut formatter elle-même)
+                    "pct24h_frac": (chg_val / 100.0) if isinstance(chg_val, (int, float)) else None,
+                    "vol_frac": (vol / 100.0) if isinstance(vol, (int, float)) else None,
+                    "dd_frac": (dd / 100.0) if isinstance(dd, (int, float)) else None,
+
+                    "tags": tags,
                 })
             except Exception:
                 continue
@@ -3880,6 +3889,7 @@ async def api_v2_opportunity_scan(
 
         return {
             "ok": True,
+            "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
             "meta": meta,
             "items": out[:200],
             "count": len(out),
@@ -3888,6 +3898,85 @@ async def api_v2_opportunity_scan(
         }
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+
+
+@app.websocket("/ws/opportunity")
+async def ws_opportunity(websocket: WebSocket):
+    """WebSocket pour le scanner d'opportunités.
+
+    Le client envoie:
+      {action:"scan", per_page, interval, lookback, mode}
+
+    Le serveur répond:
+      {type:"scan", payload: <même payload que /api/v2/opportunity/scan>}
+
+    Notes production:
+    - throttling léger par connexion (anti-spam)
+    - keepalive: renvoie un scan périodique si le client reste silencieux
+    """
+    await websocket.accept()
+    import asyncio as _asyncio
+    import json as _json
+    import time as _time
+
+    last_sent = 0.0
+    params = {"per_page": 30, "interval": "1h", "lookback": 240, "mode": "all"}
+
+    async def _send_scan():
+        nonlocal last_sent
+        now = _time.time()
+        if now - last_sent < 0.8:
+            return
+        last_sent = now
+        try:
+            # clamp
+            pp = max(5, min(int(params.get("per_page") or 30), 250))
+            lb = max(30, min(int(params.get("lookback") or 240), 2000))
+            iv = str(params.get("interval") or "1h")
+            md = str(params.get("mode") or "all")
+
+            payload = await api_v2_opportunity_scan(
+                per_page=pp,
+                interval=iv,
+                lookback=lb,
+                mode=md,
+            )
+            await websocket.send_text(_json.dumps({"type": "scan", "payload": payload}, ensure_ascii=False))
+        except Exception as e:
+            await websocket.send_text(_json.dumps({"type": "error", "error": str(e)}, ensure_ascii=False))
+
+    # Initial scan
+    await _send_scan()
+
+    while True:
+        try:
+            raw = await _asyncio.wait_for(websocket.receive_text(), timeout=25)
+        except _asyncio.TimeoutError:
+            # keepalive
+            await _send_scan()
+            continue
+        except WebSocketDisconnect:
+            break
+        except Exception:
+            break
+
+        try:
+            msg = _json.loads(raw or "{}") if isinstance(raw, str) else {}
+        except Exception:
+            msg = {}
+
+        action = str((msg.get("action") or "")).lower().strip()
+        if action == "scan":
+            for k in ("per_page", "interval", "lookback", "mode"):
+                if k in msg:
+                    params[k] = msg.get(k)
+            await _send_scan()
+        else:
+            # ignore unknown actions
+            continue
+
 
 
 # Compat: the UI uses POST (JSON body). Keep GET for direct URL testing.
@@ -3950,10 +4039,10 @@ async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback:
         closes = [float(k.get("c", 0) or 0) for k in klines if (k.get("c") is not None)]
         price = closes[-1] if closes else None
 
-        # Compute same heuristics as the scanner
-        tags = _opportunity_tags(closes)
-        score = _opportunity_score(closes, tags)
+        # Compute same heuristics as the scanner (fonction partagée)
+        score, tags = _opportunity_score(closes, lookback=lb)
         mode2 = _opportunity_mode(tags)
+        justif = (_score_opportunity(klines, interval=interval_norm, lookback=lb) or {}).get("justif")
 
         # Extra metrics
         ret_24 = None
@@ -3989,7 +4078,12 @@ async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback:
 
 # Rationale (human readable)
         tag_txt = ", ".join(tags) if tags else "aucun signal fort"
-        rationale = (
+        rationale = ""
+        if justif:
+            rationale = str(justif).strip()
+        else:
+            rationale = "Signal neutre : à surveiller."
+        rationale += "\n\n" + (
             f"Mode détecté: {mode2}.\n"
             f"Tags: {tag_txt}.\n"
             "Interprétation: ces tags sont des heuristiques (pas une certitude)."
@@ -4016,7 +4110,7 @@ async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback:
             "score": score,
             "rationale": rationale,
             "details": details,
-            "series": [{"t": k.get("t"), "c": k.get("c")} for k in klines],
+            "series": [{"t": k.get("t"), "close": k.get("c"), "c": k.get("c"), "open": k.get("o"), "high": k.get("h"), "low": k.get("l")} for k in klines],
         })
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -4283,6 +4377,54 @@ async def ai_opportunity_scanner(request: Request):
   var ctx = canvas.getContext("2d");
   var autoTimer = null;
 
+  // --- Live mode (WebSocket) ---
+  var ws = null;
+  var wsConnected = false;
+
+  function _wsUrl(){
+    var proto = (location.protocol === "https:") ? "wss" : "ws";
+    return proto + "://" + location.host + "/ws/opportunity";
+  }
+  function _wsSend(obj){
+    try{
+      if(ws && ws.readyState === 1){
+        ws.send(JSON.stringify(obj || {}));
+      }
+    }catch(e){}
+  }
+  function connectWS(){
+    try{
+      if(ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+      ws = new WebSocket(_wsUrl());
+      ws.onopen = function(){
+        wsConnected = true;
+        // Trigger an immediate scan using current UI params
+        _wsSend({action:"scan", per_page: universeEl.value, interval: intervalEl.value, lookback: lookbackEl.value, mode: modeEl.value});
+      };
+      ws.onclose = function(){ wsConnected = false; };
+      ws.onerror = function(){ wsConnected = false; };
+      ws.onmessage = function(ev){
+        try{
+          var msg = JSON.parse(ev.data || "{}");
+          if(msg && msg.type === "scan" && msg.payload){
+            var js = msg.payload;
+            var items = js.items || [];
+            renderRows(items);
+            lastPill.textContent = "Derniere maj: " + (js.updated_at || "-");
+            statusText.textContent = "OK - " + (items.length||0) + " resultats (live). Clique une ligne pour le detail.";
+            setCoachLines("Live OK. Clique un coin pour voir l'analyse IA detaillee.");
+            selPill.textContent = "Selection: -";
+          }else if(msg && msg.type === "error"){
+            statusText.textContent = "Erreur live: " + (msg.error || "Erreur inconnue");
+          }
+        }catch(e){}
+      };
+    }catch(e){
+      wsConnected = false;
+    }
+  }
+
+
   function setCoachLines(text){
     coachText.textContent = text;
   }
@@ -4336,6 +4478,13 @@ async def ai_opportunity_scanner(request: Request):
             + "&lookback="+encodeURIComponent(lookback)
             + "&mode="+encodeURIComponent(mode);
 
+    if(wsConnected){
+      _wsSend({action:"scan", per_page: perPage, interval: interval, lookback: lookback, mode: mode});
+      statusText.textContent = "Scan live en cours...";
+      setCoachLines("Live: scan en cours...");
+      return;
+    }
+
     try{
       var t0 = performance.now();
       var res = await fetch(url, {headers: {"Accept":"application/json"}});
@@ -4377,7 +4526,7 @@ var t1 = performance.now();
       return;
     }
 
-    var prices = series.map(function(p){return p.close;});
+    var prices = series.map(function(p){return (p && p.close !== undefined ? p.close : p.c);});
     var min = Math.min.apply(null, prices);
     var max = Math.max.apply(null, prices);
     var pad = (max - min) * 0.08;
@@ -4466,6 +4615,7 @@ var t1 = performance.now();
     scanNow();
   });
 
+  connectWS();
   scanNow();
 })();
 
@@ -14291,6 +14441,54 @@ async def ai_opportunity_scanner(request: Request):
   var ctx = canvas.getContext("2d");
   var autoTimer = null;
 
+  // --- Live mode (WebSocket) ---
+  var ws = null;
+  var wsConnected = false;
+
+  function _wsUrl(){
+    var proto = (location.protocol === "https:") ? "wss" : "ws";
+    return proto + "://" + location.host + "/ws/opportunity";
+  }
+  function _wsSend(obj){
+    try{
+      if(ws && ws.readyState === 1){
+        ws.send(JSON.stringify(obj || {}));
+      }
+    }catch(e){}
+  }
+  function connectWS(){
+    try{
+      if(ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+      ws = new WebSocket(_wsUrl());
+      ws.onopen = function(){
+        wsConnected = true;
+        // Trigger an immediate scan using current UI params
+        _wsSend({action:"scan", per_page: universeEl.value, interval: intervalEl.value, lookback: lookbackEl.value, mode: modeEl.value});
+      };
+      ws.onclose = function(){ wsConnected = false; };
+      ws.onerror = function(){ wsConnected = false; };
+      ws.onmessage = function(ev){
+        try{
+          var msg = JSON.parse(ev.data || "{}");
+          if(msg && msg.type === "scan" && msg.payload){
+            var js = msg.payload;
+            var items = js.items || [];
+            renderRows(items);
+            lastPill.textContent = "Derniere maj: " + (js.updated_at || "-");
+            statusText.textContent = "OK - " + (items.length||0) + " resultats (live). Clique une ligne pour le detail.";
+            setCoachLines("Live OK. Clique un coin pour voir l'analyse IA detaillee.");
+            selPill.textContent = "Selection: -";
+          }else if(msg && msg.type === "error"){
+            statusText.textContent = "Erreur live: " + (msg.error || "Erreur inconnue");
+          }
+        }catch(e){}
+      };
+    }catch(e){
+      wsConnected = false;
+    }
+  }
+
+
   function setCoachLines(text){
     coachText.textContent = text;
   }
@@ -14344,6 +14542,13 @@ async def ai_opportunity_scanner(request: Request):
             + "&lookback="+encodeURIComponent(lookback)
             + "&mode="+encodeURIComponent(mode);
 
+    if(wsConnected){
+      _wsSend({action:"scan", per_page: perPage, interval: interval, lookback: lookback, mode: mode});
+      statusText.textContent = "Scan live en cours...";
+      setCoachLines("Live: scan en cours...");
+      return;
+    }
+
     try{
       var t0 = performance.now();
       var res = await fetch(url, {headers: {"Accept":"application/json"}});
@@ -14378,7 +14583,7 @@ async def ai_opportunity_scanner(request: Request):
       return;
     }
 
-    var prices = series.map(function(p){return p.close;});
+    var prices = series.map(function(p){return (p && p.close !== undefined ? p.close : p.c);});
     var min = Math.min.apply(null, prices);
     var max = Math.max.apply(null, prices);
     var pad = (max - min) * 0.08;
@@ -14467,6 +14672,7 @@ async def ai_opportunity_scanner(request: Request):
     scanNow();
   });
 
+  connectWS();
   scanNow();
 })();
 </script>

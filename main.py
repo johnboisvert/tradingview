@@ -1,3 +1,4 @@
+import pathlib
 from typing import Optional
 import html
 
@@ -4522,9 +4523,9 @@ def _resolve_site_logo_url() -> str:
     # fallback minimal si jamais _STATIC_DIRS n'existe pas
     if not static_dirs:
         try:
-            static_dirs = [Path(__file__).resolve().parent / "static", Path.cwd() / "static"]
+            static_dirs = [pathlib.Path(__file__).resolve().parent / "static", pathlib.Path.cwd() / "static"]
         except Exception:
-            static_dirs = [Path.cwd() / "static"]
+            static_dirs = [pathlib.Path.cwd() / "static"]
 
     for d in static_dirs:
         try:
@@ -36967,9 +36968,9 @@ def _resolve_site_logo_url() -> str:
     # fallback minimal si jamais _STATIC_DIRS n'existe pas
     if not static_dirs:
         try:
-            static_dirs = [Path(__file__).resolve().parent / "static", Path.cwd() / "static"]
+            static_dirs = [pathlib.Path(__file__).resolve().parent / "static", pathlib.Path.cwd() / "static"]
         except Exception:
-            static_dirs = [Path.cwd() / "static"]
+            static_dirs = [pathlib.Path.cwd() / "static"]
 
     for d in static_dirs:
         try:
@@ -69267,7 +69268,7 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html: str = "
 <head>
   <meta charset='utf-8'/>
   <meta name='viewport' content='width=device-width,initial-scale=1'/>
-  <title>{{safe_title}}</title>
+  <title>{safe_title}</title>
   <style>
     :root {{
       --bg:#0b1020;
@@ -69290,7 +69291,7 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html: str = "
       backdrop-filter: blur(10px);
     }}
     .main {{
-      margin-left:{{main_margin}};
+      margin-left:{main_margin};
       padding: 22px 22px 60px;
     }}
     .page-wrap {{
@@ -69306,11 +69307,11 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html: str = "
   </style>
 </head>
 <body>
-  {{sidebar_block}}
+  {sidebar_block}
   <main class='main'>
     <div class='page-wrap'>
-      {{title_block}}
-      {{body_html}}
+      {title_block}
+      {body_html}
     </div>
   </main>
 </body>

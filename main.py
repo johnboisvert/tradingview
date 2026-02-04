@@ -1,6 +1,21 @@
 from typing import Optional
 import html
 
+# --- HTML escaping helper (used by _simple_page and templates) ---
+# Ensures we never crash with NameError if a page calls _html_escape.
+def _html_escape(value):
+    """Safely escape text for HTML contexts.
+
+    - Converts None to empty string
+    - Forces str()
+    - Escapes quotes
+    """
+    try:
+        s = '' if value is None else str(value)
+    except Exception:
+        s = repr(value)
+    return html.escape(s, quote=True)
+
 # =========================
 # RATE LIMITER (safe fallback)
 # =========================
@@ -3893,6 +3908,94 @@ async def api_v2_opportunity_scan_post(body: dict = Body(default={} )):
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
+@app.get("/api/v2/opportunity/detail")
+async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback: int = 240, mode: str = "all"):
+    """Return detailed analysis + a simple close-price series for a selected symbol.
+
+    Notes:
+    - Uses CoinGecko prices (same source as the WOW scanner cards) to stay consistent.
+    - This is best-effort live data; can be delayed by upstream APIs.
+    """
+    try:
+        sym = (symbol or "").strip().upper()
+        if not sym:
+            return JSONResponse({"ok": False, "error": "Missing symbol"}, status_code=400)
+
+        interval_norm = str(interval or "1h").strip()
+        lb = max(30, min(int(lookback or 240), 2000))
+
+        # Build / refresh mapping from symbol->CoinGecko id if needed
+        if not isinstance(globals().get("_WOW_SYMBOL_TO_CGID"), dict):
+            globals()["_WOW_SYMBOL_TO_CGID"] = {}
+        cid = globals()["_WOW_SYMBOL_TO_CGID"].get(sym)
+        if not cid:
+            # Try infer from base symbol (e.g., BTCUSDT -> btc)
+            base = sym
+            for q in ("USDT", "USD", "BUSD", "USDC"):
+                if base.endswith(q):
+                    base = base[:-len(q)]
+                    break
+            cid = await _cg_coin_id_from_symbol(base)
+            if cid:
+                globals()["_WOW_SYMBOL_TO_CGID"][sym] = cid
+
+        if not cid:
+            return JSONResponse({"ok": False, "error": f"Unknown symbol: {sym}"}, status_code=404)
+
+        klines = await _fetch_cg_klines(cid, interval_norm, lb)
+        if not klines or len(klines) < 10:
+            return JSONResponse({"ok": False, "error": "Not enough data"}, status_code=502)
+
+        closes = [float(k.get("c", 0) or 0) for k in klines if (k.get("c") is not None)]
+        price = closes[-1] if closes else None
+
+        # Compute same heuristics as the scanner
+        tags = _opportunity_tags(closes)
+        score = _opportunity_score(closes, tags)
+        mode2 = _opportunity_mode(tags)
+
+        # Extra metrics
+        ret_24 = None
+        if len(closes) >= 2:
+            try:
+                ret_24 = (closes[-1] / closes[0] - 1.0) * 100.0
+            except Exception:
+                ret_24 = None
+        # Rationale (human readable)
+        tag_txt = ", ".join(tags) if tags else "aucun signal fort"
+        rationale = (
+            f"Mode détecté: {mode2}.\n"
+            f"Tags: {tag_txt}.\n"
+            "Interprétation: ces tags sont des heuristiques (pas une certitude)."
+        )
+
+        if ret_24 is not None:
+            details = (
+                f"Source: CoinGecko (série de prix). Intervalle: {interval_norm}. Lookback: {lb}.\n"
+                f"Score: {score}/100. Variation fenêtre: {ret_24:.2f}%.\n"
+                f"Drawdown approx: {dd_pct:.1f}%. Volatilité (std ret): {vol:.4f}."
+            )
+        else:
+            details = (
+                f"Source: CoinGecko (série de prix). Intervalle: {interval_norm}. Lookback: {lb}.\n"
+                f"Score: {score}/100.\n"
+                f"Drawdown approx: {dd_pct:.1f}%. Volatilité (std ret): {vol:.4f}."
+            )
+
+        return JSONResponse({
+            "ok": True,
+            "symbol": sym,
+            "price": price,
+            "mode": mode2,
+            "score": score,
+            "rationale": rationale,
+            "details": details,
+            "series": [{"t": k.get("t"), "c": k.get("c")} for k in klines],
+        })
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 @app.get("/ai-opportunity-scanner")
 async def ai_opportunity_scanner(request: Request):
     """
@@ -4283,7 +4386,7 @@ var t1 = performance.now();
     ctx.fillText("$"+fmt(min,2), 6*window.devicePixelRatio, (top+plotH));
   }
 
-  async async function selectSymbol(symbol, interval, mode){
+  async function selectSymbol(symbol, interval, mode){
     selPill.textContent = "Selection: " + symbol;
     statusText.textContent = "Chargement detail " + symbol + "...";
     setCoachLines("Chargement de l'analyse IA...");
@@ -4342,7 +4445,7 @@ var t1 = performance.now();
 
     </script>
     """
-    return _simple_page("AI Opportunity Scanner", body_html, request=request, show_title=False)
+    return _simple_page("AI Opportunity Scanner", body_html, sidebar_html=(globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""), request=request, show_title=False)
 @app.get("/static/{file_path:path}")
 async def _serve_static(file_path: str):
     """Sert les fichiers statiques (logo/CSS/JS) depuis les répertoires candidats."""

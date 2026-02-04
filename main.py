@@ -1,6 +1,7 @@
 import pathlib
 from typing import Optional
 import html
+import datetime
 
 # --- HTML escaping helper (used by _simple_page and templates) ---
 # Ensures we never crash with NameError if a page calls _html_escape.
@@ -3635,6 +3636,77 @@ async def _fetch_cg_klines(coin_id: str, interval: str = "1h", lookback: int = 2
     closes = closes[-max(20, int(lookback or 240)):]
     return _wow_closes_to_klines(closes)
 
+
+
+def _wow_bucket_seconds(interval: str) -> int:
+    interval = (interval or "1h").strip().lower()
+    if interval in ("15m", "15min", "15"):
+        return 15 * 60
+    if interval in ("1h", "60m", "60min", "1hr", "1hour"):
+        return 60 * 60
+    if interval in ("4h", "240m", "4hr", "4hour"):
+        return 4 * 60 * 60
+    if interval in ("1d", "1day", "24h", "1440m"):
+        return 24 * 60 * 60
+    return 60 * 60
+
+def _wow_days_for_lookback(interval: str, lookback: int) -> int:
+    # Pick enough history for the requested lookback, with a safety margin.
+    lb = max(30, min(int(lookback or 240), 2000))
+    bucket = _wow_bucket_seconds(interval)
+    seconds_needed = lb * bucket
+    days = int(max(1, min(365, (seconds_needed / 86400.0) * 1.25 + 1)))
+    # market_chart "days" supports integers or "max"; keep it bounded for quota/perf.
+    return max(1, min(365, days))
+
+async def _fetch_cg_klines_market_chart(coin_id: str, interval: str = "1h", lookback: int = 240):
+    """Fetch timestamped close series using CoinGecko market_chart then resample.
+
+    This is more accurate for intraday (15m/1h/4h) than sparkline_7d, and works even when Binance is blocked.
+    Returns list[dict] with keys: t (ms epoch), c, close.
+    """
+    if not coin_id:
+        return []
+    interval_norm = (interval or "1h").strip().lower()
+    lb = max(30, min(int(lookback or 240), 2000))
+    days = _wow_days_for_lookback(interval_norm, lb)
+
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+    params = {"vs_currency": _WOW_CG_VS, "days": days}
+    data = await _http_get_json(url, params=params, cache_ttl=35)
+    prices = (data or {}).get("prices") if isinstance(data, dict) else None
+    if not prices or not isinstance(prices, list):
+        return []
+
+    bucket = _wow_bucket_seconds(interval_norm)
+    # Build buckets with last price (close) per bucket
+    buckets = {}
+    order = []
+    for row in prices:
+        try:
+            ts_ms = int(row[0])
+            px = float(row[1])
+            ts_sec = ts_ms // 1000
+            b = ts_sec - (ts_sec % bucket)
+            if b not in buckets:
+                order.append(b)
+            buckets[b] = (ts_ms, px)  # keep last
+        except Exception:
+            continue
+
+    if not order:
+        return []
+    order.sort()
+
+    kl = []
+    for b in order:
+        ts_ms, px = buckets[b]
+        kl.append({"t": ts_ms, "c": px, "close": px})
+    # Keep last lookback candles
+    if len(kl) > lb:
+        kl = kl[-lb:]
+    return kl
+
 def _score_opportunity(klines, interval: str = "1h", lookback: int = 240):
     closes = []
     for k in (klines or []):
@@ -3858,23 +3930,14 @@ async def api_v2_opportunity_scan(
                     "score": score,
                     "price": price_val,
                     "change_24h": chg_val,
-
-                    # Metrics (pour l'UI)
-                    "vol_rel": vol,   # volatilité proxy (stdev des returns) en %
-                    "dd": dd,         # drawdown max approx sur la fenêtre en %
-
-                    # Champs conservés (compat / debug)
                     "vol_30d": vol,
                     "dd_30d": dd,
-                    "interval": interval_norm,
-                    "src": src,
-
-                    # Fractions (si une autre UI veut formatter elle-même)
-                    "pct24h_frac": (chg_val / 100.0) if isinstance(chg_val, (int, float)) else None,
-                    "vol_frac": (vol / 100.0) if isinstance(vol, (int, float)) else None,
-                    "dd_frac": (dd / 100.0) if isinstance(dd, (int, float)) else None,
-
+                    # champs attendus par l'UI WOW
+                    "pct24h": (chg_val / 100.0) if isinstance(chg_val, (int, float)) else 0.0,
+                    "vol_rel": float(vol) if isinstance(vol, (int, float)) else 0.0,  # en %
+                    "dd": float(dd) if isinstance(dd, (int, float)) else 0.0,          # en %
                     "tags": tags,
+                    "src": src,
                 })
             except Exception:
                 continue
@@ -3889,94 +3952,15 @@ async def api_v2_opportunity_scan(
 
         return {
             "ok": True,
-            "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
             "meta": meta,
             "items": out[:200],
             "count": len(out),
             "interval": interval_norm,
             "limit": limit,
+            "updated_at": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
         }
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
-
-
-
-
-@app.websocket("/ws/opportunity")
-async def ws_opportunity(websocket: WebSocket):
-    """WebSocket pour le scanner d'opportunités.
-
-    Le client envoie:
-      {action:"scan", per_page, interval, lookback, mode}
-
-    Le serveur répond:
-      {type:"scan", payload: <même payload que /api/v2/opportunity/scan>}
-
-    Notes production:
-    - throttling léger par connexion (anti-spam)
-    - keepalive: renvoie un scan périodique si le client reste silencieux
-    """
-    await websocket.accept()
-    import asyncio as _asyncio
-    import json as _json
-    import time as _time
-
-    last_sent = 0.0
-    params = {"per_page": 30, "interval": "1h", "lookback": 240, "mode": "all"}
-
-    async def _send_scan():
-        nonlocal last_sent
-        now = _time.time()
-        if now - last_sent < 0.8:
-            return
-        last_sent = now
-        try:
-            # clamp
-            pp = max(5, min(int(params.get("per_page") or 30), 250))
-            lb = max(30, min(int(params.get("lookback") or 240), 2000))
-            iv = str(params.get("interval") or "1h")
-            md = str(params.get("mode") or "all")
-
-            payload = await api_v2_opportunity_scan(
-                per_page=pp,
-                interval=iv,
-                lookback=lb,
-                mode=md,
-            )
-            await websocket.send_text(_json.dumps({"type": "scan", "payload": payload}, ensure_ascii=False))
-        except Exception as e:
-            await websocket.send_text(_json.dumps({"type": "error", "error": str(e)}, ensure_ascii=False))
-
-    # Initial scan
-    await _send_scan()
-
-    while True:
-        try:
-            raw = await _asyncio.wait_for(websocket.receive_text(), timeout=25)
-        except _asyncio.TimeoutError:
-            # keepalive
-            await _send_scan()
-            continue
-        except WebSocketDisconnect:
-            break
-        except Exception:
-            break
-
-        try:
-            msg = _json.loads(raw or "{}") if isinstance(raw, str) else {}
-        except Exception:
-            msg = {}
-
-        action = str((msg.get("action") or "")).lower().strip()
-        if action == "scan":
-            for k in ("per_page", "interval", "lookback", "mode"):
-                if k in msg:
-                    params[k] = msg.get(k)
-            await _send_scan()
-        else:
-            # ignore unknown actions
-            continue
-
 
 
 # Compat: the UI uses POST (JSON body). Keep GET for direct URL testing.
@@ -3999,161 +3983,96 @@ async def api_v2_opportunity_scan_post(body: dict = Body(default={} )):
 
 
 @app.get("/api/v2/opportunity/detail")
-async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback: int = 240, mode: str = "all", cg_id: Optional[str] = None):
-    """Détail d'une opportunité (graph + justification).
+async def api_v2_opportunity_detail(
+    symbol: str,
+    interval: str = "1h",
+    lookback: int = 240,
+    mode: str = "all",
+    cg_id: str = "",
+):
+    """Analyse détaillée (graph + justification IA) pour un symbole.
 
     Objectif:
-    - Ne JAMAIS crasher (pas de 500 "gratuit") : on renvoie ok:false + message clair.
-    - Données *réelles* : priorité Binance (klines) puis fallback CoinGecko si besoin.
-    - Compatible avec l'UI: renvoie series[] avec {t, close, c, open, high, low, v}.
+    - Fonctionne pour 15m / 1h / 4h / 1d
+    - Utilise CoinGecko (market_chart) pour des séries intraday plus fiables.
+    - Fallback sur sparkline_7d si CoinGecko renvoie trop peu de données.
+
+    Retour JSON:
+      { ok, symbol, price, mode, score, rationale, details, series:[{t, close}] }
     """
-    sym = (symbol or "").strip().upper()
-    if not sym:
-        return JSONResponse({"ok": False, "error": "Missing symbol"}, status_code=200)
-
-    # Normaliser intervalle
-    interval_norm = str(interval or "1h").strip().lower()
-    # L'UI peut envoyer "1H", "1h", "60m", etc.
-    interval_map = {
-        "60m": "1h", "1hour": "1h", "1hr": "1h",
-        "240m": "4h", "4hour": "4h", "4hr": "4h",
-        "1440m": "1d", "1day": "1d",
-    }
-    interval_norm = interval_map.get(interval_norm, interval_norm)
-
-    # Lookback sécurisé
     try:
-        lb = int(lookback or 240)
-    except Exception:
-        lb = 240
-    lb = max(30, min(lb, 1000))
+        sym = (symbol or "").strip().upper()
+        if not sym:
+            return JSONResponse({"ok": False, "error": "Missing symbol"}, status_code=400)
 
-    # Le client peut envoyer un "mode" décoré (ex "breakdown:1") → on assainit
-    try:
-        mode_raw = (mode or "all").strip().lower()
-        mode_raw = mode_raw.split(":", 1)[0]
-        mode_safe = re.sub(r"[^a-z0-9_\-]", "", mode_raw) or "all"
-    except Exception:
-        mode_safe = "all"
+        interval_norm = str(interval or "1h").strip().lower()
+        lb = max(30, min(int(lookback or 240), 2000))
 
-    klines = []
-    source = None
-
-    # 1) Binance (priorité) : données OHLCV ultra stables pour le chart
-    try:
-        b = await _binance_klines(sym, interval_norm, limit=lb, ttl_seconds=10)
-        # Binance renvoie parfois un dict d'erreur → on valide bien "list"
-        if isinstance(b, list) and b and isinstance(b[0], (list, tuple)) and len(b[0]) >= 6:
-            for row in b:
-                try:
-                    klines.append({
-                        "t": int(row[0]),
-                        "o": float(row[1]),
-                        "h": float(row[2]),
-                        "l": float(row[3]),
-                        "c": float(row[4]),
-                        "v": float(row[5]),
-                    })
-                except Exception:
-                    continue
-            if len(klines) >= 10:
-                source = "binance"
-    except Exception:
-        klines = []
-
-    # 2) Fallback CoinGecko (si Binance KO ou symbole non dispo)
-    if len(klines) < 10:
-        try:
+        # 1) Résoudre CoinGecko ID (priorité à cg_id envoyé par l'UI)
+        cid = (cg_id or "").strip()
+        if not cid:
             if not isinstance(globals().get("_WOW_SYMBOL_TO_CGID"), dict):
                 globals()["_WOW_SYMBOL_TO_CGID"] = {}
-
-            sym_l = sym.lower()
-            base_l = sym_l
-            for q in ("usdt", "usd", "busd", "usdc"):
-                if base_l.endswith(q):
-                    base_l = base_l[:-len(q)]
-                    break
-
-            # Si le scan a déjà fourni cg_id, on l'utilise directement (évite les lookups fragiles)
-            cid = (cg_id or "").strip() if cg_id else ""
-            if cid:
-                globals()["_WOW_SYMBOL_TO_CGID"][base_l] = cid
-                globals()["_WOW_SYMBOL_TO_CGID"][sym_l] = cid
-            else:
-                cid = globals()["_WOW_SYMBOL_TO_CGID"].get(base_l) or globals()["_WOW_SYMBOL_TO_CGID"].get(sym_l)
-
-            # Dernier recours: recherche par symbole sur CoinGecko
-            if not cid and base_l:
-                cid = await _cg_coin_id_from_symbol(base_l)
+            cid = globals()["_WOW_SYMBOL_TO_CGID"].get(sym)
+            if not cid:
+                # Try infer from base symbol (e.g., BTCUSDT -> btc)
+                base = sym
+                for q in ("USDT", "USD", "BUSD", "USDC"):
+                    if base.endswith(q):
+                        base = base[:-len(q)]
+                        break
+                cid = await _cg_coin_id_from_symbol(base)
                 if cid:
-                    globals()["_WOW_SYMBOL_TO_CGID"][base_l] = cid
-                    globals()["_WOW_SYMBOL_TO_CGID"][sym_l] = cid
+                    globals()["_WOW_SYMBOL_TO_CGID"][sym] = cid
 
-            if cid:
-                cg = await _fetch_cg_klines(cid, interval_norm, lb)
-                if isinstance(cg, list) and len(cg) >= 10:
-                    klines = cg
-                    source = "coingecko"
-        except Exception:
-            pass
+        if not cid:
+            return JSONResponse({"ok": False, "error": f"Unknown symbol: {sym}"}, status_code=404)
 
-    if not klines or len(klines) < 10:
-        return JSONResponse({
-            "ok": False,
-            "symbol": sym,
-            "error": "Impossible de récupérer assez de données pour ce symbole (Binance/CoinGecko).",
-        }, status_code=200)
+        # 2) Fetch series (market_chart -> resample) then fallback on sparkline
+        klines = await _fetch_cg_klines_market_chart(cid, interval_norm, lb)
+        src = "coingecko_market_chart"
+        if not klines or len(klines) < 10:
+            klines = await _fetch_cg_klines(cid, interval_norm, lb)
+            src = "coingecko_sparkline_7d"
 
-    # Série close
-    closes = []
-    for k in klines:
-        try:
-            c = k.get("c", None)
-            if c is None:
+        if not klines or len(klines) < 10:
+            return JSONResponse({"ok": False, "error": "Not enough data"}, status_code=502)
+
+        closes = []
+        series = []
+        for k in klines:
+            try:
+                c = _wow_float(k.get("c") if isinstance(k, dict) else None)
+                t = k.get("t") if isinstance(k, dict) else None
+                if c is None:
+                    continue
+                closes.append(float(c))
+                series.append({"t": t, "close": float(c)})
+            except Exception:
                 continue
-            closes.append(float(c))
-        except Exception:
-            continue
 
-    if len(closes) < 10:
-        return JSONResponse({"ok": False, "symbol": sym, "error": "Not enough close data"}, status_code=200)
+        if len(closes) < 10:
+            return JSONResponse({"ok": False, "error": "Not enough data"}, status_code=502)
 
-    price = closes[-1]
+        price = closes[-1]
 
-    # Heuristiques (robustes)
-    score = 0
-    tags = []
-    mode2 = "Watch"
-    try:
-        score, tags = _opportunity_score(closes, lookback=min(len(closes), lb))
-        mode2 = _opportunity_mode(tags)
-    except Exception:
-        tags = []
-        mode2 = "Watch"
-        score = 0
+        # 3) Score + tags (mêmes heuristiques que la liste)
+        scored = _score_opportunity(klines, interval=interval_norm, lookback=lb) if callable(globals().get("_score_opportunity")) else None
+        if isinstance(scored, dict):
+            score = int(scored.get("score") or 0)
+            mode2 = scored.get("mode") or "-"
+            tags = scored.get("tags") or []
+            justif = scored.get("justif") or ""
+        else:
+            score, tags = _opportunity_score(closes, lookback=lb)
+            mode2 = _opportunity_mode(tags)
+            justif = ""
 
-    # Justification
-    justif = ""
-    try:
-        sc = _score_opportunity(klines, interval=interval_norm, lookback=min(len(klines), lb)) or {}
-        justif = str(sc.get("justif") or "").strip()
-    except Exception:
-        justif = ""
-
-    # 24h (approx sur la fenêtre)
-    ret_24 = None
-    try:
-        if closes and len(closes) >= 2 and closes[0]:
-            ret_24 = (closes[-1] / closes[0] - 1.0) * 100.0
-    except Exception:
-        ret_24 = None
-
-    # Volatilité + drawdown (approx)
-    dd_pct = 0.0
-    vol = 0.0
-    try:
-        w = closes[-min(len(closes), lb):]
-        if w:
+        # 4) Extra metrics (DD + vol) for "details"
+        dd_pct = 0.0
+        vol_std = 0.0
+        try:
+            w = closes[-min(len(closes), lb):]
             peak = w[0]
             max_dd = 0.0
             for c in w:
@@ -4162,57 +4081,41 @@ async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback:
                 dd = (c / peak - 1.0) * 100.0
                 if dd < max_dd:
                     max_dd = dd
-            dd_pct = max_dd
-
+            dd_pct = float(max_dd)
             rets = [(w[i] / w[i-1] - 1.0) for i in range(1, len(w)) if w[i-1]]
             if rets:
                 mean = sum(rets) / len(rets)
                 var = sum((r - mean) ** 2 for r in rets) / len(rets)
-                vol = var ** 0.5
-    except Exception:
-        dd_pct = 0.0
-        vol = 0.0
+                vol_std = float(var ** 0.5)
+        except Exception:
+            dd_pct = 0.0
+            vol_std = 0.0
 
-    tag_txt = ", ".join(tags) if tags else "aucun signal fort"
-    rationale = justif if justif else "Signal neutre : à surveiller."
-    rationale += "\n\n" + (
-        f"Source: {source}. Mode détecté: {mode2}.\n"
-        f"Tags: {tag_txt}.\n"
-        f"Retour approx: {ret_24:.2f}% | Drawdown approx: {dd_pct:.1f}% | Volatilité: {vol:.4f}."
-    )
+        tag_txt = ", ".join(tags) if tags else "aucun signal fort"
+        rationale = (
+            f"Mode détecté: {mode2}. "
+            f"Tags: {tag_txt}. "
+            + (justif if justif else "Interprétation: ces tags sont des heuristiques (pas une certitude).")
+        )
 
-    details = {
-        "interval": interval_norm,
-        "lookback": lb,
-        "mode_requested": mode_safe,
-        "source": source,
-        "ret_approx": ret_24,
-        "drawdown_pct": dd_pct,
-        "volatility": vol,
-        "tags": tags,
-    }
+        details = (
+            f"Source: {src}. Intervalle: {interval_norm}. Lookback: {lb}. "
+            f"Score: {score}/100. "
+            f"Drawdown approx: {dd_pct:.1f}%. Volatilité (std ret): {vol_std:.4f}."
+        )
 
-    return JSONResponse({
-        "ok": True,
-        "symbol": sym,
-        "price": price,
-        "mode": mode2,
-        "score": score,
-        "rationale": rationale,
-        "details": details,
-        "series": [
-            {
-                "t": k.get("t"),
-                "close": k.get("c"),
-                "c": k.get("c"),
-                "open": k.get("o"),
-                "high": k.get("h"),
-                "low": k.get("l"),
-                "v": k.get("v"),
-            } for k in klines
-        ],
-    }, status_code=200)
-
+        return {
+            "ok": True,
+            "symbol": sym,
+            "price": price,
+            "mode": mode2,
+            "score": score,
+            "rationale": rationale,
+            "details": details,
+            "series": series,
+        }
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 @app.get("/ai-opportunity-scanner")
 async def ai_opportunity_scanner(request: Request):
@@ -4352,9 +4255,9 @@ async def ai_opportunity_scanner(request: Request):
         </div>
 
         <div class="actions">
-          <button class="btn" id="scanBtn" type="button">Scanner maintenant</button>
-          <button class="toggle" id="autoBtn" type="button">Auto: OFF</button>
-          <button class="iconbtn" id="refreshBtn" type="button" title="Rafraichir">↻</button>
+          <button class="btn" id="scanBtn">Scanner maintenant</button>
+          <button class="toggle" id="autoBtn">Auto: OFF</button>
+          <button class="iconbtn" id="refreshBtn" title="Rafraichir">↻</button>
         </div>
 
         <div class="list">
@@ -4475,56 +4378,6 @@ async def ai_opportunity_scanner(request: Request):
   var ctx = canvas.getContext("2d");
   var autoTimer = null;
 
-  // --- Live mode (WebSocket) ---
-  var ws = null;
-  var wsConnected = false;
-  var lastScanReceivedAt = 0;
-
-  function _wsUrl(){
-    var proto = (location.protocol === "https:") ? "wss" : "ws";
-    return proto + "://" + location.host + "/ws/opportunity";
-  }
-  function _wsSend(obj){
-    try{
-      if(ws && ws.readyState === 1){
-        ws.send(JSON.stringify(obj || {}));
-      }
-    }catch(e){}
-  }
-  function connectWS(){
-    try{
-      if(ws && (ws.readyState === 0 || ws.readyState === 1)) return;
-      ws = new WebSocket(_wsUrl());
-      ws.onopen = function(){
-        wsConnected = true;
-        // Trigger an immediate scan using current UI params
-        _wsSend({action:"scan", per_page: universeEl.value, interval: intervalEl.value, lookback: lookbackEl.value, mode: modeEl.value});
-      };
-      ws.onclose = function(){ wsConnected = false; };
-      ws.onerror = function(){ wsConnected = false; };
-      ws.onmessage = function(ev){
-        try{
-          var msg = JSON.parse(ev.data || "{}");
-          if(msg && msg.type === "scan" && msg.payload){
-            var js = msg.payload;
-            var items = js.items || [];
-            renderRows(items);
-            lastScanReceivedAt = Date.now();
-            lastPill.textContent = "Derniere maj: " + (js.updated_at || "-");
-            statusText.textContent = "OK - " + (items.length||0) + " resultats (live). Clique une ligne pour le detail.";
-            setCoachLines("Live OK. Clique un coin pour voir l'analyse IA detaillee.");
-            selPill.textContent = "Selection: -";
-          }else if(msg && msg.type === "error"){
-            statusText.textContent = "Erreur live: " + (msg.error || "Erreur inconnue");
-          }
-        }catch(e){}
-      };
-    }catch(e){
-      wsConnected = false;
-    }
-  }
-
-
   function setCoachLines(text){
     coachText.textContent = text;
   }
@@ -4579,46 +4432,6 @@ async def ai_opportunity_scanner(request: Request):
             + "&lookback="+encodeURIComponent(lookback)
             + "&mode="+encodeURIComponent(mode);
 
-    
-    // Si WS est "connecté" mais pas vraiment OPEN, on force le fallback REST.
-    try{
-      if(ws && ws.readyState !== 1){ wsConnected = false; }
-    }catch(e){ wsConnected = false; }
-
-    if(wsConnected){
-      var before = lastScanReceivedAt;
-      _wsSend({action:"scan", per_page: perPage, interval: interval, lookback: lookback, mode: mode});
-      statusText.textContent = "Scan live en cours...";
-      setCoachLines("Live: scan en cours...");
-
-      // Fallback: si on ne reçoit rien du WS rapidement, on bascule sur REST.
-      setTimeout(function(){
-        try{
-          if(!wsConnected) return;
-          if(lastScanReceivedAt === before){
-            // Pas de réponse WS -> REST
-            fetch(url, {headers: {"Accept":"application/json"}})
-              .then(function(res){ if(!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
-              .then(function(js){
-                var items = (js && js.items) ? js.items : [];
-                renderRows(items);
-                lastPill.textContent = "Derniere maj: " + ((js && js.updated_at) ? js.updated_at : "-");
-                statusText.textContent = "OK - " + (items.length||0) + " resultats (fallback REST). Clique une ligne pour le detail.";
-                setCoachLines("Clique un coin pour voir l'analyse IA detaillee.");
-                selPill.textContent = "Selection: -";
-              })
-              .catch(function(e){
-                statusText.textContent = "Erreur scan: " + (e && e.message ? e.message : e);
-                setCoachLines("Erreur. Verifie ta connexion et reessaie.");
-              });
-          }
-        }catch(e){}
-      }, 1800);
-
-      return;
-    }
-
-
     try{
       var t0 = performance.now();
       var res = await fetch(url, {headers: {"Accept":"application/json"}});
@@ -4660,7 +4473,7 @@ var t1 = performance.now();
       return;
     }
 
-    var prices = series.map(function(p){return (p && p.close !== undefined ? p.close : p.c);});
+    var prices = series.map(function(p){return (p && p.close!=null) ? p.close : (p ? p.c : null);});
     var min = Math.min.apply(null, prices);
     var max = Math.max.apply(null, prices);
     var pad = (max - min) * 0.08;
@@ -4684,7 +4497,7 @@ var t1 = performance.now();
     ctx.beginPath();
     series.forEach(function(p, i){
       var x = left + (plotW * (i/(series.length-1)));
-      var y = top + (plotH * (1 - ((p.close - min)/(max-min))));
+      var y = top + (plotH * (1 - ((( (p.close!=null)?p.close:p.c ) - min)/(max-min))));
       if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     });
     ctx.stroke();
@@ -4700,40 +4513,19 @@ var t1 = performance.now();
     statusText.textContent = "Chargement detail " + symbol + "...";
     setCoachLines("Chargement de l'analyse IA...");
 
-    // Affiche le panneau de droite immédiatement (UX)
-    detailEmpty.style.display = "none";
-    detailPanel.style.display = "block";
-    dSymbol.textContent = symbol;
-    dPrice.textContent = "-";
-    dMode.textContent = "-";
-    dScore.textContent = "-";
-    dRationale.textContent = "Chargement...";
-    dDetails.textContent = "";
-    drawLineChart([]);
-
     try{
       var url = "/api/v2/opportunity/detail?symbol="+encodeURIComponent(symbol)
+              + "&cg_id="+encodeURIComponent(cgId||"")
               + "&interval="+encodeURIComponent(interval||intervalEl.value)
               + "&lookback="+encodeURIComponent(lookbackEl.value || 240)
               + "&mode="+encodeURIComponent(mode||modeEl.value);
-      if(cgId){ url += "&cg_id="+encodeURIComponent(cgId); }
-var res = await fetch(url, {headers: {"Accept":"application/json"}});
-      var js = null;
-      try{ js = await res.json(); }catch(_){ js = null; }
 
-      if(!res.ok){
-        var msg = (js && (js.error || js.detail)) ? (js.error || js.detail) : ("HTTP " + res.status);
-        throw new Error(msg);
-      }
+      var res = await fetch(url, {headers: {"Accept":"application/json"}});
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      var js = await res.json();
 
-      if(!js || js.ok === false){
-        var msg2 = (js && js.error) ? js.error : "Detail indisponible.";
-        dRationale.textContent = msg2;
-        dDetails.textContent = (js && js.details) ? (typeof js.details === "string" ? js.details : JSON.stringify(js.details, null, 2)) : "";
-        statusText.textContent = "Detail indisponible: " + symbol;
-        setCoachLines(msg2);
-        return;
-      }
+      detailEmpty.style.display = "none";
+      detailPanel.style.display = "block";
 
       dSymbol.textContent = js.symbol || symbol;
       dPrice.textContent = "$" + fmt(js.price, 4);
@@ -4742,22 +4534,19 @@ var res = await fetch(url, {headers: {"Accept":"application/json"}});
       dScore.className = "v score " + scoreClass(Number(js.score||0));
 
       dRationale.textContent = js.rationale || "Rationale indisponible.";
-      dDetails.textContent = (typeof js.details === "string") ? js.details : JSON.stringify(js.details || {}, null, 2);
+      dDetails.textContent = js.details || "Details indisponibles.";
 
       drawLineChart(js.series || []);
       statusText.textContent = "Detail charge: " + symbol;
       setCoachLines(js.rationale || "Analyse chargee.");
     }catch(e){
       console.error(e);
-      var em = (e && e.message) ? e.message : (""+e);
-      statusText.textContent = "Erreur detail: " + em;
-      dRationale.textContent = "Erreur: " + em;
-      dDetails.textContent = "";
+      statusText.textContent = "Erreur detail: " + (e && e.message ? e.message : e);
       setCoachLines("Erreur. Impossible de charger le detail.");
     }
   }
 
-scanBtn.addEventListener("click", scanNow);
+  scanBtn.addEventListener("click", scanNow);
   refreshBtn.addEventListener("click", scanNow);
 
   autoBtn.addEventListener("click", function(){
@@ -4774,7 +4563,6 @@ scanBtn.addEventListener("click", scanNow);
     scanNow();
   });
 
-  connectWS();
   scanNow();
 })();
 
@@ -14477,9 +14265,9 @@ async def ai_opportunity_scanner(request: Request):
         </div>
 
         <div class="actions">
-          <button class="btn" id="scanBtn" type="button">Scanner maintenant</button>
-          <button class="toggle" id="autoBtn" type="button">Auto: OFF</button>
-          <button class="iconbtn" id="refreshBtn" type="button" title="Rafraichir">↻</button>
+          <button class="btn" id="scanBtn">Scanner maintenant</button>
+          <button class="toggle" id="autoBtn">Auto: OFF</button>
+          <button class="iconbtn" id="refreshBtn" title="Rafraichir">↻</button>
         </div>
 
         <div class="list">
@@ -14600,54 +14388,6 @@ async def ai_opportunity_scanner(request: Request):
   var ctx = canvas.getContext("2d");
   var autoTimer = null;
 
-  // --- Live mode (WebSocket) ---
-  var ws = null;
-  var wsConnected = false;
-
-  function _wsUrl(){
-    var proto = (location.protocol === "https:") ? "wss" : "ws";
-    return proto + "://" + location.host + "/ws/opportunity";
-  }
-  function _wsSend(obj){
-    try{
-      if(ws && ws.readyState === 1){
-        ws.send(JSON.stringify(obj || {}));
-      }
-    }catch(e){}
-  }
-  function connectWS(){
-    try{
-      if(ws && (ws.readyState === 0 || ws.readyState === 1)) return;
-      ws = new WebSocket(_wsUrl());
-      ws.onopen = function(){
-        wsConnected = true;
-        // Trigger an immediate scan using current UI params
-        _wsSend({action:"scan", per_page: universeEl.value, interval: intervalEl.value, lookback: lookbackEl.value, mode: modeEl.value});
-      };
-      ws.onclose = function(){ wsConnected = false; };
-      ws.onerror = function(){ wsConnected = false; };
-      ws.onmessage = function(ev){
-        try{
-          var msg = JSON.parse(ev.data || "{}");
-          if(msg && msg.type === "scan" && msg.payload){
-            var js = msg.payload;
-            var items = js.items || [];
-            renderRows(items);
-            lastPill.textContent = "Derniere maj: " + (js.updated_at || "-");
-            statusText.textContent = "OK - " + (items.length||0) + " resultats (live). Clique une ligne pour le detail.";
-            setCoachLines("Live OK. Clique un coin pour voir l'analyse IA detaillee.");
-            selPill.textContent = "Selection: -";
-          }else if(msg && msg.type === "error"){
-            statusText.textContent = "Erreur live: " + (msg.error || "Erreur inconnue");
-          }
-        }catch(e){}
-      };
-    }catch(e){
-      wsConnected = false;
-    }
-  }
-
-
   function setCoachLines(text){
     coachText.textContent = text;
   }
@@ -14662,7 +14402,7 @@ async def ai_opportunity_scanner(request: Request):
       var score = Number(it.score || 0);
       var tags = (it.tags || []).map(function(t){ return "<span class='tag'>"+t+"</span>"; }).join("");
       var html = ""
-        + "<div class='row item' data-symbol='"+it.symbol+"' data-interval='"+it.interval+"' data-mode='"+it.mode+"' data-cgid='"+(it.cg_id||"")+"'>"
+        + "<div class='row item' data-symbol='"+it.symbol+"' data-interval='"+it.interval+"' data-mode='"+it.mode+"'>"
         + "  <div><div class='sym'>"+it.symbol+"</div><div class='muted' style='font-size:12px'>"+(it.name||"")+"</div></div>"
         + "  <div><span class='badge'>"+(it.mode||"-")+"</span></div>"
         + "  <div class='score "+scoreClass(score)+"'>"+fmt(score,0)+"/100</div>"
@@ -14680,8 +14420,7 @@ async def ai_opportunity_scanner(request: Request):
         selectSymbol(
           row.getAttribute("data-symbol"),
           row.getAttribute("data-interval"),
-          row.getAttribute("data-mode"),
-          row.getAttribute("data-cgid")
+          row.getAttribute("data-mode")
         );
       });
     });
@@ -14701,46 +14440,6 @@ async def ai_opportunity_scanner(request: Request):
             + "&interval="+encodeURIComponent(interval)
             + "&lookback="+encodeURIComponent(lookback)
             + "&mode="+encodeURIComponent(mode);
-
-    
-    // Si WS est "connecté" mais pas vraiment OPEN, on force le fallback REST.
-    try{
-      if(ws && ws.readyState !== 1){ wsConnected = false; }
-    }catch(e){ wsConnected = false; }
-
-    if(wsConnected){
-      var before = lastScanReceivedAt;
-      _wsSend({action:"scan", per_page: perPage, interval: interval, lookback: lookback, mode: mode});
-      statusText.textContent = "Scan live en cours...";
-      setCoachLines("Live: scan en cours...");
-
-      // Fallback: si on ne reçoit rien du WS rapidement, on bascule sur REST.
-      setTimeout(function(){
-        try{
-          if(!wsConnected) return;
-          if(lastScanReceivedAt === before){
-            // Pas de réponse WS -> REST
-            fetch(url, {headers: {"Accept":"application/json"}})
-              .then(function(res){ if(!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
-              .then(function(js){
-                var items = (js && js.items) ? js.items : [];
-                renderRows(items);
-                lastPill.textContent = "Derniere maj: " + ((js && js.updated_at) ? js.updated_at : "-");
-                statusText.textContent = "OK - " + (items.length||0) + " resultats (fallback REST). Clique une ligne pour le detail.";
-                setCoachLines("Clique un coin pour voir l'analyse IA detaillee.");
-                selPill.textContent = "Selection: -";
-              })
-              .catch(function(e){
-                statusText.textContent = "Erreur scan: " + (e && e.message ? e.message : e);
-                setCoachLines("Erreur. Verifie ta connexion et reessaie.");
-              });
-          }
-        }catch(e){}
-      }, 1800);
-
-      return;
-    }
-
 
     try{
       var t0 = performance.now();
@@ -14776,7 +14475,7 @@ async def ai_opportunity_scanner(request: Request):
       return;
     }
 
-    var prices = series.map(function(p){return (p && p.close !== undefined ? p.close : p.c);});
+    var prices = series.map(function(p){return (p && p.close!=null) ? p.close : (p ? p.c : null);});
     var min = Math.min.apply(null, prices);
     var max = Math.max.apply(null, prices);
     var pad = (max - min) * 0.08;
@@ -14811,7 +14510,7 @@ async def ai_opportunity_scanner(request: Request):
     ctx.fillText("$"+fmt(min,2), 6*window.devicePixelRatio, (top+plotH));
   }
 
-  async function selectSymbol(symbol, interval, mode, cgId){
+  async function selectSymbol(symbol, interval, mode){
     selPill.textContent = "Selection: " + symbol;
     statusText.textContent = "Chargement detail " + symbol + "...";
     setCoachLines("Chargement de l'analyse IA...");
@@ -14821,8 +14520,8 @@ async def ai_opportunity_scanner(request: Request):
               + "&interval="+encodeURIComponent(interval||intervalEl.value)
               + "&lookback="+encodeURIComponent(lookbackEl.value || 240)
               + "&mode="+encodeURIComponent(mode||modeEl.value);
-      if(cgId){ url += "&cg_id="+encodeURIComponent(cgId); }
-var res = await fetch(url, {headers: {"Accept":"application/json"}});
+
+      var res = await fetch(url, {headers: {"Accept":"application/json"}});
       if(!res.ok) throw new Error("HTTP " + res.status);
       var js = await res.json();
 
@@ -14865,7 +14564,6 @@ var res = await fetch(url, {headers: {"Accept":"application/json"}});
     scanNow();
   });
 
-  connectWS();
   scanNow();
 })();
 </script>
@@ -69722,461 +69420,4 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html: str = "
         body_html=body_html,
     )
     return _HTMLResponse(html)
-
-
-# ============================================================
-# AI OPPORTUNITY SCANNER — FINAL FIX (intraday + detail panel)
-# - Fixes 15m/1h/4h intervals with real intraday data via CoinGecko market_chart
-# - Fixes detailed panel always "not enough data"
-# - Keeps Binance as best-effort, but provides robust fallback (Railway US-safe)
-# - De-dupes duplicate routes in this monolithic file (keeps LAST definition)
-# ============================================================
-
-import math as _math
-import time as _time
-import asyncio as _asyncio
-
-def _aiosc__interval_minutes(iv: str) -> int:
-    iv = (iv or "").strip().lower()
-    return {
-        "1m": 1, "3m": 3, "5m": 5, "15m": 15, "30m": 30,
-        "1h": 60, "2h": 120, "4h": 240, "6h": 360, "8h": 480, "12h": 720,
-        "1d": 1440, "3d": 4320, "1w": 10080
-    }.get(iv, 60)
-
-def _aiosc__pick_days_for_cg(lookback: int, interval: str) -> int:
-    '''Pick CoinGecko `days` parameter to ensure enough samples for the requested lookback.
-
-    We choose a conservative days bucket to:
-    - have enough history for the requested number of candles
-    - keep resolution high for intraday (15m, 1h) by avoiding too-large days
-    '''
-    try:
-        lb = int(lookback or 240)
-    except Exception:
-        lb = 240
-    lb = max(5, min(1000, lb))
-
-    minutes = _aiosc__interval_minutes(interval)
-    needed_days = (lb * minutes) / 1440.0
-    needed_days = max(1.0, needed_days * 1.15)  # buffer
-
-    buckets = [1, 2, 3, 7, 14, 30, 90, 180, 365]
-    for d in buckets:
-        if needed_days <= d:
-            return d
-    return 365
-
-def _aiosc__resample_market_chart_to_candles(prices, volumes, interval: str):
-    '''Convert CoinGecko market_chart arrays to candle-like dicts: {t,o,h,l,c,v}.'''
-    iv_min = _aiosc__interval_minutes(interval)
-    if not prices or iv_min <= 0:
-        return []
-
-    pts = []
-    for p in prices:
-        try:
-            ts = int(p[0])
-            val = float(p[1])
-            if _math.isfinite(val):
-                pts.append((ts, val))
-        except Exception:
-            continue
-    if not pts:
-        return []
-    pts.sort(key=lambda x: x[0])
-
-    vol_map = {}
-    if volumes:
-        for v in volumes:
-            try:
-                vol_map[int(v[0])] = float(v[1])
-            except Exception:
-                continue
-
-    bucket_ms = int(iv_min * 60_000)
-    candles = []
-    cur_bucket = None
-    o = h = l = c = None
-    v_sum = 0.0
-
-    def flush():
-        nonlocal cur_bucket, o, h, l, c, v_sum
-        if cur_bucket is None or c is None:
-            return
-        candles.append({"t": cur_bucket, "o": o, "h": h, "l": l, "c": c, "v": v_sum})
-        cur_bucket = None
-        o = h = l = c = None
-        v_sum = 0.0
-
-    for ts, val in pts:
-        b = (ts // bucket_ms) * bucket_ms
-        if cur_bucket is None:
-            cur_bucket = b
-            o = h = l = c = val
-            v_sum = 0.0
-        elif b != cur_bucket:
-            flush()
-            cur_bucket = b
-            o = h = l = c = val
-            v_sum = 0.0
-        else:
-            if val > h: h = val
-            if val < l: l = val
-            c = val
-
-        vv = vol_map.get(ts)
-        if vv is not None and _math.isfinite(vv):
-            v_sum += float(vv)
-
-    flush()
-    return candles
-
-async def _aiosc__cg_market_chart_candles(coin_id: str, interval: str, lookback: int, ttl: int = 35):
-    '''Fetch candles from CoinGecko market_chart and resample to the requested interval.'''
-    cid = (coin_id or "").strip()
-    if not cid:
-        return []
-    interval = (interval or "1h").strip().lower()
-    days = _aiosc__pick_days_for_cg(lookback, interval)
-
-    ck = f"cg:mc:{cid}:{days}"
-    try:
-        cached = _cache_get(ck)
-        if cached is not None:
-            raw = cached
-        else:
-            url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
-            params = {"vs_currency": "usd", "days": str(days)}
-            raw = await _fetch_json(url, params=params, timeout=18, cache_ttl=ttl, use_coingecko_key=True)
-            if isinstance(raw, dict):
-                _cache_set(ck, raw, ttl=ttl)
-    except Exception:
-        raw = None
-
-    if not isinstance(raw, dict):
-        return []
-    prices = raw.get("prices") or []
-    vols = raw.get("total_volumes") or raw.get("volumes") or []
-    candles = _aiosc__resample_market_chart_to_candles(prices, vols, interval)
-
-    try:
-        lb = int(lookback or 240)
-    except Exception:
-        lb = 240
-    lb = max(5, min(1000, lb))
-    if len(candles) > lb:
-        candles = candles[-lb:]
-    return candles
-
-async def _aiosc__binance_klines_best_effort(symbol: str, interval: str, limit: int = 500, ttl: int = 20):
-    '''Best-effort Binance klines with multiple base URLs (some hosts are US-safe).'''
-    symbol = (symbol or "").upper().strip()
-    interval = (interval or "").lower().strip()
-    if not symbol or not interval:
-        return []
-    limit = max(5, min(int(limit or 500), 1000))
-
-    bases = [
-        "https://api.binance.com",
-        "https://data-api.binance.vision",
-        "https://fapi.binance.com",
-    ]
-    for base in bases:
-        path = "/api/v3/klines" if "fapi" not in base else "/fapi/v1/klines"
-        url = f"{base}{path}"
-        try:
-            data = await _fetch_json(
-                url,
-                params={"symbol": symbol, "interval": interval, "limit": str(limit)},
-                timeout=15,
-                cache_ttl=ttl,
-                use_coingecko_key=False
-            )
-            if isinstance(data, list) and data:
-                out = []
-                for row in data:
-                    try:
-                        if isinstance(row, (list, tuple)) and len(row) >= 6:
-                            out.append({"t": int(row[0]), "o": float(row[1]), "h": float(row[2]), "l": float(row[3]), "c": float(row[4]), "v": float(row[5])})
-                        elif isinstance(row, dict) and ("c" in row or "close" in row):
-                            out.append({
-                                "t": int(row.get("t") or row.get("time") or 0),
-                                "o": float(row.get("o") or row.get("open") or 0),
-                                "h": float(row.get("h") or row.get("high") or 0),
-                                "l": float(row.get("l") or row.get("low") or 0),
-                                "c": float(row.get("c") or row.get("close") or 0),
-                                "v": float(row.get("v") or row.get("volume") or 0)
-                            })
-                    except Exception:
-                        continue
-                if out:
-                    return out
-        except Exception:
-            continue
-    return []
-
-# --- Override CoinGecko klines helper to use market_chart (intraday-friendly) ---
-async def _fetch_cg_klines(coin_id: str, interval: str = "1h", lookback: int = 240):
-    return await _aiosc__cg_market_chart_candles(coin_id, interval=interval, lookback=lookback, ttl=35)
-
-# --- Override Opportunity Scan endpoint (timeframe-sensitive scan) ---
-@app.get("/api/v2/opportunity/scan")
-async def api_v2_opportunity_scan(universe: str = "", interval: str = "1h", lookback: int = 240, filter: str = "Tous", per_page: int = 30, mode: str = "all"):
-    try:
-        u_raw = (universe or "").strip().lower()
-        digits = re.findall(r"\d+", u_raw)
-        limit = int(digits[0]) if digits else int(per_page or 30)
-        limit = max(5, min(80, limit))  # perf guardrail
-
-        interval_norm = (interval or "1h").strip().lower()
-        try:
-            interval_norm = _validate_interval(interval_norm if interval_norm != "24h" else "1d")
-        except Exception:
-            interval_norm = "1h"
-
-        try:
-            lb = int(lookback or 240)
-        except Exception:
-            lb = 240
-        lb = max(20, min(800, lb))
-
-        top = await api_v2_market_top(limit=limit, spark=0, interval=interval_norm)
-        items = top.get("items") or []
-        for c in items:
-            try:
-                sym = (c.get("symbol") or "").strip().lower()
-                cid = c.get("id")
-                if sym and cid:
-                    _WOW_SYMBOL_TO_CGID[sym] = cid
-            except Exception:
-                pass
-
-        tickers_24h = await _binance_24h_tickers_map(ttl_seconds=12)
-
-        sem = _asyncio.Semaphore(8)
-        out = []
-
-        async def _one(coin: dict):
-            sym0 = (coin.get("symbol") or "").upper().strip()
-            cid = coin.get("id") or _WOW_SYMBOL_TO_CGID.get((sym0 or "").lower())
-            if not sym0 or not cid:
-                return None
-
-            async with sem:
-                candles = await _aiosc__cg_market_chart_candles(cid, interval=interval_norm, lookback=lb, ttl=35)
-
-            if len(candles) < 10:
-                pair = _validate_symbol(f"{sym0}USDT")
-                candles = await _aiosc__binance_klines_best_effort(pair, interval_norm, limit=lb, ttl=15)
-
-            if len(candles) < 10:
-                return None
-
-            closes = [float(k.get("c")) for k in candles if isinstance(k, dict) and k.get("c") is not None]
-            if len(closes) < 10:
-                return None
-
-            score, tags = _opportunity_score(closes, lookback=min(len(closes), lb))
-            mode_name = _opportunity_mode(tags)
-
-            if mode and mode.lower() not in ("all", "tous", ""):
-                if mode.lower() not in mode_name.lower() and mode.lower() not in ",".join(tags).lower():
-                    return None
-
-            last_price = closes[-1]
-            pair = f"{sym0}USDT"
-            t = tickers_24h.get(pair) if isinstance(tickers_24h, dict) else None
-            if isinstance(t, dict):
-                p_bin = _wow_float(t.get("lastPrice"), None)
-                if p_bin is not None and _math.isfinite(p_bin):
-                    last_price = p_bin
-                chg24 = _wow_float(t.get("priceChangePercent"), None)
-            else:
-                chg24 = coin.get("change_24h_pct")
-
-            w = closes[-min(len(closes), lb):]
-            peak = max(w) if w else closes[-1]
-            dd = ((w[-1] / peak - 1.0) * 100.0) if peak else 0.0
-
-            rets = []
-            for i in range(1, len(w)):
-                if w[i-1]:
-                    rets.append((w[i] / w[i-1] - 1.0) * 100.0)
-            vol_rel = (sum(abs(r) for r in rets) / len(rets)) if rets else 0.0
-
-            return {
-                "symbol": pair,
-                "cg_id": cid,
-                "name": coin.get("name") or sym0,
-                "interval": interval_norm,
-                "mode": mode_name,
-                "score": int(score or 0),
-                "price": float(last_price) if last_price is not None else None,
-                "change_24h": chg24,
-                "vol_rel": float(vol_rel),
-                "dd": float(dd),
-                "tags": tags,
-            }
-
-        gathered = await _asyncio.gather(*[_one(c) for c in items])
-        for it in gathered:
-            if it:
-                out.append(it)
-
-        out.sort(key=lambda x: (x.get("score") or 0), reverse=True)
-        updated_at = _dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
-        return {"ok": True, "updated_at": updated_at, "items": out, "meta": {"interval": interval_norm, "lookback": lb, "universe": limit}}
-    except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e)[:220]}, status_code=200)
-
-@app.post("/api/v2/opportunity/scan")
-async def api_v2_opportunity_scan_post(body: dict = Body(default={})):
-    body = body or {}
-    return await api_v2_opportunity_scan(
-        universe=str(body.get("universe") or ""),
-        interval=str(body.get("interval") or "1h"),
-        lookback=int(body.get("lookback") or 240),
-        filter=str(body.get("filter") or "Tous"),
-        per_page=int(body.get("per_page") or 30),
-        mode=str(body.get("mode") or "all"),
-    )
-
-@app.get("/api/v2/opportunity/detail")
-async def api_v2_opportunity_detail(symbol: str, interval: str = "1h", lookback: int = 240, mode: str = "all", cg_id: str = ""):
-    sym = (symbol or "").upper().strip()
-    if not sym or not re.fullmatch(r"[A-Z0-9]{2,20}", sym):
-        return JSONResponse({"ok": False, "error": "Symbol invalide"}, status_code=200)
-
-    interval_norm = (interval or "1h").strip().lower()
-    try:
-        interval_norm = _validate_interval(interval_norm if interval_norm != "24h" else "1d")
-    except Exception:
-        interval_norm = "1h"
-
-    try:
-        lb = int(lookback or 240)
-    except Exception:
-        lb = 240
-    lb = max(20, min(800, lb))
-
-    cid = (cg_id or "").strip()
-    if not cid:
-        base = sym.replace("USDT", "").replace("USD", "").lower()
-        cid = _WOW_SYMBOL_TO_CGID.get(base)
-
-    klines = await _aiosc__binance_klines_best_effort(sym, interval_norm, limit=lb, ttl=20)
-
-    if (not klines or len(klines) < 10) and cid:
-        klines = await _aiosc__cg_market_chart_candles(cid, interval=interval_norm, lookback=lb, ttl=35)
-
-    if not klines or len(klines) < 10:
-        return JSONResponse({
-            "ok": False,
-            "symbol": sym,
-            "error": "Pas assez de données pour ce timeframe. Essaie un lookback plus petit ou un coin plus liquide.",
-            "details": {"interval": interval_norm, "lookback": lb, "cg_id": cid or None}
-        }, status_code=200)
-
-    closes = []
-    for k in klines:
-        try:
-            closes.append(float(k.get("c")))
-        except Exception:
-            continue
-    closes = [c for c in closes if c is not None and _math.isfinite(c)]
-    if len(closes) < 10:
-        return JSONResponse({"ok": False, "symbol": sym, "error": "Pas assez de données de clôture."}, status_code=200)
-
-    price = closes[-1]
-    score, tags = _opportunity_score(closes, lookback=min(len(closes), lb))
-    mode2 = _opportunity_mode(tags)
-
-    sc = _score_opportunity([{"c": c} for c in closes], interval=interval_norm, lookback=min(len(closes), lb)) or {}
-    justif = str(sc.get("justif") or "").strip()
-    tag_txt = ", ".join(tags) if tags else "aucun signal fort"
-
-    ret_approx = None
-    try:
-        if closes[0]:
-            ret_approx = (closes[-1] / closes[0] - 1.0) * 100.0
-    except Exception:
-        ret_approx = None
-
-    dd_pct = 0.0
-    vol = 0.0
-    try:
-        w = closes[-min(len(closes), lb):]
-        peak = w[0]
-        max_dd = 0.0
-        for c in w:
-            if c > peak:
-                peak = c
-            dd = (c / peak - 1.0) * 100.0
-            if dd < max_dd:
-                max_dd = dd
-        dd_pct = max_dd
-        rets = [(w[i] / w[i-1] - 1.0) for i in range(1, len(w)) if w[i-1]]
-        if rets:
-            mean = sum(rets) / len(rets)
-            var = sum((r - mean) ** 2 for r in rets) / len(rets)
-            vol = var ** 0.5
-    except Exception:
-        pass
-
-    rationale = (justif if justif else "Signal neutre : à surveiller.")
-    rationale += "\n\n" + (
-        f"Mode détecté: {mode2}.\nTags: {tag_txt}.\n"
-        + (f"Retour approx: {ret_approx:.2f}%" if ret_approx is not None else "Retour approx: n/a")
-        + f" | Drawdown approx: {dd_pct:.1f}% | Volatilité: {vol:.4f}."
-    )
-
-    details = {
-        "interval": interval_norm,
-        "lookback": lb,
-        "cg_id": cid,
-        "tags": tags,
-        "ret_approx": ret_approx,
-        "drawdown_pct": dd_pct,
-        "volatility": vol,
-    }
-
-    return JSONResponse({
-        "ok": True,
-        "symbol": sym,
-        "price": price,
-        "mode": mode2,
-        "score": int(score or 0),
-        "rationale": rationale,
-        "details": details,
-        "series": [{"t": k.get("t"), "o": k.get("o"), "h": k.get("h"), "l": k.get("l"), "c": k.get("c"), "v": k.get("v")} for k in klines],
-    }, status_code=200)
-
-def _dedupe_routes_keep_last(_app):
-    '''Remove duplicate routes (same path + methods) keeping the LAST definition.'''
-    try:
-        routes = list(getattr(_app.router, "routes", []) or [])
-        seen = {}
-        for idx, r in enumerate(routes):
-            path = getattr(r, "path", None)
-            methods = tuple(sorted(getattr(r, "methods", []) or []))
-            if not path or not methods:
-                continue
-            seen[(path, methods)] = idx  # last wins
-
-        new_routes = []
-        for idx, r in enumerate(routes):
-            path = getattr(r, "path", None)
-            methods = tuple(sorted(getattr(r, "methods", []) or []))
-            if path and methods and (path, methods) in seen and seen[(path, methods)] != idx:
-                continue
-            new_routes.append(r)
-        _app.router.routes = new_routes
-    except Exception:
-        pass
-
-try:
-    _dedupe_routes_keep_last(app)
-except Exception:
-    pass
 

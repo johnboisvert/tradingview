@@ -15266,7 +15266,8 @@ async def ai_market_regime_page(request: Request):
 </script>
     """
     # Sidebar: keep the global navigation consistent
-    return _simple_page("AI Market Regime", body, sidebar_html=SIDEBAR_HTML)
+    resp = _simple_page("AI Market Regime", body, sidebar_html=SIDEBAR_HTML, active_page="/ai-market-regime")
+    return resp if isinstance(resp, Response) else HTMLResponse(resp)
 
 
 @app.get("/ai-whale-watcher", response_class=HTMLResponse)

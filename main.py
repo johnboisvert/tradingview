@@ -4029,10 +4029,9 @@ async def _compute_market_regime(interval: str = "4h", lookback: int = 240) -> d
     lookback = max(120, min(lookback, 1000))
 
     # --- Fetch series ---
-    btc_kl = await _binance_klines("BTCUSDT", interval, limit=lookback)
-    eth_kl = await _binance_klines("ETHUSDT", interval, limit=lookback)
-    ethbtc_kl = await _binance_klines("ETHBTC", interval, limit=lookback)
-
+    btc_kl, src_btc = await _get_spot_klines("BTCUSDT", interval, limit=lookback)
+    eth_kl, _src_eth = await _get_spot_klines("ETHUSDT", interval, limit=lookback)
+    ethbtc_kl, src_ethbtc = await _get_spot_klines("ETHBTC", interval, limit=lookback)
     if not btc_kl or len(btc_kl) < 80:
         raise RuntimeError("Données Binance insuffisantes pour calculer le régime (BTC).")
 
@@ -4069,22 +4068,13 @@ async def _compute_market_regime(interval: str = "4h", lookback: int = 240) -> d
         alt_momentum = _pct_change(ethbtc_close[-1], ethbtc_close[-mom_n])
 
     # --- Global context (CoinGecko) ---
-    cg_issue = None
-    try:
-        cg = await _fetch_json("https://api.coingecko.com/api/v3/global", timeout=10)
-        cg_data = (cg or {}).get("data") or {}
-        total_mcap = _safe_float((cg_data.get("total_market_cap") or {}).get("usd"), 0.0)
-        mcap_chg_24h = _safe_float(cg_data.get("market_cap_change_percentage_24h_usd"), 0.0)
-        dom = cg_data.get("market_cap_percentage") or {}
-        btc_dom = _safe_float(dom.get("btc"), 0.0)
-        eth_dom = _safe_float(dom.get("eth"), 0.0)
-    except Exception as e:
-        # CoinGecko peut bloquer certains IP/régions (HTTP 451). On continue avec BTC/ETHBTC seulement.
-        cg_issue = str(e)
-        total_mcap = 0.0
-        mcap_chg_24h = 0.0
-        btc_dom = 50.0
-        eth_dom = 18.0
+    cg = await _fetch_json("https://api.coingecko.com/api/v3/global", timeout=10)
+    cg_data = (cg or {}).get("data") or {}
+    total_mcap = _safe_float((cg_data.get("total_market_cap") or {}).get("usd"), 0.0)
+    mcap_chg_24h = _safe_float(cg_data.get("market_cap_change_percentage_24h_usd"), 0.0)
+    dom = cg_data.get("market_cap_percentage") or {}
+    btc_dom = _safe_float(dom.get("btc"), 0.0)
+    eth_dom = _safe_float(dom.get("eth"), 0.0)
 
     # --- Scoring (AI-like heuristic; transparent factors) ---
     # Trend
@@ -4117,8 +4107,6 @@ async def _compute_market_regime(interval: str = "4h", lookback: int = 240) -> d
     neg = sum(1 for x in factor_signs if x < 0)
     agreement = abs(pos - neg) / 6.0  # 0..1
     conf = int(_clamp((abs(score) / 100.0) * 70.0 + agreement * 30.0, 5, 95))
-    if cg_issue:
-        conf = min(conf, 55)
 
     # Labels
     if score >= 60:
@@ -4148,8 +4136,6 @@ async def _compute_market_regime(interval: str = "4h", lookback: int = 240) -> d
 
     # Rationale bullets
     reasons = []
-    if cg_issue:
-        reasons.append(f"CoinGecko indisponible: {cg_issue}")
     reasons.append(f"BTC vs EMA50: {trend_vs_ema50:+.2f}%")
     reasons.append(f"Momentum ({mom_n} bougies): {momentum:+.2f}%")
     reasons.append(f"Volatilité (≈30 bougies): {vol:.2f}%")
@@ -4213,14 +4199,23 @@ async def api_v2_market_regime(interval: str = "4h", lookback: int = 240):
     try:
         payload = await _compute_market_regime(interval=interval, lookback=lookback)
     except Exception as e:
-        payload = {
-            "ok": False,
-            "error": "market_regime_failed",
-            "message": str(e)[:300],
-            "interval": (interval or "4h"),
-            "lookback": lookback,
-            "updated_at": dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
-        }
+        # Si live fetch échoue, on essaie de servir la dernière valeur OK (cache) pour éviter une page "cassée".
+        cached = _MARKET_REGIME_CACHE.get(cache_key) if isinstance(_MARKET_REGIME_CACHE, dict) else None
+        if cached and isinstance(cached, dict) and isinstance(cached.get("payload"), dict) and cached["payload"].get("ok") is True:
+            payload = dict(cached["payload"])
+            payload["degraded"] = True
+            payload["warning"] = f"Live fetch failed: {str(e)[:180]}"
+            payload["updated_at"] = dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+            payload.setdefault("message", "Mode cache (dernier calcul disponible).")
+        else:
+            payload = {
+                "ok": False,
+                "error": "market_regime_failed",
+                "message": str(e)[:300],
+                "interval": (interval or "4h"),
+                "lookback": lookback,
+                "updated_at": dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+            }
 
     _MARKET_REGIME_CACHE[key] = {"ts": now, "payload": payload}
     return JSONResponse(payload)
@@ -36160,7 +36155,7 @@ async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeo
                 backoff = min(60.0, backoff * 2.0)
                 continue
             # For other status codes, raise with a clean message
-            raise RuntimeError(f"Erreur API (HTTP {status}) sur {url}") from e
+            raise RuntimeError(f"Erreur API (HTTP {status})") from e
         except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as e:
             # Transient: retry
             if attempt < max_retries - 1:
@@ -39970,6 +39965,163 @@ http_client = httpx.AsyncClient(timeout=10.0) if httpx else _FallbackAsyncClient
 # ============================================================================
 # CALCUL REAL-TIME ALTCOIN SEASON & DOMINANCE (VRAIES DONNES)
 # ============================================================================
+
+async def _bybit_klines(symbol: str, interval: str, limit: int = 500, ttl_seconds: int = 60):
+    """Fallback OHLCV spot depuis Bybit (API publique v5)."""
+    interval_map = {"15m":"15","1h":"60","4h":"240","1d":"D"}
+    iv = interval_map.get(interval, interval_map.get(str(interval), "60"))
+    url = "https://api.bybit.com/v5/market/kline"
+    params = {"category":"spot","symbol":symbol,"interval":iv,"limit":str(int(limit))}
+    data = await _fetch_json(url, params=params, ttl_seconds=ttl_seconds)
+    # Expected: {"retCode":0,"result":{"list":[[start,open,high,low,close,volume,turnover],...]}}
+    if not isinstance(data, dict) or data.get("retCode") not in (0, "0"):
+        raise RuntimeError(f"Bybit error: {data.get('retMsg') if isinstance(data, dict) else 'invalid'}")
+    lst = (((data.get("result") or {}) .get("list")) or [])
+    if not lst:
+        raise RuntimeError("Bybit empty")
+    # Bybit returns newest-first; convert to oldest-first and Binance-like schema
+    out = []
+    for row in reversed(lst):
+        try:
+            start_ms = int(row[0])
+            o,h,l,c,v = row[1],row[2],row[3],row[4],row[5]
+            out.append([start_ms, str(o), str(h), str(l), str(c), str(v), start_ms, "0", 0, "0", "0", "0"])
+        except Exception:
+            continue
+    if len(out) < 5:
+        raise RuntimeError("Bybit parse failed")
+    return out
+
+async def _coinbase_klines(symbol: str, interval: str, limit: int = 300, ttl_seconds: int = 60):
+    """Fallback OHLCV depuis Coinbase Exchange (API publique)."""
+    # Coinbase uses product ids like BTC-USD / ETH-BTC
+    product_map = {"BTCUSDT":"BTC-USD","BTCUSD":"BTC-USD","ETHUSDT":"ETH-USD","ETHUSD":"ETH-USD","ETHBTC":"ETH-BTC"}
+    product = product_map.get(symbol, None)
+    if not product:
+        # Try to infer "AAA BBB" style
+        if symbol.endswith("USDT") or symbol.endswith("USD"):
+            base = symbol[:-4]
+            product = f"{base}-USD"
+        elif symbol.endswith("BTC"):
+            base = symbol[:-3]
+            product = f"{base}-BTC"
+        else:
+            raise RuntimeError("Coinbase unsupported symbol")
+    gran_map = {"15m":900,"1h":3600,"4h":14400,"1d":86400}
+    gran = gran_map.get(interval, 3600)
+    url = f"https://api.exchange.coinbase.com/products/{product}/candles"
+    params = {"granularity": str(int(gran))}
+    data = await _fetch_json(url, params=params, ttl_seconds=ttl_seconds)
+    # data: [[time, low, high, open, close, volume], ...] newest-first
+    if not isinstance(data, list) or not data:
+        raise RuntimeError("Coinbase empty/invalid")
+    out=[]
+    for row in reversed(data[:int(limit)]):
+        try:
+            t = int(row[0]) * 1000
+            low, high, opn, close, vol = row[1], row[2], row[3], row[4], row[5]
+            out.append([t, str(opn), str(high), str(low), str(close), str(vol), t, "0", 0, "0", "0", "0"])
+        except Exception:
+            continue
+    if len(out) < 5:
+        raise RuntimeError("Coinbase parse failed")
+    return out
+
+async def _kraken_klines(symbol: str, interval: str, limit: int = 720, ttl_seconds: int = 60):
+    """Fallback OHLCV depuis Kraken (API publique)."""
+    # Kraken uses XBT instead of BTC for many pairs.
+    pair_map = {"BTCUSDT":"XBTUSD","BTCUSD":"XBTUSD","ETHUSDT":"ETHUSD","ETHUSD":"ETHUSD","ETHBTC":"ETHXBT"}
+    pair = pair_map.get(symbol, None)
+    if not pair:
+        if symbol.endswith("USDT") or symbol.endswith("USD"):
+            base = symbol[:-4]
+            pair = ("XBT" if base=="BTC" else base) + "USD"
+        elif symbol.endswith("BTC"):
+            base = symbol[:-3]
+            pair = ("XBT" if base=="BTC" else base) + "XBT"
+        else:
+            raise RuntimeError("Kraken unsupported symbol")
+    iv_map = {"15m":15,"1h":60,"4h":240,"1d":1440}
+    iv = iv_map.get(interval, 60)
+    url = "https://api.kraken.com/0/public/OHLC"
+    params = {"pair": pair, "interval": str(int(iv))}
+    data = await _fetch_json(url, params=params, ttl_seconds=ttl_seconds)
+    if not isinstance(data, dict) or data.get("error"):
+        raise RuntimeError(f"Kraken error: {data.get('error')}")
+    result = data.get("result") or {}
+    # result contains a key for the pair which may be different; find first list
+    ohlc = None
+    for k,v in result.items():
+        if k == "last": 
+            continue
+        if isinstance(v, list) and v:
+            ohlc = v
+            break
+    if not ohlc:
+        raise RuntimeError("Kraken empty")
+    # ohlc: [time, open, high, low, close, vwap, volume, count]
+    out=[]
+    # Keep last `limit` candles
+    for row in ohlc[-int(limit):]:
+        try:
+            t = int(row[0]) * 1000
+            opn, high, low, close, vol = row[1], row[2], row[3], row[4], row[6]
+            out.append([t, str(opn), str(high), str(low), str(close), str(vol), t, "0", 0, "0", "0", "0"])
+        except Exception:
+            continue
+    if len(out) < 5:
+        raise RuntimeError("Kraken parse failed")
+    return out
+
+async def _get_spot_klines(symbol: str, interval: str, limit: int = 500):
+    """Récupère des chandelles via plusieurs fournisseurs (évite les blocages HTTP 451)."""
+    errors = []
+    # 1) Binance (default)
+    try:
+        k = await _binance_klines(symbol, interval, limit=limit)
+        if k and len(k) >= 5:
+            return k, "binance"
+    except Exception as e:
+        errors.append(f"binance: {e}")
+    # 2) Binance.US
+    try:
+        # Re-impl minimal inline to change host
+        key = f"binanceus:{symbol}:{interval}:{limit}"
+        cached = _cache_get(key)
+        if cached is not None:
+            return cached, "binance.us (cache)"
+        url = "https://api.binance.us/api/v3/klines"
+        params = {"symbol": symbol, "interval": interval, "limit": int(limit)}
+        data = await _fetch_json(url, params=params, ttl_seconds=60)
+        if not isinstance(data, list) or not data:
+            raise RuntimeError("empty")
+        _cache_set(key, data, ttl_seconds=60)
+        return data, "binance.us"
+    except Exception as e:
+        errors.append(f"binance.us: {e}")
+    # 3) Bybit
+    try:
+        k = await _bybit_klines(symbol, interval, limit=min(int(limit), 1000))
+        if k and len(k) >= 5:
+            return k, "bybit"
+    except Exception as e:
+        errors.append(f"bybit: {e}")
+    # 4) Coinbase
+    try:
+        k = await _coinbase_klines(symbol, interval, limit=min(int(limit), 300))
+        if k and len(k) >= 5:
+            return k, "coinbase"
+    except Exception as e:
+        errors.append(f"coinbase: {e}")
+    # 5) Kraken
+    try:
+        k = await _kraken_klines(symbol, interval, limit=min(int(limit), 720))
+        if k and len(k) >= 5:
+            return k, "kraken"
+    except Exception as e:
+        errors.append(f"kraken: {e}")
+    raise RuntimeError("All providers failed: " + " | ".join(errors))
+
 
 async def calculate_altcoin_season_index():
     """
@@ -66602,7 +66754,7 @@ async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeo
                 backoff = min(60.0, backoff * 2.0)
                 continue
             # For other status codes, raise with a clean message
-            raise RuntimeError(f"Erreur API (HTTP {status}) sur {url}") from e
+            raise RuntimeError(f"Erreur API (HTTP {status})") from e
         except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as e:
             # Transient: retry
             if attempt < max_retries - 1:

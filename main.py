@@ -4014,62 +4014,63 @@ def _safe_float(x, default=0.0):
         return float(default)
 
 async def _compute_market_regime(interval: str = "4h", lookback: int = 240) -> dict:
+    """
+    Compute a market regime using live exchange data (Binance) + global market context (CoinGecko).
+    Returns a JSON-serializable payload used by /ai-market-regime.
+    """
+    interval = (interval or "4h").lower().strip()
+    if interval not in {"1h", "4h", "1d"}:
+        interval = "4h"
+
     try:
-        """
-        Compute a market regime using live exchange data (Binance) + global market context (CoinGecko).
-        Returns a JSON-serializable payload used by /ai-market-regime.
-        """
-        interval = (interval or "4h").lower().strip()
-        if interval not in {"1h", "4h", "1d"}:
-            interval = "4h"
-    
-        try:
-            lookback = int(lookback)
-        except Exception:
-            lookback = 240
-        lookback = max(120, min(lookback, 1000))
-    
-        # --- Fetch series ---
-        btc_kl = await _binance_klines("BTCUSDT", interval, limit=lookback)
-        eth_kl = await _binance_klines("ETHUSDT", interval, limit=lookback)
-        ethbtc_kl = await _binance_klines("ETHBTC", interval, limit=lookback)
-    
-        if not btc_kl or len(btc_kl) < 80:
-            raise RuntimeError("Données Binance insuffisantes pour calculer le régime (BTC).")
-    
-        btc_close = [float(k[4]) for k in btc_kl]
-        eth_close = [float(k[4]) for k in eth_kl] if eth_kl else []
-        ethbtc_close = [float(k[4]) for k in ethbtc_kl] if ethbtc_kl else []
-    
-        # --- Indicators ---
-        ema20 = _ema(btc_close, 20)
-        ema50 = _ema(btc_close, 50)
-        ema200 = _ema(btc_close, 200) if len(btc_close) >= 200 else _ema(btc_close, max(80, len(btc_close)//2))
-    
-        px = btc_close[-1]
-        trend_vs_ema50 = _pct_change(px, ema50)
-        trend_vs_ema200 = _pct_change(px, ema200)
-    
-        # momentum over last ~10 candles (timeframe dependent)
-        mom_n = 10 if len(btc_close) > 20 else max(3, len(btc_close)//3)
-        momentum = _pct_change(btc_close[-1], btc_close[-mom_n])
-    
-        # volatility: std of returns (last 30 candles)
-        rets = []
-        for i in range(-31, -1):
-            if abs(i) <= len(btc_close):
-                prev = btc_close[i-1]
-                cur = btc_close[i]
-                if prev != 0:
-                    rets.append((cur/prev - 1.0) * 100.0)
-        vol = _std(rets)  # in %
-    
-        # alt strength proxy: ETHBTC momentum
-        alt_momentum = 0.0
-        if len(ethbtc_close) >= mom_n + 2:
-            alt_momentum = _pct_change(ethbtc_close[-1], ethbtc_close[-mom_n])
-    
-        # --- Global context (CoinGecko) ---
+        lookback = int(lookback)
+    except Exception:
+        lookback = 240
+    lookback = max(120, min(lookback, 1000))
+
+    # --- Fetch series ---
+    btc_kl = await _binance_klines("BTCUSDT", interval, limit=lookback)
+    eth_kl = await _binance_klines("ETHUSDT", interval, limit=lookback)
+    ethbtc_kl = await _binance_klines("ETHBTC", interval, limit=lookback)
+
+    if not btc_kl or len(btc_kl) < 80:
+        raise RuntimeError("Données Binance insuffisantes pour calculer le régime (BTC).")
+
+    btc_close = [float(k[4]) for k in btc_kl]
+    eth_close = [float(k[4]) for k in eth_kl] if eth_kl else []
+    ethbtc_close = [float(k[4]) for k in ethbtc_kl] if ethbtc_kl else []
+
+    # --- Indicators ---
+    ema20 = _ema(btc_close, 20)
+    ema50 = _ema(btc_close, 50)
+    ema200 = _ema(btc_close, 200) if len(btc_close) >= 200 else _ema(btc_close, max(80, len(btc_close)//2))
+
+    px = btc_close[-1]
+    trend_vs_ema50 = _pct_change(px, ema50)
+    trend_vs_ema200 = _pct_change(px, ema200)
+
+    # momentum over last ~10 candles (timeframe dependent)
+    mom_n = 10 if len(btc_close) > 20 else max(3, len(btc_close)//3)
+    momentum = _pct_change(btc_close[-1], btc_close[-mom_n])
+
+    # volatility: std of returns (last 30 candles)
+    rets = []
+    for i in range(-31, -1):
+        if abs(i) <= len(btc_close):
+            prev = btc_close[i-1]
+            cur = btc_close[i]
+            if prev != 0:
+                rets.append((cur/prev - 1.0) * 100.0)
+    vol = _std(rets)  # in %
+
+    # alt strength proxy: ETHBTC momentum
+    alt_momentum = 0.0
+    if len(ethbtc_close) >= mom_n + 2:
+        alt_momentum = _pct_change(ethbtc_close[-1], ethbtc_close[-mom_n])
+
+    # --- Global context (CoinGecko) ---
+    cg_issue = None
+    try:
         cg = await _fetch_json("https://api.coingecko.com/api/v3/global", timeout=10)
         cg_data = (cg or {}).get("data") or {}
         total_mcap = _safe_float((cg_data.get("total_market_cap") or {}).get("usd"), 0.0)
@@ -4077,150 +4078,121 @@ async def _compute_market_regime(interval: str = "4h", lookback: int = 240) -> d
         dom = cg_data.get("market_cap_percentage") or {}
         btc_dom = _safe_float(dom.get("btc"), 0.0)
         eth_dom = _safe_float(dom.get("eth"), 0.0)
-    
-        # --- Scoring (AI-like heuristic; transparent factors) ---
-        # Trend
-        s_trend = _clamp(trend_vs_ema50 * 4.0, -40, 40)
-        s_cross = 15.0 if ema20 > ema50 else -15.0
-        s_mom = _clamp(momentum * 2.0, -20, 20)
-    
-        # Volatility: lower vol = better risk-on. Typical intraday vol range ~0.5-3%
-        s_vol = _clamp((1.6 - vol) * 12.0, -20, 20)
-    
-        # Alt strength: ETH/BTC up => risk-on (alts bid)
-        s_alt = _clamp(alt_momentum * 250.0, -25, 25)
-    
-        # Dominance context: higher BTC dominance often = risk-off; use deviation vs 50% pivot softly
-        s_dom = _clamp((50.0 - btc_dom) * 0.8, -15, 15)
-    
-        raw_score = s_trend + s_cross + s_mom + s_vol + s_alt + s_dom
-        score = float(_clamp(raw_score, -100, 100))
-    
-        # Agreement/confidence
-        factor_signs = [
-            1 if s_trend > 0 else (-1 if s_trend < 0 else 0),
-            1 if s_cross > 0 else (-1 if s_cross < 0 else 0),
-            1 if s_mom > 0 else (-1 if s_mom < 0 else 0),
-            1 if s_vol > 0 else (-1 if s_vol < 0 else 0),
-            1 if s_alt > 0 else (-1 if s_alt < 0 else 0),
-            1 if s_dom > 0 else (-1 if s_dom < 0 else 0),
-        ]
-        pos = sum(1 for x in factor_signs if x > 0)
-        neg = sum(1 for x in factor_signs if x < 0)
-        agreement = abs(pos - neg) / 6.0  # 0..1
-        conf = int(_clamp((abs(score) / 100.0) * 70.0 + agreement * 30.0, 5, 95))
-    
-        # Labels
-        if score >= 60:
-            regime = "RISK-ON (BULL)"
-            vibe = "🚀"
-            badge = "success"
-        elif score >= 20:
-            regime = "RISK-ON"
-            vibe = "🟢"
-            badge = "success"
-        elif score <= -60:
-            regime = "RISK-OFF (DEFENSIF)"
-            vibe = "🧊"
-            badge = "danger"
-        elif score <= -20:
-            regime = "RISK-OFF"
-            vibe = "🔴"
-            badge = "danger"
-        else:
-            regime = "NEUTRE"
-            vibe = "🟡"
-            badge = "warning"
-    
-        # Sparkline (BTC close) - use last 80 pts
-        sp = _sparkline_svg(btc_close[-80:], w=260, h=56, stroke="rgba(255,255,255,0.85)")
-        sp_alt = _sparkline_svg(ethbtc_close[-80:], w=260, h=56, stroke="rgba(176,220,255,0.9)") if len(ethbtc_close) >= 40 else ""
-    
-        # Rationale bullets
-        reasons = []
-        reasons.append(f"BTC vs EMA50: {trend_vs_ema50:+.2f}%")
-        reasons.append(f"Momentum ({mom_n} bougies): {momentum:+.2f}%")
-        reasons.append(f"Volatilité (≈30 bougies): {vol:.2f}%")
-        if len(ethbtc_close) >= mom_n + 2:
-            reasons.append(f"Force ALT (ETH/BTC): {alt_momentum:+.3f}%")
-        reasons.append(f"Dominance BTC: {btc_dom:.1f}% (ETH: {eth_dom:.1f}%)")
-        reasons.append(f"Market cap 24h: {mcap_chg_24h:+.2f}%")
-    
-        factors = [
-            {"name": "Trend (EMA50)", "value": trend_vs_ema50, "score": s_trend, "hint": "Prix vs EMA50"},
-            {"name": "Cross (EMA20/50)", "value": 1 if ema20 > ema50 else -1, "score": s_cross, "hint": "EMA20 au-dessus / en-dessous"},
-            {"name": "Momentum", "value": momentum, "score": s_mom, "hint": f"Variation sur {mom_n} bougies"},
-            {"name": "Volatilité", "value": vol, "score": s_vol, "hint": "Plus bas = mieux (risk-on)"},
-            {"name": "Force ALT", "value": alt_momentum, "score": s_alt, "hint": "ETH/BTC monte = alts bid"},
-            {"name": "Dominance", "value": btc_dom, "score": s_dom, "hint": "Dominance BTC élevée = plus défensif"},
-        ]
-    
-        now_iso = dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
-        payload = {
-            "ok": True,
-            "interval": interval,
-            "lookback": lookback,
-            "updated_at": now_iso,
-            "regime": regime,
-            "badge": badge,
-            "vibe": vibe,
-            "score": round(score, 1),
-            "confidence": conf,
-            "btc_price": px,
-            "total_mcap_usd": total_mcap,
-            "mcap_change_24h_pct": round(mcap_chg_24h, 2),
-            "btc_dominance_pct": round(btc_dom, 2),
-            "eth_dominance_pct": round(eth_dom, 2),
-            "spark_btc_svg": sp,
-            "spark_alt_svg": sp_alt,
-            "reasons": reasons,
-            "factors": factors,
-            "notes": [
-                "Sources: Binance (prix/klines), CoinGecko (market cap & dominance).",
-                "Ce score est un modèle heuristique (IA) pour donner une lecture rapide — pas un conseil financier."
-            ],
-        }
-        return payload
     except Exception as e:
-        # Fallback ultra-robuste: ne jamais casser l'UI si une source externe change.
-        err = str(e)
-        # Tentative: calcul minimal basé sur BTC uniquement (si possible)
-        try:
-            btc_kl = await _binance_klines("BTCUSDT", interval=interval, limit=lookback)
-            btc_closes = [_safe_float(x[4]) for x in (btc_kl or []) if isinstance(x, (list, tuple)) and len(x) > 5]
-        except Exception:
-            btc_closes = []
-        if btc_closes and len(btc_closes) >= 30:
-            ema_fast = _ema(btc_closes, 12)
-            ema_slow = _ema(btc_closes, 26)
-            trend = (ema_fast - ema_slow) / (abs(ema_slow) + 1e-9)
-            vol = _std([_pct_change(btc_closes[i-1], btc_closes[i]) for i in range(1, len(btc_closes))], 60)
-            score = float(_clamp(trend * 120.0 - vol * 80.0, -100, 100))
-            if score >= 25:
-                regime = "Risk-On"
-            elif score <= -25:
-                regime = "Risk-Off"
-            else:
-                regime = "Neutre"
-            confidence = float(_clamp(abs(score), 15, 65))
-            explain = f"Mode dégradé: calcul BTC-only. Cause: {err}"
-        else:
-            regime = "Neutre"
-            score = 0.0
-            confidence = 0.0
-            explain = f"Mode dégradé (données insuffisantes). Cause: {err}"
-        return {
-            "ok": True,
-            "interval": interval,
-            "lookback": lookback,
-            "regime": regime,
-            "score": round(score, 2),
-            "confidence": round(confidence, 1),
-            "inputs": {},
-            "explain": explain,
-            "factors": [],
-            "debug_error": err,
-        }
+        # CoinGecko peut bloquer certains IP/régions (HTTP 451). On continue avec BTC/ETHBTC seulement.
+        cg_issue = str(e)
+        total_mcap = 0.0
+        mcap_chg_24h = 0.0
+        btc_dom = 50.0
+        eth_dom = 18.0
+
+    # --- Scoring (AI-like heuristic; transparent factors) ---
+    # Trend
+    s_trend = _clamp(trend_vs_ema50 * 4.0, -40, 40)
+    s_cross = 15.0 if ema20 > ema50 else -15.0
+    s_mom = _clamp(momentum * 2.0, -20, 20)
+
+    # Volatility: lower vol = better risk-on. Typical intraday vol range ~0.5-3%
+    s_vol = _clamp((1.6 - vol) * 12.0, -20, 20)
+
+    # Alt strength: ETH/BTC up => risk-on (alts bid)
+    s_alt = _clamp(alt_momentum * 250.0, -25, 25)
+
+    # Dominance context: higher BTC dominance often = risk-off; use deviation vs 50% pivot softly
+    s_dom = _clamp((50.0 - btc_dom) * 0.8, -15, 15)
+
+    raw_score = s_trend + s_cross + s_mom + s_vol + s_alt + s_dom
+    score = float(_clamp(raw_score, -100, 100))
+
+    # Agreement/confidence
+    factor_signs = [
+        1 if s_trend > 0 else (-1 if s_trend < 0 else 0),
+        1 if s_cross > 0 else (-1 if s_cross < 0 else 0),
+        1 if s_mom > 0 else (-1 if s_mom < 0 else 0),
+        1 if s_vol > 0 else (-1 if s_vol < 0 else 0),
+        1 if s_alt > 0 else (-1 if s_alt < 0 else 0),
+        1 if s_dom > 0 else (-1 if s_dom < 0 else 0),
+    ]
+    pos = sum(1 for x in factor_signs if x > 0)
+    neg = sum(1 for x in factor_signs if x < 0)
+    agreement = abs(pos - neg) / 6.0  # 0..1
+    conf = int(_clamp((abs(score) / 100.0) * 70.0 + agreement * 30.0, 5, 95))
+    if cg_issue:
+        conf = min(conf, 55)
+
+    # Labels
+    if score >= 60:
+        regime = "RISK-ON (BULL)"
+        vibe = "🚀"
+        badge = "success"
+    elif score >= 20:
+        regime = "RISK-ON"
+        vibe = "🟢"
+        badge = "success"
+    elif score <= -60:
+        regime = "RISK-OFF (DEFENSIF)"
+        vibe = "🧊"
+        badge = "danger"
+    elif score <= -20:
+        regime = "RISK-OFF"
+        vibe = "🔴"
+        badge = "danger"
+    else:
+        regime = "NEUTRE"
+        vibe = "🟡"
+        badge = "warning"
+
+    # Sparkline (BTC close) - use last 80 pts
+    sp = _sparkline_svg(btc_close[-80:], w=260, h=56, stroke="rgba(255,255,255,0.85)")
+    sp_alt = _sparkline_svg(ethbtc_close[-80:], w=260, h=56, stroke="rgba(176,220,255,0.9)") if len(ethbtc_close) >= 40 else ""
+
+    # Rationale bullets
+    reasons = []
+    if cg_issue:
+        reasons.append(f"CoinGecko indisponible: {cg_issue}")
+    reasons.append(f"BTC vs EMA50: {trend_vs_ema50:+.2f}%")
+    reasons.append(f"Momentum ({mom_n} bougies): {momentum:+.2f}%")
+    reasons.append(f"Volatilité (≈30 bougies): {vol:.2f}%")
+    if len(ethbtc_close) >= mom_n + 2:
+        reasons.append(f"Force ALT (ETH/BTC): {alt_momentum:+.3f}%")
+    reasons.append(f"Dominance BTC: {btc_dom:.1f}% (ETH: {eth_dom:.1f}%)")
+    reasons.append(f"Market cap 24h: {mcap_chg_24h:+.2f}%")
+
+    factors = [
+        {"name": "Trend (EMA50)", "value": trend_vs_ema50, "score": s_trend, "hint": "Prix vs EMA50"},
+        {"name": "Cross (EMA20/50)", "value": 1 if ema20 > ema50 else -1, "score": s_cross, "hint": "EMA20 au-dessus / en-dessous"},
+        {"name": "Momentum", "value": momentum, "score": s_mom, "hint": f"Variation sur {mom_n} bougies"},
+        {"name": "Volatilité", "value": vol, "score": s_vol, "hint": "Plus bas = mieux (risk-on)"},
+        {"name": "Force ALT", "value": alt_momentum, "score": s_alt, "hint": "ETH/BTC monte = alts bid"},
+        {"name": "Dominance", "value": btc_dom, "score": s_dom, "hint": "Dominance BTC élevée = plus défensif"},
+    ]
+
+    now_iso = dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    payload = {
+        "ok": True,
+        "interval": interval,
+        "lookback": lookback,
+        "updated_at": now_iso,
+        "regime": regime,
+        "badge": badge,
+        "vibe": vibe,
+        "score": round(score, 1),
+        "confidence": conf,
+        "btc_price": px,
+        "total_mcap_usd": total_mcap,
+        "mcap_change_24h_pct": round(mcap_chg_24h, 2),
+        "btc_dominance_pct": round(btc_dom, 2),
+        "eth_dominance_pct": round(eth_dom, 2),
+        "spark_btc_svg": sp,
+        "spark_alt_svg": sp_alt,
+        "reasons": reasons,
+        "factors": factors,
+        "notes": [
+            "Sources: Binance (prix/klines), CoinGecko (market cap & dominance).",
+            "Ce score est un modèle heuristique (IA) pour donner une lecture rapide — pas un conseil financier."
+        ],
+    }
+    return payload
 
 @app.get("/api/v2/market-regime", response_class=JSONResponse)
 async def api_v2_market_regime(interval: str = "4h", lookback: int = 240):
@@ -36188,7 +36160,7 @@ async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeo
                 backoff = min(60.0, backoff * 2.0)
                 continue
             # For other status codes, raise with a clean message
-            raise RuntimeError(f"Erreur API (HTTP {status})") from e
+            raise RuntimeError(f"Erreur API (HTTP {status}) sur {url}") from e
         except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as e:
             # Transient: retry
             if attempt < max_retries - 1:
@@ -66630,7 +66602,7 @@ async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeo
                 backoff = min(60.0, backoff * 2.0)
                 continue
             # For other status codes, raise with a clean message
-            raise RuntimeError(f"Erreur API (HTTP {status})") from e
+            raise RuntimeError(f"Erreur API (HTTP {status}) sur {url}") from e
         except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as e:
             # Transient: retry
             if attempt < max_retries - 1:

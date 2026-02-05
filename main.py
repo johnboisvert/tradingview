@@ -69729,7 +69729,7 @@ try:
 except Exception:
     from fastapi.responses import HTMLResponse as _HTMLResponse  # type: ignore
 
-def _simple_page(title: str, body_html: str, request=None, sidebar_html: str = "", show_title: bool = True):
+def _simple_page(title: str, body_html: str, request=None, sidebar_html="", active_page: str | None = None, show_title: bool = True):
     """Wrapper HTML stable (retourne toujours une HTMLResponse).
 
     - sidebar_html: HTML du menu gauche (optionnel).
@@ -69791,7 +69791,7 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html: str = "
     }}
   </style>
 </head>
-<body>
+<body data-active="{active_page}">
   {sidebar_block}
   <main class='main'>
     <div class='page-wrap'>
@@ -69799,6 +69799,23 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html: str = "
       {body_html}
     </div>
   </main>
+  <script>
+  (function(){{
+    var p = (document.body && document.body.dataset && document.body.dataset.active) ? document.body.dataset.active : '';
+    if(!p) p = (window.location && window.location.pathname) ? window.location.pathname : '';
+    if(!p) return;
+    var links = document.querySelectorAll('.sidebar a.menu-item[href]');
+    for (var i=0; i<links.length; i++) {{
+      var a = links[i];
+      var href = a.getAttribute('href') || '';
+      if(!href) continue;
+      if(href === p || (href.length > 1 && p.indexOf(href) === 0)) {{
+        a.classList.add('active');
+      }}
+    }}
+  }})();
+  </script>
+
 </body>
 </html>""".format(
         safe_title=safe_title,
@@ -69806,6 +69823,7 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html: str = "
         sidebar_block=sidebar_block,
         title_block=title_block,
         body_html=body_html,
+        active_page=active_page,
     )
     return _HTMLResponse(html)
 

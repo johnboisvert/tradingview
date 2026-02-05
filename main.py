@@ -4013,331 +4013,214 @@ def _safe_float(x, default=0.0):
     except Exception:
         return float(default)
 
-
-# ================== MARKET REGIME: DATA FALLBACKS (Binance may return HTTP 451) ==================
-async def _coinbase_klines(product: str, granularity: int, points: int):
-    """Fetch candles from Coinbase Exchange and return a Binance-like klines list.
-    Format: [open_time_ms, open, high, low, close, volume] as floats (strings ok but we use floats).
-    Coinbase returns: [time, low, high, open, close, volume]
-    """
-    import time as _time
-    from datetime import datetime as _dt
-
-    # Coinbase max 300 candles per request
-    max_per_req = 300
-    points = int(points) if points else 300
-    points = max(30, min(2000, points))
-
-    end_ts = int(_time.time())
-    start_ts = end_ts - (points * granularity)
-
-    url = f"https://api.exchange.coinbase.com/products/{product}/candles"
-    headers = {
-        "Accept": "application/json",
-        "User-Agent": "Mozilla/5.0 (compatible; CryptoIA/1.0; +https://www.cryptoia.ca)",
-    }
-
-    all_rows = []
-    cur_end = end_ts
-
-    # Pull backwards in chunks
-    while cur_end > start_ts and len(all_rows) < points + 50:
-        cur_start = max(start_ts, cur_end - (max_per_req * granularity))
-        params = {
-            "granularity": int(granularity),
-            "start": _dt.utcfromtimestamp(cur_start).isoformat(),
-            "end": _dt.utcfromtimestamp(cur_end).isoformat(),
+async def _compute_market_regime(interval: str = "4h", lookback: int = 240) -> dict:
+    try:
+        """
+        Compute a market regime using live exchange data (Binance) + global market context (CoinGecko).
+        Returns a JSON-serializable payload used by /ai-market-regime.
+        """
+        interval = (interval or "4h").lower().strip()
+        if interval not in {"1h", "4h", "1d"}:
+            interval = "4h"
+    
+        try:
+            lookback = int(lookback)
+        except Exception:
+            lookback = 240
+        lookback = max(120, min(lookback, 1000))
+    
+        # --- Fetch series ---
+        btc_kl = await _binance_klines("BTCUSDT", interval, limit=lookback)
+        eth_kl = await _binance_klines("ETHUSDT", interval, limit=lookback)
+        ethbtc_kl = await _binance_klines("ETHBTC", interval, limit=lookback)
+    
+        if not btc_kl or len(btc_kl) < 80:
+            raise RuntimeError("Données Binance insuffisantes pour calculer le régime (BTC).")
+    
+        btc_close = [float(k[4]) for k in btc_kl]
+        eth_close = [float(k[4]) for k in eth_kl] if eth_kl else []
+        ethbtc_close = [float(k[4]) for k in ethbtc_kl] if ethbtc_kl else []
+    
+        # --- Indicators ---
+        ema20 = _ema(btc_close, 20)
+        ema50 = _ema(btc_close, 50)
+        ema200 = _ema(btc_close, 200) if len(btc_close) >= 200 else _ema(btc_close, max(80, len(btc_close)//2))
+    
+        px = btc_close[-1]
+        trend_vs_ema50 = _pct_change(px, ema50)
+        trend_vs_ema200 = _pct_change(px, ema200)
+    
+        # momentum over last ~10 candles (timeframe dependent)
+        mom_n = 10 if len(btc_close) > 20 else max(3, len(btc_close)//3)
+        momentum = _pct_change(btc_close[-1], btc_close[-mom_n])
+    
+        # volatility: std of returns (last 30 candles)
+        rets = []
+        for i in range(-31, -1):
+            if abs(i) <= len(btc_close):
+                prev = btc_close[i-1]
+                cur = btc_close[i]
+                if prev != 0:
+                    rets.append((cur/prev - 1.0) * 100.0)
+        vol = _std(rets)  # in %
+    
+        # alt strength proxy: ETHBTC momentum
+        alt_momentum = 0.0
+        if len(ethbtc_close) >= mom_n + 2:
+            alt_momentum = _pct_change(ethbtc_close[-1], ethbtc_close[-mom_n])
+    
+        # --- Global context (CoinGecko) ---
+        cg = await _fetch_json("https://api.coingecko.com/api/v3/global", timeout=10)
+        cg_data = (cg or {}).get("data") or {}
+        total_mcap = _safe_float((cg_data.get("total_market_cap") or {}).get("usd"), 0.0)
+        mcap_chg_24h = _safe_float(cg_data.get("market_cap_change_percentage_24h_usd"), 0.0)
+        dom = cg_data.get("market_cap_percentage") or {}
+        btc_dom = _safe_float(dom.get("btc"), 0.0)
+        eth_dom = _safe_float(dom.get("eth"), 0.0)
+    
+        # --- Scoring (AI-like heuristic; transparent factors) ---
+        # Trend
+        s_trend = _clamp(trend_vs_ema50 * 4.0, -40, 40)
+        s_cross = 15.0 if ema20 > ema50 else -15.0
+        s_mom = _clamp(momentum * 2.0, -20, 20)
+    
+        # Volatility: lower vol = better risk-on. Typical intraday vol range ~0.5-3%
+        s_vol = _clamp((1.6 - vol) * 12.0, -20, 20)
+    
+        # Alt strength: ETH/BTC up => risk-on (alts bid)
+        s_alt = _clamp(alt_momentum * 250.0, -25, 25)
+    
+        # Dominance context: higher BTC dominance often = risk-off; use deviation vs 50% pivot softly
+        s_dom = _clamp((50.0 - btc_dom) * 0.8, -15, 15)
+    
+        raw_score = s_trend + s_cross + s_mom + s_vol + s_alt + s_dom
+        score = float(_clamp(raw_score, -100, 100))
+    
+        # Agreement/confidence
+        factor_signs = [
+            1 if s_trend > 0 else (-1 if s_trend < 0 else 0),
+            1 if s_cross > 0 else (-1 if s_cross < 0 else 0),
+            1 if s_mom > 0 else (-1 if s_mom < 0 else 0),
+            1 if s_vol > 0 else (-1 if s_vol < 0 else 0),
+            1 if s_alt > 0 else (-1 if s_alt < 0 else 0),
+            1 if s_dom > 0 else (-1 if s_dom < 0 else 0),
+        ]
+        pos = sum(1 for x in factor_signs if x > 0)
+        neg = sum(1 for x in factor_signs if x < 0)
+        agreement = abs(pos - neg) / 6.0  # 0..1
+        conf = int(_clamp((abs(score) / 100.0) * 70.0 + agreement * 30.0, 5, 95))
+    
+        # Labels
+        if score >= 60:
+            regime = "RISK-ON (BULL)"
+            vibe = "🚀"
+            badge = "success"
+        elif score >= 20:
+            regime = "RISK-ON"
+            vibe = "🟢"
+            badge = "success"
+        elif score <= -60:
+            regime = "RISK-OFF (DEFENSIF)"
+            vibe = "🧊"
+            badge = "danger"
+        elif score <= -20:
+            regime = "RISK-OFF"
+            vibe = "🔴"
+            badge = "danger"
+        else:
+            regime = "NEUTRE"
+            vibe = "🟡"
+            badge = "warning"
+    
+        # Sparkline (BTC close) - use last 80 pts
+        sp = _sparkline_svg(btc_close[-80:], w=260, h=56, stroke="rgba(255,255,255,0.85)")
+        sp_alt = _sparkline_svg(ethbtc_close[-80:], w=260, h=56, stroke="rgba(176,220,255,0.9)") if len(ethbtc_close) >= 40 else ""
+    
+        # Rationale bullets
+        reasons = []
+        reasons.append(f"BTC vs EMA50: {trend_vs_ema50:+.2f}%")
+        reasons.append(f"Momentum ({mom_n} bougies): {momentum:+.2f}%")
+        reasons.append(f"Volatilité (≈30 bougies): {vol:.2f}%")
+        if len(ethbtc_close) >= mom_n + 2:
+            reasons.append(f"Force ALT (ETH/BTC): {alt_momentum:+.3f}%")
+        reasons.append(f"Dominance BTC: {btc_dom:.1f}% (ETH: {eth_dom:.1f}%)")
+        reasons.append(f"Market cap 24h: {mcap_chg_24h:+.2f}%")
+    
+        factors = [
+            {"name": "Trend (EMA50)", "value": trend_vs_ema50, "score": s_trend, "hint": "Prix vs EMA50"},
+            {"name": "Cross (EMA20/50)", "value": 1 if ema20 > ema50 else -1, "score": s_cross, "hint": "EMA20 au-dessus / en-dessous"},
+            {"name": "Momentum", "value": momentum, "score": s_mom, "hint": f"Variation sur {mom_n} bougies"},
+            {"name": "Volatilité", "value": vol, "score": s_vol, "hint": "Plus bas = mieux (risk-on)"},
+            {"name": "Force ALT", "value": alt_momentum, "score": s_alt, "hint": "ETH/BTC monte = alts bid"},
+            {"name": "Dominance", "value": btc_dom, "score": s_dom, "hint": "Dominance BTC élevée = plus défensif"},
+        ]
+    
+        now_iso = dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+        payload = {
+            "ok": True,
+            "interval": interval,
+            "lookback": lookback,
+            "updated_at": now_iso,
+            "regime": regime,
+            "badge": badge,
+            "vibe": vibe,
+            "score": round(score, 1),
+            "confidence": conf,
+            "btc_price": px,
+            "total_mcap_usd": total_mcap,
+            "mcap_change_24h_pct": round(mcap_chg_24h, 2),
+            "btc_dominance_pct": round(btc_dom, 2),
+            "eth_dominance_pct": round(eth_dom, 2),
+            "spark_btc_svg": sp,
+            "spark_alt_svg": sp_alt,
+            "reasons": reasons,
+            "factors": factors,
+            "notes": [
+                "Sources: Binance (prix/klines), CoinGecko (market cap & dominance).",
+                "Ce score est un modèle heuristique (IA) pour donner une lecture rapide — pas un conseil financier."
+            ],
         }
+        return payload
+    except Exception as e:
+        # Fallback ultra-robuste: ne jamais casser l'UI si une source externe change.
+        err = str(e)
+        # Tentative: calcul minimal basé sur BTC uniquement (si possible)
         try:
-            rows = await _fetch_json(url, params=params, headers=headers, timeout=12)
+            btc_kl = await _binance_klines("BTCUSDT", interval=interval, limit=lookback)
+            btc_closes = [_safe_float(x[4]) for x in (btc_kl or []) if isinstance(x, (list, tuple)) and len(x) > 5]
         except Exception:
-            rows = []
-
-        if isinstance(rows, list) and rows:
-            all_rows.extend(rows)
-
-        # step back
-        cur_end = cur_start
-
-        # safety
-        if cur_end <= start_ts:
-            break
-
-    # Normalize: sort ascending by time, unique by time
-    by_t = {}
-    for r in all_rows or []:
-        if isinstance(r, (list, tuple)) and len(r) >= 6:
-            t = int(r[0])
-            by_t[t] = r
-    times = sorted(by_t.keys())
-
-    # Keep only last `points`
-    times = times[-points:]
-
-    klines = []
-    for t in times:
-        r = by_t[t]
-        low, high, open_, close, vol = float(r[1]), float(r[2]), float(r[3]), float(r[4]), float(r[5])
-        klines.append([int(t * 1000), open_, high, low, close, vol])
-
-    return klines
-
-
-def _aggregate_klines(klines, group: int):
-    """Aggregate Binance-like klines into bigger candles."""
-    group = int(group)
-    if not klines or group <= 1:
-        return klines
-
-    out = []
-    buf = []
-    for k in klines:
-        buf.append(k)
-        if len(buf) == group:
-            t0 = int(buf[0][0])
-            o = float(buf[0][1])
-            h = max(float(x[2]) for x in buf)
-            l = min(float(x[3]) for x in buf)
-            c = float(buf[-1][4])
-            v = sum(float(x[5]) for x in buf)
-            out.append([t0, o, h, l, c, v])
-            buf = []
-
-    # ignore partial at start (oldest) to keep alignment stable
-    return out
-
-
-async def _compute_market_regime(interval: str = "4h", lookback: int = 240):
-    """Compute a robust market regime using real-time data.
-
-    Primary source: Binance klines (may return HTTP 451 in some regions).
-    Fallback: Coinbase Exchange candles + CoinGecko global metrics.
-    """
-    interval = (interval or "4h").lower().strip()
-    if interval not in {"15m", "1h", "4h", "1d"}:
-        interval = "4h"
-
-    try:
-        lookback = int(lookback)
-    except Exception:
-        lookback = 240
-    lookback = max(30, min(720, lookback))
-
-    # --- Helpers ---
-    def _to_close_series(klines):
-        closes = []
-        for k in klines or []:
-            try:
-                closes.append(float(k[4]))
-            except Exception:
-                pass
-        return closes
-
-    def _pct_returns(xs):
-        rs = []
-        for i in range(1, len(xs)):
-            a, b = xs[i-1], xs[i]
-            if a and a != 0:
-                rs.append((b - a) / a)
-        return rs
-
-    def _stdev(arr):
-        try:
-            import statistics as _stats
-            arr = list(arr or [])
-            return float(_stats.pstdev(arr)) if len(arr) > 1 else 0.0
-        except Exception:
-            return 0.0
-
-    def _trend_score(xs, window=20):
-        # Simple slope of the last window (normalized)
-        if not xs or len(xs) < max(10, window):
-            return 0.0
-        w = xs[-window:]
-        x = list(range(len(w)))
-        xm = sum(x) / len(x)
-        ym = sum(w) / len(w)
-        num = sum((xi - xm) * (yi - ym) for xi, yi in zip(x, w))
-        den = sum((xi - xm) ** 2 for xi in x) or 1.0
-        slope = num / den
-        # normalize by price level
-        base = abs(ym) or 1.0
-        return float(slope / base)
-
-    def _clip(v, lo=-1.0, hi=1.0):
-        try:
-            v = float(v)
-        except Exception:
-            return 0.0
-        return max(lo, min(hi, v))
-
-    # --- Fetch klines with fallback ---
-    async def _get_pair_klines_binance(symbol: str, interval_: str, limit_: int):
-        try:
-            return await _binance_klines(symbol, interval=interval_, limit=limit_)
-        except Exception as e:
-            return None, str(e)
-
-    async def _get_pair_klines(interval_: str, limit_: int):
-        # Coinbase granularity mapping
-        sec_map = {"15m": 900, "1h": 3600, "4h": 3600, "1d": 86400}
-        gran = sec_map.get(interval_, 3600)
-
-        # For 4h: fetch 1h candles then aggregate x4
-        mult = 4 if interval_ == "4h" else 1
-        base_points = limit_ * mult
-
-        # 1) Try Binance
-        btc_k, btc_err = await _get_pair_klines_binance("BTCUSDT", interval_, limit_)
-        eth_k, eth_err = await _get_pair_klines_binance("ETHUSDT", interval_, limit_)
-        ethbtc_k = None
-        if btc_k and eth_k:
-            try:
-                ethbtc_k = await _binance_klines("ETHBTC", interval=interval_, limit=limit_)
-            except Exception:
-                ethbtc_k = None
-
-        if btc_k and eth_k:
-            return {"provider": "binance", "btc": btc_k, "eth": eth_k, "ethbtc": ethbtc_k}
-
-        # 2) Fallback: Coinbase
-        # Use BTC-USD / ETH-USD and compute ETHBTC ratio from closes (aligned)
-        btc_cb = await _coinbase_klines("BTC-USD", granularity=gran, points=base_points)
-        eth_cb = await _coinbase_klines("ETH-USD", granularity=gran, points=base_points)
-
-        if interval_ == "4h":
-            btc_cb = _aggregate_klines(btc_cb, 4)
-            eth_cb = _aggregate_klines(eth_cb, 4)
-
-        # Trim to limit
-        btc_cb = (btc_cb or [])[-limit_:]
-        eth_cb = (eth_cb or [])[-limit_:]
-
-        # Build ETH/BTC pseudo-candles from aligned closes
-        ethbtc_cb = []
-        n = min(len(btc_cb), len(eth_cb))
-        for i in range(n):
-            b = float(btc_cb[i][4])
-            e = float(eth_cb[i][4])
-            r = (e / b) if b else 0.0
-            # [t, o,h,l,c,v] minimal (use same ratio for OHLC)
-            t = int(btc_cb[i][0])
-            ethbtc_cb.append([t, r, r, r, r, 0.0])
-
-        return {"provider": "coinbase", "btc": btc_cb, "eth": eth_cb, "ethbtc": ethbtc_cb}
-
-    # Pull price data
-    pair = await _get_pair_klines(interval, lookback)
-    provider = pair.get("provider", "unknown")
-    btc_k = pair.get("btc") or []
-    eth_k = pair.get("eth") or []
-    ethbtc_k = pair.get("ethbtc") or []
-
-    btc_close = _to_close_series(btc_k)
-    eth_close = _to_close_series(eth_k)
-    ethbtc_close = _to_close_series(ethbtc_k) if ethbtc_k else []
-
-    if len(btc_close) < 20:
-        raise RuntimeError("Données insuffisantes (BTC) pour calculer le régime. Réessaie dans 10s.")
-
-    # --- CoinGecko global metrics (market cap + BTC dominance) ---
-    async def _coingecko_global():
-        url = "https://api.coingecko.com/api/v3/global"
-        headers = {"Accept": "application/json", "User-Agent": "Mozilla/5.0 (CryptoIA)"}
-        return await _fetch_json(url, headers=headers, timeout=12)
-
-    market_cap_usd = None
-    btc_dom = None
-    try:
-        g = await _coingecko_global()
-        data = (g or {}).get("data") or {}
-        market_cap_usd = (data.get("total_market_cap") or {}).get("usd")
-        btc_dom = (data.get("market_cap_percentage") or {}).get("btc")
-    except Exception:
-        market_cap_usd = None
-        btc_dom = None
-
-    # --- Signals ---
-    btc_trend = _clip(_trend_score(btc_close, window=min(40, max(20, len(btc_close)//3))) * 25.0)
-    eth_trend = _clip(_trend_score(eth_close, window=min(40, max(20, len(eth_close)//3))) * 25.0) if eth_close else 0.0
-
-    # momentum: last vs mean of recent window
-    w = min(48, len(btc_close))
-    btc_mom = _clip(((btc_close[-1] / (sum(btc_close[-w:]) / w)) - 1.0) * 6.0)
-    eth_mom = _clip(((eth_close[-1] / (sum(eth_close[-w:]) / w)) - 1.0) * 6.0) if eth_close else 0.0
-
-    # volatility: stdev of returns
-    br = _pct_returns(btc_close[-min(80, len(btc_close)):])
-    er = _pct_returns(eth_close[-min(80, len(eth_close)):]) if eth_close else []
-    btc_vol = _clip(((_stdev(br) or 0.0) / 0.02) - 1.0, lo=-1.0, hi=1.0)  # 2% baseline
-    eth_vol = _clip(((_stdev(er) or 0.0) / 0.03) - 1.0, lo=-1.0, hi=1.0) if er else 0.0
-
-    # alt strength: ETH/BTC trend + momentum
-    alt_strength = 0.0
-    if ethbtc_close and len(ethbtc_close) >= 20:
-        alt_trend = _clip(_trend_score(ethbtc_close, window=min(40, max(20, len(ethbtc_close)//3))) * 25.0)
-        ww = min(48, len(ethbtc_close))
-        alt_mom = _clip(((ethbtc_close[-1] / (sum(ethbtc_close[-ww:]) / ww)) - 1.0) * 6.0)
-        alt_strength = _clip((alt_trend * 0.6) + (alt_mom * 0.4))
-
-    # score: combine
-    # Risk-On when: BTC up, ETH up, alts strong, dominance not exploding, vol reasonable
-    dom_penalty = 0.0
-    if btc_dom is not None:
-        # dominance > 55 often means BTC-led / risk-off-ish for alts
-        dom_penalty = _clip(((float(btc_dom) - 52.0) / 8.0), lo=-1.0, hi=1.0)
-
-    score = (
-        (btc_trend * 0.30) +
-        (btc_mom   * 0.20) +
-        (eth_trend * 0.12) +
-        (eth_mom   * 0.08) +
-        (alt_strength * 0.22) -
-        (dom_penalty * 0.10) -
-        (max(0.0, btc_vol) * 0.10)
-    )
-    score = float(_clip(score, lo=-1.0, hi=1.0))
-
-    if score >= 0.25:
-        regime = "Risk-On"
-    elif score <= -0.25:
-        regime = "Risk-Off"
-    else:
-        regime = "Neutre"
-
-    # confidence: higher when signals agree and data quality OK
-    agree = (abs(btc_trend) + abs(btc_mom) + abs(alt_strength)) / 3.0
-    conf = int(max(15, min(95, (agree * 75) + (15 if regime != "Neutre" else 0))))
-
-    payload = {
-        "ok": True,
-        "provider": provider,
-        "interval": interval,
-        "lookback": lookback,
-        "regime": regime,
-        "score": round(score * 100, 1),         # -100..+100
-        "confidence": conf,                     # 0..100
-        "market_cap_usd": float(market_cap_usd) if market_cap_usd is not None else None,
-        "btc_dominance": float(btc_dom) if btc_dom is not None else None,
-        "btc_spot": float(btc_close[-1]),
-        "btc_spark": btc_close[-60:] if len(btc_close) >= 60 else btc_close,
-        "force_alt_ethbtc": float(ethbtc_close[-1]) if ethbtc_close else None,
-        "factors": {
-            "btc_trend": round(btc_trend, 3),
-            "btc_momentum": round(btc_mom, 3),
-            "btc_volatility": round(btc_vol, 3),
-            "eth_trend": round(eth_trend, 3),
-            "eth_momentum": round(eth_mom, 3),
-            "alt_strength": round(alt_strength, 3),
-            "btc_dominance_penalty": round(dom_penalty, 3) if btc_dom is not None else None,
-        },
-        "explain": (
-            f"Source prix: {provider}. Régime basé sur tendance/momentum BTC & ETH, force relative ETH/BTC, " 
-            f"dominance BTC et volatilité."
-        ),
-    }
-    return payload
-
+            btc_closes = []
+        if btc_closes and len(btc_closes) >= 30:
+            ema_fast = _ema(btc_closes, 12)
+            ema_slow = _ema(btc_closes, 26)
+            trend = (ema_fast - ema_slow) / (abs(ema_slow) + 1e-9)
+            vol = _std([_pct_change(btc_closes[i-1], btc_closes[i]) for i in range(1, len(btc_closes))], 60)
+            score = float(_clamp(trend * 120.0 - vol * 80.0, -100, 100))
+            if score >= 25:
+                regime = "Risk-On"
+            elif score <= -25:
+                regime = "Risk-Off"
+            else:
+                regime = "Neutre"
+            confidence = float(_clamp(abs(score), 15, 65))
+            explain = f"Mode dégradé: calcul BTC-only. Cause: {err}"
+        else:
+            regime = "Neutre"
+            score = 0.0
+            confidence = 0.0
+            explain = f"Mode dégradé (données insuffisantes). Cause: {err}"
+        return {
+            "ok": True,
+            "interval": interval,
+            "lookback": lookback,
+            "regime": regime,
+            "score": round(score, 2),
+            "confidence": round(confidence, 1),
+            "inputs": {},
+            "explain": explain,
+            "factors": [],
+            "debug_error": err,
+        }
 
 @app.get("/api/v2/market-regime", response_class=JSONResponse)
 async def api_v2_market_regime(interval: str = "4h", lookback: int = 240):
@@ -67328,58 +67211,16 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
 async def _binance_klines(symbol: str, interval: str, limit: int = 500, ttl_seconds: int = 60):
     """
     Récupère des chandelles OHLCV (VRAIES données) depuis Binance (API publique).
-    ⚠️  Dans certaines régions, api.binance.com peut répondre HTTP 451.
-    -> On essaie donc plusieurs endpoints, puis on laisse le caller gérer un fallback (Coinbase).
-    Retour: liste Binance-like: [open_time_ms, open, high, low, close, volume]
+    - symbol: ex "BTCUSDT"
+    - interval: "5m","15m","1h","4h","1d"
     """
     symbol = (symbol or "").upper().strip()
-    interval = (interval or "4h").lower().strip()
-    limit = int(limit) if limit else 500
-    limit = max(30, min(1500, limit))
-
-    cache_key = f"binance:klines:{symbol}:{interval}:{limit}"
-
-    # Endpoints alternatifs (mirror) — très utile quand api.binance.com renvoie 451
-    base_urls = [
-        "https://api.binance.com",
-        "https://data-api.binance.vision",   # mirror officiel (souvent accessible)
-        "https://api1.binance.com",
-        "https://api2.binance.com",
-        "https://api3.binance.com",
-    ]
-
-    params = {"symbol": symbol, "interval": interval, "limit": limit}
-    headers = {"Accept": "application/json", "User-Agent": "Mozilla/5.0 (CryptoIA)"}
-
-    last_exc = None
-    for base in base_urls:
-        url = f"{base}/api/v3/klines"
-        try:
-            data = await _fetch_json(
-                url,
-                params=params,
-                headers=headers,
-                timeout=12,
-                ttl_seconds=ttl_seconds,
-                cache_key=f"{cache_key}:{base}",
-            )
-            if isinstance(data, list) and data:
-                kl = []
-                for k in data:
-                    try:
-                        # k: [open_time, open, high, low, close, volume, ...]
-                        kl.append([int(k[0]), float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5])])
-                    except Exception:
-                        continue
-                if kl:
-                    return kl
-        except Exception as e:
-            last_exc = e
-            continue
-
-    raise RuntimeError(f"Binance indisponible (dernier endpoint). {last_exc}") if last_exc else RuntimeError("Binance indisponible.")
-
-
+    interval = (interval or "").strip()
+    if not symbol or not interval:
+        return []
+    url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={int(limit)}"
+    data = await _fetch_json(url, ttl_seconds=ttl_seconds)
+    return data or []
 
 def _ema(values, period: int):
     if not values or period <= 1:

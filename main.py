@@ -2,20 +2,6 @@ import pathlib
 from typing import Optional
 import html
 import datetime as dt
-
-import json  # FIX: used by sql_migrate_from_json and APIs
-try:
-    import requests  # type: ignore
-except Exception:
-    requests = None  # type: ignore
-
-# Stripe (optionnel)
-try:
-    import stripe  # type: ignore
-    STRIPE_AVAILABLE = True
-except Exception:
-    stripe = None  # type: ignore
-    STRIPE_AVAILABLE = False
 # --- HTML escaping helper (used by _simple_page and templates) ---
 # Ensures we never crash with NameError if a page calls _html_escape.
 def _html_escape(value):
@@ -221,8 +207,7 @@ class _FallbackAsyncClient:
 
     async def get(self, url: str, **kwargs):
         def _do():
-            import requests as _requests  # local import to avoid global NameError
-            return _requests.get(url, timeout=self.timeout, **kwargs)
+            return requests.get(url, timeout=self.timeout, **kwargs)
         return await asyncio.to_thread(_do)
 
     async def aclose(self):
@@ -285,14 +270,10 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
     import os
     import time
     import asyncio
-    # import httpx  # uses global optional httpx
+    import httpx
     import datetime
 
     mempool_base = (os.getenv("MEMPOOL_API_BASE") or "https://mempool.space").strip().rstrip("/")
-
-    # Client HTTP: httpx préféré, sinon requests (si disponible)
-    if httpx is None and requests is None:
-        return []
     try:
         min_usd = float((os.getenv("WHALE_MIN_USD") or "").strip() or min_usd)
     except Exception:
@@ -303,40 +284,24 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
     except Exception:
         min_btc_env = 0.0
 
-    async def _aget_json(url: str, params: dict | None = None, timeout: float = 6.0):
-        try:
-            if httpx is not None:
-                async with httpx.AsyncClient(timeout=timeout, headers={"User-Agent": "cryptoia/1.0"}) as client:
-                    r = await client.get(url, params=params)
-                    if r.status_code != 200:
-                        return None
-                    return r.json()
-            # requests fallback
-            if requests is None:
-                return None
-            def _do():
-                return requests.get(url, params=params, timeout=timeout, headers={"User-Agent": "cryptoia/1.0"})
-            r = await asyncio.to_thread(_do)
-            if getattr(r, "status_code", 0) != 200:
-                return None
-            return r.json()
-        except Exception:
-            return None
-
     # Prix BTC -> USD (CoinGecko, fallback Binance)
     btc_price = None
     try:
-        j = await _aget_json("https://api.coingecko.com/api/v3/simple/price", params={"ids": "bitcoin", "vs_currencies": "usd"}, timeout=6.0)
-        if isinstance(j, dict):
-            btc_price = float(j.get("bitcoin", {}).get("usd") or 0) or None
+        async with httpx.AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+            cg = await client.get("https://api.coingecko.com/api/v3/simple/price", params={"ids": "bitcoin", "vs_currencies": "usd"})
+            if cg.status_code == 200:
+                j = cg.json()
+                btc_price = float(j.get("bitcoin", {}).get("usd") or 0) or None
     except Exception:
         btc_price = None
 
     if btc_price is None:
         try:
-            j = await _aget_json("https://api.binance.com/api/v3/ticker/price", params={"symbol": "BTCUSDT"}, timeout=6.0)
-            if isinstance(j, dict):
-                btc_price = float(j.get("price") or 0) or None
+            async with httpx.AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+                bn = await client.get("https://api.binance.com/api/v3/ticker/price", params={"symbol": "BTCUSDT"})
+                if bn.status_code == 200:
+                    j = bn.json()
+                    btc_price = float(j.get("price") or 0) or None
         except Exception:
             btc_price = None
 
@@ -353,8 +318,11 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
 
     async def fetch_recent(base: str):
         try:
-            j = await _aget_json(f"{base}/api/mempool/recent", params=None, timeout=8.0)
-            return j
+            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+                r = await client.get(f"{base}/api/mempool/recent")
+                if r.status_code != 200:
+                    return None
+                return r.json()
         except Exception:
             return None
 
@@ -393,8 +361,11 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
 
     async def fetch_tx_from(base: str, txid: str):
         try:
-            j = await _aget_json(f"{base}/api/tx/{txid}", params=None, timeout=8.0)
-            return j
+            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+                r = await client.get(f"{base}/api/tx/{txid}")
+                if r.status_code != 200:
+                    return None
+                return r.json()
         except Exception:
             return None
 
@@ -483,8 +454,8 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
         bt = status.get("block_time") or tx.get("block_time") or None
         if bt:
             try:
-                ts_dt = dt.datetime.fromtimestamp(int(bt))
-                t = ts_dt.strftime("%H:%M")
+                dt = dt.datetime.fromtimestamp(int(bt))
+                t = dt.strftime("%H:%M")
             except Exception:
                 t = "mempool"
 
@@ -17125,62 +17096,89 @@ async def update_risk_settings(request: dict):
     
     return {"ok": True, "settings": risk_management_settings}
 
-@app.get("/api/risk/position-size")
-async def calculate_position_size(
-    # Legacy params (used by older pages)
+@app.api_route("/api/risk/position-size", methods=["GET", "POST"])
+async def api_risk_position_size(
+    request: Request,
     symbol: str | None = None,
-    entry: float = 0.0,
+    entry: float | None = None,
     sl: float | None = None,
-    # New params (used by /risk-management WOW)
     capital: float | None = None,
-    risk: float | None = None,   # risk % (e.g., 1.0)
-    stop: float | None = None,
-    side: str = "Long",
-    tp: float | None = None,
+    risk: float | None = None,
+    side: str = "long",
+    leverage: float | None = None,
+    fee_pct: float | None = None,
 ):
-    """Calculer la taille de position idéale (legacy + v2).
-
-    - Legacy: symbol, entry, sl -> utilise risk_management_settings (capital + risk%).
-    - V2: capital, risk, entry, stop, side, tp -> calcule directement avec ces valeurs.
+    """
+    Position sizing endpoint (robust).
+    - Accepts GET query params (used by the UI)
+    - Also accepts POST JSON body (for future-proofing / external calls)
     """
     try:
-        entry_v = float(entry)
-        stop_v = stop if stop is not None else sl
-        if stop_v is None:
-            return {"ok": False, "error": "Paramètre manquant: stop (ou sl)."}
-        stop_v = float(stop_v)
+        # If POST with JSON, override query params with body values when provided
+        if request.method == "POST":
+            try:
+                payload = await request.json()
+                if isinstance(payload, dict):
+                    symbol = payload.get("symbol", symbol)
+                    entry = payload.get("entry", entry)
+                    sl = payload.get("sl", payload.get("stop", sl))
+                    capital = payload.get("capital", capital)
+                    risk = payload.get("risk", payload.get("risk_pct", risk))
+                    side = payload.get("side", side) or side
+                    leverage = payload.get("leverage", leverage)
+                    fee_pct = payload.get("fee_pct", fee_pct)
+            except Exception:
+                # Non-JSON or empty body → ignore and fallback to query params
+                pass
 
-        capital_v = float(capital) if capital is not None else float(risk_management_settings.get("total_capital", 0) or 0)
-        risk_pct = float(risk) if risk is not None else float(risk_management_settings.get("risk_per_trade", 1) or 1)
+        # Normalize and validate
+        symbol_s = (symbol or "").strip().upper() or None
+        side_s = (side or "long").strip().lower()
+        is_short = side_s in ("short", "sell")
 
+        entry_v = float(entry or 0.0)
+        stop_v = float(sl or 0.0)
+        capital_v = float(capital or 0.0)
+        risk_pct = float(risk or 0.0)
+        lev = float(leverage or 1.0)
+        fee = float(fee_pct or 0.0)
+
+        if entry_v <= 0 or stop_v <= 0:
+            raise ValueError("Prix d'entrée et stop-loss doivent être > 0")
         if capital_v <= 0:
-            return {"ok": False, "error": "Capital invalide (doit être > 0)."}
-        if risk_pct <= 0:
-            return {"ok": False, "error": "Risque (%) invalide (doit être > 0)."}
-
-        side_norm = (side or "Long").strip().lower()
-        is_short = side_norm.startswith("s")
+            raise ValueError("Capital doit être > 0")
+        if risk_pct <= 0 or risk_pct > 100:
+            raise ValueError("Risque (%) doit être entre 0 et 100")
+        if lev <= 0:
+            raise ValueError("Levier doit être > 0")
+        if fee < 0 or fee > 5:
+            # just a sanity guard; fees beyond this are almost certainly a typo
+            raise ValueError("Frais (%) invalide")
 
         stop_distance = abs(entry_v - stop_v)
         if stop_distance <= 0:
-            return {"ok": False, "error": "Entry et Stop doivent être différents."}
+            raise ValueError("Stop-loss doit être différent du prix d'entrée")
 
         risk_amount = capital_v * (risk_pct / 100.0)
-        position_size = risk_amount / stop_distance  # quantité (unités)
-        position_value = position_size * entry_v
 
+        # Position size (units of the asset) = risk amount / stop distance
+        position_size = risk_amount / stop_distance
+
+        # Apply leverage on notional value for info only
+        position_value = position_size * entry_v
+        position_value_with_leverage = position_value * lev
+
+        # Fees estimate (entry+exit)
+        fee_cost = position_value_with_leverage * (fee / 100.0) * 2.0 if fee else 0.0
+
+        # Optional RR (if TP provided later in UI)
         rr = None
-        if tp is not None and str(tp).strip() != "":
-            tp_v = float(tp)
-            reward = abs(tp_v - entry_v)
-            if reward > 0:
-                rr = reward / stop_distance
 
         stop_distance_percent = (stop_distance / entry_v) * 100.0 if entry_v else None
 
         return {
             "ok": True,
-            "symbol": (symbol or "").upper() if symbol else None,
+            "symbol": symbol_s,
             "side": "Short" if is_short else "Long",
             "capital": round(capital_v, 2),
             "risk_percent": round(risk_pct, 4),
@@ -17191,12 +17189,12 @@ async def calculate_position_size(
             "stop_distance_percent": round(stop_distance_percent, 4) if stop_distance_percent is not None else None,
             "position_size": round(position_size, 8),
             "position_value": round(position_value, 2),
-            "rr": round(rr, 4) if rr is not None else None,
+            "position_value_leveraged": round(position_value_with_leverage, 2),
+            "estimated_fees": round(fee_cost, 2),
+            "rr": rr,
         }
     except Exception as e:
         return {"ok": False, "error": str(e)}
-
-
 @app.post("/api/risk/reset-daily")
 async def reset_daily_loss():
     """Réinitialiser la perte quotidienne"""
@@ -70020,3 +70018,4 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
         active_page=active_page,
     )
     return _HTMLResponse(html)
+

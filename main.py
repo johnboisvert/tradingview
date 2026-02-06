@@ -2186,6 +2186,23 @@ print(f"✅ Templates Jinja2 configurés (logo={SITE_LOGO_URL})")
 # Active/désactive toute la logique de souscription (paywall, pages pricing, etc.)
 # Par défaut: activé. Mettre SUBSCRIPTION_ENABLED=0 sur Railway pour désactiver.
 SUBSCRIPTION_ENABLED = (os.getenv("SUBSCRIPTION_ENABLED") or "1").strip().lower() in ("1","true","yes","y","on")
+# --- Routeurs d'abonnement (définis même si modules absents) ---
+subscription_router = None
+admin_pricing_router = None
+
+if SUBSCRIPTION_ENABLED:
+    # Charger les routeurs depuis des modules séparés si présents
+    try:
+        import subscription_system as _submod
+        subscription_router = getattr(_submod, "subscription_router", None) or getattr(_submod, "router", None)
+    except Exception as _e:
+        print(f"⚠️ subscription_system non chargé: {_e}")
+
+    try:
+        import admin_pricing as _adm_mod
+        admin_pricing_router = getattr(_adm_mod, "admin_pricing_router", None) or getattr(_adm_mod, "router", None)
+    except Exception as _e:
+        print(f"⚠️ admin_pricing non chargé: {_e}")
 
 
 # Enregistrer les fonctions template si systme permissions disponible
@@ -3409,13 +3426,21 @@ async def debug_files():
     }
 # ========================
 
-# ===== NOUVEAU: Monter les routeurs d'abonnement =====
+# ===== Abonnements: monter les routeurs =====
 if SUBSCRIPTION_ENABLED:
     if subscription_router is not None:
         app.include_router(subscription_router)
-if admin_pricing_router is not None:
+    else:
+        print("⚠️ subscription_router indisponible (abonnements)")
+
+    if admin_pricing_router is not None:
         app.include_router(admin_pricing_router)
-print("✅ Routes d'abonnement activées")
+    else:
+        print("⚠️ admin_pricing_router indisponible (pricing admin)")
+
+    print("✅ Routes d'abonnement activées")
+else:
+    print("ℹ️ Système d'abonnement désactivé")
 # =====================================================
 
 app.add_middleware(
@@ -35999,13 +36024,21 @@ async def debug_files():
     }
 # ========================
 
-# ===== NOUVEAU: Monter les routeurs d'abonnement =====
+# ===== Abonnements: monter les routeurs =====
 if SUBSCRIPTION_ENABLED:
     if subscription_router is not None:
         app.include_router(subscription_router)
-if admin_pricing_router is not None:
+    else:
+        print("⚠️ subscription_router indisponible (abonnements)")
+
+    if admin_pricing_router is not None:
         app.include_router(admin_pricing_router)
-print("✅ Routes d'abonnement activées")
+    else:
+        print("⚠️ admin_pricing_router indisponible (pricing admin)")
+
+    print("✅ Routes d'abonnement activées")
+else:
+    print("ℹ️ Système d'abonnement désactivé")
 # =====================================================
 
 app.add_middleware(
@@ -67289,4 +67322,3 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
         active_page=active_page,
     )
     return _HTMLResponse(html)
-

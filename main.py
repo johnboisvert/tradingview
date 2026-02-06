@@ -3481,6 +3481,18 @@ _maybe_add_get("/rug-scam-shield", "rug_scam_shield.html", "Rug & Scam Shield")
 # ============================================================================
 
 
+
+# ===== FEATURE FLAGS (robuste) =====
+# Empêche les NameError si une variable d'environnement n'est pas définie
+import os as _os
+
+def _env_flag(_name: str, _default: str = '1') -> bool:
+    _val = str(_os.getenv(_name, _default)).strip().lower()
+    return _val in ('1', 'true', 'yes', 'y', 'on')
+
+# Active/désactive le système d'abonnement (par défaut: activé)
+SUBSCRIPTION_ENABLED = _env_flag('SUBSCRIPTION_ENABLED', '1')
+
 # ===== ROUTE DE DEBUG =====
 @app.get("/debug-files")
 async def debug_files():
@@ -67394,4 +67406,3 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
         active_page=active_page,
     )
     return _HTMLResponse(html)
-

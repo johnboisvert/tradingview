@@ -186,6 +186,9 @@ from typing import Optional
 import os  # FIX: required for DB_DIR / path operations
 import time  # required for ASSET_VERSION cache-busting
 import secrets  # FIX: required for session token generation
+
+# Alias interne pour éviter NameError dans generate_temp_password
+_secrets = secrets
 import html as _html
 import asyncio
 import re  # FIX: needed for CSS extraction
@@ -17096,89 +17099,62 @@ async def update_risk_settings(request: dict):
     
     return {"ok": True, "settings": risk_management_settings}
 
-@app.api_route("/api/risk/position-size", methods=["GET", "POST"])
-async def api_risk_position_size(
-    request: Request,
+@app.get("/api/risk/position-size")
+async def calculate_position_size(
+    # Legacy params (used by older pages)
     symbol: str | None = None,
-    entry: float | None = None,
+    entry: float = 0.0,
     sl: float | None = None,
+    # New params (used by /risk-management WOW)
     capital: float | None = None,
-    risk: float | None = None,
-    side: str = "long",
-    leverage: float | None = None,
-    fee_pct: float | None = None,
+    risk: float | None = None,   # risk % (e.g., 1.0)
+    stop: float | None = None,
+    side: str = "Long",
+    tp: float | None = None,
 ):
-    """
-    Position sizing endpoint (robust).
-    - Accepts GET query params (used by the UI)
-    - Also accepts POST JSON body (for future-proofing / external calls)
+    """Calculer la taille de position idéale (legacy + v2).
+
+    - Legacy: symbol, entry, sl -> utilise risk_management_settings (capital + risk%).
+    - V2: capital, risk, entry, stop, side, tp -> calcule directement avec ces valeurs.
     """
     try:
-        # If POST with JSON, override query params with body values when provided
-        if request.method == "POST":
-            try:
-                payload = await request.json()
-                if isinstance(payload, dict):
-                    symbol = payload.get("symbol", symbol)
-                    entry = payload.get("entry", entry)
-                    sl = payload.get("sl", payload.get("stop", sl))
-                    capital = payload.get("capital", capital)
-                    risk = payload.get("risk", payload.get("risk_pct", risk))
-                    side = payload.get("side", side) or side
-                    leverage = payload.get("leverage", leverage)
-                    fee_pct = payload.get("fee_pct", fee_pct)
-            except Exception:
-                # Non-JSON or empty body → ignore and fallback to query params
-                pass
+        entry_v = float(entry)
+        stop_v = stop if stop is not None else sl
+        if stop_v is None:
+            return {"ok": False, "error": "Paramètre manquant: stop (ou sl)."}
+        stop_v = float(stop_v)
 
-        # Normalize and validate
-        symbol_s = (symbol or "").strip().upper() or None
-        side_s = (side or "long").strip().lower()
-        is_short = side_s in ("short", "sell")
+        capital_v = float(capital) if capital is not None else float(risk_management_settings.get("total_capital", 0) or 0)
+        risk_pct = float(risk) if risk is not None else float(risk_management_settings.get("risk_per_trade", 1) or 1)
 
-        entry_v = float(entry or 0.0)
-        stop_v = float(sl or 0.0)
-        capital_v = float(capital or 0.0)
-        risk_pct = float(risk or 0.0)
-        lev = float(leverage or 1.0)
-        fee = float(fee_pct or 0.0)
-
-        if entry_v <= 0 or stop_v <= 0:
-            raise ValueError("Prix d'entrée et stop-loss doivent être > 0")
         if capital_v <= 0:
-            raise ValueError("Capital doit être > 0")
-        if risk_pct <= 0 or risk_pct > 100:
-            raise ValueError("Risque (%) doit être entre 0 et 100")
-        if lev <= 0:
-            raise ValueError("Levier doit être > 0")
-        if fee < 0 or fee > 5:
-            # just a sanity guard; fees beyond this are almost certainly a typo
-            raise ValueError("Frais (%) invalide")
+            return {"ok": False, "error": "Capital invalide (doit être > 0)."}
+        if risk_pct <= 0:
+            return {"ok": False, "error": "Risque (%) invalide (doit être > 0)."}
+
+        side_norm = (side or "Long").strip().lower()
+        is_short = side_norm.startswith("s")
 
         stop_distance = abs(entry_v - stop_v)
         if stop_distance <= 0:
-            raise ValueError("Stop-loss doit être différent du prix d'entrée")
+            return {"ok": False, "error": "Entry et Stop doivent être différents."}
 
         risk_amount = capital_v * (risk_pct / 100.0)
-
-        # Position size (units of the asset) = risk amount / stop distance
-        position_size = risk_amount / stop_distance
-
-        # Apply leverage on notional value for info only
+        position_size = risk_amount / stop_distance  # quantité (unités)
         position_value = position_size * entry_v
-        position_value_with_leverage = position_value * lev
 
-        # Fees estimate (entry+exit)
-        fee_cost = position_value_with_leverage * (fee / 100.0) * 2.0 if fee else 0.0
-
-        # Optional RR (if TP provided later in UI)
         rr = None
+        if tp is not None and str(tp).strip() != "":
+            tp_v = float(tp)
+            reward = abs(tp_v - entry_v)
+            if reward > 0:
+                rr = reward / stop_distance
 
         stop_distance_percent = (stop_distance / entry_v) * 100.0 if entry_v else None
 
         return {
             "ok": True,
-            "symbol": symbol_s,
+            "symbol": (symbol or "").upper() if symbol else None,
             "side": "Short" if is_short else "Long",
             "capital": round(capital_v, 2),
             "risk_percent": round(risk_pct, 4),
@@ -17189,12 +17165,12 @@ async def api_risk_position_size(
             "stop_distance_percent": round(stop_distance_percent, 4) if stop_distance_percent is not None else None,
             "position_size": round(position_size, 8),
             "position_value": round(position_value, 2),
-            "position_value_leveraged": round(position_value_with_leverage, 2),
-            "estimated_fees": round(fee_cost, 2),
-            "rr": rr,
+            "rr": round(rr, 4) if rr is not None else None,
         }
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
 @app.post("/api/risk/reset-daily")
 async def reset_daily_loss():
     """Réinitialiser la perte quotidienne"""

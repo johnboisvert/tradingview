@@ -250,6 +250,28 @@ from starlette.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 # =============================================================
+# =========================
+# Database configuration (Railway friendly)
+# =========================
+# DB_DIR is mounted on Railway (persisted volume). Default to /app/data.
+DB_DIR = os.getenv("DB_DIR", "/app/data")
+# Single sqlite file used across the app (users, plans, trades, etc.)
+DB_PATH = (os.getenv("DB_PATH") or "").strip() or os.path.join(DB_DIR, "ai_trader.db")
+
+# Optional Postgres support if DATABASE_URL is provided
+DATABASE_URL = (os.getenv("DATABASE_URL") or "").strip()
+
+try:
+    os.makedirs(DB_DIR, exist_ok=True)
+except Exception:
+    # If filesystem is read-only for some reason, we'll fail later when opening DB.
+    pass
+
+if DATABASE_URL:
+    DB_CONFIG = {"type": "postgresql", "url": DATABASE_URL, "path": DB_PATH, "dir": DB_DIR}
+else:
+    DB_CONFIG = {"type": "sqlite", "path": DB_PATH, "dir": DB_DIR}
+
 
 
 
@@ -4285,7 +4307,7 @@ def get_user_plan(username: str) -> str:
         if not uname:
             return "free"
 
-        db_path = os.getenv("DB_PATH", "/app/data/ai_trader.db")
+        db_path = DB_PATH
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
@@ -36883,7 +36905,7 @@ def get_user_plan(username: str) -> str:
         if not uname:
             return "free"
 
-        db_path = os.getenv("DB_PATH", "/app/data/ai_trader.db")
+        db_path = DB_PATH
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()

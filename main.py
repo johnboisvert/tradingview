@@ -3750,9 +3750,23 @@ monitor_lock = asyncio.Lock()  # Ã©vite NameError dans monitor_trades_backgrou
 #  SYSTME D'AUTHENTIFICATION AVEC POSTGRESQL
 # ============================================================================
 
-# Dtection de PostgreSQL
+# Détection de PostgreSQL (safe)
 DATABASE_URL = os.getenv("DATABASE_URL")
-USE_POSTGRESQL = POSTGRESQL_AVAILABLE and DATABASE_URL is not None
+
+# POSTGRESQL_AVAILABLE peut manquer si une ancienne section a été copiée.
+# On le définit ici de façon robuste pour éviter un crash au démarrage.
+try:
+    import asyncpg  # type: ignore  # noqa: F401
+    POSTGRESQL_AVAILABLE = True
+except Exception:
+    try:
+        import psycopg2  # type: ignore  # noqa: F401
+        POSTGRESQL_AVAILABLE = True
+    except Exception:
+        POSTGRESQL_AVAILABLE = False
+
+USE_POSTGRESQL = bool(DATABASE_URL) and bool(POSTGRESQL_AVAILABLE)
+
 
 # Base de donnes des utilisateurs et sessions
 USERS_DB = DB_CONFIG["path"]  # single DB file for all features (users, plans, trades, etc.)  # Persistant si /data est montÃ©
@@ -36342,9 +36356,23 @@ monitor_lock = asyncio.Lock()  # Ã©vite NameError dans monitor_trades_backgrou
 #  SYSTME D'AUTHENTIFICATION AVEC POSTGRESQL
 # ============================================================================
 
-# Dtection de PostgreSQL
+# Détection de PostgreSQL (safe)
 DATABASE_URL = os.getenv("DATABASE_URL")
-USE_POSTGRESQL = POSTGRESQL_AVAILABLE and DATABASE_URL is not None
+
+# POSTGRESQL_AVAILABLE peut manquer si une ancienne section a été copiée.
+# On le définit ici de façon robuste pour éviter un crash au démarrage.
+try:
+    import asyncpg  # type: ignore  # noqa: F401
+    POSTGRESQL_AVAILABLE = True
+except Exception:
+    try:
+        import psycopg2  # type: ignore  # noqa: F401
+        POSTGRESQL_AVAILABLE = True
+    except Exception:
+        POSTGRESQL_AVAILABLE = False
+
+USE_POSTGRESQL = bool(DATABASE_URL) and bool(POSTGRESQL_AVAILABLE)
+
 
 # Base de donnes des utilisateurs et sessions
 USERS_DB = DB_CONFIG["path"]  # single DB file for all features (users, plans, trades, etc.)  # Persistant si /data est montÃ©

@@ -252,225 +252,91 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # =============================================================
 
 
-async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000000.0, limit: int = 12):
+
+# Cache "whale" events briefly to avoid hammering public APIs
+_WHALE_CACHE = {"ts": 0.0, "data": []}
+
+async def get_real_whale_transactions(min_usd: float = 250_000, limit: int = 8) -> list:
+    """Fetch recent 'whale' activity with **real public data** (no API keys).
+
+    Approach:
+      - Uses Binance public `aggTrades` for BTCUSDT + ETHUSDT
+      - Computes USD notional (price * qty) and keeps only large trades
+      - Interprets side using Binance `m` flag:
+          * m == True  -> SELL (seller is taker / market sell)
+          * m == False -> BUY  (buyer is taker / market buy)
+
+    Returns a list of dicts compatible with the AI Whale Watcher page.
     """
-    Retourne des "whale transfers" RÉELS quand possible.
-
-    - Actuellement, on supporte **BTC** via l'API publique mempool.space (pas de clé API requise).
-    - Pour d'autres assets, on retourne [] (le template basculera en démo).
-
-    Format attendu par la page /ai-whale-watcher:
-      [{"time": "HH:MM", "asset": "BTC", "amount_usd": 1234.0, "details": "addr → addr", "txid": "..."}]
-    """
-    symbol = (symbol or "BTC").upper().strip()
-    if symbol not in ("BTC", "XBT"):
-        return []
-
-    # Imports locaux: évite dépendances au moment de l'import global
-    import os
-    import time
-    import asyncio
-    import httpx
-    import datetime
-
-    mempool_base = (os.getenv("MEMPOOL_API_BASE") or "https://mempool.space").strip().rstrip("/")
+    global _WHALE_CACHE
     try:
-        min_usd = float((os.getenv("WHALE_MIN_USD") or "").strip() or min_usd)
+        now = time.time()
+        if _WHALE_CACHE.get("data") and (now - float(_WHALE_CACHE.get("ts", 0.0)) < 25.0):
+            return list(_WHALE_CACHE["data"])[: int(limit)]
     except Exception:
         pass
-    # seuil en BTC (optionnel): si défini, on prend le max entre seuil BTC et seuil USD
-    try:
-        min_btc_env = float((os.getenv("WHALE_MIN_BTC") or "").strip() or 0)
-    except Exception:
-        min_btc_env = 0.0
-
-    # Prix BTC -> USD (CoinGecko, fallback Binance)
-    btc_price = None
-    try:
-        async with httpx.AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
-            cg = await client.get("https://api.coingecko.com/api/v3/simple/price", params={"ids": "bitcoin", "vs_currencies": "usd"})
-            if cg.status_code == 200:
-                j = cg.json()
-                btc_price = float(j.get("bitcoin", {}).get("usd") or 0) or None
-    except Exception:
-        btc_price = None
-
-    if btc_price is None:
-        try:
-            async with httpx.AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
-                bn = await client.get("https://api.binance.com/api/v3/ticker/price", params={"symbol": "BTCUSDT"})
-                if bn.status_code == 200:
-                    j = bn.json()
-                    btc_price = float(j.get("price") or 0) or None
-        except Exception:
-            btc_price = None
-
-    if btc_price is None:
-        return []  # Sans prix, on ne peut pas comparer au seuil USD
-
-    # Récupère des tx récentes (sources publiques) + fallback automatique
-    bases = []
-    if mempool_base:
-        bases.append(mempool_base)
-    # fallback Blockstream (API très similaire)
-    if "https://blockstream.info" not in bases:
-        bases.append("https://blockstream.info")
-
-    async def fetch_recent(base: str):
-        try:
-            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
-                r = await client.get(f"{base}/api/mempool/recent")
-                if r.status_code != 200:
-                    return None
-                return r.json()
-        except Exception:
-            return None
-
-    recent_data = None
-    used_base = None
-    for b in bases:
-        recent_data = await fetch_recent(b)
-        if recent_data is not None:
-            used_base = b
-            break
-
-    if recent_data is None:
-        return []
-
-    # Normalise en liste de txids
-    txids = []
-    if isinstance(recent_data, list):
-        for it in recent_data:
-            if isinstance(it, str):
-                txids.append(it)
-            elif isinstance(it, dict):
-                tid = it.get("txid") or it.get("txId") or it.get("hash")
-                if tid:
-                    txids.append(str(tid))
-    elif isinstance(recent_data, dict):
-        for k in ("txids", "recent", "transactions"):
-            v = recent_data.get(k)
-            if isinstance(v, list):
-                for it in v:
-                    if isinstance(it, str):
-                        txids.append(it)
-                    elif isinstance(it, dict) and (it.get("txid") or it.get("hash")):
-                        txids.append(str(it.get("txid") or it.get("hash")))
-
-    txids = txids[: max(limit * 6, 60)]  # on prend plus large pour filtrer
-
-    async def fetch_tx_from(base: str, txid: str):
-        try:
-            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
-                r = await client.get(f"{base}/api/tx/{txid}")
-                if r.status_code != 200:
-                    return None
-                return r.json()
-        except Exception:
-            return None
-
-    async def fetch_tx(txid: str):
-        # 1) base qui a marché pour recent
-        if used_base:
-            j = await fetch_tx_from(used_base, txid)
-            if j is not None:
-                return j
-        # 2) autres bases fallback
-        for b in bases:
-            if b == used_base:
-                continue
-            j = await fetch_tx_from(b, txid)
-            if j is not None:
-                return j
-        return None
-
-    # Limiter la concurrence
-    sem = asyncio.Semaphore(6)
-
-    async def fetch_with_sem(txid):
-        async with sem:
-            return await fetch_tx(txid)
-
-    # On fetch des détails pour un nombre raisonnable de txids (évite un flood)
-    detail_txids = txids[:120]
-    details = await asyncio.gather(*[fetch_with_sem(tid) for tid in detail_txids])
 
     events = []
-    now = dt.datetime.now()
+    symbols = [("BTCUSDT", "BTC"), ("ETHUSDT", "ETH")]
 
-    def short_addr(a: str):
-        if not a:
-            return "—"
-        a = str(a)
-        return a[:6] + "…" + a[-6:] if len(a) > 15 else a
+    async with httpx.AsyncClient(timeout=7.0) as client:
+        for symbol, asset in symbols:
+            try:
+                r = await client.get(
+                    "https://api.binance.com/api/v3/aggTrades",
+                    params={"symbol": symbol, "limit": 200},
+                    headers={"Accept": "application/json"},
+                )
+                r.raise_for_status()
+                trades = r.json() or []
+                # iterate newest-first
+                for t in reversed(trades):
+                    price = float(t.get("p") or 0.0)
+                    qty = float(t.get("q") or 0.0)
+                    notional = price * qty
+                    if notional < float(min_usd):
+                        continue
 
-    for tx in details:
-        if not isinstance(tx, dict):
-            continue
+                    ts_ms = int(t.get("T") or 0)
+                    dt_trade = datetime.datetime.utcfromtimestamp(ts_ms / 1000.0)
+                    delta = datetime.datetime.utcnow() - dt_trade
+                    mins = int(delta.total_seconds() // 60)
+                    if mins <= 0:
+                        time_ago = "à l'instant"
+                    elif mins < 60:
+                        time_ago = f"{mins} min"
+                    else:
+                        hrs = int(mins // 60)
+                        time_ago = f"{hrs} h"
 
-        vout = tx.get("vout") or tx.get("outputs") or []
-        vin = tx.get("vin") or tx.get("inputs") or []
+                    is_buyer_maker = bool(t.get("m"))
+                    side = "SELL" if is_buyer_maker else "BUY"
 
-        # Trouver la plus grosse sortie (souvent le "montant réel" plus parlant que total_out)
-        best_out_val = 0
-        best_out_addr = None
-        for o in vout if isinstance(vout, list) else []:
-            if not isinstance(o, dict):
+                    events.append(
+                        {
+                            "ts_ms": ts_ms,
+                            "time": dt_trade.strftime("%H:%M:%S"),
+                            "asset": asset,
+                            "amount": qty,
+                            "usd_value": notional,
+                            "time_ago": time_ago,
+                            "type": side,
+                            "from_owner": "taker (sell)" if side == "SELL" else "taker (buy)",
+                            "to_owner": "binance",
+                            "txid": f"{symbol}:{t.get('a')}",
+                        }
+                    )
+            except Exception:
                 continue
-            val = o.get("value") or o.get("amount") or 0
-            try:
-                val = int(val)
-            except Exception:
-                try:
-                    val = int(float(val))
-                except Exception:
-                    val = 0
-            if val > best_out_val:
-                best_out_val = val
-                best_out_addr = o.get("scriptpubkey_address") or o.get("address") or o.get("scriptPubKey", {}).get("address")
 
-        # Adresse source (premier input)
-        from_addr = None
-        if isinstance(vin, list) and vin:
-            first_in = vin[0] if isinstance(vin[0], dict) else None
-            if first_in:
-                prevout = first_in.get("prevout") or {}
-                from_addr = prevout.get("scriptpubkey_address") or prevout.get("address") or first_in.get("address")
+    # sort newest first and cache
+    events.sort(key=lambda x: int(x.get("ts_ms", 0)), reverse=True)
+    try:
+        _WHALE_CACHE = {"ts": time.time(), "data": events}
+    except Exception:
+        pass
 
-        if best_out_val <= 0:
-            continue
-
-        amount_btc = best_out_val / 1e8
-        amount_usd = amount_btc * btc_price
-
-        if amount_usd < float(min_usd):
-            continue
-        if min_btc_env and amount_btc < min_btc_env:
-            continue
-
-        # Time
-        t = "mempool"
-        status = tx.get("status") or {}
-        bt = status.get("block_time") or tx.get("block_time") or None
-        if bt:
-            try:
-                ts_dt = dt.datetime.fromtimestamp(int(bt))
-                t = ts_dt.strftime("%H:%M")
-            except Exception:
-                t = "mempool"
-
-        events.append({
-            "time": t,
-            "asset": "BTC",
-            "amount_usd": float(amount_usd),
-            "details": f"{short_addr(from_addr)} → {short_addr(best_out_addr)}",
-            "txid": tx.get("txid") or tx.get("hash") or "",
-        })
-
-        if len(events) >= limit:
-            break
-
-    return events
+    return events[: int(limit)]
 
 
 def create_coinbase_payment(plan, email, client, amount=None):
@@ -36200,8 +36066,19 @@ def _risk_flags(summary: dict) -> list[str]:
         flags.append("Variation 24h extrême (±50%+) → volatilité très forte.")
     return flags
 
-def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor") -> str:
+def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor", **kwargs) -> str:
     """Return a tiny inline SVG sparkline (server-side, no JS)."""
+    # Backward-compat aliases (older callers used w/h)
+    if "w" in kwargs and kwargs["w"] is not None:
+        try:
+            width = int(kwargs["w"])
+        except Exception:
+            pass
+    if "h" in kwargs and kwargs["h"] is not None:
+        try:
+            height = int(kwargs["h"])
+        except Exception:
+            pass
     if not values or len(values) < 2:
         return ""
     try:
@@ -66799,8 +66676,19 @@ def _risk_flags(summary: dict) -> list[str]:
         flags.append("Variation 24h extrême (±50%+) → volatilité très forte.")
     return flags
 
-def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor") -> str:
+def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor", **kwargs) -> str:
     """Return a tiny inline SVG sparkline (server-side, no JS)."""
+    # Backward-compat aliases (older callers used w/h)
+    if "w" in kwargs and kwargs["w"] is not None:
+        try:
+            width = int(kwargs["w"])
+        except Exception:
+            pass
+    if "h" in kwargs and kwargs["h"] is not None:
+        try:
+            height = int(kwargs["h"])
+        except Exception:
+            pass
     if not values or len(values) < 2:
         return ""
     try:

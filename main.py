@@ -2182,6 +2182,12 @@ templates.env.globals["SITE_LOGO_URL"] = SITE_LOGO_URL
 templates.env.globals["SITE_NAME"] = SITE_NAME
 print(f"✅ Templates Jinja2 configurés (logo={SITE_LOGO_URL})")
 
+# --- Abonnements / Paywall global ---
+# Active/désactive toute la logique de souscription (paywall, pages pricing, etc.)
+# Par défaut: activé. Mettre SUBSCRIPTION_ENABLED=0 sur Railway pour désactiver.
+SUBSCRIPTION_ENABLED = (os.getenv("SUBSCRIPTION_ENABLED") or "1").strip().lower() in ("1","true","yes","y","on")
+
+
 # Enregistrer les fonctions template si systme permissions disponible
 # (template functions registration moved below after globals are set)
 # --- Fallback template helpers (évite que le site casse si protected_routes manque une fonction) ---

@@ -256,7 +256,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # Cache "whale" events briefly to avoid hammering public APIs
 _WHALE_CACHE = {"ts": 0.0, "data": []}
 
-async def get_real_whale_transactions(min_usd: float = 250_000, limit: int = 8) -> list:
+async def get_real_whale_transactions(min_usd: float = 150_000, limit: int = 8) -> list:
     """Fetch recent 'whale' activity with **real public data** (no API keys).
 
     Approach:
@@ -282,13 +282,33 @@ async def get_real_whale_transactions(min_usd: float = 250_000, limit: int = 8) 
     async with httpx.AsyncClient(timeout=7.0) as client:
         for symbol, asset in symbols:
             try:
-                r = await client.get(
-                    "https://api.binance.com/api/v3/aggTrades",
-                    params={"symbol": symbol, "limit": 200},
-                    headers={"Accept": "application/json"},
-                )
-                r.raise_for_status()
-                trades = r.json() or []
+                # Binance peut être bloqué selon la région / réseau (Cloudflare).
+                # On tente plusieurs endpoints publics (binance.com puis binance.vision).
+                base_urls = [
+                    "https://api.binance.com",
+                    "https://data-api.binance.vision",
+                ]
+                trades = []
+                last_err = None
+                for base in base_urls:
+                    try:
+                        r = await client.get(
+                            f"{base}/api/v3/aggTrades",
+                            params={"symbol": symbol, "limit": 1000},
+                            headers={
+                                "Accept": "application/json",
+                                "User-Agent": "Mozilla/5.0",
+                            },
+                        )
+                        r.raise_for_status()
+                        trades = r.json() or []
+                        if trades:
+                            break
+                    except Exception as e:
+                        last_err = e
+                        continue
+                if not trades and last_err:
+                    raise last_err
                 # iterate newest-first
                 for t in reversed(trades):
                     price = float(t.get("p") or 0.0)
@@ -15238,12 +15258,12 @@ async def ai_whale_watcher():
     # 4 Dcider quelle source utiliser
     if real_whales and len(real_whales) > 0:
         whale_data = real_whales
-        status_badge = "✅ VRAIES DONNÉES EN DIRECT"
-        source_text = f"Source: Blockchain.info API (TEMPS RÉEL) | BTC: ${btc_price:,.0f}"
+        status_badge = "🟢 DONNÉES LIVE"
+        source_text = f"Source: Binance (aggTrades) + CoinGecko (prix) | BTC: ${btc_price:,.0f}"
         print(f"✅ Données réelles reçues! BTC: ${btc_price:,.0f}")
     else:
         whale_data = demo_whales
-        status_badge = "⚠️ Mode DÉMONSTRATION (Attente API)"
+        status_badge = "⚠️ Mode DÉMONSTRATION (fallback)"
         source_text = f"Données démo avec prix LIVE | BTC: ${btc_price:,.0f} | Actualiser dans 30s"
         print(f"⚠️ APIs indisponibles - Mode démo | BTC: ${btc_price:,.0f}")
     
@@ -47388,12 +47408,12 @@ async def ai_whale_watcher():
     # 4 Dcider quelle source utiliser
     if real_whales and len(real_whales) > 0:
         whale_data = real_whales
-        status_badge = "✅ VRAIES DONNÉES EN DIRECT"
-        source_text = f"Source: Blockchain.info API (TEMPS RÉEL) | BTC: ${btc_price:,.0f}"
+        status_badge = "🟢 DONNÉES LIVE"
+        source_text = f"Source: Binance (aggTrades) + CoinGecko (prix) | BTC: ${btc_price:,.0f}"
         print(f"✅ Données réelles reçues! BTC: ${btc_price:,.0f}")
     else:
         whale_data = demo_whales
-        status_badge = "⚠️ Mode DÉMONSTRATION (Attente API)"
+        status_badge = "⚠️ Mode DÉMONSTRATION (fallback)"
         source_text = f"Données démo avec prix LIVE | BTC: ${btc_price:,.0f} | Actualiser dans 30s"
         print(f"⚠️ APIs indisponibles - Mode démo | BTC: ${btc_price:,.0f}")
     

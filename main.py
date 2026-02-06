@@ -3628,8 +3628,18 @@ monitor_lock = asyncio.Lock()  # évite NameError dans monitor_trades_background
 #  SYSTME D'AUTHENTIFICATION AVEC POSTGRESQL
 # ============================================================================
 
-# Dtection de PostgreSQL
+# Détection de PostgreSQL
 DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = (DATABASE_URL or "").strip() or None
+
+# POSTGRESQL_AVAILABLE peut ne pas être défini si une section précédente a été supprimée/éditée.
+# On le reconstruit ici de façon sûre (Railway peut ne pas avoir psycopg2 installé).
+try:
+    import psycopg2  # type: ignore
+    POSTGRESQL_AVAILABLE = True
+except Exception:
+    POSTGRESQL_AVAILABLE = False
+
 USE_POSTGRESQL = POSTGRESQL_AVAILABLE and DATABASE_URL is not None
 
 # Base de donnes des utilisateurs et sessions

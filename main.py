@@ -270,7 +270,11 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
     import os
     import time
     import asyncio
-    import httpx
+    try:
+        import httpx as _httpx  # type: ignore
+    except Exception:
+        _httpx = None
+    AsyncClient = (_AsyncClient if _httpx else _FallbackAsyncClient)
     import datetime
 
     mempool_base = (os.getenv("MEMPOOL_API_BASE") or "https://mempool.space").strip().rstrip("/")
@@ -287,7 +291,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
     # Prix BTC -> USD (CoinGecko, fallback Binance)
     btc_price = None
     try:
-        async with httpx.AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+        async with AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
             cg = await client.get("https://api.coingecko.com/api/v3/simple/price", params={"ids": "bitcoin", "vs_currencies": "usd"})
             if cg.status_code == 200:
                 j = cg.json()
@@ -297,7 +301,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
 
     if btc_price is None:
         try:
-            async with httpx.AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+            async with AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
                 bn = await client.get("https://api.binance.com/api/v3/ticker/price", params={"symbol": "BTCUSDT"})
                 if bn.status_code == 200:
                     j = bn.json()
@@ -318,7 +322,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
 
     async def fetch_recent(base: str):
         try:
-            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+            async with AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
                 r = await client.get(f"{base}/api/mempool/recent")
                 if r.status_code != 200:
                     return None
@@ -361,7 +365,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
 
     async def fetch_tx_from(base: str, txid: str):
         try:
-            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+            async with AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
                 r = await client.get(f"{base}/api/tx/{txid}")
                 if r.status_code != 200:
                     return None
@@ -454,8 +458,8 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
         bt = status.get("block_time") or tx.get("block_time") or None
         if bt:
             try:
-                dt = dt.datetime.fromtimestamp(int(bt))
-                t = dt.strftime("%H:%M")
+                ts_dt = dt.datetime.fromtimestamp(int(bt))
+                t = ts_dt.strftime("%H:%M")
             except Exception:
                 t = "mempool"
 
@@ -4200,7 +4204,7 @@ async def api_v2_market_regime(interval: str = "4h", lookback: int = 240):
         payload = await _compute_market_regime(interval=interval, lookback=lookback)
     except Exception as e:
         # Si live fetch échoue, on essaie de servir la dernière valeur OK (cache) pour éviter une page "cassée".
-        cached = _MARKET_REGIME_CACHE.get(cache_key) if isinstance(_MARKET_REGIME_CACHE, dict) else None
+        cached = _MARKET_REGIME_CACHE.get(key) if isinstance(_MARKET_REGIME_CACHE, dict) else None
         if cached and isinstance(cached, dict) and isinstance(cached.get("payload"), dict) and cached["payload"].get("ok") is True:
             payload = dict(cached["payload"])
             payload["degraded"] = True
@@ -15298,7 +15302,11 @@ async def ai_whale_watcher():
         pass
     
     # 2 Rcuprer les VRAIES donnes
-    real_whales = await get_real_whale_transactions()
+    try:
+        real_whales = await get_real_whale_transactions()
+    except Exception as e:
+        print(f"❌ Whale Watcher API error: {e}")
+        real_whales = []
     
     # 3 Donnes de DMONSTRATION AVEC PRIX ACTUALIS
     demo_whales = [
@@ -69991,56 +69999,4 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
         active_page=active_page,
     )
     return _HTMLResponse(html)
-
-
-
-# =========================
-# Route de-duplication patch
-# =========================
-# NOTE: This file contains some duplicated route registrations (often from merges/copy-pastes).
-# Starlette/FastAPI route matching is order-based: the *first* matching route wins.
-# If the same path+method is registered multiple times, an older/broken handler can shadow the newer one.
-#
-# This patch keeps only the *last* registration for each unique route key.
-# It runs once at import time, after all routes have been declared.
-
-def _cryptoia__dedupe_app_routes(_app):
-    """Remove duplicate routes so the most recent definition wins."""
-    try:
-        from starlette.routing import Mount
-    except Exception:
-        Mount = ()
-
-    routes = list(getattr(_app.router, "routes", []) or [])
-    if not routes:
-        return
-
-    keys = []
-    last_index = {}
-
-    for i, r in enumerate(routes):
-        # HTTP routes (Route/APIRoute)
-        if hasattr(r, "methods") and getattr(r, "path", None) is not None:
-            key = ("http", r.path, tuple(sorted(r.methods)))
-        # Mounted sub-apps/static
-        elif Mount and isinstance(r, Mount):
-            key = ("mount", r.path, getattr(r, "name", None))
-        else:
-            # Fallback for anything else
-            key = (type(r).__name__, getattr(r, "path", None), getattr(r, "name", None))
-
-        keys.append(key)
-        last_index[key] = i
-
-    # Keep only the last occurrence of each key, preserving relative order
-    new_routes = [r for i, (r, k) in enumerate(zip(routes, keys)) if last_index.get(k) == i]
-    _app.router.routes = new_routes
-
-
-try:
-    # Ensure the newest/"WOW" pages actually handle the requests.
-    _cryptoia__dedupe_app_routes(app)
-    print(f"✅ Routes dédupliquées: {len(app.router.routes)} routes actives")
-except Exception as _e:
-    print("⚠️ Route déduplication échouée:", _e)
 

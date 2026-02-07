@@ -213,6 +213,14 @@ class _FallbackAsyncClient:
     async def aclose(self):
         return
 
+
+# ---- http client alias (avoid NameError: _AsyncClient) ----
+try:
+    import httpx as _httpx  # optional dependency
+    _AsyncClient = _httpx.AsyncClient
+except Exception:  # pragma: no cover
+    _AsyncClient = _FallbackAsyncClient
+
 # ---- Pydantic compatibility (BaseModel / validator) ----
 try:
     from pydantic import BaseModel
@@ -270,11 +278,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
     import os
     import time
     import asyncio
-    try:
-        import httpx as _httpx  # type: ignore
-    except Exception:
-        _httpx = None
-    AsyncClient = (_AsyncClient if _httpx else _FallbackAsyncClient)
+    import httpx
     import datetime
 
     mempool_base = (os.getenv("MEMPOOL_API_BASE") or "https://mempool.space").strip().rstrip("/")
@@ -291,7 +295,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
     # Prix BTC -> USD (CoinGecko, fallback Binance)
     btc_price = None
     try:
-        async with AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+        async with _AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
             cg = await client.get("https://api.coingecko.com/api/v3/simple/price", params={"ids": "bitcoin", "vs_currencies": "usd"})
             if cg.status_code == 200:
                 j = cg.json()
@@ -301,7 +305,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
 
     if btc_price is None:
         try:
-            async with AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+            async with _AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
                 bn = await client.get("https://api.binance.com/api/v3/ticker/price", params={"symbol": "BTCUSDT"})
                 if bn.status_code == 200:
                     j = bn.json()
@@ -322,7 +326,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
 
     async def fetch_recent(base: str):
         try:
-            async with AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+            async with _AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
                 r = await client.get(f"{base}/api/mempool/recent")
                 if r.status_code != 200:
                     return None
@@ -365,7 +369,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
 
     async def fetch_tx_from(base: str, txid: str):
         try:
-            async with AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+            async with _AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
                 r = await client.get(f"{base}/api/tx/{txid}")
                 if r.status_code != 200:
                     return None
@@ -458,8 +462,8 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
         bt = status.get("block_time") or tx.get("block_time") or None
         if bt:
             try:
-                ts_dt = dt.datetime.fromtimestamp(int(bt))
-                t = ts_dt.strftime("%H:%M")
+                dt = dt.datetime.fromtimestamp(int(bt))
+                t = dt.strftime("%H:%M")
             except Exception:
                 t = "mempool"
 
@@ -4204,7 +4208,7 @@ async def api_v2_market_regime(interval: str = "4h", lookback: int = 240):
         payload = await _compute_market_regime(interval=interval, lookback=lookback)
     except Exception as e:
         # Si live fetch échoue, on essaie de servir la dernière valeur OK (cache) pour éviter une page "cassée".
-        cached = _MARKET_REGIME_CACHE.get(key) if isinstance(_MARKET_REGIME_CACHE, dict) else None
+        cached = _MARKET_REGIME_CACHE.get(cache_key) if isinstance(_MARKET_REGIME_CACHE, dict) else None
         if cached and isinstance(cached, dict) and isinstance(cached.get("payload"), dict) and cached["payload"].get("ok") is True:
             payload = dict(cached["payload"])
             payload["degraded"] = True
@@ -15292,7 +15296,7 @@ async def ai_whale_watcher():
     # 1 Rcuprer le prix BTC EN DIRECT SYSTMATIQUEMENT
     btc_price = 43000  # Valeur par défaut
     try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        async with _AsyncClient(timeout=8.0) as client:
             price_response = await client.get(
                 "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
             )
@@ -15302,11 +15306,7 @@ async def ai_whale_watcher():
         pass
     
     # 2 Rcuprer les VRAIES donnes
-    try:
-        real_whales = await get_real_whale_transactions()
-    except Exception as e:
-        print(f"❌ Whale Watcher API error: {e}")
-        real_whales = []
+    real_whales = await get_real_whale_transactions()
     
     # 3 Donnes de DMONSTRATION AVEC PRIX ACTUALIS
     demo_whales = [
@@ -15540,7 +15540,7 @@ async def ai_whale_watcher():
 async def fear_greed_full():
     try:
         print("🔄 Tentative de connexion à l'API Fear & Greed...")
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with _AsyncClient(timeout=10.0) as client:
             r = await client.get("/api/fear-greed-raw")
             print(f"📡 Status code: {r.status_code}")
             
@@ -36208,7 +36208,19 @@ def _risk_flags(summary: dict) -> list[str]:
         flags.append("Variation 24h extrême (±50%+) → volatilité très forte.")
     return flags
 
-def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor") -> str:
+def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor", w: int = None, h: int = None, **_kw) -> str:
+    # Backward/forward compatibility: some callers use w/h instead of width/height.
+    if w is not None:
+        try:
+            width = int(w)
+        except Exception:
+            pass
+    if h is not None:
+        try:
+            height = int(h)
+        except Exception:
+            pass
+
     """Return a tiny inline SVG sparkline (server-side, no JS)."""
     if not values or len(values) < 2:
         return ""

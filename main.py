@@ -252,226 +252,164 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # =============================================================
 
 
-async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000000.0, limit: int = 12):
+async def get_real_whale_transactions(min_btc: float = 5.0, limit: int = 5):
     """
-    Retourne des "whale transfers" RÉELS quand possible.
+    Récupère des transactions BTC "whale" (données réelles) sans dépendre de clés API.
 
-    - Actuellement, on supporte **BTC** via l'API publique mempool.space (pas de clé API requise).
-    - Pour d'autres assets, on retourne [] (le template basculera en démo).
-
-    Format attendu par la page /ai-whale-watcher:
-      [{"time": "HH:MM", "asset": "BTC", "amount_usd": 1234.0, "details": "addr → addr", "txid": "..."}]
+    Stratégie:
+      1) blockchain.info unconfirmed-transactions (rapide, contient les adresses)
+      2) fallback sur mempool.space / blockstream (mempool recent + tx details)
+    Retour:
+      list[dict] avec keys: time, asset, amount, from, to, txid (optionnel)
     """
-    symbol = (symbol or "BTC").upper().strip()
-    if symbol not in ("BTC", "XBT"):
-        return []
-
-    # Imports locaux: évite dépendances au moment de l'import global
-    import os
-    import time
-    import asyncio
-    import httpx
-    import datetime
-
-    mempool_base = (os.getenv("MEMPOOL_API_BASE") or "https://mempool.space").strip().rstrip("/")
-    try:
-        min_usd = float((os.getenv("WHALE_MIN_USD") or "").strip() or min_usd)
-    except Exception:
-        pass
-    # seuil en BTC (optionnel): si défini, on prend le max entre seuil BTC et seuil USD
-    try:
-        min_btc_env = float((os.getenv("WHALE_MIN_BTC") or "").strip() or 0)
-    except Exception:
-        min_btc_env = 0.0
-
-    # Prix BTC -> USD (CoinGecko, fallback Binance)
-    btc_price = None
-    try:
-        async with httpx.AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
-            cg = await client.get("https://api.coingecko.com/api/v3/simple/price", params={"ids": "bitcoin", "vs_currencies": "usd"})
-            if cg.status_code == 200:
-                j = cg.json()
-                btc_price = float(j.get("bitcoin", {}).get("usd") or 0) or None
-    except Exception:
-        btc_price = None
-
-    if btc_price is None:
-        try:
-            async with httpx.AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
-                bn = await client.get("https://api.binance.com/api/v3/ticker/price", params={"symbol": "BTCUSDT"})
-                if bn.status_code == 200:
-                    j = bn.json()
-                    btc_price = float(j.get("price") or 0) or None
-        except Exception:
-            btc_price = None
-
-    if btc_price is None:
-        return []  # Sans prix, on ne peut pas comparer au seuil USD
-
-    # Récupère des tx récentes (sources publiques) + fallback automatique
-    bases = []
-    if mempool_base:
-        bases.append(mempool_base)
-    # fallback Blockstream (API très similaire)
-    if "https://blockstream.info" not in bases:
-        bases.append("https://blockstream.info")
-
-    async def fetch_recent(base: str):
-        try:
-            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
-                r = await client.get(f"{base}/api/mempool/recent")
-                if r.status_code != 200:
-                    return None
-                return r.json()
-        except Exception:
-            return None
-
-    recent_data = None
-    used_base = None
-    for b in bases:
-        recent_data = await fetch_recent(b)
-        if recent_data is not None:
-            used_base = b
-            break
-
-    if recent_data is None:
-        return []
-
-    # Normalise en liste de txids
-    txids = []
-    if isinstance(recent_data, list):
-        for it in recent_data:
-            if isinstance(it, str):
-                txids.append(it)
-            elif isinstance(it, dict):
-                tid = it.get("txid") or it.get("txId") or it.get("hash")
-                if tid:
-                    txids.append(str(tid))
-    elif isinstance(recent_data, dict):
-        for k in ("txids", "recent", "transactions"):
-            v = recent_data.get(k)
-            if isinstance(v, list):
-                for it in v:
-                    if isinstance(it, str):
-                        txids.append(it)
-                    elif isinstance(it, dict) and (it.get("txid") or it.get("hash")):
-                        txids.append(str(it.get("txid") or it.get("hash")))
-
-    txids = txids[: max(limit * 6, 60)]  # on prend plus large pour filtrer
-
-    async def fetch_tx_from(base: str, txid: str):
-        try:
-            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
-                r = await client.get(f"{base}/api/tx/{txid}")
-                if r.status_code != 200:
-                    return None
-                return r.json()
-        except Exception:
-            return None
-
-    async def fetch_tx(txid: str):
-        # 1) base qui a marché pour recent
-        if used_base:
-            j = await fetch_tx_from(used_base, txid)
-            if j is not None:
-                return j
-        # 2) autres bases fallback
-        for b in bases:
-            if b == used_base:
-                continue
-            j = await fetch_tx_from(b, txid)
-            if j is not None:
-                return j
-        return None
-
-    # Limiter la concurrence
-    sem = asyncio.Semaphore(6)
-
-    async def fetch_with_sem(txid):
-        async with sem:
-            return await fetch_tx(txid)
-
-    # On fetch des détails pour un nombre raisonnable de txids (évite un flood)
-    detail_txids = txids[:120]
-    details = await asyncio.gather(*[fetch_with_sem(tid) for tid in detail_txids])
-
-    events = []
-    now = dt.datetime.now(dt.timezone.utc)
-
-    def short_addr(a: str):
-        if not a:
+    def _short_addr(a: str) -> str:
+        if not a or a == "—":
             return "—"
         a = str(a)
-        return a[:6] + "…" + a[-6:] if len(a) > 15 else a
+        return a if len(a) <= 14 else f"{a[:6]}…{a[-6:]}"
 
-    for tx in details:
-        if not isinstance(tx, dict):
-            continue
-
-        vout = tx.get("vout") or tx.get("outputs") or []
-        vin = tx.get("vin") or tx.get("inputs") or []
-
-        # Trouver la plus grosse sortie (souvent le "montant réel" plus parlant que total_out)
-        best_out_val = 0
-        best_out_addr = None
-        for o in vout if isinstance(vout, list) else []:
-            if not isinstance(o, dict):
-                continue
-            val = o.get("value") or o.get("amount") or 0
-            try:
-                val = int(val)
-            except Exception:
+    # ---------- 1) blockchain.info ----------
+    try:
+        async with httpx.AsyncClient(
+            timeout=12.0,
+            headers={"User-Agent": "CryptoIA/1.0 (+https://cryptoia.ca)"}
+        ) as client:
+            r = await client.get("https://blockchain.info/unconfirmed-transactions?format=json")
+            r.raise_for_status()
+            data = r.json() or {}
+        txs = data.get("txs") or []
+        if isinstance(txs, list) and txs:
+            import time as _time
+            now_ts = int(_time.time())
+            events = []
+            for tx in txs:
                 try:
-                    val = int(float(val))
+                    outs = tx.get("out") or []
+                    total_sats = sum(int(o.get("value") or 0) for o in outs)
+                    amount_btc = total_sats / 1e8
+                    if amount_btc < float(min_btc):
+                        continue
+
+                    inputs = tx.get("inputs") or []
+                    from_addr = "—"
+                    if inputs:
+                        prev = (inputs[0].get("prev_out") or {})
+                        from_addr = prev.get("addr") or "—"
+
+                    to_addr = "—"
+                    if outs:
+                        to_addr = (outs[0].get("addr") or "—")
+
+                    ts = int(tx.get("time") or now_ts)
+                    # Affichage HH:MM (UTC)
+                    import datetime as _dt
+                    tlabel = _dt.datetime.utcfromtimestamp(ts).strftime("%H:%M")
+
+                    events.append({
+                        "time": tlabel,
+                        "asset": "BTC",
+                        "amount": round(amount_btc, 2),
+                        "from": _short_addr(from_addr),
+                        "to": _short_addr(to_addr),
+                        "txid": (tx.get("hash") or "")[:12]
+                    })
+                    if len(events) >= int(limit):
+                        break
                 except Exception:
-                    val = 0
-            if val > best_out_val:
-                best_out_val = val
-                best_out_addr = o.get("scriptpubkey_address") or o.get("address") or o.get("scriptPubKey", {}).get("address")
+                    continue
 
-        # Adresse source (premier input)
-        from_addr = None
-        if isinstance(vin, list) and vin:
-            first_in = vin[0] if isinstance(vin[0], dict) else None
-            if first_in:
-                prevout = first_in.get("prevout") or {}
-                from_addr = prevout.get("scriptpubkey_address") or prevout.get("address") or first_in.get("address")
+            if events:
+                print(f"✅ Whale Watcher: {len(events)} transactions réelles (source=blockchain.info)")
+                return events
+    except Exception:
+        pass
 
-        if best_out_val <= 0:
-            continue
+    # ---------- 2) fallback: mempool.space / blockstream ----------
+    bases = [
+        (os.getenv("MEMPOOL_API_BASE") or "https://mempool.space").strip().rstrip("/"),
+        "https://blockstream.info",
+    ]
 
-        amount_btc = best_out_val / 1e8
-        amount_usd = amount_btc * btc_price
+    async def _fetch_recent_txids(client: httpx.AsyncClient, base: str):
+        r = await client.get(f"{base}/api/mempool/recent")
+        r.raise_for_status()
+        j = r.json()
+        # mempool.space peut renvoyer liste d'objets {txid: ...} ou liste de strings
+        if isinstance(j, list):
+            if j and isinstance(j[0], dict):
+                return [x.get("txid") for x in j if x.get("txid")]
+            return [x for x in j if isinstance(x, str)]
+        return []
 
-        if amount_usd < float(min_usd):
-            continue
-        if min_btc_env and amount_btc < min_btc_env:
-            continue
+    async def _fetch_tx_detail(client: httpx.AsyncClient, base: str, txid: str):
+        r = await client.get(f"{base}/api/tx/{txid}")
+        r.raise_for_status()
+        return r.json() or {}
 
-        # Time
-        t = "mempool"
-        status = tx.get("status") or {}
-        bt = status.get("block_time") or tx.get("block_time") or None
-        if bt:
-            try:
-                tx_dt = dt.datetime.fromtimestamp(int(bt), tz=dt.timezone.utc)
-                t = tx_dt.strftime("%H:%M")
-            except Exception:
-                t = "mempool"
+    try:
+        async with httpx.AsyncClient(
+            timeout=12.0,
+            headers={"User-Agent": "CryptoIA/1.0 (+https://cryptoia.ca)"}
+        ) as client:
+            for base in bases:
+                if not base.startswith("http://") and not base.startswith("https://"):
+                    # éviter l'erreur "missing http/https"
+                    continue
+                try:
+                    txids = await _fetch_recent_txids(client, base)
+                    if not txids:
+                        continue
+                    import datetime as _dt
+                    events = []
+                    for txid in txids[:60]:
+                        try:
+                            tx = await _fetch_tx_detail(client, base, txid)
+                            vout = tx.get("vout") or []
+                            total_sats = sum(int(o.get("value") or 0) for o in vout)
+                            amount_btc = total_sats / 1e8
+                            if amount_btc < float(min_btc):
+                                continue
 
-        events.append({
-            "time": t,
-            "asset": "BTC",
-            "amount_usd": float(amount_usd),
-            "details": f"{short_addr(from_addr)} → {short_addr(best_out_addr)}",
-            "txid": tx.get("txid") or tx.get("hash") or "",
-        })
+                            vin = tx.get("vin") or []
+                            from_addr = "—"
+                            if vin:
+                                prev = vin[0].get("prevout") or {}
+                                from_addr = prev.get("scriptpubkey_address") or "—"
 
-        if len(events) >= limit:
-            break
+                            to_addr = "—"
+                            if vout:
+                                to_addr = vout[0].get("scriptpubkey_address") or "—"
 
-    return events
+                            # time: block_time si confirmé sinon "—"
+                            status = tx.get("status") or {}
+                            bt = status.get("block_time")
+                            if bt:
+                                tlabel = _dt.datetime.utcfromtimestamp(int(bt)).strftime("%H:%M")
+                            else:
+                                tlabel = "—"
 
+                            events.append({
+                                "time": tlabel,
+                                "asset": "BTC",
+                                "amount": round(amount_btc, 2),
+                                "from": _short_addr(from_addr),
+                                "to": _short_addr(to_addr),
+                                "txid": str(txid)[:12],
+                            })
+                            if len(events) >= int(limit):
+                                break
+                        except Exception:
+                            continue
+
+                    if events:
+                        print(f"✅ Whale Watcher: {len(events)} transactions réelles (source={base})")
+                        return events
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
+    return []
 
 def create_coinbase_payment(plan, email, client, amount=None):
     try:

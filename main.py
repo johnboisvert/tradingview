@@ -252,7 +252,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # =============================================================
 
 
-async def get_real_whale_transactions(min_btc: float = 5.0, limit: int = 5):
+async def get_real_whale_transactions(min_btc: float = 100.0, limit: int = 20):
     """
     Récupère des transactions BTC "whale" (données réelles) sans dépendre de clés API.
 
@@ -15237,7 +15237,26 @@ async def ai_whale_watcher():
         pass
     
     # 2 Rcuprer les VRAIES donnes
-    real_whales = await get_real_whale_transactions()
+    # Seuil "whale" (en BTC) + nombre d'événements max (configurable via variables Railway)
+    try:
+        min_whale_btc = float((os.getenv("WHALE_MIN_BTC", "100") or "100").strip())
+    except Exception:
+        min_whale_btc = 100.0
+    try:
+        whale_limit = int((os.getenv("WHALE_LIMIT", "20") or "20").strip())
+    except Exception:
+        whale_limit = 20
+    whale_limit = max(1, min(200, whale_limit))
+
+    real_whales = await get_real_whale_transactions(min_btc=min_whale_btc, limit=whale_limit)
+    # Ajoute une estimation USD pour éviter la confusion (le tableau affiche BTC, pas $)
+    try:
+        for w in real_whales:
+            if isinstance(w, dict) and "usd_value" not in w:
+                w["usd_value"] = round(float(w.get("amount") or 0) * float(btc_price), 0)
+    except Exception:
+        pass
+
     
     # 3 Donnes de DMONSTRATION AVEC PRIX ACTUALIS
     demo_whales = [

@@ -2,7 +2,6 @@ import pathlib
 from typing import Optional
 import html
 import datetime as dt
-from datetime import datetime, timedelta  # FIX: required for datetime.now()/timedelta()
 # --- HTML escaping helper (used by _simple_page and templates) ---
 # Ensures we never crash with NameError if a page calls _html_escape.
 def _html_escape(value):
@@ -69992,3 +69991,56 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
         active_page=active_page,
     )
     return _HTMLResponse(html)
+
+
+
+# =========================
+# Route de-duplication patch
+# =========================
+# NOTE: This file contains some duplicated route registrations (often from merges/copy-pastes).
+# Starlette/FastAPI route matching is order-based: the *first* matching route wins.
+# If the same path+method is registered multiple times, an older/broken handler can shadow the newer one.
+#
+# This patch keeps only the *last* registration for each unique route key.
+# It runs once at import time, after all routes have been declared.
+
+def _cryptoia__dedupe_app_routes(_app):
+    """Remove duplicate routes so the most recent definition wins."""
+    try:
+        from starlette.routing import Mount
+    except Exception:
+        Mount = ()
+
+    routes = list(getattr(_app.router, "routes", []) or [])
+    if not routes:
+        return
+
+    keys = []
+    last_index = {}
+
+    for i, r in enumerate(routes):
+        # HTTP routes (Route/APIRoute)
+        if hasattr(r, "methods") and getattr(r, "path", None) is not None:
+            key = ("http", r.path, tuple(sorted(r.methods)))
+        # Mounted sub-apps/static
+        elif Mount and isinstance(r, Mount):
+            key = ("mount", r.path, getattr(r, "name", None))
+        else:
+            # Fallback for anything else
+            key = (type(r).__name__, getattr(r, "path", None), getattr(r, "name", None))
+
+        keys.append(key)
+        last_index[key] = i
+
+    # Keep only the last occurrence of each key, preserving relative order
+    new_routes = [r for i, (r, k) in enumerate(zip(routes, keys)) if last_index.get(k) == i]
+    _app.router.routes = new_routes
+
+
+try:
+    # Ensure the newest/"WOW" pages actually handle the requests.
+    _cryptoia__dedupe_app_routes(app)
+    print(f"✅ Routes dédupliquées: {len(app.router.routes)} routes actives")
+except Exception as _e:
+    print("⚠️ Route déduplication échouée:", _e)
+

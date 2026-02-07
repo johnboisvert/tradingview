@@ -396,7 +396,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
     details = await asyncio.gather(*[fetch_with_sem(tid) for tid in detail_txids])
 
     events = []
-    now = dt.datetime.now()
+    now = dt.datetime.now(dt.timezone.utc)
 
     def short_addr(a: str):
         if not a:
@@ -454,8 +454,8 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
         bt = status.get("block_time") or tx.get("block_time") or None
         if bt:
             try:
-                dt = dt.datetime.fromtimestamp(int(bt))
-                t = dt.strftime("%H:%M")
+                tx_dt = dt.datetime.fromtimestamp(int(bt), tz=dt.timezone.utc)
+                t = tx_dt.strftime("%H:%M")
             except Exception:
                 t = "mempool"
 
@@ -4200,7 +4200,7 @@ async def api_v2_market_regime(interval: str = "4h", lookback: int = 240):
         payload = await _compute_market_regime(interval=interval, lookback=lookback)
     except Exception as e:
         # Si live fetch échoue, on essaie de servir la dernière valeur OK (cache) pour éviter une page "cassée".
-        cached = _MARKET_REGIME_CACHE.get(cache_key) if isinstance(_MARKET_REGIME_CACHE, dict) else None
+        cached = _MARKET_REGIME_CACHE.get(key) if isinstance(_MARKET_REGIME_CACHE, dict) else None
         if cached and isinstance(cached, dict) and isinstance(cached.get("payload"), dict) and cached["payload"].get("ok") is True:
             payload = dict(cached["payload"])
             payload["degraded"] = True

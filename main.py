@@ -213,14 +213,6 @@ class _FallbackAsyncClient:
     async def aclose(self):
         return
 
-
-# ---- http client alias (avoid NameError: _AsyncClient) ----
-try:
-    import httpx as _httpx  # optional dependency
-    _AsyncClient = _httpx.AsyncClient
-except Exception:  # pragma: no cover
-    _AsyncClient = _FallbackAsyncClient
-
 # ---- Pydantic compatibility (BaseModel / validator) ----
 try:
     from pydantic import BaseModel
@@ -295,7 +287,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
     # Prix BTC -> USD (CoinGecko, fallback Binance)
     btc_price = None
     try:
-        async with _AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+        async with httpx.AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
             cg = await client.get("https://api.coingecko.com/api/v3/simple/price", params={"ids": "bitcoin", "vs_currencies": "usd"})
             if cg.status_code == 200:
                 j = cg.json()
@@ -305,7 +297,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
 
     if btc_price is None:
         try:
-            async with _AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+            async with httpx.AsyncClient(timeout=6.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
                 bn = await client.get("https://api.binance.com/api/v3/ticker/price", params={"symbol": "BTCUSDT"})
                 if bn.status_code == 200:
                     j = bn.json()
@@ -326,7 +318,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
 
     async def fetch_recent(base: str):
         try:
-            async with _AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
                 r = await client.get(f"{base}/api/mempool/recent")
                 if r.status_code != 200:
                     return None
@@ -369,7 +361,7 @@ async def get_real_whale_transactions(symbol: str = "BTC", min_usd: float = 1000
 
     async def fetch_tx_from(base: str, txid: str):
         try:
-            async with _AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
+            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "cryptoia/1.0"}) as client:
                 r = await client.get(f"{base}/api/tx/{txid}")
                 if r.status_code != 200:
                     return None
@@ -1980,7 +1972,7 @@ UPCOMING_GEMS_COMPLETE = [
 
 import sqlite3
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, List
 
 # Chemin de la base de donnes
@@ -5347,7 +5339,8 @@ class PermissionMiddleware(BaseHTTPMiddleware):
 
         return RedirectResponse(url="/pricing-complete", status_code=302)
 # Activer le middleware
-app.add_middleware(PermissionMiddleware)
+# NOTE: disabled duplicate PermissionMiddleware (kept the later one)
+# app.add_middleware(PermissionMiddleware)
 
 
 # ========== SIDEBAR MENU ==========
@@ -15296,7 +15289,7 @@ async def ai_whale_watcher():
     # 1 Rcuprer le prix BTC EN DIRECT SYSTMATIQUEMENT
     btc_price = 43000  # Valeur par défaut
     try:
-        async with _AsyncClient(timeout=8.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             price_response = await client.get(
                 "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
             )
@@ -15540,7 +15533,7 @@ async def ai_whale_watcher():
 async def fear_greed_full():
     try:
         print("🔄 Tentative de connexion à l'API Fear & Greed...")
-        async with _AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.get("/api/fear-greed-raw")
             print(f"📡 Status code: {r.status_code}")
             
@@ -36208,19 +36201,7 @@ def _risk_flags(summary: dict) -> list[str]:
         flags.append("Variation 24h extrême (±50%+) → volatilité très forte.")
     return flags
 
-def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor", w: int = None, h: int = None, **_kw) -> str:
-    # Backward/forward compatibility: some callers use w/h instead of width/height.
-    if w is not None:
-        try:
-            width = int(w)
-        except Exception:
-            pass
-    if h is not None:
-        try:
-            height = int(h)
-        except Exception:
-            pass
-
+def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor") -> str:
     """Return a tiny inline SVG sparkline (server-side, no JS)."""
     if not values or len(values) < 2:
         return ""

@@ -36201,8 +36201,13 @@ def _risk_flags(summary: dict) -> list[str]:
         flags.append("Variation 24h extrême (±50%+) → volatilité très forte.")
     return flags
 
-def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor") -> str:
+def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor", w: int | None = None, h: int | None = None, **_kwargs) -> str:
     """Return a tiny inline SVG sparkline (server-side, no JS)."""
+    # Compat: older callers pass w/h instead of width/height
+    if w is not None:
+        width = int(w)
+    if h is not None:
+        height = int(h)
     if not values or len(values) < 2:
         return ""
     try:
@@ -66800,8 +66805,13 @@ def _risk_flags(summary: dict) -> list[str]:
         flags.append("Variation 24h extrême (±50%+) → volatilité très forte.")
     return flags
 
-def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor") -> str:
+def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor", w: int | None = None, h: int | None = None, **_kwargs) -> str:
     """Return a tiny inline SVG sparkline (server-side, no JS)."""
+    # Compat: older callers pass w/h instead of width/height
+    if w is not None:
+        width = int(w)
+    if h is not None:
+        height = int(h)
     if not values or len(values) < 2:
         return ""
     try:
@@ -69895,12 +69905,16 @@ try:
 except Exception:
     from fastapi.responses import HTMLResponse as _HTMLResponse  # type: ignore
 
-def _simple_page(title: str, body_html: str, request=None, sidebar_html="", active_page: str | None = None, show_title: bool = True):
+def _simple_page(title: str, body_html: str, request=None, sidebar_html="", active_page: str | None = None, show_title: bool = True, sidebar: str | None = None, **_kwargs):
     """Wrapper HTML stable (retourne toujours une HTMLResponse).
 
     - sidebar_html: HTML du menu gauche (optionnel).
     - show_title: affiche ou non le titre dans le contenu.
     """
+    # Compat: some pages call _simple_page(..., sidebar=...) 
+    if sidebar is not None and not sidebar_html:
+        sidebar_html = sidebar
+
     # Si body_html contient déjà un document complet, on le renvoie tel quel.
     if body_html.lstrip().lower().startswith("<!doctype") or "<html" in body_html[:400].lower():
         return _HTMLResponse(body_html)

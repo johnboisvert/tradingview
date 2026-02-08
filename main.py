@@ -26768,164 +26768,558 @@ async def watchlist_page():
     )
 
 @app.get("/ai-assistant", response_class=HTMLResponse)
-async def ai_assistant_page():
-    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
-<body>
-<div class="container">
-<div class="header"><h1>🤖 AI TRADING ASSISTANT</h1><p>Intelligence artificielle pour optimiser vos trades</p></div>
+async def ai_assistant_page(request: Request):
+    """
+    Page: AI Assistant (dashboard d'aide à la décision).
+    - Données réelles: Fear & Greed (alternative.me), opportunités (CoinGecko via /api/ai-signals-data),
+      performance hebdo (state interne /api/weekly-pnl), suggestions basées sur vos trades (/api/ai/suggestions).
+    - UI: rendu "WOW" + instructions en bas.
+    """
+    sidebar_html = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
 
+    styles = """
+    :root{
+      --bg0:#070a12;
+      --bg1:#0b1220;
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.09);
+      --stroke: rgba(255,255,255,.12);
+      --txt: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.66);
+      --brand: #4ea1ff;
+      --ok: #34d399;
+      --bad:#fb7185;
+      --warn:#fbbf24;
+      --vio:#a78bfa;
+      --shadow: 0 18px 55px rgba(0,0,0,.55);
+      --r: 18px;
+    }
+    body{
+      background:
+        radial-gradient(900px 420px at 18% 6%, rgba(78,161,255,.22), transparent 55%),
+        radial-gradient(800px 420px at 82% 10%, rgba(167,139,250,.16), transparent 55%),
+        radial-gradient(700px 420px at 50% 92%, rgba(52,211,153,.12), transparent 60%),
+        linear-gradient(180deg, var(--bg0), var(--bg1) 45%, #06070d);
+    }
+    .hero{
+      border:1px solid var(--stroke);
+      background: linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      box-shadow: var(--shadow);
+      border-radius: 22px;
+      padding: 18px 18px 14px 18px;
+      position: relative;
+      overflow:hidden;
+      margin-bottom: 16px;
+    }
+    .hero:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background: radial-gradient(600px 180px at 20% 0%, rgba(78,161,255,.25), transparent 60%),
+                  radial-gradient(520px 220px at 85% 10%, rgba(167,139,250,.22), transparent 60%);
+      filter: blur(2px);
+      opacity:.9;
+      pointer-events:none;
+    }
+    .hero *{position:relative;}
+    .heroTop{display:flex; gap:14px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;}
+    .heroTitle{margin:0; font-size: 26px; letter-spacing:.4px;}
+    .heroSub{margin:6px 0 0 0; color: var(--muted);}
+    .pillRow{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.22);
+      color: var(--txt);
+      padding:7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      user-select:none;
+      backdrop-filter: blur(8px);
+    }
+    .dot{width:8px; height:8px; border-radius:999px; background: var(--brand); box-shadow: 0 0 0 3px rgba(78,161,255,.18);}
+    .dot.ok{background: var(--ok); box-shadow: 0 0 0 3px rgba(52,211,153,.18);}
+    .dot.warn{background: var(--warn); box-shadow: 0 0 0 3px rgba(251,191,36,.18);}
+    .dot.bad{background: var(--bad); box-shadow: 0 0 0 3px rgba(251,113,133,.18);}
 
-<div class="card">
-<h2>🎯 Suggestions Personnalisées</h2>
-<div id="suggestionsContainer"></div>
-<button onclick="refreshSuggestions()" style="margin-top:15px;">🔄 Actualiser les Suggestions</button>
-</div>
+    .grid{
+      display:grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 14px;
+    }
+    @media(max-width: 1080px){ .grid{grid-template-columns: 1fr;} }
+    .cardX{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.05);
+      border-radius: var(--r);
+      box-shadow: 0 14px 40px rgba(0,0,0,.45);
+      padding: 14px;
+      overflow:hidden;
+    }
+    .cardH{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
+    .cardH h2{margin:0; font-size: 15px; letter-spacing:.35px;}
+    .muted{color: var(--muted);}
+    .btnRow{display:flex; gap:10px; flex-wrap:wrap;}
+    .btn{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      color: var(--txt);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.2);}
+    .btn.primary{ background: rgba(78,161,255,.18); border-color: rgba(78,161,255,.35); }
+    .btn.primary:hover{ background: rgba(78,161,255,.24); }
 
-<div class="card">
-<h2>📊 Sentiment du Marché</h2>
-<div id="sentimentContainer"></div>
-</div>
+    .kpis{display:grid; grid-template-columns: repeat(2,1fr); gap:10px;}
+    @media(max-width: 520px){ .kpis{grid-template-columns:1fr;} }
+    .kpi{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      border-radius: 14px;
+      padding: 12px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .kpi .v{font-size: 16px; font-weight: 800;}
+    .kpi .l{font-size: 12px; color: var(--muted); margin-top: 3px;}
+    .kpi .tag{
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-weight: 800;
+      font-size: 12px;
+      white-space:nowrap;
+    }
 
-<div class="card">
-<h2>📈 Analyses & Recommandations</h2>
-<div style="color:#94a3b8;line-height:1.8;">
-    <div style="background:#0f172a;padding:20px;border-radius:8px;margin-bottom:15px;">
-        <h3 style="color:#60a5fa;margin-bottom:10px;">💡 Comment l'IA vous aide</h3>
-        <p>• <strong>Analyse automatique</strong> de vos performances de trading</p>
-        <p>• <strong>Détection de patterns</strong> dans vos trades gagnants/perdants</p>
-        <p>• <strong>Suggestions personnalisées</strong> basées sur votre historique</p>
-        <p>• <strong>Alertes intelligentes</strong> quand vous atteignez vos limites de risque</p>
-        <p>• <strong>Recommandations</strong> sur les meilleures paires à trader</p>
+    .list{display:flex; flex-direction:column; gap:10px;}
+    .item{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      border-radius: 14px;
+      padding: 12px;
+      display:flex; gap:12px; align-items:flex-start; justify-content:space-between;
+    }
+    .itemL{display:flex; gap:12px; align-items:flex-start;}
+    .badge{
+      min-width: 38px; height: 38px; border-radius: 14px;
+      display:flex; align-items:center; justify-content:center;
+      font-weight: 900;
+      letter-spacing:.4px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      user-select:none;
+    }
+    .badge.ok{ background: rgba(52,211,153,.14); border-color: rgba(52,211,153,.30); }
+    .badge.warn{ background: rgba(251,191,36,.14); border-color: rgba(251,191,36,.30); }
+    .badge.bad{ background: rgba(251,113,133,.14); border-color: rgba(251,113,133,.30); }
+    .item h3{margin:0; font-size: 14px;}
+    .item p{margin:6px 0 0 0; color: var(--muted); line-height: 1.35;}
+    .prio{font-size: 12px; color: var(--muted); white-space:nowrap; padding-top: 2px;}
+
+    .gauge{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      border-radius: 14px;
+      padding: 12px;
+      overflow:hidden;
+    }
+    .bar{height: 10px; border-radius: 999px; background: rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.10); overflow:hidden;}
+    .bar > i{display:block; height:100%; width: 0%; background: linear-gradient(90deg, var(--bad), var(--warn), var(--ok));}
+
+    .canvasWrap{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    canvas{width:100%; height: 160px;}
+    .tiny{font-size:12px; color: var(--muted);}
+    .hr{height:1px; background: rgba(255,255,255,.10); margin: 12px 0;}
+
+    .help{
+      margin-top: 14px;
+      border:1px solid rgba(78,161,255,.24);
+      background: rgba(78,161,255,.08);
+      border-radius: 18px;
+      padding: 14px;
+    }
+    .help h3{margin:0 0 8px 0; font-size: 14px;}
+    .help ul{margin: 8px 0 0 18px; color: var(--muted);}
+    .help li{margin: 6px 0;}
+    .toast{
+      position: fixed; right: 16px; bottom: 16px; z-index: 9999;
+      display:flex; flex-direction:column; gap:8px; pointer-events:none;
+    }
+    .toast > div{
+      pointer-events:none;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      color: var(--txt);
+      padding: 10px 12px;
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      max-width: 380px;
+    }
+    """
+
+    body = r"""
+    <div class="hero">
+      <div class="heroTop">
+        <div>
+          <h1 class="heroTitle">🤖 AI Assistant</h1>
+          <p class="heroSub">Aide à la décision (temps réel) — suggestions, sentiment, radar d’opportunités, performance.</p>
+        </div>
+        <div class="pillRow">
+          <span class="pill"><span class="dot ok"></span><b>Live</b> CoinGecko / Alternative.me</span>
+          <span class="pill"><span class="dot"></span><b>Trades</b> via Webhook TradingView</span>
+          <span class="pill" id="lastUpdPill"><span class="dot warn"></span><span id="lastUpdTxt">MAJ…</span></span>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="btnRow">
+        <button class="btn primary" id="btnRefreshAll">🔄 Rafraîchir tout</button>
+        <button class="btn" id="btnResetWeekly">🧼 Reset P&L hebdo</button>
+      </div>
     </div>
-    
-    <div style="background:#0f172a;padding:20px;border-radius:8px;margin-bottom:15px;">
-        <h3 style="color:#60a5fa;margin-bottom:10px;">🎓 Conseils de Trading</h3>
-        <p>• Respectez toujours votre <strong>risk management</strong></p>
-        <p>• N'ouvrez pas plus de <strong>3-5 trades simultanés</strong></p>
-        <p>• Prenez vos <strong>profits partiels</strong> (TP1, TP2, TP3)</p>
-        <p>• Utilisez le <strong>Stop Loss Break Even</strong> après TP1</p>
-        <p>• Analysez vos <strong>trades perdants</strong> pour progresser</p>
-    </div>
-    
-    <div style="background:#0f172a;padding:20px;border-radius:8px;">
-        <h3 style="color:#60a5fa;margin-bottom:10px;">⚠️ Avertissements</h3>
-        <p>• Le trading comporte des <strong>risques importants</strong></p>
-        <p>• Ne tradez jamais plus que ce que vous pouvez vous permettre de perdre</p>
-        <p>• L'IA donne des suggestions, <strong>pas des garanties</strong></p>
-        <p>• Faites toujours vos propres recherches (DYOR)</p>
-    </div>
-</div>
-</div>
 
-</div>
+    <div class="grid">
+      <div class="cardX">
+        <div class="cardH">
+          <h2>🎯 Suggestions personnalisées (basées sur vos trades)</h2>
+          <span class="muted" id="suggMeta">—</span>
+        </div>
+        <div class="list" id="suggestions"></div>
+        <div class="tiny" style="margin-top:10px;">
+          Astuce: plus vous envoyez de trades via TradingView, plus les recommandations deviennent pertinentes.
+        </div>
+      </div>
 
-<script>
-
-        // ============= P&L HEBDOMADAIRE =============
-        async function loadWeeklyPnl() {{
-            try {{
-                const res = await fetch('/api/weekly-pnl');
-                const data = await res.json();
-                
-                if (data.ok) {{
-                    let html = '';
-                    data.weekly_data.forEach(day => {{
-                        const isToday = day.day_en === data.current_day;
-                        const color = day.pnl > 0 ? '#10b981' : (day.pnl < 0 ? '#ef4444' : '#94a3b8');
-                        const bgColor = isToday ? 'rgba(96, 165, 250, 0.1)' : 'rgba(15, 23, 42, 0.8)';
-                        const border = isToday ? '2px solid #60a5fa' : 'none';
-                        
-                        html += `
-                            <div style="background:${{bgColor}};padding:15px;border-radius:12px;text-align:center;border:${{border}};transition:all 0.3s;">
-                                <div style="color:#94a3b8;font-size:11px;margin-bottom:5px;text-transform:uppercase;">${{day.day_fr}}${{isToday ? ' 👈' : ''}}</div>
-                                <div style="color:${{color}};font-size:24px;font-weight:700;">${{day.pnl > 0 ? '+' : ''}}${{day.pnl}}%</div>
-                            </div>
-                        `;
-                    }});
-                    
-                    document.getElementById('weeklyPnlContainer').innerHTML = html;
-                    
-                    const totalColor = data.total_week > 0 ? '#10b981' : (data.total_week < 0 ? '#ef4444' : '#94a3b8');
-                    document.getElementById('weeklyTotal').innerHTML = `<span style="color:${{totalColor}}">${{data.total_week > 0 ? '+' : ''}}${{data.total_week}}%</span>`;
-                }}
-            }} catch (error) {{
-                console.error('Erreur chargement P&L hebdomadaire:', error);
-                document.getElementById('weeklyPnlContainer').innerHTML = '<p style="color:#ef4444;text-align:center;">❌ Erreur de chargement</p>';
-            }}
-        }}
-
-        async function resetWeeklyPnl() {{
-            if (!confirm('Voulez-vous réinitialiser le P&L de la semaine ?')) return;
-            
-            try {{
-                const res = await fetch('/api/weekly-pnl/reset', {{ method: 'POST' }});
-                const data = await res.json();
-                
-                if (data.ok) {{
-                    alert('✅ P&L hebdomadaire réinitialisé !');
-                    loadWeeklyPnl();
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur lors de la réinitialisation');
-            }}
-        }}
-
-async function refreshSuggestions() {{
-    document.getElementById('suggestionsContainer').innerHTML = '<div class="spinner"></div>';
-    
-    const res = await fetch('/api/ai/suggestions');
-    const data = await res.json();
-    
-    if (data.suggestions.length === 0) {{
-        document.getElementById('suggestionsContainer').innerHTML = '<p style="color:#94a3b8;">Aucune suggestion pour le moment</p>';
-        return;
-    }}
-    
-    let html = '';
-    data.suggestions.forEach(sug => {{
-        let alertClass = 'alert-success';
-        if (sug.type === 'warning') alertClass = 'alert-error';
-        else if (sug.type === 'info') alertClass = 'alert-success';
-        
-        html += `<div class="${{alertClass}}" style="margin-bottom:15px;">
-            <h3 style="margin-bottom:10px;">${{sug.title}}</h3>
-            <p>${{sug.message}}</p>
-        </div>`;
-    }});
-    
-    const lastUpdate = new Date(data.last_analysis).toLocaleString('fr-FR');
-    html += `<p style="color:#94a3b8;font-size:12px;margin-top:15px;">Dernière analyse: ${{lastUpdate}}</p>`;
-    
-    document.getElementById('suggestionsContainer').innerHTML = html;
-}}
-
-async function loadSentiment() {{
-    const res = await fetch('/api/ai/market-sentiment');
-    const data = await res.json();
-    
-    if (data.ok) {{
-        document.getElementById('sentimentContainer').innerHTML = `
-            <div style="text-align:center;padding:30px;">
-                <div style="font-size:72px;margin-bottom:15px;">${{data.value}}</div>
-                <div style="font-size:24px;font-weight:bold;color:${{data.color}};margin-bottom:10px;">${{data.sentiment}}</div>
-                <div style="width:100%;height:10px;background:#0f172a;border-radius:5px;overflow:hidden;margin-top:20px;">
-                    <div style="width:${{data.value}}%;height:100%;background:${{data.color}};transition:all 0.5s;"></div>
-                </div>
+      <div class="cardX">
+        <div class="cardH">
+          <h2>🌡️ Sentiment du marché</h2>
+          <span class="muted" id="sentMeta">—</span>
+        </div>
+        <div class="gauge">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px;">
+            <div>
+              <div style="font-size: 12px; color: var(--muted);">Fear &amp; Greed Index</div>
+              <div class="v" style="font-size: 28px; font-weight: 900;" id="sentValue">—</div>
+              <div class="muted" id="sentLabel" style="margin-top:4px;">Chargement…</div>
             </div>
-        `;
-    }} else {{
-        document.getElementById('sentimentContainer').innerHTML = '<p style="color:#ef4444;">❌ Impossible de charger le sentiment</p>';
-    }}
-}}
+            <div class="kpi" style="min-width: 170px;">
+              <div>
+                <div class="v" id="pulseBTC">—</div>
+                <div class="l">BTC (USD)</div>
+              </div>
+              <div class="tag">Spot</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;" class="bar"><i id="sentBar"></i></div>
+          <div class="tiny" style="margin-top:10px;">
+            Interprétation: le sentiment donne un contexte. Ne remplace pas une stratégie + gestion du risque.
+          </div>
+        </div>
 
-refreshSuggestions();
-loadSentiment();
-</script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'AI Assistant ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Assistant IA personnel spécialisé crypto. Disponible 24/7!</p><ul style="line-height: 1.8; color: #555;"><li>💬 Chat intelligent</li><li>📊 Analyse marché temps réel</li><li>🎓 Formation concepts complexes</li><li>⚡ Réponses rapides</li><li>🧠 Mémoire conversations</li></ul><p style="color: #666; font-size: 14px; margin-top: 15px;">Powered by Claude AI (Anthropic)</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Exemples questions</h3><p style="line-height: 1.6; color: #555;"><strong>📊 Technique:</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px; font-style: italic;">"Explique-moi les chandeliers japonais"</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>🎯 Stratégie:</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px; font-style: italic;">"Quelle stratégie pour débutant?"</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>⚠️ Risk:</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px; font-style: italic;">"Comment calculer position size?"</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>🔮 Marché:</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px; font-style: italic;">"Analyse sentiment marché actuel"</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🔧 Capacités</h3><ul style="line-height: 1.8; color: #555;"><li>📚 Éducation détaillée</li><li>📊 Données live</li><li>🎯 Conseils personnalisés</li><li>📈 Analyse graphiques</li><li>💬 Mémoire contexte</li><li>🌍 FR + EN</li><li>⚡ Recherche web</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">⚠️ Important</h3><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>⚠️ Pas conseiller financier</li><li>📚 Éducation uniquement</li><li>✅ Vérifiez toujours</li><li>🎯 DYOR obligatoire</li></ul><p style="color: #666; margin-top: 15px;"><strong>Meilleur usage:</strong> Apprendre, valider analyses, explorer idées.</p></div></div></div>
-</body></html>""")
+        <div style="height:12px;"></div>
 
-# ============= PAGE CALCULATRICE DE TRADES =============
+        <div class="cardH">
+          <h2>🛰️ Radar opportunités (top)</h2>
+          <span class="muted" id="radarMeta">—</span>
+        </div>
+        <div class="list" id="radar"></div>
+      </div>
+    </div>
+
+    <div style="height:14px;"></div>
+
+    <div class="cardX">
+      <div class="cardH">
+        <h2>📈 Performance hebdomadaire (P&amp;L)</h2>
+        <span class="muted" id="pnlMeta">—</span>
+      </div>
+      <div class="canvasWrap">
+        <canvas id="pnlChart" width="900" height="220"></canvas>
+        <div class="tiny" id="pnlTotal" style="margin-top:8px;">—</div>
+      </div>
+
+      <div class="help">
+        <h3>🧭 Comment utiliser cette page</h3>
+        <ul>
+          <li><b>Suggestions</b>: repèrent des tendances dans vos trades (winrate, paires fortes, risque).</li>
+          <li><b>Sentiment</b>: contextualise l’environnement (peur / cupidité).</li>
+          <li><b>Radar</b>: met en avant des coins “à surveiller” selon momentum 24h/7j + liquidité.</li>
+          <li><b>Règle d’or</b>: utilisez ça pour <b>valider</b> — pas pour “suivre aveuglément”.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      function fmtMoney(x){
+        if (x === null || x === undefined || isNaN(x)) return "—";
+        try{
+          const n = Number(x);
+          if (n >= 1000) return n.toLocaleString(undefined, {maximumFractionDigits: 0});
+          if (n >= 10) return n.toLocaleString(undefined, {maximumFractionDigits: 2});
+          return n.toLocaleString(undefined, {maximumFractionDigits: 4});
+        }catch(e){ return String(x); }
+      }
+
+      function toast(msg, kind="info"){
+        const box = $("toast");
+        const el = document.createElement("div");
+        const dot = kind==="ok" ? "ok" : (kind==="bad" ? "bad" : (kind==="warn" ? "warn" : ""));
+        el.innerHTML = `<span style="display:inline-flex;gap:8px;align-items:center">
+          <span class="dot ${dot}"></span><span>${msg}</span></span>`;
+        box.appendChild(el);
+        setTimeout(()=>{ try{ el.style.opacity="0"; el.style.transform="translateY(6px)"; }catch(e){} }, 2600);
+        setTimeout(()=>{ try{ box.removeChild(el); }catch(e){} }, 3200);
+      }
+
+      async function jget(url){
+        const r = await fetch(url, {cache:"no-store"});
+        if(!r.ok) throw new Error(`HTTP ${r.status}`);
+        return await r.json();
+      }
+
+      function setLastUpd(txt, ok=true){
+        $("lastUpdTxt").textContent = txt;
+        const dot = $("lastUpdPill").querySelector(".dot");
+        dot.className = "dot " + (ok ? "ok" : "warn");
+      }
+
+      function renderSuggestions(items){
+        const wrap = $("suggestions");
+        wrap.innerHTML = "";
+        if(!items || !items.length){
+          wrap.innerHTML = `<div class="item"><div class="itemL">
+            <div class="badge">💡</div><div><h3>Aucune suggestion pour l’instant</h3>
+            <p>Envoyez quelques trades via TradingView pour alimenter l’analyse.</p></div></div><div class="prio">—</div></div>`;
+          return;
+        }
+        for(const s of items){
+          const t = (s.type||"info").toLowerCase();
+          const badge = t==="success" ? "ok" : (t==="warning" ? "warn" : (t==="danger" ? "bad" : ""));
+          const icon = t==="success" ? "✅" : (t==="warning" ? "⚠️" : (t==="danger" ? "⛔" : "💡"));
+          const pr = (s.priority||"").toLowerCase();
+          wrap.insertAdjacentHTML("beforeend", `
+            <div class="item">
+              <div class="itemL">
+                <div class="badge ${badge}">${icon}</div>
+                <div>
+                  <h3>${(s.title||"Suggestion").replace(/</g,"&lt;")}</h3>
+                  <p>${(s.message||"").replace(/</g,"&lt;")}</p>
+                </div>
+              </div>
+              <div class="prio">${pr ? ("prio: " + pr) : ""}</div>
+            </div>
+          `);
+        }
+      }
+
+      function renderRadar(signals){
+        const wrap = $("radar");
+        wrap.innerHTML = "";
+        if(!signals || !signals.length){
+          wrap.innerHTML = `<div class="item"><div class="itemL">
+            <div class="badge">🛰️</div><div><h3>Radar vide</h3>
+            <p>Impossible de charger CoinGecko. Réessayez dans quelques secondes.</p></div></div></div>`;
+          return;
+        }
+        const top = signals.slice(0,5);
+        for(const s of top){
+          const sig = (s.signal||"").toUpperCase();
+          const badge = sig==="ACHAT" ? "ok" : (sig==="VENTE" ? "bad" : "warn");
+          const icon = sig==="ACHAT" ? "🟢" : (sig==="VENTE" ? "🔴" : "🟡");
+          const name = `${(s.name||"")} <span class="muted">(${(s.symbol||"")})</span>`;
+          const meta = `Score <b>${s.score}</b> · Confiance <b>${s.confidence}%</b> · 24h <b>${Number(s.ch24||0).toFixed(2)}%</b>`;
+          wrap.insertAdjacentHTML("beforeend", `
+            <div class="item">
+              <div class="itemL">
+                <div class="badge ${badge}">${icon}</div>
+                <div>
+                  <h3>${name}</h3>
+                  <p>${meta}</p>
+                </div>
+              </div>
+              <div class="prio">${sig}</div>
+            </div>
+          `);
+        }
+      }
+
+      function drawWeekly(canvas, weekly, total){
+        const ctx = canvas.getContext("2d");
+        const w = canvas.width, h = canvas.height;
+        ctx.clearRect(0,0,w,h);
+
+        // background grid
+        ctx.globalAlpha = 0.25;
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 1;
+        for(let i=1;i<=4;i++){
+          const y = (h/5)*i;
+          ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        if(!weekly || !weekly.length) return;
+
+        const vals = weekly.map(d => Number(d.pnl||0));
+        const maxAbs = Math.max(1, ...vals.map(v => Math.abs(v)));
+        const pad = 18;
+        const baseY = h/2;
+        const bw = (w - pad*2) / weekly.length;
+        for(let i=0;i<weekly.length;i++){
+          const v = vals[i];
+          const x = pad + i*bw + 6;
+          const barW = Math.max(10, bw - 12);
+          const barH = (Math.abs(v)/maxAbs) * (h*0.34);
+          const y = v>=0 ? (baseY - barH) : baseY;
+          ctx.fillStyle = v>=0 ? "rgba(52,211,153,.85)" : "rgba(251,113,133,.85)";
+          roundRect(ctx, x, y, barW, barH, 10, true, false);
+
+          // label
+          ctx.fillStyle = "rgba(255,255,255,.78)";
+          ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+          ctx.fillText(weekly[i].day_fr || "", x, h-10);
+        }
+
+        // mid line
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = "rgba(255,255,255,.65)";
+        ctx.beginPath(); ctx.moveTo(0, baseY); ctx.lineTo(w, baseY); ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        $("pnlTotal").innerHTML = `Total semaine: <b>${Number(total||0).toFixed(2)}%</b>`;
+      }
+
+      function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+        if (typeof radius === 'number') radius = {tl: radius, tr: radius, br: radius, bl: radius};
+        ctx.beginPath();
+        ctx.moveTo(x + radius.tl, y);
+        ctx.lineTo(x + width - radius.tr, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius.tr);
+        ctx.lineTo(x + width, y + height - radius.br);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height);
+        ctx.lineTo(x + radius.bl, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
+        ctx.lineTo(x, y + radius.tl);
+        ctx.quadraticCurveTo(x, y, x + radius.tl, y);
+        ctx.closePath();
+        if (fill) ctx.fill();
+        if (stroke) ctx.stroke();
+      }
+
+      async function loadPulse(){
+        // on réutilise /api/exchange-rates-live (CoinGecko simple/price) pour afficher BTC spot
+        try{
+          const data = await jget("/api/exchange-rates-live");
+          const btc = data && data.rates && data.rates.BTC && data.rates.BTC.usd;
+          $("pulseBTC").textContent = btc ? ("$" + fmtMoney(btc)) : "—";
+        }catch(e){
+          $("pulseBTC").textContent = "—";
+        }
+      }
+
+      async function loadSentiment(){
+        const meta = $("sentMeta");
+        try{
+          const data = await jget("/api/ai/market-sentiment");
+          // attendu: {ok:true, value:int, sentiment:str, color:str, updated_at:str}
+          const v = Number(data.value ?? data.fear_greed_value ?? data.index ?? 0);
+          $("sentValue").textContent = (isFinite(v) ? v : "—");
+          $("sentLabel").textContent = data.sentiment || data.label || "—";
+          meta.textContent = data.updated_at ? ("MAJ: " + data.updated_at) : "source: alternative.me";
+          const pct = Math.max(0, Math.min(100, isFinite(v) ? v : 0));
+          $("sentBar").style.width = pct + "%";
+          $("sentBar").style.opacity = 0.95;
+        }catch(e){
+          $("sentLabel").textContent = "Erreur de chargement";
+          meta.textContent = "—";
+        }
+      }
+
+      async function loadSuggestions(){
+        const meta = $("suggMeta");
+        try{
+          const data = await jget("/api/ai/suggestions");
+          const items = data.suggestions || data || [];
+          renderSuggestions(items);
+          meta.textContent = Array.isArray(items) ? (items.length + " élément(s)") : "—";
+        }catch(e){
+          renderSuggestions([]);
+          meta.textContent = "—";
+        }
+      }
+
+      async function loadRadar(){
+        const meta = $("radarMeta");
+        try{
+          const data = await jget("/api/ai-signals-data");
+          const items = data.signals || [];
+          renderRadar(items);
+          meta.textContent = (data.source ? ("source: " + data.source) : "") + (data.updated_at ? (" · MAJ: " + data.updated_at) : "");
+          setLastUpd(data.updated_at ? ("MAJ: " + data.updated_at) : "MAJ OK", true);
+        }catch(e){
+          renderRadar([]);
+          meta.textContent = "—";
+          setLastUpd("MAJ: erreur", false);
+        }
+      }
+
+      async function loadWeekly(){
+        const meta = $("pnlMeta");
+        try{
+          const data = await jget("/api/weekly-pnl");
+          const weekly = data.weekly_data || [];
+          drawWeekly($("pnlChart"), weekly, data.total_week || 0);
+          meta.textContent = data.week_start ? ("Semaine: " + data.week_start) : "—";
+        }catch(e){
+          meta.textContent = "—";
+        }
+      }
+
+      async function refreshAll(silent=false){
+        try{
+          await Promise.all([loadSuggestions(), loadSentiment(), loadRadar(), loadWeekly(), loadPulse()]);
+          if(!silent) toast("Données mises à jour", "ok");
+        }catch(e){
+          if(!silent) toast("Erreur de rafraîchissement", "warn");
+        }
+      }
+
+      $("btnRefreshAll").addEventListener("click", ()=>refreshAll(false));
+      $("btnResetWeekly").addEventListener("click", async ()=>{
+        try{
+          await jget("/api/weekly-pnl/reset");
+          await loadWeekly();
+          toast("P&L hebdo réinitialisé", "ok");
+        }catch(e){
+          toast("Impossible de reset", "warn");
+        }
+      });
+
+      // init + auto refresh léger
+      refreshAll(true);
+      setInterval(()=>refreshAll(true), 60000);
+    </script>
+    """
+
+    return HTMLResponse(content=_simple_page("AI Assistant", body, sidebar_html, request=request, styles=styles, show_title=False))
+
+
+
 @app.get("/calculatrice", response_class=HTMLResponse)
 async def calculatrice_trades():
     """Calculatrice de trades professionnelle en français"""
@@ -34025,344 +34419,555 @@ async def ai_signals_trades():
 
 @app.get("/ai-signals", response_class=HTMLResponse)
 async def ai_signals_page(request: Request):
+    """
+    Page: AI Signals (CoinGecko).
+    - Génère des signaux simples basés sur momentum 24h/7j + liquidité (volume/marketcap).
+    - Auto-refresh côté client via /api/ai-signals-data + section "derniers signaux TradingView" via /api/ai-signals-trades.
+    - UI: rendu "WOW" + instructions en bas.
+    """
     payload = await _get_ai_signals_payload()
-    signals = payload.get("signals") or []
+    sidebar_html = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
 
-    # Top 6 en cartes
-    top_cards = signals[:6]
-    cards_html = ""
-    for s in top_cards:
-        ch24 = _safe_float(s.get("ch24"), 0.0)
-        ch7 = _safe_float(s.get("ch7"), 0.0)
-        cards_html += f'''
-        <div class="sig-card">
-          <div class="sig-card-h">
-            <div class="sig-coin">
-              <div class="sig-coin-name">{s.get("name","")} <span class="sig-coin-sym">{s.get("symbol","")}</span></div>
-              <div class="sig-coin-sub">Rank #{s.get("rank","")} • {payload.get("source","")}</div>
-            </div>
-            <div class="sig-badges">
-              <span class="sig-badge {s.get("badge","badge-watch")}">{s.get("signal","")}</span>
-              <span class="sig-badge badge-conf">Confiance {int(s.get("confidence") or 0)}%</span>
-            </div>
-          </div>
-          <div class="sig-card-b">
-            <div class="sig-metric"><div class="k">Prix</div><div class="v">{_fmt_price(s.get("price"))}</div></div>
-            <div class="sig-metric"><div class="k">24h</div><div class="v {('pos' if ch24>=0 else 'neg')}">{ch24:+.2f}%</div></div>
-            <div class="sig-metric"><div class="k">7j</div><div class="v {('pos' if ch7>=0 else 'neg')}">{ch7:+.2f}%</div></div>
-            <div class="sig-metric"><div class="k">Volume</div><div class="v">{_fmt_money(s.get("volume"))}</div></div>
-          </div>
-          <div class="sig-reasons">
-            {" • ".join(s.get("reasons") or [])}
-          </div>
+    # JSON safe-in-script (évite </script>)
+    try:
+        initial_json = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
+    except Exception:
+        initial_json = "{}"
+
+    styles = """
+    :root{
+      --bg0:#070a12;
+      --bg1:#0b1220;
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.09);
+      --stroke: rgba(255,255,255,.12);
+      --txt: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.66);
+      --brand: #4ea1ff;
+      --ok: #34d399;
+      --bad:#fb7185;
+      --warn:#fbbf24;
+      --vio:#a78bfa;
+      --shadow: 0 18px 55px rgba(0,0,0,.55);
+      --r: 18px;
+    }
+    body{
+      background:
+        radial-gradient(900px 420px at 18% 6%, rgba(78,161,255,.22), transparent 55%),
+        radial-gradient(800px 420px at 82% 10%, rgba(167,139,250,.16), transparent 55%),
+        radial-gradient(700px 420px at 50% 92%, rgba(52,211,153,.12), transparent 60%),
+        linear-gradient(180deg, var(--bg0), var(--bg1) 45%, #06070d);
+    }
+    .hero{
+      border:1px solid var(--stroke);
+      background: linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      box-shadow: var(--shadow);
+      border-radius: 22px;
+      padding: 18px 18px 14px 18px;
+      position: relative;
+      overflow:hidden;
+      margin-bottom: 16px;
+    }
+    .hero:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background: radial-gradient(600px 180px at 20% 0%, rgba(78,161,255,.25), transparent 60%),
+                  radial-gradient(520px 220px at 85% 10%, rgba(167,139,250,.22), transparent 60%);
+      filter: blur(2px);
+      opacity:.9;
+      pointer-events:none;
+    }
+    .hero *{position:relative;}
+    .heroTop{display:flex; gap:14px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;}
+    .heroTitle{margin:0; font-size: 26px; letter-spacing:.4px;}
+    .heroSub{margin:6px 0 0 0; color: var(--muted);}
+    .pillRow{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.22);
+      color: var(--txt);
+      padding:7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      user-select:none;
+      backdrop-filter: blur(8px);
+    }
+    .dot{width:8px; height:8px; border-radius:999px; background: var(--brand); box-shadow: 0 0 0 3px rgba(78,161,255,.18);}
+    .dot.ok{background: var(--ok); box-shadow: 0 0 0 3px rgba(52,211,153,.18);}
+    .dot.warn{background: var(--warn); box-shadow: 0 0 0 3px rgba(251,191,36,.18);}
+    .dot.bad{background: var(--bad); box-shadow: 0 0 0 3px rgba(251,113,133,.18);}
+
+    .controls{
+      margin-top: 12px;
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    }
+    .input, .select{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.22);
+      color: var(--txt);
+      padding: 10px 12px;
+      border-radius: 12px;
+      outline:none;
+      min-width: 220px;
+    }
+    .select{min-width: 190px;}
+    .btn{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      color: var(--txt);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.2);}
+    .btn.primary{ background: rgba(78,161,255,.18); border-color: rgba(78,161,255,.35); }
+    .btn.primary:hover{ background: rgba(78,161,255,.24); }
+
+    .kpis{display:grid; grid-template-columns: repeat(4,1fr); gap:10px; margin: 14px 0;}
+    @media(max-width: 1100px){ .kpis{grid-template-columns: repeat(2,1fr);} }
+    @media(max-width: 520px){ .kpis{grid-template-columns: 1fr;} }
+    .kpi{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.05);
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 14px 40px rgba(0,0,0,.45);
+      display:flex; justify-content:space-between; gap:10px;
+    }
+    .kpi .v{font-size: 16px; font-weight: 900;}
+    .kpi .l{font-size: 12px; color: var(--muted); margin-top: 3px;}
+    .kpi .tag{
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-weight: 900;
+      font-size: 12px;
+      white-space:nowrap;
+      height: fit-content;
+    }
+
+    .panel{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.05);
+      border-radius: var(--r);
+      box-shadow: 0 14px 40px rgba(0,0,0,.45);
+      overflow:hidden;
+    }
+    .panelH{
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      padding: 12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+    }
+    .panelH h2{margin:0; font-size: 15px; letter-spacing:.35px;}
+    .muted{color: var(--muted);}
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size: 13px;
+    }
+    th, td{
+      padding: 10px 12px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      vertical-align: top;
+    }
+    th{
+      position: sticky; top: 0;
+      background: rgba(0,0,0,.35);
+      backdrop-filter: blur(8px);
+      text-align:left;
+      font-size: 12px;
+      color: rgba(255,255,255,.78);
+      letter-spacing:.35px;
+      z-index: 2;
+    }
+    tr:hover td{ background: rgba(255,255,255,.03); }
+    .coin{
+      display:flex; gap:10px; align-items:center;
+    }
+    .avatar{
+      width:34px; height:34px; border-radius: 14px;
+      border:1px solid rgba(255,255,255,.14);
+      background: radial-gradient(circle at 30% 20%, rgba(78,161,255,.28), rgba(167,139,250,.18));
+      display:flex; align-items:center; justify-content:center;
+      font-weight: 900;
+      letter-spacing:.5px;
+      user-select:none;
+    }
+    .sym{font-weight: 900;}
+    .sub{color: var(--muted); font-size: 12px; margin-top: 3px;}
+    .sig{
+      display:inline-flex; align-items:center; gap:8px;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-weight: 900;
+      font-size: 12px;
+      white-space:nowrap;
+      background: rgba(0,0,0,.18);
+    }
+    .sig.buy{ border-color: rgba(52,211,153,.32); background: rgba(52,211,153,.14); }
+    .sig.sell{ border-color: rgba(251,113,133,.32); background: rgba(251,113,133,.14); }
+    .sig.watch{ border-color: rgba(251,191,36,.30); background: rgba(251,191,36,.12); }
+    .spark{
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .miniBar{height:8px; border-radius:999px; background: rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.10); overflow:hidden;}
+    .miniBar > i{display:block; height:100%; width:50%; background: linear-gradient(90deg, var(--bad), var(--warn), var(--ok)); opacity:.9;}
+    .reasons{color: var(--muted); font-size: 12px; line-height: 1.35;}
+    .tagTiny{
+      display:inline-flex;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 800;
+      color: rgba(255,255,255,.82);
+      white-space:nowrap;
+    }
+    .help{
+      margin-top: 14px;
+      border:1px solid rgba(78,161,255,.24);
+      background: rgba(78,161,255,.08);
+      border-radius: 18px;
+      padding: 14px;
+    }
+    .help h3{margin:0 0 8px 0; font-size: 14px;}
+    .help ul{margin: 8px 0 0 18px; color: var(--muted);}
+    .help li{margin: 6px 0;}
+    .toast{
+      position: fixed; right: 16px; bottom: 16px; z-index: 9999;
+      display:flex; flex-direction:column; gap:8px; pointer-events:none;
+    }
+    .toast > div{
+      pointer-events:none;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      color: var(--txt);
+      padding: 10px 12px;
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      max-width: 380px;
+    }
+    """
+
+    body = """
+    <div class="hero">
+      <div class="heroTop">
+        <div>
+          <h1 class="heroTitle">🧠 AI Signals</h1>
+          <p class="heroSub">Signaux IA simples (temps réel) — momentum 24h/7j + liquidité. Source: <b>CoinGecko</b>.</p>
         </div>
-        '''
-
-    # Table complète
-    rows_html = ""
-    for s in signals:
-        ch24 = _safe_float(s.get("ch24"), 0.0)
-        ch7 = _safe_float(s.get("ch7"), 0.0)
-        rows_html += f'''
-        <tr>
-          <td class="td-rank">#{s.get("rank","")}</td>
-          <td class="td-coin">
-            <div class="c-name">{s.get("name","")}</div>
-            <div class="c-sym">{s.get("symbol","")}</div>
-          </td>
-          <td class="td-num">{_fmt_price(s.get("price"))}</td>
-          <td class="td-num {('pos' if ch24>=0 else 'neg')}">{ch24:+.2f}%</td>
-          <td class="td-num {('pos' if ch7>=0 else 'neg')}">{ch7:+.2f}%</td>
-          <td class="td-num">{_fmt_money(s.get("volume"))}</td>
-          <td><span class="sig-badge {s.get("badge","badge-watch")}">{s.get("signal","")}</span></td>
-          <td class="td-num">{int(s.get("confidence") or 0)}%</td>
-        </tr>
-        '''
-
-    result_html = f'''
-    <style>
-      .sig-wrap {{ max-width: 1200px; margin: 0 auto; padding: 12px 12px 26px; }}
-      .sig-hero {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 16px; }}
-      .sig-hero h1 {{ margin: 0 0 6px; font-size: 28px; font-weight: 800; color: #fff; }}
-      .sig-hero p {{ margin: 0; color: rgba(255,255,255,0.82); line-height: 1.45; }}
-      .sig-meta {{ margin-top: 10px; display:flex; gap:10px; flex-wrap: wrap; align-items:center; }}
-      .sig-pill {{ background: rgba(0,0,0,0.30); border: 1px solid rgba(255,255,255,0.10); color: rgba(255,255,255,0.85); padding: 6px 10px; border-radius: 999px; font-size: 13px; }}
-      .sig-grid {{ display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }}
-      @media (max-width: 900px) {{ .sig-grid {{ grid-template-columns: 1fr; }} }}
-
-      .sig-card {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 14px; box-shadow: 0 10px 26px rgba(0,0,0,0.18); }}
-      .sig-card-h {{ display:flex; justify-content: space-between; gap: 10px; align-items: flex-start; }}
-      .sig-coin-name {{ font-weight: 800; color: #fff; font-size: 16px; }}
-      .sig-coin-sym {{ font-weight: 700; color: rgba(255,255,255,0.75); font-size: 13px; margin-left: 6px; }}
-      .sig-coin-sub {{ color: rgba(255,255,255,0.68); font-size: 12px; margin-top: 2px; }}
-
-      .sig-badges {{ display:flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }}
-      .sig-badge {{ display:inline-flex; align-items:center; gap:6px; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; border: 1px solid rgba(255,255,255,0.14); color: #fff; }}
-      .badge-buy {{ background: rgba(0, 180, 120, 0.22); }}
-      .badge-sell {{ background: rgba(220, 70, 70, 0.22); }}
-      .badge-watch {{ background: rgba(120, 140, 160, 0.20); }}
-      .badge-conf {{ background: rgba(0,0,0,0.25); color: rgba(255,255,255,0.90); }}
-
-      .sig-card-b {{ display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }}
-      .sig-metric {{ background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; padding: 10px; }}
-      .sig-metric .k {{ color: rgba(255,255,255,0.65); font-size: 12px; font-weight: 700; }}
-      .sig-metric .v {{ color: #fff; font-size: 14px; font-weight: 900; margin-top: 2px; }}
-      .pos {{ color: #8ef0c5 !important; }}
-      .neg {{ color: #ff9a9a !important; }}
-
-      .sig-reasons {{ margin-top: 10px; color: rgba(255,255,255,0.78); font-size: 12px; }}
-      .sig-section {{ margin-top: 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 14px; }}
-
-      .sig-table-wrap {{ margin-top: 14px; overflow:auto; border-radius: 16px; border: 1px solid rgba(255,255,255,0.10); }}
-      table.sig-table {{ width: 100%; border-collapse: collapse; min-width: 860px; }}
-      table.sig-table th, table.sig-table td {{ padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }}
-      table.sig-table th {{ text-align: left; font-size: 12px; letter-spacing: .02em; text-transform: uppercase; color: rgba(255,255,255,0.70); background: rgba(0,0,0,0.20); position: sticky; top: 0; }}
-      table.sig-table td {{ color: rgba(255,255,255,0.90); font-size: 14px; }}
-      .td-num {{ text-align: right; font-variant-numeric: tabular-nums; }}
-      .td-rank {{ width: 84px; color: rgba(255,255,255,0.78); }}
-      .td-coin .c-name {{ font-weight: 900; color: #fff; }}
-      .td-coin .c-sym {{ font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 2px; }}
-      .sig-foot {{ margin-top: 10px; color: rgba(255,255,255,0.70); font-size: 12px; line-height: 1.4; }}
-      .sig-actions {{ display:flex; gap:10px; align-items:center; flex-wrap: wrap; margin-top: 10px; }}
-      .btn-mini {{
-        background: rgba(255,255,255,0.10);
-        border: 1px solid rgba(255,255,255,0.12);
-        color: #fff;
-        padding: 8px 12px;
-        border-radius: 12px;
-        font-weight: 800;
-        font-size: 13px;
-        cursor: pointer;
-      }}
-      .btn-mini:hover {{ background: rgba(255,255,255,0.14); }}
-    </style>
-
-    <div class="sig-wrap">
-      <div class="sig-hero">
-        <h1>AI Signals</h1>
-        <p>
-          Signaux de marché calculés à partir de données réelles (prix/variations/volume).
-          Cette page se met à jour automatiquement et te donne une vue rapide des coins les plus “actifs” du moment.
-        </p>
-        <div class="sig-meta">
-          <span class="sig-pill">Dernière mise à jour : <b id="sigUpdated">{payload.get("updated_at","")}</b></span>
-          <span class="sig-pill">Source : <b id="sigSource">{payload.get("source","")}</b></span>
-          <span class="sig-pill">Coins analysés : <b id="sigCount">{payload.get("count",0)}</b></span>
-        </div>
-        <div class="sig-actions">
-          <button class="btn-mini" onclick="refreshSignals()">Rafraîchir maintenant</button>
-          <span class="sig-pill">Auto-refresh : <b>60s</b></span>
+        <div class="pillRow">
+          <span class="pill"><span class="dot ok"></span><b>Live</b> CoinGecko</span>
+          <span class="pill" id="lastUpdPill"><span class="dot warn"></span><span id="lastUpdTxt">MAJ…</span></span>
         </div>
       </div>
 
-      <div class="sig-section">
-        <h3 style="margin:0 0 10px; color:#fff; font-weight:900;">Top opportunités (momentum + liquidité)</h3>
-        <div class="sig-grid" id="sigCards">
-          {cards_html}
-        </div>
-        <div class="sig-foot">
-          <b>Note :</b> “ACHAT/VENTE/SURVEILLER” est un indicateur d’activité (momentum + volume),
-          pas un conseil financier. Utilise-le comme <i>scanner</i>, puis valide avec ton plan (trend, niveaux, risk management).
-        </div>
-      </div>
-
-      <div class="sig-section">
-        <h3 style="margin:0 0 10px; color:#fff; font-weight:900;">Table complète</h3>
-        <div class="sig-table-wrap">
-          <table class="sig-table">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Coin</th>
-                <th style="text-align:right;">Prix</th>
-                <th style="text-align:right;">24h</th>
-                <th style="text-align:right;">7j</th>
-                <th style="text-align:right;">Volume</th>
-                <th>Signal</th>
-                <th style="text-align:right;">Confiance</th>
-              </tr>
-            </thead>
-            <tbody id="sigTbody">
-              {rows_html}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="sig-foot" style="margin-top:12px;">
-          <b>Comment l’utiliser (simple) :</b>
-          1) Clique “Rafraîchir” si tu veux la donnée live. 2) Repère les coins “ACHAT/VENTE”.
-          3) Va sur tes pages d’analyse (ex: Fear & Greed, Heatmap, Dominance) pour confirmer le contexte.
-          4) Si tu trades, applique toujours ton TP/SL.
-        </div>
+      <div class="controls">
+        <input class="input" id="q" placeholder="Rechercher (ex: BTC, ETH, SOL…)" />
+        <select class="select" id="sort">
+          <option value="absScore">Tri: opportunité (|score|)</option>
+          <option value="score">Tri: score</option>
+          <option value="conf">Tri: confiance</option>
+          <option value="ch24">Tri: 24h</option>
+          <option value="rank">Tri: rank</option>
+        </select>
+        <button class="btn primary" id="btnRefresh">🔄 Rafraîchir</button>
+        <label class="pill" style="cursor:pointer;">
+          <input id="auto" type="checkbox" checked style="accent-color: var(--brand);"/>
+          Auto-refresh 60s
+        </label>
       </div>
     </div>
 
+    <div class="kpis">
+      <div class="kpi"><div><div class="v" id="kCount">—</div><div class="l">coins analysés</div></div><div class="tag">Universe</div></div>
+      <div class="kpi"><div><div class="v" id="kBest">—</div><div class="l">meilleur momentum</div></div><div class="tag">Top</div></div>
+      <div class="kpi"><div><div class="v" id="kWorst">—</div><div class="l">plus faible momentum</div></div><div class="tag">Risk</div></div>
+      <div class="kpi"><div><div class="v" id="kUpd">—</div><div class="l">dernière mise à jour</div></div><div class="tag">MAJ</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panelH">
+        <h2>📌 Signaux (données réelles)</h2>
+        <span class="muted" id="meta">—</span>
+      </div>
+      <div style="max-height: 560px; overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Coin</th>
+              <th>Signal</th>
+              <th>Prix</th>
+              <th>Momentum</th>
+              <th>Confiance</th>
+              <th>Raisons</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="height:14px;"></div>
+
+    <div class="panel">
+      <div class="panelH">
+        <h2>📩 Derniers signaux reçus (TradingView → Webhook)</h2>
+        <span class="muted" id="tvMeta">—</span>
+      </div>
+      <div style="max-height: 320px; overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th><th>Symbole</th><th>Side</th><th>Prix</th><th>Status</th><th>Note</th>
+            </tr>
+          </thead>
+          <tbody id="tvRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="help">
+      <h3>🧭 Comment utiliser cette page</h3>
+      <ul>
+        <li><b>ACHAT / VENTE / SURVEILLER</b> est un signal <i>simple</i> basé sur (24h, 7j, liquidité).</li>
+        <li><b>Score</b> = force du mouvement (court + tendance). <b>Confiance</b> augmente avec |score| + liquidité.</li>
+        <li>Utilisez la recherche + tri pour repérer rapidement vos opportunités.</li>
+        <li>Combinez avec votre stratégie (risque, timeframe, confirmations) — DYOR.</li>
+      </ul>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
     <script>
-      async function refreshSignals() {{
-        try {{
-          const r = await fetch('/api/ai-signals-data', {{ cache: 'no-store' }});
-          const data = await r.json();
-          if (data && data.updated_at) {{
-            document.getElementById('sigUpdated').textContent = data.updated_at;
-            document.getElementById('sigSource').textContent = data.source || '';
-            document.getElementById('sigCount').textContent = data.count || 0;
-          }}
+      const INITIAL = ___INITIAL_JSON___;
 
+      const $ = (id)=>document.getElementById(id);
+
+      function toast(msg, kind="info"){
+        const box = $("toast");
+        const el = document.createElement("div");
+        const dot = kind==="ok" ? "ok" : (kind==="bad" ? "bad" : (kind==="warn" ? "warn" : ""));
+        el.innerHTML = `<span style="display:inline-flex;gap:8px;align-items:center">
+          <span class="dot ${dot}"></span><span>${msg}</span></span>`;
+        box.appendChild(el);
+        setTimeout(()=>{ try{ el.style.opacity="0"; el.style.transform="translateY(6px)"; }catch(e){} }, 2600);
+        setTimeout(()=>{ try{ box.removeChild(el); }catch(e){} }, 3200);
+      }
+
+      function fmtMoney(x){
+        if (x === null || x === undefined || isNaN(x)) return "—";
+        const n = Number(x);
+        try{
+          if (n >= 1000) return n.toLocaleString(undefined, {maximumFractionDigits: 0});
+          if (n >= 10) return n.toLocaleString(undefined, {maximumFractionDigits: 2});
+          return n.toLocaleString(undefined, {maximumFractionDigits: 6});
+        }catch(e){ return String(x); }
+      }
+      function pct(x){
+        const n = Number(x||0);
+        return (isFinite(n) ? (n>=0?"+":"") + n.toFixed(2) + "%" : "—");
+      }
+      function sigClass(sig){
+        sig = (sig||"").toUpperCase();
+        if(sig==="ACHAT") return "buy";
+        if(sig==="VENTE") return "sell";
+        return "watch";
+      }
+      function sigIcon(sig){
+        sig = (sig||"").toUpperCase();
+        if(sig==="ACHAT") return "🟢";
+        if(sig==="VENTE") return "🔴";
+        return "🟡";
+      }
+      function setLastUpd(txt, ok=true){
+        $("lastUpdTxt").textContent = txt;
+        const dot = $("lastUpdPill").querySelector(".dot");
+        dot.className = "dot " + (ok ? "ok" : "warn");
+      }
+
+      function applyKPIs(signals, meta){
+        $("kCount").textContent = (signals||[]).length;
+        $("kUpd").textContent = meta.updated_at ? meta.updated_at : "—";
+        setLastUpd(meta.updated_at ? ("MAJ: " + meta.updated_at) : "MAJ OK", true);
+
+        if(signals && signals.length){
+          const best = [...signals].sort((a,b)=>Number(b.score||0)-Number(a.score||0))[0];
+          const worst = [...signals].sort((a,b)=>Number(a.score||0)-Number(b.score||0))[0];
+          $("kBest").innerHTML = `${best.symbol} <span class="muted">(${best.score})</span>`;
+          $("kWorst").innerHTML = `${worst.symbol} <span class="muted">(${worst.score})</span>`;
+        }else{
+          $("kBest").textContent = "—";
+          $("kWorst").textContent = "—";
+        }
+      }
+
+      function render(signals, meta){
+        const q = ($("q").value||"").trim().toUpperCase();
+        const sort = $("sort").value;
+
+        let rows = (signals||[]).filter(s=>{
+          if(!q) return true;
+          const hay = ((s.name||"") + " " + (s.symbol||"") + " " + (s.id||"")).toUpperCase();
+          return hay.includes(q);
+        });
+
+        const nRank = (x)=>{ const v = Number(x); return isFinite(v) ? v : 999999; };
+        const n = (x)=>{ const v = Number(x); return isFinite(v) ? v : 0; };
+
+        rows.sort((a,b)=>{
+          if(sort==="absScore") return Math.abs(n(b.score)) - Math.abs(n(a.score));
+          if(sort==="score") return n(b.score) - n(a.score);
+          if(sort==="conf") return n(b.confidence) - n(a.confidence);
+          if(sort==="ch24") return n(b.ch24) - n(a.ch24);
+          if(sort==="rank") return nRank(a.rank) - nRank(b.rank);
+          return 0;
+        });
+
+        const tbody = $("rows");
+        tbody.innerHTML = "";
+        for(const s of rows){
+          const reasons = Array.isArray(s.reasons) ? s.reasons : [];
+          const conf = Math.max(0, Math.min(100, n(s.confidence)));
+          const confBar = Math.max(6, conf);
+
+          const m24 = Math.max(0, Math.min(100, n(s.ch24) + 50));
+
+          tbody.insertAdjacentHTML("beforeend", `
+            <tr>
+              <td>
+                <div class="coin">
+                  <div class="avatar">${(s.symbol||"?").slice(0,1)}</div>
+                  <div>
+                    <div class="sym">${(s.name||"").replace(/</g,"&lt;")} <span class="muted">(${(s.symbol||"")})</span></div>
+                    <div class="sub">Rank: <b>${s.rank||"—"}</b> · Score: <b>${s.score}</b> · V/M: <b>${(Number(s.v2m||0)).toFixed(3)}</b></div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="sig ${sigClass(s.signal)}">${sigIcon(s.signal)} ${s.signal}</span></td>
+              <td><span class="tagTiny">$${fmtMoney(s.price)}</span></td>
+              <td>
+                <div class="spark">
+                  <div class="muted">24h <b style="color:rgba(255,255,255,.92)">${pct(s.ch24)}</b> · 7j <b style="color:rgba(255,255,255,.92)">${pct(s.ch7)}</b></div>
+                  <div class="miniBar"><i style="width:${m24}%;"></i></div>
+                </div>
+              </td>
+              <td>
+                <div class="muted"><b style="color:rgba(255,255,255,.92)">${conf}%</b></div>
+                <div class="miniBar"><i style="width:${confBar}%;"></i></div>
+              </td>
+              <td class="reasons">${reasons.map(r=>String(r).replace(/</g,"&lt;")).join("<br/>")}</td>
+            </tr>
+          `);
+        }
+
+        $("meta").textContent = `${rows.length} résultat(s) · source: ${meta.source||"—"}`;
+        window.__signals = signals || [];
+        window.__meta = meta || {};
+      }
+
+      async function jget(url){
+        const r = await fetch(url, {cache:"no-store"});
+        if(!r.ok) throw new Error(`HTTP ${r.status}`);
+        return await r.json();
+      }
+
+      async function loadSignals(silent=false){
+        try{
+          const data = await jget("/api/ai-signals-data");
           const signals = data.signals || [];
-          // Cards (top 6)
-          const cards = signals.slice(0,6).map(s => {{
-            const ch24 = (s.ch24 ?? 0);
-            const ch7 = (s.ch7 ?? 0);
-            const pos24 = ch24 >= 0 ? 'pos' : 'neg';
-            const pos7 = ch7 >= 0 ? 'pos' : 'neg';
-            return `
-              <div class="sig-card">
-                <div class="sig-card-h">
-                  <div class="sig-coin">
-                    <div class="sig-coin-name">${{s.name || ''}} <span class="sig-coin-sym">${{(s.symbol || '').toUpperCase()}}</span></div>
-                    <div class="sig-coin-sub">Rank #${{s.rank || ''}} • ${{data.source || ''}}</div>
-                  </div>
-                  <div class="sig-badges">
-                    <span class="sig-badge ${{s.badge || 'badge-watch'}}">${{s.signal || ''}}</span>
-                    <span class="sig-badge badge-conf">Confiance ${{Math.round(s.confidence || 0)}}%</span>
-                  </div>
-                </div>
-                <div class="sig-card-b">
-                  <div class="sig-metric"><div class="k">Prix</div><div class="v">${{formatPrice(s.price)}}</div></div>
-                  <div class="sig-metric"><div class="k">24h</div><div class="v ${{pos24}}">${{formatPct(ch24)}}</div></div>
-                  <div class="sig-metric"><div class="k">7j</div><div class="v ${{pos7}}">${{formatPct(ch7)}}</div></div>
-                  <div class="sig-metric"><div class="k">Volume</div><div class="v">${{formatMoney(s.volume)}}</div></div>
-                </div>
-                <div class="sig-reasons">${{(s.reasons || []).join(' • ')}}</div>
-              </div>
-            `;
-          }}).join('');
-          document.getElementById('sigCards').innerHTML = cards;
+          applyKPIs(signals, data);
+          render(signals, data);
+          if(!silent) toast("Signaux mis à jour", "ok");
+        }catch(e){
+          if(!silent) toast("Erreur de mise à jour", "warn");
+          setLastUpd("MAJ: erreur", false);
+        }
+      }
 
-          // Table
-          const rows = signals.map(s => {{
-            const ch24 = (s.ch24 ?? 0);
-            const ch7 = (s.ch7 ?? 0);
-            const pos24 = ch24 >= 0 ? 'pos' : 'neg';
-            const pos7 = ch7 >= 0 ? 'pos' : 'neg';
-            return `
+      function toneToBadge(side){
+        const s = String(side||"").toUpperCase();
+        if(s.includes("BUY") || s.includes("LONG")) return "buy";
+        if(s.includes("SELL") || s.includes("SHORT")) return "sell";
+        return "watch";
+      }
+      function sideIcon(side){
+        const s = String(side||"").toUpperCase();
+        if(s.includes("BUY") || s.includes("LONG")) return "🟢";
+        if(s.includes("SELL") || s.includes("SHORT")) return "🔴";
+        return "🟡";
+      }
+
+      async function loadTvTrades(){
+        try{
+          const data = await jget("/api/ai-signals-trades");
+          const rows = data.trades || data || [];
+          const tbody = $("tvRows");
+          tbody.innerHTML = "";
+          for(const t of rows){
+            const dt = (t.ts || t.time || t.created_at || "").replace("T"," ").replace("Z","");
+            const sym = t.symbol || t.ticker || "";
+            const side = t.side || t.action || "";
+            const price = t.price || t.entry || t.entry_price || "";
+            const status = t.status || "";
+            const note = t.note || t.message || "";
+            tbody.insertAdjacentHTML("beforeend", `
               <tr>
-                <td class="td-rank">#${{s.rank || ''}}</td>
-                <td class="td-coin">
-                  <div class="c-name">${{s.name || ''}}</div>
-                  <div class="c-sym">${{(s.symbol || '').toUpperCase()}}</div>
-                </td>
-                <td class="td-num">${{formatPrice(s.price)}}</td>
-                <td class="td-num ${{pos24}}">${{formatPct(ch24)}}</td>
-                <td class="td-num ${{pos7}}">${{formatPct(ch7)}}</td>
-                <td class="td-num">${{formatMoney(s.volume)}}</td>
-                <td><span class="sig-badge ${{s.badge || 'badge-watch'}}">${{s.signal || ''}}</span></td>
-                <td class="td-num">${{Math.round(s.confidence || 0)}}%</td>
+                <td>${(dt||"").replace(/</g,"&lt;")}</td>
+                <td><span class="tagTiny">${String(sym).replace(/</g,"&lt;")}</span></td>
+                <td><span class="sig ${toneToBadge(side)}">${sideIcon(side)} ${String(side).replace(/</g,"&lt;")}</span></td>
+                <td>${price ? ("$" + fmtMoney(price)) : "—"}</td>
+                <td>${String(status).replace(/</g,"&lt;")}</td>
+                <td class="muted">${String(note).replace(/</g,"&lt;")}</td>
               </tr>
-            `;
-          }}).join('');
-          document.getElementById('sigTbody').innerHTML = rows;
+            `);
+          }
+          $("tvMeta").textContent = Array.isArray(rows) ? (rows.length + " élément(s)") : "—";
+        }catch(e){
+          $("tvMeta").textContent = "—";
+        }
+      }
 
-        }} catch (e) {{
-          console.log('AI Signals refresh error:', e);
-        }}
-      }}
+      // Events
+      $("btnRefresh").addEventListener("click", ()=>{ loadSignals(false); loadTvTrades(); });
+      $("q").addEventListener("input", ()=>render(window.__signals||[], window.__meta||{}));
+      $("sort").addEventListener("change", ()=>render(window.__signals||[], window.__meta||{}));
 
-      function formatPct(v) {{
-        const n = Number(v || 0);
-        const sign = n >= 0 ? '+' : '';
-        return sign + n.toFixed(2) + '%';
-      }}
-      function formatMoney(v) {{
-        const n = Number(v || 0);
-        if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
-        if (n >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
-        if (n >= 1e3) return '$' + (n/1e3).toFixed(2) + 'K';
-        return '$' + n.toFixed(2);
-      }}
-      function formatPrice(v) {{
-        const n = Number(v || 0);
-        if (n >= 1000) return '$' + n.toLocaleString(undefined, {{ maximumFractionDigits: 0 }});
-        if (n >= 1) return '$' + n.toLocaleString(undefined, {{ minimumFractionDigits: 2, maximumFractionDigits: 2 }});
-        if (n >= 0.01) return '$' + n.toLocaleString(undefined, {{ minimumFractionDigits: 4, maximumFractionDigits: 4 }});
-        return '$' + n.toFixed(8);
-      }}
+      // Initial render
+      (function init(){
+        const data = INITIAL || {};
+        window.__signals = data.signals || [];
+        window.__meta = data;
+        applyKPIs(window.__signals, data);
+        render(window.__signals, data);
+        loadTvTrades();
+      })();
 
-      
-      // ===== Live TradingView signals (from /tv-webhook -> table trades) =====
-      let tvTimer = null;
-
-      async function loadTvSignals() {{
-        const body = document.getElementById('tvSignalsBody');
-        if (!body) return;
-
-        try {{
-          const res = await fetch('/api/ai-signals-trades', {{ cache: 'no-store' }});
-          const j = await res.json();
-
-          if (!j || !j.ok) {{
-            body.innerHTML = `<tr><td colspan="8" class="pt-muted">Erreur: ${{escapeHtml((j && j.error) ? j.error : 'Impossible de charger les signaux.')}}</td></tr>`;
-            return;
-          }}
-
-          const rows = (j.trades || []);
-          if (!rows.length) {{
-            body.innerHTML = `<tr><td colspan="8" class="pt-muted">Aucun signal reçu pour le moment (webhook). Essaie de déclencher une alerte TradingView.</td></tr>`;
-            return;
-          }}
-
-          body.innerHTML = rows.map(t => {{
-            const sideTone = (t.side_tone || 'gray');
-            const statusTone = (t.status_tone || 'gray');
-            const entry = (t.entry_price == null) ? '—' : fmtPrice(t.entry_price);
-            const cur = (t.current_price == null) ? '—' : fmtPrice(t.current_price);
-            const pnlTxt = (t.pnl_pct == null) ? '—' : `${{(t.pnl_pct >= 0 ? '+' : '')}}${{t.pnl_pct.toFixed(2)}}%`;
-            const ts = t.time_ago || (t.timestamp || '—');
-            const tf = t.timeframe || '—';
-            const symbol = escapeHtml(t.symbol || '');
-            return `
-              <tr>
-                <td>${{escapeHtml(ts)}}</td>
-                <td><strong>${{symbol}}</strong></td>
-                <td><span class="pt-badge pt-badge-${{sideTone}}">${{escapeHtml(t.side || '—')}}</span></td>
-                <td>${{escapeHtml(tf)}}</td>
-                <td>${{entry}}</td>
-                <td>${{cur}}</td>
-                <td>${{escapeHtml(pnlTxt)}}</td>
-                <td><span class="pt-badge pt-badge-${{statusTone}}">${{escapeHtml(t.status || '—')}}</span></td>
-              </tr>
-            `;
-          }}).join('');
-        }} catch (e) {{
-          body.innerHTML = `<tr><td colspan="8" class="pt-muted">Erreur: ${{escapeHtml(String(e))}}</td></tr>`;
-        }}
-      }}
-
-      function startTvAutoRefresh() {{
-        stopTvAutoRefresh();
-        tvTimer = setInterval(loadTvSignals, 15000);
-      }}
-      function stopTvAutoRefresh() {{
-        if (tvTimer) {{ clearInterval(tvTimer); tvTimer = null; }}
-      }}
-
-      const tvAuto = document.getElementById('tvAuto');
-      const tvRefreshBtn = document.getElementById('tvRefreshBtn');
-      if (tvRefreshBtn) tvRefreshBtn.addEventListener('click', loadTvSignals);
-      if (tvAuto) {{
-        tvAuto.addEventListener('change', () => {{
-          if (tvAuto.checked) startTvAutoRefresh();
-          else stopTvAutoRefresh();
-        }});
-      }}
-      loadTvSignals();
-      if (tvAuto && tvAuto.checked) startTvAutoRefresh();
-
-      setInterval(refreshSignals, 60000);
+      // Auto refresh
+      setInterval(()=>{
+        if($("auto").checked){
+          loadSignals(true);
+          loadTvTrades();
+        }
+      }, 60000);
     </script>
-    '''
-    sidebar_html = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-    return HTMLResponse(content=_simple_page("AI SIGNALS", result_html, sidebar_html, request=request))
+    """
+
+    body = body.replace("___INITIAL_JSON___", initial_json)
+
+    return HTMLResponse(content=_simple_page("AI Signals", body, sidebar_html, request=request, styles=styles, show_title=False))
+
+
+
 @app.get("/ai-alerts", response_class=HTMLResponse)
 async def ai_alerts_inbox(request: Request):
     cards_html = ""

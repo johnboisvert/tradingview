@@ -69577,116 +69577,260 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
 
 
 @app.get("/ai-whale-watcher")
-async def ai_whale_watcher():
-    # Whale threshold (BTC). 100 BTC is "true whale" but can be quiet; you can lower via env WHALE_MIN_BTC.
+async def ai_whale_watcher(request: Request):
+    """
+    AI Whale Watcher (BTC) – affiche les transferts "whale" récents ET conserve un historique local ~24h.
+    - Source live: Blockchain.com (unconfirmed transactions)
+    - Stockage: SQLite (/app/data/whale_watcher.db)
+    - Objectif: éviter que la page soit "vide" quand il n'y a pas de gros transferts à l'instant T.
+    """
+    import sqlite3
+    import urllib.request
+    import urllib.error
+    import json
+    import datetime as _dt
+    import os as _os
+
+    # --- paramètres ---
     try:
-        min_btc = float(os.getenv("WHALE_MIN_BTC", "100"))
+        min_btc = float(request.query_params.get("min_btc") or "")
     except Exception:
-        min_btc = 100.0
+        min_btc = None
 
-    # How many rows to show
-    limit = 5
+    # seuil par défaut (affiché) – 25 BTC = whale raisonnable, 100 BTC = rare => souvent 0 événement
+    default_min_btc = float(_os.getenv("WHALE_MIN_BTC", "25") or "25")
+    if min_btc is None or min_btc <= 0:
+        min_btc = default_min_btc
 
-    # Live BTC price (best-effort)
+    # nombre max d'événements affichés
     try:
-        btc_price = float(get_btc_price())
+        limit = int(request.query_params.get("limit") or _os.getenv("WHALE_LIMIT", "50"))
     except Exception:
-        btc_price = 0.0
+        limit = 50
+    limit = max(5, min(200, limit))
 
-    whales, meta = get_real_whale_transactions_meta(limit=limit, min_btc=min_btc)
+    # fenêtre d'historique
+    history_hours = float(_os.getenv("WHALE_HISTORY_HOURS", "24") or "24")
+    if history_hours <= 0:
+        history_hours = 24.0
 
-    demo_whales = [
-        {"time": "—", "asset": "—", "amount": 25.5, "details": "de — → —"},
-        {"time": "—", "asset": "—", "amount": 30.75, "details": "de — → —"},
-        {"time": "—", "asset": "—", "amount": 12.5, "details": "de — → —"},
-        {"time": "—", "asset": "—", "amount": 18.3, "details": "de — → —"},
-        {"time": "—", "asset": "—", "amount": 22.1, "details": "de — → —"},
-    ]
+    # DB path
+    _db_dir = _os.getenv("DB_DIR", "/app/data")
+    _db_path = _os.path.join(_db_dir, "whale_watcher.db")
 
-    if meta.get("api_ok"):
-        # IMPORTANT: even if whales is empty, that's still "live" — it just means no tx >= min_btc right now.
-        status_badge = "✅ VRAIES DONNÉES EN DIRECT"
-        source_line = f"Source: Blockchain.info API (TEMPS RÉEL) | Seuil: ≥ {min_btc:g} BTC"
-        if btc_price:
-            source_line += f" | BTC: ${btc_price:,.0f}"
-        else:
-            source_line += " | BTC: —"
+    now = _dt.datetime.utcnow()
+    cutoff = now - _dt.timedelta(hours=history_hours)
+    last_updated = now.strftime("%Y-%m-%d %H:%M:%S")
 
-        if whales:
-            events = whales
-        else:
-            # show empty state but keep live status
-            events = []
-            raw_count = meta.get("raw_count")
-            msg = f"ℹ️ Aucun transfert ≥ {min_btc:g} BTC dans les dernières transactions non confirmées."
-            if isinstance(raw_count, int):
-                msg += f" (Transactions observées: {raw_count})"
-            print(msg)
-    else:
-        # API failed -> demo fallback
-        status_badge = "⚠️ Mode DÉMONSTRATION (Attente API)"
-        source_line = "Données démo avec prix LIVE"
-        if btc_price:
-            source_line += f" | BTC: ${btc_price:,.0f}"
-        else:
-            source_line += " | BTC: —"
-        events = demo_whales
-        err = meta.get("error")
-        print(f"⚠️ APIs indisponibles - Mode démo | {err or 'no details'}")
+    # --- helpers ---
+    def _short(addr: str, left: int = 6, right: int = 6) -> str:
+        if not addr:
+            return "—"
+        if len(addr) <= left + right + 3:
+            return addr
+        return f"{addr[:left]}...{addr[-right:]}"
 
-    # Build the page HTML (keeps your current design)
+    def _ensure_db(conn: sqlite3.Connection) -> None:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS whale_events (
+                tx_hash TEXT PRIMARY KEY,
+                seen_at_utc TEXT NOT NULL,
+                amount_btc REAL NOT NULL,
+                from_addr TEXT,
+                to_addr TEXT,
+                raw_json TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_whale_seen ON whale_events(seen_at_utc)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_whale_amt ON whale_events(amount_btc)")
+        conn.commit()
+
+    def _purge_old(conn: sqlite3.Connection) -> int:
+        cur = conn.execute("DELETE FROM whale_events WHERE seen_at_utc < ?", (cutoff.strftime("%Y-%m-%d %H:%M:%S"),))
+        conn.commit()
+        return cur.rowcount if cur else 0
+
+    def _fetch_unconfirmed() -> dict:
+        # Blockchain.com endpoint
+        url = "https://blockchain.info/unconfirmed-transactions?format=json"
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "CryptoIA Whale Watcher/1.0 (+https://cryptoia.ca)",
+                "Accept": "application/json",
+            },
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = resp.read().decode("utf-8", errors="ignore")
+        return json.loads(data)
+
+    def _extract_event(tx: dict):
+        # Total out value as "amount moved" approximation
+        outs = tx.get("out") or []
+        total_sats = 0
+        largest_out = None
+        for o in outs:
+            v = o.get("value") or 0
+            if isinstance(v, (int, float)):
+                total_sats += int(v)
+            # pick largest output as destination representative
+            if largest_out is None or (o.get("value") or 0) > (largest_out.get("value") or 0):
+                largest_out = o
+
+        amount_btc = total_sats / 1e8 if total_sats else 0.0
+
+        # from: first input prev_out addr
+        from_addr = ""
+        ins = tx.get("inputs") or []
+        if ins:
+            prev = (ins[0] or {}).get("prev_out") or {}
+            from_addr = prev.get("addr") or ""
+
+        # to: largest output addr if available
+        to_addr = ""
+        if largest_out:
+            to_addr = largest_out.get("addr") or ""
+
+        tx_hash = tx.get("hash") or ""
+        return tx_hash, amount_btc, from_addr, to_addr
+
+    # --- DB open ---
+    api_ok = True
+    api_note = ""
+    new_added = 0
+
+    try:
+        conn = sqlite3.connect(_db_path, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        _ensure_db(conn)
+        _purge_old(conn)
+    except Exception as e:
+        conn = None
+        api_ok = False
+        api_note = f"DB error: {e!s}"
+
+    # --- fetch & store ---
+    if conn is not None:
+        try:
+            payload = _fetch_unconfirmed()
+            txs = payload.get("txs") or []
+            observed = 0
+            for tx in txs[:250]:  # safety cap
+                observed += 1
+                tx_hash, amount_btc, from_addr, to_addr = _extract_event(tx)
+                if not tx_hash:
+                    continue
+                if amount_btc < min_btc:
+                    continue
+
+                raw = json.dumps(tx, ensure_ascii=False)[:20000]
+                cur = conn.execute(
+                    "INSERT OR IGNORE INTO whale_events(tx_hash, seen_at_utc, amount_btc, from_addr, to_addr, raw_json) VALUES (?,?,?,?,?,?)",
+                    (tx_hash, last_updated, float(amount_btc), from_addr, to_addr, raw),
+                )
+                if cur and cur.rowcount:
+                    new_added += 1
+
+            conn.commit()
+
+            if new_added == 0:
+                print(f"ℹ️ Aucun transfert ≥ {min_btc:g} BTC dans les dernières transactions non confirmées. (Transactions observées: {observed})")
+
+        except Exception as e:
+            api_ok = False
+            api_note = f"API indisponible: {e!s}"
+
+    # --- read last 24h ---
+    events = []
+    total_count = 0
+    if conn is not None:
+        try:
+            row = conn.execute(
+                "SELECT COUNT(*) AS c FROM whale_events WHERE seen_at_utc >= ? AND amount_btc >= ?",
+                (cutoff.strftime("%Y-%m-%d %H:%M:%S"), float(min_btc)),
+            ).fetchone()
+            total_count = int(row["c"]) if row else 0
+
+            rows = conn.execute(
+                "SELECT tx_hash, seen_at_utc, amount_btc, from_addr, to_addr FROM whale_events "
+                "WHERE seen_at_utc >= ? AND amount_btc >= ? "
+                "ORDER BY seen_at_utc DESC LIMIT ?",
+                (cutoff.strftime("%Y-%m-%d %H:%M:%S"), float(min_btc), int(limit)),
+            ).fetchall()
+
+            for r in rows or []:
+                ts = (r["seen_at_utc"] or "")[-8:-3] if r["seen_at_utc"] else "—"
+                events.append({
+                    "time": ts,
+                    "asset": "BTC",
+                    "amount": float(r["amount_btc"] or 0.0),
+                    "from": r["from_addr"] or "",
+                    "to": r["to_addr"] or "",
+                    "hash": r["tx_hash"] or "",
+                })
+        except Exception as e:
+            api_ok = False
+            api_note = f"DB read error: {e!s}"
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    # --- UI pieces ---
+    status_badge = "✅ VRAIES DONNÉES EN DIRECT" if api_ok else "⚠️ MODE CACHE (dernières 24h)"
+    source_line = f"Source: Blockchain.info API (TEMPS RÉEL) | Seuil: ≥ {min_btc:g} BTC | BTC: —"
+    if not api_ok and api_note:
+        source_line += f" | {api_note}"
+
     rows_html = ""
     if events:
-        for e in events:
-            t = e.get("time", "—")
-            a = e.get("asset", "BTC")
-            amt = e.get("amount", "—")
-            det = e.get("details", "—")
+        for ev in events:
             rows_html += f"""
             <tr>
-              <td style="padding:10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);">{t}</td>
-              <td style="padding:10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-weight:700;">{a}</td>
-              <td style="padding:10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-weight:700;">{amt}</td>
-              <td style="padding:10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);">{det}</td>
+              <td>{ev['time']}</td>
+              <td><b>{ev['asset']}</b></td>
+              <td><b>{ev['amount']:.2f}</b></td>
+              <td>de <span class="mono">{_short(ev['from'])}</span> → <span class="mono">{_short(ev['to'])}</span></td>
             </tr>
             """
     else:
         rows_html = f"""
-          <tr>
-            <td colspan="4" style="padding:14px 12px; color:rgba(255,255,255,0.75);">
-              Aucune transaction ≥ {min_btc:g} BTC pour le moment. (Ce n’est pas une erreur.)
-            </td>
-          </tr>
+        <tr>
+          <td colspan="4" style="opacity:.85">Aucune transaction ≥ {min_btc:g} BTC pour le moment. (Ce n'est pas une erreur.)</td>
+        </tr>
         """
 
-    body = f"""
-    <div class="card" style="padding:18px 18px 14px 18px;">
-      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+    # petite note: quand seuil très haut, 0 event est normal
+    tip_line = "Astuce: si tu mets un seuil très haut (ex: 100 BTC), c'est normal d'avoir souvent 0 événement."
+
+    content = f"""
+    <div class="page-title">AI Whale Watcher</div>
+
+    <div class="wow-card">
+      <div class="wow-head">
         <div>
-          <div style="font-size:18px; font-weight:800; margin-bottom:2px;">AI Whale Watcher</div>
-          <div style="color:rgba(255,255,255,0.8); font-size:13px; margin-bottom:6px;">{source_line}</div>
-          <div style="font-size:13px;">
-            <span class="badge" style="display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">
-              Statut: <b>{status_badge}</b>
-            </span>
-          </div>
+          <div class="wow-h1">AI Whale Watcher</div>
+          <div class="wow-sub">{source_line}</div>
+          <div class="wow-status">Statut: <span class="badge">{status_badge}</span></div>
         </div>
 
-        <div style="display:flex; gap:10px; align-items:center;">
-          <a class="btn" href="/ai-whale-watcher" style="text-decoration:none;">Rafraîchir</a>
-          <span class="badge" style="padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">Événements: {len(events) if events else 0}</span>
+        <div class="wow-actions">
+          <a class="btn" href="/ai-whale-watcher?min_btc={min_btc:g}&limit={limit}">Rafraîchir</a>
+          <div class="pill">Événements: <b>{total_count}</b></div>
         </div>
       </div>
 
-      <div style="display:grid; grid-template-columns: 1.4fr 1fr; gap:14px; margin-top:14px;">
-        <div class="card" style="padding:0; overflow:hidden;">
-          <table style="width:100%; border-collapse:collapse;">
+      <div class="wow-grid">
+        <div class="wow-table">
+          <table>
             <thead>
-              <tr style="background: rgba(255,255,255,0.04);">
-                <th style="text-align:left; padding:12px;">Heure</th>
-                <th style="text-align:left; padding:12px;">Actif</th>
-                <th style="text-align:left; padding:12px;">Montant</th>
-                <th style="text-align:left; padding:12px;">Détails</th>
+              <tr>
+                <th>Heure</th>
+                <th>Actif</th>
+                <th>Montant</th>
+                <th>Détails</th>
               </tr>
             </thead>
             <tbody>
@@ -69695,54 +69839,49 @@ async def ai_whale_watcher():
           </table>
         </div>
 
-        <div class="card" style="padding:14px;">
-          <div style="font-weight:800; margin-bottom:8px;">Comment utiliser cette page</div>
-          <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,0.9);">
-            <li>Surveille les <b>grosses transactions</b> et la destination (<b>exchange vs wallet</b>).</li>
+        <div class="wow-help">
+          <div class="wow-help-title">Comment utiliser cette page</div>
+          <ul>
+            <li>Surveille les <b>grosses transactions</b> et la destination (<b>exchange</b> vs <b>wallet</b>).</li>
             <li>Vers exchange = pression de vente potentielle (pas garanti).</li>
             <li>Hors exchange = accumulation/staking possible (pas garanti).</li>
             <li>Combine avec <b>Market Regime</b> + niveaux techniques.</li>
           </ul>
-          <div style="margin-top:10px; font-size:12px; color:rgba(255,255,255,0.7);">
-            Astuce: si tu mets un seuil très haut (ex: 100 BTC), c'est normal d'avoir souvent 0 événement.
-          </div>
+          <div class="wow-tip">{tip_line}</div>
         </div>
+      </div>
+    </div>
+
+    <div class="help-block">
+      <div class="help-title">📌 Aide – AI Whale Watcher</div>
+      <div class="help-grid">
+        <div class="help-card">
+          <div class="help-h">À quoi sert cette page ?</div>
+          <div class="help-p">Surveillance des mouvements “whales” et activité inhabituelle.</div>
+        </div>
+        <div class="help-card">
+          <div class="help-h">Comment l'utiliser ?</div>
+          <div class="help-p">Ne poursuis pas le prix: utilise ces infos comme contexte, pas comme signal unique.</div>
+        </div>
+      </div>
+
+      <div class="help-meta">
+        <div class="meta-pill">Données</div>
+        <div class="meta-pill">Blockchain.info + CoinGecko (prix)</div>
+        <div class="meta-pill">Dernière maj</div>
+        <div class="meta-pill"><span>{last_updated} UTC</span></div>
+        <div class="meta-pill">Statut</div>
+        <div class="meta-pill">{'OK' if api_ok else 'CACHE'}</div>
+      </div>
+
+      <div class="help-note">
+        Note données: certaines infos proviennent de sources externes (APIs, webhooks, données de marché) et peuvent avoir un délai ou des variations.
+        Rien ici n'est une garantie: vérifie toujours avant d'exécuter un trade.
+        <br><br>
+        <b>Historique:</b> les événements sont conservés environ <b>{history_hours:g}h</b> (purge automatique après).
       </div>
     </div>
     """
 
-    footer = f"""
-    <div class="card" style="padding:14px; margin-top:14px;">
-      <div style="font-weight:800; margin-bottom:6px;">📌 Aide – AI Whale Watcher</div>
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-        <div class="card" style="padding:12px;">
-          <div style="font-weight:800; margin-bottom:4px;">À quoi sert cette page ?</div>
-          <div style="color:rgba(255,255,255,0.85);">Surveillance des mouvements “whales” et activité inhabituelle.</div>
-        </div>
-        <div class="card" style="padding:12px;">
-          <div style="font-weight:800; margin-bottom:4px;">Comment l'utiliser ?</div>
-          <div style="color:rgba(255,255,255,0.85);">Ne poursuis pas le prix: utilise ces infos comme contexte, pas comme signal unique.</div>
-        </div>
-      </div>
-
-      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; align-items:center; justify-content:space-between;">
-        <div style="display:flex; gap:10px; align-items:center; color:rgba(255,255,255,0.75); font-size:12px;">
-          <span class="badge" style="padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">Données</span>
-          <span style="opacity:.9;">Blockchain.info + CoinGecko (prix)</span>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center; color:rgba(255,255,255,0.75); font-size:12px;">
-          <span class="badge" style="padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">Dernière maj</span>
-          <span>{dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")} UTC</span>
-          <span class="badge" style="padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">Statut</span>
-          <span>OK</span>
-        </div>
-      </div>
-
-      <div style="margin-top:10px; color:rgba(255,255,255,0.65); font-size:12px;">
-        Note données: certaines infos proviennent de sources externes (APIs, données de marché) et peuvent avoir un délai ou des variations. Rien ici n’est une garantie: vérifie toujours avant d’exécuter un trade.
-      </div>
-    </div>
-    """
-
-    return _simple_page("AI Whale Watcher", body + footer, sidebar_html=SIDEBAR_FULL)
+    return _simple_page("AI Whale Watcher", content, active="ai-whale-watcher")
 

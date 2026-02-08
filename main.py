@@ -70154,6 +70154,20 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
         flex-direction: column;
         align-items: flex-start;
       }}
+      /* HARD OVERRIDE: some pages inject extra margin/padding that shifts content right */
+      .main.has-sidebar .page-wrap {{
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        padding-left: 0 !important;
+      }}
+      .main.has-sidebar .page-wrap > * {{
+        max-width: 1500px;
+        width: 100%;
+        margin-left: 0 !important;
+        margin-right: auto !important;
+      }}
+
       /* When a sidebar exists, many pages use a top-level .wrap/.container with margin: 0 auto (centered).
          On large screens that creates a big “gap” beside the sidebar. Force the first container to align left. */
       .main.has-sidebar .page-wrap > .wrap,

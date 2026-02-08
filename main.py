@@ -69883,5 +69883,6 @@ async def ai_whale_watcher(request: Request):
     </div>
     """
 
-    return _simple_page("AI Whale Watcher", content, active="ai-whale-watcher")
+    SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
+    return _simple_page("AI Whale Watcher", content, sidebar_html=SID, request=request, show_title=False)
 

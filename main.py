@@ -9617,7 +9617,7 @@ async def strategie_page():
             }}
             
             body {
-                margin-left: 280px !important;
+                margin-left: 0 !important;
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
                 color: #e2e8f0;
@@ -11387,7 +11387,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; background: #0a0e27; color: #fff; margin-left: 280px; position: relative; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; background: #0a0e27; color: #fff; margin-left: 0; position: relative; }
         .animated-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 20%, #2d1b69 40%, #1a1f3a 60%, #0f1419 80%, #0a0e27 100%); background-size: 400% 400%; animation: gradientFlow 20s ease infinite; }
         @keyframes gradientFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
@@ -12128,7 +12128,7 @@ async def home():
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; background: #0a0e27; color: #fff; margin-left: 280px; position: relative; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; background: #0a0e27; color: #fff; margin-left: 0; position: relative; }
         .animated-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 20%, #2d1b69 40%, #1a1f3a 60%, #0f1419 80%, #0a0e27 100%); background-size: 400% 400%; animation: gradientFlow 20s ease infinite; }
         @keyframes gradientFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
@@ -32237,7 +32237,7 @@ async def fear_greed_chart():
                 background: #0f172a; 
                 color: white; 
                 margin: 0;
-                margin-left: 280px;
+                margin-left: 0;
                 padding-bottom: 40px;
             }}
             .container {{ 
@@ -35426,7 +35426,7 @@ async def ai_predictor():
                 background: linear-gradient(135deg, #1e1b4b, #312e81); 
                 color: #fff; 
                 min-height: 100vh;
-                margin-left: 280px;
+                margin-left: 0;
                 padding: 40px 20px;
             }}
             .container {{ max-width: 1600px; margin: 0 auto; }}
@@ -42718,7 +42718,7 @@ async def strategie_page():
             }}
             
             body {
-                margin-left: 280px !important;
+                margin-left: 0 !important;
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
                 color: #e2e8f0;
@@ -44488,7 +44488,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; background: #0a0e27; color: #fff; margin-left: 280px; position: relative; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; background: #0a0e27; color: #fff; margin-left: 0; position: relative; }
         .animated-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 20%, #2d1b69 40%, #1a1f3a 60%, #0f1419 80%, #0a0e27 100%); background-size: 400% 400%; animation: gradientFlow 20s ease infinite; }
         @keyframes gradientFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
@@ -45229,7 +45229,7 @@ async def home():
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; background: #0a0e27; color: #fff; margin-left: 280px; position: relative; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; background: #0a0e27; color: #fff; margin-left: 0; position: relative; }
         .animated-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 20%, #2d1b69 40%, #1a1f3a 60%, #0f1419 80%, #0a0e27 100%); background-size: 400% 400%; animation: gradientFlow 20s ease infinite; }
         @keyframes gradientFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
@@ -62805,7 +62805,7 @@ async def fear_greed_chart():
                 background: #0f172a; 
                 color: white; 
                 margin: 0;
-                margin-left: 280px;
+                margin-left: 0;
                 padding-bottom: 40px;
             }}
             .container {{ 
@@ -65781,7 +65781,7 @@ async def ai_predictor():
                 background: linear-gradient(135deg, #1e1b4b, #312e81); 
                 color: #fff; 
                 min-height: 100vh;
-                margin-left: 280px;
+                margin-left: 0;
                 padding: 40px 20px;
             }}
             .container {{ max-width: 1600px; margin: 0 auto; }}
@@ -68885,7 +68885,7 @@ except Exception as _e:
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #0a0e27; color: #fff; margin-left: 280px; }}
+        body {{ font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #0a0e27; color: #fff; margin-left: 0; }}
         .container {{ padding: 34px 28px; }}
         .title {{ font-size: 40px; font-weight: 900; letter-spacing: -1px; margin-bottom: 6px; }}
         .subtitle {{ opacity: .85; margin-bottom: 22px; }}

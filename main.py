@@ -411,6 +411,103 @@ async def get_real_whale_transactions(min_btc: float = 100.0, limit: int = 20):
 
     return []
 
+
+
+
+def get_real_whale_transactions_meta(limit: int = 5, min_btc: float = 100.0):
+    """Fetch whale-like BTC transfers from public endpoints.
+
+    Returns: (events, meta)
+      - events: list[dict] same shape as existing get_real_whale_transactions
+      - meta: dict with keys:
+          api_ok (bool): True if at least one endpoint responded with a valid payload
+          source (str|None): endpoint base used
+          raw_count (int|None): number of raw txs returned by the endpoint (before filtering)
+          error (str|None): last error if api_ok is False
+    """
+    meta = {"api_ok": False, "source": None, "raw_count": None, "error": None}
+
+    # We reuse the same sources list as get_real_whale_transactions.
+    sources = [
+        "https://api.blockchain.info",          # legacy
+        "https://blockchain.info",              # legacy alt
+        "https://blockchain.info",              # legacy (dup tolerated)
+        "https://blockchain.info",              # kept for robustness
+        "https://blockchain.info",              # (some envs block api subdomain)
+        "https://api.blockchain.info",          # retry
+    ]
+
+    # Prefer the same request style as the main function (keeps your infra behavior consistent)
+    headers = {"User-Agent": "CryptoIA-WhaleWatcher/1.0"}
+
+    # Try multiple endpoints; we consider "API OK" if we get a JSON payload containing txs/transactions,
+    # even if after filtering there are 0 whales above min_btc.
+    for base in sources:
+        try:
+            url = f"{base}/unconfirmed-transactions?format=json"
+            r = requests.get(url, headers=headers, timeout=8)
+            if not r.ok:
+                meta["error"] = f"HTTP {r.status_code} from {base}"
+                continue
+
+            data = r.json() if r.text else {}
+            txs = data.get("txs") or data.get("transactions") or []
+            if not isinstance(txs, list):
+                meta["error"] = f"unexpected payload from {base}"
+                continue
+
+            meta["api_ok"] = True
+            meta["source"] = base
+            meta["raw_count"] = len(txs)
+
+            events = []
+            for tx in txs[: max(200, limit * 50)]:  # limit parsing cost
+                try:
+                    out_total_sats = sum((o.get("value") or 0) for o in (tx.get("out") or []))
+                    btc_amount = out_total_sats / 1e8
+                except Exception:
+                    btc_amount = 0.0
+
+                if btc_amount < float(min_btc):
+                    continue
+
+                try:
+                    inputs = tx.get("inputs") or []
+                    from_addr = None
+                    if inputs and isinstance(inputs, list):
+                        prev = inputs[0].get("prev_out") or {}
+                        from_addr = prev.get("addr")
+                    outs = tx.get("out") or []
+                    to_addr = None
+                    if outs and isinstance(outs, list):
+                        # choose biggest output as destination
+                        biggest = max(outs, key=lambda o: o.get("value") or 0)
+                        to_addr = biggest.get("addr")
+                    ts = tx.get("time")
+                    dt = datetime.datetime.utcfromtimestamp(ts).strftime("%H:%M") if ts else "—"
+                except Exception:
+                    from_addr, to_addr, dt = None, None, "—"
+
+                events.append({
+                    "time": dt,
+                    "asset": "BTC",
+                    "amount": round(float(btc_amount), 2),
+                    "details": f"de {from_addr or '—'} → {to_addr or '—'}",
+                })
+                if len(events) >= limit:
+                    break
+
+            # return immediately on first working endpoint
+            return events, meta
+
+        except Exception as e:
+            meta["error"] = str(e)
+            continue
+
+    # all endpoints failed
+    return [], meta
+
+
 def create_coinbase_payment(plan, email, client, amount=None):
     try:
         if not client:
@@ -15217,274 +15314,6 @@ async def ai_market_regime_page(request: Request):
     return resp if isinstance(resp, Response) else HTMLResponse(resp)
 
 
-@app.get("/ai-whale-watcher", response_class=HTMLResponse)
-async def ai_whale_watcher():
-    """
-    🐋 WHALE WATCHER - DONNÉES VRAIES OU DÉMO AVEC PRIX LIVE
-    ✅ Prix BTC ACTUALISÉ TOUJOURS
-    """
-    
-    # 1 Rcuprer le prix BTC EN DIRECT SYSTMATIQUEMENT
-    btc_price = 43000  # Valeur par défaut
-    try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            price_response = await client.get(
-                "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
-            )
-            if price_response.status_code == 200:
-                btc_price = price_response.json().get('bitcoin', {}).get('usd', 43000)
-    except:
-        pass
-    
-    # 2 Rcuprer les VRAIES donnes
-    # Seuil "whale" (en BTC) + nombre d'événements max (configurable via variables Railway)
-    try:
-        min_whale_btc = float((os.getenv("WHALE_MIN_BTC", "100") or "100").strip())
-    except Exception:
-        min_whale_btc = 100.0
-    try:
-        whale_limit = int((os.getenv("WHALE_LIMIT", "20") or "20").strip())
-    except Exception:
-        whale_limit = 20
-    whale_limit = max(1, min(200, whale_limit))
-
-    real_whales = await get_real_whale_transactions(min_btc=min_whale_btc, limit=whale_limit)
-    # Ajoute une estimation USD pour éviter la confusion (le tableau affiche BTC, pas $)
-    try:
-        for w in real_whales:
-            if isinstance(w, dict) and "usd_value" not in w:
-                w["usd_value"] = round(float(w.get("amount") or 0) * float(btc_price), 0)
-    except Exception:
-        pass
-
-    
-    # 3 Donnes de DMONSTRATION AVEC PRIX ACTUALIS
-    demo_whales = [
-        {
-            'txid': '3e7d4c2b9a1f...',
-            'full_txid': '3e7d4c2b9a1f5e8b1c6d4a2f9e3d1c5b7a8f9e0d1c2b3a4f5e6d7c8b9a',
-            'amount': 25.5,
-            'usd_value': round(25.5 * btc_price, 0),  # ✅ PRIX LIVE!
-            'inputs': 8,
-            'outputs': 2,
-            'is_bullish': True,
-            'time_ago': '3 min ago',
-            'type': 'Accumulation 🟢',
-            'btc_price': f"${btc_price:,.0f}",
-            'confidence': '85%'
-        },
-        {
-            'txid': '2f5a8b1c9e3d...',
-            'full_txid': '2f5a8b1c9e3d7b2a5f1e4c8d9a2b3f5e7d1c6a9b8e2f4d7a0c3b5e8f1a2d4',
-            'amount': 30.75,
-            'usd_value': round(30.75 * btc_price, 0),  # ✅ PRIX LIVE!
-            'inputs': 2,
-            'outputs': 8,
-            'is_bullish': False,
-            'time_ago': '8 min ago',
-            'type': 'Distribution 🔴',
-            'btc_price': f"${btc_price:,.0f}",
-            'confidence': '92%'
-        },
-        {
-            'txid': '1a2b3c4d5e6f...',
-            'full_txid': '1a2b3c4d5e6f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5',
-            'amount': 12.5,
-            'usd_value': round(12.5 * btc_price, 0),  # ✅ PRIX LIVE!
-            'inputs': 5,
-            'outputs': 1,
-            'is_bullish': True,
-            'time_ago': '12 min ago',
-            'type': 'Accumulation 🟢',
-            'btc_price': f"${btc_price:,.0f}",
-            'confidence': '78%'
-        },
-        {
-            'txid': '7c8d9e0f1a2b...',
-            'full_txid': '7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7',
-            'amount': 18.3,
-            'usd_value': round(18.3 * btc_price, 0),  # ✅ PRIX LIVE!
-            'inputs': 3,
-            'outputs': 6,
-            'is_bullish': False,
-            'time_ago': '15 min ago',
-            'type': 'Distribution 🔴',
-            'btc_price': f"${btc_price:,.0f}",
-            'confidence': '88%'
-        },
-        {
-            'txid': '5e6f7a8b9c0d...',
-            'full_txid': '5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5',
-            'amount': 22.1,
-            'usd_value': round(22.1 * btc_price, 0),  # ✅ PRIX LIVE!
-            'inputs': 7,
-            'outputs': 1,
-            'is_bullish': True,
-            'time_ago': '22 min ago',
-            'type': 'Accumulation 🟢',
-            'btc_price': f"${btc_price:,.0f}",
-            'confidence': '81%'
-        }
-    ]
-    
-    # 4 Dcider quelle source utiliser
-    if real_whales and len(real_whales) > 0:
-        whale_data = real_whales
-        status_badge = "✅ VRAIES DONNÉES EN DIRECT"
-        source_text = f"Source: Blockchain.info API (TEMPS RÉEL) | BTC: ${btc_price:,.0f}"
-        print(f"✅ Données réelles reçues! BTC: ${btc_price:,.0f}")
-    else:
-        whale_data = demo_whales
-        status_badge = "⚠️ Mode DÉMONSTRATION (Attente API)"
-        source_text = f"Données démo avec prix LIVE | BTC: ${btc_price:,.0f} | Actualiser dans 30s"
-        print(f"⚠️ APIs indisponibles - Mode démo | BTC: ${btc_price:,.0f}")
-    
-    # Convertir en JSON - mthode scurise
-    whale_data_json = json.dumps(whale_data)
-    
-    # Crer le HTML avec un PLACEHOLDER
-        # --- UI (intégrée au layout global) ---
-    try:
-        events = json.loads(whale_data_json) if whale_data_json else []
-    except Exception:
-        events = []
-
-    body = f"""
-    <style>
-      .whale-page .panel {{
-        background: rgba(255,255,255,.06);
-        border: 1px solid rgba(255,255,255,.10);
-        border-radius: 18px;
-        padding: 18px;
-      }}
-      .whale-page .top {{
-        display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
-        margin-bottom: 10px;
-      }}
-      .whale-page .sub {{
-        color: rgba(255,255,255,.75);
-        font-weight: 700;
-        margin: 2px 0 0 0;
-      }}
-      .whale-page .actions {{
-        display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-      }}
-      .whale-page .btn {{
-        padding: 8px 12px; border-radius: 12px;
-        border: 1px solid rgba(255,255,255,.14);
-        background: rgba(0,0,0,.18);
-        color: rgba(255,255,255,.92);
-        cursor: pointer;
-        font-weight: 800;
-      }}
-      .whale-page .btn:hover {{ background: rgba(0,0,0,.26); }}
-      .whale-page .pill {{
-        display:inline-flex; align-items:center; gap:8px;
-        padding: 6px 10px; border-radius: 999px;
-        border: 1px solid rgba(255,255,255,.12);
-        background: rgba(0,0,0,.18);
-        font-weight: 800;
-      }}
-      .whale-page .grid {{
-        display:grid; gap: 10px;
-        grid-template-columns: 1fr;
-        margin-top: 12px;
-      }}
-      @media (min-width: 900px) {{
-        .whale-page .grid {{ grid-template-columns: 1.2fr .8fr; }}
-      }}
-      .whale-page .feed {{
-        border-radius: 14px;
-        border: 1px solid rgba(255,255,255,.10);
-        background: rgba(0,0,0,.18);
-        overflow: hidden;
-      }}
-      .whale-page .row {{
-        display:grid;
-        grid-template-columns: 110px 70px 110px 1fr;
-        gap: 10px;
-        padding: 10px 12px;
-        border-bottom: 1px solid rgba(255,255,255,.08);
-        font-weight: 700;
-      }}
-      .whale-page .row.h {{
-        background: rgba(255,255,255,.05);
-        font-weight: 900;
-      }}
-      .whale-page .row:last-child {{ border-bottom: none; }}
-      .whale-page .muted {{ color: rgba(255,255,255,.70); font-weight: 700; }}
-      .whale-page .guide {{
-        border-radius: 14px;
-        border: 1px solid rgba(255,255,255,.10);
-        background: rgba(0,0,0,.18);
-        padding: 12px;
-      }}
-      .whale-page .guide h3 {{ margin:0 0 6px 0; font-size: 14px; font-weight: 900; }}
-      .whale-page .guide ul {{ margin: 6px 0 0 18px; color: rgba(255,255,255,.82); }}
-      .whale-page .small {{ font-size: 12px; color: rgba(255,255,255,.70); font-weight: 700; }}
-    </style>
-
-    <div class="whale-page">
-      <div class="panel">
-        <div class="top">
-          <div>
-            <div style="font-weight: 900; font-size: 18px;">AI Whale Watcher</div>
-            <div class="sub">{html.escape(source_text)}</div>
-            <div class="sub" style="margin-top:6px;">Statut: <b>{html.escape(status_badge)}</b></div>
-          </div>
-          <div class="actions">
-            <button class="btn" onclick="location.reload()">Rafraîchir</button>
-            <span class="pill"><span class="muted">Événements:</span> <span id="whaleCount">{len(events)}</span></span>
-          </div>
-        </div>
-
-        <div class="grid">
-          <div class="feed" id="whaleFeed"></div>
-
-          <div class="guide">
-            <h3>Comment utiliser cette page</h3>
-            <ul>
-              <li>Surveille les <b>grosses transactions</b> et la destination (<b>exchange</b> vs <b>wallet</b>).</li>
-              <li>Vers exchange = pression de vente potentielle (pas garanti).</li>
-              <li>Hors exchange = accumulation/staking possible (pas garanti).</li>
-              <li>Combine avec <b>Market Regime</b> + niveaux techniques.</li>
-            </ul>
-            <div class="small" style="margin-top:10px;">Astuce: plusieurs gros mouvements rapprochés valent souvent plus qu’un seul.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <script>
-      const DATA = {json.dumps(events, ensure_ascii=False)};
-      function short(s, n=14) {{
-        if (!s) return "—";
-        s = String(s);
-        return s.length > n ? s.slice(0,n) + "…" : s;
-      }}
-      function render() {{
-        const el = document.getElementById("whaleFeed");
-        if (!DATA || DATA.length === 0) {{
-          el.innerHTML = '<div class="row"><div class="muted">Aucune donnée pour le moment.</div></div>';
-          return;
-        }}
-        let h = '';
-        h += '<div class="row h"><div>Heure</div><div>Actif</div><div>Montant</div><div>Détails</div></div>';
-        for (const it of DATA.slice(0, 60)) {{
-          const time = (it.time || it.timestamp || "—").toString().slice(0, 16);
-          const asset = (it.asset || it.symbol || "—").toString().toUpperCase();
-          const amt = (it.amount || it.value || it.qty || "—").toString();
-          const from = short(it.from || it.from_owner || it.from_address);
-          const to = short(it.to || it.to_owner || it.to_address);
-          h += '<div class="row"><div class="muted">' + time + '</div><div>' + asset + '</div><div>' + amt + '</div><div><span class="muted">de</span> ' + from + ' <span class="muted">→</span> ' + to + '</div></div>';
-        }}
-        el.innerHTML = h;
-      }}
-      render();
-    </script>
-    """
-
-    return _simple_page("AI Whale Watcher", body, sidebar_html=SIDEBAR_FULL)
 
 @app.get("/api/fear-greed-full")
 async def fear_greed_full():
@@ -47380,255 +47209,6 @@ def _whale_watcher(transactions):
         "transactions": txs,
     }
 
-@app.get("/ai-whale-watcher", response_class=HTMLResponse)
-async def ai_whale_watcher():
-    """
-    🐋 WHALE WATCHER - DONNÉES VRAIES OU DÉMO AVEC PRIX LIVE
-    ✅ Prix BTC ACTUALISÉ TOUJOURS
-    """
-    
-    # 1 Rcuprer le prix BTC EN DIRECT SYSTMATIQUEMENT
-    btc_price = 43000  # Valeur par défaut
-    try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            price_response = await client.get(
-                "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
-            )
-            if price_response.status_code == 200:
-                btc_price = price_response.json().get('bitcoin', {}).get('usd', 43000)
-    except:
-        pass
-    
-    # 2 Rcuprer les VRAIES donnes
-    real_whales = await get_real_whale_transactions()
-    
-    # 3 Donnes de DMONSTRATION AVEC PRIX ACTUALIS
-    demo_whales = [
-        {
-            'txid': '3e7d4c2b9a1f...',
-            'full_txid': '3e7d4c2b9a1f5e8b1c6d4a2f9e3d1c5b7a8f9e0d1c2b3a4f5e6d7c8b9a',
-            'amount': 25.5,
-            'usd_value': round(25.5 * btc_price, 0),  # ✅ PRIX LIVE!
-            'inputs': 8,
-            'outputs': 2,
-            'is_bullish': True,
-            'time_ago': '3 min ago',
-            'type': 'Accumulation 🟢',
-            'btc_price': f"${btc_price:,.0f}",
-            'confidence': '85%'
-        },
-        {
-            'txid': '2f5a8b1c9e3d...',
-            'full_txid': '2f5a8b1c9e3d7b2a5f1e4c8d9a2b3f5e7d1c6a9b8e2f4d7a0c3b5e8f1a2d4',
-            'amount': 30.75,
-            'usd_value': round(30.75 * btc_price, 0),  # ✅ PRIX LIVE!
-            'inputs': 2,
-            'outputs': 8,
-            'is_bullish': False,
-            'time_ago': '8 min ago',
-            'type': 'Distribution 🔴',
-            'btc_price': f"${btc_price:,.0f}",
-            'confidence': '92%'
-        },
-        {
-            'txid': '1a2b3c4d5e6f...',
-            'full_txid': '1a2b3c4d5e6f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5',
-            'amount': 12.5,
-            'usd_value': round(12.5 * btc_price, 0),  # ✅ PRIX LIVE!
-            'inputs': 5,
-            'outputs': 1,
-            'is_bullish': True,
-            'time_ago': '12 min ago',
-            'type': 'Accumulation 🟢',
-            'btc_price': f"${btc_price:,.0f}",
-            'confidence': '78%'
-        },
-        {
-            'txid': '7c8d9e0f1a2b...',
-            'full_txid': '7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7',
-            'amount': 18.3,
-            'usd_value': round(18.3 * btc_price, 0),  # ✅ PRIX LIVE!
-            'inputs': 3,
-            'outputs': 6,
-            'is_bullish': False,
-            'time_ago': '15 min ago',
-            'type': 'Distribution 🔴',
-            'btc_price': f"${btc_price:,.0f}",
-            'confidence': '88%'
-        },
-        {
-            'txid': '5e6f7a8b9c0d...',
-            'full_txid': '5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5',
-            'amount': 22.1,
-            'usd_value': round(22.1 * btc_price, 0),  # ✅ PRIX LIVE!
-            'inputs': 7,
-            'outputs': 1,
-            'is_bullish': True,
-            'time_ago': '22 min ago',
-            'type': 'Accumulation 🟢',
-            'btc_price': f"${btc_price:,.0f}",
-            'confidence': '81%'
-        }
-    ]
-    
-    # 4 Dcider quelle source utiliser
-    if real_whales and len(real_whales) > 0:
-        whale_data = real_whales
-        status_badge = "✅ VRAIES DONNÉES EN DIRECT"
-        source_text = f"Source: Blockchain.info API (TEMPS RÉEL) | BTC: ${btc_price:,.0f}"
-        print(f"✅ Données réelles reçues! BTC: ${btc_price:,.0f}")
-    else:
-        whale_data = demo_whales
-        status_badge = "⚠️ Mode DÉMONSTRATION (Attente API)"
-        source_text = f"Données démo avec prix LIVE | BTC: ${btc_price:,.0f} | Actualiser dans 30s"
-        print(f"⚠️ APIs indisponibles - Mode démo | BTC: ${btc_price:,.0f}")
-    
-    # Convertir en JSON - mthode scurise
-    whale_data_json = json.dumps(whale_data)
-    
-    # Crer le HTML avec un PLACEHOLDER
-        # --- UI (intégrée au layout global) ---
-    try:
-        events = json.loads(whale_data_json) if whale_data_json else []
-    except Exception:
-        events = []
-
-    body = f"""
-    <style>
-      .whale-page .panel {{
-        background: rgba(255,255,255,.06);
-        border: 1px solid rgba(255,255,255,.10);
-        border-radius: 18px;
-        padding: 18px;
-      }}
-      .whale-page .top {{
-        display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
-        margin-bottom: 10px;
-      }}
-      .whale-page .sub {{
-        color: rgba(255,255,255,.75);
-        font-weight: 700;
-        margin: 2px 0 0 0;
-      }}
-      .whale-page .actions {{
-        display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-      }}
-      .whale-page .btn {{
-        padding: 8px 12px; border-radius: 12px;
-        border: 1px solid rgba(255,255,255,.14);
-        background: rgba(0,0,0,.18);
-        color: rgba(255,255,255,.92);
-        cursor: pointer;
-        font-weight: 800;
-      }}
-      .whale-page .btn:hover {{ background: rgba(0,0,0,.26); }}
-      .whale-page .pill {{
-        display:inline-flex; align-items:center; gap:8px;
-        padding: 6px 10px; border-radius: 999px;
-        border: 1px solid rgba(255,255,255,.12);
-        background: rgba(0,0,0,.18);
-        font-weight: 800;
-      }}
-      .whale-page .grid {{
-        display:grid; gap: 10px;
-        grid-template-columns: 1fr;
-        margin-top: 12px;
-      }}
-      @media (min-width: 900px) {{
-        .whale-page .grid {{ grid-template-columns: 1.2fr .8fr; }}
-      }}
-      .whale-page .feed {{
-        border-radius: 14px;
-        border: 1px solid rgba(255,255,255,.10);
-        background: rgba(0,0,0,.18);
-        overflow: hidden;
-      }}
-      .whale-page .row {{
-        display:grid;
-        grid-template-columns: 110px 70px 110px 1fr;
-        gap: 10px;
-        padding: 10px 12px;
-        border-bottom: 1px solid rgba(255,255,255,.08);
-        font-weight: 700;
-      }}
-      .whale-page .row.h {{
-        background: rgba(255,255,255,.05);
-        font-weight: 900;
-      }}
-      .whale-page .row:last-child {{ border-bottom: none; }}
-      .whale-page .muted {{ color: rgba(255,255,255,.70); font-weight: 700; }}
-      .whale-page .guide {{
-        border-radius: 14px;
-        border: 1px solid rgba(255,255,255,.10);
-        background: rgba(0,0,0,.18);
-        padding: 12px;
-      }}
-      .whale-page .guide h3 {{ margin:0 0 6px 0; font-size: 14px; font-weight: 900; }}
-      .whale-page .guide ul {{ margin: 6px 0 0 18px; color: rgba(255,255,255,.82); }}
-      .whale-page .small {{ font-size: 12px; color: rgba(255,255,255,.70); font-weight: 700; }}
-    </style>
-
-    <div class="whale-page">
-      <div class="panel">
-        <div class="top">
-          <div>
-            <div style="font-weight: 900; font-size: 18px;">AI Whale Watcher</div>
-            <div class="sub">{html.escape(source_text)}</div>
-            <div class="sub" style="margin-top:6px;">Statut: <b>{html.escape(status_badge)}</b></div>
-          </div>
-          <div class="actions">
-            <button class="btn" onclick="location.reload()">Rafraîchir</button>
-            <span class="pill"><span class="muted">Événements:</span> <span id="whaleCount">{len(events)}</span></span>
-          </div>
-        </div>
-
-        <div class="grid">
-          <div class="feed" id="whaleFeed"></div>
-
-          <div class="guide">
-            <h3>Comment utiliser cette page</h3>
-            <ul>
-              <li>Surveille les <b>grosses transactions</b> et la destination (<b>exchange</b> vs <b>wallet</b>).</li>
-              <li>Vers exchange = pression de vente potentielle (pas garanti).</li>
-              <li>Hors exchange = accumulation/staking possible (pas garanti).</li>
-              <li>Combine avec <b>Market Regime</b> + niveaux techniques.</li>
-            </ul>
-            <div class="small" style="margin-top:10px;">Astuce: plusieurs gros mouvements rapprochés valent souvent plus qu’un seul.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <script>
-      const DATA = {json.dumps(events, ensure_ascii=False)};
-      function short(s, n=14) {{
-        if (!s) return "—";
-        s = String(s);
-        return s.length > n ? s.slice(0,n) + "…" : s;
-      }}
-      function render() {{
-        const el = document.getElementById("whaleFeed");
-        if (!DATA || DATA.length === 0) {{
-          el.innerHTML = '<div class="row"><div class="muted">Aucune donnée pour le moment.</div></div>';
-          return;
-        }}
-        let h = '';
-        h += '<div class="row h"><div>Heure</div><div>Actif</div><div>Montant</div><div>Détails</div></div>';
-        for (const it of DATA.slice(0, 60)) {{
-          const time = (it.time || it.timestamp || "—").toString().slice(0, 16);
-          const asset = (it.asset || it.symbol || "—").toString().toUpperCase();
-          const amt = (it.amount || it.value || it.qty || "—").toString();
-          const from = short(it.from || it.from_owner || it.from_address);
-          const to = short(it.to || it.to_owner || it.to_address);
-          h += '<div class="row"><div class="muted">' + time + '</div><div>' + asset + '</div><div>' + amt + '</div><div><span class="muted">de</span> ' + from + ' <span class="muted">→</span> ' + to + '</div></div>';
-        }}
-        el.innerHTML = h;
-      }}
-      render();
-    </script>
-    """
-
-    return _simple_page("AI Whale Watcher", body, sidebar_html=SIDEBAR_FULL)
 
 @app.get("/api/fear-greed-full")
 async def fear_greed_full():
@@ -69963,4 +69543,177 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
         active_page=active_page,
     )
     return _HTMLResponse(html)
+
+
+
+
+@app.get("/ai-whale-watcher")
+async def ai_whale_watcher():
+    # Whale threshold (BTC). 100 BTC is "true whale" but can be quiet; you can lower via env WHALE_MIN_BTC.
+    try:
+        min_btc = float(os.getenv("WHALE_MIN_BTC", "100"))
+    except Exception:
+        min_btc = 100.0
+
+    # How many rows to show
+    limit = 5
+
+    # Live BTC price (best-effort)
+    try:
+        btc_price = float(get_btc_price())
+    except Exception:
+        btc_price = 0.0
+
+    whales, meta = get_real_whale_transactions_meta(limit=limit, min_btc=min_btc)
+
+    demo_whales = [
+        {"time": "—", "asset": "—", "amount": 25.5, "details": "de — → —"},
+        {"time": "—", "asset": "—", "amount": 30.75, "details": "de — → —"},
+        {"time": "—", "asset": "—", "amount": 12.5, "details": "de — → —"},
+        {"time": "—", "asset": "—", "amount": 18.3, "details": "de — → —"},
+        {"time": "—", "asset": "—", "amount": 22.1, "details": "de — → —"},
+    ]
+
+    if meta.get("api_ok"):
+        # IMPORTANT: even if whales is empty, that's still "live" — it just means no tx >= min_btc right now.
+        status_badge = "✅ VRAIES DONNÉES EN DIRECT"
+        source_line = f"Source: Blockchain.info API (TEMPS RÉEL) | Seuil: ≥ {min_btc:g} BTC"
+        if btc_price:
+            source_line += f" | BTC: ${btc_price:,.0f}"
+        else:
+            source_line += " | BTC: —"
+
+        if whales:
+            events = whales
+        else:
+            # show empty state but keep live status
+            events = []
+            raw_count = meta.get("raw_count")
+            msg = f"ℹ️ Aucun transfert ≥ {min_btc:g} BTC dans les dernières transactions non confirmées."
+            if isinstance(raw_count, int):
+                msg += f" (Transactions observées: {raw_count})"
+            print(msg)
+    else:
+        # API failed -> demo fallback
+        status_badge = "⚠️ Mode DÉMONSTRATION (Attente API)"
+        source_line = "Données démo avec prix LIVE"
+        if btc_price:
+            source_line += f" | BTC: ${btc_price:,.0f}"
+        else:
+            source_line += " | BTC: —"
+        events = demo_whales
+        err = meta.get("error")
+        print(f"⚠️ APIs indisponibles - Mode démo | {err or 'no details'}")
+
+    # Build the page HTML (keeps your current design)
+    rows_html = ""
+    if events:
+        for e in events:
+            t = e.get("time", "—")
+            a = e.get("asset", "BTC")
+            amt = e.get("amount", "—")
+            det = e.get("details", "—")
+            rows_html += f"""
+            <tr>
+              <td style="padding:10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);">{t}</td>
+              <td style="padding:10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-weight:700;">{a}</td>
+              <td style="padding:10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-weight:700;">{amt}</td>
+              <td style="padding:10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);">{det}</td>
+            </tr>
+            """
+    else:
+        rows_html = f"""
+          <tr>
+            <td colspan="4" style="padding:14px 12px; color:rgba(255,255,255,0.75);">
+              Aucune transaction ≥ {min_btc:g} BTC pour le moment. (Ce n’est pas une erreur.)
+            </td>
+          </tr>
+        """
+
+    body = f"""
+    <div class="card" style="padding:18px 18px 14px 18px;">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+        <div>
+          <div style="font-size:18px; font-weight:800; margin-bottom:2px;">AI Whale Watcher</div>
+          <div style="color:rgba(255,255,255,0.8); font-size:13px; margin-bottom:6px;">{source_line}</div>
+          <div style="font-size:13px;">
+            <span class="badge" style="display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">
+              Statut: <b>{status_badge}</b>
+            </span>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center;">
+          <a class="btn" href="/ai-whale-watcher" style="text-decoration:none;">Rafraîchir</a>
+          <span class="badge" style="padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">Événements: {len(events) if events else 0}</span>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1.4fr 1fr; gap:14px; margin-top:14px;">
+        <div class="card" style="padding:0; overflow:hidden;">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="background: rgba(255,255,255,0.04);">
+                <th style="text-align:left; padding:12px;">Heure</th>
+                <th style="text-align:left; padding:12px;">Actif</th>
+                <th style="text-align:left; padding:12px;">Montant</th>
+                <th style="text-align:left; padding:12px;">Détails</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows_html}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card" style="padding:14px;">
+          <div style="font-weight:800; margin-bottom:8px;">Comment utiliser cette page</div>
+          <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,0.9);">
+            <li>Surveille les <b>grosses transactions</b> et la destination (<b>exchange vs wallet</b>).</li>
+            <li>Vers exchange = pression de vente potentielle (pas garanti).</li>
+            <li>Hors exchange = accumulation/staking possible (pas garanti).</li>
+            <li>Combine avec <b>Market Regime</b> + niveaux techniques.</li>
+          </ul>
+          <div style="margin-top:10px; font-size:12px; color:rgba(255,255,255,0.7);">
+            Astuce: si tu mets un seuil très haut (ex: 100 BTC), c'est normal d'avoir souvent 0 événement.
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+    footer = """
+    <div class="card" style="padding:14px; margin-top:14px;">
+      <div style="font-weight:800; margin-bottom:6px;">📌 Aide – AI Whale Watcher</div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+        <div class="card" style="padding:12px;">
+          <div style="font-weight:800; margin-bottom:4px;">À quoi sert cette page ?</div>
+          <div style="color:rgba(255,255,255,0.85);">Surveillance des mouvements “whales” et activité inhabituelle.</div>
+        </div>
+        <div class="card" style="padding:12px;">
+          <div style="font-weight:800; margin-bottom:4px;">Comment l'utiliser ?</div>
+          <div style="color:rgba(255,255,255,0.85);">Ne poursuis pas le prix: utilise ces infos comme contexte, pas comme signal unique.</div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; align-items:center; justify-content:space-between;">
+        <div style="display:flex; gap:10px; align-items:center; color:rgba(255,255,255,0.75); font-size:12px;">
+          <span class="badge" style="padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">Données</span>
+          <span style="opacity:.9;">Blockchain.info + CoinGecko (prix)</span>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; color:rgba(255,255,255,0.75); font-size:12px;">
+          <span class="badge" style="padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">Dernière maj</span>
+          <span>{datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")} UTC</span>
+          <span class="badge" style="padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">Statut</span>
+          <span>OK</span>
+        </div>
+      </div>
+
+      <div style="margin-top:10px; color:rgba(255,255,255,0.65); font-size:12px;">
+        Note données: certaines infos proviennent de sources externes (APIs, données de marché) et peuvent avoir un délai ou des variations. Rien ici n’est une garantie: vérifie toujours avant d’exécuter un trade.
+      </div>
+    </div>
+    """
+
+    return _simple_page("AI Whale Watcher", body + footer, sidebar_html=SIDEBAR_FULL)
 

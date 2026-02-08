@@ -70150,6 +70150,22 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
       .main.has-sidebar .page-wrap {{
         margin: 0;
         max-width: 1500px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }}
+      /* When a sidebar exists, many pages use a top-level .wrap/.container with margin: 0 auto (centered).
+         On large screens that creates a big “gap” beside the sidebar. Force the first container to align left. */
+      .main.has-sidebar .page-wrap > .wrap,
+      .main.has-sidebar .page-wrap > .container,
+      .main.has-sidebar .page-wrap > .content,
+      .main.has-sidebar .page-wrap > .card-grid,
+      .main.has-sidebar .page-wrap > section,
+      .main.has-sidebar .page-wrap > article {{
+        margin-left: 0 !important;
+        margin-right: auto !important;
+        width: 100%;
+        max-width: 1500px;
       }}
       .main.has-sidebar {{
         align-items: flex-start;

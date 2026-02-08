@@ -70138,7 +70138,15 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
       max-width: 1400px;
       margin: 0 auto;
     }}
-    .page-title {{
+    
+      .main.has-sidebar .page-wrap {{
+        margin: 0;
+        max-width: 1500px;
+      }}
+      .main.has-sidebar {{
+        align-items: flex-start;
+      }}
+.page-title {{
       font-size: 32px;
       font-weight: 800;
       letter-spacing: .2px;
@@ -70148,7 +70156,7 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
 </head>
 <body data-active="{active_page}">
   {sidebar_block}
-  <main class='main'>
+  <main class='main{(' has-sidebar' if sidebar_html else '')}'>
     <div class='page-wrap'>
       {title_block}
       {body_html}

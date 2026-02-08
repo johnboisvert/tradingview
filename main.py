@@ -69732,7 +69732,7 @@ async def ai_whale_watcher():
         </div>
         <div style="display:flex; gap:10px; align-items:center; color:rgba(255,255,255,0.75); font-size:12px;">
           <span class="badge" style="padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">Dernière maj</span>
-          <span>{last_updated} UTC</span>
+          <span>{dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")} UTC</span>
           <span class="badge" style="padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">Statut</span>
           <span>OK</span>
         </div>

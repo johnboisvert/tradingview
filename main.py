@@ -414,6 +414,27 @@ async def get_real_whale_transactions(min_btc: float = 100.0, limit: int = 20):
 
 
 
+
+def _http_get_json_sync(url, timeout=8.0, headers=None):
+    """Small sync JSON fetcher (stdlib only). Returns (data, status_code, error)."""
+    try:
+        import urllib.request, json as _json
+        req_headers = {"User-Agent": "CryptoIA/1.0", "Accept": "application/json"}
+        if headers:
+            req_headers.update(headers)
+        req = urllib.request.Request(url, headers=req_headers)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            status = getattr(resp, "status", None) or resp.getcode()
+            raw = resp.read()
+        try:
+            data = _json.loads(raw.decode("utf-8", errors="ignore"))
+        except Exception as e:
+            return None, status, f"json decode failed: {e}"
+        return data, status, None
+    except Exception as e:
+        return None, None, str(e)
+
+
 def get_real_whale_transactions_meta(limit: int = 5, min_btc: float = 100.0):
     """Fetch whale-like BTC transfers from public endpoints.
 
@@ -445,12 +466,14 @@ def get_real_whale_transactions_meta(limit: int = 5, min_btc: float = 100.0):
     for base in sources:
         try:
             url = f"{base}/unconfirmed-transactions?format=json"
-            r = requests.get(url, headers=headers, timeout=8)
-            if not r.ok:
-                meta["error"] = f"HTTP {r.status_code} from {base}"
+            data, status_code, err = _http_get_json_sync(url, timeout=8.0, headers=headers)
+            if err or not isinstance(data, dict):
+                meta["error"] = f"Fetch fail ({base}): {err or 'invalid json'}"
+                continue
+            if status_code and int(status_code) >= 400:
+                meta["error"] = f"HTTP {status_code} from {base}"
                 continue
 
-            data = r.json() if r.text else {}
             txs = data.get("txs") or data.get("transactions") or []
             if not isinstance(txs, list):
                 meta["error"] = f"unexpected payload from {base}"
@@ -2007,6 +2030,12 @@ UPCOMING_GEMS_COMPLETE = [
 
 import sqlite3
 import json
+
+# Optional dependency (some hosts don't ship requests)
+try:
+    import requests  # type: ignore
+except Exception:
+    requests = None
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, List
 
@@ -69682,7 +69711,7 @@ async def ai_whale_watcher():
     </div>
     """
 
-    footer = """
+    footer = f"""
     <div class="card" style="padding:14px; margin-top:14px;">
       <div style="font-weight:800; margin-bottom:6px;">📌 Aide – AI Whale Watcher</div>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
@@ -69703,7 +69732,7 @@ async def ai_whale_watcher():
         </div>
         <div style="display:flex; gap:10px; align-items:center; color:rgba(255,255,255,0.75); font-size:12px;">
           <span class="badge" style="padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">Dernière maj</span>
-          <span>{datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")} UTC</span>
+          <span>{last_updated} UTC</span>
           <span class="badge" style="padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12);">Statut</span>
           <span>OK</span>
         </div>

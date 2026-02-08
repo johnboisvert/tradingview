@@ -27316,8 +27316,7 @@ async def ai_assistant_page(request: Request):
     </script>
     """
 
-    body = f"<style>{styles}</style>
-" + body
+    body = f"<style>{styles}</style>\n" + body
 
     return _simple_page("AI Assistant", body, request=request, sidebar_html=sidebar_html, show_title=False)
 
@@ -34967,8 +34966,7 @@ async def ai_signals_page(request: Request):
 
     body = body.replace("___INITIAL_JSON___", initial_json)
 
-    body = f"<style>{styles}</style>
-" + body
+    body = f"<style>{styles}</style>\n" + body
 
     return _simple_page("AI Signals", body, request=request, sidebar_html=sidebar_html, show_title=False)
 

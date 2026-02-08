@@ -1652,7 +1652,13 @@ def predict_price_ai(crypto_data):
     current_price = crypto_data.get('current_price', 0)
     mcap = crypto_data.get('market_cap', 0)
     volume = crypto_data.get('total_volume', 0)
-    change_24h = crypto_data.get('price_change_percentage_24h', 0)
+    change_24h = crypto_data.get('price_change_percentage_24h')
+    if change_24h is None:
+        change_24h = 0
+    try:
+        change_24h = float(change_24h)
+    except Exception:
+        change_24h = 0
     change_7d = crypto_data.get('price_change_percentage_7d_in_currency', change_24h * 3)
     rank = crypto_data.get('market_cap_rank', 100)
     
@@ -70101,6 +70107,8 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
         sidebar_block = "<aside class='sidebar'>%s</aside>" % sidebar_html
         main_margin = "280px"
 
+    sidebar_class = " has-sidebar" if sidebar_html else ""
+
     title_block = ("<div class='page-title'>%s</div>" % safe_title) if show_title else ""
 
     html = """<!doctype html>
@@ -70156,7 +70164,7 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
 </head>
 <body data-active="{active_page}">
   {sidebar_block}
-  <main class='main{(' has-sidebar' if sidebar_html else '')}'>
+  <main class='main{sidebar_class}'>
     <div class='page-wrap'>
       {title_block}
       {body_html}
@@ -70183,6 +70191,7 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
 </html>""".format(
         safe_title=safe_title,
         main_margin=main_margin,
+            sidebar_class=sidebar_class,
         sidebar_block=sidebar_block,
         title_block=title_block,
         body_html=body_html,

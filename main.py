@@ -20,6 +20,10 @@ def _html_escape(value):
 # =========================
 # RATE LIMITER (safe fallback)
 # =========================
+
+# Backward-compatible alias used by some page builders
+escape = _html_escape
+
 class _NoopLimiterFallback:
     """Fallback limiter so @limiter.limit(...) never crashes if SlowAPI isn't configured."""
     def limit(self, *args, **kwargs):

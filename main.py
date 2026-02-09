@@ -35583,7 +35583,7 @@ async def ai_news_page(request: Request):
         }}
     </style>
     """
-    return HTMLResponse(_simple_page("AI News", content_html, active="/ai-news"))
+    return _simple_page("AI News", content_html, active="/ai-news")
 
 @app.get("/api/ai-news")
 async def api_ai_news():
@@ -35758,7 +35758,7 @@ async def ai_predictor(request: Request):
         }}
     </style>
     """
-    return HTMLResponse(_simple_page("AI Predictor", content, active="/ai-predictor"))
+    return _simple_page("AI Predictor", content, active="/ai-predictor")
 
 @app.get("/api/ai-predictor")
 async def api_ai_predictor():

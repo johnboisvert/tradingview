@@ -35802,16 +35802,25 @@ async def ai_predictor(request: Request):
           </div>
 
           <div class='tableWrap'>
-            <table>
+            <table class='predTable'>
+              <colgroup>
+                <col style='width:180px' />
+                <col style='width:150px' />
+                <col style='width:150px' />
+                <col style='width:150px' />
+                <col style='width:150px' />
+                <col style='width:220px' />
+                <col style='width:120px' />
+              </colgroup>
               <thead>
                 <tr>
-                  <th>Actif</th>
-                  <th>Prix</th>
-                  <th>Préd. 1 jour</th>
-                  <th>Préd. 3 jours</th>
-                  <th>Préd. 7 jours</th>
-                  <th>Tendance 7j</th>
-                  <th>Confiance</th>
+                  <th class='asset'>Actif</th>
+                  <th class='num'>Prix</th>
+                  <th class='num'>Préd. 1 jour</th>
+                  <th class='num'>Préd. 3 jours</th>
+                  <th class='num'>Préd. 7 jours</th>
+                  <th class='spark'>Tendance 7j</th>
+                  <th class='conf'>Confiance</th>
                 </tr>
               </thead>
               <tbody>
@@ -35845,11 +35854,11 @@ async def ai_predictor(request: Request):
       .small{font-size:12px}
       .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
       .tableWrap{overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,.08)}
-      table{width:100%;border-collapse:separate;border-spacing:0;min-width:900px}
-      thead th{position:sticky;top:0;background:rgba(0,0,0,.35);backdrop-filter:blur(8px);text-align:left;padding:12px 12px;font-size:12px;letter-spacing:.2px;color:rgba(255,255,255,.7);border-bottom:1px solid rgba(255,255,255,.08)}
-      tbody td{padding:12px 12px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}
-      tbody tr:hover{background:rgba(255,255,255,.03)}
-      td.num{text-align:right;font-weight:900}
+      table.predTable{width:100%;border-collapse:separate;border-spacing:0;min-width:1120px;table-layout:fixed}
+      table.predTable thead th{position:sticky;top:0;background:rgba(0,0,0,.35);backdrop-filter:blur(8px);padding:12px 12px;font-size:12px;letter-spacing:.2px;color:rgba(255,255,255,.7);border-bottom:1px solid rgba(255,255,255,.08);white-space:nowrap}
+      table.predTable tbody td{padding:12px 12px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}
+      table.predTable tbody tr:hover{background:rgba(255,255,255,.03)}
+      td.num{text-align:right;font-weight:900;white-space:nowrap;font-variant-numeric:tabular-nums}
       td.spark{text-align:center}
       .sub{font-weight:700;font-size:12px;color:rgba(255,255,255,.65);margin-top:4px}
       .symBox{display:flex;flex-direction:column;gap:2px}
@@ -35859,7 +35868,17 @@ async def ai_predictor(request: Request):
       .sparkWrap.up{color:#34d399}
       .sparkWrap.down{color:#fb7185}
       .pill{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.10);font-weight:950}
-      @media (max-width: 900px){.hero{flex-direction:column;align-items:flex-start} table{min-width:820px}}
+      table.predTable thead th.asset{text-align:left}
+      table.predTable thead th.num{text-align:right}
+      table.predTable thead th.spark{text-align:center}
+      table.predTable thead th.conf{text-align:center}
+      td.sym{width:180px}
+      td.spark{text-align:center}
+      td.conf{text-align:center}
+      td.conf .pill{min-width:64px}
+      .sparkWrap svg{display:block}
+
+      @media (max-width: 900px){.hero{flex-direction:column;align-items:flex-start} table.predTable{min-width:980px}}
     </style>
     """
 

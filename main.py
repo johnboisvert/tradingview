@@ -7901,56 +7901,149 @@ def _parse_rss_or_atom(xml_text: str, source_name: str):
             })
     return items
 
-async def get_crypto_news_rss(max_items: int = 60, ttl_sec: int = 90):
-    now = time.time()
-    if _news_cache["data"] and (now - _news_cache["ts"] < ttl_sec):
-        return _news_cache["data"][:max_items]
+async def get_crypto_news_rss(limit: int = 30, topic: str = "all", prefer_lang: str = "fr"):
+    """News *réelles* via flux RSS (FR prioritaire, fallback EN si besoin).
 
-    async def fetch_one(src):
+    topic: all | btc | eth | altcoins | regulation | etf
+    prefer_lang: fr | en
+    """
+    import datetime as _dt
+
+    # Sources RSS (choisies pour être stables / publiques)
+    # NB: certains sites changent parfois leurs feeds — on garde plusieurs fallbacks.
+    SOURCES_FR = [
+        ("Journal du Coin", "https://journalducoin.com/feed/"),
+        ("Cryptonaute", "https://cryptonaute.fr/feed/"),
+        ("Cryptoast", "https://cryptoast.fr/feed/"),
+    ]
+    SOURCES_EN = [
+        ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
+        ("Cointelegraph", "https://cointelegraph.com/rss"),
+        ("Bitcoin Magazine", "https://bitcoinmagazine.com/.rss/full/"),
+        ("The Block", "https://www.theblock.co/rss.xml"),
+    ]
+
+    def _topic_of(text: str) -> str:
+        t = (text or "").lower()
+        if any(k in t for k in ["etf", "spot etf", "approval", "approuve", "approuvé"]):
+            return "etf"
+        if any(k in t for k in ["sec", "cftc", "regulation", "régulation", "mica", "amf", "lawsuit", "procès", "ban", "interdit"]):
+            return "regulation"
+        if any(k in t for k in ["ethereum", " eth ", "eth/", "eth:", "eth$", "vitalik"]):
+            return "eth"
+        if any(k in t for k in ["bitcoin", " btc ", "btc/", "btc:", "btc$", "satoshi"]):
+            return "btc"
+        # altcoins si mention d'un token courant ou mot-clé
+        if any(k in t for k in ["solana", "xrp", "cardano", "doge", "shiba", "avax", "tron", "ton", "bnb", "altcoin", "memecoin", "airdrop"]):
+            return "altcoins"
+        return "all"
+
+    def _impact_score(text: str, published: str) -> int:
+        base = 35
+        t = (text or "").lower()
+        weights = {
+            "hack": 22, "exploit": 22, "breach": 20, "pirat": 18,
+            "sec": 14, "lawsuit": 14, "régulation": 14, "regulation": 14,
+            "etf": 16, "approval": 16, "approuv": 16,
+            "liquidation": 14, "bankrupt": 16, "faillite": 16,
+            "whale": 8, "institution": 10, "blackrock": 12, "fidelity": 10,
+        }
+        for k,w in weights.items():
+            if k in t:
+                base += w
+        # bonus recency
         try:
-            r = await http_client.get(src["url"], timeout=15.0, follow_redirects=True, headers={
-                "User-Agent": "CryptoIA/1.0 (+ai-news; server-side)",
-                "Accept": "application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8",
-            })
-            if r.status_code >= 400:
-                return []
-            return _parse_rss_or_atom(r.text, src["name"])
+            # published est souvent ISO ou RFC822; on n'essaie pas d'être parfait
+            dt = None
+            for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%a, %d %b %Y %H:%M:%S %z"):
+                try:
+                    dt = _dt.datetime.strptime(published, fmt)
+                    break
+                except Exception:
+                    pass
+            if dt:
+                age_h = (_dt.datetime.now(_dt.timezone.utc) - dt.astimezone(_dt.timezone.utc)).total_seconds() / 3600
+                if age_h < 6:
+                    base += 14
+                elif age_h < 24:
+                    base += 8
+                elif age_h < 72:
+                    base += 4
         except Exception:
-            return []
+            pass
+        return max(0, min(100, int(base)))
 
-    results = await asyncio.gather(*(fetch_one(s) for s in NEWS_RSS_SOURCES))
-    items = [it for sub in results for it in sub]
+    async def _fetch_sources(sources, lang_tag: str):
+        out = []
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            for name, url in sources:
+                try:
+                    r = await client.get(url, headers={"user-agent": "Mozilla/5.0"})
+                    if r.status_code >= 400:
+                        continue
+                    feed = feedparser.parse(r.text)
+                    for e in (feed.entries or [])[: max(10, limit)]:
+                        title = (getattr(e, "title", "") or "").strip()
+                        link = (getattr(e, "link", "") or "").strip()
+                        summary = (getattr(e, "summary", "") or "").strip()
+                        # date
+                        published = ""
+                        if getattr(e, "published", None):
+                            published = e.published
+                        elif getattr(e, "updated", None):
+                            published = e.updated
+                        topic_guess = _topic_of(" ".join([title, summary]))
+                        if topic != "all" and topic_guess != topic:
+                            continue
+                        out.append({
+                            "title": title,
+                            "link": link,
+                            "summary": summary,
+                            "source": name,
+                            "published": published,
+                            "lang": lang_tag,
+                            "topic": topic_guess,
+                            "impact": _impact_score(" ".join([title, summary]), published or ""),
+                        })
+                except Exception:
+                    continue
+        return out
 
-    # De-dup by URL
+    fr_items = await _fetch_sources(SOURCES_FR, "FR")
+    en_items = await _fetch_sources(SOURCES_EN, "EN")
+
+    # dédoublonnage (par lien ou titre)
     seen = set()
-    uniq = []
-    for it in items:
-        u = (it.get("url") or "").strip()
-        if not u or u in seen:
-            continue
-        seen.add(u)
-        uniq.append(it)
+    merged = []
+    def _add(items):
+        nonlocal merged
+        for it in items:
+            key = (it.get("link") or it.get("title") or "").strip().lower()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            merged.append(it)
 
-    def sort_key(it):
-        p = it.get("published") or ""
-        try:
-            return parsedate_to_datetime(p).timestamp() if p else 0.0
-        except Exception:
-            # iso
-            try:
-                return dt.datetime.fromisoformat(p.replace("Z","+00:00")).timestamp()
-            except Exception:
-                return 0.0
+    # préférence FR; fallback EN si pas assez
+    if prefer_lang.lower().startswith("fr"):
+        _add(fr_items)
+        if len(merged) < max(8, limit // 2):
+            _add(en_items)
+    else:
+        _add(en_items)
+        if len(merged) < max(8, limit // 2):
+            _add(fr_items)
 
-    uniq.sort(key=sort_key, reverse=True)
-    _news_cache["ts"] = now
-    _news_cache["data"] = uniq
-    return uniq[:max_items]
+    # tri par impact + recency approximative
+    def _score(it):
+        imp = int(it.get("impact") or 0)
+        # petit bonus aux items FR
+        imp += 2 if (it.get("lang") == "FR") else 0
+        return imp
 
-# =========================
-# AI PREDICTOR - live data + simple model
-# =========================
-_predict_cache = {"ts": 0.0, "data": None}
+    merged.sort(key=_score, reverse=True)
+    return merged[:limit]
+
 
 async def _coingecko_market_chart(coin_id: str, days: int = 30, vs: str = "usd"):
     url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
@@ -7997,85 +8090,110 @@ def _compute_projection_from_prices(prices):
         "confidence": conf,
     }
 
-async def get_ai_predictor_live(max_coins: int = 18, ttl_sec: int = 90):
-    now = time.time()
-    if _predict_cache["data"] and (now - _predict_cache["ts"] < ttl_sec):
-        return _predict_cache["data"]
+async def get_ai_predictor_live(vs_currency: str = "usd", per_page: int = 15):
+    """Données *réelles* via CoinGecko (prix + sparkline 7j).  
+    On calcule des projections 1j / 3j / 7j à partir de la tendance observée (heuristique)."""
+    import math
+    import datetime as _dt
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        "vs_currency": vs_currency,
+        "order": "market_cap_desc",
+        "per_page": int(per_page),
+        "page": 1,
+        "sparkline": "true",
+        "price_change_percentage": "24h",
+    }
 
-    # Reuse existing helper (top coins) for live market data
-    coins = await get_top_50_cryptos()  # already server-side CoinGecko
-    coins = coins[:max_coins] if coins else []
+    def _pct(a, b):
+        try:
+            if a is None or b is None or a == 0:
+                return 0.0
+            return (b - a) / a * 100.0
+        except Exception:
+            return 0.0
 
-    # For performance: compute advanced projections only for top 8 coins
-    top_adv = coins[:8]
-    rest = coins[8:]
+    def _clamp(x, lo, hi):
+        return max(lo, min(hi, x))
 
-    adv_data = []
-    for c in top_adv:
-        cid = c.get("id") or ""
-        chart = await _coingecko_market_chart(cid, days=30, vs="usd") if cid else None
-        proj = _compute_projection_from_prices((chart or {}).get("prices") if chart else None)
-        adv_data.append((c, proj))
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            r = await client.get(url, params=params, headers={"accept": "application/json"})
+            r.raise_for_status()
+            data = r.json()
+    except Exception as e:
+        # Fallback minimal si CoinGecko rate-limit: renvoyer liste vide (page gère l'état)
+        return {"updated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(), "items": [], "error": str(e)}
 
-    results = []
-    for c, proj in adv_data:
-        current = float(c.get("current_price") or 0.0)
-        chg24 = float(c.get("price_change_percentage_24h") or 0.0)
-        # If projection failed, fallback to simple momentum extrapolation
-        if not proj or proj.get("current", 0) <= 0:
-            proj_7d = current * (1.0 + max(-0.25, min(0.25, chg24 / 100.0 * 3.0)))
-            conf = int(max(45, min(85, 70 - abs(chg24))))
-            drift = (proj_7d/current - 1.0)*100 if current else 0.0
-            vol = abs(chg24)*2.0
-        else:
-            proj_7d = proj["proj_7d"]
-            conf = proj["confidence"]
-            drift = proj["drift_7d"]
-            vol = proj["vol_7d"]
-        results.append({
-            "rank": int(c.get("market_cap_rank") or 999),
-            "id": c.get("id",""),
-            "symbol": (c.get("symbol") or "").upper(),
-            "name": c.get("name",""),
-            "price": current,
-            "chg24": chg24,
-            "mcap": float(c.get("market_cap") or 0.0),
-            "volume": float(c.get("total_volume") or 0.0),
-            "proj7": float(proj_7d),
-            "drift7": float(drift),
-            "vol7": float(vol),
-            "confidence": int(conf),
-        })
+    items = []
+    now_iso = _dt.datetime.now(_dt.timezone.utc).isoformat()
+    for coin in data or []:
+        try:
+            name = coin.get("name") or ""
+            symbol = (coin.get("symbol") or "").upper()
+            price = float(coin.get("current_price") or 0.0)
+            mcap = coin.get("market_cap") or 0
+            vol24 = coin.get("total_volume") or 0
+            spark = (coin.get("sparkline_in_7d") or {}).get("price") or []
+            # drift 7j sur sparkline (début -> fin)
+            d7 = _pct(spark[0], spark[-1]) if len(spark) >= 2 else float(coin.get("price_change_percentage_7d_in_currency") or 0.0)
+            # drift 1j / 3j depuis sparkline (approx hourly)
+            d1 = _pct(spark[-25], spark[-1]) if len(spark) >= 26 else d7 / 7.0
+            d3 = _pct(spark[-73], spark[-1]) if len(spark) >= 74 else d7 * 3.0 / 7.0
 
-    # Rest: lightweight model
-    for c in rest:
-        current = float(c.get("current_price") or 0.0)
-        chg24 = float(c.get("price_change_percentage_24h") or 0.0)
-        # light projection: 24h momentum with clamp
-        proj_7d = current * (1.0 + max(-0.18, min(0.18, chg24 / 100.0 * 2.4)))
-        conf = int(max(45, min(82, 68 - abs(chg24))))
-        drift = (proj_7d/current - 1.0)*100 if current else 0.0
-        vol = abs(chg24)*2.2
-        results.append({
-            "rank": int(c.get("market_cap_rank") or 999),
-            "id": c.get("id",""),
-            "symbol": (c.get("symbol") or "").upper(),
-            "name": c.get("name",""),
-            "price": current,
-            "chg24": chg24,
-            "mcap": float(c.get("market_cap") or 0.0),
-            "volume": float(c.get("total_volume") or 0.0),
-            "proj7": float(proj_7d),
-            "drift7": float(drift),
-            "vol7": float(vol),
-            "confidence": int(conf),
-        })
+            # projections (heuristique, pas un conseil financier)
+            proj1 = price * (1 + (d1 / 100.0))
+            proj3 = price * (1 + (d3 / 100.0))
+            proj7 = price * (1 + (d7 / 100.0))
 
-    results.sort(key=lambda x: x["rank"])
-    _predict_cache["ts"] = now
-    _predict_cache["data"] = results
-    return results
+            # volatilité simple (écart-type des rendements) -> confiance inverse
+            conf = 70.0
+            try:
+                if len(spark) >= 30:
+                    rets = []
+                    for i in range(1, len(spark)):
+                        a = spark[i - 1]
+                        b = spark[i]
+                        if a and a > 0:
+                            rets.append((b - a) / a)
+                    if rets:
+                        mean = sum(rets) / len(rets)
+                        var = sum((x - mean) ** 2 for x in rets) / max(1, (len(rets) - 1))
+                        vol = math.sqrt(var) * 100
+                        # plus vol est haute -> confiance baisse
+                        conf = 82.0 - vol * 1.8
+            except Exception:
+                pass
+            # bonus léger si volume élevé
+            try:
+                if vol24 and vol24 > 1_000_000_000:
+                    conf += 4
+                if mcap and mcap > 50_000_000_000:
+                    conf += 3
+            except Exception:
+                pass
+            conf = _clamp(conf, 40.0, 90.0)
 
+            items.append({
+                "name": name,
+                "symbol": symbol,
+                "price": price,
+                "proj_1d": proj1,
+                "proj_3d": proj3,
+                "proj_7d": proj7,
+                "drift_1d": d1,
+                "drift_3d": d3,
+                "drift_7d": d7,
+                "spark_7d": spark[-120:] if isinstance(spark, list) else [],
+                "market_cap": mcap,
+                "volume_24h": vol24,
+                "change_24h": float(coin.get("price_change_percentage_24h") or 0.0),
+                "confidence": conf,
+            })
+        except Exception:
+            continue
+
+    return {"updated_at": now_iso, "items": items, "error": None}
 
 
 @app.middleware("http")
@@ -35430,163 +35548,156 @@ async def ai_alerts_inbox(request: Request):
 
 @app.get("/ai-news", response_class=HTMLResponse)
 async def ai_news_page(request: Request):
-    """AI News — agrégation RSS côté serveur (données réelles)."""
-    try:
-        news = await get_crypto_news_rss(max_items=60, ttl_sec=90)
-    except Exception:
-        news = []
+    # filtres: ?topic=btc|eth|altcoins|regulation|etf (all par défaut)
+    topic = (request.query_params.get("topic") or "all").strip().lower()
+    if topic not in {"all","btc","eth","altcoins","regulation","etf"}:
+        topic = "all"
 
-    # UI state (filters) via query params
-    q = (request.query_params.get("q") or "").strip().lower()
-    source = (request.query_params.get("source") or "").strip()
-    senti = (request.query_params.get("s") or "").strip()  # positif / neutre / negatif
+    items = await get_crypto_news_rss(limit=30, topic=topic, prefer_lang="fr")
 
-    filtered = []
-    for it in news:
-        title = it.get("title","")
-        summary = it.get("summary","")
-        if q and (q not in title.lower() and q not in summary.lower()):
-            continue
-        if source and it.get("source") != source:
-            continue
-        if senti and it.get("sentiment") != senti:
-            continue
-        filtered.append(it)
+    # Top tendances (mots-clés) — simple et lisible
+    stop = set([
+        "the","a","an","and","or","to","of","in","on","for","with","from","by",
+        "le","la","les","un","une","des","de","du","dans","sur","pour","avec","par",
+        "bitcoin","btc","ethereum","eth","crypto","cryptos","blockchain"
+    ])
+    counts = {}
+    for it in items[:20]:
+        title = (it.get("title") or "").lower()
+        for w in re.findall(r"[a-zàâçéèêëîïôûùüÿñæœ]{3,}", title):
+            if w in stop:
+                continue
+            counts[w] = counts.get(w, 0) + 1
+    top_words = sorted(counts.items(), key=lambda x: x[1], reverse=True)[:8]
 
-    sources = sorted({it.get("source","") for it in news if it.get("source")})
-    def pill(label, value, active):
-        cls = "pill active" if active else "pill"
-        href = f"/ai-news?q={quote_plus(q)}&source={quote_plus(source)}&s={quote_plus(value)}" if value else f"/ai-news?q={quote_plus(q)}&source={quote_plus(source)}"
-        return f'<a class="{cls}" href="{href}">{label}</a>'
+    # UI filtres
+    def filt(label, key):
+        active = "active" if key == topic else ""
+        href = "/ai-news" if key == "all" else f"/ai-news?topic={key}"
+        return f"<a class='chip {active}' href='{href}'>{label}</a>"
 
-    cards_html = []
-    for it in filtered[:40]:
-        title = escape(it.get("title",""))
-        url = escape(it.get("url",""))
-        src = escape(it.get("source",""))
-        summ = escape(it.get("summary",""))
-        sentiment = it.get("sentiment","neutre")
-        tickers = it.get("tickers") or []
-        tag_html = "".join([f'<span class="tag">{escape(t)}</span>' for t in tickers]) if tickers else ""
-        badge_cls = {"positif":"badge good","negatif":"badge bad"}.get(sentiment, "badge neutral")
-        badge_txt = {"positif":"Haussier","negatif":"Risque","neutre":"Neutre"}.get(sentiment, "Neutre")
-        cards_html.append(f"""
-            <a class="news-card" href="{url}" target="_blank" rel="noopener">
-                <div class="news-top">
-                    <span class="{badge_cls}">{badge_txt}</span>
-                    <span class="source">{src}</span>
-                </div>
-                <div class="title">{title}</div>
-                <div class="summary">{summ}</div>
-                <div class="tags">{tag_html}</div>
-            </a>
-        """)
+    filter_bar = "".join([
+        filt("Tout", "all"),
+        filt("BTC", "btc"),
+        filt("ETH", "eth"),
+        filt("Altcoins", "altcoins"),
+        filt("Régulation", "regulation"),
+        filt("ETF", "etf"),
+    ])
 
-    # header stats
-    n_total = len(filtered)
-    n_pos = sum(1 for it in filtered if it.get("sentiment") == "positif")
-    n_neg = sum(1 for it in filtered if it.get("sentiment") == "negatif")
+    trending = ""
+    if top_words:
+        trending = "".join([f"<span class='tag'>{html.escape(w)} <b>{c}</b></span>" for w,c in top_words])
+        trending = f"<div class='card trend'><div class='cardTop'><div class='title'>Top news tendances</div><div class='hint'>Basé sur les titres les plus récents</div></div><div class='tags'>{trending}</div></div>"
 
-    content_html = f"""
-    <div class="page-hero">
-        <div class="hero-left">
-            <div class="kicker">📰 AI News — CryptoIA</div>
-            <h1>Actu Crypto <span class="wow">WOW</span></h1>
-            <div class="sub">
-                Agrégation temps réel (RSS) : titres + résumé + tags. Filtre par source / sentiment / recherche.<br><span style='opacity:.85'>Sources : flux RSS publics (données réelles). Cache serveur ~90s pour performance.</span>
+    # news cards
+    cards = ""
+    for it in items:
+        title = html.escape(it.get("title") or "Sans titre")
+        link = html.escape(it.get("link") or "#")
+        source = html.escape(it.get("source") or "Source")
+        published = html.escape(it.get("published") or "")
+        lang = html.escape(it.get("lang") or "")
+        tpc = html.escape((it.get("topic") or "all").upper())
+        impact = int(it.get("impact") or 0)
+
+        # badge impact color
+        if impact >= 80:
+            imp_cls = "hi"
+        elif impact >= 60:
+            imp_cls = "mid"
+        else:
+            imp_cls = "low"
+
+        # mini résumé FR (si summary dispo)
+        summary = (it.get("summary") or "").strip()
+        if summary:
+            # nettoyer HTML et limiter longueur
+            summary = re.sub(r"<[^>]+>", "", summary)
+            summary = summary.strip()
+            if len(summary) > 220:
+                summary = summary[:217] + "…"
+            summary_html = f"<div class='sum'>{html.escape(summary)}</div>"
+        else:
+            summary_html = "<div class='sum muted'>Résumé indisponible (clique pour lire l’article).</div>"
+
+        cards += f"""
+        <article class='news'>
+          <div class='newsTop'>
+            <div class='meta'>
+              <span class='badge'>{source}</span>
+              <span class='badge ghost'>{lang}</span>
+              <span class='badge ghost'>{tpc}</span>
+              <span class='when'>{published}</span>
             </div>
-            <div class="stats">
-                <div class="stat"><div class="n">{n_total}</div><div class="l">articles</div></div>
-                <div class="stat"><div class="n">{n_pos}</div><div class="l">haussier</div></div>
-                <div class="stat"><div class="n">{n_neg}</div><div class="l">risque</div></div>
-            </div>
-        </div>
-        <div class="hero-right">
-            <form class="controls" method="get" action="/ai-news">
-                <input class="search" name="q" value="{escape(q)}" placeholder="Rechercher (ex: ETF, SOL, hack...)"/>
-                <select class="select" name="source">
-                    <option value="">Toutes les sources</option>
-                    {''.join([f'<option value="{escape(s)}" {"selected" if s==source else ""}>{escape(s)}</option>' for s in sources])}
-                </select>
-                <div class="pills">
-                    {pill("Tous", "", senti=="")}
-                    {pill("Haussier", "positif", senti=="positif")}
-                    {pill("Neutre", "neutre", senti=="neutre")}
-                    {pill("Risque", "negatif", senti=="negatif")}
-                </div>
-                <button class="btn" type="submit">Filtrer</button>
-            </form>
-        </div>
-    </div>
+            <div class='impact {imp_cls}'>Impact marché: <b>{impact}/100</b></div>
+          </div>
+          <a class='newsTitle' href='{link}' target='_blank' rel='noopener'>{title}</a>
+          {summary_html}
+        </article>
+        """
 
-    <div class="grid">
-        {''.join(cards_html) if cards_html else '<div class="empty">Aucun article trouvé. Essaie une autre recherche / source.</div>'}
-    </div>
+    if not cards:
+        cards = "<div class='card'><p class='muted'>Aucune news trouvée pour ce filtre. Essaie <b>Tout</b> ou réessaie plus tard.</p></div>"
 
-    <div class="help">
-        <div class="help-card">
-            <h3>A quoi sert cette page ?</h3>
-            <p>Voir l’actualité crypto en un coup d’œil, sans pubs, avec un tri rapide (haussier / neutre / risque) et des tags de coins.</p>
-        </div>
-        <div class="help-card">
-            <h3>Comment l’utiliser ?</h3>
-            <p>1) Tape un mot-clé (ETF, hack, SOL). 2) Filtre par source/sentiment. 3) Ouvre un article en cliquant une carte.</p>
-        </div>
-        <div class="help-card">
-            <h3>Note</h3>
-            <p>Les résumés et sentiments sont heuristiques (pas un conseil financier). Les liens ouvrent les sources officielles.</p>
-        </div>
-    </div>
-
+    body = f"""
     <style>
-        .page-hero {{display:flex;gap:18px;align-items:stretch;justify-content:space-between;margin:6px 0 18px 0}}
-        .hero-left {{flex:1;min-width:320px}}
-        .kicker {{opacity:.8;font-size:12px;letter-spacing:.12em;text-transform:uppercase}}
-        h1 {{margin:8px 0 6px 0;font-size:42px;line-height:1.05}}
-        .wow {{background:linear-gradient(90deg,#7c3aed,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent}}
-        .sub {{opacity:.9;max-width:760px}}
-        .stats {{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}}
-        .stat {{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;min-width:120px}}
-        .stat .n {{font-size:18px;font-weight:800}}
-        .stat .l {{opacity:.8;font-size:12px}}
-        .hero-right {{width:420px;max-width:100%}}
-        .controls {{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:12px;backdrop-filter:blur(14px)}}
-        .search,.select {{width:100%;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#fff;margin-bottom:10px}}
-        .pills {{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px}}
-        .pill {{padding:7px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);text-decoration:none;color:#fff;font-size:12px}}
-        .pill.active {{border-color:rgba(34,211,238,.45);box-shadow:0 0 0 3px rgba(34,211,238,.12) inset}}
-        .btn {{width:100%;padding:10px 12px;border-radius:12px;border:none;background:linear-gradient(90deg,#7c3aed,#22d3ee);color:#fff;font-weight:800;cursor:pointer}}
-        .grid {{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}}
-        .news-card {{display:block;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:12px;text-decoration:none;color:#fff;transition:transform .12s ease,border-color .12s ease}}
-        .news-card:hover {{transform:translateY(-2px);border-color:rgba(34,211,238,.25)}}
-        .news-top {{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}}
-        .badge {{font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12)}}
-        .badge.good {{background:rgba(34,197,94,.14);border-color:rgba(34,197,94,.25)}}
-        .badge.bad {{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.25)}}
-        .badge.neutral {{background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.22)}}
-        .source {{opacity:.85;font-size:12px}}
-        .title {{font-weight:800;line-height:1.15;margin-bottom:6px}}
-        .summary {{opacity:.9;font-size:12.5px;line-height:1.35}}
-        .tags {{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}}
-        .tag {{font-size:11px;padding:4px 8px;border-radius:999px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.10)}}
-        .empty {{padding:18px;border-radius:16px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.18)}}
-        .help {{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}}
-        .help-card {{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:12px}}
-        .help-card h3 {{margin:0 0 6px 0;font-size:14px}}
-        .help-card p {{margin:0;opacity:.9;font-size:12.5px;line-height:1.4}}
-        @media (max-width: 1100px) {{
-            .grid {{grid-template-columns:repeat(2,minmax(0,1fr));}}
-            .page-hero {{flex-direction:column}}
-            .hero-right {{width:100%}}
-            .help {{grid-template-columns:1fr}}
-        }}
-        @media (max-width: 720px) {{
-            h1 {{font-size:34px}}
-            .grid {{grid-template-columns:1fr}}
-        }}
+      .hero{{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin:8px 0 14px}}
+      .hero h1{{font-size:28px;margin:0}}
+      .muted{{color:rgba(255,255,255,.75)}}
+      .small{{font-size:12px}}
+      .card{{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:16px}}
+      .cardTop{{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:10px}}
+      .title{{font-weight:900}}
+      .hint{{color:rgba(255,255,255,.7);font-size:13px}}
+      .chips{{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 16px}}
+      .chip{{padding:9px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);color:#e8f1ff;text-decoration:none;font-weight:800;font-size:13px}}
+      .chip:hover{{background:rgba(255,255,255,.06)}}
+      .chip.active{{background:rgba(79,70,229,.18);border-color:rgba(79,70,229,.35)}}
+      .trend .tags{{display:flex;flex-wrap:wrap;gap:10px}}
+      .tag{{display:inline-flex;gap:8px;align-items:center;padding:8px 10px;border-radius:999px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.10);color:rgba(255,255,255,.86);font-weight:700}}
+      .tag b{{color:#fff}}
+      .news{{background:rgba(0,0,0,.10);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px 14px 12px;margin-bottom:12px}}
+      .newsTop{{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}}
+      .meta{{display:flex;gap:8px;align-items:center;flex-wrap:wrap}}
+      .badge{{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.22);color:#d4ffe9;font-weight:900;font-size:12px}}
+      .badge.ghost{{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.10);color:rgba(255,255,255,.75)}}
+      .when{{font-size:12px;color:rgba(255,255,255,.65)}}
+      .impact{{padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);font-weight:900}}
+      .impact.hi{{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.25);color:#ffe5e5}}
+      .impact.mid{{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.25);color:#fff4dd}}
+      .impact.low{{background:rgba(99,102,241,.10);border-color:rgba(99,102,241,.22);color:#e7e9ff}}
+      .newsTitle{{display:block;margin:6px 0 8px;font-size:16px;font-weight:900;color:#e9f3ff;text-decoration:none}}
+      .newsTitle:hover{{text-decoration:underline}}
+      .sum{{color:rgba(255,255,255,.78);font-size:13px;line-height:1.35}}
+      @media (max-width: 900px){{ .hero{{flex-direction:column;align-items:flex-start}} }}
     </style>
+
+    <div class='hero'>
+      <div>
+        <h1>AI News</h1>
+        <p class='muted'>Flux RSS <b>réels</b> (FR prioritaire + fallback EN si insuffisant). Filtre: <b>{html.escape(topic.upper())}</b></p>
+      </div>
+      <div class='card small' style='padding:10px 12px'>
+        <div class='muted small'>Conseil: clique une news pour ouvrir la source officielle.</div>
+      </div>
+    </div>
+
+    <div class='chips'>{filter_bar}</div>
+
+    {trending}
+
+    <div class='card' style='margin-top:12px'>
+      <div class='cardTop'>
+        <div class='title'>Dernières news</div>
+        <div class='hint'>Score IA = estimation d’impact marché (heuristique)</div>
+      </div>
+      {cards}
+    </div>
     """
-    return _simple_page("AI News", content_html, sidebar_html=(globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""), active="/ai-news")
+
+    return _simple_page("AI News", body_html=body, sidebar_html=_sidebar_inner("/ai-news"), active_page="/ai-news")
+
 
 @app.get("/api/ai-news")
 async def api_ai_news():
@@ -35598,170 +35709,160 @@ async def api_ai_news():
 
 @app.get("/ai-predictor", response_class=HTMLResponse)
 async def ai_predictor(request: Request):
-    """AI Predictor — données live CoinGecko + projection statistique (WOW)."""
-    data = await get_ai_predictor_live(max_coins=18, ttl_sec=90)
+    data = await get_ai_predictor_live()
+    items = (data or {}).get("items") or []
+    updated_at = (data or {}).get("updated_at") or ""
+    err = (data or {}).get("error")
 
-    # Build cards for top 6
-    top = data[:6]
-    cards = []
-    for it in top:
-        up = it["proj7"] >= it["price"]
-        delta = ((it["proj7"]/it["price"])-1.0)*100 if it["price"] else 0.0
-        badge = "UP" if up else "DOWN"
-        cls = "up" if up else "down"
-        cards.append(f"""
-            <div class="card">
-                <div class="card-top">
-                    <div class="coin">
-                        <div class="sym">{escape(it['symbol'])}</div>
-                        <div class="name">{escape(it['name'])}</div>
-                    </div>
-                    <div class="badge {cls}">{badge}</div>
-                </div>
-                <div class="metric">
-                    <div class="k">Prix actuel</div>
-                    <div class="v">${it['price']:,.4f}</div>
-                    <div class="s {cls}">{it['chg24']:+.2f}% (24h)</div>
-                </div>
-                <div class="metric">
-                    <div class="k">Projection 7 jours</div>
-                    <div class="v">${it['proj7']:,.4f}</div>
-                    <div class="s {cls}">{delta:+.2f}%</div>
-                </div>
-                <div class="bar">
-                    <div class="bfill" style="width:{it['confidence']}%"></div>
-                </div>
-                <div class="small">
-                    Confiance: <b>{it['confidence']}%</b> · Drift 7j: <b>{it['drift7']:+.2f}%</b> · Vol 7j: <b>{it['vol7']:.1f}%</b>
-                </div>
+    def money(x):
+        try:
+            if x is None:
+                return "—"
+            x = float(x)
+            if x >= 1000:
+                return f"${x:,.0f}"
+            if x >= 1:
+                return f"${x:,.2f}"
+            return f"${x:,.6f}"
+        except Exception:
+            return "—"
+
+    def pct(x):
+        try:
+            x = float(x)
+            return f"{x:+.2f}%"
+        except Exception:
+            return "—"
+
+    def conf(x):
+        try:
+            return f"{int(round(float(x)))}%"
+        except Exception:
+            return "—"
+
+    rows = ""
+    for c in items:
+        d7 = float(c.get("drift_7d") or 0)
+        sp_cls = "up" if d7 >= 0 else "down"
+        sp = _sparkline_svg(c.get("spark_7d") or [])
+        rows += f"""
+        <tr>
+          <td class='sym'>
+            <div class='symBox'>
+              <div class='symTop'>{html.escape(c.get('symbol',''))}</div>
+              <div class='symSub'>{html.escape(c.get('name',''))}</div>
             </div>
-        """)
+          </td>
+          <td class='num'>
+            {money(c.get('price'))}
+            <div class='sub'>{pct(c.get('change_24h'))} (24h)</div>
+          </td>
+          <td class='num'>
+            {money(c.get('proj_1d'))}
+            <div class='sub'>{pct(c.get('drift_1d'))}</div>
+          </td>
+          <td class='num'>
+            {money(c.get('proj_3d'))}
+            <div class='sub'>{pct(c.get('drift_3d'))}</div>
+          </td>
+          <td class='num'>
+            {money(c.get('proj_7d'))}
+            <div class='sub'>{pct(c.get('drift_7d'))}</div>
+          </td>
+          <td class='spark'>
+            <div class='sparkWrap {sp_cls}' title='Trend 7 jours'>{sp}</div>
+          </td>
+          <td class='conf'>
+            <span class='pill'>{conf(c.get('confidence'))}</span>
+          </td>
+        </tr>
+        """
 
-    # Table rows
-    rows = []
-    for it in data:
-        delta = ((it["proj7"]/it["price"])-1.0)*100 if it["price"] else 0.0
-        cls = "up" if delta >= 0 else "down"
-        rows.append(f"""
-            <tr>
-                <td class="rank">#{it['rank']}</td>
-                <td class="coin">{escape(it['name'])} <span class="muted">({escape(it['symbol'])})</span></td>
-                <td>${it['price']:,.4f}</td>
-                <td class="{cls}">{it['chg24']:+.2f}%</td>
-                <td>${it['proj7']:,.4f}</td>
-                <td class="{cls}">{delta:+.2f}%</td>
-                <td>{it['confidence']}%</td>
-            </tr>
-        """)
-
-    content = f"""
-    <div class="hero">
-        <div>
-            <div class="kicker">🤖 AI Predictor — CryptoIA</div>
-            <h1>AI Predictor <span class="wow">WOW</span></h1>
-            <div class="sub">
-                Données live <b>CoinGecko</b> + projection statistique (momentum + volatilité 30j) pour les top coins.
-                <span class="muted">Ce n’est pas un conseil financier.</span>
-            </div>
+    if err and not items:
+        content = f"""<div class='card'><h2 style='margin:0 0 8px'>AI Predictor</h2>
+        <p class='muted'>Impossible de récupérer les données en ce moment (CoinGecko). Réessaie dans quelques minutes.</p>
+        <p class='muted small'>Erreur: {html.escape(str(err))}</p></div>"""
+    else:
+        content = f"""
+        <div class='hero'>
+          <div>
+            <h1>AI Predictor</h1>
+            <p class='muted'>Données <b>réelles</b> (CoinGecko) + projections heuristiques <b>1j / 3j / 7j</b>. Mise à jour: <span class='mono'>{html.escape(updated_at)}</span></p>
+          </div>
+          <div class='badge'>Sparkline 7j</div>
         </div>
-        <div class="hero-right">
-            <div class="pill"><span class="dot"></span> Live CoinGecko</div>
-            <div class="pill">MAJ: {dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}</div>
-            <a class="refresh" href="/ai-predictor">Rafraîchir</a>
-        </div>
-    </div>
 
-    <div class="cards">{''.join(cards)}</div>
+        <div class='card'>
+          <div class='cardTop'>
+            <div class='title'>Top cryptos (market cap)</div>
+            <div class='hint'>Les projections sont basées sur la tendance observée — ce n’est pas un conseil financier.</div>
+          </div>
 
-    <div class="panel">
-        <div class="panel-top">
-            <div class="ptitle">Top projections (données réelles)</div>
-            <div class="pnote">Auto-refresh ~90s</div>
-        </div>
-        <div class="table-wrap">
+          <div class='tableWrap'>
             <table>
-                <thead>
-                    <tr>
-                        <th>#</th><th>Coin</th><th>Prix</th><th>24h</th><th>Proj 7j</th><th>Δ 7j</th><th>Confiance</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {''.join(rows)}
-                </tbody>
+              <thead>
+                <tr>
+                  <th>Actif</th>
+                  <th>Prix</th>
+                  <th>Préd. 1 jour</th>
+                  <th>Préd. 3 jours</th>
+                  <th>Préd. 7 jours</th>
+                  <th>Tendance 7j</th>
+                  <th>Confiance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows if rows else "<tr><td colspan='7' class='muted'>Aucune donnée pour l’instant.</td></tr>"}
+              </tbody>
             </table>
+          </div>
         </div>
-    </div>
 
-    <div class="help">
-        <div class="help-card">
-            <h3>A quoi sert cette page ?</h3>
-            <p>Comparer rapidement les coins : prix live, momentum (24h) et une projection 7 jours basée sur des stats simples.</p>
+        <div class='card small'>
+          <h3 style='margin:0 0 8px'>Comment utiliser</h3>
+          <ul class='muted' style='margin:0; padding-left:18px'>
+            <li>Observe la <b>tendance 7j</b> (sparkline) pour le momentum.</li>
+            <li>Compare <b>1j / 3j / 7j</b> pour voir si la tendance accélère ou ralentit.</li>
+            <li>La <b>confiance</b> est une heuristique (volatilité + liquidité), pas une certitude.</li>
+          </ul>
         </div>
-        <div class="help-card">
-            <h3>Comment l’utiliser ?</h3>
-            <p>1) Regarde les cartes (top 6). 2) Utilise le tableau pour comparer. 3) Croise avec “AI News” + “Gestion risques”.</p>
-        </div>
-        <div class="help-card">
-            <h3>Important</h3>
-            <p>Projection ≠ certitude. La confiance baisse quand la volatilité monte. Toujours gérer le risque.</p>
-        </div>
-    </div>
+        """
 
+    styles = """
     <style>
-        .hero{{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:6px 0 14px}}
-        .kicker{{opacity:.8;font-size:12px;letter-spacing:.12em;text-transform:uppercase}}
-        h1{{margin:8px 0 6px 0;font-size:44px;line-height:1.05}}
-        .wow{{background:linear-gradient(90deg,#7c3aed,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent}}
-        .sub{{opacity:.9;max-width:820px}}
-        .muted{{opacity:.75}}
-        .hero-right{{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}}
-        .pill{{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:999px;padding:8px 10px;font-size:12px}}
-        .dot{{display:inline-block;width:8px;height:8px;border-radius:999px;background:#22c55e;margin-right:8px;box-shadow:0 0 0 3px rgba(34,197,94,.12)}}
-        .refresh{{text-decoration:none;color:#fff;font-weight:800;padding:9px 12px;border-radius:12px;background:linear-gradient(90deg,#7c3aed,#22d3ee)}}
-        .cards{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}}
-        .card{{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:12px;backdrop-filter:blur(14px)}}
-        .card-top{{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}}
-        .coin .sym{{font-size:18px;font-weight:900;letter-spacing:.02em}}
-        .coin .name{{opacity:.82;font-size:12px;margin-top:2px}}
-        .badge{{font-size:11px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12)}}
-        .badge.up{{background:rgba(34,197,94,.14);border-color:rgba(34,197,94,.25)}}
-        .badge.down{{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.25)}}
-        .metric{{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;margin-bottom:10px}}
-        .metric .k{{opacity:.8;font-size:12px}}
-        .metric .v{{font-size:22px;font-weight:900;margin-top:4px}}
-        .metric .s{{margin-top:4px;font-size:12px;font-weight:700}}
-        .up{{color:#34d399}}
-        .down{{color:#fb7185}}
-        .bar{{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(255,255,255,.10)}}
-        .bfill{{height:100%;background:linear-gradient(90deg,#7c3aed,#22d3ee)}}
-        .small{{margin-top:8px;opacity:.85;font-size:12px}}
-        .panel{{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:12px}}
-        .panel-top{{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}}
-        .ptitle{{font-weight:900}}
-        .pnote{{opacity:.75;font-size:12px}}
-        .table-wrap{{overflow:auto;border-radius:14px}}
-        table{{width:100%;border-collapse:separate;border-spacing:0}}
-        thead th{{position:sticky;top:0;background:rgba(0,0,0,.35);backdrop-filter:blur(12px);text-align:left;font-size:12px;padding:10px;border-bottom:1px solid rgba(255,255,255,.10)}}
-        tbody td{{padding:10px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}}
-        tbody tr:hover{{background:rgba(255,255,255,.03)}}
-        td.rank{{opacity:.8;width:60px}}
-        td.coin{{font-weight:800}}
-        .help{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}}
-        .help-card{{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:12px}}
-        .help-card h3{{margin:0 0 6px 0;font-size:14px}}
-        .help-card p{{margin:0;opacity:.9;font-size:12.5px;line-height:1.4}}
-        @media (max-width: 1100px) {{
-            .cards{{grid-template-columns:repeat(2,minmax(0,1fr))}}
-            .help{{grid-template-columns:1fr}}
-            h1{{font-size:36px}}
-        }}
-        @media (max-width: 720px) {{
-            .cards{{grid-template-columns:1fr}}
-            .hero{{flex-direction:column;align-items:flex-start}}
-        }}
+      .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin:8px 0 18px}
+      .hero h1{font-size:28px;margin:0}
+      .badge{padding:10px 12px;border-radius:999px;background:rgba(79,70,229,.14);border:1px solid rgba(79,70,229,.25);color:#e7e9ff;font-weight:900}
+      .card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:16px}
+      .card.small{padding:14px;margin-top:12px}
+      .cardTop{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:10px}
+      .title{font-weight:900}
+      .hint{color:rgba(255,255,255,.7);font-size:13px}
+      .muted{color:rgba(255,255,255,.75)}
+      .small{font-size:12px}
+      .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+      .tableWrap{overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,.08)}
+      table{width:100%;border-collapse:separate;border-spacing:0;min-width:900px}
+      thead th{position:sticky;top:0;background:rgba(0,0,0,.35);backdrop-filter:blur(8px);text-align:left;padding:12px 12px;font-size:12px;letter-spacing:.2px;color:rgba(255,255,255,.7);border-bottom:1px solid rgba(255,255,255,.08)}
+      tbody td{padding:12px 12px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}
+      tbody tr:hover{background:rgba(255,255,255,.03)}
+      td.num{text-align:right;font-weight:900}
+      td.spark{text-align:center}
+      .sub{font-weight:700;font-size:12px;color:rgba(255,255,255,.65);margin-top:4px}
+      .symBox{display:flex;flex-direction:column;gap:2px}
+      .symTop{font-weight:950;letter-spacing:.3px}
+      .symSub{font-size:12px;color:rgba(255,255,255,.65)}
+      .sparkWrap{display:inline-flex;align-items:center;justify-content:center;padding:6px 8px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);color:#a5b4fc}
+      .sparkWrap.up{color:#34d399}
+      .sparkWrap.down{color:#fb7185}
+      .pill{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.10);font-weight:950}
+      @media (max-width: 900px){.hero{flex-direction:column;align-items:flex-start} table{min-width:820px}}
     </style>
     """
-    return _simple_page("Prédicteur IA", content, sidebar_html=(globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""), active="/ai-predictor")
+
+    body = styles + content
+    return _simple_page("AI Predictor", body_html=body, sidebar_html=_sidebar_inner("/ai-predictor"), active_page="/ai-predictor")
+
 
 @app.get("/api/ai-predictor")
 async def api_ai_predictor():
@@ -69697,6 +69798,64 @@ try:
     from starlette.responses import HTMLResponse as _HTMLResponse  # noqa
 except Exception:
     from fastapi.responses import HTMLResponse as _HTMLResponse  # type: ignore
+
+def _sidebar_inner(active_page: str = "") -> str:
+    """Sidebar interne simple (visible desktop) pour les pages construites via _simple_page."""
+    items = [
+        ("Dashboard", "/", "🏠"),
+        ("AI Signals", "/ai-signals", "🤖"),
+        ("AI News", "/ai-news", "📰"),
+        ("AI Predictor", "/ai-predictor", "📈"),
+        ("AI Market Regime", "/ai-market-regime", "🧭"),
+        ("AI Whale Watcher", "/ai-whale-watcher", "🐋"),
+        ("Risk Management", "/risk-management", "🛡️"),
+        ("Pricing", "/pricing", "💳"),
+        ("Contact", "/contact", "✉️"),
+    ]
+    def a(label, href, icon):
+        active = "active" if href == active_page else ""
+        return f"<a class='sb-link {active}' href='{href}'><span class='sb-ico'>{icon}</span><span>{label}</span></a>"
+    links = "".join(a(*it) for it in items)
+    return f"""
+    <div class='sb-brand'>CryptoIA</div>
+    <div class='sb-section'>
+      {links}
+    </div>
+    <style>
+      .sb-brand{{font-weight:800;letter-spacing:.3px;font-size:16px;margin:6px 0 14px;color:#e9f3ff}}
+      .sb-section{{display:flex;flex-direction:column;gap:6px}}
+      .sb-link{{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;color:#d8e8ff;text-decoration:none;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03)}}
+      .sb-link:hover{{background:rgba(255,255,255,.06)}}
+      .sb-link.active{{background:rgba(79,70,229,.18);border-color:rgba(79,70,229,.35)}}
+      .sb-ico{{width:22px;display:inline-flex;justify-content:center}}
+    </style>
+    """
+
+
+def _sparkline_svg(prices, width: int = 140, height: int = 42) -> str:
+    """Mini graphe sparkline (SVG inline) à partir d'une liste de prix."""
+    try:
+        if not prices or len(prices) < 2:
+            return ""
+        # limiter la densité
+        if len(prices) > 120:
+            step = max(1, len(prices)//120)
+            prices = prices[::step]
+        mn, mx = min(prices), max(prices)
+        if mx == mn:
+            mx = mn + 1e-9
+        pts = []
+        n = len(prices) - 1
+        for i, v in enumerate(prices):
+            x = (i / n) * (width - 2) + 1
+            y = (1 - (v - mn) / (mx - mn)) * (height - 2) + 1
+            pts.append(f"{x:.2f},{y:.2f}")
+        poly = " ".join(pts)
+        return f"<svg width='{width}' height='{height}' viewBox='0 0 {width} {height}' xmlns='http://www.w3.org/2000/svg' aria-hidden='true'>" \
+               f"<polyline fill='none' stroke='currentColor' stroke-width='2' points='{poly}' />" \
+               f"</svg>"
+    except Exception:
+        return ""
 
 def _simple_page(title: str, body_html: str, request=None, sidebar_html="", active_page: str | None = None, show_title: bool = True, sidebar: str | None = None, **_kwargs):
     """Wrapper HTML stable (retourne toujours une HTMLResponse).

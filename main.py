@@ -7828,6 +7828,7 @@ def _extract_tickers(text: str):
     return out[:6]
 
 def _parse_rss_or_atom(xml_text: str, source_name: str):
+    import xml.etree.ElementTree as ET
     items = []
     if not xml_text:
         return items
@@ -7989,17 +7990,11 @@ async def get_crypto_news_rss(limit: int = 30, topic: str = "all", prefer_lang: 
                     r = await client.get(url)
                     if r.status_code >= 400:
                         continue
-                    feed = feedparser.parse(r.text)
-                    for e in (feed.entries or [])[: max(10, limit)]:
-                        title = (getattr(e, "title", "") or "").strip()
-                        link = (getattr(e, "link", "") or "").strip()
-                        summary = (getattr(e, "summary", "") or "").strip()
-                        # date
-                        published = ""
-                        if getattr(e, "published", None):
-                            published = e.published
-                        elif getattr(e, "updated", None):
-                            published = e.updated
+                    for e in _parse_rss_or_atom(r.text, name)[: max(10, limit)]:
+                        title = (e.get("title") or "").strip()
+                        link = (e.get("link") or "").strip()
+                        summary = (e.get("summary") or "").strip()
+                        published = (e.get("published") or "").strip()
                         topic_guess = _topic_of(" ".join([title, summary]))
                         if topic != "all" and topic_guess != topic:
                             continue
@@ -35709,7 +35704,7 @@ async def ai_news_page(request: Request):
 
 @app.get("/api/ai-news")
 async def api_ai_news():
-    items = await get_crypto_news_rss(max_items=80, ttl_sec=90)
+    items = await get_crypto_news_rss(limit=80, topic='all', prefer_lang='fr', ttl_sec=90)
     return {"status":"ok","count":len(items),"items":items}
 
 
@@ -69849,62 +69844,31 @@ except Exception:
     from fastapi.responses import HTMLResponse as _HTMLResponse  # type: ignore
 
 def _sidebar_inner(active_page: str = "") -> str:
-    """Sidebar interne simple (visible desktop) pour les pages construites via _simple_page."""
-    items = [
-        ("Dashboard", "/", "🏠"),
-        ("AI Signals", "/ai-signals", "🤖"),
-        ("AI News", "/ai-news", "📰"),
-        ("AI Predictor", "/ai-predictor", "📈"),
-        ("AI Market Regime", "/ai-market-regime", "🧭"),
-        ("AI Whale Watcher", "/ai-whale-watcher", "🐋"),
-        ("Risk Management", "/risk-management", "🛡️"),
-        ("Pricing", "/pricing", "💳"),
-        ("Contact", "/contact", "✉️"),
-    ]
-    def a(label, href, icon):
-        active = "active" if href == active_page else ""
-        return f"<a class='sb-link {active}' href='{href}'><span class='sb-ico'>{icon}</span><span>{label}</span></a>"
-    links = "".join(a(*it) for it in items)
-    return f"""
-    <div class='sb-brand'>CryptoIA</div>
-    <div class='sb-section'>
-      {links}
-    </div>
-    <style>
-      .sb-brand{{font-weight:800;letter-spacing:.3px;font-size:16px;margin:6px 0 14px;color:#e9f3ff}}
-      .sb-section{{display:flex;flex-direction:column;gap:6px}}
-      .sb-link{{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;color:#d8e8ff;text-decoration:none;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03)}}
-      .sb-link:hover{{background:rgba(255,255,255,.06)}}
-      .sb-link.active{{background:rgba(79,70,229,.18);border-color:rgba(79,70,229,.35)}}
-      .sb-ico{{width:22px;display:inline-flex;justify-content:center}}
-    </style>
+    """Menu identique à /dashboard (menu complet).
+
+    On réutilise le HTML global `SIDEBAR` (menu dashboard) et on marque le lien actif.
     """
-
-
-def _sparkline_svg(prices, width: int = 140, height: int = 42) -> str:
-    """Mini graphe sparkline (SVG inline) à partir d'une liste de prix."""
     try:
-        if not prices or len(prices) < 2:
-            return ""
-        # limiter la densité
-        if len(prices) > 120:
-            step = max(1, len(prices)//120)
-            prices = prices[::step]
-        mn, mx = min(prices), max(prices)
-        if mx == mn:
-            mx = mn + 1e-9
-        pts = []
-        n = len(prices) - 1
-        for i, v in enumerate(prices):
-            x = (i / n) * (width - 2) + 1
-            y = (1 - (v - mn) / (mx - mn)) * (height - 2) + 1
-            pts.append(f"{x:.2f},{y:.2f}")
-        poly = " ".join(pts)
-        return f"<svg width='{width}' height='{height}' viewBox='0 0 {width} {height}' xmlns='http://www.w3.org/2000/svg' aria-hidden='true'>" \
-               f"<polyline fill='none' stroke='currentColor' stroke-width='2' points='{poly}' />" \
-               f"</svg>"
+        html = SIDEBAR
     except Exception:
+        html = ""
+
+    if not html:
         return ""
+
+    if active_page:
+        try:
+            ap = re.escape(active_page)
+            html = re.sub(
+                rf'(href=\"{ap}\")\s+class=\"menu-item\"',
+                rf'\1 class=\"menu-item active\"',
+                html,
+                count=1
+            )
+        except Exception:
+            pass
+
+    return html.strip()
 
 def _simple_page(title: str, body_html: str, request=None, sidebar_html="", active_page: str | None = None, show_title: bool = True, sidebar: str | None = None, **_kwargs):
     """Wrapper HTML stable (retourne toujours une HTMLResponse).

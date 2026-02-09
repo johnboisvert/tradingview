@@ -7776,11 +7776,14 @@ async def get_crypto_news_real():
 # AI NEWS (RSS) - real sources, server-side
 # =========================
 NEWS_RSS_SOURCES = [
-    {"name": "CoinDesk", "url": "https://www.coindesk.com/arc/outboundfeeds/rss/"},
-    {"name": "Cointelegraph", "url": "https://cointelegraph.com/rss"},
-    {"name": "Decrypt", "url": "https://decrypt.co/feed"},
-    {"name": "Bitcoin Magazine", "url": "https://bitcoinmagazine.com/.rss/full/"},
-    {"name": "The Block", "url": "https://www.theblock.co/rss.xml"},
+    # Sources FR (titres + résumés en français)
+    ("Cryptoast", "https://cryptoast.fr/feed/"),
+    ("Journal du Coin", "https://journalducoin.com/feed/"),
+    ("Cryptonaute", "https://cryptonaute.fr/feed/"),
+    ("Cointelegraph FR", "https://fr.cointelegraph.com/rss"),
+    ("Bitcoin.fr", "https://bitcoin.fr/feed/"),
+    ("Coins.fr", "https://coins.fr/magazine/feed"),
+    ("Crypto-France", "https://crypto-france.com/feed/"),
 ]
 
 _news_cache = {"ts": 0.0, "data": []}
@@ -35011,7 +35014,7 @@ async def ai_signals_page(request: Request):
     <div class="kpis">
       <div class="kpi"><div><div class="v" id="kCount">—</div><div class="l">coins analysés</div></div><div class="tag">Universe</div></div>
       <div class="kpi"><div><div class="v" id="kBest">—</div><div class="l">meilleur momentum</div></div><div class="tag">Top</div></div>
-      <div class="kpi"><div><div class="v" id="kWorst">—</div><div class="l">plus faible momentum</div></div><div class="tag">Risk</div></div>
+      <div class="kpi"><div><div class="v" id="kWorst">—</div><div class="l">plus faible momentum</div></div><div class="tag">Risque</div></div>
       <div class="kpi"><div><div class="v" id="kUpd">—</div><div class="l">dernière mise à jour</div></div><div class="tag">MAJ</div></div>
     </div>
 
@@ -35466,7 +35469,7 @@ async def ai_news_page(request: Request):
         tickers = it.get("tickers") or []
         tag_html = "".join([f'<span class="tag">{escape(t)}</span>' for t in tickers]) if tickers else ""
         badge_cls = {"positif":"badge good","negatif":"badge bad"}.get(sentiment, "badge neutral")
-        badge_txt = {"positif":"Bullish","negatif":"Risk","neutre":"Neutre"}.get(sentiment, "Neutre")
+        badge_txt = {"positif":"Haussier","negatif":"Risque","neutre":"Neutre"}.get(sentiment, "Neutre")
         cards_html.append(f"""
             <a class="news-card" href="{url}" target="_blank" rel="noopener">
                 <div class="news-top">
@@ -35490,12 +35493,12 @@ async def ai_news_page(request: Request):
             <div class="kicker">📰 AI News — CryptoIA</div>
             <h1>Actu Crypto <span class="wow">WOW</span></h1>
             <div class="sub">
-                Agrégation temps réel (RSS) : titres + résumé + tags. Filtre par source / sentiment / recherche.
+                Agrégation temps réel (RSS) : titres + résumé + tags. Filtre par source / sentiment / recherche.<br><span style='opacity:.85'>Sources : flux RSS publics (données réelles). Cache serveur ~90s pour performance.</span>
             </div>
             <div class="stats">
                 <div class="stat"><div class="n">{n_total}</div><div class="l">articles</div></div>
-                <div class="stat"><div class="n">{n_pos}</div><div class="l">bullish</div></div>
-                <div class="stat"><div class="n">{n_neg}</div><div class="l">risk</div></div>
+                <div class="stat"><div class="n">{n_pos}</div><div class="l">haussier</div></div>
+                <div class="stat"><div class="n">{n_neg}</div><div class="l">risque</div></div>
             </div>
         </div>
         <div class="hero-right">
@@ -35507,9 +35510,9 @@ async def ai_news_page(request: Request):
                 </select>
                 <div class="pills">
                     {pill("Tous", "", senti=="")}
-                    {pill("Bullish", "positif", senti=="positif")}
+                    {pill("Haussier", "positif", senti=="positif")}
                     {pill("Neutre", "neutre", senti=="neutre")}
-                    {pill("Risk", "negatif", senti=="negatif")}
+                    {pill("Risque", "negatif", senti=="negatif")}
                 </div>
                 <button class="btn" type="submit">Filtrer</button>
             </form>
@@ -35523,7 +35526,7 @@ async def ai_news_page(request: Request):
     <div class="help">
         <div class="help-card">
             <h3>A quoi sert cette page ?</h3>
-            <p>Voir l’actualité crypto en un coup d’œil, sans pubs, avec un tri rapide (bullish / neutre / risk) et des tags de coins.</p>
+            <p>Voir l’actualité crypto en un coup d’œil, sans pubs, avec un tri rapide (haussier / neutre / risque) et des tags de coins.</p>
         </div>
         <div class="help-card">
             <h3>Comment l’utiliser ?</h3>
@@ -35583,7 +35586,7 @@ async def ai_news_page(request: Request):
         }}
     </style>
     """
-    return _simple_page("AI News", content_html, active="/ai-news")
+    return _simple_page("AI News", content_html, sidebar_html=(globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""), active="/ai-news")
 
 @app.get("/api/ai-news")
 async def api_ai_news():
@@ -35758,7 +35761,7 @@ async def ai_predictor(request: Request):
         }}
     </style>
     """
-    return _simple_page("AI Predictor", content, active="/ai-predictor")
+    return _simple_page("Prédicteur IA", content, sidebar_html=(globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""), active="/ai-predictor")
 
 @app.get("/api/ai-predictor")
 async def api_ai_predictor():

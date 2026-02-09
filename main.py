@@ -70244,104 +70244,329 @@ async def ai_whale_watcher(request: Request):
     if not api_ok and api_note:
         source_line += f" | {api_note}"
 
-    rows_html = ""
+        rows_html = ""
     if events:
         for ev in events:
+            tx_hash = ev.get("hash", "")
+            tx_url = f"https://www.blockchain.com/btc/tx/{tx_hash}" if tx_hash else "https://www.blockchain.com/explorer/assets/btc"
+            from_addr = ev.get("from", "")
+            to_addr = ev.get("to", "")
+            from_url = f"https://www.blockchain.com/btc/address/{from_addr}" if from_addr else "https://www.blockchain.com/explorer/assets/btc"
+            to_url = f"https://www.blockchain.com/btc/address/{to_addr}" if to_addr else "https://www.blockchain.com/explorer/assets/btc"
+            tx_short = ("…" + tx_hash[-8:]) if len(tx_hash) > 10 else tx_hash
+
+            # badge chaleur (simple)
+            heat = ""
+            if ev.get("amount", 0) >= (min_btc * 3):
+                heat = '<span class="heat heat-hot">HOT</span>'
+            elif ev.get("amount", 0) >= (min_btc * 2):
+                heat = '<span class="heat heat-warm">ALERTE</span>'
+
             rows_html += f"""
             <tr>
-              <td>{ev['time']}</td>
-              <td><b>{ev['asset']}</b></td>
-              <td><b>{ev['amount']:.2f}</b></td>
-              <td>de <span class="mono">{_short(ev['from'])}</span> → <span class="mono">{_short(ev['to'])}</span></td>
+              <td class="col-time">{ev['time']}</td>
+              <td class="col-asset"><span class="asset-pill">{ev['asset']}</span></td>
+              <td class="col-amt"><span class="amt">{ev['amount']:.2f}</span> <span class="unit">BTC</span> {heat}</td>
+              <td class="col-dir">
+                <a class="addr mono" href="{from_url}" target="_blank" rel="noopener">{_short(ev['from'])}</a>
+                <span class="arrow">→</span>
+                <a class="addr mono" href="{to_url}" target="_blank" rel="noopener">{_short(ev['to'])}</a>
+              </td>
+              <td class="col-tx">
+                <a class="txlink mono" href="{tx_url}" target="_blank" rel="noopener">tx{tx_short}</a>
+              </td>
             </tr>
             """
     else:
         rows_html = f"""
         <tr>
-          <td colspan="4" style="opacity:.85">Aucune transaction ≥ {min_btc:g} BTC pour le moment. (Ce n'est pas une erreur.)</td>
+          <td colspan="5" class="empty-row">Aucune transaction ≥ {min_btc:g} BTC pour le moment. (Ce n'est pas une erreur.)</td>
         </tr>
         """
 
     # petite note: quand seuil très haut, 0 event est normal
     tip_line = "Astuce: si tu mets un seuil très haut (ex: 100 BTC), c'est normal d'avoir souvent 0 événement."
 
+    styles = """
+    <style>
+      /* ===== AI Whale Watcher — WOW UI ===== */
+      .ww-grid { display:grid; grid-template-columns: 1.15fr .85fr; gap:16px; align-items:stretch; }
+      @media (max-width: 1000px){ .ww-grid{ grid-template-columns:1fr; } }
+
+      .ww-hero{
+        padding:18px 18px 14px;
+        border-radius:16px;
+        background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow: 0 18px 60px rgba(0,0,0,.25);
+        backdrop-filter: blur(10px);
+      }
+      .ww-hero h1{ margin:0; font-size:34px; letter-spacing:.2px; }
+      .ww-hero .sub{ margin-top:6px; opacity:.9; line-height:1.35; }
+      .ww-hero .meta{ margin-top:10px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+      .badge{
+        display:inline-flex; align-items:center; gap:8px;
+        padding:6px 10px; border-radius:999px;
+        border:1px solid rgba(255,255,255,.12);
+        background: rgba(0,0,0,.20);
+        font-size:12px; opacity:.95;
+      }
+      .dot{ width:8px; height:8px; border-radius:999px; background:#22c55e; box-shadow:0 0 0 4px rgba(34,197,94,.15); }
+      .dot.off{ background:#f59e0b; box-shadow:0 0 0 4px rgba(245,158,11,.15); }
+
+      .ww-controls{
+        padding:18px;
+        border-radius:16px;
+        background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow: 0 18px 60px rgba(0,0,0,.22);
+        backdrop-filter: blur(10px);
+      }
+      .ww-controls h3{ margin:0 0 10px; font-size:15px; opacity:.95; }
+      .form-row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+      @media (max-width: 520px){ .form-row{ grid-template-columns:1fr; } }
+      .field label{ display:block; font-size:12px; opacity:.85; margin:0 0 6px; }
+      .field input, .field select{
+        width:100%;
+        background: rgba(0,0,0,.25);
+        border:1px solid rgba(255,255,255,.12);
+        color: #e5e7eb;
+        border-radius:12px;
+        padding:10px 12px;
+        outline:none;
+      }
+      .field input:focus, .field select:focus{
+        border-color: rgba(99,102,241,.55);
+        box-shadow: 0 0 0 4px rgba(99,102,241,.18);
+      }
+      .btn-row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+      .btn-primary{
+        cursor:pointer;
+        border:0;
+        border-radius:12px;
+        padding:10px 14px;
+        font-weight:700;
+        color:#0b1220;
+        background: linear-gradient(90deg, #7c3aed, #22d3ee);
+        box-shadow: 0 10px 30px rgba(34,211,238,.15);
+      }
+      .btn-ghost{
+        cursor:pointer;
+        border:1px solid rgba(255,255,255,.12);
+        border-radius:12px;
+        padding:10px 14px;
+        color:#e5e7eb;
+        background: rgba(0,0,0,.20);
+      }
+      .btn-ghost:hover{ background: rgba(255,255,255,.06); }
+
+      .kpi-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-top:14px; }
+      @media (max-width: 1000px){ .kpi-row{ grid-template-columns: repeat(2, 1fr);} }
+      @media (max-width: 520px){ .kpi-row{ grid-template-columns: 1fr;} }
+      .kpi{
+        padding:14px 14px 12px;
+        border-radius:16px;
+        background: rgba(255,255,255,.05);
+        border: 1px solid rgba(255,255,255,.10);
+        backdrop-filter: blur(10px);
+      }
+      .kpi .label{ font-size:12px; opacity:.85; }
+      .kpi .val{ margin-top:6px; font-size:20px; font-weight:800; letter-spacing:.2px; }
+
+      .panel{
+        margin-top:16px;
+        border-radius:18px;
+        background: rgba(255,255,255,.045);
+        border:1px solid rgba(255,255,255,.10);
+        box-shadow: 0 18px 60px rgba(0,0,0,.20);
+        overflow:hidden;
+      }
+      .panel-head{
+        display:flex; justify-content:space-between; gap:12px; align-items:center;
+        padding:14px 16px;
+        border-bottom:1px solid rgba(255,255,255,.08);
+      }
+      .panel-head h3{ margin:0; font-size:16px; }
+      .panel-head .hint{ font-size:12px; opacity:.85; }
+
+      .table-wrap{ overflow:auto; }
+      table.ww-table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
+      table.ww-table thead th{
+        text-align:left;
+        font-size:12px;
+        opacity:.85;
+        padding:12px 14px;
+        background: rgba(0,0,0,.18);
+        position: sticky; top: 0; z-index: 1;
+        border-bottom:1px solid rgba(255,255,255,.08);
+      }
+      table.ww-table tbody td{
+        padding:12px 14px;
+        border-bottom:1px solid rgba(255,255,255,.06);
+        vertical-align:middle;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      }
+      table.ww-table tbody tr:hover{ background: rgba(255,255,255,.04); }
+
+      .col-time{ width:84px; white-space:nowrap; opacity:.95; }
+      .col-asset{ width:86px; }
+      .col-amt{ width:180px; white-space:nowrap; }
+      .col-tx{ width:150px; white-space:nowrap; text-align:right; }
+      .asset-pill{
+        display:inline-flex; align-items:center; justify-content:center;
+        padding:6px 10px; border-radius:999px;
+        font-weight:800; font-size:12px;
+        border:1px solid rgba(255,255,255,.12);
+        background: rgba(0,0,0,.20);
+      }
+      .amt{ font-weight:900; }
+      .unit{ font-size:12px; opacity:.8; margin-left:4px; }
+      .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .addr, .txlink{ color: #e5e7eb; text-decoration:none; }
+      .addr:hover, .txlink:hover{ text-decoration:underline; }
+      .arrow{ margin:0 10px; opacity:.6; }
+      .empty-row{ padding:18px 14px !important; opacity:.85; }
+
+      .heat{
+        display:inline-flex; align-items:center; justify-content:center;
+        margin-left:10px;
+        padding:4px 8px;
+        border-radius:999px;
+        font-size:11px;
+        font-weight:900;
+        letter-spacing:.2px;
+        border:1px solid rgba(255,255,255,.12);
+        background: rgba(0,0,0,.25);
+      }
+      .heat-hot{ color:#fee2e2; background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.35); }
+      .heat-warm{ color:#fff7ed; background: rgba(245,158,11,.18); border-color: rgba(245,158,11,.35); }
+
+      .help-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top:16px; }
+      @media (max-width: 1000px){ .help-grid{ grid-template-columns:1fr; } }
+      .help-card{
+        padding:14px;
+        border-radius:16px;
+        background: rgba(255,255,255,.05);
+        border:1px solid rgba(255,255,255,.10);
+      }
+      .help-card h4{ margin:0 0 8px; font-size:14px; }
+      .help-card p{ margin:0; opacity:.88; line-height:1.35; }
+      .note{
+        margin-top:10px;
+        font-size:12px;
+        opacity:.85;
+        line-height:1.35;
+      }
+    </style>
+    """
+
     content = f"""
-    <div class="page-title">AI Whale Watcher</div>
-
-    <div class="wow-card">
-      <div class="wow-head">
-        <div>
-          <div class="wow-h1">AI Whale Watcher</div>
-          <div class="wow-sub">{source_line}</div>
-          <div class="wow-status">Statut: <span class="badge">{status_badge}</span></div>
+    <div class="ww-grid">
+      <div class="ww-hero">
+        <h1>AI Whale Watcher</h1>
+        <div class="sub">
+          Détecte les grosses transactions <b>BTC</b> en temps réel via Blockchain.info (mempool).<br/>
+          Seuil actif : <b>≥ {min_btc:g} BTC</b> • Affichage : <b>{limit}</b> événements max • {source_line}
+        </div>
+        <div class="meta">
+          <span class="badge"><span class="dot{' off' if not api_ok else ''}"></span>{status_badge}</span>
+          <span class="badge">Dernière maj : <b>{last_updated}</b></span>
+          <span class="badge">{api_note}</span>
         </div>
 
-        <div class="wow-actions">
-          <a class="btn" href="/ai-whale-watcher?min_btc={min_btc:g}&limit={limit}">Rafraîchir</a>
-          <div class="pill">Événements: <b>{total_count}</b></div>
+        <div class="kpi-row">
+          <div class="kpi">
+            <div class="label">Événements</div>
+            <div class="val">{total_count}</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Seuil (BTC)</div>
+            <div class="val">{min_btc:g}</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Source</div>
+            <div class="val">Blockchain</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Statut</div>
+            <div class="val">{'Live' if api_ok else 'Dégradé'}</div>
+          </div>
         </div>
+
+        <div class="note">{tip_line}</div>
       </div>
 
-      <div class="wow-grid">
-        <div class="wow-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Heure</th>
-                <th>Actif</th>
-                <th>Montant</th>
-                <th>Détails</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows_html}
-            </tbody>
-          </table>
-        </div>
+      <div class="ww-controls">
+        <h3>Filtres</h3>
+        <form method="get" action="/ai-whale-watcher">
+          <div class="form-row">
+            <div class="field">
+              <label>Seuil (BTC)</label>
+              <input type="number" step="0.01" min="0" name="threshold" value="{min_btc:g}" />
+            </div>
+            <div class="field">
+              <label>Nombre d'événements</label>
+              <select name="limit">
+                {''.join([f'<option value="{x}" {"selected" if x==limit else ""}>{x}</option>' for x in [10,15,20,25,30,40,50]])}
+              </select>
+            </div>
+          </div>
 
-        <div class="wow-help">
-          <div class="wow-help-title">Comment utiliser cette page</div>
-          <ul>
-            <li>Surveille les <b>grosses transactions</b> et la destination (<b>exchange</b> vs <b>wallet</b>).</li>
-            <li>Vers exchange = pression de vente potentielle (pas garanti).</li>
-            <li>Hors exchange = accumulation/staking possible (pas garanti).</li>
-            <li>Combine avec <b>Market Regime</b> + niveaux techniques.</li>
-          </ul>
-          <div class="wow-tip">{tip_line}</div>
+          <div class="btn-row">
+            <button class="btn-primary" type="submit">Appliquer</button>
+            <a class="btn-ghost" href="/ai-whale-watcher?threshold={min_btc:g}&limit={limit}">Rafraîchir</a>
+            <a class="btn-ghost" href="https://www.blockchain.com/explorer/assets/btc" target="_blank" rel="noopener">Explorer BTC</a>
+          </div>
+        </form>
+
+        <div class="note">
+          <b>Lecture rapide :</b> une grosse transaction n'est pas forcément un achat/vente — c'est un mouvement on-chain.
+          Clique une ligne pour ouvrir la source officielle.
         </div>
       </div>
     </div>
 
-    <div class="help-block">
-      <div class="help-title">📌 Aide – AI Whale Watcher</div>
-      <div class="help-grid">
-        <div class="help-card">
-          <div class="help-h">À quoi sert cette page ?</div>
-          <div class="help-p">Surveillance des mouvements “whales” et activité inhabituelle.</div>
-        </div>
-        <div class="help-card">
-          <div class="help-h">Comment l'utiliser ?</div>
-          <div class="help-p">Ne poursuis pas le prix: utilise ces infos comme contexte, pas comme signal unique.</div>
-        </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Derniers mouvements (≥ {min_btc:g} BTC)</h3>
+        <div class="hint">Score IA = estimation d'impact marché (heuristique) • Liens = sources officielles</div>
       </div>
-
-      <div class="help-meta">
-        <div class="meta-pill">Données</div>
-        <div class="meta-pill">Blockchain.info + CoinGecko (prix)</div>
-        <div class="meta-pill">Dernière maj</div>
-        <div class="meta-pill"><span>{last_updated} UTC</span></div>
-        <div class="meta-pill">Statut</div>
-        <div class="meta-pill">{'OK' if api_ok else 'CACHE'}</div>
+      <div class="table-wrap">
+        <table class="ww-table">
+          <thead>
+            <tr>
+              <th class="col-time">Heure</th>
+              <th class="col-asset">Actif</th>
+              <th class="col-amt">Montant</th>
+              <th>De → Vers</th>
+              <th class="col-tx">Tx</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows_html}
+          </tbody>
+        </table>
       </div>
+    </div>
 
-      <div class="help-note">
-        Note données: certaines infos proviennent de sources externes (APIs, webhooks, données de marché) et peuvent avoir un délai ou des variations.
-        Rien ici n'est une garantie: vérifie toujours avant d'exécuter un trade.
-        <br><br>
-        <b>Historique:</b> les événements sont conservés environ <b>{history_hours:g}h</b> (purge automatique après).
+    <div class="help-grid">
+      <div class="help-card">
+        <h4>À quoi sert cette page ?</h4>
+        <p>Surveiller les transferts BTC “whales” pour détecter des mouvements inhabituels (rééquilibrage, cold→hot, OTC, etc.).</p>
+      </div>
+      <div class="help-card">
+        <h4>Comment l'utiliser ?</h4>
+        <p>1) Mets un seuil (ex: 25 BTC). 2) Observe la fréquence et les montants. 3) Clique une Tx pour analyser les adresses.</p>
+      </div>
+      <div class="help-card">
+        <h4>Note</h4>
+        <p>Heuristique : ce n'est pas un signal de trading. Combine avec Market Regime + niveaux techniques + ta gestion du risque.</p>
       </div>
     </div>
     """
+
+
 
     SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
     return _simple_page("AI Whale Watcher", content, sidebar_html=SID, request=request, show_title=False)

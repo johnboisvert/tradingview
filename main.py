@@ -7908,15 +7908,23 @@ async def get_crypto_news_rss(limit: int = 30, topic: str = "all", prefer_lang: 
     prefer_lang: fr | en
     """
     import datetime as _dt
-
-    # Sources RSS (choisies pour être stables / publiques)
-    # NB: certains sites changent parfois leurs feeds — on garde plusieurs fallbacks.
+    # Sources RSS (FR prioritaire + fallback EN)
     SOURCES_FR = [
+        ("Google News - Crypto", "https://news.google.com/rss/search?q=crypto&hl=fr&gl=CA&ceid=CA:fr"),
+        ("Google News - Bitcoin", "https://news.google.com/rss/search?q=bitcoin&hl=fr&gl=CA&ceid=CA:fr"),
+        ("Google News - Ethereum", "https://news.google.com/rss/search?q=ethereum&hl=fr&gl=CA&ceid=CA:fr"),
+        ("Google News - ETF", "https://news.google.com/rss/search?q=bitcoin%20ETF&hl=fr&gl=CA&ceid=CA:fr"),
+        ("Google News - Régulation", "https://news.google.com/rss/search?q=r%C3%A9gulation%20crypto&hl=fr&gl=CA&ceid=CA:fr"),
         ("Journal du Coin", "https://journalducoin.com/feed/"),
-        ("Cryptonaute", "https://cryptonaute.fr/feed/"),
         ("Cryptoast", "https://cryptoast.fr/feed/"),
+        ("Cryptonaute", "https://cryptonaute.fr/feed/"),
     ]
     SOURCES_EN = [
+        ("Google News - Crypto", "https://news.google.com/rss/search?q=crypto&hl=en&gl=US&ceid=US:en"),
+        ("Google News - Bitcoin", "https://news.google.com/rss/search?q=bitcoin&hl=en&gl=US&ceid=US:en"),
+        ("Google News - Ethereum", "https://news.google.com/rss/search?q=ethereum&hl=en&gl=US&ceid=US:en"),
+        ("Google News - ETF", "https://news.google.com/rss/search?q=bitcoin%20ETF&hl=en&gl=US&ceid=US:en"),
+        ("Google News - Regulation", "https://news.google.com/rss/search?q=crypto%20regulation&hl=en&gl=US&ceid=US:en"),
         ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
         ("Cointelegraph", "https://cointelegraph.com/rss"),
         ("Bitcoin Magazine", "https://bitcoinmagazine.com/.rss/full/"),
@@ -7975,10 +7983,10 @@ async def get_crypto_news_rss(limit: int = 30, topic: str = "all", prefer_lang: 
 
     async def _fetch_sources(sources, lang_tag: str):
         out = []
-        async with httpx.AsyncClient(timeout=12.0) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(12.0, connect=6.0), follow_redirects=True, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7"}) as client:
             for name, url in sources:
                 try:
-                    r = await client.get(url, headers={"user-agent": "Mozilla/5.0"})
+                    r = await client.get(url)
                     if r.status_code >= 400:
                         continue
                     feed = feedparser.parse(r.text)
@@ -38042,48 +38050,89 @@ async def ai_timeframe(request: Request):
 # ✅ Routes manquantes (évite 404) + pages robustes (anti-500)
 # ============================================================
 
-def _simple_page(
-    title: str,
-    body_html: str,
-    sidebar_html: str = "",
-    sidebar: str = "",
-    request: Optional["Request"] = None,
-    *,
-    styles: Optional[str] = None,
-    head_extra: str = "",
-    show_title: bool = True,
-    container_class: str = "content",
-    **_kwargs,
-):
-    """
-    Petit layout HTML autonome avec sidebar optionnelle.
+def _simple_page(title: str, body_html: str, active: str = "/", sidebar_html: str | None = None, head_extra: str = "") -> str:
+    """Page HTML standard avec le même menu que /dashboard (SIDEBAR).
 
-    - `styles`: CSS additionnel injecté dans <head> (en plus de GLOBAL_STYLES)
-    - `show_title`: si False, n'affiche pas le <h1> automatique (utile si la page a déjà son hero)
+    - Utilise SIDEBAR (menu complet + style)
+    - Force un layout identique partout (contenu décalé à droite du menu)
+    - Marque automatiquement l'item actif (JS)
     """
-    sb = sidebar_html or sidebar or ""
-    extra_css = (styles or "").strip()
+    safe_title = (title or "CryptoIA").replace("<", "&lt;").replace(">", "&gt;")
+    extra_head = head_extra or ""
 
-    html = f"""<!DOCTYPE html>
-<html lang='fr'>
+    return f"""<!doctype html>
+<html lang="fr">
 <head>
-  <meta charset='utf-8'/>
-  <meta name='viewport' content='width=device-width, initial-scale=1'/>
-  <title>{_html_escape(title)}</title>
-  <style>{GLOBAL_STYLES}</style>
-  {"<style>"+extra_css+"</style>" if extra_css else ""}
-  {head_extra or ""}
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>{safe_title} — CryptoIA</title>
+
+  <style>
+    /* Layout global (on override SIDEBAR qui force margin-left:0 !important) */
+    body {{
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, sans-serif;
+      background: radial-gradient(1200px 700px at 15% 10%, rgba(124, 58, 237, 0.25), transparent 60%),
+                  radial-gradient(1200px 700px at 80% 20%, rgba(59, 130, 246, 0.22), transparent 60%),
+                  radial-gradient(900px 500px at 60% 85%, rgba(16, 185, 129, 0.12), transparent 60%),
+                  #060b1a;
+      color: #e8edf7;
+    }}
+    .page-wrap {{
+      margin-left: 270px !important; /* sidebar width */
+      padding: 28px 28px 40px;
+      min-height: 100vh;
+    }}
+    .page-header {{
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }}
+    .page-title {{
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }}
+    .page-sub {{
+      margin: 6px 0 0;
+      color: rgba(232, 237, 247, 0.75);
+      font-size: 14px;
+    }}
+    @media (max-width: 980px) {{
+      .page-wrap {{ margin-left: 0 !important; padding: 18px 16px 28px; }}
+    }}
+  </style>
+
+  {extra_head}
 </head>
 <body>
-  {sb}
-  <div class="{container_class}">
-    {"<h1 style='margin: 6px 0 16px 0;'>" + _html_escape(title) + "</h1>" if show_title else ""}
+  {SIDEBAR}
+
+  <div class="page-wrap">
     {body_html}
   </div>
+
+  <script>
+    (function() {{
+      // Active menu item (exact match on pathname)
+      try {{
+        const path = window.location.pathname || "/";
+        const links = document.querySelectorAll(".sidebar a.menu-item");
+        links.forEach(a => {{
+          const href = a.getAttribute("href") || "";
+          if (!href.startsWith("/")) return;
+          if (href === path) {{
+            a.classList.add("active");
+          }}
+        }});
+      }} catch (e) {{}}
+    }})();
+  </script>
 </body>
 </html>"""
-    return HTMLResponse(html)
-
 
 @app.get("/static/{file_path:path}")
 async def _serve_static(file_path: str):

@@ -4473,7 +4473,7 @@ async def ai_opportunity_scanner(request: Request):
     }
     *{box-sizing:border-box}
 
-    .wrap{max-width:1100px;margin:0 auto;padding:28px 18px 40px}
+    .wrap{max-width:1220px;margin:0;padding:28px 18px 40px}
     .topline{display:flex;align-items:center;gap:10px;color:var(--muted);letter-spacing:.12em;font-size:12px}
     .dot{width:8px;height:8px;border-radius:50%;background:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.15)}
     h1{margin:10px 0 6px;font-size:46px;line-height:1.05}
@@ -10773,7 +10773,7 @@ last_telegram_message_time = 0
 TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 
-CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
+CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
 
 # ------------------------------------------------------------
@@ -14482,7 +14482,7 @@ async def ai_opportunity_scanner(request: Request):
                   var(--bg);
       color:var(--text);
     }
-    .wrap{max-width:1100px;margin:0 auto;padding:28px 18px 40px}
+    .wrap{max-width:1220px;margin:0;padding:28px 18px 40px}
     .topline{display:flex;align-items:center;gap:10px;color:var(--muted);letter-spacing:.12em;font-size:12px}
     .dot{width:8px;height:8px;border-radius:50%;background:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.15)}
     h1{margin:10px 0 6px;font-size:46px;line-height:1.05}
@@ -15984,7 +15984,7 @@ async def convertisseur_page():
     <style>
         .converter-container {{
             max-width: 800px;
-            margin: 0 auto;
+            margin: 0;
         }}
         .converter-box {{
             background: #1e293b;
@@ -16400,7 +16400,7 @@ async def convertisseur_page():
         // Recharger toutes les 5 minutes
         setInterval(loadRates, 300000);
     </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Convertisseur ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Convertisseur universel crypto ↔ fiat temps réel.</p><ul style="line-height: 1.8; color: #555;"><li>💱 100+ cryptos</li><li>🌍 30+ devises fiat</li><li>📊 Taux réels CoinGecko</li><li>⚡ Instantané</li><li>🔄 Bidirectionnel</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">💡 Exemples</h3><p style="line-height: 1.6; color: #555;"><strong>💰 Planifier:</strong> "Combien BTC avec 5000 CAD?"</p><p style="line-height: 1.6; color: #555;"><strong>📊 Portfolio:</strong> "0.5 BTC = ? USD"</p><p style="line-height: 1.6; color: #555;"><strong>🔄 Crypto:</strong> "1 BTC = ? ETH"</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🌍 Devises</h3><p style="line-height: 1.6; color: #555;">💵 Fiat: USD, EUR, CAD, GBP, JPY...</p><p style="line-height: 1.6; color: #555;">₿ Cryptos: BTC, ETH, BNB, SOL...</p><p style="color: #666; margin-top: 10px;">+ 100 autres!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">⚡ Features</h3><p style="line-height: 1.6; color: #555;">📊 Temps réel | 🔄 Instantané | 💱 Bidirectionnel | 🎯 Précis | ⚡ Gratuit</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Convertisseur ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Convertisseur universel crypto ↔ fiat temps réel.</p><ul style="line-height: 1.8; color: #555;"><li>💱 100+ cryptos</li><li>🌍 30+ devises fiat</li><li>📊 Taux réels CoinGecko</li><li>⚡ Instantané</li><li>🔄 Bidirectionnel</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">💡 Exemples</h3><p style="line-height: 1.6; color: #555;"><strong>💰 Planifier:</strong> "Combien BTC avec 5000 CAD?"</p><p style="line-height: 1.6; color: #555;"><strong>📊 Portfolio:</strong> "0.5 BTC = ? USD"</p><p style="line-height: 1.6; color: #555;"><strong>🔄 Crypto:</strong> "1 BTC = ? ETH"</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🌍 Devises</h3><p style="line-height: 1.6; color: #555;">💵 Fiat: USD, EUR, CAD, GBP, JPY...</p><p style="line-height: 1.6; color: #555;">₿ Cryptos: BTC, ETH, BNB, SOL...</p><p style="color: #666; margin-top: 10px;">+ 100 autres!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">⚡ Features</h3><p style="line-height: 1.6; color: #555;">📊 Temps réel | 🔄 Instantané | 💱 Bidirectionnel | 🎯 Précis | ⚡ Gratuit</p></div></div></div>
 </body>
 </html>""")
 @app.get("/api/economic-calendar")
@@ -17441,7 +17441,7 @@ async def telegram_test():
 # FIN SECTION ALTCOIN SEASON
 @app.get("/fear-greed", response_class=HTMLResponse)
 async def fear_greed_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script><div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Fear & Greed Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce que c'est ?</h3><p style="line-height: 1.8; color: #666;">Le <strong>Fear & Greed Index</strong> mesure les émotions du marché crypto. Varie de <strong>0 (Fear extrême)</strong> à <strong>100 (Greed extrême)</strong>.</p><ul style="line-height: 2; color: #555; list-style: none; padding: 0;"><li>😱 <strong>0-25:</strong> Extreme Fear - Opportunité</li><li>😟 <strong>25-45:</strong> Fear - Marché prudent</li><li>⚖️ <strong>45-55:</strong> Neutral - Équilibré</li><li>😃 <strong>55-75:</strong> Greed - Optimisme</li><li>🤑 <strong>75-100:</strong> Extreme Greed - Attention!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Comment c'est calculé ?</h3><p style="line-height: 1.8; color: #666;">6 facteurs analysés:</p><ul style="line-height: 1.8; color: #555;"><li><strong>Volatilité (25%):</strong> Fluctuations prix</li><li><strong>Momentum (25%):</strong> Volume trading</li><li><strong>Social (15%):</strong> Twitter/Reddit</li><li><strong>Sondages (15%):</strong> Avis traders</li><li><strong>Dominance (10%):</strong> Part BTC</li><li><strong>Trends (10%):</strong> Google recherches</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Comment l'utiliser ?</h3><p style="line-height: 1.8; color: #666;"><strong>Stratégie contrarian:</strong> Acheter dans la Fear, vendre dans la Greed.</p><ul style="line-height: 1.8; color: #555;"><li>✅ <strong>&lt; 25:</strong> Zone d'achat potentielle</li><li>⚠️ <strong>&gt; 75:</strong> Envisager prendre profits</li><li>⏸️ <strong>45-55:</strong> Attendre signal clair</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Ne tradez jamais sur UN seul indicateur!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique 30 jours</li><li>📉 Moyennes 7j/30j</li><li>🕒 Historique complet</li></ul><p style="color: #666; margin-top: 15px; font-style: italic;">💡 <strong>Astuce:</strong> Les extremes (&lt;20 ou &gt;80) sont rares mais puissants!</p></div></div></div></body></html>"""
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script><div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Fear & Greed Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce que c'est ?</h3><p style="line-height: 1.8; color: #666;">Le <strong>Fear & Greed Index</strong> mesure les émotions du marché crypto. Varie de <strong>0 (Fear extrême)</strong> à <strong>100 (Greed extrême)</strong>.</p><ul style="line-height: 2; color: #555; list-style: none; padding: 0;"><li>😱 <strong>0-25:</strong> Extreme Fear - Opportunité</li><li>😟 <strong>25-45:</strong> Fear - Marché prudent</li><li>⚖️ <strong>45-55:</strong> Neutral - Équilibré</li><li>😃 <strong>55-75:</strong> Greed - Optimisme</li><li>🤑 <strong>75-100:</strong> Extreme Greed - Attention!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Comment c'est calculé ?</h3><p style="line-height: 1.8; color: #666;">6 facteurs analysés:</p><ul style="line-height: 1.8; color: #555;"><li><strong>Volatilité (25%):</strong> Fluctuations prix</li><li><strong>Momentum (25%):</strong> Volume trading</li><li><strong>Social (15%):</strong> Twitter/Reddit</li><li><strong>Sondages (15%):</strong> Avis traders</li><li><strong>Dominance (10%):</strong> Part BTC</li><li><strong>Trends (10%):</strong> Google recherches</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Comment l'utiliser ?</h3><p style="line-height: 1.8; color: #666;"><strong>Stratégie contrarian:</strong> Acheter dans la Fear, vendre dans la Greed.</p><ul style="line-height: 1.8; color: #555;"><li>✅ <strong>&lt; 25:</strong> Zone d'achat potentielle</li><li>⚠️ <strong>&gt; 75:</strong> Envisager prendre profits</li><li>⏸️ <strong>45-55:</strong> Attendre signal clair</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Ne tradez jamais sur UN seul indicateur!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique 30 jours</li><li>📉 Moyennes 7j/30j</li><li>🕒 Historique complet</li></ul><p style="color: #666; margin-top: 15px; font-style: italic;">💡 <strong>Astuce:</strong> Les extremes (&lt;20 ou &gt;80) sont rares mais puissants!</p></div></div></div></body></html>"""
     return HTMLResponse(SIDEBAR + html)
 
 @app.get("/dominance", response_class=HTMLResponse)
@@ -17614,7 +17614,7 @@ async function loadData(){
 loadData();
 setInterval(loadData,60000);
 </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Bitcoin Dominance ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 Qu'est-ce ?</h3><p style="line-height: 1.8; color: #666;">Part de marché Bitcoin vs TOUS cryptos.</p><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>👑 <strong>&gt;60%:</strong> Bitcoin dominant</li><li>💪 <strong>50-60%:</strong> Bitcoin fort</li><li>⚖️ <strong>40-50%:</strong> Équilibré</li><li>🚀 <strong>&lt;40%:</strong> Altseason!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Interprétation</h3><p style="line-height: 1.6; color: #555;"><strong>Dom↗️:</strong> Capital→BTC (refuge)</p><p style="line-height: 1.6; color: #555;"><strong>Dom↘️:</strong> Capital→Alts (altseason proche)</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Stratégies</h3><p style="line-height: 1.6; color: #555;">Dom↗️+BTC↗️: ✅ Accumuler BTC</p><p style="line-height: 1.6; color: #555;">Dom↘️+BTC↗️: 🚀 Altseason!</p><p style="line-height: 1.6; color: #555;">Dom↗️+BTC↘️: ⚠️ Bear market</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>👑 BTC Dominance temps réel</li><li>🔷 ETH Dominance</li><li>📊 Graphique historique</li><li>🎯 Signaux rotation</li></ul><p style="color: #666; margin-top: 15px;">💡 Surveillez 50-55% pour rotations!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Bitcoin Dominance ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 Qu'est-ce ?</h3><p style="line-height: 1.8; color: #666;">Part de marché Bitcoin vs TOUS cryptos.</p><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>👑 <strong>&gt;60%:</strong> Bitcoin dominant</li><li>💪 <strong>50-60%:</strong> Bitcoin fort</li><li>⚖️ <strong>40-50%:</strong> Équilibré</li><li>🚀 <strong>&lt;40%:</strong> Altseason!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Interprétation</h3><p style="line-height: 1.6; color: #555;"><strong>Dom↗️:</strong> Capital→BTC (refuge)</p><p style="line-height: 1.6; color: #555;"><strong>Dom↘️:</strong> Capital→Alts (altseason proche)</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Stratégies</h3><p style="line-height: 1.6; color: #555;">Dom↗️+BTC↗️: ✅ Accumuler BTC</p><p style="line-height: 1.6; color: #555;">Dom↘️+BTC↗️: 🚀 Altseason!</p><p style="line-height: 1.6; color: #555;">Dom↗️+BTC↘️: ⚠️ Bear market</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>👑 BTC Dominance temps réel</li><li>🔷 ETH Dominance</li><li>📊 Graphique historique</li><li>🎯 Signaux rotation</li></ul><p style="color: #666; margin-top: 15px;">💡 Surveillez 50-55% pour rotations!</p></div></div></div>
 </body></html>"""
     return HTMLResponse(html)
 
@@ -18474,7 +18474,7 @@ async def heatmap_page():
 
         console.log('🔥 Heatmap Pro initialisée');
     </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Heatmap ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Visualisation marché en temps réel avec blocs colorés proportionnels.</p><ul style="line-height: 1.8; color: #555;"><li>🟢 Vert: Performance positive</li><li>🔴 Rouge: Performance négative</li><li>📏 Taille: Market Cap</li><li>⚡ Temps réel: Refresh auto</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Lecture rapide</h3><p style="line-height: 1.6; color: #555;"><strong>Couleur:</strong> Performance 24h</p><p style="line-height: 1.6; color: #555;"><strong>Taille bloc:</strong> Market Cap relatif</p><p style="line-height: 1.6; color: #555;"><strong>Position:</strong> Classement importance</p><p style="color: #666; margin-top: 10px;">Plus le bloc est grand = plus gros market cap!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Utilisation</h3><p style="line-height: 1.6; color: #555;">✅ Vue d'ensemble marché instantanée</p><p style="line-height: 1.6; color: #555;">✅ Identifier secteurs performants</p><p style="line-height: 1.6; color: #555;">✅ Détecter rotations capitaux</p><p style="line-height: 1.6; color: #555;">✅ Trouver opportunités rapidement</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🔍 Conseils</h3><p style="line-height: 1.6; color: #555;">💡 Beaucoup de vert = Marché haussier</p><p style="line-height: 1.6; color: #555;">💡 Beaucoup de rouge = Marché baissier</p><p style="line-height: 1.6; color: #555;">💡 Click bloc = Détails crypto</p><p style="color: #9b59b6; font-weight: bold; margin-top: 10px;">Refresh toutes les 3 min automatique!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Heatmap ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Visualisation marché en temps réel avec blocs colorés proportionnels.</p><ul style="line-height: 1.8; color: #555;"><li>🟢 Vert: Performance positive</li><li>🔴 Rouge: Performance négative</li><li>📏 Taille: Market Cap</li><li>⚡ Temps réel: Refresh auto</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Lecture rapide</h3><p style="line-height: 1.6; color: #555;"><strong>Couleur:</strong> Performance 24h</p><p style="line-height: 1.6; color: #555;"><strong>Taille bloc:</strong> Market Cap relatif</p><p style="line-height: 1.6; color: #555;"><strong>Position:</strong> Classement importance</p><p style="color: #666; margin-top: 10px;">Plus le bloc est grand = plus gros market cap!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Utilisation</h3><p style="line-height: 1.6; color: #555;">✅ Vue d'ensemble marché instantanée</p><p style="line-height: 1.6; color: #555;">✅ Identifier secteurs performants</p><p style="line-height: 1.6; color: #555;">✅ Détecter rotations capitaux</p><p style="line-height: 1.6; color: #555;">✅ Trouver opportunités rapidement</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🔍 Conseils</h3><p style="line-height: 1.6; color: #555;">💡 Beaucoup de vert = Marché haussier</p><p style="line-height: 1.6; color: #555;">💡 Beaucoup de rouge = Marché baissier</p><p style="line-height: 1.6; color: #555;">💡 Click bloc = Détails crypto</p><p style="color: #9b59b6; font-weight: bold; margin-top: 10px;">Refresh toutes les 3 min automatique!</p></div></div></div>
 </body>
 </html>"""
     return HTMLResponse(html)
@@ -18818,7 +18818,7 @@ async def altcoin_page():
 
         console.log('🌟 Altcoin Season Index initialisé avec CACHE STABLE');
     </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'Altcoin Season Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce ?</h3><p style="line-height: 1.8; color: #666;">Index mesurant performance alts vs Bitcoin sur 90 jours.</p><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>🔵 <strong>0-25:</strong> Bitcoin Season (BTC domine)</li><li>⚖️ <strong>25-75:</strong> Zone neutre (mixte)</li><li>🚀 <strong>75-100:</strong> Altcoin Season! (Alts explosent)</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Calcul</h3><p style="line-height: 1.6; color: #555;"><strong>Méthode Blockchain Center:</strong></p><p style="line-height: 1.6; color: #666; font-size: 14px;">1. Top 50 altcoins (sans BTC)</p><p style="line-height: 1.6; color: #666; font-size: 14px;">2. Performance 90j de chaque</p><p style="line-height: 1.6; color: #666; font-size: 14px;">3. Comparer vs Bitcoin</p><p style="line-height: 1.6; color: #666; font-size: 14px;">4. Index = (Nb battant BTC / 50) × 100</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">💡 Stratégie</h3><p style="line-height: 1.6; color: #555;"><strong>Index &lt; 25 (Bitcoin Season):</strong></p><p style="line-height: 1.6; color: #666; margin-left: 15px;">✅ Accumuler BTC, patience sur alts</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>Index &gt; 75 (Altseason):</strong></p><p style="line-height: 1.6; color: #666; margin-left: 15px;">🚀 Alts performent, diversifier!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🔍 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique historique</li><li>🎯 Stats détaillées (alts gagnants)</li><li>💡 Recommandations trading</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 10px;">💡 Altseasons durent 2-4 mois!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'Altcoin Season Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce ?</h3><p style="line-height: 1.8; color: #666;">Index mesurant performance alts vs Bitcoin sur 90 jours.</p><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>🔵 <strong>0-25:</strong> Bitcoin Season (BTC domine)</li><li>⚖️ <strong>25-75:</strong> Zone neutre (mixte)</li><li>🚀 <strong>75-100:</strong> Altcoin Season! (Alts explosent)</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Calcul</h3><p style="line-height: 1.6; color: #555;"><strong>Méthode Blockchain Center:</strong></p><p style="line-height: 1.6; color: #666; font-size: 14px;">1. Top 50 altcoins (sans BTC)</p><p style="line-height: 1.6; color: #666; font-size: 14px;">2. Performance 90j de chaque</p><p style="line-height: 1.6; color: #666; font-size: 14px;">3. Comparer vs Bitcoin</p><p style="line-height: 1.6; color: #666; font-size: 14px;">4. Index = (Nb battant BTC / 50) × 100</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">💡 Stratégie</h3><p style="line-height: 1.6; color: #555;"><strong>Index &lt; 25 (Bitcoin Season):</strong></p><p style="line-height: 1.6; color: #666; margin-left: 15px;">✅ Accumuler BTC, patience sur alts</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>Index &gt; 75 (Altseason):</strong></p><p style="line-height: 1.6; color: #666; margin-left: 15px;">🚀 Alts performent, diversifier!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🔍 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique historique</li><li>🎯 Stats détaillées (alts gagnants)</li><li>💡 Recommandations trading</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 10px;">💡 Altseasons durent 2-4 mois!</p></div></div></div>
 </body>
 </html>
 """
@@ -19504,7 +19504,7 @@ async def bullrun_page():
         
         console.log('🚀 Bullrun Phase Tracker chargé!');
     </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Bullrun Phase Tracker ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Indicateur identifiant phase actuelle du cycle bullrun.</p><ul style="line-height: 1.8; color: #555;"><li>📊 5 phases distinctes</li><li>🎯 Données réelles</li><li>📈 BTC dominance, F&G</li><li>🔮 Altcoin Index</li><li>💡 Stratégies/phase</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Les 5 phases</h3><p style="line-height: 1.6; color: #555; font-size: 14px;">1️⃣ Accumulation → 2️⃣ Bitcoin Rally → 3️⃣ ETH & Large Caps → 4️⃣ Altcoin Season → 5️⃣ Euphorie/Top</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📈 Indicateurs</h3><p style="line-height: 1.6; color: #555;">👑 BTC Dominance | 😨 Fear & Greed | ⭐ Altcoin Index | 💰 Prix BTC | 📊 Market Cap</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Stratégie</h3><p style="line-height: 1.6; color: #555; font-size: 14px;">Phase 1: Accumuler | Phase 2: Hold BTC | Phase 3: Rotate ETH | Phase 4: Diversifier alts | Phase 5: PRENDRE PROFITS</p><p style="color: #e74c3c; font-weight: bold; margin-top: 10px;">⚠️ Ne tentez PAS timer le top exact!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Bullrun Phase Tracker ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Indicateur identifiant phase actuelle du cycle bullrun.</p><ul style="line-height: 1.8; color: #555;"><li>📊 5 phases distinctes</li><li>🎯 Données réelles</li><li>📈 BTC dominance, F&G</li><li>🔮 Altcoin Index</li><li>💡 Stratégies/phase</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Les 5 phases</h3><p style="line-height: 1.6; color: #555; font-size: 14px;">1️⃣ Accumulation → 2️⃣ Bitcoin Rally → 3️⃣ ETH & Large Caps → 4️⃣ Altcoin Season → 5️⃣ Euphorie/Top</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📈 Indicateurs</h3><p style="line-height: 1.6; color: #555;">👑 BTC Dominance | 😨 Fear & Greed | ⭐ Altcoin Index | 💰 Prix BTC | 📊 Market Cap</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Stratégie</h3><p style="line-height: 1.6; color: #555; font-size: 14px;">Phase 1: Accumuler | Phase 2: Hold BTC | Phase 3: Rotate ETH | Phase 4: Diversifier alts | Phase 5: PRENDRE PROFITS</p><p style="color: #e74c3c; font-weight: bold; margin-top: 10px;">⚠️ Ne tentez PAS timer le top exact!</p></div></div></div>
 </body>
 </html>
 """
@@ -19531,7 +19531,7 @@ async def charts_page():
             padding: 20px; 
             min-height: 100vh; 
         }}
-        .container { max-width: 1800px; margin: 0 auto; }
+        .container { max-width: 1800px; margin: 0; }
         
         /* Header */
         .header { 
@@ -20682,7 +20682,7 @@ async def trades_page():
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; padding: 20px; min-height: 100vh; }
-        .container { max-width: 1600px; margin: 0 auto; }
+        .container { max-width: 1600px; margin: 0; }
         .header { background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%); padding: 40px; border-radius: 20px; text-align: center; margin-bottom: 30px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4); position: relative; overflow: hidden; }
         .header::before { content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%; background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.1), transparent); animation: shine 3s infinite; }
         @keyframes shine { 0%, 100% { left: -100%; } 50% { left: 100%; } }
@@ -23932,7 +23932,7 @@ async def stats_dashboard():
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }}
         
-        .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
+        .container {{ max-width: 1400px; margin: 0; padding: 20px; }}
         h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
         
         .data-badge {{ text-align: center; margin-bottom: 20px; padding: 12px; background: rgba(0, 255, 136, 0.1); border: 2px solid #00ff88; border-radius: 8px; color: #00ff88; font-weight: bold; }}
@@ -23961,7 +23961,7 @@ async def stats_dashboard():
 <body>
 <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+.universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
 .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
 .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
 .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
@@ -24166,7 +24166,7 @@ async def market_simulation():
             min-height: 100vh;
             padding: 20px;
         }}
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0; }
         h1 { text-align: center; margin: 30px 0 10px 0; color: #00ff88; }
         .subtitle { text-align: center; margin-bottom: 30px; color: #aaa; font-size: 0.95em; }
         
@@ -24608,7 +24608,7 @@ async def market_simulation():
         
         setTimeout(() => runSimulation(), 500);
     </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Market Simulation ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Simulateur trading pour pratiquer SANS RISQUE avec capital virtuel.</p><ul style="line-height: 1.8; color: #555;"><li>💰 Capital virtuel $10k-$100k</li><li>📊 Données RÉELLES du marché</li><li>📈 Testez stratégies sans risque</li><li>📉 Apprenez de vos erreurs</li><li>🎯 Statistiques performances</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎮 Fonctionnalités</h3><ul style="line-height: 1.8; color: #555;"><li>🔄 Buy/Sell comme vrai trading</li><li>📊 Position size, stop loss, TP</li><li>💹 Tracking P&L temps réel</li><li>📈 Graphique performances</li><li>📋 Historique trades</li><li>🎯 Win rate, profit factor</li><li>🔄 Reset capital si besoin</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">📊 Stats suivies</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>💰 Capital actuel vs initial</li><li>📈 Profit/Loss total ($/%)</li><li>🎯 Win rate (% trades gagnants)</li><li>💹 Profit factor (gains/pertes)</li><li>📊 Nombre trades</li><li>📉 Max drawdown</li><li>📈 Best/Worst trade</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Pourquoi utiliser ?</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>✅ Apprendre SANS perdre argent</li><li>✅ Tester nouvelles stratégies</li><li>✅ Développer discipline</li><li>✅ Comprendre émotions trading</li><li>✅ Affiner risk management</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 15px;">🎯 Règle: Profitable en simu 3 mois AVANT argent réel!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Market Simulation ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Simulateur trading pour pratiquer SANS RISQUE avec capital virtuel.</p><ul style="line-height: 1.8; color: #555;"><li>💰 Capital virtuel $10k-$100k</li><li>📊 Données RÉELLES du marché</li><li>📈 Testez stratégies sans risque</li><li>📉 Apprenez de vos erreurs</li><li>🎯 Statistiques performances</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎮 Fonctionnalités</h3><ul style="line-height: 1.8; color: #555;"><li>🔄 Buy/Sell comme vrai trading</li><li>📊 Position size, stop loss, TP</li><li>💹 Tracking P&L temps réel</li><li>📈 Graphique performances</li><li>📋 Historique trades</li><li>🎯 Win rate, profit factor</li><li>🔄 Reset capital si besoin</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">📊 Stats suivies</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>💰 Capital actuel vs initial</li><li>📈 Profit/Loss total ($/%)</li><li>🎯 Win rate (% trades gagnants)</li><li>💹 Profit factor (gains/pertes)</li><li>📊 Nombre trades</li><li>📉 Max drawdown</li><li>📈 Best/Worst trade</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Pourquoi utiliser ?</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>✅ Apprendre SANS perdre argent</li><li>✅ Tester nouvelles stratégies</li><li>✅ Développer discipline</li><li>✅ Comprendre émotions trading</li><li>✅ Affiner risk management</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 15px;">🎯 Règle: Profitable en simu 3 mois AVANT argent réel!</p></div></div></div>
 </body>
 </html>""")
 
@@ -24740,7 +24740,7 @@ async def success_stories():
             padding: 20px;
         }}
         
-        .container { max-width: 1000px; margin: 0 auto; }
+        .container { max-width: 1000px; margin: 0; }
         h1 { text-align: center; margin: 30px 0; color: #00ff88; font-size: 2.5em; }
         
         .stories-grid {
@@ -25634,7 +25634,7 @@ async def risk_management(request: Request):
     body{{background: radial-gradient(1200px 600px at 15% 0%, rgba(124,58,237,.25), transparent 55%),
                   radial-gradient(1000px 650px at 90% 10%, rgba(34,211,238,.18), transparent 55%),
                   var(--bg); color:var(--txt); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial;}}
-    .wrap{{max-width:1200px; margin:0 auto; padding:24px 18px 40px;}}
+    .wrap{{max-width:1200px; margin: 0; padding:24px 18px 40px;}}
     .hero{{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin:6px 0 18px;}}
     .kicker{{color:var(--muted); font-size:12px; letter-spacing:.12em; text-transform:uppercase;}}
     .title{{font-size:34px; line-height:1.1; font-weight:900; margin:6px 0 0;}}
@@ -26140,7 +26140,7 @@ async def watchlist_page():
 
     .wrap{
       max-width: 1120px;
-      margin: 0 auto;
+      margin: 0;
     }
 
     .hero{
@@ -30600,7 +30600,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             <style>
                 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
                 body {{ font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }}
-                .container {{ max-width: 1400px; margin: 0 auto; }}
+                .container {{ max-width: 1400px; margin: 0; }}
                 h1 {{ color: #60a5fa; margin-bottom: 30px; }}
                 .stats {{
                     display: grid;
@@ -30654,7 +30654,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
         <body>
 <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+.universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
 .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
 .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
 .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
@@ -32134,7 +32134,7 @@ async def mon_compte(request: Request):
     <body>
         <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+.universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
 .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
 .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
 .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
@@ -32432,7 +32432,7 @@ async def backtesting_page(request: Request):
                 padding-bottom: 50px;
             }}
             
-            .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
+            .container {{ max-width: 1400px; margin: 0; padding: 20px; }}
             
             .header {{
                 background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
@@ -32524,7 +32524,7 @@ async def backtesting_page(request: Request):
                 box-shadow: 0 5px 20px rgba(16, 185, 129, 0.3);
                 width: 100%;
                 max-width: 300px;
-                margin: 0 auto;
+                margin: 0;
                 display: block;
             }}
             .btn-primary:hover {{
@@ -33167,7 +33167,7 @@ async def backtesting_page(request: Request):
             
             const menuHTML = `<style>
         .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-        .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+        .universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
         .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
         .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
         .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
@@ -33385,7 +33385,7 @@ SIDEBAR +
             }}
             .container {{
                 max-width: 1200px;
-                margin: 0 auto;
+                margin: 0;
             }}
             .header {{
                 text-align: center;
@@ -33533,7 +33533,7 @@ SIDEBAR +
             
             const menuHTML = `<style>
         .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-        .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+        .universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
         .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
         .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
         .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
@@ -33545,7 +33545,7 @@ SIDEBAR +
             document.body.insertAdjacentHTML('afterbegin', menuHTML);
         }});
         </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionnent les On-Chain Metrics ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Données blockchain en temps réel.</p><ul style="line-height: 1.8; color: #555;"><li>⛓️ Transparence totale</li><li>📊 Impossible à manipuler</li><li>🎯 Comportements réels</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Métriques</h3><p style="line-height: 1.6; color: #555;">💰 Exchange Flow | 👥 Addresses | 💎 HODL | ⛏️ Mining</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 Signaux</h3><p style="line-height: 1.6; color: #555;">🟢 BULLISH: Sorties exchanges | 🔴 BEARISH: Entrées exchanges</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Usage</h3><p style="color: #666;">Vision macro long terme. Pour investisseurs.</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionnent les On-Chain Metrics ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Données blockchain en temps réel.</p><ul style="line-height: 1.8; color: #555;"><li>⛓️ Transparence totale</li><li>📊 Impossible à manipuler</li><li>🎯 Comportements réels</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Métriques</h3><p style="line-height: 1.6; color: #555;">💰 Exchange Flow | 👥 Addresses | 💎 HODL | ⛏️ Mining</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 Signaux</h3><p style="line-height: 1.6; color: #555;">🟢 BULLISH: Sorties exchanges | 🔴 BEARISH: Entrées exchanges</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Usage</h3><p style="color: #666;">Vision macro long terme. Pour investisseurs.</p></div></div></div>
     </body>
     </html>
     """)
@@ -33621,7 +33621,7 @@ SIDEBAR +
             }}
             .container {{
                 max-width: 1200px;
-                margin: 0 auto;
+                margin: 0;
             }}
             .header {{
                 text-align: center;
@@ -33765,7 +33765,7 @@ SIDEBAR +
             
             const menuHTML = `<style>
         .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-        .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+        .universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
         .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
         .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
         .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
@@ -33818,7 +33818,7 @@ async def api_keys_page(request: Request):
             
             const menuHTML = `<style>
         .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-        .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}}
+        .universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}}
         .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:10px 16px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
         .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white}}
         .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none}}
@@ -33851,7 +33851,7 @@ async def api_keys_page(request: Request):
                 }}
             }}
         </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionnent les API Keys ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Configuration clés API pour connecter exchanges.</p><ul style="line-height: 1.8; color: #555;"><li>🔑 Connexion exchanges</li><li>📊 Import trades auto</li><li>💹 Suivi portfolio temps réel</li><li>📱 Notifications Telegram</li><li>🔐 Stockage sécurisé</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🔧 APIs</h3><p style="line-height: 1.6; color: #555;"><strong>📊 Exchanges:</strong> Binance, Coinbase, Kraken, Bybit</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📱 Notifications:</strong> Telegram, Discord, Email</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Configuration</h3><ol style="line-height: 1.6; color: #555; font-size: 14px;"><li>Créer API key exchange</li><li>Permissions: Read Only</li><li>Copier Key + Secret</li><li>Coller formulaire</li><li>Tester</li><li>Sauvegarder</li></ol></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">⚠️ Sécurité</h3><ul style="line-height: 1.6; color: #555; list-style: none; padding: 0; font-size: 14px;"><li>🔐 JAMAIS trading</li><li>✅ Read Only UNIQUEMENT</li><li>🔒 Chiffré AES-256</li><li>🔑 Jamais partager</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 10px;">🛑 Si doute, NE CONNECTEZ PAS!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionnent les API Keys ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Configuration clés API pour connecter exchanges.</p><ul style="line-height: 1.8; color: #555;"><li>🔑 Connexion exchanges</li><li>📊 Import trades auto</li><li>💹 Suivi portfolio temps réel</li><li>📱 Notifications Telegram</li><li>🔐 Stockage sécurisé</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🔧 APIs</h3><p style="line-height: 1.6; color: #555;"><strong>📊 Exchanges:</strong> Binance, Coinbase, Kraken, Bybit</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📱 Notifications:</strong> Telegram, Discord, Email</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Configuration</h3><ol style="line-height: 1.6; color: #555; font-size: 14px;"><li>Créer API key exchange</li><li>Permissions: Read Only</li><li>Copier Key + Secret</li><li>Coller formulaire</li><li>Tester</li><li>Sauvegarder</li></ol></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">⚠️ Sécurité</h3><ul style="line-height: 1.6; color: #555; list-style: none; padding: 0; font-size: 14px;"><li>🔐 JAMAIS trading</li><li>✅ Read Only UNIQUEMENT</li><li>🔒 Chiffré AES-256</li><li>🔑 Jamais partager</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 10px;">🛑 Si doute, NE CONNECTEZ PAS!</p></div></div></div>
     </body>
     </html>
     """)
@@ -35112,205 +35112,175 @@ async def ai_alerts_inbox(request: Request):
 </html>"""
     return HTMLResponse(html_page)
 
-@app.get("/ai-news", response_class=HTMLResponse)
-async def ai_news():
-    """Actualités crypto - TOP 50"""
-    cryptos = await get_top_50_cryptos()
-    news_html = ""
-    for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
-        name = crypto.get('name', '')
-        symbol = crypto.get('symbol', '').upper()
-        rank = crypto.get('market_cap_rank', 0)
-        mcap = crypto.get('market_cap', 0)
-        volume = crypto.get('total_volume', 0)
-        price_str = f"{price:,.6f}" if price < 1 else f"{price:,.2f}"
-        change_class = "positive" if change_24h > 0 else "negative"
-        trend = "📈" if change_24h > 0 else "📉"
-        news_html += f"""
-        <div class="news-card">
-            <div class="news-header">
-                <span class="rank">#{rank}</span>
-                <span class="symbol">{symbol}</span>
-                <span class="trend">{trend}</span>
-            </div>
-            <h3>{name}</h3>
-            <div class="news-content">
-                <div class="price-info">
-                    <div class="label">Prix</div>
-                    <div class="value">${price_str}</div>
-                </div>
-                <div class="change-info {change_class}">
-                    <div class="label">24h</div>
-                    <div class="value">{change_24h:+.2f}%</div>
-                </div>
-                <div class="mcap-info">
-                    <div class="label">Market Cap</div>
-                    <div class="value">${mcap/1000000:.0f}M</div>
-                </div>
-            </div>
-        </div>
-        """
-    return HTMLResponse(SIDEBAR + f"""
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI News - Top 50</title>
-        <style>
-            *{{margin:0;padding:0;box-sizing:border-box}}
-            body{{font-family:Arial,sans-serif;background:linear-gradient(135deg,#1e293b,#334155);color:#fff;padding:40px 20px;min-height:100vh}}
-            .container{{max-width:1400px;margin:0 auto}}
-            h1{{font-size:2.8em;text-align:center;margin-bottom:40px}}
-            .news-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}}
-            .news-card{{background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.1);border-radius:15px;padding:20px;transition:all 0.3s}}
-            .news-card:hover{{transform:translateY(-5px);border-color:rgba(255,255,255,0.3)}}
-            .news-header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}}
-            .rank{{color:#fbbf24;font-weight:700}}
-            .symbol{{font-size:1.3em;font-weight:700}}
-            .trend{{font-size:1.5em}}
-            h3{{font-size:1em;color:#94a3b8;margin-bottom:20px}}
-            .news-content{{display:grid;gap:15px}}
-            .price-info,.change-info,.mcap-info{{display:flex;justify-content:space-between;padding:10px;background:rgba(0,0,0,0.2);border-radius:8px}}
-            .label{{color:#94a3b8;font-size:0.9em}}
-            .value{{font-weight:700;font-size:1.1em}}
-            .change-info.positive .value{{color:#10b981}}
-            .change-info.negative .value{{color:#ef4444}}
-        
-        .how-to-use {{
-            margin: 60px auto;
-            max-width: 1200px;
-            padding: 40px;
-            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
-            border: 2px solid #06b6d4;
-            border-radius: 20px;
-        }}
-        
-        .how-to-use h2 {{
-            font-size: 2em;
-            margin-bottom: 30px;
-            color: #06b6d4;
-            text-align: center;
-        }}
-        
-        .use-steps {{
-            display: grid;
-            gap: 25px;
-        }}
-        
-        .step {{
-            display: flex;
-            gap: 20px;
-            align-items: flex-start;
-            padding: 25px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 15px;
-            border-left: 4px solid #06b6d4;
-        }}
-        
-        .step-number {{
-            background: linear-gradient(135deg, #06b6d4, #3b82f6);
-            color: #fff;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5em;
-            font-weight: 700;
-            flex-shrink: 0;
-        }}
-        
-        .step-content h3 {{
-            font-size: 1.3em;
-            margin-bottom: 10px;
-            color: #fff;
-        }}
-        
-        .step-content p {{
-            color: rgba(255,255,255,0.8);
-            line-height: 1.6;
-        }}
-        
-        .use-tips {{
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(251,191,36,0.1);
-            border-left: 4px solid #fbbf24;
-            border-radius: 10px;
-        }}
-        
-        .use-tips h3 {{
-            color: #fbbf24;
-            margin-bottom: 15px;
-        }}
-        
-        .use-tips ul {{
-            list-style: none;
-            padding: 0;
-        }}
-        
-        .use-tips li {{
-            padding: 8px 0;
-            color: rgba(255,255,255,0.9);
-        }}
-        
-        .use-tips li:before {{
-            content: "💡 ";
-            margin-right: 10px;
-        }}
-</style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>📰 AI NEWS</h1>
-            <div class="news-grid">{news_html}</div>
-        </div>
-        <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    
-        <div class="how-to-use">
-            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
-            <div class="use-steps">
-                <div class="step">
-                    <span class="step-number">1</span>
-                    <div class="step-content">
-                        <h3>Suivez l'impact des news sur le marché</h3>
-                        <p>Chaque news importante est analysée en temps réel pour évaluer son impact potentiel sur les prix crypto (positif, négatif ou neutre).</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <span class="step-number">2</span>
-                    <div class="step-content">
-                        <h3>Identifiez les opportunités</h3>
-                        <p>Les news positives peuvent créer des opportunités d'achat, les négatives des signaux de vente. Utilisez l'indicateur d'impact pour prioriser.</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <span class="step-number">3</span>
-                    <div class="step-content">
-                        <h3>Agissez rapidement</h3>
-                        <p>Le marché crypto réagit vite aux news! Configurez des alertes pour être notifié des événements majeurs avant tout le monde.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="use-tips">
-                <h3>⚡ Conseils Pro</h3>
-                <ul>
-                    <li>News = catalyseur de mouvement, pas signal d'achat direct</li>
-                    <li>Vérifiez toujours la source et la fiabilité</li>
-                    <li>Combinez avec analyse technique pour confirmer</li>
-                </ul>
-            </div>
-        </div>
-    
-        </body>
-    </html>
-    """)
+@app.get("/ai-news")
+async def ai_news_page(request: Request):
+    """AI News — nouvelles crypto réelles (CryptoCompare) + layout unifié."""
+    SID = _sidebar_html(request)
 
-print("Routes 2-3 créées: AI News, AI Predictor")
+    # Source principale (déjà utilisée ailleurs dans le projet)
+    news = []
+    try:
+        news = await get_crypto_news_real()
+    except Exception:
+        news = []
+
+    cards_html = []
+    if not news:
+        cards_html.append(
+            """<div class="news-empty">
+                  <div class="news-empty-title">Aucune news disponible pour le moment</div>
+                  <div class="news-empty-sub">Réessayez dans quelques minutes.</div>
+                </div>"""
+        )
+    else:
+        for a in (news or [])[:24]:
+            title = escape(str(a.get("title") or "").strip())
+            url = str(a.get("url") or a.get("link") or "").strip()
+            src = escape(str(a.get("source") or a.get("source_info", {}).get("name") or "Source"))
+            # CryptoCompare utilise parfois 'body'
+            desc_raw = str(a.get("body") or a.get("summary") or a.get("description") or "").strip()
+            desc = escape(desc_raw[:260])
+            published = str(a.get("published_on") or a.get("published") or "").strip()
+            pill_time = f'<span class="pill ghost">{escape(published)}</span>' if published else ""
+            if not title or not url:
+                continue
+            cards_html.append(f"""
+            <a class="news-card" href="{url}" target="_blank" rel="noopener">
+              <div class="news-card-top">
+                <div class="news-title">{title}</div>
+                <div class="news-meta">
+                  <span class="pill">{src}</span>
+                  {pill_time}
+                </div>
+              </div>
+              <div class="news-desc">{desc}</div>
+              <div class="news-cta">Lire l’article →</div>
+            </a>
+            """)
+
+    body_html = f"""
+    <style>
+      .news-head {{
+        display:flex; align-items:flex-end; justify-content:space-between;
+        gap:14px; margin: 6px 0 16px;
+      }}
+      .news-head h1 {{ margin:0; font-size: 26px; letter-spacing: .2px; }}
+      .news-sub {{ color: rgba(255,255,255,.72); font-size: 13px; margin-top: 4px; }}
+      .news-tools {{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }}
+      .btn {{
+        display:inline-flex; align-items:center; gap:8px;
+        padding: 10px 12px; border-radius: 12px;
+        background: rgba(255,255,255,.08);
+        border: 1px solid rgba(255,255,255,.10);
+        color: rgba(255,255,255,.92);
+        text-decoration:none; font-weight:700; font-size: 13px;
+      }}
+      .btn:hover {{ background: rgba(255,255,255,.11); }}
+      .pill {{
+        display:inline-flex; align-items:center;
+        padding: 6px 10px; border-radius: 999px;
+        background: rgba(255,255,255,.08);
+        border: 1px solid rgba(255,255,255,.10);
+        color: rgba(255,255,255,.85);
+        font-size: 12px; font-weight: 700;
+      }}
+      .pill.ghost {{
+        background: rgba(255,255,255,.04);
+        border-color: rgba(255,255,255,.08);
+        color: rgba(255,255,255,.70);
+        font-weight: 600;
+      }}
+      .news-grid {{
+        display:grid;
+        grid-template-columns: repeat(3, minmax(0,1fr));
+        gap: 14px;
+      }}
+      @media(max-width: 1100px) {{
+        .news-grid {{ grid-template-columns: repeat(2, minmax(0,1fr)); }}
+      }}
+      @media(max-width: 700px) {{
+        .news-head {{ align-items:flex-start; }}
+        .news-grid {{ grid-template-columns: 1fr; }}
+      }}
+      .news-card {{
+        display:flex; flex-direction:column; gap: 10px;
+        padding: 14px 14px 12px;
+        border-radius: 16px;
+        background: rgba(255,255,255,.06);
+        border: 1px solid rgba(255,255,255,.10);
+        text-decoration:none;
+        box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      }}
+      .news-card:hover {{
+        background: rgba(255,255,255,.08);
+        border-color: rgba(180,130,255,.35);
+        transform: translateY(-1px);
+      }}
+      .news-title {{
+        font-size: 15px; font-weight: 800; color: rgba(255,255,255,.95);
+        line-height: 1.25;
+      }}
+      .news-meta {{ display:flex; gap:8px; flex-wrap:wrap; }}
+      .news-desc {{
+        color: rgba(255,255,255,.72);
+        font-size: 13px; line-height: 1.35;
+        display:-webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+        overflow:hidden;
+      }}
+      .news-cta {{
+        margin-top:auto;
+        color: rgba(160,210,255,.92);
+        font-weight: 800; font-size: 13px;
+      }}
+      .news-empty {{
+        grid-column: 1 / -1;
+        padding: 22px;
+        border-radius: 18px;
+        background: rgba(255,255,255,.05);
+        border: 1px dashed rgba(255,255,255,.16);
+      }}
+      .news-empty-title {{ font-weight: 900; font-size: 16px; }}
+      .news-empty-sub {{ color: rgba(255,255,255,.72); margin-top: 6px; }}
+      .howto {{
+        margin-top: 16px;
+        padding: 14px;
+        border-radius: 16px;
+        background: rgba(255,255,255,.04);
+        border: 1px solid rgba(255,255,255,.09);
+        color: rgba(255,255,255,.78);
+        font-size: 13px;
+      }}
+      .howto b {{ color: rgba(255,255,255,.92); }}
+    </style>
+
+    <div class="news-head">
+      <div>
+        <h1>📰 AI News</h1>
+        <div class="news-sub">Nouvelles crypto (réelles) — source: CryptoCompare.</div>
+      </div>
+      <div class="news-tools">
+        <a class="btn" href="/ai-news">Rafraîchir</a>
+        <span class="pill">Auto-refresh 90s</span>
+      </div>
+    </div>
+
+    <div class="news-grid">
+      {''.join(cards_html)}
+    </div>
+
+    <div class="howto">
+      <b>Comment utiliser :</b> ouvrez un article → repérez la narrative (ETF, macro, alt season, hack, régulation) → 
+      puis recoupez avec <b>AI Signals</b> / <b>Market Regime</b>. Les news donnent le contexte, pas un signal.
+    </div>
+
+    <script>
+      setTimeout(() => {{
+        try {{ window.location.reload(); }} catch(e) {{}}
+      }}, 90000);
+    </script>
+    """
+
+    return _simple_page("AI News", body_html, sidebar_html=SID, request=request, show_title=False, container_class="container wide")
 
 @app.get("/ai-predictor", response_class=HTMLResponse)
 async def ai_predictor():
@@ -35429,7 +35399,7 @@ async def ai_predictor():
                 margin-left: 0;
                 padding: 40px 20px;
             }}
-            .container {{ max-width: 1600px; margin: 0 auto; }}
+            .container {{ max-width: 1600px; margin: 0; }}
             
             /* HEADER */
             h1 {{ 
@@ -37018,7 +36988,7 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
     }}
     .container {{
       max-width: 1100px;
-      margin: 0 auto;
+      margin: 0;
     }}
     .hero {{
       background: rgba(255,255,255,0.05);
@@ -37620,7 +37590,7 @@ async def ai_liquidity(request: Request):
   <style>{GLOBAL_STYLES}</style>
   <style>
   body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
-  .container {{ max-width: 1200px; margin: 0 auto; }}
+  .container {{ max-width: 1200px; margin: 0; }}
   .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}
   .muted {{ color:#9fb0c7; }}
   .tag {{ display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(96,165,250,.15); border:1px solid rgba(96,165,250,.35); }}
@@ -37748,7 +37718,7 @@ async def ai_timeframe(request: Request):
   <style>{GLOBAL_STYLES}</style>
   <style>
   body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
-  .container {{ max-width: 1100px; margin: 0 auto; }}
+  .container {{ max-width: 1100px; margin: 0; }}
   .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}
   .muted {{ color:#9fb0c7; }}
   .pill {{ display:inline-flex; gap:10px; align-items:center; padding:8px 12px; border-radius:999px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); }}
@@ -38743,7 +38713,7 @@ NAV_MENU = """
     }}
     .nav-container {
         max-width: 1600px;
-        margin: 0 auto;
+        margin: 0;
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
@@ -38936,7 +38906,7 @@ async def portfolio_tracker_page(request: Request):
     body = f"""
 <style>
   /* --- Portfolio Tracker overrides (contrast / lisibilité) --- */
-  .pt-wrap {{ max-width: 1100px; margin: 0 auto; padding: 8px 10px 24px; }}
+  .pt-wrap {{ max-width: 1100px; margin: 0; padding: 8px 10px 24px; }}
   .pt-card {{ background: rgba(255,255,255,0.98); border: 1px solid rgba(15,23,42,0.10); border-radius: 16px;
              padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.10); }}
   .pt-card h2, .pt-card h3 {{ color: #0f172a; }}
@@ -41607,7 +41577,7 @@ async def admin_users_page(request: Request, admin=Depends(require_admin)):
     }}
     .card {{
       max-width: 1220px;
-      margin: 0 auto;
+      margin: 0;
       background: rgba(255,255,255,.04);
       border:1px solid var(--border);
       border-radius: 18px;
@@ -42727,7 +42697,7 @@ async def strategie_page():
             
             .container {
                 max-width: 1200px;
-                margin: 0 auto;
+                margin: 0;
                 padding: 40px 20px;
             }}
             
@@ -44499,12 +44469,12 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         .orb2 { width: 400px; height: 400px; background: radial-gradient(circle, #764ba2, transparent); bottom: -100px; right: -100px; animation-delay: -5s; }
         .orb3 { width: 350px; height: 350px; background: radial-gradient(circle, #f093fb, transparent); top: 50%; right: 10%; animation-delay: -10s; }
         @keyframes orbFloat { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(50px, -50px) scale(1.1); } 66% { transform: translate(-30px, 30px) scale(0.9); } }
-        .main-content { position: relative; z-index: 10; padding: 60px 40px; max-width: 1600px; margin: 0 auto; }
+        .main-content { position: relative; z-index: 10; padding: 60px 40px; max-width: 1600px; margin: 0; }
         .hero { text-align: center; margin-bottom: 60px; position: relative; }
         .hero-title { font-size: 4.5em; font-weight: 900; background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #667eea 75%, #764ba2 100%); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: titleGradient 8s ease infinite, titleFloat 3s ease-in-out infinite; letter-spacing: -2px; text-shadow: 0 0 80px rgba(102, 126, 234, 0.5); margin-bottom: 20px; }
         @keyframes titleGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes titleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .hero-subtitle { font-size: 1.2em; color: rgba(255, 255, 255, 0.7); font-weight: 400; line-height: 1.8; max-width: 900px; margin: 0 auto; animation: fadeInUp 1s ease; }
+        .hero-subtitle { font-size: 1.2em; color: rgba(255, 255, 255, 0.7); font-weight: 400; line-height: 1.8; max-width: 900px; margin: 0; animation: fadeInUp 1s ease; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 60px; }
         .stat-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 35px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
@@ -44959,7 +44929,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
 .gauge {
     width: 300px;
     height: auto;
-    margin: 0 auto;
+    margin: 0;
     display: block;
 }
 
@@ -45240,12 +45210,12 @@ async def home():
         .orb2 { width: 400px; height: 400px; background: radial-gradient(circle, #764ba2, transparent); bottom: -100px; right: -100px; animation-delay: -5s; }
         .orb3 { width: 350px; height: 350px; background: radial-gradient(circle, #f093fb, transparent); top: 50%; right: 10%; animation-delay: -10s; }
         @keyframes orbFloat { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(50px, -50px) scale(1.1); } 66% { transform: translate(-30px, 30px) scale(0.9); } }
-        .main-content { position: relative; z-index: 10; padding: 60px 40px; max-width: 1600px; margin: 0 auto; }
+        .main-content { position: relative; z-index: 10; padding: 60px 40px; max-width: 1600px; margin: 0; }
         .hero { text-align: center; margin-bottom: 60px; position: relative; }
         .hero-title { font-size: 4.5em; font-weight: 900; background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #667eea 75%, #764ba2 100%); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: titleGradient 8s ease infinite, titleFloat 3s ease-in-out infinite; letter-spacing: -2px; text-shadow: 0 0 80px rgba(102, 126, 234, 0.5); margin-bottom: 20px; }
         @keyframes titleGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes titleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .hero-subtitle { font-size: 1.2em; color: rgba(255, 255, 255, 0.7); font-weight: 400; line-height: 1.8; max-width: 900px; margin: 0 auto; animation: fadeInUp 1s ease; }
+        .hero-subtitle { font-size: 1.2em; color: rgba(255, 255, 255, 0.7); font-weight: 400; line-height: 1.8; max-width: 900px; margin: 0; animation: fadeInUp 1s ease; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 60px; }
         .stat-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 35px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
@@ -45641,7 +45611,7 @@ async def home():
 .gauge {
     width: 300px;
     height: auto;
-    margin: 0 auto;
+    margin: 0;
     display: block;
 }
 
@@ -45901,7 +45871,7 @@ async def spot_trading_page():
             
             .container {
                 max-width: 1200px;
-                margin: 0 auto;
+                margin: 0;
                 padding: 40px 20px;
             }}
             
@@ -48488,7 +48458,7 @@ async def convertisseur_page():
     <style>
         .converter-container {{
             max-width: 800px;
-            margin: 0 auto;
+            margin: 0;
         }}
         .converter-box {{
             background: #1e293b;
@@ -48904,7 +48874,7 @@ async def convertisseur_page():
         // Recharger toutes les 5 minutes
         setInterval(loadRates, 300000);
     </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Convertisseur ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Convertisseur universel crypto ↔ fiat temps réel.</p><ul style="line-height: 1.8; color: #555;"><li>💱 100+ cryptos</li><li>🌍 30+ devises fiat</li><li>📊 Taux réels CoinGecko</li><li>⚡ Instantané</li><li>🔄 Bidirectionnel</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">💡 Exemples</h3><p style="line-height: 1.6; color: #555;"><strong>💰 Planifier:</strong> "Combien BTC avec 5000 CAD?"</p><p style="line-height: 1.6; color: #555;"><strong>📊 Portfolio:</strong> "0.5 BTC = ? USD"</p><p style="line-height: 1.6; color: #555;"><strong>🔄 Crypto:</strong> "1 BTC = ? ETH"</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🌍 Devises</h3><p style="line-height: 1.6; color: #555;">💵 Fiat: USD, EUR, CAD, GBP, JPY...</p><p style="line-height: 1.6; color: #555;">₿ Cryptos: BTC, ETH, BNB, SOL...</p><p style="color: #666; margin-top: 10px;">+ 100 autres!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">⚡ Features</h3><p style="line-height: 1.6; color: #555;">📊 Temps réel | 🔄 Instantané | 💱 Bidirectionnel | 🎯 Précis | ⚡ Gratuit</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Convertisseur ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Convertisseur universel crypto ↔ fiat temps réel.</p><ul style="line-height: 1.8; color: #555;"><li>💱 100+ cryptos</li><li>🌍 30+ devises fiat</li><li>📊 Taux réels CoinGecko</li><li>⚡ Instantané</li><li>🔄 Bidirectionnel</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">💡 Exemples</h3><p style="line-height: 1.6; color: #555;"><strong>💰 Planifier:</strong> "Combien BTC avec 5000 CAD?"</p><p style="line-height: 1.6; color: #555;"><strong>📊 Portfolio:</strong> "0.5 BTC = ? USD"</p><p style="line-height: 1.6; color: #555;"><strong>🔄 Crypto:</strong> "1 BTC = ? ETH"</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🌍 Devises</h3><p style="line-height: 1.6; color: #555;">💵 Fiat: USD, EUR, CAD, GBP, JPY...</p><p style="line-height: 1.6; color: #555;">₿ Cryptos: BTC, ETH, BNB, SOL...</p><p style="color: #666; margin-top: 10px;">+ 100 autres!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">⚡ Features</h3><p style="line-height: 1.6; color: #555;">📊 Temps réel | 🔄 Instantané | 💱 Bidirectionnel | 🎯 Précis | ⚡ Gratuit</p></div></div></div>
 </body>
 </html>""")
 @app.get("/api/economic-calendar")
@@ -49761,7 +49731,7 @@ async def telegram_test():
 # FIN SECTION ALTCOIN SEASON
 @app.get("/fear-greed", response_class=HTMLResponse)
 async def fear_greed_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script><div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Fear & Greed Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce que c'est ?</h3><p style="line-height: 1.8; color: #666;">Le <strong>Fear & Greed Index</strong> mesure les émotions du marché crypto. Varie de <strong>0 (Fear extrême)</strong> à <strong>100 (Greed extrême)</strong>.</p><ul style="line-height: 2; color: #555; list-style: none; padding: 0;"><li>😱 <strong>0-25:</strong> Extreme Fear - Opportunité</li><li>😟 <strong>25-45:</strong> Fear - Marché prudent</li><li>⚖️ <strong>45-55:</strong> Neutral - Équilibré</li><li>😃 <strong>55-75:</strong> Greed - Optimisme</li><li>🤑 <strong>75-100:</strong> Extreme Greed - Attention!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Comment c'est calculé ?</h3><p style="line-height: 1.8; color: #666;">6 facteurs analysés:</p><ul style="line-height: 1.8; color: #555;"><li><strong>Volatilité (25%):</strong> Fluctuations prix</li><li><strong>Momentum (25%):</strong> Volume trading</li><li><strong>Social (15%):</strong> Twitter/Reddit</li><li><strong>Sondages (15%):</strong> Avis traders</li><li><strong>Dominance (10%):</strong> Part BTC</li><li><strong>Trends (10%):</strong> Google recherches</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Comment l'utiliser ?</h3><p style="line-height: 1.8; color: #666;"><strong>Stratégie contrarian:</strong> Acheter dans la Fear, vendre dans la Greed.</p><ul style="line-height: 1.8; color: #555;"><li>✅ <strong>&lt; 25:</strong> Zone d'achat potentielle</li><li>⚠️ <strong>&gt; 75:</strong> Envisager prendre profits</li><li>⏸️ <strong>45-55:</strong> Attendre signal clair</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Ne tradez jamais sur UN seul indicateur!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique 30 jours</li><li>📉 Moyennes 7j/30j</li><li>🕒 Historique complet</li></ul><p style="color: #666; margin-top: 15px; font-style: italic;">💡 <strong>Astuce:</strong> Les extremes (&lt;20 ou &gt;80) sont rares mais puissants!</p></div></div></div></body></html>"""
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script><div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Fear & Greed Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce que c'est ?</h3><p style="line-height: 1.8; color: #666;">Le <strong>Fear & Greed Index</strong> mesure les émotions du marché crypto. Varie de <strong>0 (Fear extrême)</strong> à <strong>100 (Greed extrême)</strong>.</p><ul style="line-height: 2; color: #555; list-style: none; padding: 0;"><li>😱 <strong>0-25:</strong> Extreme Fear - Opportunité</li><li>😟 <strong>25-45:</strong> Fear - Marché prudent</li><li>⚖️ <strong>45-55:</strong> Neutral - Équilibré</li><li>😃 <strong>55-75:</strong> Greed - Optimisme</li><li>🤑 <strong>75-100:</strong> Extreme Greed - Attention!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Comment c'est calculé ?</h3><p style="line-height: 1.8; color: #666;">6 facteurs analysés:</p><ul style="line-height: 1.8; color: #555;"><li><strong>Volatilité (25%):</strong> Fluctuations prix</li><li><strong>Momentum (25%):</strong> Volume trading</li><li><strong>Social (15%):</strong> Twitter/Reddit</li><li><strong>Sondages (15%):</strong> Avis traders</li><li><strong>Dominance (10%):</strong> Part BTC</li><li><strong>Trends (10%):</strong> Google recherches</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Comment l'utiliser ?</h3><p style="line-height: 1.8; color: #666;"><strong>Stratégie contrarian:</strong> Acheter dans la Fear, vendre dans la Greed.</p><ul style="line-height: 1.8; color: #555;"><li>✅ <strong>&lt; 25:</strong> Zone d'achat potentielle</li><li>⚠️ <strong>&gt; 75:</strong> Envisager prendre profits</li><li>⏸️ <strong>45-55:</strong> Attendre signal clair</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Ne tradez jamais sur UN seul indicateur!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique 30 jours</li><li>📉 Moyennes 7j/30j</li><li>🕒 Historique complet</li></ul><p style="color: #666; margin-top: 15px; font-style: italic;">💡 <strong>Astuce:</strong> Les extremes (&lt;20 ou &gt;80) sont rares mais puissants!</p></div></div></div></body></html>"""
     return HTMLResponse(SIDEBAR + html)
 
 @app.get("/dominance", response_class=HTMLResponse)
@@ -49934,7 +49904,7 @@ async function loadData(){
 loadData();
 setInterval(loadData,60000);
 </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Bitcoin Dominance ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 Qu'est-ce ?</h3><p style="line-height: 1.8; color: #666;">Part de marché Bitcoin vs TOUS cryptos.</p><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>👑 <strong>&gt;60%:</strong> Bitcoin dominant</li><li>💪 <strong>50-60%:</strong> Bitcoin fort</li><li>⚖️ <strong>40-50%:</strong> Équilibré</li><li>🚀 <strong>&lt;40%:</strong> Altseason!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Interprétation</h3><p style="line-height: 1.6; color: #555;"><strong>Dom↗️:</strong> Capital→BTC (refuge)</p><p style="line-height: 1.6; color: #555;"><strong>Dom↘️:</strong> Capital→Alts (altseason proche)</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Stratégies</h3><p style="line-height: 1.6; color: #555;">Dom↗️+BTC↗️: ✅ Accumuler BTC</p><p style="line-height: 1.6; color: #555;">Dom↘️+BTC↗️: 🚀 Altseason!</p><p style="line-height: 1.6; color: #555;">Dom↗️+BTC↘️: ⚠️ Bear market</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>👑 BTC Dominance temps réel</li><li>🔷 ETH Dominance</li><li>📊 Graphique historique</li><li>🎯 Signaux rotation</li></ul><p style="color: #666; margin-top: 15px;">💡 Surveillez 50-55% pour rotations!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Bitcoin Dominance ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 Qu'est-ce ?</h3><p style="line-height: 1.8; color: #666;">Part de marché Bitcoin vs TOUS cryptos.</p><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>👑 <strong>&gt;60%:</strong> Bitcoin dominant</li><li>💪 <strong>50-60%:</strong> Bitcoin fort</li><li>⚖️ <strong>40-50%:</strong> Équilibré</li><li>🚀 <strong>&lt;40%:</strong> Altseason!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Interprétation</h3><p style="line-height: 1.6; color: #555;"><strong>Dom↗️:</strong> Capital→BTC (refuge)</p><p style="line-height: 1.6; color: #555;"><strong>Dom↘️:</strong> Capital→Alts (altseason proche)</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Stratégies</h3><p style="line-height: 1.6; color: #555;">Dom↗️+BTC↗️: ✅ Accumuler BTC</p><p style="line-height: 1.6; color: #555;">Dom↘️+BTC↗️: 🚀 Altseason!</p><p style="line-height: 1.6; color: #555;">Dom↗️+BTC↘️: ⚠️ Bear market</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>👑 BTC Dominance temps réel</li><li>🔷 ETH Dominance</li><li>📊 Graphique historique</li><li>🎯 Signaux rotation</li></ul><p style="color: #666; margin-top: 15px;">💡 Surveillez 50-55% pour rotations!</p></div></div></div>
 </body></html>"""
     return HTMLResponse(html)
 
@@ -50794,7 +50764,7 @@ async def heatmap_page():
 
         console.log('🔥 Heatmap Pro initialisée');
     </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Heatmap ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Visualisation marché en temps réel avec blocs colorés proportionnels.</p><ul style="line-height: 1.8; color: #555;"><li>🟢 Vert: Performance positive</li><li>🔴 Rouge: Performance négative</li><li>📏 Taille: Market Cap</li><li>⚡ Temps réel: Refresh auto</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Lecture rapide</h3><p style="line-height: 1.6; color: #555;"><strong>Couleur:</strong> Performance 24h</p><p style="line-height: 1.6; color: #555;"><strong>Taille bloc:</strong> Market Cap relatif</p><p style="line-height: 1.6; color: #555;"><strong>Position:</strong> Classement importance</p><p style="color: #666; margin-top: 10px;">Plus le bloc est grand = plus gros market cap!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Utilisation</h3><p style="line-height: 1.6; color: #555;">✅ Vue d'ensemble marché instantanée</p><p style="line-height: 1.6; color: #555;">✅ Identifier secteurs performants</p><p style="line-height: 1.6; color: #555;">✅ Détecter rotations capitaux</p><p style="line-height: 1.6; color: #555;">✅ Trouver opportunités rapidement</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🔍 Conseils</h3><p style="line-height: 1.6; color: #555;">💡 Beaucoup de vert = Marché haussier</p><p style="line-height: 1.6; color: #555;">💡 Beaucoup de rouge = Marché baissier</p><p style="line-height: 1.6; color: #555;">💡 Click bloc = Détails crypto</p><p style="color: #9b59b6; font-weight: bold; margin-top: 10px;">Refresh toutes les 3 min automatique!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Heatmap ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Visualisation marché en temps réel avec blocs colorés proportionnels.</p><ul style="line-height: 1.8; color: #555;"><li>🟢 Vert: Performance positive</li><li>🔴 Rouge: Performance négative</li><li>📏 Taille: Market Cap</li><li>⚡ Temps réel: Refresh auto</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Lecture rapide</h3><p style="line-height: 1.6; color: #555;"><strong>Couleur:</strong> Performance 24h</p><p style="line-height: 1.6; color: #555;"><strong>Taille bloc:</strong> Market Cap relatif</p><p style="line-height: 1.6; color: #555;"><strong>Position:</strong> Classement importance</p><p style="color: #666; margin-top: 10px;">Plus le bloc est grand = plus gros market cap!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Utilisation</h3><p style="line-height: 1.6; color: #555;">✅ Vue d'ensemble marché instantanée</p><p style="line-height: 1.6; color: #555;">✅ Identifier secteurs performants</p><p style="line-height: 1.6; color: #555;">✅ Détecter rotations capitaux</p><p style="line-height: 1.6; color: #555;">✅ Trouver opportunités rapidement</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🔍 Conseils</h3><p style="line-height: 1.6; color: #555;">💡 Beaucoup de vert = Marché haussier</p><p style="line-height: 1.6; color: #555;">💡 Beaucoup de rouge = Marché baissier</p><p style="line-height: 1.6; color: #555;">💡 Click bloc = Détails crypto</p><p style="color: #9b59b6; font-weight: bold; margin-top: 10px;">Refresh toutes les 3 min automatique!</p></div></div></div>
 </body>
 </html>"""
     return HTMLResponse(html)
@@ -51138,7 +51108,7 @@ async def altcoin_page():
 
         console.log('🌟 Altcoin Season Index initialisé avec CACHE STABLE');
     </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'Altcoin Season Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce ?</h3><p style="line-height: 1.8; color: #666;">Index mesurant performance alts vs Bitcoin sur 90 jours.</p><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>🔵 <strong>0-25:</strong> Bitcoin Season (BTC domine)</li><li>⚖️ <strong>25-75:</strong> Zone neutre (mixte)</li><li>🚀 <strong>75-100:</strong> Altcoin Season! (Alts explosent)</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Calcul</h3><p style="line-height: 1.6; color: #555;"><strong>Méthode Blockchain Center:</strong></p><p style="line-height: 1.6; color: #666; font-size: 14px;">1. Top 50 altcoins (sans BTC)</p><p style="line-height: 1.6; color: #666; font-size: 14px;">2. Performance 90j de chaque</p><p style="line-height: 1.6; color: #666; font-size: 14px;">3. Comparer vs Bitcoin</p><p style="line-height: 1.6; color: #666; font-size: 14px;">4. Index = (Nb battant BTC / 50) × 100</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">💡 Stratégie</h3><p style="line-height: 1.6; color: #555;"><strong>Index &lt; 25 (Bitcoin Season):</strong></p><p style="line-height: 1.6; color: #666; margin-left: 15px;">✅ Accumuler BTC, patience sur alts</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>Index &gt; 75 (Altseason):</strong></p><p style="line-height: 1.6; color: #666; margin-left: 15px;">🚀 Alts performent, diversifier!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🔍 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique historique</li><li>🎯 Stats détaillées (alts gagnants)</li><li>💡 Recommandations trading</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 10px;">💡 Altseasons durent 2-4 mois!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'Altcoin Season Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce ?</h3><p style="line-height: 1.8; color: #666;">Index mesurant performance alts vs Bitcoin sur 90 jours.</p><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>🔵 <strong>0-25:</strong> Bitcoin Season (BTC domine)</li><li>⚖️ <strong>25-75:</strong> Zone neutre (mixte)</li><li>🚀 <strong>75-100:</strong> Altcoin Season! (Alts explosent)</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Calcul</h3><p style="line-height: 1.6; color: #555;"><strong>Méthode Blockchain Center:</strong></p><p style="line-height: 1.6; color: #666; font-size: 14px;">1. Top 50 altcoins (sans BTC)</p><p style="line-height: 1.6; color: #666; font-size: 14px;">2. Performance 90j de chaque</p><p style="line-height: 1.6; color: #666; font-size: 14px;">3. Comparer vs Bitcoin</p><p style="line-height: 1.6; color: #666; font-size: 14px;">4. Index = (Nb battant BTC / 50) × 100</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">💡 Stratégie</h3><p style="line-height: 1.6; color: #555;"><strong>Index &lt; 25 (Bitcoin Season):</strong></p><p style="line-height: 1.6; color: #666; margin-left: 15px;">✅ Accumuler BTC, patience sur alts</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>Index &gt; 75 (Altseason):</strong></p><p style="line-height: 1.6; color: #666; margin-left: 15px;">🚀 Alts performent, diversifier!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🔍 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique historique</li><li>🎯 Stats détaillées (alts gagnants)</li><li>💡 Recommandations trading</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 10px;">💡 Altseasons durent 2-4 mois!</p></div></div></div>
 </body>
 </html>
 """
@@ -51824,7 +51794,7 @@ async def bullrun_page():
         
         console.log('🚀 Bullrun Phase Tracker chargé!');
     </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Bullrun Phase Tracker ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Indicateur identifiant phase actuelle du cycle bullrun.</p><ul style="line-height: 1.8; color: #555;"><li>📊 5 phases distinctes</li><li>🎯 Données réelles</li><li>📈 BTC dominance, F&G</li><li>🔮 Altcoin Index</li><li>💡 Stratégies/phase</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Les 5 phases</h3><p style="line-height: 1.6; color: #555; font-size: 14px;">1️⃣ Accumulation → 2️⃣ Bitcoin Rally → 3️⃣ ETH & Large Caps → 4️⃣ Altcoin Season → 5️⃣ Euphorie/Top</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📈 Indicateurs</h3><p style="line-height: 1.6; color: #555;">👑 BTC Dominance | 😨 Fear & Greed | ⭐ Altcoin Index | 💰 Prix BTC | 📊 Market Cap</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Stratégie</h3><p style="line-height: 1.6; color: #555; font-size: 14px;">Phase 1: Accumuler | Phase 2: Hold BTC | Phase 3: Rotate ETH | Phase 4: Diversifier alts | Phase 5: PRENDRE PROFITS</p><p style="color: #e74c3c; font-weight: bold; margin-top: 10px;">⚠️ Ne tentez PAS timer le top exact!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Bullrun Phase Tracker ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Indicateur identifiant phase actuelle du cycle bullrun.</p><ul style="line-height: 1.8; color: #555;"><li>📊 5 phases distinctes</li><li>🎯 Données réelles</li><li>📈 BTC dominance, F&G</li><li>🔮 Altcoin Index</li><li>💡 Stratégies/phase</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Les 5 phases</h3><p style="line-height: 1.6; color: #555; font-size: 14px;">1️⃣ Accumulation → 2️⃣ Bitcoin Rally → 3️⃣ ETH & Large Caps → 4️⃣ Altcoin Season → 5️⃣ Euphorie/Top</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📈 Indicateurs</h3><p style="line-height: 1.6; color: #555;">👑 BTC Dominance | 😨 Fear & Greed | ⭐ Altcoin Index | 💰 Prix BTC | 📊 Market Cap</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Stratégie</h3><p style="line-height: 1.6; color: #555; font-size: 14px;">Phase 1: Accumuler | Phase 2: Hold BTC | Phase 3: Rotate ETH | Phase 4: Diversifier alts | Phase 5: PRENDRE PROFITS</p><p style="color: #e74c3c; font-weight: bold; margin-top: 10px;">⚠️ Ne tentez PAS timer le top exact!</p></div></div></div>
 </body>
 </html>
 """
@@ -51851,7 +51821,7 @@ async def charts_page():
             padding: 20px; 
             min-height: 100vh; 
         }}
-        .container { max-width: 1800px; margin: 0 auto; }
+        .container { max-width: 1800px; margin: 0; }
         
         /* Header */
         .header { 
@@ -53002,7 +52972,7 @@ async def trades_page():
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; padding: 20px; min-height: 100vh; }
-        .container { max-width: 1600px; margin: 0 auto; }
+        .container { max-width: 1600px; margin: 0; }
         .header { background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%); padding: 40px; border-radius: 20px; text-align: center; margin-bottom: 30px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4); position: relative; overflow: hidden; }
         .header::before { content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%; background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.1), transparent); animation: shine 3s infinite; }
         @keyframes shine { 0%, 100% { left: -100%; } 50% { left: 100%; } }
@@ -56252,7 +56222,7 @@ async def stats_dashboard():
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }}
         
-        .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
+        .container {{ max-width: 1400px; margin: 0; padding: 20px; }}
         h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
         
         .data-badge {{ text-align: center; margin-bottom: 20px; padding: 12px; background: rgba(0, 255, 136, 0.1); border: 2px solid #00ff88; border-radius: 8px; color: #00ff88; font-weight: bold; }}
@@ -56281,7 +56251,7 @@ async def stats_dashboard():
 <body>
 <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+.universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
 .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
 .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
 .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
@@ -56486,7 +56456,7 @@ async def market_simulation():
             min-height: 100vh;
             padding: 20px;
         }}
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0; }
         h1 { text-align: center; margin: 30px 0 10px 0; color: #00ff88; }
         .subtitle { text-align: center; margin-bottom: 30px; color: #aaa; font-size: 0.95em; }
         
@@ -56928,7 +56898,7 @@ async def market_simulation():
         
         setTimeout(() => runSimulation(), 500);
     </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Market Simulation ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Simulateur trading pour pratiquer SANS RISQUE avec capital virtuel.</p><ul style="line-height: 1.8; color: #555;"><li>💰 Capital virtuel $10k-$100k</li><li>📊 Données RÉELLES du marché</li><li>📈 Testez stratégies sans risque</li><li>📉 Apprenez de vos erreurs</li><li>🎯 Statistiques performances</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎮 Fonctionnalités</h3><ul style="line-height: 1.8; color: #555;"><li>🔄 Buy/Sell comme vrai trading</li><li>📊 Position size, stop loss, TP</li><li>💹 Tracking P&L temps réel</li><li>📈 Graphique performances</li><li>📋 Historique trades</li><li>🎯 Win rate, profit factor</li><li>🔄 Reset capital si besoin</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">📊 Stats suivies</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>💰 Capital actuel vs initial</li><li>📈 Profit/Loss total ($/%)</li><li>🎯 Win rate (% trades gagnants)</li><li>💹 Profit factor (gains/pertes)</li><li>📊 Nombre trades</li><li>📉 Max drawdown</li><li>📈 Best/Worst trade</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Pourquoi utiliser ?</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>✅ Apprendre SANS perdre argent</li><li>✅ Tester nouvelles stratégies</li><li>✅ Développer discipline</li><li>✅ Comprendre émotions trading</li><li>✅ Affiner risk management</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 15px;">🎯 Règle: Profitable en simu 3 mois AVANT argent réel!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Market Simulation ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Simulateur trading pour pratiquer SANS RISQUE avec capital virtuel.</p><ul style="line-height: 1.8; color: #555;"><li>💰 Capital virtuel $10k-$100k</li><li>📊 Données RÉELLES du marché</li><li>📈 Testez stratégies sans risque</li><li>📉 Apprenez de vos erreurs</li><li>🎯 Statistiques performances</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎮 Fonctionnalités</h3><ul style="line-height: 1.8; color: #555;"><li>🔄 Buy/Sell comme vrai trading</li><li>📊 Position size, stop loss, TP</li><li>💹 Tracking P&L temps réel</li><li>📈 Graphique performances</li><li>📋 Historique trades</li><li>🎯 Win rate, profit factor</li><li>🔄 Reset capital si besoin</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">📊 Stats suivies</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>💰 Capital actuel vs initial</li><li>📈 Profit/Loss total ($/%)</li><li>🎯 Win rate (% trades gagnants)</li><li>💹 Profit factor (gains/pertes)</li><li>📊 Nombre trades</li><li>📉 Max drawdown</li><li>📈 Best/Worst trade</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Pourquoi utiliser ?</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>✅ Apprendre SANS perdre argent</li><li>✅ Tester nouvelles stratégies</li><li>✅ Développer discipline</li><li>✅ Comprendre émotions trading</li><li>✅ Affiner risk management</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 15px;">🎯 Règle: Profitable en simu 3 mois AVANT argent réel!</p></div></div></div>
 </body>
 </html>""")
 
@@ -57060,7 +57030,7 @@ async def success_stories():
             padding: 20px;
         }}
         
-        .container { max-width: 1000px; margin: 0 auto; }
+        .container { max-width: 1000px; margin: 0; }
         h1 { text-align: center; margin: 30px 0; color: #00ff88; font-size: 2.5em; }
         
         .stories-grid {
@@ -57592,7 +57562,7 @@ async function calculatePosition() {{
 
 loadSettings();
 </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Risk Management ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">🎯 Pourquoi ?</h3><p style="line-height: 1.8; color: #666;">Gestion risque = compétence #1 en trading!</p><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>❌ 95% traders perdent (mauvaise gestion)</li><li>✅ Ne jamais risquer &gt; 1-2% par trade</li><li>🎯 Survivre pour trader demain</li><li>💰 Protéger capital &gt; Faire profits</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🧮 5 Calculateurs</h3><ul style="line-height: 1.8; color: #555;"><li><strong>1️⃣ Position Size:</strong> Combien acheter?</li><li><strong>2️⃣ Risk/Reward:</strong> Ratio gain/perte</li><li><strong>3️⃣ Stop Loss:</strong> Où placer?</li><li><strong>4️⃣ Take Profit:</strong> Cibles profit</li><li><strong>5️⃣ Portfolio Risk:</strong> Risque total</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">💡 Exemple</h3><p style="line-height: 1.8; color: #666;"><strong>Position Size Calculator:</strong></p><ul style="line-height: 1.6; color: #555; margin-left: 20px;"><li>Capital: $10,000</li><li>Risque: 2% = $200</li><li>Entry: $100, Stop: $95</li><li>→ Acheter 4 BTC!</li></ul><p style="color: #3498db; font-weight: bold; margin-top: 15px;">🎯 Si R/R &lt; 1:2, ne prenez PAS le trade!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">⚠️ 10 Règles d'OR</h3><ol style="line-height: 1.6; color: #555; font-size: 14px;"><li>Max 2% risque par trade</li><li>TOUJOURS stop loss</li><li>R/R minimum 1:2</li><li>Diversifier (max 20%/crypto)</li><li>Calculer size AVANT</li><li>Pas moyenner perte</li><li>Profits partiels</li><li>Pas trader émotionnel</li><li>Plan sortie avant entrée</li><li>Discipline 100%</li></ol></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Risk Management ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">🎯 Pourquoi ?</h3><p style="line-height: 1.8; color: #666;">Gestion risque = compétence #1 en trading!</p><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>❌ 95% traders perdent (mauvaise gestion)</li><li>✅ Ne jamais risquer &gt; 1-2% par trade</li><li>🎯 Survivre pour trader demain</li><li>💰 Protéger capital &gt; Faire profits</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🧮 5 Calculateurs</h3><ul style="line-height: 1.8; color: #555;"><li><strong>1️⃣ Position Size:</strong> Combien acheter?</li><li><strong>2️⃣ Risk/Reward:</strong> Ratio gain/perte</li><li><strong>3️⃣ Stop Loss:</strong> Où placer?</li><li><strong>4️⃣ Take Profit:</strong> Cibles profit</li><li><strong>5️⃣ Portfolio Risk:</strong> Risque total</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">💡 Exemple</h3><p style="line-height: 1.8; color: #666;"><strong>Position Size Calculator:</strong></p><ul style="line-height: 1.6; color: #555; margin-left: 20px;"><li>Capital: $10,000</li><li>Risque: 2% = $200</li><li>Entry: $100, Stop: $95</li><li>→ Acheter 4 BTC!</li></ul><p style="color: #3498db; font-weight: bold; margin-top: 15px;">🎯 Si R/R &lt; 1:2, ne prenez PAS le trade!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">⚠️ 10 Règles d'OR</h3><ol style="line-height: 1.6; color: #555; font-size: 14px;"><li>Max 2% risque par trade</li><li>TOUJOURS stop loss</li><li>R/R minimum 1:2</li><li>Diversifier (max 20%/crypto)</li><li>Calculer size AVANT</li><li>Pas moyenner perte</li><li>Profits partiels</li><li>Pas trader émotionnel</li><li>Plan sortie avant entrée</li><li>Discipline 100%</li></ol></div></div></div>
 </body></html>""")
 
 
@@ -57732,7 +57702,7 @@ async function checkAlerts() {{
 
 loadWatchlist();
 </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Watchlist ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Centre de contrôle pour vos cryptos 24/7.</p><ul style="line-height: 1.8; color: #555;"><li>📊 Surveillance prix temps réel</li><li>🔔 Alertes intelligentes</li><li>📈 Performance multi-timeframes</li><li>💼 Portfolio virtuel</li><li>🎯 Setups trading</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">⚡ Alertes</h3><p style="line-height: 1.8; color: #666;">Types d'alertes:</p><ul style="line-height: 1.6; color: #555;"><li>📍 Prix cible (ex: BTC &gt; $100k)</li><li>📊 % variation (pump/dump &gt;10%)</li><li>📈 Support/Résistance cassés</li><li>🔔 Notifications Email/Telegram</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Données</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>💰 Prix actuel (refresh 30s)</li><li>📈 Variation 24h/7j/30j</li><li>💎 Market Cap + Rank</li><li>💧 Volume 24h</li><li>🚀 ATH/ATL + distance</li><li>🔢 Supply circulation/total</li><li>📈 Mini-chart 7j</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">💡 Organisation</h3><p style="line-height: 1.6; color: #555;"><strong>🔵 Blue Chips:</strong> BTC, ETH, SOL...</p><p style="line-height: 1.6; color: #555;"><strong>🟡 Mid Caps:</strong> Projets prometteurs</p><p style="line-height: 1.6; color: #555;"><strong>🔴 Small Caps:</strong> Haut risque/rendement</p><p style="line-height: 1.6; color: #555;"><strong>🎯 Opportunities:</strong> Setups identifiés</p><p style="color: #f39c12; font-weight: bold; margin-top: 15px;">⚠️ Max 10-15 cryptos pour bien suivre!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Watchlist ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Centre de contrôle pour vos cryptos 24/7.</p><ul style="line-height: 1.8; color: #555;"><li>📊 Surveillance prix temps réel</li><li>🔔 Alertes intelligentes</li><li>📈 Performance multi-timeframes</li><li>💼 Portfolio virtuel</li><li>🎯 Setups trading</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">⚡ Alertes</h3><p style="line-height: 1.8; color: #666;">Types d'alertes:</p><ul style="line-height: 1.6; color: #555;"><li>📍 Prix cible (ex: BTC &gt; $100k)</li><li>📊 % variation (pump/dump &gt;10%)</li><li>📈 Support/Résistance cassés</li><li>🔔 Notifications Email/Telegram</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Données</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>💰 Prix actuel (refresh 30s)</li><li>📈 Variation 24h/7j/30j</li><li>💎 Market Cap + Rank</li><li>💧 Volume 24h</li><li>🚀 ATH/ATL + distance</li><li>🔢 Supply circulation/total</li><li>📈 Mini-chart 7j</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">💡 Organisation</h3><p style="line-height: 1.6; color: #555;"><strong>🔵 Blue Chips:</strong> BTC, ETH, SOL...</p><p style="line-height: 1.6; color: #555;"><strong>🟡 Mid Caps:</strong> Projets prometteurs</p><p style="line-height: 1.6; color: #555;"><strong>🔴 Small Caps:</strong> Haut risque/rendement</p><p style="line-height: 1.6; color: #555;"><strong>🎯 Opportunities:</strong> Setups identifiés</p><p style="color: #f39c12; font-weight: bold; margin-top: 15px;">⚠️ Max 10-15 cryptos pour bien suivre!</p></div></div></div>
 </body></html>""")
 
 
@@ -57892,7 +57862,7 @@ async function loadSentiment() {{
 refreshSuggestions();
 loadSentiment();
 </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'AI Assistant ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Assistant IA personnel spécialisé crypto. Disponible 24/7!</p><ul style="line-height: 1.8; color: #555;"><li>💬 Chat intelligent</li><li>📊 Analyse marché temps réel</li><li>🎓 Formation concepts complexes</li><li>⚡ Réponses rapides</li><li>🧠 Mémoire conversations</li></ul><p style="color: #666; font-size: 14px; margin-top: 15px;">Powered by Claude AI (Anthropic)</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Exemples questions</h3><p style="line-height: 1.6; color: #555;"><strong>📊 Technique:</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px; font-style: italic;">"Explique-moi les chandeliers japonais"</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>🎯 Stratégie:</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px; font-style: italic;">"Quelle stratégie pour débutant?"</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>⚠️ Risk:</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px; font-style: italic;">"Comment calculer position size?"</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>🔮 Marché:</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px; font-style: italic;">"Analyse sentiment marché actuel"</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🔧 Capacités</h3><ul style="line-height: 1.8; color: #555;"><li>📚 Éducation détaillée</li><li>📊 Données live</li><li>🎯 Conseils personnalisés</li><li>📈 Analyse graphiques</li><li>💬 Mémoire contexte</li><li>🌍 FR + EN</li><li>⚡ Recherche web</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">⚠️ Important</h3><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>⚠️ Pas conseiller financier</li><li>📚 Éducation uniquement</li><li>✅ Vérifiez toujours</li><li>🎯 DYOR obligatoire</li></ul><p style="color: #666; margin-top: 15px;"><strong>Meilleur usage:</strong> Apprendre, valider analyses, explorer idées.</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'AI Assistant ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Assistant IA personnel spécialisé crypto. Disponible 24/7!</p><ul style="line-height: 1.8; color: #555;"><li>💬 Chat intelligent</li><li>📊 Analyse marché temps réel</li><li>🎓 Formation concepts complexes</li><li>⚡ Réponses rapides</li><li>🧠 Mémoire conversations</li></ul><p style="color: #666; font-size: 14px; margin-top: 15px;">Powered by Claude AI (Anthropic)</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Exemples questions</h3><p style="line-height: 1.6; color: #555;"><strong>📊 Technique:</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px; font-style: italic;">"Explique-moi les chandeliers japonais"</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>🎯 Stratégie:</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px; font-style: italic;">"Quelle stratégie pour débutant?"</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>⚠️ Risk:</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px; font-style: italic;">"Comment calculer position size?"</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>🔮 Marché:</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px; font-style: italic;">"Analyse sentiment marché actuel"</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🔧 Capacités</h3><ul style="line-height: 1.8; color: #555;"><li>📚 Éducation détaillée</li><li>📊 Données live</li><li>🎯 Conseils personnalisés</li><li>📈 Analyse graphiques</li><li>💬 Mémoire contexte</li><li>🌍 FR + EN</li><li>⚡ Recherche web</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">⚠️ Important</h3><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>⚠️ Pas conseiller financier</li><li>📚 Éducation uniquement</li><li>✅ Vérifiez toujours</li><li>🎯 DYOR obligatoire</li></ul><p style="color: #666; margin-top: 15px;"><strong>Meilleur usage:</strong> Apprendre, valider analyses, explorer idées.</p></div></div></div>
 </body></html>""")
 
 # ============= PAGE CALCULATRICE DE TRADES =============
@@ -61168,7 +61138,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             <style>
                 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
                 body {{ font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }}
-                .container {{ max-width: 1400px; margin: 0 auto; }}
+                .container {{ max-width: 1400px; margin: 0; }}
                 h1 {{ color: #60a5fa; margin-bottom: 30px; }}
                 .stats {{
                     display: grid;
@@ -61222,7 +61192,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
         <body>
 <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+.universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
 .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
 .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
 .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
@@ -62702,7 +62672,7 @@ async def mon_compte(request: Request):
     <body>
         <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+.universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
 .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
 .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
 .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
@@ -63000,7 +62970,7 @@ async def backtesting_page(request: Request):
                 padding-bottom: 50px;
             }}
             
-            .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
+            .container {{ max-width: 1400px; margin: 0; padding: 20px; }}
             
             .header {{
                 background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
@@ -63092,7 +63062,7 @@ async def backtesting_page(request: Request):
                 box-shadow: 0 5px 20px rgba(16, 185, 129, 0.3);
                 width: 100%;
                 max-width: 300px;
-                margin: 0 auto;
+                margin: 0;
                 display: block;
             }}
             .btn-primary:hover {{
@@ -63735,7 +63705,7 @@ async def backtesting_page(request: Request):
             
             const menuHTML = `<style>
         .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-        .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+        .universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
         .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
         .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
         .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
@@ -63953,7 +63923,7 @@ SIDEBAR +
             }}
             .container {{
                 max-width: 1200px;
-                margin: 0 auto;
+                margin: 0;
             }}
             .header {{
                 text-align: center;
@@ -64101,7 +64071,7 @@ SIDEBAR +
             
             const menuHTML = `<style>
         .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-        .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+        .universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
         .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
         .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
         .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
@@ -64113,7 +64083,7 @@ SIDEBAR +
             document.body.insertAdjacentHTML('afterbegin', menuHTML);
         }});
         </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionnent les On-Chain Metrics ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Données blockchain en temps réel.</p><ul style="line-height: 1.8; color: #555;"><li>⛓️ Transparence totale</li><li>📊 Impossible à manipuler</li><li>🎯 Comportements réels</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Métriques</h3><p style="line-height: 1.6; color: #555;">💰 Exchange Flow | 👥 Addresses | 💎 HODL | ⛏️ Mining</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 Signaux</h3><p style="line-height: 1.6; color: #555;">🟢 BULLISH: Sorties exchanges | 🔴 BEARISH: Entrées exchanges</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Usage</h3><p style="color: #666;">Vision macro long terme. Pour investisseurs.</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionnent les On-Chain Metrics ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Données blockchain en temps réel.</p><ul style="line-height: 1.8; color: #555;"><li>⛓️ Transparence totale</li><li>📊 Impossible à manipuler</li><li>🎯 Comportements réels</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Métriques</h3><p style="line-height: 1.6; color: #555;">💰 Exchange Flow | 👥 Addresses | 💎 HODL | ⛏️ Mining</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 Signaux</h3><p style="line-height: 1.6; color: #555;">🟢 BULLISH: Sorties exchanges | 🔴 BEARISH: Entrées exchanges</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Usage</h3><p style="color: #666;">Vision macro long terme. Pour investisseurs.</p></div></div></div>
     </body>
     </html>
     """)
@@ -64189,7 +64159,7 @@ SIDEBAR +
             }}
             .container {{
                 max-width: 1200px;
-                margin: 0 auto;
+                margin: 0;
             }}
             .header {{
                 text-align: center;
@@ -64333,7 +64303,7 @@ SIDEBAR +
             
             const menuHTML = `<style>
         .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-        .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+        .universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
         .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
         .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
         .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
@@ -64386,7 +64356,7 @@ async def api_keys_page(request: Request):
             
             const menuHTML = `<style>
         .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-        .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}}
+        .universal-nav-container{{max-width:1600px;margin: 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}}
         .universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:10px 16px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
         .universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white}}
         .universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none}}
@@ -64419,7 +64389,7 @@ async def api_keys_page(request: Request):
                 }}
             }}
         </script>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionnent les API Keys ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Configuration clés API pour connecter exchanges.</p><ul style="line-height: 1.8; color: #555;"><li>🔑 Connexion exchanges</li><li>📊 Import trades auto</li><li>💹 Suivi portfolio temps réel</li><li>📱 Notifications Telegram</li><li>🔐 Stockage sécurisé</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🔧 APIs</h3><p style="line-height: 1.6; color: #555;"><strong>📊 Exchanges:</strong> Binance, Coinbase, Kraken, Bybit</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📱 Notifications:</strong> Telegram, Discord, Email</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Configuration</h3><ol style="line-height: 1.6; color: #555; font-size: 14px;"><li>Créer API key exchange</li><li>Permissions: Read Only</li><li>Copier Key + Secret</li><li>Coller formulaire</li><li>Tester</li><li>Sauvegarder</li></ol></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">⚠️ Sécurité</h3><ul style="line-height: 1.6; color: #555; list-style: none; padding: 0; font-size: 14px;"><li>🔐 JAMAIS trading</li><li>✅ Read Only UNIQUEMENT</li><li>🔒 Chiffré AES-256</li><li>🔑 Jamais partager</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 10px;">🛑 Si doute, NE CONNECTEZ PAS!</p></div></div></div>
+<div style="max-width: 1200px; margin: 50px 0; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionnent les API Keys ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Configuration clés API pour connecter exchanges.</p><ul style="line-height: 1.8; color: #555;"><li>🔑 Connexion exchanges</li><li>📊 Import trades auto</li><li>💹 Suivi portfolio temps réel</li><li>📱 Notifications Telegram</li><li>🔐 Stockage sécurisé</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🔧 APIs</h3><p style="line-height: 1.6; color: #555;"><strong>📊 Exchanges:</strong> Binance, Coinbase, Kraken, Bybit</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📱 Notifications:</strong> Telegram, Discord, Email</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">💡 Configuration</h3><ol style="line-height: 1.6; color: #555; font-size: 14px;"><li>Créer API key exchange</li><li>Permissions: Read Only</li><li>Copier Key + Secret</li><li>Coller formulaire</li><li>Tester</li><li>Sauvegarder</li></ol></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">⚠️ Sécurité</h3><ul style="line-height: 1.6; color: #555; list-style: none; padding: 0; font-size: 14px;"><li>🔐 JAMAIS trading</li><li>✅ Read Only UNIQUEMENT</li><li>🔒 Chiffré AES-256</li><li>🔑 Jamais partager</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 10px;">🛑 Si doute, NE CONNECTEZ PAS!</p></div></div></div>
     </body>
     </html>
     """)
@@ -65051,7 +65021,7 @@ async def ai_signals_page(request: Request):
 
     result_html = f'''
     <style>
-      .sig-wrap {{ max-width: 1200px; margin: 0 auto; padding: 12px 12px 26px; }}
+      .sig-wrap {{ max-width: 1200px; margin: 0; padding: 12px 12px 26px; }}
       .sig-hero {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 16px; }}
       .sig-hero h1 {{ margin: 0 0 6px; font-size: 28px; font-weight: 800; color: #fff; }}
       .sig-hero p {{ margin: 0; color: rgba(255,255,255,0.82); line-height: 1.45; }}
@@ -65784,7 +65754,7 @@ async def ai_predictor():
                 margin-left: 0;
                 padding: 40px 20px;
             }}
-            .container {{ max-width: 1600px; margin: 0 auto; }}
+            .container {{ max-width: 1600px; margin: 0; }}
             
             /* HEADER */
             h1 {{ 
@@ -67373,7 +67343,7 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
     }}
     .container {{
       max-width: 1100px;
-      margin: 0 auto;
+      margin: 0;
     }}
     .hero {{
       background: rgba(255,255,255,0.05);
@@ -67975,7 +67945,7 @@ async def ai_liquidity(request: Request):
   <style>{GLOBAL_STYLES}</style>
   <style>
   body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
-  .container {{ max-width: 1200px; margin: 0 auto; }}
+  .container {{ max-width: 1200px; margin: 0; }}
   .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}
   .muted {{ color:#9fb0c7; }}
   .tag {{ display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(96,165,250,.15); border:1px solid rgba(96,165,250,.35); }}
@@ -68103,7 +68073,7 @@ async def ai_timeframe(request: Request):
   <style>{GLOBAL_STYLES}</style>
   <style>
   body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
-  .container {{ max-width: 1100px; margin: 0 auto; }}
+  .container {{ max-width: 1100px; margin: 0; }}
   .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}
   .muted {{ color:#9fb0c7; }}
   .pill {{ display:inline-flex; gap:10px; align-items:center; padding:8px 12px; border-radius:999px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); }}
@@ -70144,7 +70114,7 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
     }}
     .page-wrap {{
       max-width: 1400px;
-      margin: 0 auto;
+      margin: 0;
     }}
     
       .main.has-sidebar .page-wrap {{
@@ -70174,6 +70144,7 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
       .main.has-sidebar .page-wrap > .container,
       .main.has-sidebar .page-wrap > .content,
       .main.has-sidebar .page-wrap > .card-grid,
+      .main.has-sidebar .page-wrap > div,
       .main.has-sidebar .page-wrap > section,
       .main.has-sidebar .page-wrap > article {{
         margin-left: 0 !important;

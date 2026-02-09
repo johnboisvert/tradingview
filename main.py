@@ -241,9 +241,15 @@ from fastapi import (
 app = FastAPI()
 
 from fastapi.responses import (
+
     HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse,
     StreamingResponse, FileResponse
 )
+
+import time
+import xml.etree.ElementTree as ET
+from email.utils import parsedate_to_datetime
+
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
@@ -3153,7 +3159,7 @@ async def api_meta_status():
 # - Cache serveur + validations
 # =============================
 import math
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote_plus
 
 _V2_CACHE = {}  # key -> (ts, ttl, value)
 
@@ -7760,6 +7766,309 @@ async def get_crypto_news_real():
 # ============================================================================
 #  ROUTES D'AUTHENTIFICATION
 # ============================================================================
+
+
+# =========================
+# AI NEWS (RSS) - real sources, server-side
+# =========================
+NEWS_RSS_SOURCES = [
+    {"name": "CoinDesk", "url": "https://www.coindesk.com/arc/outboundfeeds/rss/"},
+    {"name": "Cointelegraph", "url": "https://cointelegraph.com/rss"},
+    {"name": "Decrypt", "url": "https://decrypt.co/feed"},
+    {"name": "Bitcoin Magazine", "url": "https://bitcoinmagazine.com/.rss/full/"},
+    {"name": "The Block", "url": "https://www.theblock.co/rss.xml"},
+]
+
+_news_cache = {"ts": 0.0, "data": []}
+
+def _safe_parse_dt(value: str):
+    try:
+        if not value:
+            return None
+        # RSS pubDate / Atom updated
+        return parsedate_to_datetime(value).astimezone(dt.timezone.utc)
+    except Exception:
+        return None
+
+def _strip_html(text: str) -> str:
+    if not text:
+        return ""
+    # quick + safe HTML strip
+    return re.sub(r"<[^>]+>", "", text).replace("&nbsp;", " ").strip()
+
+def _sentiment_hint(text: str) -> str:
+    t = (text or "").lower()
+    neg = ["hack", "exploit", "scam", "lawsuit", "ban", "crash", "plunge", "down", "bear", "liquidat", "bankrupt", "sec", "fraud", "attack"]
+    pos = ["surge", "rally", "up", "bull", "approve", "approval", "record", "breakout", "partnership", "adopt", "launch", "listing", "etf"]
+    score = 0
+    score += sum(1 for w in pos if w in t)
+    score -= sum(1 for w in neg if w in t)
+    if score >= 2:
+        return "positif"
+    if score <= -2:
+        return "negatif"
+    return "neutre"
+
+def _extract_tickers(text: str):
+    # Detect common tickers in title/summary, keep it tight to avoid noise
+    if not text:
+        return []
+    candidates = re.findall(r"\b(BTC|ETH|SOL|XRP|BNB|ADA|DOGE|TON|AVAX|LINK|DOT|MATIC|ARB|OP|TRX)\b", text.upper())
+    out = []
+    for c in candidates:
+        if c not in out:
+            out.append(c)
+    return out[:6]
+
+def _parse_rss_or_atom(xml_text: str, source_name: str):
+    items = []
+    if not xml_text:
+        return items
+    try:
+        root = ET.fromstring(xml_text)
+    except Exception:
+        return items
+
+    # Handle RSS (<channel><item>) and Atom (<entry>)
+    # RSS
+    channel = root.find("channel")
+    if channel is not None:
+        for it in channel.findall("item")[:80]:
+            title = (it.findtext("title") or "").strip()
+            link = (it.findtext("link") or "").strip()
+            pub = (it.findtext("pubDate") or "").strip()
+            desc = (it.findtext("description") or "").strip()
+            # Some feeds use content:encoded
+            for child in list(it):
+                if child.tag.endswith("encoded") and child.text:
+                    desc = child.text
+                    break
+            published = _safe_parse_dt(pub)
+            summary = _strip_html(desc)[:240]
+            sentiment = _sentiment_hint(title + " " + summary)
+            tickers = _extract_tickers(title + " " + summary)
+            if title and link:
+                items.append({
+                    "title": title,
+                    "url": link,
+                    "source": source_name,
+                    "published": published.isoformat() if published else "",
+                    "summary": summary,
+                    "sentiment": sentiment,
+                    "tickers": tickers,
+                })
+        return items
+
+    # Atom (namespaces)
+    # Try to find entries by tag ending with 'entry'
+    entries = [el for el in root.iter() if str(el.tag).endswith("entry")]
+    for en in entries[:80]:
+        title_el = next((c for c in list(en) if str(c.tag).endswith("title")), None)
+        title = (title_el.text or "").strip() if title_el is not None else ""
+        link = ""
+        for c in list(en):
+            if str(c.tag).endswith("link"):
+                href = c.attrib.get("href") or ""
+                rel = c.attrib.get("rel") or ""
+                if href and (rel in ("", "alternate")):
+                    link = href
+                    break
+        updated_el = next((c for c in list(en) if str(c.tag).endswith("updated")), None)
+        published_el = next((c for c in list(en) if str(c.tag).endswith("published")), None)
+        pub_raw = (published_el.text if published_el is not None else "") or (updated_el.text if updated_el is not None else "")
+        published = _safe_parse_dt(pub_raw) or None
+        summary_el = next((c for c in list(en) if str(c.tag).endswith("summary")), None)
+        content_el = next((c for c in list(en) if str(c.tag).endswith("content")), None)
+        summary = _strip_html((summary_el.text or "") if summary_el is not None else (content_el.text or "") if content_el is not None else "")[:240]
+        sentiment = _sentiment_hint(title + " " + summary)
+        tickers = _extract_tickers(title + " " + summary)
+        if title and link:
+            items.append({
+                "title": title,
+                "url": link,
+                "source": source_name,
+                "published": published.isoformat() if published else "",
+                "summary": summary,
+                "sentiment": sentiment,
+                "tickers": tickers,
+            })
+    return items
+
+async def get_crypto_news_rss(max_items: int = 60, ttl_sec: int = 90):
+    now = time.time()
+    if _news_cache["data"] and (now - _news_cache["ts"] < ttl_sec):
+        return _news_cache["data"][:max_items]
+
+    async def fetch_one(src):
+        try:
+            r = await http_client.get(src["url"], timeout=15.0, follow_redirects=True, headers={
+                "User-Agent": "CryptoIA/1.0 (+ai-news; server-side)",
+                "Accept": "application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8",
+            })
+            if r.status_code >= 400:
+                return []
+            return _parse_rss_or_atom(r.text, src["name"])
+        except Exception:
+            return []
+
+    results = await asyncio.gather(*(fetch_one(s) for s in NEWS_RSS_SOURCES))
+    items = [it for sub in results for it in sub]
+
+    # De-dup by URL
+    seen = set()
+    uniq = []
+    for it in items:
+        u = (it.get("url") or "").strip()
+        if not u or u in seen:
+            continue
+        seen.add(u)
+        uniq.append(it)
+
+    def sort_key(it):
+        p = it.get("published") or ""
+        try:
+            return parsedate_to_datetime(p).timestamp() if p else 0.0
+        except Exception:
+            # iso
+            try:
+                return dt.datetime.fromisoformat(p.replace("Z","+00:00")).timestamp()
+            except Exception:
+                return 0.0
+
+    uniq.sort(key=sort_key, reverse=True)
+    _news_cache["ts"] = now
+    _news_cache["data"] = uniq
+    return uniq[:max_items]
+
+# =========================
+# AI PREDICTOR - live data + simple model
+# =========================
+_predict_cache = {"ts": 0.0, "data": None}
+
+async def _coingecko_market_chart(coin_id: str, days: int = 30, vs: str = "usd"):
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+    params = {"vs_currency": vs, "days": str(days), "interval": "daily"}
+    try:
+        r = await http_client.get(url, params=params, timeout=15.0, headers={"Accept":"application/json"})
+        if r.status_code >= 400:
+            return None
+        return r.json()
+    except Exception:
+        return None
+
+def _compute_projection_from_prices(prices):
+    # prices: list of [ts_ms, price]
+    if not prices or len(prices) < 8:
+        return None
+    vals = [p[1] for p in prices if isinstance(p, (list, tuple)) and len(p) >= 2 and isinstance(p[1], (int, float))]
+    if len(vals) < 8:
+        return None
+    # daily returns
+    rets = []
+    for i in range(1, len(vals)):
+        if vals[i-1] > 0:
+            rets.append((vals[i] / vals[i-1]) - 1.0)
+    if len(rets) < 7:
+        return None
+    mean = sum(rets) / len(rets)
+    # volatility (std)
+    m = mean
+    var = sum((x - m) ** 2 for x in rets) / max(1, (len(rets) - 1))
+    vol = var ** 0.5
+    # simple 7d projection with mild mean reversion clamp
+    drift_7d = max(-0.35, min(0.35, mean * 7.0))
+    vol_7d = max(0.01, min(0.45, vol * (7.0 ** 0.5)))
+    last = vals[-1]
+    projected = last * (1.0 + drift_7d)
+    # confidence heuristic: lower vol => higher confidence
+    conf = int(max(45, min(92, 88 - (vol_7d * 100))))
+    return {
+        "current": float(last),
+        "proj_7d": float(projected),
+        "drift_7d": float(drift_7d * 100.0),
+        "vol_7d": float(vol_7d * 100.0),
+        "confidence": conf,
+    }
+
+async def get_ai_predictor_live(max_coins: int = 18, ttl_sec: int = 90):
+    now = time.time()
+    if _predict_cache["data"] and (now - _predict_cache["ts"] < ttl_sec):
+        return _predict_cache["data"]
+
+    # Reuse existing helper (top coins) for live market data
+    coins = await get_top_50_cryptos()  # already server-side CoinGecko
+    coins = coins[:max_coins] if coins else []
+
+    # For performance: compute advanced projections only for top 8 coins
+    top_adv = coins[:8]
+    rest = coins[8:]
+
+    adv_data = []
+    for c in top_adv:
+        cid = c.get("id") or ""
+        chart = await _coingecko_market_chart(cid, days=30, vs="usd") if cid else None
+        proj = _compute_projection_from_prices((chart or {}).get("prices") if chart else None)
+        adv_data.append((c, proj))
+
+    results = []
+    for c, proj in adv_data:
+        current = float(c.get("current_price") or 0.0)
+        chg24 = float(c.get("price_change_percentage_24h") or 0.0)
+        # If projection failed, fallback to simple momentum extrapolation
+        if not proj or proj.get("current", 0) <= 0:
+            proj_7d = current * (1.0 + max(-0.25, min(0.25, chg24 / 100.0 * 3.0)))
+            conf = int(max(45, min(85, 70 - abs(chg24))))
+            drift = (proj_7d/current - 1.0)*100 if current else 0.0
+            vol = abs(chg24)*2.0
+        else:
+            proj_7d = proj["proj_7d"]
+            conf = proj["confidence"]
+            drift = proj["drift_7d"]
+            vol = proj["vol_7d"]
+        results.append({
+            "rank": int(c.get("market_cap_rank") or 999),
+            "id": c.get("id",""),
+            "symbol": (c.get("symbol") or "").upper(),
+            "name": c.get("name",""),
+            "price": current,
+            "chg24": chg24,
+            "mcap": float(c.get("market_cap") or 0.0),
+            "volume": float(c.get("total_volume") or 0.0),
+            "proj7": float(proj_7d),
+            "drift7": float(drift),
+            "vol7": float(vol),
+            "confidence": int(conf),
+        })
+
+    # Rest: lightweight model
+    for c in rest:
+        current = float(c.get("current_price") or 0.0)
+        chg24 = float(c.get("price_change_percentage_24h") or 0.0)
+        # light projection: 24h momentum with clamp
+        proj_7d = current * (1.0 + max(-0.18, min(0.18, chg24 / 100.0 * 2.4)))
+        conf = int(max(45, min(82, 68 - abs(chg24))))
+        drift = (proj_7d/current - 1.0)*100 if current else 0.0
+        vol = abs(chg24)*2.2
+        results.append({
+            "rank": int(c.get("market_cap_rank") or 999),
+            "id": c.get("id",""),
+            "symbol": (c.get("symbol") or "").upper(),
+            "name": c.get("name",""),
+            "price": current,
+            "chg24": chg24,
+            "mcap": float(c.get("market_cap") or 0.0),
+            "volume": float(c.get("total_volume") or 0.0),
+            "proj7": float(proj_7d),
+            "drift7": float(drift),
+            "vol7": float(vol),
+            "confidence": int(conf),
+        })
+
+    results.sort(key=lambda x: x["rank"])
+    _predict_cache["ts"] = now
+    _predict_cache["data"] = results
+    return results
+
 
 
 @app.middleware("http")
@@ -25120,7 +25429,6 @@ _RMWOW_CACHE = {
 
 def _rmwow_now():
     try:
-        import time
         return float(time.time())
     except Exception:
         return 0.0
@@ -35112,499 +35420,348 @@ async def ai_alerts_inbox(request: Request):
 </html>"""
     return HTMLResponse(html_page)
 
-@app.get("/ai-news")
-async def ai_news_page(request: Request):
-    """AI News — nouvelles crypto réelles (CryptoCompare) + layout unifié."""
-    SID = _sidebar_html(request)
 
-    # Source principale (déjà utilisée ailleurs dans le projet)
-    news = []
+@app.get("/ai-news", response_class=HTMLResponse)
+async def ai_news_page(request: Request):
+    """AI News — agrégation RSS côté serveur (données réelles)."""
     try:
-        news = await get_crypto_news_real()
+        news = await get_crypto_news_rss(max_items=60, ttl_sec=90)
     except Exception:
         news = []
 
+    # UI state (filters) via query params
+    q = (request.query_params.get("q") or "").strip().lower()
+    source = (request.query_params.get("source") or "").strip()
+    senti = (request.query_params.get("s") or "").strip()  # positif / neutre / negatif
+
+    filtered = []
+    for it in news:
+        title = it.get("title","")
+        summary = it.get("summary","")
+        if q and (q not in title.lower() and q not in summary.lower()):
+            continue
+        if source and it.get("source") != source:
+            continue
+        if senti and it.get("sentiment") != senti:
+            continue
+        filtered.append(it)
+
+    sources = sorted({it.get("source","") for it in news if it.get("source")})
+    def pill(label, value, active):
+        cls = "pill active" if active else "pill"
+        href = f"/ai-news?q={quote_plus(q)}&source={quote_plus(source)}&s={quote_plus(value)}" if value else f"/ai-news?q={quote_plus(q)}&source={quote_plus(source)}"
+        return f'<a class="{cls}" href="{href}">{label}</a>'
+
     cards_html = []
-    if not news:
-        cards_html.append(
-            """<div class="news-empty">
-                  <div class="news-empty-title">Aucune news disponible pour le moment</div>
-                  <div class="news-empty-sub">Réessayez dans quelques minutes.</div>
-                </div>"""
-        )
-    else:
-        for a in (news or [])[:24]:
-            title = escape(str(a.get("title") or "").strip())
-            url = str(a.get("url") or a.get("link") or "").strip()
-            src = escape(str(a.get("source") or a.get("source_info", {}).get("name") or "Source"))
-            # CryptoCompare utilise parfois 'body'
-            desc_raw = str(a.get("body") or a.get("summary") or a.get("description") or "").strip()
-            desc = escape(desc_raw[:260])
-            published = str(a.get("published_on") or a.get("published") or "").strip()
-            pill_time = f'<span class="pill ghost">{escape(published)}</span>' if published else ""
-            if not title or not url:
-                continue
-            cards_html.append(f"""
+    for it in filtered[:40]:
+        title = escape(it.get("title",""))
+        url = escape(it.get("url",""))
+        src = escape(it.get("source",""))
+        summ = escape(it.get("summary",""))
+        sentiment = it.get("sentiment","neutre")
+        tickers = it.get("tickers") or []
+        tag_html = "".join([f'<span class="tag">{escape(t)}</span>' for t in tickers]) if tickers else ""
+        badge_cls = {"positif":"badge good","negatif":"badge bad"}.get(sentiment, "badge neutral")
+        badge_txt = {"positif":"Bullish","negatif":"Risk","neutre":"Neutre"}.get(sentiment, "Neutre")
+        cards_html.append(f"""
             <a class="news-card" href="{url}" target="_blank" rel="noopener">
-              <div class="news-card-top">
-                <div class="news-title">{title}</div>
-                <div class="news-meta">
-                  <span class="pill">{src}</span>
-                  {pill_time}
+                <div class="news-top">
+                    <span class="{badge_cls}">{badge_txt}</span>
+                    <span class="source">{src}</span>
                 </div>
-              </div>
-              <div class="news-desc">{desc}</div>
-              <div class="news-cta">Lire l’article →</div>
+                <div class="title">{title}</div>
+                <div class="summary">{summ}</div>
+                <div class="tags">{tag_html}</div>
             </a>
-            """)
+        """)
 
-    body_html = f"""
+    # header stats
+    n_total = len(filtered)
+    n_pos = sum(1 for it in filtered if it.get("sentiment") == "positif")
+    n_neg = sum(1 for it in filtered if it.get("sentiment") == "negatif")
+
+    content_html = f"""
+    <div class="page-hero">
+        <div class="hero-left">
+            <div class="kicker">📰 AI News — CryptoIA</div>
+            <h1>Actu Crypto <span class="wow">WOW</span></h1>
+            <div class="sub">
+                Agrégation temps réel (RSS) : titres + résumé + tags. Filtre par source / sentiment / recherche.
+            </div>
+            <div class="stats">
+                <div class="stat"><div class="n">{n_total}</div><div class="l">articles</div></div>
+                <div class="stat"><div class="n">{n_pos}</div><div class="l">bullish</div></div>
+                <div class="stat"><div class="n">{n_neg}</div><div class="l">risk</div></div>
+            </div>
+        </div>
+        <div class="hero-right">
+            <form class="controls" method="get" action="/ai-news">
+                <input class="search" name="q" value="{escape(q)}" placeholder="Rechercher (ex: ETF, SOL, hack...)"/>
+                <select class="select" name="source">
+                    <option value="">Toutes les sources</option>
+                    {''.join([f'<option value="{escape(s)}" {"selected" if s==source else ""}>{escape(s)}</option>' for s in sources])}
+                </select>
+                <div class="pills">
+                    {pill("Tous", "", senti=="")}
+                    {pill("Bullish", "positif", senti=="positif")}
+                    {pill("Neutre", "neutre", senti=="neutre")}
+                    {pill("Risk", "negatif", senti=="negatif")}
+                </div>
+                <button class="btn" type="submit">Filtrer</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid">
+        {''.join(cards_html) if cards_html else '<div class="empty">Aucun article trouvé. Essaie une autre recherche / source.</div>'}
+    </div>
+
+    <div class="help">
+        <div class="help-card">
+            <h3>A quoi sert cette page ?</h3>
+            <p>Voir l’actualité crypto en un coup d’œil, sans pubs, avec un tri rapide (bullish / neutre / risk) et des tags de coins.</p>
+        </div>
+        <div class="help-card">
+            <h3>Comment l’utiliser ?</h3>
+            <p>1) Tape un mot-clé (ETF, hack, SOL). 2) Filtre par source/sentiment. 3) Ouvre un article en cliquant une carte.</p>
+        </div>
+        <div class="help-card">
+            <h3>Note</h3>
+            <p>Les résumés et sentiments sont heuristiques (pas un conseil financier). Les liens ouvrent les sources officielles.</p>
+        </div>
+    </div>
+
     <style>
-      .news-head {{
-        display:flex; align-items:flex-end; justify-content:space-between;
-        gap:14px; margin: 6px 0 16px;
-      }}
-      .news-head h1 {{ margin:0; font-size: 26px; letter-spacing: .2px; }}
-      .news-sub {{ color: rgba(255,255,255,.72); font-size: 13px; margin-top: 4px; }}
-      .news-tools {{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }}
-      .btn {{
-        display:inline-flex; align-items:center; gap:8px;
-        padding: 10px 12px; border-radius: 12px;
-        background: rgba(255,255,255,.08);
-        border: 1px solid rgba(255,255,255,.10);
-        color: rgba(255,255,255,.92);
-        text-decoration:none; font-weight:700; font-size: 13px;
-      }}
-      .btn:hover {{ background: rgba(255,255,255,.11); }}
-      .pill {{
-        display:inline-flex; align-items:center;
-        padding: 6px 10px; border-radius: 999px;
-        background: rgba(255,255,255,.08);
-        border: 1px solid rgba(255,255,255,.10);
-        color: rgba(255,255,255,.85);
-        font-size: 12px; font-weight: 700;
-      }}
-      .pill.ghost {{
-        background: rgba(255,255,255,.04);
-        border-color: rgba(255,255,255,.08);
-        color: rgba(255,255,255,.70);
-        font-weight: 600;
-      }}
-      .news-grid {{
-        display:grid;
-        grid-template-columns: repeat(3, minmax(0,1fr));
-        gap: 14px;
-      }}
-      @media(max-width: 1100px) {{
-        .news-grid {{ grid-template-columns: repeat(2, minmax(0,1fr)); }}
-      }}
-      @media(max-width: 700px) {{
-        .news-head {{ align-items:flex-start; }}
-        .news-grid {{ grid-template-columns: 1fr; }}
-      }}
-      .news-card {{
-        display:flex; flex-direction:column; gap: 10px;
-        padding: 14px 14px 12px;
-        border-radius: 16px;
-        background: rgba(255,255,255,.06);
-        border: 1px solid rgba(255,255,255,.10);
-        text-decoration:none;
-        box-shadow: 0 10px 30px rgba(0,0,0,.25);
-      }}
-      .news-card:hover {{
-        background: rgba(255,255,255,.08);
-        border-color: rgba(180,130,255,.35);
-        transform: translateY(-1px);
-      }}
-      .news-title {{
-        font-size: 15px; font-weight: 800; color: rgba(255,255,255,.95);
-        line-height: 1.25;
-      }}
-      .news-meta {{ display:flex; gap:8px; flex-wrap:wrap; }}
-      .news-desc {{
-        color: rgba(255,255,255,.72);
-        font-size: 13px; line-height: 1.35;
-        display:-webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
-        overflow:hidden;
-      }}
-      .news-cta {{
-        margin-top:auto;
-        color: rgba(160,210,255,.92);
-        font-weight: 800; font-size: 13px;
-      }}
-      .news-empty {{
-        grid-column: 1 / -1;
-        padding: 22px;
-        border-radius: 18px;
-        background: rgba(255,255,255,.05);
-        border: 1px dashed rgba(255,255,255,.16);
-      }}
-      .news-empty-title {{ font-weight: 900; font-size: 16px; }}
-      .news-empty-sub {{ color: rgba(255,255,255,.72); margin-top: 6px; }}
-      .howto {{
-        margin-top: 16px;
-        padding: 14px;
-        border-radius: 16px;
-        background: rgba(255,255,255,.04);
-        border: 1px solid rgba(255,255,255,.09);
-        color: rgba(255,255,255,.78);
-        font-size: 13px;
-      }}
-      .howto b {{ color: rgba(255,255,255,.92); }}
+        .page-hero {{display:flex;gap:18px;align-items:stretch;justify-content:space-between;margin:6px 0 18px 0}}
+        .hero-left {{flex:1;min-width:320px}}
+        .kicker {{opacity:.8;font-size:12px;letter-spacing:.12em;text-transform:uppercase}}
+        h1 {{margin:8px 0 6px 0;font-size:42px;line-height:1.05}}
+        .wow {{background:linear-gradient(90deg,#7c3aed,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent}}
+        .sub {{opacity:.9;max-width:760px}}
+        .stats {{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}}
+        .stat {{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;min-width:120px}}
+        .stat .n {{font-size:18px;font-weight:800}}
+        .stat .l {{opacity:.8;font-size:12px}}
+        .hero-right {{width:420px;max-width:100%}}
+        .controls {{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:12px;backdrop-filter:blur(14px)}}
+        .search,.select {{width:100%;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#fff;margin-bottom:10px}}
+        .pills {{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px}}
+        .pill {{padding:7px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);text-decoration:none;color:#fff;font-size:12px}}
+        .pill.active {{border-color:rgba(34,211,238,.45);box-shadow:0 0 0 3px rgba(34,211,238,.12) inset}}
+        .btn {{width:100%;padding:10px 12px;border-radius:12px;border:none;background:linear-gradient(90deg,#7c3aed,#22d3ee);color:#fff;font-weight:800;cursor:pointer}}
+        .grid {{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}}
+        .news-card {{display:block;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:12px;text-decoration:none;color:#fff;transition:transform .12s ease,border-color .12s ease}}
+        .news-card:hover {{transform:translateY(-2px);border-color:rgba(34,211,238,.25)}}
+        .news-top {{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}}
+        .badge {{font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12)}}
+        .badge.good {{background:rgba(34,197,94,.14);border-color:rgba(34,197,94,.25)}}
+        .badge.bad {{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.25)}}
+        .badge.neutral {{background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.22)}}
+        .source {{opacity:.85;font-size:12px}}
+        .title {{font-weight:800;line-height:1.15;margin-bottom:6px}}
+        .summary {{opacity:.9;font-size:12.5px;line-height:1.35}}
+        .tags {{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}}
+        .tag {{font-size:11px;padding:4px 8px;border-radius:999px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.10)}}
+        .empty {{padding:18px;border-radius:16px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.18)}}
+        .help {{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}}
+        .help-card {{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:12px}}
+        .help-card h3 {{margin:0 0 6px 0;font-size:14px}}
+        .help-card p {{margin:0;opacity:.9;font-size:12.5px;line-height:1.4}}
+        @media (max-width: 1100px) {{
+            .grid {{grid-template-columns:repeat(2,minmax(0,1fr));}}
+            .page-hero {{flex-direction:column}}
+            .hero-right {{width:100%}}
+            .help {{grid-template-columns:1fr}}
+        }}
+        @media (max-width: 720px) {{
+            h1 {{font-size:34px}}
+            .grid {{grid-template-columns:1fr}}
+        }}
     </style>
-
-    <div class="news-head">
-      <div>
-        <h1>📰 AI News</h1>
-        <div class="news-sub">Nouvelles crypto (réelles) — source: CryptoCompare.</div>
-      </div>
-      <div class="news-tools">
-        <a class="btn" href="/ai-news">Rafraîchir</a>
-        <span class="pill">Auto-refresh 90s</span>
-      </div>
-    </div>
-
-    <div class="news-grid">
-      {''.join(cards_html)}
-    </div>
-
-    <div class="howto">
-      <b>Comment utiliser :</b> ouvrez un article → repérez la narrative (ETF, macro, alt season, hack, régulation) → 
-      puis recoupez avec <b>AI Signals</b> / <b>Market Regime</b>. Les news donnent le contexte, pas un signal.
-    </div>
-
-    <script>
-      setTimeout(() => {{
-        try {{ window.location.reload(); }} catch(e) {{}}
-      }}, 90000);
-    </script>
     """
+    return HTMLResponse(_simple_page("AI News", content_html, active="/ai-news"))
 
-    return _simple_page("AI News", body_html, sidebar_html=SID, request=request, show_title=False, container_class="container wide")
+@app.get("/api/ai-news")
+async def api_ai_news():
+    items = await get_crypto_news_rss(max_items=80, ttl_sec=90)
+    return {"status":"ok","count":len(items),"items":items}
+
+
+
 
 @app.get("/ai-predictor", response_class=HTMLResponse)
-async def ai_predictor():
-    """Prédictions de prix - TOP 50"""
-    cryptos = await get_top_50_cryptos()
-    
-    # Gnrer les cartes pour les 3 priodes
-    predictions_7d = ""
-    predictions_30d = ""
-    predictions_90d = ""
-    
-    for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
-        name = crypto.get('name', 'Unknown')
-        symbol = crypto.get('symbol', '').upper()
-        rank = crypto.get('market_cap_rank', 0)
-        price_str = f"{price:,.6f}" if price < 1 else f"{price:,.2f}"
-        
-        # Prdictions
-        pred_7d = price * (1 + (change_24h * 3) / 100)
-        pred_30d = price * (1 + (change_24h * 10) / 100)
-        pred_90d = price * (1 + (change_24h * 25) / 100)
-        
-        pred_7d_str = f"{pred_7d:,.6f}" if pred_7d < 1 else f"{pred_7d:,.2f}"
-        pred_30d_str = f"{pred_30d:,.6f}" if pred_30d < 1 else f"{pred_30d:,.2f}"
-        pred_90d_str = f"{pred_90d:,.6f}" if pred_90d < 1 else f"{pred_90d:,.2f}"
-        
-        perc_7d = ((pred_7d - price) / price * 100) if price > 0 else 0
-        perc_30d = ((pred_30d - price) / price * 100) if price > 0 else 0
-        perc_90d = ((pred_90d - price) / price * 100) if price > 0 else 0
-        
-        change_class = "positive" if change_24h > 0 else "negative"
-        
-        # Carte pour 7 jours
-        card_7d = f"""
-        <div class="pred-card">
-            <div class="pred-header">
-                <div class="crypto-name">#{rank} {symbol}</div>
-                <div class="crypto-fullname">{name}</div>
+async def ai_predictor(request: Request):
+    """AI Predictor — données live CoinGecko + projection statistique (WOW)."""
+    data = await get_ai_predictor_live(max_coins=18, ttl_sec=90)
+
+    # Build cards for top 6
+    top = data[:6]
+    cards = []
+    for it in top:
+        up = it["proj7"] >= it["price"]
+        delta = ((it["proj7"]/it["price"])-1.0)*100 if it["price"] else 0.0
+        badge = "UP" if up else "DOWN"
+        cls = "up" if up else "down"
+        cards.append(f"""
+            <div class="card">
+                <div class="card-top">
+                    <div class="coin">
+                        <div class="sym">{escape(it['symbol'])}</div>
+                        <div class="name">{escape(it['name'])}</div>
+                    </div>
+                    <div class="badge {cls}">{badge}</div>
+                </div>
+                <div class="metric">
+                    <div class="k">Prix actuel</div>
+                    <div class="v">${it['price']:,.4f}</div>
+                    <div class="s {cls}">{it['chg24']:+.2f}% (24h)</div>
+                </div>
+                <div class="metric">
+                    <div class="k">Projection 7 jours</div>
+                    <div class="v">${it['proj7']:,.4f}</div>
+                    <div class="s {cls}">{delta:+.2f}%</div>
+                </div>
+                <div class="bar">
+                    <div class="bfill" style="width:{it['confidence']}%"></div>
+                </div>
+                <div class="small">
+                    Confiance: <b>{it['confidence']}%</b> · Drift 7j: <b>{it['drift7']:+.2f}%</b> · Vol 7j: <b>{it['vol7']:.1f}%</b>
+                </div>
             </div>
-            <div class="current-section">
-                <div class="label">Prix Actuel</div>
-                <div class="current-price">${price_str}</div>
-                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
-            </div>
-            <div class="prediction-section">
-                <div class="pred-label">Prédiction 7 jours</div>
-                <div class="pred-price">${pred_7d_str}</div>
-                <div class="pred-change {'positive' if perc_7d > 0 else 'negative'}">{perc_7d:+.1f}%</div>
-                <div class="confidence">Confiance: 78%</div>
-            </div>
-        </div>
-        """
-        
-        # Carte pour 30 jours
-        card_30d = f"""
-        <div class="pred-card">
-            <div class="pred-header">
-                <div class="crypto-name">#{rank} {symbol}</div>
-                <div class="crypto-fullname">{name}</div>
-            </div>
-            <div class="current-section">
-                <div class="label">Prix Actuel</div>
-                <div class="current-price">${price_str}</div>
-                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
-            </div>
-            <div class="prediction-section">
-                <div class="pred-label">Prédiction 30 jours</div>
-                <div class="pred-price">${pred_30d_str}</div>
-                <div class="pred-change {'positive' if perc_30d > 0 else 'negative'}">{perc_30d:+.1f}%</div>
-                <div class="confidence">Confiance: 65%</div>
+        """)
+
+    # Table rows
+    rows = []
+    for it in data:
+        delta = ((it["proj7"]/it["price"])-1.0)*100 if it["price"] else 0.0
+        cls = "up" if delta >= 0 else "down"
+        rows.append(f"""
+            <tr>
+                <td class="rank">#{it['rank']}</td>
+                <td class="coin">{escape(it['name'])} <span class="muted">({escape(it['symbol'])})</span></td>
+                <td>${it['price']:,.4f}</td>
+                <td class="{cls}">{it['chg24']:+.2f}%</td>
+                <td>${it['proj7']:,.4f}</td>
+                <td class="{cls}">{delta:+.2f}%</td>
+                <td>{it['confidence']}%</td>
+            </tr>
+        """)
+
+    content = f"""
+    <div class="hero">
+        <div>
+            <div class="kicker">🤖 AI Predictor — CryptoIA</div>
+            <h1>AI Predictor <span class="wow">WOW</span></h1>
+            <div class="sub">
+                Données live <b>CoinGecko</b> + projection statistique (momentum + volatilité 30j) pour les top coins.
+                <span class="muted">Ce n’est pas un conseil financier.</span>
             </div>
         </div>
-        """
-        
-        # Carte pour 90 jours
-        card_90d = f"""
-        <div class="pred-card">
-            <div class="pred-header">
-                <div class="crypto-name">#{rank} {symbol}</div>
-                <div class="crypto-fullname">{name}</div>
-            </div>
-            <div class="current-section">
-                <div class="label">Prix Actuel</div>
-                <div class="current-price">${price_str}</div>
-                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
-            </div>
-            <div class="prediction-section">
-                <div class="pred-label">Prédiction 90 jours</div>
-                <div class="pred-price">${pred_90d_str}</div>
-                <div class="pred-change {'positive' if perc_90d > 0 else 'negative'}">{perc_90d:+.1f}%</div>
-                <div class="confidence">Confiance: 52%</div>
-            </div>
+        <div class="hero-right">
+            <div class="pill"><span class="dot"></span> Live CoinGecko</div>
+            <div class="pill">MAJ: {dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}</div>
+            <a class="refresh" href="/ai-predictor">Rafraîchir</a>
         </div>
-        """
-        
-        predictions_7d += card_7d
-        predictions_30d += card_30d
-        predictions_90d += card_90d
-    
-    return HTMLResponse(SIDEBAR + f"""
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Predictor - Top 50</title>
-        <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{ 
-                font-family: 'Segoe UI', sans-serif; 
-                background: linear-gradient(135deg, #1e1b4b, #312e81); 
-                color: #fff; 
-                min-height: 100vh;
-                margin-left: 0;
-                padding: 40px 20px;
-            }}
-            .container {{ max-width: 1600px; margin: 0; }}
-            
-            /* HEADER */
-            h1 {{ 
-                font-size: 3em; 
-                text-align: center; 
-                margin-bottom: 10px;
-                background: linear-gradient(135deg, #667eea, #764ba2);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-            }}
-            .subtitle {{ 
-                text-align: center; 
-                font-size: 1.2em; 
-                margin-bottom: 40px; 
-                opacity: 0.9;
-                color: #cbd5e1;
-            }}
-            
-            /* TABS */
-            .tabs {{
-                display: flex;
-                justify-content: center;
-                gap: 15px;
-                margin-bottom: 40px;
-                flex-wrap: wrap;
-            }}
-            .tab-btn {{
-                padding: 15px 35px;
-                background: rgba(255,255,255,0.1);
-                border: 2px solid rgba(255,255,255,0.2);
-                border-radius: 12px;
-                color: #fff;
-                font-size: 1.1em;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.3s;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }}
-            .tab-btn:hover {{
-                background: rgba(255,255,255,0.15);
-                transform: translateY(-2px);
-            }}
-            .tab-btn.active {{
-                background: linear-gradient(135deg, #667eea, #764ba2);
-                border-color: #667eea;
-                box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4);
-            }}
-            
-            /* GRID */
-            .preds-grid {{ 
-                display: grid; 
-                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
-                gap: 25px;
-            }}
-            .tab-content {{
-                display: none;
-            }}
-            .tab-content.active {{
-                display: block;
-            }}
-            
-            /* CARDS */
-            .pred-card {{ 
-                background: rgba(255,255,255,0.05); 
-                border: 2px solid rgba(255,255,255,0.1); 
-                border-radius: 15px; 
-                padding: 25px;
-                transition: all 0.3s;
-            }}
-            .pred-card:hover {{ 
-                transform: translateY(-5px); 
-                border-color: rgba(102, 126, 234, 0.5);
-                box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
-            }}
-            
-            .pred-header {{ 
-                margin-bottom: 20px;
-                border-bottom: 2px solid rgba(255,255,255,0.1);
-                padding-bottom: 15px;
-            }}
-            .crypto-name {{ 
-                font-size: 1.5em; 
-                font-weight: 700;
-                color: #667eea;
-            }}
-            .crypto-fullname {{
-                font-size: 0.9em;
-                color: #94a3b8;
-                margin-top: 5px;
-            }}
-            
-            .current-section {{ 
-                text-align: center; 
-                padding: 20px; 
-                background: rgba(0,0,0,0.3); 
-                border-radius: 10px; 
-                margin: 15px 0;
-            }}
-            .label {{
-                font-size: 0.85em;
-                color: #94a3b8;
-                margin-bottom: 8px;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }}
-            .current-price {{ 
-                font-size: 1.8em; 
-                font-weight: 700; 
-                margin: 10px 0;
-            }}
-            .price-change {{ 
-                font-size: 1.1em;
-                font-weight: 600;
-            }}
-            .price-change.positive {{ color: #10b981; }}
-            .price-change.negative {{ color: #ef4444; }}
-            
-            .prediction-section {{
-                text-align: center;
-                padding: 20px;
-                background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-                border-radius: 10px;
-                margin-top: 15px;
-            }}
-            .pred-label {{
-                font-size: 0.85em;
-                color: #667eea;
-                margin-bottom: 10px;
-                text-transform: uppercase;
-                font-weight: 700;
-                letter-spacing: 1px;
-            }}
-            .pred-price {{
-                font-size: 2em;
-                font-weight: 700;
-                margin: 10px 0;
-            }}
-            .pred-change {{
-                font-size: 1.2em;
-                font-weight: 600;
-                margin: 8px 0;
-            }}
-            .pred-change.positive {{ color: #00ff88; }}
-            .pred-change.negative {{ color: #ff4757; }}
-            .confidence {{
-                font-size: 0.9em;
-                color: #94a3b8;
-                margin-top: 10px;
-            }}
-            
-            /* RESPONSIVE */
-            @media (max-width: 768px) {{
-                body {{ margin-left: 0; }}
-                h1 {{ font-size: 2em; }}
-                .tabs {{ flex-direction: column; align-items: center; }}
-                .tab-btn {{ width: 100%; max-width: 300px; }}
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🔮 AI PREDICTOR</h1>
-            <p class="subtitle">Prédictions de prix - TOP 50 Cryptomonnaies</p>
-            
-            <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('7d')">7 JOURS</button>
-                <button class="tab-btn" onclick="switchTab('30d')">30 JOURS</button>
-                <button class="tab-btn" onclick="switchTab('90d')">90 JOURS</button>
-            </div>
-            
-            <div id="tab-7d" class="tab-content active">
-                <div class="preds-grid">{predictions_7d}</div>
-            </div>
-            
-            <div id="tab-30d" class="tab-content">
-                <div class="preds-grid">{predictions_30d}</div>
-            </div>
-            
-            <div id="tab-90d" class="tab-content">
-                <div class="preds-grid">{predictions_90d}</div>
-            </div>
+    </div>
+
+    <div class="cards">{''.join(cards)}</div>
+
+    <div class="panel">
+        <div class="panel-top">
+            <div class="ptitle">Top projections (données réelles)</div>
+            <div class="pnote">Auto-refresh ~90s</div>
         </div>
-        
-        <script>
-            function switchTab(period) {{
-                // Hide all tabs
-                document.querySelectorAll('.tab-content').forEach(tab => {{
-                    tab.classList.remove('active');
-                }});
-                document.querySelectorAll('.tab-btn').forEach(btn => {{
-                    btn.classList.remove('active');
-                }});
-                
-                // Show selected tab
-                document.getElementById('tab-' + period).classList.add('active');
-                event.target.classList.add('active');
-            }}
-            
-            // Auto-refresh every 2 minutes
-            setTimeout(function() {{ window.location.reload(); }}, 120000);
-        </script>
-    </body>
-    </html>
-    """)
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th><th>Coin</th><th>Prix</th><th>24h</th><th>Proj 7j</th><th>Δ 7j</th><th>Confiance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {''.join(rows)}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="help">
+        <div class="help-card">
+            <h3>A quoi sert cette page ?</h3>
+            <p>Comparer rapidement les coins : prix live, momentum (24h) et une projection 7 jours basée sur des stats simples.</p>
+        </div>
+        <div class="help-card">
+            <h3>Comment l’utiliser ?</h3>
+            <p>1) Regarde les cartes (top 6). 2) Utilise le tableau pour comparer. 3) Croise avec “AI News” + “Gestion risques”.</p>
+        </div>
+        <div class="help-card">
+            <h3>Important</h3>
+            <p>Projection ≠ certitude. La confiance baisse quand la volatilité monte. Toujours gérer le risque.</p>
+        </div>
+    </div>
+
+    <style>
+        .hero{{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:6px 0 14px}}
+        .kicker{{opacity:.8;font-size:12px;letter-spacing:.12em;text-transform:uppercase}}
+        h1{{margin:8px 0 6px 0;font-size:44px;line-height:1.05}}
+        .wow{{background:linear-gradient(90deg,#7c3aed,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent}}
+        .sub{{opacity:.9;max-width:820px}}
+        .muted{{opacity:.75}}
+        .hero-right{{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}}
+        .pill{{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:999px;padding:8px 10px;font-size:12px}}
+        .dot{{display:inline-block;width:8px;height:8px;border-radius:999px;background:#22c55e;margin-right:8px;box-shadow:0 0 0 3px rgba(34,197,94,.12)}}
+        .refresh{{text-decoration:none;color:#fff;font-weight:800;padding:9px 12px;border-radius:12px;background:linear-gradient(90deg,#7c3aed,#22d3ee)}}
+        .cards{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}}
+        .card{{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:12px;backdrop-filter:blur(14px)}}
+        .card-top{{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}}
+        .coin .sym{{font-size:18px;font-weight:900;letter-spacing:.02em}}
+        .coin .name{{opacity:.82;font-size:12px;margin-top:2px}}
+        .badge{{font-size:11px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12)}}
+        .badge.up{{background:rgba(34,197,94,.14);border-color:rgba(34,197,94,.25)}}
+        .badge.down{{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.25)}}
+        .metric{{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;margin-bottom:10px}}
+        .metric .k{{opacity:.8;font-size:12px}}
+        .metric .v{{font-size:22px;font-weight:900;margin-top:4px}}
+        .metric .s{{margin-top:4px;font-size:12px;font-weight:700}}
+        .up{{color:#34d399}}
+        .down{{color:#fb7185}}
+        .bar{{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(255,255,255,.10)}}
+        .bfill{{height:100%;background:linear-gradient(90deg,#7c3aed,#22d3ee)}}
+        .small{{margin-top:8px;opacity:.85;font-size:12px}}
+        .panel{{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:12px}}
+        .panel-top{{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}}
+        .ptitle{{font-weight:900}}
+        .pnote{{opacity:.75;font-size:12px}}
+        .table-wrap{{overflow:auto;border-radius:14px}}
+        table{{width:100%;border-collapse:separate;border-spacing:0}}
+        thead th{{position:sticky;top:0;background:rgba(0,0,0,.35);backdrop-filter:blur(12px);text-align:left;font-size:12px;padding:10px;border-bottom:1px solid rgba(255,255,255,.10)}}
+        tbody td{{padding:10px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}}
+        tbody tr:hover{{background:rgba(255,255,255,.03)}}
+        td.rank{{opacity:.8;width:60px}}
+        td.coin{{font-weight:800}}
+        .help{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}}
+        .help-card{{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:12px}}
+        .help-card h3{{margin:0 0 6px 0;font-size:14px}}
+        .help-card p{{margin:0;opacity:.9;font-size:12.5px;line-height:1.4}}
+        @media (max-width: 1100px) {{
+            .cards{{grid-template-columns:repeat(2,minmax(0,1fr))}}
+            .help{{grid-template-columns:1fr}}
+            h1{{font-size:36px}}
+        }}
+        @media (max-width: 720px) {{
+            .cards{{grid-template-columns:1fr}}
+            .hero{{flex-direction:column;align-items:flex-start}}
+        }}
+    </style>
+    """
+    return HTMLResponse(_simple_page("AI Predictor", content, active="/ai-predictor"))
+
+@app.get("/api/ai-predictor")
+async def api_ai_predictor():
+    data = await get_ai_predictor_live(max_coins=18, ttl_sec=90)
+    return {"status":"ok","count":len(data),"items":data}
+
+
 
 @app.get("/ai-whale", response_class=HTMLResponse)
 async def ai_whale():
@@ -65437,529 +65594,7 @@ async def ai_alerts_inbox(request: Request):
 </html>"""
     return HTMLResponse(html_page)
 
-@app.get("/ai-news", response_class=HTMLResponse)
-async def ai_news():
-    """Actualités crypto - TOP 50"""
-    cryptos = await get_top_50_cryptos()
-    news_html = ""
-    for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
-        name = crypto.get('name', '')
-        symbol = crypto.get('symbol', '').upper()
-        rank = crypto.get('market_cap_rank', 0)
-        mcap = crypto.get('market_cap', 0)
-        volume = crypto.get('total_volume', 0)
-        price_str = f"{price:,.6f}" if price < 1 else f"{price:,.2f}"
-        change_class = "positive" if change_24h > 0 else "negative"
-        trend = "📈" if change_24h > 0 else "📉"
-        news_html += f"""
-        <div class="news-card">
-            <div class="news-header">
-                <span class="rank">#{rank}</span>
-                <span class="symbol">{symbol}</span>
-                <span class="trend">{trend}</span>
-            </div>
-            <h3>{name}</h3>
-            <div class="news-content">
-                <div class="price-info">
-                    <div class="label">Prix</div>
-                    <div class="value">${price_str}</div>
-                </div>
-                <div class="change-info {change_class}">
-                    <div class="label">24h</div>
-                    <div class="value">{change_24h:+.2f}%</div>
-                </div>
-                <div class="mcap-info">
-                    <div class="label">Market Cap</div>
-                    <div class="value">${mcap/1000000:.0f}M</div>
-                </div>
-            </div>
-        </div>
-        """
-    return HTMLResponse(SIDEBAR + f"""
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI News - Top 50</title>
-        <style>
-            *{{margin:0;padding:0;box-sizing:border-box}}
-            body{{font-family:Arial,sans-serif;background:linear-gradient(135deg,#1e293b,#334155);color:#fff;padding:40px 20px;min-height:100vh}}
-            .container{{max-width:1400px;margin:0 auto}}
-            h1{{font-size:2.8em;text-align:center;margin-bottom:40px}}
-            .news-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}}
-            .news-card{{background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.1);border-radius:15px;padding:20px;transition:all 0.3s}}
-            .news-card:hover{{transform:translateY(-5px);border-color:rgba(255,255,255,0.3)}}
-            .news-header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}}
-            .rank{{color:#fbbf24;font-weight:700}}
-            .symbol{{font-size:1.3em;font-weight:700}}
-            .trend{{font-size:1.5em}}
-            h3{{font-size:1em;color:#94a3b8;margin-bottom:20px}}
-            .news-content{{display:grid;gap:15px}}
-            .price-info,.change-info,.mcap-info{{display:flex;justify-content:space-between;padding:10px;background:rgba(0,0,0,0.2);border-radius:8px}}
-            .label{{color:#94a3b8;font-size:0.9em}}
-            .value{{font-weight:700;font-size:1.1em}}
-            .change-info.positive .value{{color:#10b981}}
-            .change-info.negative .value{{color:#ef4444}}
-        
-        .how-to-use {{
-            margin: 60px auto;
-            max-width: 1200px;
-            padding: 40px;
-            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
-            border: 2px solid #06b6d4;
-            border-radius: 20px;
-        }}
-        
-        .how-to-use h2 {{
-            font-size: 2em;
-            margin-bottom: 30px;
-            color: #06b6d4;
-            text-align: center;
-        }}
-        
-        .use-steps {{
-            display: grid;
-            gap: 25px;
-        }}
-        
-        .step {{
-            display: flex;
-            gap: 20px;
-            align-items: flex-start;
-            padding: 25px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 15px;
-            border-left: 4px solid #06b6d4;
-        }}
-        
-        .step-number {{
-            background: linear-gradient(135deg, #06b6d4, #3b82f6);
-            color: #fff;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5em;
-            font-weight: 700;
-            flex-shrink: 0;
-        }}
-        
-        .step-content h3 {{
-            font-size: 1.3em;
-            margin-bottom: 10px;
-            color: #fff;
-        }}
-        
-        .step-content p {{
-            color: rgba(255,255,255,0.8);
-            line-height: 1.6;
-        }}
-        
-        .use-tips {{
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(251,191,36,0.1);
-            border-left: 4px solid #fbbf24;
-            border-radius: 10px;
-        }}
-        
-        .use-tips h3 {{
-            color: #fbbf24;
-            margin-bottom: 15px;
-        }}
-        
-        .use-tips ul {{
-            list-style: none;
-            padding: 0;
-        }}
-        
-        .use-tips li {{
-            padding: 8px 0;
-            color: rgba(255,255,255,0.9);
-        }}
-        
-        .use-tips li:before {{
-            content: "💡 ";
-            margin-right: 10px;
-        }}
-</style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>📰 AI NEWS</h1>
-            <div class="news-grid">{news_html}</div>
-        </div>
-        <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    
-        <div class="how-to-use">
-            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
-            <div class="use-steps">
-                <div class="step">
-                    <span class="step-number">1</span>
-                    <div class="step-content">
-                        <h3>Suivez l'impact des news sur le marché</h3>
-                        <p>Chaque news importante est analysée en temps réel pour évaluer son impact potentiel sur les prix crypto (positif, négatif ou neutre).</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <span class="step-number">2</span>
-                    <div class="step-content">
-                        <h3>Identifiez les opportunités</h3>
-                        <p>Les news positives peuvent créer des opportunités d'achat, les négatives des signaux de vente. Utilisez l'indicateur d'impact pour prioriser.</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <span class="step-number">3</span>
-                    <div class="step-content">
-                        <h3>Agissez rapidement</h3>
-                        <p>Le marché crypto réagit vite aux news! Configurez des alertes pour être notifié des événements majeurs avant tout le monde.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="use-tips">
-                <h3>⚡ Conseils Pro</h3>
-                <ul>
-                    <li>News = catalyseur de mouvement, pas signal d'achat direct</li>
-                    <li>Vérifiez toujours la source et la fiabilité</li>
-                    <li>Combinez avec analyse technique pour confirmer</li>
-                </ul>
-            </div>
-        </div>
-    
-        </body>
-    </html>
-    """)
 
-print("Routes 2-3 créées: AI News, AI Predictor")
-
-@app.get("/ai-predictor", response_class=HTMLResponse)
-async def ai_predictor():
-    """Prédictions de prix - TOP 50"""
-    cryptos = await get_top_50_cryptos()
-    
-    # Gnrer les cartes pour les 3 priodes
-    predictions_7d = ""
-    predictions_30d = ""
-    predictions_90d = ""
-    
-    for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
-        name = crypto.get('name', 'Unknown')
-        symbol = crypto.get('symbol', '').upper()
-        rank = crypto.get('market_cap_rank', 0)
-        price_str = f"{price:,.6f}" if price < 1 else f"{price:,.2f}"
-        
-        # Prdictions
-        pred_7d = price * (1 + (change_24h * 3) / 100)
-        pred_30d = price * (1 + (change_24h * 10) / 100)
-        pred_90d = price * (1 + (change_24h * 25) / 100)
-        
-        pred_7d_str = f"{pred_7d:,.6f}" if pred_7d < 1 else f"{pred_7d:,.2f}"
-        pred_30d_str = f"{pred_30d:,.6f}" if pred_30d < 1 else f"{pred_30d:,.2f}"
-        pred_90d_str = f"{pred_90d:,.6f}" if pred_90d < 1 else f"{pred_90d:,.2f}"
-        
-        perc_7d = ((pred_7d - price) / price * 100) if price > 0 else 0
-        perc_30d = ((pred_30d - price) / price * 100) if price > 0 else 0
-        perc_90d = ((pred_90d - price) / price * 100) if price > 0 else 0
-        
-        change_class = "positive" if change_24h > 0 else "negative"
-        
-        # Carte pour 7 jours
-        card_7d = f"""
-        <div class="pred-card">
-            <div class="pred-header">
-                <div class="crypto-name">#{rank} {symbol}</div>
-                <div class="crypto-fullname">{name}</div>
-            </div>
-            <div class="current-section">
-                <div class="label">Prix Actuel</div>
-                <div class="current-price">${price_str}</div>
-                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
-            </div>
-            <div class="prediction-section">
-                <div class="pred-label">Prédiction 7 jours</div>
-                <div class="pred-price">${pred_7d_str}</div>
-                <div class="pred-change {'positive' if perc_7d > 0 else 'negative'}">{perc_7d:+.1f}%</div>
-                <div class="confidence">Confiance: 78%</div>
-            </div>
-        </div>
-        """
-        
-        # Carte pour 30 jours
-        card_30d = f"""
-        <div class="pred-card">
-            <div class="pred-header">
-                <div class="crypto-name">#{rank} {symbol}</div>
-                <div class="crypto-fullname">{name}</div>
-            </div>
-            <div class="current-section">
-                <div class="label">Prix Actuel</div>
-                <div class="current-price">${price_str}</div>
-                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
-            </div>
-            <div class="prediction-section">
-                <div class="pred-label">Prédiction 30 jours</div>
-                <div class="pred-price">${pred_30d_str}</div>
-                <div class="pred-change {'positive' if perc_30d > 0 else 'negative'}">{perc_30d:+.1f}%</div>
-                <div class="confidence">Confiance: 65%</div>
-            </div>
-        </div>
-        """
-        
-        # Carte pour 90 jours
-        card_90d = f"""
-        <div class="pred-card">
-            <div class="pred-header">
-                <div class="crypto-name">#{rank} {symbol}</div>
-                <div class="crypto-fullname">{name}</div>
-            </div>
-            <div class="current-section">
-                <div class="label">Prix Actuel</div>
-                <div class="current-price">${price_str}</div>
-                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
-            </div>
-            <div class="prediction-section">
-                <div class="pred-label">Prédiction 90 jours</div>
-                <div class="pred-price">${pred_90d_str}</div>
-                <div class="pred-change {'positive' if perc_90d > 0 else 'negative'}">{perc_90d:+.1f}%</div>
-                <div class="confidence">Confiance: 52%</div>
-            </div>
-        </div>
-        """
-        
-        predictions_7d += card_7d
-        predictions_30d += card_30d
-        predictions_90d += card_90d
-    
-    return HTMLResponse(SIDEBAR + f"""
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Predictor - Top 50</title>
-        <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{ 
-                font-family: 'Segoe UI', sans-serif; 
-                background: linear-gradient(135deg, #1e1b4b, #312e81); 
-                color: #fff; 
-                min-height: 100vh;
-                margin-left: 0;
-                padding: 40px 20px;
-            }}
-            .container {{ max-width: 1600px; margin: 0; }}
-            
-            /* HEADER */
-            h1 {{ 
-                font-size: 3em; 
-                text-align: center; 
-                margin-bottom: 10px;
-                background: linear-gradient(135deg, #667eea, #764ba2);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-            }}
-            .subtitle {{ 
-                text-align: center; 
-                font-size: 1.2em; 
-                margin-bottom: 40px; 
-                opacity: 0.9;
-                color: #cbd5e1;
-            }}
-            
-            /* TABS */
-            .tabs {{
-                display: flex;
-                justify-content: center;
-                gap: 15px;
-                margin-bottom: 40px;
-                flex-wrap: wrap;
-            }}
-            .tab-btn {{
-                padding: 15px 35px;
-                background: rgba(255,255,255,0.1);
-                border: 2px solid rgba(255,255,255,0.2);
-                border-radius: 12px;
-                color: #fff;
-                font-size: 1.1em;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.3s;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }}
-            .tab-btn:hover {{
-                background: rgba(255,255,255,0.15);
-                transform: translateY(-2px);
-            }}
-            .tab-btn.active {{
-                background: linear-gradient(135deg, #667eea, #764ba2);
-                border-color: #667eea;
-                box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4);
-            }}
-            
-            /* GRID */
-            .preds-grid {{ 
-                display: grid; 
-                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
-                gap: 25px;
-            }}
-            .tab-content {{
-                display: none;
-            }}
-            .tab-content.active {{
-                display: block;
-            }}
-            
-            /* CARDS */
-            .pred-card {{ 
-                background: rgba(255,255,255,0.05); 
-                border: 2px solid rgba(255,255,255,0.1); 
-                border-radius: 15px; 
-                padding: 25px;
-                transition: all 0.3s;
-            }}
-            .pred-card:hover {{ 
-                transform: translateY(-5px); 
-                border-color: rgba(102, 126, 234, 0.5);
-                box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
-            }}
-            
-            .pred-header {{ 
-                margin-bottom: 20px;
-                border-bottom: 2px solid rgba(255,255,255,0.1);
-                padding-bottom: 15px;
-            }}
-            .crypto-name {{ 
-                font-size: 1.5em; 
-                font-weight: 700;
-                color: #667eea;
-            }}
-            .crypto-fullname {{
-                font-size: 0.9em;
-                color: #94a3b8;
-                margin-top: 5px;
-            }}
-            
-            .current-section {{ 
-                text-align: center; 
-                padding: 20px; 
-                background: rgba(0,0,0,0.3); 
-                border-radius: 10px; 
-                margin: 15px 0;
-            }}
-            .label {{
-                font-size: 0.85em;
-                color: #94a3b8;
-                margin-bottom: 8px;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }}
-            .current-price {{ 
-                font-size: 1.8em; 
-                font-weight: 700; 
-                margin: 10px 0;
-            }}
-            .price-change {{ 
-                font-size: 1.1em;
-                font-weight: 600;
-            }}
-            .price-change.positive {{ color: #10b981; }}
-            .price-change.negative {{ color: #ef4444; }}
-            
-            .prediction-section {{
-                text-align: center;
-                padding: 20px;
-                background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-                border-radius: 10px;
-                margin-top: 15px;
-            }}
-            .pred-label {{
-                font-size: 0.85em;
-                color: #667eea;
-                margin-bottom: 10px;
-                text-transform: uppercase;
-                font-weight: 700;
-                letter-spacing: 1px;
-            }}
-            .pred-price {{
-                font-size: 2em;
-                font-weight: 700;
-                margin: 10px 0;
-            }}
-            .pred-change {{
-                font-size: 1.2em;
-                font-weight: 600;
-                margin: 8px 0;
-            }}
-            .pred-change.positive {{ color: #00ff88; }}
-            .pred-change.negative {{ color: #ff4757; }}
-            .confidence {{
-                font-size: 0.9em;
-                color: #94a3b8;
-                margin-top: 10px;
-            }}
-            
-            /* RESPONSIVE */
-            @media (max-width: 768px) {{
-                body {{ margin-left: 0; }}
-                h1 {{ font-size: 2em; }}
-                .tabs {{ flex-direction: column; align-items: center; }}
-                .tab-btn {{ width: 100%; max-width: 300px; }}
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🔮 AI PREDICTOR</h1>
-            <p class="subtitle">Prédictions de prix - TOP 50 Cryptomonnaies</p>
-            
-            <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('7d')">7 JOURS</button>
-                <button class="tab-btn" onclick="switchTab('30d')">30 JOURS</button>
-                <button class="tab-btn" onclick="switchTab('90d')">90 JOURS</button>
-            </div>
-            
-            <div id="tab-7d" class="tab-content active">
-                <div class="preds-grid">{predictions_7d}</div>
-            </div>
-            
-            <div id="tab-30d" class="tab-content">
-                <div class="preds-grid">{predictions_30d}</div>
-            </div>
-            
-            <div id="tab-90d" class="tab-content">
-                <div class="preds-grid">{predictions_90d}</div>
-            </div>
-        </div>
-        
-        <script>
-            function switchTab(period) {{
-                // Hide all tabs
-                document.querySelectorAll('.tab-content').forEach(tab => {{
-                    tab.classList.remove('active');
-                }});
-                document.querySelectorAll('.tab-btn').forEach(btn => {{
-                    btn.classList.remove('active');
-                }});
-                
-                // Show selected tab
-                document.getElementById('tab-' + period).classList.add('active');
-                event.target.classList.add('active');
-            }}
-            
-            // Auto-refresh every 2 minutes
-            setTimeout(function() {{ window.location.reload(); }}, 120000);
-        </script>
-    </body>
-    </html>
-    """)
 
 @app.get("/ai-whale", response_class=HTMLResponse)
 async def ai_whale():
@@ -70512,4 +70147,3 @@ async def ai_whale_watcher(request: Request):
 
     SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
     return _simple_page("AI Whale Watcher", content, sidebar_html=SID, request=request, show_title=False)
-

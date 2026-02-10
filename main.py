@@ -70415,6 +70415,7 @@ async def ai_whale_watcher(request: Request):
     tip_line = "Astuce: si tu mets un seuil très haut (ex: 100 BTC), c'est normal d'avoir souvent 0 événement."
 
     content = f"""
+    <div class="page-wrap">
     <div class="page-title">AI Whale Watcher</div>
 
     <div class="wow-card">
@@ -70490,8 +70491,10 @@ async def ai_whale_watcher(request: Request):
         <b>Historique:</b> les événements sont conservés environ <b>{history_hours:g}h</b> (purge automatique après).
       </div>
     </div>
-    """
+    
+    </div>
+"""
 
     SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-    return _simple_page("AI Whale Watcher", content, active="/ai-whale-watcher", show_title=False)
+    return _simple_page("AI Whale Watcher", content, sidebar_html=SID, request=request, show_title=False)
 

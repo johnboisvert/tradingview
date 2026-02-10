@@ -70461,7 +70461,6 @@ async def ai_whale_watcher(request: Request):
 
   .ww-form {{ display:grid; grid-template-columns: 1fr 220px; gap: 14px; align-items: end; }}
   @media (max-width: 520px) {{ .ww-form {{ grid-template-columns: 1fr; }} }}
-  .ww-field label {{{ display:block; font-size: 12px; opacity: .85; margin-bottom: 6px; }}}
   .ww-field input, .ww-field select {{
     width: 100%; height: 44px;
     border-radius: 12px;
@@ -70604,7 +70603,7 @@ async def ai_whale_watcher(request: Request):
               <option value="5000"></option>
               <option value="10000"></option>
             </datalist>
-            <div class="ww-hint">Ex: 25 / 50 / 100 / 250 / 500 / 1000 / 2500 / 5000 BTC</div>
+            <div class="ww-hint">Ex: 25 / 50 / 100 / 250 / 500 / 1000 / 2500 / 5000 / 10000 / 25000 BTC</div>
           </div>
           <div class="ww-field">
             <label>Nombre d'événements</label>

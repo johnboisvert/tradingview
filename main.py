@@ -70567,7 +70567,7 @@ async def ai_whale_watcher(request: Request):
 <div class="ww-wrap">
   <h1 class="ww-title">AI Whale Watcher</h1>
   <p class="ww-sub">
-    Détecte les grosses transactions <b>BTC</b> en temps réel (mempool) via <b>Blockchain.info</b>.
+    Détecte les grosses transactions <b>BTC</b> en temps réel (mempool) via <b>{source_label}</b>.
     Le “Score IA” est une estimation d’impact (heuristique), <b>pas</b> un conseil financier.
   </p>
 
@@ -70590,7 +70590,7 @@ async def ai_whale_watcher(request: Request):
         <div class="ww-form">
           <div class="ww-field">
             <label>Seuil minimum (BTC)</label>
-            <input type="number" step="1" min="1" max="100000" name="min_btc" value="{min_btc:g}" list="whalePresets" placeholder="ex: 25, 100, 500, 1000">
+            <input type="number" step="1" min="1" max="250000" name="min_btc" value="{min_btc:g}" list="whalePresets" placeholder="ex: 25, 100, 500, 1000">
             <datalist id="whalePresets">
               <option value="10"></option>
               <option value="25"></option>
@@ -70603,7 +70603,7 @@ async def ai_whale_watcher(request: Request):
               <option value="5000"></option>
               <option value="10000"></option>
             </datalist>
-            <div class="ww-hint">Ex: 25 / 50 / 100 / 250 / 500 / 1000 / 2500 / 5000 / 10000 / 25000 BTC</div>
+            <div class="ww-hint">Ex: 25 / 50 / 100 / 250 / 500 / 1000 / 2500 / 5000 / 10000 / 25000 / 50000 / 100000 BTC</div>
           </div>
           <div class="ww-field">
             <label>Nombre d'événements</label>
@@ -70631,7 +70631,7 @@ async def ai_whale_watcher(request: Request):
 
   <div class="ww-card ww-tablecard" style="padding:16px;">
     <h3 style="margin:0 0 10px 0;">Derniers mouvements (≥ {min_btc:g} BTC)</h3>
-    <div class="ww-muted" style="margin-top:0;">Clique “Explorer” pour ouvrir la source officielle (Blockchain.com).</div>
+    <div class="ww-muted" style="margin-top:0;">Clique “Explorer” pour ouvrir l’explorer officiel ({source_label}).</div>
 
     <div class="ww-tablewrap" style="margin-top:12px;">
       <table class="ww-table">
@@ -70650,12 +70650,6 @@ async def ai_whale_watcher(request: Request):
       </table>
     </div>
   </div>
-
-  <div class="help" style="margin-top:18px;">
-    <div class="card">
-      <h3>À quoi sert cette page ?</h3>
-      <div class="muted">Surveiller l’activité “whales” et repérer des mouvements inhabituels qui peuvent précéder de la volatilité.</div>
-    </div>
     <div class="card">
       <h3>Comment l’utiliser ?</h3>
       <div class="muted">1) Mets un seuil (ex: 25 BTC). 2) Observe “MEGA / HOT / ALERTE”. 3) Combine avec Market Regime + niveaux techniques.</div>
@@ -70670,3 +70664,4 @@ async def ai_whale_watcher(request: Request):
 
     sidebar_html = _sidebar_inner(active_page="/ai-whale-watcher")
     return _simple_page("AI Whale Watcher", body, request=request, sidebar_html=sidebar_html, active_page="/ai-whale-watcher", show_title=False)
+

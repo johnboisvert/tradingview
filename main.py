@@ -38331,7 +38331,10 @@ def _simple_page(title: str, body_html: str, active: str = "/", sidebar_html: st
       margin-left: 270px !important; /* sidebar width */
       padding: 28px 28px 40px;
       min-height: 100vh;
-    }}
+    }
+  .page-inner { max-width: 1220px; width: 100%; margin: 0; }
+  .page-inner.full { max-width: none; }
+}
     .page-header {{
       display: flex;
       align-items: flex-end;
@@ -38361,7 +38364,9 @@ def _simple_page(title: str, body_html: str, active: str = "/", sidebar_html: st
   {SIDEBAR}
 
   <div class="page-wrap">
-    {body_html}
+    <div class="page-inner">
+      {body_html}
+    </div>
   </div>
 
   <script>
@@ -70424,7 +70429,7 @@ async def ai_whale_watcher(request: Request):
     body = f"""
 <style>
   /* Whale Watcher (isolé → corrige alignement) */
-  .ww-wrap {{ max-width:1220px; width:100%; box-sizing:border-box; margin: 0 auto; padding: 26px 18px 80px; }}
+  .ww-wrap {{ width:100%; box-sizing:border-box; margin: 0; padding: 26px 18px 80px; }}
   .ww-title {{ margin: 0 0 6px 0; font-size: 44px; font-weight: 800; letter-spacing: .2px; }}
   .ww-sub {{ margin: 0 0 14px 0; opacity: .9; line-height: 1.35; }}
 

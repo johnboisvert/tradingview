@@ -70442,9 +70442,9 @@ async def ai_whale_watcher(request: Request):
   .ww-pill .v {{ font-weight: 800; }}
 
   .ww-grid {{ display:grid; grid-template-columns: 1.2fr 1fr; gap: 18px; align-items: stretch; }}
-  .ww-fields { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: end; }
-  .ww-field label { display:block; font-size: 12px; opacity:.85; margin: 0 0 6px 0; }
-  .ww-field input, .ww-field select { width: 100%; }
+  .ww-fields {{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: end; }}
+  .ww-field label {{ display:block; font-size: 12px; opacity:.85; margin: 0 0 6px 0; }}
+  .ww-field input, .ww-field select {{ width: 100%; }}
 
   @media (max-width: 980px) {{ .ww-grid {{ grid-template-columns: 1fr; }} }}
 
@@ -70461,7 +70461,7 @@ async def ai_whale_watcher(request: Request):
 
   .ww-form {{ display:grid; grid-template-columns: 1fr 220px; gap: 14px; align-items: end; }}
   @media (max-width: 520px) {{ .ww-form {{ grid-template-columns: 1fr; }} }}
-  .ww-field label {{ display:block; font-size: 12px; opacity: .85; margin-bottom: 6px; }}
+  .ww-field label {{{ display:block; font-size: 12px; opacity: .85; margin-bottom: 6px; }}}
   .ww-field input, .ww-field select {{
     width: 100%; height: 44px;
     border-radius: 12px;

@@ -38331,10 +38331,10 @@ def _simple_page(title: str, body_html: str, active: str = "/", sidebar_html: st
       margin-left: 270px !important; /* sidebar width */
       padding: 28px 28px 40px;
       min-height: 100vh;
-    }
-  .page-inner { max-width: 1220px; width: 100%; margin: 0; }
-  .page-inner.full { max-width: none; }
-}
+    }}
+  .page-inner {{ max-width: 1220px; width: 100%; margin: 0; }}
+  .page-inner.full {{ max-width: none; }}
+
     .page-header {{
       display: flex;
       align-items: flex-end;
@@ -70669,4 +70669,3 @@ async def ai_whale_watcher(request: Request):
 
     sidebar_html = _sidebar_inner(active_page="/ai-whale-watcher")
     return _simple_page("AI Whale Watcher", body, request=request, sidebar_html=sidebar_html, active_page="/ai-whale-watcher", show_title=False)
-

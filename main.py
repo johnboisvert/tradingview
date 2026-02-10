@@ -546,10 +546,17 @@ def _http_get_json_sync(url, timeout=8.0, headers=None):
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             status = getattr(resp, "status", None) or resp.getcode()
             raw = resp.read()
+        text = raw.decode("utf-8", errors="ignore").strip()
+        if not text:
+            return None, status, "empty response"
+        if text[0] not in "[{":
+            preview = (text[:220].replace("\n", " ").replace("\r", " ")).strip()
+            return None, status, f"non-JSON response: {preview}"
         try:
-            data = _json.loads(raw.decode("utf-8", errors="ignore"))
+            data = _json.loads(text)
         except Exception as e:
-            return None, status, f"json decode failed: {e}"
+            preview = (text[:220].replace("\n", " ").replace("\r", " ")).strip()
+            return None, status, f"json decode failed: {e} | preview: {preview}"
         return data, status, None
     except Exception as e:
         return None, None, str(e)
@@ -70303,7 +70310,7 @@ async def ai_whale_watcher(request: Request):
     body = f"""
 <style>
   /* Whale Watcher (isolé → corrige alignement) */
-  .ww-wrap {{ max-width: 1180px; margin: 0 auto; }}
+  .ww-wrap {{ max-width:1200px; margin: 0 auto; }}
   .ww-title {{ margin: 0 0 6px 0; font-size: 44px; font-weight: 800; letter-spacing: .2px; }}
   .ww-sub {{ margin: 0 0 14px 0; opacity: .9; line-height: 1.35; }}
 
@@ -70332,6 +70339,7 @@ async def ai_whale_watcher(request: Request):
   }}
   .ww-card h3 {{ margin: 0 0 12px 0; font-size: 18px; font-weight: 800; }}
   .ww-muted {{ opacity: .85; font-size: 13px; line-height: 1.35; margin-top: 10px; }}
+  .ww-hint {{ margin-top:8px; opacity:.8; font-size:12px; }}
 
   .ww-form {{ display:grid; grid-template-columns: 1fr 220px; gap: 14px; align-items: end; }}
   @media (max-width: 520px) {{ .ww-form {{ grid-template-columns: 1fr; }} }}
@@ -70465,7 +70473,20 @@ async def ai_whale_watcher(request: Request):
         <div class="ww-form">
           <div class="ww-field">
             <label>Seuil minimum (BTC)</label>
-            <input type="number" step="1" min="1" max="500" name="min_btc" value="{min_btc:g}">
+            <input type="number" step="1" min="1" max="100000" name="min_btc" value="{min_btc:g}" list="whalePresets" placeholder="ex: 25, 100, 500, 1000">
+            <datalist id="whalePresets">
+              <option value="10"></option>
+              <option value="25"></option>
+              <option value="50"></option>
+              <option value="100"></option>
+              <option value="250"></option>
+              <option value="500"></option>
+              <option value="1000"></option>
+              <option value="2500"></option>
+              <option value="5000"></option>
+              <option value="10000"></option>
+            </datalist>
+            <div class="ww-hint">Ex: 25 / 50 / 100 / 250 / 500 / 1000 / 2500 / 5000 BTC</div>
           </div>
           <div class="ww-field">
             <label>Nombre d'événements</label>

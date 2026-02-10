@@ -70039,533 +70039,456 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
 @app.get("/ai-whale-watcher")
 async def ai_whale_watcher(request: Request):
     """
-    AI Whale Watcher (BTC) – affiche les transferts "whale" récents ET conserve un historique local ~24h.
-    - Source live: Blockchain.com (unconfirmed transactions)
-    - Stockage: SQLite (/app/data/whale_watcher.db)
-    - Objectif: éviter que la page soit "vide" quand il n'y a pas de gros transferts à l'instant T.
+    AI Whale Watcher (BTC) — lecture temps réel du mempool via blockchain.info (unconfirmed-transactions)
+    + historique local (sqlite) pour stabiliser l'affichage.
     """
-    import sqlite3
-    import urllib.request
-    import urllib.error
-    import json
-    import datetime as _dt
-    import os as _os
-
-    # --- paramètres ---
+    # ---- Params
     try:
-        min_btc = float(request.query_params.get("min_btc") or "")
+        min_btc = float((request.query_params.get("min_btc") or "25").strip())
     except Exception:
-        min_btc = None
-
-    # seuil par défaut (affiché) – 25 BTC = whale raisonnable, 100 BTC = rare => souvent 0 événement
-    default_min_btc = float(_os.getenv("WHALE_MIN_BTC", "25") or "25")
-    if min_btc is None or min_btc <= 0:
-        min_btc = default_min_btc
-
-    # nombre max d'événements affichés
+        min_btc = 25.0
     try:
-        limit = int(request.query_params.get("limit") or _os.getenv("WHALE_LIMIT", "50"))
+        limit = int((request.query_params.get("limit") or "30").strip())
     except Exception:
-        limit = 50
-    limit = max(5, min(200, limit))
+        limit = 30
+    limit = max(5, min(100, limit))
+    min_btc = max(0.1, min(5000.0, min_btc))
 
-    # fenêtre d'historique
-    history_hours = float(_os.getenv("WHALE_HISTORY_HOURS", "24") or "24")
-    if history_hours <= 0:
-        history_hours = 24.0
-
-    # DB path
-    _db_dir = _os.getenv("DB_DIR", "/app/data")
-    _db_path = _os.path.join(_db_dir, "whale_watcher.db")
-
-    now = _dt.datetime.utcnow()
-    cutoff = now - _dt.timedelta(hours=history_hours)
-    last_updated = now.strftime("%Y-%m-%d %H:%M:%S")
-
-    # --- helpers ---
-    def _short(addr: str, left: int = 6, right: int = 6) -> str:
-        if not addr:
-            return "—"
-        if len(addr) <= left + right + 3:
-            return addr
-        return f"{addr[:left]}...{addr[-right:]}"
-
-    def _ensure_db(conn: sqlite3.Connection) -> None:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS whale_events (
-                tx_hash TEXT PRIMARY KEY,
-                seen_at_utc TEXT NOT NULL,
-                amount_btc REAL NOT NULL,
-                from_addr TEXT,
-                to_addr TEXT,
-                raw_json TEXT
-            )
-        """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_whale_seen ON whale_events(seen_at_utc)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_whale_amt ON whale_events(amount_btc)")
-        conn.commit()
-
-    def _purge_old(conn: sqlite3.Connection) -> int:
-        cur = conn.execute("DELETE FROM whale_events WHERE seen_at_utc < ?", (cutoff.strftime("%Y-%m-%d %H:%M:%S"),))
-        conn.commit()
-        return cur.rowcount if cur else 0
-
-    def _fetch_unconfirmed() -> dict:
-        # Blockchain.com endpoint
-        url = "https://blockchain.info/unconfirmed-transactions?format=json"
-        req = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": "CryptoIA Whale Watcher/1.0 (+https://cryptoia.ca)",
-                "Accept": "application/json",
-            },
-            method="GET",
+    # ---- DB (history)
+    db_dir = os.getenv("DB_DIR", "/app/data")
+    os.makedirs(db_dir, exist_ok=True)
+    db_path = os.path.join(db_dir, "whale_watcher.db")
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS whales (
+            txid TEXT PRIMARY KEY,
+            ts INTEGER,
+            amount_btc REAL,
+            from_addr TEXT,
+            to_addr TEXT
         )
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = resp.read().decode("utf-8", errors="ignore")
-        return json.loads(data)
+    """)
+    conn.commit()
 
-    def _extract_event(tx: dict):
-        # Total out value as "amount moved" approximation
-        outs = tx.get("out") or []
-        total_sats = 0
-        largest_out = None
-        for o in outs:
-            v = o.get("value") or 0
-            if isinstance(v, (int, float)):
-                total_sats += int(v)
-            # pick largest output as destination representative
-            if largest_out is None or (o.get("value") or 0) > (largest_out.get("value") or 0):
-                largest_out = o
-
-        amount_btc = total_sats / 1e8 if total_sats else 0.0
-
-        # from: first input prev_out addr
-        from_addr = ""
-        ins = tx.get("inputs") or []
-        if ins:
-            prev = (ins[0] or {}).get("prev_out") or {}
-            from_addr = prev.get("addr") or ""
-
-        # to: largest output addr if available
-        to_addr = ""
-        if largest_out:
-            to_addr = largest_out.get("addr") or ""
-
-        tx_hash = tx.get("hash") or ""
-        return tx_hash, amount_btc, from_addr, to_addr
-
-    # --- DB open ---
+    # ---- Fetch mempool
     api_ok = True
-    api_note = ""
-    new_added = 0
-
+    fetched = 0
+    events = []
     try:
-        conn = sqlite3.connect(_db_path, check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        _ensure_db(conn)
-        _purge_old(conn)
-    except Exception as e:
-        conn = None
-        api_ok = False
-        api_note = f"DB error: {e!s}"
-
-    # --- fetch & store ---
-    if conn is not None:
-        try:
-            payload = _fetch_unconfirmed()
-            txs = payload.get("txs") or []
-            observed = 0
-            for tx in txs[:250]:  # safety cap
-                observed += 1
-                tx_hash, amount_btc, from_addr, to_addr = _extract_event(tx)
-                if not tx_hash:
-                    continue
+        r = requests.get("https://blockchain.info/unconfirmed-transactions?format=json", timeout=8)
+        r.raise_for_status()
+        data = r.json() or {}
+        txs = data.get("txs") or []
+        fetched = len(txs)
+        for tx in txs:
+            try:
+                outs = tx.get("out") or []
+                amount_btc = (sum([o.get("value", 0) for o in outs]) / 1e8)
                 if amount_btc < min_btc:
                     continue
 
-                raw = json.dumps(tx, ensure_ascii=False)[:20000]
-                cur = conn.execute(
-                    "INSERT OR IGNORE INTO whale_events(tx_hash, seen_at_utc, amount_btc, from_addr, to_addr, raw_json) VALUES (?,?,?,?,?,?)",
-                    (tx_hash, last_updated, float(amount_btc), from_addr, to_addr, raw),
+                txid = tx.get("hash") or ""
+                ts = int(tx.get("time") or 0)
+                dt = datetime.datetime.utcfromtimestamp(ts) if ts else datetime.datetime.utcnow()
+                tstr = dt.strftime("%H:%M")
+
+                ins = tx.get("inputs") or []
+                from_addr = (((ins[0] or {}).get("prev_out") or {}).get("addr") if ins else "") or ""
+                to_addr = ((outs[0] or {}).get("addr") if outs else "") or ""
+
+                # Save in history (upsert)
+                cur.execute(
+                    "INSERT OR REPLACE INTO whales(txid, ts, amount_btc, from_addr, to_addr) VALUES (?,?,?,?,?)",
+                    (txid, ts, float(amount_btc), from_addr, to_addr),
                 )
-                if cur and cur.rowcount:
-                    new_added += 1
-
-            conn.commit()
-
-            if new_added == 0:
-                print(f"ℹ️ Aucun transfert ≥ {min_btc:g} BTC dans les dernières transactions non confirmées. (Transactions observées: {observed})")
-
-        except Exception as e:
-            api_ok = False
-            api_note = f"API indisponible: {e!s}"
-
-    # --- read last 24h ---
-    events = []
-    total_count = 0
-    if conn is not None:
-        try:
-            row = conn.execute(
-                "SELECT COUNT(*) AS c FROM whale_events WHERE seen_at_utc >= ? AND amount_btc >= ?",
-                (cutoff.strftime("%Y-%m-%d %H:%M:%S"), float(min_btc)),
-            ).fetchone()
-            total_count = int(row["c"]) if row else 0
-
-            rows = conn.execute(
-                "SELECT tx_hash, seen_at_utc, amount_btc, from_addr, to_addr FROM whale_events "
-                "WHERE seen_at_utc >= ? AND amount_btc >= ? "
-                "ORDER BY seen_at_utc DESC LIMIT ?",
-                (cutoff.strftime("%Y-%m-%d %H:%M:%S"), float(min_btc), int(limit)),
-            ).fetchall()
-
-            for r in rows or []:
-                ts = (r["seen_at_utc"] or "")[-8:-3] if r["seen_at_utc"] else "—"
                 events.append({
-                    "time": ts,
-                    "asset": "BTC",
-                    "amount": float(r["amount_btc"] or 0.0),
-                    "from": r["from_addr"] or "",
-                    "to": r["to_addr"] or "",
-                    "hash": r["tx_hash"] or "",
+                    "t": tstr,
+                    "ts": ts,
+                    "amount_btc": float(amount_btc),
+                    "from": from_addr,
+                    "to": to_addr,
+                    "txid": txid
                 })
-        except Exception as e:
-            api_ok = False
-            api_note = f"DB read error: {e!s}"
-        finally:
-            try:
-                conn.close()
             except Exception:
-                pass
+                continue
+        conn.commit()
+    except Exception:
+        api_ok = False
 
-    # --- UI pieces ---
-    status_badge = "✅ VRAIES DONNÉES EN DIRECT" if api_ok else "⚠️ MODE CACHE (dernières 24h)"
-    source_line = f"Source: Blockchain.info API (TEMPS RÉEL) | Seuil: ≥ {min_btc:g} BTC | BTC: —"
-    rows_html = ""
-    if not api_ok and api_note:
-        source_line += f" | {api_note}"
-    if events:
-        for ev in events:
-            tx_hash = ev.get("hash", "")
-            tx_url = f"https://www.blockchain.com/btc/tx/{tx_hash}" if tx_hash else "https://www.blockchain.com/explorer/assets/btc"
-            from_addr = ev.get("from", "")
-            to_addr = ev.get("to", "")
-            from_url = f"https://www.blockchain.com/btc/address/{from_addr}" if from_addr else "https://www.blockchain.com/explorer/assets/btc"
-            to_url = f"https://www.blockchain.com/btc/address/{to_addr}" if to_addr else "https://www.blockchain.com/explorer/assets/btc"
-            tx_short = ("…" + tx_hash[-8:]) if len(tx_hash) > 10 else tx_hash
+    # ---- If API fails or too few results, fallback to recent history
+    if (not api_ok) or (len(events) < 3):
+        cur.execute("SELECT txid, ts, amount_btc, from_addr, to_addr FROM whales ORDER BY ts DESC LIMIT ?", (limit,))
+        rows = cur.fetchall()
+        events = []
+        for txid, ts, amount_btc, from_addr, to_addr in rows:
+            dt = datetime.datetime.utcfromtimestamp(int(ts)) if ts else datetime.datetime.utcnow()
+            events.append({
+                "t": dt.strftime("%H:%M"),
+                "ts": int(ts or 0),
+                "amount_btc": float(amount_btc or 0),
+                "from": from_addr or "",
+                "to": to_addr or "",
+                "txid": txid or ""
+            })
 
-            # badge chaleur (simple)
-            heat = ""
-            if ev.get("amount", 0) >= (min_btc * 3):
-                heat = '<span class="heat heat-hot">HOT</span>'
-            elif ev.get("amount", 0) >= (min_btc * 2):
-                heat = '<span class="heat heat-warm">ALERTE</span>'
+    # ---- Sort & limit
+    events = sorted(events, key=lambda x: (x.get("ts") or 0), reverse=True)[:limit]
 
-            rows_html += f"""
-            <tr>
-              <td class="col-time">{ev['time']}</td>
-              <td class="col-asset"><span class="asset-pill">{ev['asset']}</span></td>
-              <td class="col-amt"><span class="amt">{ev['amount']:.2f}</span> <span class="unit">BTC</span> {heat}</td>
-              <td class="col-dir">
-                <a class="addr mono" href="{from_url}" target="_blank" rel="noopener">{_short(ev['from'])}</a>
+    # ---- Metrics
+    total = len(events)
+    hot = 0
+    alert = 0
+    okc = 0
+    max_amt = 0.0
+    sum_amt = 0.0
+
+    # ---- Rows
+    row_html = []
+    for e in events:
+        amt = float(e.get("amount_btc") or 0.0)
+        max_amt = max(max_amt, amt)
+        sum_amt += amt
+
+        # Score IA (heuristique) : basé sur taille vs seuil
+        score = int(min(100, max(1, (amt / max(0.0001, min_btc)) * 25)))
+        if score >= 85:
+            tier = "HOT"
+            hot += 1
+            impact_class = "impact-high"
+        elif score >= 60:
+            tier = "ALERTE"
+            alert += 1
+            impact_class = "impact-med"
+        else:
+            tier = "OK"
+            okc += 1
+            impact_class = "impact-low"
+
+        from_addr = (e.get("from") or "")
+        to_addr = (e.get("to") or "")
+        txid = (e.get("txid") or "")
+        tx_url = f"https://www.blockchain.com/explorer/transactions/btc/{txid}"
+
+        def short(a: str) -> str:
+            if not a:
+                return "—"
+            if len(a) <= 16:
+                return a
+            return a[:7] + "…" + a[-6:]
+
+        from_s = short(from_addr)
+        to_s = short(to_addr)
+        is_self = (from_addr and to_addr and from_addr == to_addr)
+
+        flow = "Transfert"
+        if is_self:
+            flow = "Interne"
+        elif amt >= (min_btc * 3):
+            flow = "Whale"
+        elif amt >= (min_btc * 1.6):
+            flow = "Gros"
+
+        row_html.append(f"""
+          <tr class="ww-row" onclick="window.open('{tx_url}','_blank')" title="Ouvrir dans l'explorer">
+            <td class="c-time">{e.get('t') or '—'}</td>
+            <td class="c-asset"><span class="pill asset">BTC</span></td>
+            <td class="c-amt">
+              <div class="amt">{amt:,.2f} <span class="unit">BTC</span></div>
+              <div class="sub">{flow}</div>
+            </td>
+            <td class="c-flow">
+              <div class="flow">
+                <span class="addr mono">{from_s}</span>
                 <span class="arrow">→</span>
-                <a class="addr mono" href="{to_url}" target="_blank" rel="noopener">{_short(ev['to'])}</a>
-              </td>
-              <td class="col-tx">
-                <a class="txlink mono" href="{tx_url}" target="_blank" rel="noopener">tx{tx_short}</a>
-              </td>
-            </tr>
-            """
-    else:
-        rows_html = f"""
-        <tr>
-          <td colspan="5" class="empty-row">Aucune transaction ≥ {min_btc:g} BTC pour le moment. (Ce n'est pas une erreur.)</td>
-        </tr>
-        """
+                <span class="addr mono">{to_s}</span>
+              </div>
+              <div class="tags">
+                {('<span class="pill self">Self</span>' if is_self else '')}
+                <span class="pill tag">{tier}</span>
+              </div>
+            </td>
+            <td class="c-impact">
+              <div class="impact {impact_class}">
+                <div class="bar" style="width:{score}%"></div>
+                <span class="val">{score}</span>
+              </div>
+              <div class="impact-sub">impact marché (heur.)</div>
+            </td>
+            <td class="c-tx"><a class="tx" href="{tx_url}" target="_blank" rel="noopener">Explorer</a></td>
+          </tr>
+        """)
 
-    # petite note: quand seuil très haut, 0 event est normal
-    tip_line = "Astuce: si tu mets un seuil très haut (ex: 100 BTC), c'est normal d'avoir souvent 0 événement."
+    avg_amt = (sum_amt / total) if total else 0.0
+    last_update = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    status_badge = "<span class='status ok'>LIVE</span>" if api_ok else "<span class='status warn'>FALLBACK</span>"
 
-    styles = """
+    # ---- UI
+    rows_html = "\n".join(row_html) if row_html else f"""
+      <tr><td colspan="6" style="padding:16px; opacity:.85;">
+        Aucune transaction ≥ {min_btc:g} BTC pour l’instant. Essaie un seuil plus bas ou rafraîchis.
+      </td></tr>
+    """
+
+    styles = f"""
     <style>
-      /* ===== AI Whale Watcher — WOW UI ===== */
-      .ww-grid { display:grid; grid-template-columns: 1.15fr .85fr; gap:16px; align-items:stretch; }
-      @media (max-width: 1000px){ .ww-grid{ grid-template-columns:1fr; } }
+      .ww-wrap {{
+        max-width: 1200px; margin: 0 auto;
+      }}
+      .ww-hero {{
+        display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+        padding: 10px 4px 18px;
+      }}
+      .ww-title {{
+        font-size: 34px; font-weight: 900; letter-spacing: .2px; margin:0;
+      }}
+      .ww-sub {{
+        margin-top:6px; opacity:.9; line-height:1.35;
+      }}
+      .status {{
+        display:inline-flex; align-items:center; gap:8px; padding:8px 12px;
+        border-radius:999px; border:1px solid rgba(255,255,255,.12);
+        background: rgba(15,20,40,.35);
+        font-weight:800;
+      }}
+      .status.ok::before {{
+        content:""; width:10px; height:10px; border-radius:50%;
+        background: rgba(50,255,160,.95);
+        box-shadow:0 0 18px rgba(50,255,160,.35);
+      }}
+      .status.warn::before {{
+        content:""; width:10px; height:10px; border-radius:50%;
+        background: rgba(255,210,80,.95);
+        box-shadow:0 0 18px rgba(255,210,80,.35);
+      }}
 
-      .ww-hero{
-        padding:18px 18px 14px;
-        border-radius:16px;
-        background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      .ww-grid {{
+        display:grid; grid-template-columns: 1.1fr .9fr; gap:14px;
+      }}
+      @media (max-width: 980px) {{
+        .ww-grid {{ grid-template-columns: 1fr; }}
+      }}
+
+      .card {{
+        background: rgba(15,18,30,.55);
         border: 1px solid rgba(255,255,255,.10);
-        box-shadow: 0 18px 60px rgba(0,0,0,.25);
-        backdrop-filter: blur(10px);
-      }
-      .ww-hero h1{ margin:0; font-size:34px; letter-spacing:.2px; }
-      .ww-hero .sub{ margin-top:6px; opacity:.9; line-height:1.35; }
-      .ww-hero .meta{ margin-top:10px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
-      .badge{
-        display:inline-flex; align-items:center; gap:8px;
-        padding:6px 10px; border-radius:999px;
+        border-radius: 18px;
+        box-shadow: 0 10px 40px rgba(0,0,0,.25);
+      }}
+      .card .hd {{
+        display:flex; align-items:center; justify-content:space-between;
+        padding: 14px 16px; border-bottom:1px solid rgba(255,255,255,.08);
+      }}
+      .card .hd h3 {{ margin:0; font-size: 15px; letter-spacing:.2px; opacity:.95; }}
+      .card .bd {{ padding: 14px 16px; }}
+
+      .kpis {{
+        display:grid; grid-template-columns: repeat(4, 1fr); gap:10px;
+      }}
+      @media (max-width: 980px) {{ .kpis {{ grid-template-columns: repeat(2, 1fr); }} }}
+      .kpi {{
+        padding: 12px 12px; border-radius: 14px;
+        background: rgba(255,255,255,.04);
+        border:1px solid rgba(255,255,255,.08);
+      }}
+      .kpi .v {{ font-size: 22px; font-weight: 900; }}
+      .kpi .l {{ opacity:.85; font-size: 12px; margin-top:2px; }}
+
+      .controls {{
+        display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;
+      }}
+      .field {{ display:flex; flex-direction:column; gap:6px; min-width: 180px; flex: 1; }}
+      .field label {{ font-size: 12px; opacity:.85; }}
+      .field input, .field select {{
+        padding: 10px 12px; border-radius: 12px;
         border:1px solid rgba(255,255,255,.12);
-        background: rgba(0,0,0,.20);
-        font-size:12px; opacity:.95;
-      }
-      .dot{ width:8px; height:8px; border-radius:999px; background:#22c55e; box-shadow:0 0 0 4px rgba(34,197,94,.15); }
-      .dot.off{ background:#f59e0b; box-shadow:0 0 0 4px rgba(245,158,11,.15); }
+        background: rgba(10,14,28,.6); color:#fff; outline:none;
+      }}
+      .btns {{ display:flex; gap:10px; align-items:center; }}
+      .btn {{
+        padding: 10px 14px; border-radius: 12px;
+        border:1px solid rgba(255,255,255,.14);
+        background: linear-gradient(90deg, rgba(109,40,217,.95), rgba(34,211,238,.95));
+        color:#fff; font-weight:900; cursor:pointer;
+      }}
+      .btn.secondary {{
+        background: rgba(255,255,255,.06);
+      }}
+      .hint {{
+        margin-top:10px; opacity:.85; font-size: 12px; line-height:1.35;
+      }}
 
-      .ww-controls{
-        padding:18px;
-        border-radius:16px;
-        background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-        border: 1px solid rgba(255,255,255,.10);
-        box-shadow: 0 18px 60px rgba(0,0,0,.22);
+      .table-wrap {{ overflow:auto; }}
+      table.ww {{
+        width:100%; border-collapse: separate; border-spacing: 0;
+        table-layout: fixed;
+      }}
+      table.ww thead th {{
+        text-align:left; font-size: 12px; opacity:.85; padding: 12px 14px;
+        border-bottom: 1px solid rgba(255,255,255,.10);
+        position: sticky; top:0; background: rgba(10,14,28,.92);
         backdrop-filter: blur(10px);
-      }
-      .ww-controls h3{ margin:0 0 10px; font-size:15px; opacity:.95; }
-      .form-row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-      @media (max-width: 520px){ .form-row{ grid-template-columns:1fr; } }
-      .field label{ display:block; font-size:12px; opacity:.85; margin:0 0 6px; }
-      .field input, .field select{
-        width:100%;
-        background: rgba(0,0,0,.25);
-        border:1px solid rgba(255,255,255,.12);
-        color: #e5e7eb;
-        border-radius:12px;
-        padding:10px 12px;
-        outline:none;
-      }
-      .field input:focus, .field select:focus{
-        border-color: rgba(99,102,241,.55);
-        box-shadow: 0 0 0 4px rgba(99,102,241,.18);
-      }
-      .btn-row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-      .btn-primary{
-        cursor:pointer;
-        border:0;
-        border-radius:12px;
-        padding:10px 14px;
-        font-weight:700;
-        color:#0b1220;
-        background: linear-gradient(90deg, #7c3aed, #22d3ee);
-        box-shadow: 0 10px 30px rgba(34,211,238,.15);
-      }
-      .btn-ghost{
-        cursor:pointer;
-        border:1px solid rgba(255,255,255,.12);
-        border-radius:12px;
-        padding:10px 14px;
-        color:#e5e7eb;
-        background: rgba(0,0,0,.20);
-      }
-      .btn-ghost:hover{ background: rgba(255,255,255,.06); }
+      }}
+      table.ww tbody td {{
+        padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,.06);
+        vertical-align: middle;
+      }}
+      .ww-row {{ cursor:pointer; transition: transform .08s ease, background .12s ease; }}
+      .ww-row:hover {{ background: rgba(255,255,255,.03); transform: translateY(-1px); }}
+      .mono {{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }}
 
-      .kpi-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-top:14px; }
-      @media (max-width: 1000px){ .kpi-row{ grid-template-columns: repeat(2, 1fr);} }
-      @media (max-width: 520px){ .kpi-row{ grid-template-columns: 1fr;} }
-      .kpi{
-        padding:14px 14px 12px;
-        border-radius:16px;
-        background: rgba(255,255,255,.05);
-        border: 1px solid rgba(255,255,255,.10);
-        backdrop-filter: blur(10px);
-      }
-      .kpi .label{ font-size:12px; opacity:.85; }
-      .kpi .val{ margin-top:6px; font-size:20px; font-weight:800; letter-spacing:.2px; }
-
-      .panel{
-        margin-top:16px;
-        border-radius:18px;
-        background: rgba(255,255,255,.045);
-        border:1px solid rgba(255,255,255,.10);
-        box-shadow: 0 18px 60px rgba(0,0,0,.20);
-        overflow:hidden;
-      }
-      .panel-head{
-        display:flex; justify-content:space-between; gap:12px; align-items:center;
-        padding:14px 16px;
-        border-bottom:1px solid rgba(255,255,255,.08);
-      }
-      .panel-head h3{ margin:0; font-size:16px; }
-      .panel-head .hint{ font-size:12px; opacity:.85; }
-
-      .table-wrap{ overflow:auto; }
-      table.ww-table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
-      table.ww-table thead th{
-        text-align:left;
-        font-size:12px;
-        opacity:.85;
-        padding:12px 14px;
-        background: rgba(0,0,0,.18);
-        position: sticky; top: 0; z-index: 1;
-        border-bottom:1px solid rgba(255,255,255,.08);
-      }
-      table.ww-table tbody td{
-        padding:12px 14px;
-        border-bottom:1px solid rgba(255,255,255,.06);
-        vertical-align:middle;
-        overflow:hidden;
-        text-overflow:ellipsis;
-      }
-      table.ww-table tbody tr:hover{ background: rgba(255,255,255,.04); }
-
-      .col-time{ width:84px; white-space:nowrap; opacity:.95; }
-      .col-asset{ width:86px; }
-      .col-amt{ width:180px; white-space:nowrap; }
-      .col-tx{ width:150px; white-space:nowrap; text-align:right; }
-      .asset-pill{
+      .pill {{
         display:inline-flex; align-items:center; justify-content:center;
-        padding:6px 10px; border-radius:999px;
-        font-weight:800; font-size:12px;
+        padding: 6px 10px; border-radius: 999px;
         border:1px solid rgba(255,255,255,.12);
-        background: rgba(0,0,0,.20);
-      }
-      .amt{ font-weight:900; }
-      .unit{ font-size:12px; opacity:.8; margin-left:4px; }
-      .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-      .addr, .txlink{ color: #e5e7eb; text-decoration:none; }
-      .addr:hover, .txlink:hover{ text-decoration:underline; }
-      .arrow{ margin:0 10px; opacity:.6; }
-      .empty-row{ padding:18px 14px !important; opacity:.85; }
-
-      .heat{
-        display:inline-flex; align-items:center; justify-content:center;
-        margin-left:10px;
-        padding:4px 8px;
-        border-radius:999px;
-        font-size:11px;
-        font-weight:900;
-        letter-spacing:.2px;
-        border:1px solid rgba(255,255,255,.12);
-        background: rgba(0,0,0,.25);
-      }
-      .heat-hot{ color:#fee2e2; background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.35); }
-      .heat-warm{ color:#fff7ed; background: rgba(245,158,11,.18); border-color: rgba(245,158,11,.35); }
-
-      .help-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top:16px; }
-      @media (max-width: 1000px){ .help-grid{ grid-template-columns:1fr; } }
-      .help-card{
-        padding:14px;
-        border-radius:16px;
         background: rgba(255,255,255,.05);
-        border:1px solid rgba(255,255,255,.10);
-      }
-      .help-card h4{ margin:0 0 8px; font-size:14px; }
-      .help-card p{ margin:0; opacity:.88; line-height:1.35; }
-      .note{
-        margin-top:10px;
-        font-size:12px;
-        opacity:.85;
-        line-height:1.35;
-      }
+        font-weight:800; font-size: 12px;
+      }}
+      .pill.asset {{ background: rgba(255,255,255,.06); }}
+      .pill.self {{ background: rgba(255,255,255,.04); opacity:.9; }}
+      .pill.tag {{ background: rgba(109,40,217,.18); border-color: rgba(109,40,217,.35); }}
+
+      .amt {{ font-weight: 900; font-size: 16px; }}
+      .unit {{ opacity:.85; font-weight:800; font-size: 12px; }}
+      .sub {{ opacity:.82; font-size: 12px; margin-top:2px; }}
+      .flow {{ display:flex; align-items:center; gap:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
+      .arrow {{ opacity:.8; }}
+      .addr {{ opacity:.95; }}
+      .tags {{ margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; }}
+
+      .impact {{
+        position:relative; height: 28px; border-radius: 999px;
+        border:1px solid rgba(255,255,255,.12);
+        background: rgba(255,255,255,.05);
+        overflow:hidden;
+      }}
+      .impact .bar {{
+        position:absolute; left:0; top:0; bottom:0;
+        background: linear-gradient(90deg, rgba(34,211,238,.35), rgba(109,40,217,.45));
+      }}
+      .impact .val {{
+        position:relative; z-index: 2;
+        display:flex; height:100%; align-items:center; justify-content:flex-end;
+        padding: 0 10px; font-weight: 900;
+      }}
+      .impact-low .bar {{ background: linear-gradient(90deg, rgba(255,255,255,.10), rgba(34,211,238,.25)); }}
+      .impact-med .bar {{ background: linear-gradient(90deg, rgba(255,210,80,.25), rgba(34,211,238,.35)); }}
+      .impact-high .bar {{ background: linear-gradient(90deg, rgba(255,90,120,.35), rgba(109,40,217,.45)); }}
+      .impact-sub {{ font-size: 11px; opacity:.75; margin-top:6px; }}
+
+      .tx {{
+        color: rgba(34,211,238,.95); font-weight: 900; text-decoration:none;
+      }}
+      .tx:hover {{ text-decoration: underline; }}
+
+      /* Column sizing */
+      th.c1, td.c-time {{ width: 72px; }}
+      th.c2, td.c-asset {{ width: 80px; }}
+      th.c3, td.c-amt {{ width: 170px; }}
+      th.c5, td.c-impact {{ width: 190px; }}
+      th.c6, td.c-tx {{ width: 110px; }}
     </style>
     """
 
     content = f"""
-    <div class="ww-grid">
+    {styles}
+    <div class="ww-wrap">
       <div class="ww-hero">
-        <h1>AI Whale Watcher</h1>
-        <div class="sub">
-          Détecte les grosses transactions <b>BTC</b> en temps réel via Blockchain.info (mempool).<br/>
-          Seuil actif : <b>≥ {min_btc:g} BTC</b> • Affichage : <b>{limit}</b> événements max • {source_line}
-        </div>
-        <div class="meta">
-          <span class="badge"><span class="dot{' off' if not api_ok else ''}"></span>{status_badge}</span>
-          <span class="badge">Dernière maj : <b>{last_updated}</b></span>
-          <span class="badge">{api_note}</span>
-        </div>
-
-        <div class="kpi-row">
-          <div class="kpi">
-            <div class="label">Événements</div>
-            <div class="val">{total_count}</div>
-          </div>
-          <div class="kpi">
-            <div class="label">Seuil (BTC)</div>
-            <div class="val">{min_btc:g}</div>
-          </div>
-          <div class="kpi">
-            <div class="label">Source</div>
-            <div class="val">Blockchain</div>
-          </div>
-          <div class="kpi">
-            <div class="label">Statut</div>
-            <div class="val">{'Live' if api_ok else 'Dégradé'}</div>
+        <div>
+          <h1 class="ww-title">AI Whale Watcher</h1>
+          <div class="ww-sub">
+            Détecte les grosses transactions <b>BTC</b> en temps réel (mempool) + historique local.<br/>
+            <span style="opacity:.85;">Source: Blockchain.info • Seuil: ≥ <b>{min_btc:g} BTC</b> • Affichage: {limit} derniers</span>
           </div>
         </div>
-
-        <div class="note">{tip_line}</div>
-      </div>
-
-      <div class="ww-controls">
-        <h3>Filtres</h3>
-        <form method="get" action="/ai-whale-watcher">
-          <div class="form-row">
-            <div class="field">
-              <label>Seuil (BTC)</label>
-              <input type="number" step="0.01" min="0" name="threshold" value="{min_btc:g}" />
-            </div>
-            <div class="field">
-              <label>Nombre d'événements</label>
-              <select name="limit">
-                {''.join([f'<option value="{x}" {"selected" if x==limit else ""}>{x}</option>' for x in [10,15,20,25,30,40,50]])}
-              </select>
-            </div>
-          </div>
-
-          <div class="btn-row">
-            <button class="btn-primary" type="submit">Appliquer</button>
-            <a class="btn-ghost" href="/ai-whale-watcher?threshold={min_btc:g}&limit={limit}">Rafraîchir</a>
-            <a class="btn-ghost" href="https://www.blockchain.com/explorer/assets/btc" target="_blank" rel="noopener">Explorer BTC</a>
-          </div>
-        </form>
-
-        <div class="note">
-          <b>Lecture rapide :</b> une grosse transaction n'est pas forcément un achat/vente — c'est un mouvement on-chain.
-          Clique une ligne pour ouvrir la source officielle.
+        <div style="text-align:right;">
+          {status_badge}
+          <div style="margin-top:8px; opacity:.8; font-size:12px;">Dernière maj: {last_update}</div>
         </div>
       </div>
-    </div>
 
-    <div class="panel">
-      <div class="panel-head">
-        <h3>Derniers mouvements (≥ {min_btc:g} BTC)</h3>
-        <div class="hint">Score IA = estimation d'impact marché (heuristique) • Liens = sources officielles</div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="bd">
+          <div class="kpis">
+            <div class="kpi"><div class="v">{total}</div><div class="l">événements affichés</div></div>
+            <div class="kpi"><div class="v">{hot}</div><div class="l">HOT (score ≥ 85)</div></div>
+            <div class="kpi"><div class="v">{alert}</div><div class="l">ALERTE (≥ 60)</div></div>
+            <div class="kpi"><div class="v">{avg_amt:,.2f}</div><div class="l">moyenne BTC</div></div>
+          </div>
+        </div>
       </div>
-      <div class="table-wrap">
-        <table class="ww-table">
-          <thead>
-            <tr>
-              <th class="col-time">Heure</th>
-              <th class="col-asset">Actif</th>
-              <th class="col-amt">Montant</th>
-              <th>De → Vers</th>
-              <th class="col-tx">Tx</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows_html}
-          </tbody>
-        </table>
-      </div>
-    </div>
 
-    <div class="help-grid">
-      <div class="help-card">
-        <h4>À quoi sert cette page ?</h4>
-        <p>Surveiller les transferts BTC “whales” pour détecter des mouvements inhabituels (rééquilibrage, cold→hot, OTC, etc.).</p>
+      <div class="ww-grid" style="margin-bottom:14px;">
+        <div class="card">
+          <div class="hd"><h3>Derniers mouvements (≥ {min_btc:g} BTC)</h3><div style="opacity:.75; font-size:12px;">Clique une ligne pour ouvrir l’explorer</div></div>
+          <div class="bd table-wrap">
+            <table class="ww">
+              <thead>
+                <tr>
+                  <th class="c1">Heure</th>
+                  <th class="c2">Actif</th>
+                  <th class="c3">Montant</th>
+                  <th>De → Vers</th>
+                  <th class="c5">Score IA</th>
+                  <th class="c6">Tx</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows_html}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="hd"><h3>Filtres</h3><div style="opacity:.75; font-size:12px;">Ajuste et applique</div></div>
+          <div class="bd">
+            <form method="get" action="/ai-whale-watcher">
+              <div class="controls">
+                <div class="field">
+                  <label>Seuil (BTC)</label>
+                  <input name="min_btc" type="number" step="0.1" value="{min_btc:g}" />
+                </div>
+                <div class="field">
+                  <label>Nombre d’événements</label>
+                  <select name="limit">
+                    {''.join([f'<option value="{v}" {"selected" if v==limit else ""}>{v}</option>' for v in [10,20,30,50,75,100]])}
+                  </select>
+                </div>
+                <div class="btns">
+                  <button class="btn" type="submit">Appliquer</button>
+                  <a class="btn secondary" href="/ai-whale-watcher?min_btc={min_btc:g}&limit={limit}">Rafraîchir</a>
+                </div>
+              </div>
+              <div class="hint">
+                <b>Lecture rapide :</b> une grosse transaction n’est pas forcément un achat/vente — c’est un mouvement on-chain.
+                Combine avec <b>Market Regime</b> + niveaux techniques.
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
-      <div class="help-card">
-        <h4>Comment l'utiliser ?</h4>
-        <p>1) Mets un seuil (ex: 25 BTC). 2) Observe la fréquence et les montants. 3) Clique une Tx pour analyser les adresses.</p>
-      </div>
-      <div class="help-card">
-        <h4>Note</h4>
-        <p>Heuristique : ce n'est pas un signal de trading. Combine avec Market Regime + niveaux techniques + ta gestion du risque.</p>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div class="hd"><h3>Note</h3><div style="opacity:.75; font-size:12px;">transparence</div></div>
+        <div class="bd" style="opacity:.9; line-height:1.45;">
+          Les “scores IA” ici sont <b>heuristiques</b> (taille relative au seuil) pour aider à trier rapidement.
+          Les liens ouvrent la <b>source officielle</b> (blockchain explorer).
+        </div>
       </div>
     </div>
     """
 
+    try:
+        conn.close()
+    except Exception:
+        pass
 
-
-    SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-    return _simple_page("AI Whale Watcher", content, sidebar_html=SID, request=request, show_title=False)
+    # Sidebar identique au /dashboard
+    return _simple_page(
+        "AI Whale Watcher",
+        content,
+        sidebar_html=_sidebar_inner("/ai-whale-watcher"),
+        request=request,
+        show_title=False
+    )

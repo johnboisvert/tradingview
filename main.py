@@ -70241,10 +70241,9 @@ async def ai_whale_watcher(request: Request):
     # --- UI pieces ---
     status_badge = "✅ VRAIES DONNÉES EN DIRECT" if api_ok else "⚠️ MODE CACHE (dernières 24h)"
     source_line = f"Source: Blockchain.info API (TEMPS RÉEL) | Seuil: ≥ {min_btc:g} BTC | BTC: —"
+    rows_html = ""
     if not api_ok and api_note:
         source_line += f" | {api_note}"
-
-        rows_html = ""
     if events:
         for ev in events:
             tx_hash = ev.get("hash", "")

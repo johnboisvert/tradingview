@@ -70415,11 +70415,7 @@ async def ai_whale_watcher(request: Request):
     tip_line = "Astuce: si tu mets un seuil très haut (ex: 100 BTC), c'est normal d'avoir souvent 0 événement."
 
     content = f"""
-    <style>
-  /* Override centering for this page to align like /risk-management */
-  .page-wrap{max-width:none;margin:0;}
-</style>
-<div class="page-title">AI Whale Watcher</div>
+    <div class="page-title">AI Whale Watcher</div>
 
     <div class="wow-card">
       <div class="wow-head">
@@ -70497,5 +70493,5 @@ async def ai_whale_watcher(request: Request):
     """
 
     SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-    return _simple_page("AI Whale Watcher", content, sidebar_html=SID, request=request, show_title=False)
+    return _simple_page("AI Whale Watcher", content, active="/ai-whale-watcher", show_title=False)
 

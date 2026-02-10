@@ -70287,13 +70287,23 @@ async def ai_whale_watcher(request: Request):
         min_btc = float(request.query_params.get("min_btc") or 25)
     except Exception:
         min_btc = 25.0
-    min_btc = float(_clamp(min_btc, 1.0, 500.0))
+    min_btc = float(_clamp(min_btc, 1.0, 5000.0))
 
     try:
         limit = int(request.query_params.get("limit") or 50)
     except Exception:
         limit = 50
     limit = int(_clamp(limit, 10, 200))
+
+    # Meta / état (toujours défini, même si l'API échoue)
+    meta = {
+        'api_ok': True,
+        'error': '',
+        'source': 'https://api.blockchain.info',
+        'threshold_btc': float(min_btc),
+        'limit': int(limit),
+        'updated_utc': __import__('datetime').datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
+    }
 
     
     # Fetch whale events (VRAIES données) avec fallback multi-sources
@@ -70307,7 +70317,7 @@ async def ai_whale_watcher(request: Request):
         meta["api_ok"] = False
         meta["error"] = f"{type(e).__name__}: {e}"
         events = []
-# Scoring heuristique (stable, simple)
+    # Scoring heuristique (stable, simple)
     def score_for(amount_btc: float) -> int:
         if amount_btc >= 250:
             return 95
@@ -70414,7 +70424,7 @@ async def ai_whale_watcher(request: Request):
     body = f"""
 <style>
   /* Whale Watcher (isolé → corrige alignement) */
-  .ww-wrap {{ max-width:1220px; margin: 0; padding: 26px 18px 80px; }}
+  .ww-wrap {{ max-width:1220px; width:100%; box-sizing:border-box; margin: 0 auto; padding: 26px 18px 80px; }}
   .ww-title {{ margin: 0 0 6px 0; font-size: 44px; font-weight: 800; letter-spacing: .2px; }}
   .ww-sub {{ margin: 0 0 14px 0; opacity: .9; line-height: 1.35; }}
 

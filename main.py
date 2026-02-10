@@ -9546,6 +9546,11 @@ async def admin_access_page(request: Request, user: dict = Depends(require_admin
           ✅ Accès mis à jour.
         </div>
         """
+    options_html = "".join([
+        f'<option value="{v}" {"selected" if v==limit else ""}>{v}</option>'
+        for v in [10, 20, 30, 50, 75, 100, 150, 200]
+    ])
+
 
     content = f"""
     <div class="page-header">
@@ -37520,13 +37525,13 @@ async def ai_setup_builder(request: Request):
               <div>
                 <div class="muted">Timeframe</div>
                 <select name="tf" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                  {''.join([f'<option value="{t}" {"selected" if t==interval else ""}>{t}</option>' for t in ["5m","15m","1h","4h","1d"]])}
+                  {options_html}
                 </select>
               </div>
               <div>
                 <div class="muted">Style</div>
                 <select name="style" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                  {''.join([f'<option value="{t}" {"selected" if t==style else ""}>{t}</option>' for t in ["scalp","day","swing"]])}
+                  {options_html}
                 </select>
               </div>
               <div>
@@ -37783,13 +37788,13 @@ async def ai_setup_builder_generate(request: Request):
               <div>
                 <div class="muted">Timeframe</div>
                 <select name="tf" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                  {''.join([f'<option value="{t}" {"selected" if t==interval else ""}>{t}</option>' for t in ["5m","15m","1h","4h","1d"]])}
+                  {options_html}
                 </select>
               </div>
               <div>
                 <div class="muted">Style</div>
                 <select name="style" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                  {''.join([f'<option value="{t}" {"selected" if t==style else ""}>{t}</option>' for t in ["scalp","day","swing"]])}
+                  {options_html}
                 </select>
               </div>
               <div>
@@ -67394,13 +67399,13 @@ async def ai_setup_builder(request: Request):
               <div>
                 <div class="muted">Timeframe</div>
                 <select name="tf" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                  {''.join([f'<option value="{t}" {"selected" if t==interval else ""}>{t}</option>' for t in ["5m","15m","1h","4h","1d"]])}
+                  {options_html}
                 </select>
               </div>
               <div>
                 <div class="muted">Style</div>
                 <select name="style" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                  {''.join([f'<option value="{t}" {"selected" if t==style else ""}>{t}</option>' for t in ["scalp","day","swing"]])}
+                  {options_html}
                 </select>
               </div>
               <div>
@@ -67657,13 +67662,13 @@ async def ai_setup_builder_generate(request: Request):
               <div>
                 <div class="muted">Timeframe</div>
                 <select name="tf" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                  {''.join([f'<option value="{t}" {"selected" if t==interval else ""}>{t}</option>' for t in ["5m","15m","1h","4h","1d"]])}
+                  {options_html}
                 </select>
               </div>
               <div>
                 <div class="muted">Style</div>
                 <select name="style" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                  {''.join([f'<option value="{t}" {"selected" if t==style else ""}>{t}</option>' for t in ["scalp","day","swing"]])}
+                  {options_html}
                 </select>
               </div>
               <div>
@@ -70039,398 +70044,302 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
 @app.get("/ai-whale-watcher")
 async def ai_whale_watcher(request: Request):
     """
-    AI Whale Watcher (BTC) — lecture temps réel du mempool via blockchain.info (unconfirmed-transactions)
-    + historique local (sqlite) pour stabiliser l'affichage.
+    AI Whale Watcher (BTC) — détecte les grosses transactions en temps réel (mempool)
+    via blockchain.info (unconfirmed-transactions). Données réelles, affichage stabilisé.
     """
-    # ---- Params
-    try:
-        min_btc = float((request.query_params.get("min_btc") or "25").strip())
-    except Exception:
-        min_btc = 25.0
-    try:
-        limit = int((request.query_params.get("limit") or "30").strip())
-    except Exception:
-        limit = 30
-    limit = max(5, min(100, limit))
-    min_btc = max(0.1, min(5000.0, min_btc))
+    import math, traceback, datetime as _dt
 
-    # ---- DB (history)
-    db_dir = os.getenv("DB_DIR", "/app/data")
-    os.makedirs(db_dir, exist_ok=True)
-    db_path = os.path.join(db_dir, "whale_watcher.db")
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS whales (
-            txid TEXT PRIMARY KEY,
-            ts INTEGER,
-            amount_btc REAL,
-            from_addr TEXT,
-            to_addr TEXT
-        )
-    """)
-    conn.commit()
+    def _to_float(x, default=0.0):
+        try:
+            if x is None:
+                return float(default)
+            if isinstance(x, (int, float)):
+                return float(x)
+            s = str(x).strip().replace(",", "")
+            # garde uniquement le premier nombre trouvé
+            import re as _re
+            m = _re.search(r"[-+]?\d*\.?\d+", s)
+            return float(m.group(0)) if m else float(default)
+        except Exception:
+            return float(default)
 
-    # ---- Fetch mempool
-    api_ok = True
-    fetched = 0
+    def _impact_score(amount_btc: float) -> int:
+        # Score 0–100 basé sur log(amount). Heuristique simple (pas un conseil).
+        a = max(0.0, float(amount_btc))
+        if a <= 0:
+            return 0
+        # log10(25)=1.39 -> ~35, log10(100)=2 -> ~60, log10(500)=2.7 -> ~80
+        base = (math.log10(a) - 1.0) / 2.0  # ~0..1+
+        score = int(max(0, min(100, round(100 * (1 / (1 + math.exp(-4*(base-0.35))))))))
+        return score
+
+    def _score_badge(score: int) -> str:
+        if score >= 80:
+            return '<span class="pill pill-hot">Impact ÉLEVÉ</span>'
+        if score >= 55:
+            return '<span class="pill pill-mid">Impact moyen</span>'
+        if score >= 25:
+            return '<span class="pill pill-low">Impact faible</span>'
+        return '<span class="pill pill-muted">Mineur</span>'
+
+    def _short_addr(a: str) -> str:
+        if not a or a == "—":
+            return "—"
+        s = str(a)
+        if len(s) <= 16:
+            return s
+        return s[:8] + "…" + s[-6:]
+
+    # ------------------ Params
+    min_btc = _to_float(request.query_params.get("min_btc") or "25", 25.0)
+    limit = int(_to_float(request.query_params.get("limit") or "50", 50))
+    limit = max(10, min(200, limit))
+
+    # ------------------ Data
     events = []
+    err = None
     try:
-        r = requests.get("https://blockchain.info/unconfirmed-transactions?format=json", timeout=8)
-        r.raise_for_status()
-        data = r.json() or {}
-        txs = data.get("txs") or []
-        fetched = len(txs)
-        for tx in txs:
-            try:
-                outs = tx.get("out") or []
-                amount_btc = (sum([o.get("value", 0) for o in outs]) / 1e8)
-                if amount_btc < min_btc:
-                    continue
-
-                txid = tx.get("hash") or ""
-                ts = int(tx.get("time") or 0)
-                dt = datetime.datetime.utcfromtimestamp(ts) if ts else datetime.datetime.utcnow()
-                tstr = dt.strftime("%H:%M")
-
-                ins = tx.get("inputs") or []
-                from_addr = (((ins[0] or {}).get("prev_out") or {}).get("addr") if ins else "") or ""
-                to_addr = ((outs[0] or {}).get("addr") if outs else "") or ""
-
-                # Save in history (upsert)
-                cur.execute(
-                    "INSERT OR REPLACE INTO whales(txid, ts, amount_btc, from_addr, to_addr) VALUES (?,?,?,?,?)",
-                    (txid, ts, float(amount_btc), from_addr, to_addr),
-                )
-                events.append({
-                    "t": tstr,
-                    "ts": ts,
-                    "amount_btc": float(amount_btc),
-                    "from": from_addr,
-                    "to": to_addr,
-                    "txid": txid
-                })
-            except Exception:
-                continue
-        conn.commit()
-    except Exception:
-        api_ok = False
-
-    # ---- If API fails or too few results, fallback to recent history
-    if (not api_ok) or (len(events) < 3):
-        cur.execute("SELECT txid, ts, amount_btc, from_addr, to_addr FROM whales ORDER BY ts DESC LIMIT ?", (limit,))
-        rows = cur.fetchall()
-        events = []
-        for txid, ts, amount_btc, from_addr, to_addr in rows:
-            dt = datetime.datetime.utcfromtimestamp(int(ts)) if ts else datetime.datetime.utcnow()
+        raw = await _fetch_whale_events(min_btc=min_btc, max_events=limit)
+        for e in (raw or []):
+            amt = _to_float(e.get("amount_btc") if isinstance(e, dict) else None, None)
+            if amt is None:
+                amt = _to_float(e.get("amount") if isinstance(e, dict) else None, 0.0)
+            from_a = (e.get("from_addr") or e.get("from") or "—") if isinstance(e, dict) else "—"
+            to_a = (e.get("to_addr") or e.get("to") or "—") if isinstance(e, dict) else "—"
+            txid = (e.get("txid") or e.get("hash") or "") if isinstance(e, dict) else ""
+            tx_url = (e.get("tx_url") or (f"https://www.blockchain.com/btc/tx/{txid}" if txid else "")) if isinstance(e, dict) else ""
+            t = (e.get("time") or e.get("ts") or "") if isinstance(e, dict) else ""
             events.append({
-                "t": dt.strftime("%H:%M"),
-                "ts": int(ts or 0),
-                "amount_btc": float(amount_btc or 0),
-                "from": from_addr or "",
-                "to": to_addr or "",
-                "txid": txid or ""
+                "time": t,
+                "amount_btc": float(amt),
+                "from_addr": str(from_a) if from_a else "—",
+                "to_addr": str(to_a) if to_a else "—",
+                "txid": txid,
+                "tx_url": tx_url,
+                "impact": _impact_score(float(amt)),
             })
+    except Exception as ex:
+        err = f"{type(ex).__name__}: {ex}"
+        print("❌ ai-whale-watcher error:", err)
+        print(traceback.format_exc())
+        events = []
 
-    # ---- Sort & limit
-    events = sorted(events, key=lambda x: (x.get("ts") or 0), reverse=True)[:limit]
+    events_sorted = sorted(events, key=lambda x: x.get("amount_btc", 0.0), reverse=True)
+    top = events_sorted[0] if events_sorted else None
 
-    # ---- Metrics
-    total = len(events)
-    hot = 0
-    alert = 0
-    okc = 0
-    max_amt = 0.0
-    sum_amt = 0.0
+    # ------------------ UI
+    updated = _dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    status = "LIVE" if not err else "ERREUR"
+    status_class = "ok" if not err else "bad"
 
-    # ---- Rows
-    row_html = []
-    for e in events:
-        amt = float(e.get("amount_btc") or 0.0)
-        max_amt = max(max_amt, amt)
-        sum_amt += amt
+    def _pill_amt(a: float) -> str:
+        cls = "amt"
+        if a >= 100:
+            cls += " amt-hot"
+        elif a >= 50:
+            cls += " amt-mid"
+        return f'<span class="{cls}">{a:,.2f} BTC</span>'
 
-        # Score IA (heuristique) : basé sur taille vs seuil
-        score = int(min(100, max(1, (amt / max(0.0001, min_btc)) * 25)))
-        if score >= 85:
-            tier = "HOT"
-            hot += 1
-            impact_class = "impact-high"
-        elif score >= 60:
-            tier = "ALERTE"
-            alert += 1
-            impact_class = "impact-med"
-        else:
-            tier = "OK"
-            okc += 1
-            impact_class = "impact-low"
+    rows_html = ""
+    if events:
+        for e in events:
+            rows_html += f"""
+            <tr>
+              <td class="col-time">{(e.get('time') or '—')}</td>
+              <td class="col-amt">{_pill_amt(e['amount_btc'])}</td>
+              <td class="col-addr"><span class="addr" title="{e['from_addr']}">{_short_addr(e['from_addr'])}</span></td>
+              <td class="col-addr"><span class="addr" title="{e['to_addr']}">{_short_addr(e['to_addr'])}</span></td>
+              <td class="col-imp">
+                <div class="imp">
+                  <div class="bar"><div class="fill" style="width:{e['impact']}%"></div></div>
+                  <div class="imp-meta">{e['impact']}/100</div>
+                </div>
+              </td>
+              <td class="col-badge">{_score_badge(e['impact'])}</td>
+              <td class="col-tx">{f'<a class="tx" href="{e["tx_url"]}" target="_blank" rel="noopener">Voir</a>' if e.get("tx_url") else '—'}</td>
+            </tr>
+            """
+    else:
+        rows_html = f"""
+        <tr><td colspan="7" class="empty">
+          {("Aucune donnée pour le moment. Réessaie plus tard." if not err else "Impossible de récupérer les données en ce moment.")}
+        </td></tr>
+        """
 
-        from_addr = (e.get("from") or "")
-        to_addr = (e.get("to") or "")
-        txid = (e.get("txid") or "")
-        tx_url = f"https://www.blockchain.com/explorer/transactions/btc/{txid}"
-
-        def short(a: str) -> str:
-            if not a:
-                return "—"
-            if len(a) <= 16:
-                return a
-            return a[:7] + "…" + a[-6:]
-
-        from_s = short(from_addr)
-        to_s = short(to_addr)
-        is_self = (from_addr and to_addr and from_addr == to_addr)
-
-        flow = "Transfert"
-        if is_self:
-            flow = "Interne"
-        elif amt >= (min_btc * 3):
-            flow = "Whale"
-        elif amt >= (min_btc * 1.6):
-            flow = "Gros"
-
-        row_html.append(f"""
-          <tr class="ww-row" onclick="window.open('{tx_url}','_blank')" title="Ouvrir dans l'explorer">
-            <td class="c-time">{e.get('t') or '—'}</td>
-            <td class="c-asset"><span class="pill asset">BTC</span></td>
-            <td class="c-amt">
-              <div class="amt">{amt:,.2f} <span class="unit">BTC</span></div>
-              <div class="sub">{flow}</div>
-            </td>
-            <td class="c-flow">
-              <div class="flow">
-                <span class="addr mono">{from_s}</span>
-                <span class="arrow">→</span>
-                <span class="addr mono">{to_s}</span>
-              </div>
-              <div class="tags">
-                {('<span class="pill self">Self</span>' if is_self else '')}
-                <span class="pill tag">{tier}</span>
-              </div>
-            </td>
-            <td class="c-impact">
-              <div class="impact {impact_class}">
-                <div class="bar" style="width:{score}%"></div>
-                <span class="val">{score}</span>
-              </div>
-              <div class="impact-sub">impact marché (heur.)</div>
-            </td>
-            <td class="c-tx"><a class="tx" href="{tx_url}" target="_blank" rel="noopener">Explorer</a></td>
-          </tr>
-        """)
-
-    avg_amt = (sum_amt / total) if total else 0.0
-    last_update = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-    status_badge = "<span class='status ok'>LIVE</span>" if api_ok else "<span class='status warn'>FALLBACK</span>"
-
-    # ---- UI
-    rows_html = "\n".join(row_html) if row_html else f"""
-      <tr><td colspan="6" style="padding:16px; opacity:.85;">
-        Aucune transaction ≥ {min_btc:g} BTC pour l’instant. Essaie un seuil plus bas ou rafraîchis.
-      </td></tr>
-    """
-
-    styles = f"""
-    <style>
-      .ww-wrap {{
-        max-width: 1200px; margin: 0 auto;
-      }}
-      .ww-hero {{
-        display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
-        padding: 10px 4px 18px;
-      }}
-      .ww-title {{
-        font-size: 34px; font-weight: 900; letter-spacing: .2px; margin:0;
-      }}
-      .ww-sub {{
-        margin-top:6px; opacity:.9; line-height:1.35;
-      }}
-      .status {{
-        display:inline-flex; align-items:center; gap:8px; padding:8px 12px;
-        border-radius:999px; border:1px solid rgba(255,255,255,.12);
-        background: rgba(15,20,40,.35);
-        font-weight:800;
-      }}
-      .status.ok::before {{
-        content:""; width:10px; height:10px; border-radius:50%;
-        background: rgba(50,255,160,.95);
-        box-shadow:0 0 18px rgba(50,255,160,.35);
-      }}
-      .status.warn::before {{
-        content:""; width:10px; height:10px; border-radius:50%;
-        background: rgba(255,210,80,.95);
-        box-shadow:0 0 18px rgba(255,210,80,.35);
-      }}
-
-      .ww-grid {{
-        display:grid; grid-template-columns: 1.1fr .9fr; gap:14px;
-      }}
-      @media (max-width: 980px) {{
-        .ww-grid {{ grid-template-columns: 1fr; }}
-      }}
-
-      .card {{
-        background: rgba(15,18,30,.55);
-        border: 1px solid rgba(255,255,255,.10);
-        border-radius: 18px;
-        box-shadow: 0 10px 40px rgba(0,0,0,.25);
-      }}
-      .card .hd {{
-        display:flex; align-items:center; justify-content:space-between;
-        padding: 14px 16px; border-bottom:1px solid rgba(255,255,255,.08);
-      }}
-      .card .hd h3 {{ margin:0; font-size: 15px; letter-spacing:.2px; opacity:.95; }}
-      .card .bd {{ padding: 14px 16px; }}
-
-      .kpis {{
-        display:grid; grid-template-columns: repeat(4, 1fr); gap:10px;
-      }}
-      @media (max-width: 980px) {{ .kpis {{ grid-template-columns: repeat(2, 1fr); }} }}
-      .kpi {{
-        padding: 12px 12px; border-radius: 14px;
-        background: rgba(255,255,255,.04);
-        border:1px solid rgba(255,255,255,.08);
-      }}
-      .kpi .v {{ font-size: 22px; font-weight: 900; }}
-      .kpi .l {{ opacity:.85; font-size: 12px; margin-top:2px; }}
-
-      .controls {{
-        display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;
-      }}
-      .field {{ display:flex; flex-direction:column; gap:6px; min-width: 180px; flex: 1; }}
-      .field label {{ font-size: 12px; opacity:.85; }}
-      .field input, .field select {{
-        padding: 10px 12px; border-radius: 12px;
-        border:1px solid rgba(255,255,255,.12);
-        background: rgba(10,14,28,.6); color:#fff; outline:none;
-      }}
-      .btns {{ display:flex; gap:10px; align-items:center; }}
-      .btn {{
-        padding: 10px 14px; border-radius: 12px;
-        border:1px solid rgba(255,255,255,.14);
-        background: linear-gradient(90deg, rgba(109,40,217,.95), rgba(34,211,238,.95));
-        color:#fff; font-weight:900; cursor:pointer;
-      }}
-      .btn.secondary {{
-        background: rgba(255,255,255,.06);
-      }}
-      .hint {{
-        margin-top:10px; opacity:.85; font-size: 12px; line-height:1.35;
-      }}
-
-      .table-wrap {{ overflow:auto; }}
-      table.ww {{
-        width:100%; border-collapse: separate; border-spacing: 0;
-        table-layout: fixed;
-      }}
-      table.ww thead th {{
-        text-align:left; font-size: 12px; opacity:.85; padding: 12px 14px;
-        border-bottom: 1px solid rgba(255,255,255,.10);
-        position: sticky; top:0; background: rgba(10,14,28,.92);
-        backdrop-filter: blur(10px);
-      }}
-      table.ww tbody td {{
-        padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,.06);
-        vertical-align: middle;
-      }}
-      .ww-row {{ cursor:pointer; transition: transform .08s ease, background .12s ease; }}
-      .ww-row:hover {{ background: rgba(255,255,255,.03); transform: translateY(-1px); }}
-      .mono {{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }}
-
-      .pill {{
-        display:inline-flex; align-items:center; justify-content:center;
-        padding: 6px 10px; border-radius: 999px;
-        border:1px solid rgba(255,255,255,.12);
-        background: rgba(255,255,255,.05);
-        font-weight:800; font-size: 12px;
-      }}
-      .pill.asset {{ background: rgba(255,255,255,.06); }}
-      .pill.self {{ background: rgba(255,255,255,.04); opacity:.9; }}
-      .pill.tag {{ background: rgba(109,40,217,.18); border-color: rgba(109,40,217,.35); }}
-
-      .amt {{ font-weight: 900; font-size: 16px; }}
-      .unit {{ opacity:.85; font-weight:800; font-size: 12px; }}
-      .sub {{ opacity:.82; font-size: 12px; margin-top:2px; }}
-      .flow {{ display:flex; align-items:center; gap:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
-      .arrow {{ opacity:.8; }}
-      .addr {{ opacity:.95; }}
-      .tags {{ margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; }}
-
-      .impact {{
-        position:relative; height: 28px; border-radius: 999px;
-        border:1px solid rgba(255,255,255,.12);
-        background: rgba(255,255,255,.05);
-        overflow:hidden;
-      }}
-      .impact .bar {{
-        position:absolute; left:0; top:0; bottom:0;
-        background: linear-gradient(90deg, rgba(34,211,238,.35), rgba(109,40,217,.45));
-      }}
-      .impact .val {{
-        position:relative; z-index: 2;
-        display:flex; height:100%; align-items:center; justify-content:flex-end;
-        padding: 0 10px; font-weight: 900;
-      }}
-      .impact-low .bar {{ background: linear-gradient(90deg, rgba(255,255,255,.10), rgba(34,211,238,.25)); }}
-      .impact-med .bar {{ background: linear-gradient(90deg, rgba(255,210,80,.25), rgba(34,211,238,.35)); }}
-      .impact-high .bar {{ background: linear-gradient(90deg, rgba(255,90,120,.35), rgba(109,40,217,.45)); }}
-      .impact-sub {{ font-size: 11px; opacity:.75; margin-top:6px; }}
-
-      .tx {{
-        color: rgba(34,211,238,.95); font-weight: 900; text-decoration:none;
-      }}
-      .tx:hover {{ text-decoration: underline; }}
-
-      /* Column sizing */
-      th.c1, td.c-time {{ width: 72px; }}
-      th.c2, td.c-asset {{ width: 80px; }}
-      th.c3, td.c-amt {{ width: 170px; }}
-      th.c5, td.c-impact {{ width: 190px; }}
-      th.c6, td.c-tx {{ width: 110px; }}
-    </style>
-    """
+    top_html = ""
+    if top:
+        top_html = f"""
+        <div class="top-card">
+          <div class="top-left">
+            <div class="kicker">Transaction la plus importante (sur la liste)</div>
+            <div class="top-amt">{top['amount_btc']:,.2f} BTC</div>
+            <div class="top-sub">Impact estimé: <b>{top['impact']}/100</b> • {('Heure: ' + (top.get('time') or '—'))}</div>
+          </div>
+          <div class="top-right">
+            <div class="mini">
+              <div class="mini-label">De</div>
+              <div class="mini-val" title="{top['from_addr']}">{_short_addr(top['from_addr'])}</div>
+            </div>
+            <div class="mini">
+              <div class="mini-label">Vers</div>
+              <div class="mini-val" title="{top['to_addr']}">{_short_addr(top['to_addr'])}</div>
+            </div>
+            <a class="btn btn-primary" href="{top.get('tx_url')}" target="_blank" rel="noopener">Ouvrir la transaction</a>
+          </div>
+        </div>
+        """
 
     content = f"""
-    {styles}
+    <style>
+      .ww-wrap{{max-width:1100px;margin:0 auto}}
+      .ww-hero{{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:14px}}
+      .ww-title{{font-size:34px;font-weight:900;letter-spacing:.2px}}
+      .ww-sub{{opacity:.9;margin-top:6px;line-height:1.35}}
+      .ww-badges{{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}}
+      .badge{{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10)}}
+      .dot{{width:9px;height:9px;border-radius:99px;background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.12)}}
+      .dot.bad{{background:#ef4444;box-shadow:0 0 0 4px rgba(239,68,68,.12)}}
+      .grid{{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin:14px 0 16px}}
+      @media (max-width: 980px){{.grid{{grid-template-columns:1fr}}}}
+      .card{{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.10);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}}
+      .card-h{{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:10px}}
+      .card-b{{padding:14px 16px}}
+      .kpi{{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}}
+      @media (max-width: 980px){{.kpi{{grid-template-columns:repeat(2,1fr)}}}}
+      .kpi .k{{padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.08)}}
+      .k .lab{{opacity:.75;font-size:12px}}
+      .k .val{{font-size:18px;font-weight:900;margin-top:2px}}
+      .filters{{display:flex;gap:10px;flex-wrap:wrap;align-items:end}}
+      .fgrp{{display:flex;flex-direction:column;gap:6px;min-width:160px}}
+      .fgrp label{{font-size:12px;opacity:.75}}
+      .fgrp input,.fgrp select{{height:36px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.25);color:#fff;padding:0 10px;outline:none}}
+      .btn{{display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 14px;border-radius:12px;border:1px solid rgba(255,255,255,.14);text-decoration:none;color:#fff;background:rgba(255,255,255,.06)}}
+      .btn:hover{{filter:brightness(1.1)}}
+      .btn-primary{{background:linear-gradient(90deg, rgba(124,58,237,.95), rgba(56,189,248,.95));border:none}}
+      .hint{{opacity:.8;font-size:12px;line-height:1.35}}
+      .top-card{{display:flex;justify-content:space-between;gap:14px;padding:14px 16px;border-radius:16px;background:linear-gradient(135deg, rgba(124,58,237,.20), rgba(56,189,248,.12));border:1px solid rgba(255,255,255,.12);margin:10px 0 14px}}
+      .top-amt{{font-size:28px;font-weight:1000;margin-top:2px}}
+      .top-right{{display:flex;flex-direction:column;gap:10px;align-items:flex-end;min-width:260px}}
+      .mini{{text-align:right}}
+      .mini-label{{font-size:12px;opacity:.7}}
+      .mini-val{{font-weight:800}}
+      table{{width:100%;border-collapse:separate;border-spacing:0}}
+      thead th{{text-align:left;font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.7;padding:12px 12px;border-bottom:1px solid rgba(255,255,255,.10)}}
+      tbody td{{padding:12px 12px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}}
+      tbody tr:hover{{background:rgba(255,255,255,.03)}}
+      .col-time{{width:90px;white-space:nowrap}}
+      .col-amt{{width:140px}}
+      .col-addr{{width:180px}}
+      .col-imp{{width:190px}}
+      .col-badge{{width:140px}}
+      .col-tx{{width:90px}}
+      .addr{{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;opacity:.95}}
+      .amt{{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);font-weight:900}}
+      .amt-hot{{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.25)}}
+      .amt-mid{{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.22)}}
+      .imp{{display:flex;align-items:center;gap:10px}}
+      .bar{{flex:1;height:10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);overflow:hidden}}
+      .fill{{height:100%;background:linear-gradient(90deg, rgba(124,58,237,.95), rgba(56,189,248,.95))}}
+      .imp-meta{{font-size:12px;opacity:.85;min-width:56px;text-align:right}}
+      .pill{{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);font-size:12px;font-weight:800}}
+      .pill-hot{{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.25)}}
+      .pill-mid{{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.22)}}
+      .pill-low{{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.20)}}
+      .pill-muted{{background:rgba(255,255,255,.05)}}
+      .tx{{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff;text-decoration:none}}
+      .tx:hover{{filter:brightness(1.12)}}
+      .empty{{padding:18px 12px;opacity:.85}}
+      .note{{margin-top:10px;opacity:.78;font-size:12px;line-height:1.4}}
+    </style>
+
     <div class="ww-wrap">
       <div class="ww-hero">
         <div>
-          <h1 class="ww-title">AI Whale Watcher</h1>
+          <div class="ww-title">AI Whale Watcher <span style="opacity:.75">BTC</span></div>
           <div class="ww-sub">
-            Détecte les grosses transactions <b>BTC</b> en temps réel (mempool) + historique local.<br/>
-            <span style="opacity:.85;">Source: Blockchain.info • Seuil: ≥ <b>{min_btc:g} BTC</b> • Affichage: {limit} derniers</span>
+            Détecte les grosses transactions on-chain (mempool). <b>Données réelles</b> via Blockchain.info.
+            <span style="opacity:.75">Ce n’est pas un conseil financier.</span>
           </div>
+          <div class="ww-badges">
+            <div class="badge"><span class="dot {'bad' if err else ''}"></span><b>{status}</b> <span style="opacity:.75">• MAJ {updated}</span></div>
+            <div class="badge">Seuil: <b>&ge; {min_btc:g} BTC</b></div>
+            <div class="badge">Affichage: <b>{limit}</b> évènements</div>
+            <div class="badge">Source: <b>blockchain.info</b></div>
+          </div>
+          {f'<div class="note">Erreur: <b>{err}</b> — réessaie plus tard.</div>' if err else ''}
         </div>
-        <div style="text-align:right;">
-          {status_badge}
-          <div style="margin-top:8px; opacity:.8; font-size:12px;">Dernière maj: {last_update}</div>
+        <div>
+          <a class="btn btn-primary" href="/ai-whale-watcher?min_btc={min_btc:g}&limit={limit}">Rafraîchir</a>
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:14px;">
-        <div class="bd">
-          <div class="kpis">
-            <div class="kpi"><div class="v">{total}</div><div class="l">événements affichés</div></div>
-            <div class="kpi"><div class="v">{hot}</div><div class="l">HOT (score ≥ 85)</div></div>
-            <div class="kpi"><div class="v">{alert}</div><div class="l">ALERTE (≥ 60)</div></div>
-            <div class="kpi"><div class="v">{avg_amt:,.2f}</div><div class="l">moyenne BTC</div></div>
-          </div>
-        </div>
-      </div>
+      {top_html}
 
-      <div class="ww-grid" style="margin-bottom:14px;">
+      <div class="grid">
         <div class="card">
-          <div class="hd"><h3>Derniers mouvements (≥ {min_btc:g} BTC)</h3><div style="opacity:.75; font-size:12px;">Clique une ligne pour ouvrir l’explorer</div></div>
-          <div class="bd table-wrap">
-            <table class="ww">
+          <div class="card-h">
+            <div style="font-weight:900">Aperçu</div>
+            <div class="hint">Impact IA = heuristique (taille + rareté).</div>
+          </div>
+          <div class="card-b">
+            <div class="kpi">
+              <div class="k"><div class="lab">Évènements</div><div class="val">{len(events)}</div></div>
+              <div class="k"><div class="lab">Plus gros</div><div class="val">{(top['amount_btc'] if top else 0):,.2f} BTC</div></div>
+              <div class="k"><div class="lab">Impact max</div><div class="val">{(top['impact'] if top else 0)}/100</div></div>
+              <div class="k"><div class="lab">Statut</div><div class="val">{'OK' if not err else 'KO'}</div></div>
+            </div>
+            <div class="note">
+              Lecture rapide: <b>vers exchange</b> peut indiquer pression de vente, <b>hors exchange</b> peut indiquer accumulation — <i>pas garanti</i>.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <div style="font-weight:900">Filtres</div>
+            <div class="hint">Ajuste le seuil pour éviter le bruit.</div>
+          </div>
+          <div class="card-b">
+            <form method="get" action="/ai-whale-watcher">
+              <div class="filters">
+                <div class="fgrp">
+                  <label>Seuil (BTC)</label>
+                  <input name="min_btc" value="{min_btc:g}" inputmode="decimal" />
+                </div>
+                <div class="fgrp">
+                  <label>Nombre d’évènements</label>
+                  <select name="limit">
+                    {options_html}
+                  </select>
+                </div>
+                <button class="btn btn-primary" type="submit">Appliquer</button>
+                <a class="btn" href="https://www.blockchain.com/explorer/mempool/btc" target="_blank" rel="noopener">Explorer BTC</a>
+              </div>
+            </form>
+            <div class="note">
+              Astuce: si tu mets un seuil très haut (ex: 100 BTC), c’est normal d’avoir souvent 0 évènement.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <div style="font-weight:900">Derniers mouvements (&ge; {min_btc:g} BTC)</div>
+          <div class="hint">Clique “Voir” pour ouvrir la source officielle.</div>
+        </div>
+        <div class="card-b" style="padding:0">
+          <div style="overflow:auto;border-radius:16px">
+            <table>
               <thead>
                 <tr>
-                  <th class="c1">Heure</th>
-                  <th class="c2">Actif</th>
-                  <th class="c3">Montant</th>
-                  <th>De → Vers</th>
-                  <th class="c5">Score IA</th>
-                  <th class="c6">Tx</th>
+                  <th class="col-time">Heure</th>
+                  <th class="col-amt">Montant</th>
+                  <th class="col-addr">De</th>
+                  <th class="col-addr">Vers</th>
+                  <th class="col-imp">Impact IA</th>
+                  <th class="col-badge">Niveau</th>
+                  <th class="col-tx">Tx</th>
                 </tr>
               </thead>
               <tbody>
@@ -70439,56 +70348,12 @@ async def ai_whale_watcher(request: Request):
             </table>
           </div>
         </div>
-
-        <div class="card">
-          <div class="hd"><h3>Filtres</h3><div style="opacity:.75; font-size:12px;">Ajuste et applique</div></div>
-          <div class="bd">
-            <form method="get" action="/ai-whale-watcher">
-              <div class="controls">
-                <div class="field">
-                  <label>Seuil (BTC)</label>
-                  <input name="min_btc" type="number" step="0.1" value="{min_btc:g}" />
-                </div>
-                <div class="field">
-                  <label>Nombre d’événements</label>
-                  <select name="limit">
-                    {''.join([f'<option value="{v}" {"selected" if v==limit else ""}>{v}</option>' for v in [10,20,30,50,75,100]])}
-                  </select>
-                </div>
-                <div class="btns">
-                  <button class="btn" type="submit">Appliquer</button>
-                  <a class="btn secondary" href="/ai-whale-watcher?min_btc={min_btc:g}&limit={limit}">Rafraîchir</a>
-                </div>
-              </div>
-              <div class="hint">
-                <b>Lecture rapide :</b> une grosse transaction n’est pas forcément un achat/vente — c’est un mouvement on-chain.
-                Combine avec <b>Market Regime</b> + niveaux techniques.
-              </div>
-            </form>
-          </div>
-        </div>
       </div>
 
-      <div class="card" style="margin-bottom:14px;">
-        <div class="hd"><h3>Note</h3><div style="opacity:.75; font-size:12px;">transparence</div></div>
-        <div class="bd" style="opacity:.9; line-height:1.45;">
-          Les “scores IA” ici sont <b>heuristiques</b> (taille relative au seuil) pour aider à trier rapidement.
-          Les liens ouvrent la <b>source officielle</b> (blockchain explorer).
-        </div>
+      <div class="note" style="margin-top:12px">
+        Données: blockchain.info (mempool) • Les adresses sont tronquées pour lisibilité • Score IA: estimation simple d’impact marché.
       </div>
     </div>
     """
 
-    try:
-        conn.close()
-    except Exception:
-        pass
-
-    # Sidebar identique au /dashboard
-    return _simple_page(
-        "AI Whale Watcher",
-        content,
-        sidebar_html=_sidebar_inner("/ai-whale-watcher"),
-        request=request,
-        show_title=False
-    )
+    return _simple_page("AI Whale Watcher", request, content)

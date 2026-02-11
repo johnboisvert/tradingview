@@ -70523,9 +70523,17 @@ async def ai_whale_watcher(request: Request):
     # IMPORTANT: ne jamais écraser les classes globales (.page-wrap, .content, etc.)
     whale_css = """
     <style>
-      /* Align with the other pages: keep a small inner gutter so this page
-         lines up perfectly with Watchlist / Backtesting. */
-      .ww-root{max-width:1400px;margin:0; padding:6px 12px 0 12px;}
+      /* Alignement: évite le centrage involontaire et suit le layout des autres pages */
+      .ww-root{
+        width:100%;
+        max-width:1400px;
+        margin:0;
+        margin-right:auto; /* si un parent est en flex/center */
+        padding-top:6px;
+        box-sizing:border-box;
+        flex:1 1 auto;
+        align-self:stretch;
+      }
       .ww-hero{
         background: radial-gradient(1200px 600px at 20% 10%, rgba(120,70,255,.30), transparent 60%),
                     linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.03));

@@ -70195,6 +70195,7 @@ async def ai_whale_watcher(request: Request):
     """
     import math
 
+    import datetime as _dt
     qp = request.query_params
 
     # --- Paramètres (compat + fallback)
@@ -70277,7 +70278,7 @@ async def ai_whale_watcher(request: Request):
                     pass
 
                 ts = tx.get("time")
-                dt = datetime.datetime.utcfromtimestamp(ts) if ts else datetime.datetime.utcnow()
+                dt = datetime.datetime.utcfromtimestamp(ts) if ts else _dt.datetime.utcnow()
                 tx_hash = tx.get("hash") or ""
                 events.append(
                     {
@@ -70356,7 +70357,7 @@ async def ai_whale_watcher(request: Request):
                         dt = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(datetime.timezone.utc).replace(tzinfo=None)
                     except Exception:
                         dt = None
-                dt = dt or datetime.datetime.utcnow()
+                dt = dt or _dt.datetime.utcnow()
 
                 from_addr = tx.get("sender") or tx.get("from") or tx.get("from_address") or "—"
                 to_addr = tx.get("recipient") or tx.get("to") or tx.get("to_address") or "—"
@@ -70402,7 +70403,7 @@ async def ai_whale_watcher(request: Request):
         try:
             return datetime.datetime.strptime(e["ts"], "%Y-%m-%d %H:%M:%S")
         except Exception:
-            return datetime.datetime.utcnow()
+            return _dt.datetime.utcnow()
 
     live_events.sort(key=_ts_key, reverse=True)
 
@@ -70427,7 +70428,7 @@ async def ai_whale_watcher(request: Request):
             """
         )
         # purge 24h
-        cutoff = (datetime.datetime.utcnow() - datetime.timedelta(hours=history_hours)).strftime("%Y-%m-%d %H:%M:%S")
+        cutoff = (_dt.datetime.utcnow() - datetime.timedelta(hours=history_hours)).strftime("%Y-%m-%d %H:%M:%S")
         cur.execute("DELETE FROM whale_events WHERE ts < ?", (cutoff,))
         conn.commit()
 
@@ -70512,7 +70513,7 @@ async def ai_whale_watcher(request: Request):
             return f"${v/1e3:.2f}K"
         return f"${v:,.0f}"
 
-    last_updated = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    last_updated = _dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
     # --- UI
     # IMPORTANT: ne jamais écraser les classes globales (.page-wrap, .content, etc.)

@@ -70278,7 +70278,7 @@ async def ai_whale_watcher(request: Request):
                     pass
 
                 ts = tx.get("time")
-                dt = datetime.datetime.utcfromtimestamp(ts) if ts else _dt.datetime.utcnow()
+                dt = _dt.datetime.utcfromtimestamp(ts) if ts else _dt.datetime.utcnow()
                 tx_hash = tx.get("hash") or ""
                 events.append(
                     {
@@ -70348,13 +70348,13 @@ async def ai_whale_watcher(request: Request):
                 dt = None
                 if isinstance(ts, (int, float)):
                     try:
-                        dt = datetime.datetime.utcfromtimestamp(float(ts))
+                        dt = _dt.datetime.utcfromtimestamp(float(ts))
                     except Exception:
                         dt = None
                 if dt is None and isinstance(ts, str):
                     # tente ISO-like
                     try:
-                        dt = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(datetime.timezone.utc).replace(tzinfo=None)
+                        dt = _dt.datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(_dt.timezone.utc).replace(tzinfo=None)
                     except Exception:
                         dt = None
                 dt = dt or _dt.datetime.utcnow()
@@ -70401,7 +70401,7 @@ async def ai_whale_watcher(request: Request):
     # Trie par heure (desc)
     def _ts_key(e):
         try:
-            return datetime.datetime.strptime(e["ts"], "%Y-%m-%d %H:%M:%S")
+            return _dt.datetime.strptime(e["ts"], "%Y-%m-%d %H:%M:%S")
         except Exception:
             return _dt.datetime.utcnow()
 
@@ -70428,7 +70428,7 @@ async def ai_whale_watcher(request: Request):
             """
         )
         # purge 24h
-        cutoff = (_dt.datetime.utcnow() - datetime.timedelta(hours=history_hours)).strftime("%Y-%m-%d %H:%M:%S")
+        cutoff = (_dt.datetime.utcnow() - _dt.timedelta(hours=history_hours)).strftime("%Y-%m-%d %H:%M:%S")
         cur.execute("DELETE FROM whale_events WHERE ts < ?", (cutoff,))
         conn.commit()
 
@@ -70728,5 +70728,4 @@ async def ai_whale_watcher(request: Request):
     </div>
     """
 
-    return _simple_page("AI Whale Watcher", body_html, request=request, show_title=False)
-
+    return _simple_page("AI Whale Watcher", body_html, request=request, show_title=False, sidebar_html=(globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or ""), active_page="/ai-whale-watcher")

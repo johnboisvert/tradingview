@@ -70414,7 +70414,89 @@ async def ai_whale_watcher(request: Request):
     # petite note: quand seuil très haut, 0 event est normal
     tip_line = "Astuce: si tu mets un seuil très haut (ex: 100 BTC), c'est normal d'avoir souvent 0 événement."
 
-    content = f"""
+    whale_css = """
+    <style>
+      /* AI Whale Watcher — WOW UI (scoped to this page) */
+      .page-wrap{max-width:1200px;margin:0;padding:0}
+      .page-title{display:none}
+
+      .wow-card{
+        border-radius:22px;
+        padding:22px;
+        background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+        border:1px solid rgba(255,255,255,.12);
+        box-shadow:0 22px 70px rgba(0,0,0,.38);
+        backdrop-filter: blur(14px);
+      }
+      .wow-head{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-bottom:16px}
+      .wow-h1{font-size:54px;line-height:1.05;margin:0 0 8px;font-weight:900;letter-spacing:.2px}
+      .wow-sub{opacity:.9;font-size:14px;margin:0 0 6px}
+      .wow-status{opacity:.9;font-size:13px}
+      .badge{
+        display:inline-flex;align-items:center;gap:8px;
+        padding:6px 10px;border-radius:999px;
+        background:rgba(51,209,122,.12);
+        border:1px solid rgba(51,209,122,.26);
+        font-weight:800
+      }
+      .badge::before{content:"";width:8px;height:8px;border-radius:999px;background:#33d17a;box-shadow:0 0 0 4px rgba(51,209,122,.15)}
+      .wow-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+      .pill{
+        display:inline-flex;align-items:center;gap:8px;
+        padding:8px 12px;border-radius:999px;
+        border:1px solid rgba(255,255,255,.12);
+        background:rgba(255,255,255,.06);
+        font-size:13px
+      }
+      .btn{
+        display:inline-flex;align-items:center;justify-content:center;
+        height:42px;padding:0 16px;border-radius:12px;
+        border:1px solid rgba(255,255,255,.12);
+        background:linear-gradient(90deg, rgba(118,78,255,.95), rgba(57,176,255,.92));
+        color:#0b1020;font-weight:900;text-decoration:none;cursor:pointer
+      }
+      .btn:hover{filter:brightness(1.05)}
+      .wow-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}
+      .wow-table{border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.10);background:rgba(10,14,28,.35)}
+      table{width:100%;border-collapse:separate;border-spacing:0}
+      thead th{
+        text-align:left;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+        padding:12px 12px;
+        background:rgba(14,19,36,.92);
+        border-bottom:1px solid rgba(255,255,255,.10)
+      }
+      tbody td{padding:12px 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px}
+      tbody tr:hover{background:rgba(255,255,255,.04)}
+
+      .wow-help{
+        border-radius:16px;
+        padding:16px;
+        border:1px solid rgba(255,255,255,.10);
+        background:rgba(255,255,255,.05)
+      }
+      .wow-help-title{font-weight:900;margin-bottom:10px}
+      .wow-help ul{margin:0;padding-left:18px}
+      .wow-help li{margin:8px 0;opacity:.92}
+
+      /* Bottom help block (if present) */
+      .help-title{display:flex;align-items:center;gap:10px;font-weight:900;font-size:16px;margin:0 0 12px}
+      .help-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+      .help-card{border-radius:16px;padding:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10)}
+      .help-card h4{margin:0 0 8px;font-size:14px}
+      .foot-meta{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:12px}
+      .foot-note{opacity:.78;font-size:12px;margin-top:10px}
+
+      /* Keep consistent spacing under the sidebar wrapper */
+      .page-wrap > *{margin-bottom:16px}
+
+      @media (max-width: 980px){
+        .wow-h1{font-size:40px}
+        .wow-grid{grid-template-columns:1fr}
+      }
+    </style>
+    """
+
+    content = whale_css + f"""
     <div class="page-wrap">
     <div class="page-title">AI Whale Watcher</div>
 

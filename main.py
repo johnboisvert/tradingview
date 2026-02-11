@@ -70576,6 +70576,9 @@ async def ai_whale_watcher(request: Request):
         height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
         background:rgba(255,255,255,.08);color:rgba(255,255,255,.92);padding:0 14px;font-weight:800;cursor:pointer;white-space:nowrap;
       }
+.ww-btnfield label{visibility:hidden;}
+.ww-btnfield{min-width:140px;}
+.ww-btnfield .ww-submit{width:100%;}
       .ww-tablewrap{overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,.10)}
       table.ww-table{width:100%;border-collapse:separate;border-spacing:0;background:rgba(0,0,0,.14);min-width:760px}
       .ww-table th,.ww-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;white-space:nowrap}
@@ -70700,7 +70703,10 @@ async def ai_whale_watcher(request: Request):
                   <option value="200" {_limit_sel(200)}>200</option>
                 </select>
               </div>
-              <button class="ww-submit" type="submit">Appliquer</button>
+<div class="ww-field ww-btnfield">
+  <label>&nbsp;</label>
+  <button class="ww-submit" type="submit">Appliquer</button>
+</div>
             </form>
             <div class="ww-note">Astuce: un seuil très haut (ex: 100 BTC / 1 000 ETH) peut afficher 0 évènement. Les valeurs USD sont indicatives (CoinGecko).</div>
           </div>

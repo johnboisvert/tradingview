@@ -37820,6 +37820,7 @@ def _simple_page(
     - `styles`: CSS additionnel injecté dans <head> (en plus de GLOBAL_STYLES)
     - `show_title`: si False, n'affiche pas le <h1> automatique (utile si la page a déjà son hero)
     """
+    page_wrap_margin = '0 auto'  # FIX
     sb = sidebar_html or sidebar or ""
     extra_css = (styles or "").strip()
 

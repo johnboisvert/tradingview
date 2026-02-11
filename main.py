@@ -70523,6 +70523,18 @@ async def ai_whale_watcher(request: Request):
     # IMPORTANT: ne jamais écraser les classes globales (.page-wrap, .content, etc.)
     whale_css = """
     <style>
+/* Alignment fix: match layout of other pages (sidebar width + spacing) */
+.main{
+  margin-left:260px;
+  padding:26px;
+  min-height:100vh;
+  box-sizing:border-box;
+  background:transparent;
+}
+@media (max-width: 980px){
+  .main{margin-left:0;padding:18px;}
+}
+
       .ww-root{max-width:1400px;margin:0; padding-top:6px;}
       .ww-hero{
         background: radial-gradient(1200px 600px at 20% 10%, rgba(120,70,255,.30), transparent 60%),
@@ -70732,4 +70744,4 @@ async def ai_whale_watcher(request: Request):
     </div>
     """
 
-    return _simple_page("AI Whale Watcher", body_html, request=request, show_title=False, sidebar_html=(globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or ""), active_page="/ai-whale-watcher")
+    return _simple_page("AI Whale Watcher", body_html, request=request, show_title=False, sidebar_html=(globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or ""), active_page="/ai-whale-watcher", container_class="main")

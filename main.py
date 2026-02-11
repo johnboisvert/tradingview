@@ -70563,17 +70563,18 @@ async def ai_whale_watcher(request: Request):
         padding:14px;box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
       }
       .ww-card h3{margin:0 0 10px 0;font-size:16px;color:rgba(255,255,255,.92)}
-      .ww-form{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+      .ww-form{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr auto;gap:10px;align-items:end}
+      @media (max-width: 1100px){.ww-form{grid-template-columns:1fr 1fr}.ww-submit{grid-column:1/-1;width:100%}}
       .ww-field{display:flex;flex-direction:column;gap:6px}
       .ww-field label{font-size:12px;color:rgba(255,255,255,.70)}
       .ww-field select,.ww-field input{
         height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
-        background:rgba(0,0,0,.18);color:rgba(255,255,255,.92);padding:0 12px;min-width:140px;
+        background:rgba(0,0,0,.18);color:rgba(255,255,255,.92);padding:0 12px;width:100%;min-width:0;
       }
-      .ww-field input{min-width:120px}
+      .ww-field input{min-width:0}
       .ww-submit{
         height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
-        background:rgba(255,255,255,.08);color:rgba(255,255,255,.92);padding:0 14px;font-weight:800;cursor:pointer;
+        background:rgba(255,255,255,.08);color:rgba(255,255,255,.92);padding:0 14px;font-weight:800;cursor:pointer;white-space:nowrap;
       }
       .ww-tablewrap{overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,.10)}
       table.ww-table{width:100%;border-collapse:separate;border-spacing:0;background:rgba(0,0,0,.14);min-width:760px}

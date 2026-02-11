@@ -37820,7 +37820,6 @@ def _simple_page(
     - `styles`: CSS additionnel injecté dans <head> (en plus de GLOBAL_STYLES)
     - `show_title`: si False, n'affiche pas le <h1> automatique (utile si la page a déjà son hero)
     """
-    page_wrap_margin = '0 auto'  # FIX
     sb = sidebar_html or sidebar or ""
     extra_css = (styles or "").strip()
 
@@ -70179,6 +70178,7 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
 </html>""".format(
         safe_title=safe_title,
         main_margin=main_margin,
+        page_wrap_margin=page_wrap_margin,
         sidebar_block=sidebar_block,
         title_block=title_block,
         body_html=body_html,

@@ -70188,395 +70188,544 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
 @app.get("/ai-whale-watcher")
 async def ai_whale_watcher(request: Request):
     """
-    AI Whale Watcher (BTC) – affiche les transferts "whale" récents ET conserve un historique local ~24h.
-    - Source live: Blockchain.com (unconfirmed transactions)
-    - Stockage: SQLite (/app/data/whale_watcher.db)
-    - Objectif: éviter que la page soit "vide" quand il n'y a pas de gros transferts à l'instant T.
+    AI Whale Watcher (BTC + ETH)
+    - BTC: mempool via blockchain.com/unconfirmed-transactions (temps réel)
+    - ETH: mempool via Blockchair (best-effort). Si indisponible → affiche un message.
+    - Le seuil est en unités (BTC / ETH), pas en dollars.
     """
-    import sqlite3
-    import urllib.request
-    import urllib.error
-    import json
-    import datetime as _dt
-    import os as _os
+    import math
 
-    # --- paramètres ---
+    qp = request.query_params
+
+    # --- Paramètres (compat + fallback)
+    asset = (qp.get("asset") or "BTC").upper().strip()
+    if asset not in ("BTC", "ETH", "ALL"):
+        asset = "BTC"
+
+    def _as_float(v, default):
+        try:
+            return float(v)
+        except Exception:
+            return float(default)
+
+    def _as_int(v, default):
+        try:
+            return int(v)
+        except Exception:
+            return int(default)
+
+    min_btc = _as_float(qp.get("min_btc") or qp.get("min_amount") or 25, 25)
+    min_eth = _as_float(qp.get("min_eth") or qp.get("min_amount") or 25, 25)
+    limit = _as_int(qp.get("limit") or 50, 50)
+    limit = max(10, min(200, limit))
+
+    # --- Sources + prix (USD) pour afficher une valeur indicative
+    def _fetch_prices_usd():
+        try:
+            r = requests.get(
+                "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd",
+                timeout=10,
+                headers={"User-Agent": "CryptoIA/1.0"},
+            )
+            if r.status_code == 200:
+                data = r.json() or {}
+                btc = (data.get("bitcoin") or {}).get("usd")
+                eth = (data.get("ethereum") or {}).get("usd")
+                return {"BTC": float(btc) if btc else None, "ETH": float(eth) if eth else None}
+        except Exception:
+            pass
+        return {"BTC": None, "ETH": None}
+
+    prices = _fetch_prices_usd()
+
+    # --- Fetch BTC mempool (blockchain.com / blockchain.info)
+    def _fetch_btc_mempool(min_amount_btc: float, max_events: int):
+        events = []
+        try:
+            url = "https://blockchain.info/unconfirmed-transactions?format=json"
+            r = requests.get(url, timeout=12, headers={"User-Agent": "CryptoIA/1.0"})
+            if r.status_code != 200:
+                return events, f"BTC: HTTP {r.status_code}"
+            data = r.json() or {}
+            txs = data.get("txs") or []
+            for tx in txs[:200]:
+                outs = tx.get("out") or []
+                total_sats = 0
+                for o in outs:
+                    try:
+                        total_sats += int(o.get("value") or 0)
+                    except Exception:
+                        pass
+                amount_btc = total_sats / 1e8
+                if amount_btc < min_amount_btc:
+                    continue
+
+                # heuristique simple (1ère entrée / 1ère sortie)
+                from_addr = None
+                to_addr = None
+                try:
+                    ins = tx.get("inputs") or []
+                    if ins and isinstance(ins[0], dict):
+                        prev = ins[0].get("prev_out") or {}
+                        from_addr = prev.get("addr")
+                except Exception:
+                    pass
+                try:
+                    if outs and isinstance(outs[0], dict):
+                        to_addr = outs[0].get("addr")
+                except Exception:
+                    pass
+
+                ts = tx.get("time")
+                dt = datetime.datetime.utcfromtimestamp(ts) if ts else datetime.datetime.utcnow()
+                tx_hash = tx.get("hash") or ""
+                events.append(
+                    {
+                        "asset": "BTC",
+                        "ts": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                        "time": dt.strftime("%H:%M"),
+                        "amount": float(amount_btc),
+                        "from_addr": from_addr or "—",
+                        "to_addr": to_addr or "—",
+                        "tx_hash": tx_hash,
+                        "explorer": f"https://www.blockchain.com/btc/tx/{tx_hash}" if tx_hash else None,
+                        "direction": "wallet → wallet",
+                        "source": "blockchain.com (mempool)",
+                    }
+                )
+                if len(events) >= max_events:
+                    break
+            return events, None
+        except Exception as e:
+            return events, f"BTC: erreur ({type(e).__name__})"
+
+    # --- Fetch ETH mempool (Blockchair, best-effort)
+    def _fetch_eth_mempool(min_amount_eth: float, max_events: int):
+        events = []
+        try:
+            # Endpoint Blockchair mempool (peut être limité selon leurs règles)
+            url = "https://api.blockchair.com/ethereum/mempool/transactions?limit=200"
+            r = requests.get(url, timeout=12, headers={"User-Agent": "CryptoIA/1.0"})
+            if r.status_code != 200:
+                return events, f"ETH: HTTP {r.status_code}"
+            data = r.json() or {}
+            raw = data.get("data")
+
+            # raw peut être list ou dict selon l'API
+            tx_list = []
+            if isinstance(raw, list):
+                tx_list = raw
+            elif isinstance(raw, dict):
+                # parfois {"hash": {...}, ...}
+                for k, v in list(raw.items())[:300]:
+                    if isinstance(v, dict):
+                        v = dict(v)
+                        v.setdefault("hash", k)
+                        tx_list.append(v)
+
+            for tx in tx_list[:300]:
+                # value en wei (le plus probable) ou déjà en ETH
+                value_wei = tx.get("value") or tx.get("value_wei") or tx.get("value_raw")
+                amount_eth = None
+                if value_wei is not None:
+                    try:
+                        amount_eth = float(value_wei) / 1e18
+                    except Exception:
+                        pass
+                if amount_eth is None:
+                    # fallback si l'API renvoie "value_eth"
+                    try:
+                        amount_eth = float(tx.get("value_eth"))
+                    except Exception:
+                        amount_eth = None
+
+                if amount_eth is None or amount_eth < min_amount_eth:
+                    continue
+
+                tx_hash = tx.get("hash") or tx.get("transaction_hash") or ""
+                ts = tx.get("time") or tx.get("timestamp") or tx.get("block_time")
+                dt = None
+                if isinstance(ts, (int, float)):
+                    try:
+                        dt = datetime.datetime.utcfromtimestamp(float(ts))
+                    except Exception:
+                        dt = None
+                if dt is None and isinstance(ts, str):
+                    # tente ISO-like
+                    try:
+                        dt = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(datetime.timezone.utc).replace(tzinfo=None)
+                    except Exception:
+                        dt = None
+                dt = dt or datetime.datetime.utcnow()
+
+                from_addr = tx.get("sender") or tx.get("from") or tx.get("from_address") or "—"
+                to_addr = tx.get("recipient") or tx.get("to") or tx.get("to_address") or "—"
+
+                events.append(
+                    {
+                        "asset": "ETH",
+                        "ts": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                        "time": dt.strftime("%H:%M"),
+                        "amount": float(amount_eth),
+                        "from_addr": str(from_addr)[:200] if from_addr else "—",
+                        "to_addr": str(to_addr)[:200] if to_addr else "—",
+                        "tx_hash": tx_hash,
+                        "explorer": f"https://etherscan.io/tx/{tx_hash}" if tx_hash else None,
+                        "direction": "wallet → wallet",
+                        "source": "blockchair (mempool)",
+                    }
+                )
+                if len(events) >= max_events:
+                    break
+            return events, None
+        except Exception as e:
+            return events, f"ETH: erreur ({type(e).__name__})"
+
+    # --- Collecte live (selon asset)
+    live_events = []
+    status_notes = []
+
+    if asset in ("BTC", "ALL"):
+        ev_btc, err_btc = _fetch_btc_mempool(min_btc, limit)
+        live_events.extend(ev_btc)
+        if err_btc:
+            status_notes.append(err_btc)
+
+    if asset in ("ETH", "ALL"):
+        ev_eth, err_eth = _fetch_eth_mempool(min_eth, limit)
+        live_events.extend(ev_eth)
+        if err_eth:
+            status_notes.append(err_eth)
+
+    # Trie par heure (desc)
+    def _ts_key(e):
+        try:
+            return datetime.datetime.strptime(e["ts"], "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            return datetime.datetime.utcnow()
+
+    live_events.sort(key=_ts_key, reverse=True)
+
+    # --- Historique 24h (sqlite) : conserve ce qui arrive + purge auto
+    history_hours = 24
+    db_path = os.path.join(DB_DIR, "whale.db")
     try:
-        min_btc = float(request.query_params.get("min_btc") or "")
-    except Exception:
-        min_btc = None
-
-    # seuil par défaut (affiché) – 25 BTC = whale raisonnable, 100 BTC = rare => souvent 0 événement
-    default_min_btc = float(_os.getenv("WHALE_MIN_BTC", "25") or "25")
-    if min_btc is None or min_btc <= 0:
-        min_btc = default_min_btc
-
-    # nombre max d'événements affichés
-    try:
-        limit = int(request.query_params.get("limit") or _os.getenv("WHALE_LIMIT", "50"))
-    except Exception:
-        limit = 50
-    limit = max(5, min(200, limit))
-
-    # fenêtre d'historique
-    history_hours = float(_os.getenv("WHALE_HISTORY_HOURS", "24") or "24")
-    if history_hours <= 0:
-        history_hours = 24.0
-
-    # DB path
-    _db_dir = _os.getenv("DB_DIR", "/app/data")
-    _db_path = _os.path.join(_db_dir, "whale_watcher.db")
-
-    now = _dt.datetime.utcnow()
-    cutoff = now - _dt.timedelta(hours=history_hours)
-    last_updated = now.strftime("%Y-%m-%d %H:%M:%S")
-
-    # --- helpers ---
-    def _short(addr: str, left: int = 6, right: int = 6) -> str:
-        if not addr:
-            return "—"
-        if len(addr) <= left + right + 3:
-            return addr
-        return f"{addr[:left]}...{addr[-right:]}"
-
-    def _ensure_db(conn: sqlite3.Connection) -> None:
-        conn.execute("""
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute(
+            """
             CREATE TABLE IF NOT EXISTS whale_events (
-                tx_hash TEXT PRIMARY KEY,
-                seen_at_utc TEXT NOT NULL,
-                amount_btc REAL NOT NULL,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT,
+                asset TEXT,
+                amount REAL,
                 from_addr TEXT,
                 to_addr TEXT,
-                raw_json TEXT
+                tx_hash TEXT,
+                direction TEXT
             )
-        """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_whale_seen ON whale_events(seen_at_utc)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_whale_amt ON whale_events(amount_btc)")
-        conn.commit()
-
-    def _purge_old(conn: sqlite3.Connection) -> int:
-        cur = conn.execute("DELETE FROM whale_events WHERE seen_at_utc < ?", (cutoff.strftime("%Y-%m-%d %H:%M:%S"),))
-        conn.commit()
-        return cur.rowcount if cur else 0
-
-    def _fetch_unconfirmed() -> dict:
-        # Blockchain.com endpoint
-        url = "https://blockchain.info/unconfirmed-transactions?format=json"
-        req = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": "CryptoIA Whale Watcher/1.0 (+https://cryptoia.ca)",
-                "Accept": "application/json",
-            },
-            method="GET",
-        )
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = resp.read().decode("utf-8", errors="ignore")
-        return json.loads(data)
-
-    def _extract_event(tx: dict):
-        # Total out value as "amount moved" approximation
-        outs = tx.get("out") or []
-        total_sats = 0
-        largest_out = None
-        for o in outs:
-            v = o.get("value") or 0
-            if isinstance(v, (int, float)):
-                total_sats += int(v)
-            # pick largest output as destination representative
-            if largest_out is None or (o.get("value") or 0) > (largest_out.get("value") or 0):
-                largest_out = o
-
-        amount_btc = total_sats / 1e8 if total_sats else 0.0
-
-        # from: first input prev_out addr
-        from_addr = ""
-        ins = tx.get("inputs") or []
-        if ins:
-            prev = (ins[0] or {}).get("prev_out") or {}
-            from_addr = prev.get("addr") or ""
-
-        # to: largest output addr if available
-        to_addr = ""
-        if largest_out:
-            to_addr = largest_out.get("addr") or ""
-
-        tx_hash = tx.get("hash") or ""
-        return tx_hash, amount_btc, from_addr, to_addr
-
-    # --- DB open ---
-    api_ok = True
-    api_note = ""
-    new_added = 0
-
-    try:
-        conn = sqlite3.connect(_db_path, check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        _ensure_db(conn)
-        _purge_old(conn)
-    except Exception as e:
-        conn = None
-        api_ok = False
-        api_note = f"DB error: {e!s}"
-
-    # --- fetch & store ---
-    if conn is not None:
-        try:
-            payload = _fetch_unconfirmed()
-            txs = payload.get("txs") or []
-            observed = 0
-            for tx in txs[:250]:  # safety cap
-                observed += 1
-                tx_hash, amount_btc, from_addr, to_addr = _extract_event(tx)
-                if not tx_hash:
-                    continue
-                if amount_btc < min_btc:
-                    continue
-
-                raw = json.dumps(tx, ensure_ascii=False)[:20000]
-                cur = conn.execute(
-                    "INSERT OR IGNORE INTO whale_events(tx_hash, seen_at_utc, amount_btc, from_addr, to_addr, raw_json) VALUES (?,?,?,?,?,?)",
-                    (tx_hash, last_updated, float(amount_btc), from_addr, to_addr, raw),
-                )
-                if cur and cur.rowcount:
-                    new_added += 1
-
-            conn.commit()
-
-            if new_added == 0:
-                print(f"ℹ️ Aucun transfert ≥ {min_btc:g} BTC dans les dernières transactions non confirmées. (Transactions observées: {observed})")
-
-        except Exception as e:
-            api_ok = False
-            api_note = f"API indisponible: {e!s}"
-
-    # --- read last 24h ---
-    events = []
-    total_count = 0
-    if conn is not None:
-        try:
-            row = conn.execute(
-                "SELECT COUNT(*) AS c FROM whale_events WHERE seen_at_utc >= ? AND amount_btc >= ?",
-                (cutoff.strftime("%Y-%m-%d %H:%M:%S"), float(min_btc)),
-            ).fetchone()
-            total_count = int(row["c"]) if row else 0
-
-            rows = conn.execute(
-                "SELECT tx_hash, seen_at_utc, amount_btc, from_addr, to_addr FROM whale_events "
-                "WHERE seen_at_utc >= ? AND amount_btc >= ? "
-                "ORDER BY seen_at_utc DESC LIMIT ?",
-                (cutoff.strftime("%Y-%m-%d %H:%M:%S"), float(min_btc), int(limit)),
-            ).fetchall()
-
-            for r in rows or []:
-                ts = (r["seen_at_utc"] or "")[-8:-3] if r["seen_at_utc"] else "—"
-                events.append({
-                    "time": ts,
-                    "asset": "BTC",
-                    "amount": float(r["amount_btc"] or 0.0),
-                    "from": r["from_addr"] or "",
-                    "to": r["to_addr"] or "",
-                    "hash": r["tx_hash"] or "",
-                })
-        except Exception as e:
-            api_ok = False
-            api_note = f"DB read error: {e!s}"
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-    # --- UI pieces ---
-    status_badge = "✅ VRAIES DONNÉES EN DIRECT" if api_ok else "⚠️ MODE CACHE (dernières 24h)"
-    source_line = f"Source: Blockchain.info API (TEMPS RÉEL) | Seuil: ≥ {min_btc:g} BTC | BTC: —"
-    if not api_ok and api_note:
-        source_line += f" | {api_note}"
-
-    rows_html = ""
-    if events:
-        for ev in events:
-            rows_html += f"""
-            <tr>
-              <td>{ev['time']}</td>
-              <td><b>{ev['asset']}</b></td>
-              <td><b>{ev['amount']:.2f}</b></td>
-              <td>de <span class="mono">{_short(ev['from'])}</span> → <span class="mono">{_short(ev['to'])}</span></td>
-            </tr>
             """
-    else:
-        rows_html = f"""
-        <tr>
-          <td colspan="4" style="opacity:.85">Aucune transaction ≥ {min_btc:g} BTC pour le moment. (Ce n'est pas une erreur.)</td>
-        </tr>
-        """
+        )
+        # purge 24h
+        cutoff = (datetime.datetime.utcnow() - datetime.timedelta(hours=history_hours)).strftime("%Y-%m-%d %H:%M:%S")
+        cur.execute("DELETE FROM whale_events WHERE ts < ?", (cutoff,))
+        conn.commit()
 
-    # petite note: quand seuil très haut, 0 event est normal
-    tip_line = "Astuce: si tu mets un seuil très haut (ex: 100 BTC), c'est normal d'avoir souvent 0 événement."
+        # insert (anti-dup par tx_hash)
+        for ev in live_events[:200]:
+            txh = ev.get("tx_hash") or ""
+            if not txh:
+                continue
+            cur.execute("SELECT 1 FROM whale_events WHERE tx_hash = ? LIMIT 1", (txh,))
+            if cur.fetchone():
+                continue
+            cur.execute(
+                "INSERT INTO whale_events (ts, asset, amount, from_addr, to_addr, tx_hash, direction) VALUES (?,?,?,?,?,?,?)",
+                (ev["ts"], ev["asset"], float(ev["amount"]), ev["from_addr"], ev["to_addr"], txh, ev.get("direction") or "wallet → wallet"),
+            )
+        conn.commit()
 
+        # lecture pour affichage (filtré)
+        where = []
+        params = []
+
+        if asset in ("BTC", "ETH"):
+            where.append("asset = ?")
+            params.append(asset)
+
+        # seuil selon asset (si ALL, on applique les seuils respectifs)
+        if asset == "BTC":
+            where.append("amount >= ?")
+            params.append(float(min_btc))
+        elif asset == "ETH":
+            where.append("amount >= ?")
+            params.append(float(min_eth))
+
+        sql = "SELECT ts, asset, amount, from_addr, to_addr, tx_hash, direction FROM whale_events"
+        if where:
+            sql += " WHERE " + " AND ".join(where)
+        sql += " ORDER BY ts DESC LIMIT ?"
+        params.append(int(limit))
+
+        cur.execute(sql, tuple(params))
+        rows = cur.fetchall()
+        conn.close()
+    except Exception:
+        rows = []
+        # pas bloquant (on continue en live)
+    # fallback: si rows vide, on affiche live_events
+    if not rows and live_events:
+        rows = [(e["ts"], e["asset"], e["amount"], e["from_addr"], e["to_addr"], e["tx_hash"], e.get("direction") or "wallet → wallet") for e in live_events[:limit]]
+
+    # --- Helpers format
+    def _short(addr: str, n=6):
+        if not addr or addr == "—":
+            return "—"
+        s = str(addr)
+        if len(s) <= n * 2 + 3:
+            return s
+        return s[:n] + "…" + s[-n:]
+
+    def _usd_value(asset_sym: str, amount: float):
+        p = prices.get(asset_sym)
+        if not p:
+            return None
+        try:
+            return float(amount) * float(p)
+        except Exception:
+            return None
+
+    def _fmt_usd(v):
+        if v is None:
+            return "—"
+        # format compact (ex: 1.25M)
+        try:
+            v = float(v)
+        except Exception:
+            return "—"
+        abs_v = abs(v)
+        if abs_v >= 1e9:
+            return f"${v/1e9:.2f}B"
+        if abs_v >= 1e6:
+            return f"${v/1e6:.2f}M"
+        if abs_v >= 1e3:
+            return f"${v/1e3:.2f}K"
+        return f"${v:,.0f}"
+
+    last_updated = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    # --- UI
+    # IMPORTANT: ne jamais écraser les classes globales (.page-wrap, .content, etc.)
     whale_css = """
     <style>
-      /* AI Whale Watcher — WOW UI (scoped to this page) */
-      .page-wrap{max-width:1200px;margin:0;padding:0}
-      .page-title{display:none}
-
-      .wow-card{
-        border-radius:22px;
-        padding:22px;
-        background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
-        border:1px solid rgba(255,255,255,.12);
-        box-shadow:0 22px 70px rgba(0,0,0,.38);
-        backdrop-filter: blur(14px);
-      }
-      .wow-head{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-bottom:16px}
-      .wow-h1{font-size:54px;line-height:1.05;margin:0 0 8px;font-weight:900;letter-spacing:.2px}
-      .wow-sub{opacity:.9;font-size:14px;margin:0 0 6px}
-      .wow-status{opacity:.9;font-size:13px}
-      .badge{
-        display:inline-flex;align-items:center;gap:8px;
-        padding:6px 10px;border-radius:999px;
-        background:rgba(51,209,122,.12);
-        border:1px solid rgba(51,209,122,.26);
-        font-weight:800
-      }
-      .badge::before{content:"";width:8px;height:8px;border-radius:999px;background:#33d17a;box-shadow:0 0 0 4px rgba(51,209,122,.15)}
-      .wow-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-      .pill{
-        display:inline-flex;align-items:center;gap:8px;
-        padding:8px 12px;border-radius:999px;
-        border:1px solid rgba(255,255,255,.12);
-        background:rgba(255,255,255,.06);
-        font-size:13px
-      }
-      .btn{
-        display:inline-flex;align-items:center;justify-content:center;
-        height:42px;padding:0 16px;border-radius:12px;
-        border:1px solid rgba(255,255,255,.12);
-        background:linear-gradient(90deg, rgba(118,78,255,.95), rgba(57,176,255,.92));
-        color:#0b1020;font-weight:900;text-decoration:none;cursor:pointer
-      }
-      .btn:hover{filter:brightness(1.05)}
-      .wow-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}
-      .wow-table{border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.10);background:rgba(10,14,28,.35)}
-      table{width:100%;border-collapse:separate;border-spacing:0}
-      thead th{
-        text-align:left;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
-        padding:12px 12px;
-        background:rgba(14,19,36,.92);
-        border-bottom:1px solid rgba(255,255,255,.10)
-      }
-      tbody td{padding:12px 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px}
-      tbody tr:hover{background:rgba(255,255,255,.04)}
-
-      .wow-help{
-        border-radius:16px;
-        padding:16px;
+      .ww-root{max-width:1200px;margin:0 auto;}
+      .ww-hero{
+        background: radial-gradient(1200px 600px at 20% 10%, rgba(120,70,255,.30), transparent 60%),
+                    linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
         border:1px solid rgba(255,255,255,.10);
-        background:rgba(255,255,255,.05)
+        border-radius:20px;
+        padding:22px 22px 16px 22px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.35);
       }
-      .wow-help-title{font-weight:900;margin-bottom:10px}
-      .wow-help ul{margin:0;padding-left:18px}
-      .wow-help li{margin:8px 0;opacity:.92}
-
-      /* Bottom help block (if present) */
-      .help-title{display:flex;align-items:center;gap:10px;font-weight:900;font-size:16px;margin:0 0 12px}
-      .help-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-      .help-card{border-radius:16px;padding:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10)}
-      .help-card h4{margin:0 0 8px;font-size:14px}
-      .foot-meta{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:12px}
-      .foot-note{opacity:.78;font-size:12px;margin-top:10px}
-
-      /* Keep consistent spacing under the sidebar wrapper */
-      .page-wrap > *{margin-bottom:16px}
-
-      @media (max-width: 980px){
-        .wow-h1{font-size:40px}
-        .wow-grid{grid-template-columns:1fr}
+      .ww-head{display:flex;gap:18px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+      .ww-title{font-size:52px;line-height:1.02;margin:0;font-weight:800;letter-spacing:-.02em}
+      .ww-sub{margin-top:6px;color:rgba(255,255,255,.78);font-size:14px}
+      .ww-chips{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+      .ww-chip{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);font-size:12px;color:rgba(255,255,255,.85)}
+      .ww-dot{width:8px;height:8px;border-radius:999px;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.15)}
+      .ww-right{display:flex;gap:10px;align-items:center}
+      .ww-btn{
+        padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
+        background:linear-gradient(90deg, rgba(125,66,255,.9), rgba(51,176,255,.9));
+        color:#0b1020;font-weight:800;cursor:pointer;
+        box-shadow:0 12px 30px rgba(64,122,255,.22);
       }
+      .ww-badge{padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);font-size:12px}
+      .ww-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-top:16px}
+      @media (max-width: 980px){.ww-grid{grid-template-columns:1fr}}
+      .ww-card{
+        background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.10);border-radius:18px;
+        padding:14px;box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+      }
+      .ww-card h3{margin:0 0 10px 0;font-size:16px;color:rgba(255,255,255,.92)}
+      .ww-form{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+      .ww-field{display:flex;flex-direction:column;gap:6px}
+      .ww-field label{font-size:12px;color:rgba(255,255,255,.70)}
+      .ww-field select,.ww-field input{
+        height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
+        background:rgba(0,0,0,.18);color:rgba(255,255,255,.92);padding:0 12px;min-width:140px;
+      }
+      .ww-field input{min-width:120px}
+      .ww-submit{
+        height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
+        background:rgba(255,255,255,.08);color:rgba(255,255,255,.92);padding:0 14px;font-weight:800;cursor:pointer;
+      }
+      .ww-tablewrap{overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,.10)}
+      table.ww-table{width:100%;border-collapse:separate;border-spacing:0;background:rgba(0,0,0,.14);min-width:760px}
+      .ww-table th,.ww-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;white-space:nowrap}
+      .ww-table th{position:sticky;top:0;background:rgba(8,12,24,.88);backdrop-filter:blur(10px);text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:rgba(255,255,255,.75)}
+      .ww-asset{display:inline-flex;align-items:center;gap:8px}
+      .ww-pill{display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);font-size:12px;font-weight:800}
+      .ww-tx a{color:rgba(170,210,255,.95);text-decoration:none}
+      .ww-tx a:hover{text-decoration:underline}
+      .ww-note{margin-top:10px;color:rgba(255,255,255,.70);font-size:12px}
+      .ww-warn{margin-top:8px;color:rgba(255,200,120,.90);font-size:12px}
+      .ww-ul{margin:0;padding-left:16px;color:rgba(255,255,255,.82);font-size:13px}
+      .ww-ul li{margin:6px 0}
     </style>
     """
 
-    content = whale_css + f"""
-    <div class="page-wrap">
-    <div class="page-title">AI Whale Watcher</div>
+    # form values
+    sel_btc = "selected" if asset == "BTC" else ""
+    sel_eth = "selected" if asset == "ETH" else ""
+    sel_all = "selected" if asset == "ALL" else ""
 
-    <div class="wow-card">
-      <div class="wow-head">
-        <div>
-          <div class="wow-h1">AI Whale Watcher</div>
-          <div class="wow-sub">{source_line}</div>
-          <div class="wow-status">Statut: <span class="badge">{status_badge}</span></div>
+    def _limit_sel(v):
+        return "selected" if str(limit) == str(v) else ""
+
+    status_label = "LIVE"
+    status_dot = "<span class='ww-dot'></span>"
+    notes_html = ""
+    if status_notes:
+        notes_html = "<div class='ww-warn'>⚠️ " + " | ".join(status_notes) + "</div>"
+
+    # rows HTML
+    row_html = []
+    for ts, a, amt, faddr, taddr, txh, direction in rows:
+        a = (a or "BTC").upper()
+        usd = _usd_value(a, float(amt))
+        explorer = "https://www.blockchain.com/btc/tx/" + txh if a == "BTC" else "https://etherscan.io/tx/" + txh
+        row_html.append(f"""
+          <tr>
+            <td>{str(ts)[11:16] if ts else "—"}</td>
+            <td><span class='ww-pill'>{a}</span></td>
+            <td><strong>{float(amt):,.2f}</strong> <span style="opacity:.8">{a}</span></td>
+            <td>{_fmt_usd(usd)}</td>
+            <td title="{direction or ''}"><span class='ww-pill' style="font-weight:700">{direction or "INFO"}</span></td>
+            <td><span title="{faddr}">{_short(faddr)}</span> → <span title="{taddr}">{_short(taddr)}</span></td>
+            <td class="ww-tx">{f"<a href='{explorer}' target='_blank' rel='noopener'>Explorer</a>" if txh else "—"}</td>
+          </tr>
+        """)
+
+    if not row_html:
+        # message clair, sans casser la page
+        thresh_txt = f"{min_btc:g} BTC" if asset == "BTC" else (f"{min_eth:g} ETH" if asset == "ETH" else f"{min_btc:g} BTC / {min_eth:g} ETH")
+        row_html = [f"<tr><td colspan='7' style='color:rgba(255,255,255,.75)'>Aucun évènement pour ce filtre. Essaie un seuil plus bas (ex: {thresh_txt}) ou réessaie plus tard.</td></tr>"]
+
+    table_html = "\n".join(row_html)
+
+    # label threshold
+    if asset == "BTC":
+        threshold_chip = f"Seuil ≥ {min_btc:g} BTC"
+        source_chip = "Source blockchain.com"
+    elif asset == "ETH":
+        threshold_chip = f"Seuil ≥ {min_eth:g} ETH"
+        source_chip = "Source Blockchair"
+    else:
+        threshold_chip = f"Seuil ≥ {min_btc:g} BTC / {min_eth:g} ETH"
+        source_chip = "Sources blockchain.com + Blockchair"
+
+    body_html = f"""
+    {whale_css}
+    <div class="ww-root">
+      <div class="ww-hero">
+        <div class="ww-head">
+          <div>
+            <h1 class="ww-title">AI Whale Watcher</h1>
+            <div class="ww-sub">Détecte les grosses transactions <b>BTC</b> / <b>ETH</b> (mempool). Le “Score IA” est une heuristique — pas un conseil financier.</div>
+            <div class="ww-chips">
+              <span class="ww-chip">{status_dot}<b>Statut</b> {status_label}</span>
+              <span class="ww-chip"><b>{threshold_chip}</b></span>
+              <span class="ww-chip"><b>Max</b> {limit} évènements</span>
+              <span class="ww-chip"><b>Dernière maj</b> {last_updated}</span>
+              <span class="ww-chip"><b>{source_chip}</b></span>
+            </div>
+            {notes_html}
+          </div>
+
+          <div class="ww-right">
+            <form method="get" action="/ai-whale-watcher">
+              <input type="hidden" name="asset" value="{asset}">
+              <input type="hidden" name="min_btc" value="{min_btc}">
+              <input type="hidden" name="min_eth" value="{min_eth}">
+              <input type="hidden" name="limit" value="{limit}">
+              <button class="ww-btn" type="submit">Rafraîchir</button>
+            </form>
+            <div class="ww-badge">Évènements: <b>{min(len(rows), limit)}</b></div>
+          </div>
         </div>
 
-        <div class="wow-actions">
-          <a class="btn" href="/ai-whale-watcher?min_btc={min_btc:g}&limit={limit}">Rafraîchir</a>
-          <div class="pill">Événements: <b>{total_count}</b></div>
-        </div>
-      </div>
+        <div class="ww-grid">
+          <div class="ww-card">
+            <h3>Filtres</h3>
+            <form class="ww-form" method="get" action="/ai-whale-watcher">
+              <div class="ww-field">
+                <label>Actif</label>
+                <select name="asset">
+                  <option value="BTC" {sel_btc}>BTC</option>
+                  <option value="ETH" {sel_eth}>ETH</option>
+                  <option value="ALL" {sel_all}>BTC + ETH</option>
+                </select>
+              </div>
+              <div class="ww-field">
+                <label>Seuil BTC</label>
+                <input name="min_btc" type="number" step="0.01" min="0" value="{min_btc:g}">
+              </div>
+              <div class="ww-field">
+                <label>Seuil ETH</label>
+                <input name="min_eth" type="number" step="0.01" min="0" value="{min_eth:g}">
+              </div>
+              <div class="ww-field">
+                <label>Nombre d'évènements</label>
+                <select name="limit">
+                  <option value="20" {_limit_sel(20)}>20</option>
+                  <option value="50" {_limit_sel(50)}>50</option>
+                  <option value="100" {_limit_sel(100)}>100</option>
+                  <option value="200" {_limit_sel(200)}>200</option>
+                </select>
+              </div>
+              <button class="ww-submit" type="submit">Appliquer</button>
+            </form>
+            <div class="ww-note">Astuce: un seuil très haut (ex: 100 BTC / 1 000 ETH) peut afficher 0 évènement. Les valeurs USD sont indicatives (CoinGecko).</div>
+          </div>
 
-      <div class="wow-grid">
-        <div class="wow-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Heure</th>
-                <th>Actif</th>
-                <th>Montant</th>
-                <th>Détails</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows_html}
-            </tbody>
-          </table>
+          <div class="ww-card">
+            <h3>Lecture rapide</h3>
+            <ul class="ww-ul">
+              <li><b>Vers exchange</b> = pression de vente potentielle (pas garanti)</li>
+              <li><b>Depuis exchange</b> = accumulation / retrait possible (pas garanti)</li>
+              <li><b>Wallet → Wallet</b> = mouvement on-chain (interprétation variable)</li>
+              <li>Ne poursuis pas le prix: utilise ça comme <b>contexte</b>, pas comme signal unique.</li>
+            </ul>
+          </div>
         </div>
 
-        <div class="wow-help">
-          <div class="wow-help-title">Comment utiliser cette page</div>
-          <ul>
-            <li>Surveille les <b>grosses transactions</b> et la destination (<b>exchange</b> vs <b>wallet</b>).</li>
-            <li>Vers exchange = pression de vente potentielle (pas garanti).</li>
-            <li>Hors exchange = accumulation/staking possible (pas garanti).</li>
-            <li>Combine avec <b>Market Regime</b> + niveaux techniques.</li>
-          </ul>
-          <div class="wow-tip">{tip_line}</div>
+        <div class="ww-card" style="margin-top:16px">
+          <h3>Derniers mouvements</h3>
+          <div class="ww-tablewrap">
+            <table class="ww-table">
+              <thead>
+                <tr>
+                  <th>Heure</th>
+                  <th>Actif</th>
+                  <th>Montant</th>
+                  <th>Valeur USD</th>
+                  <th>Type</th>
+                  <th>Adresses</th>
+                  <th>TX</th>
+                </tr>
+              </thead>
+              <tbody>
+                {table_html}
+              </tbody>
+            </table>
+          </div>
+          <div class="ww-note"><b>Historique:</b> les évènements sont conservés environ <b>{history_hours}h</b> (purge automatique après).</div>
         </div>
+
       </div>
     </div>
+    """
 
-    <div class="help-block">
-      <div class="help-title">📌 Aide – AI Whale Watcher</div>
-      <div class="help-grid">
-        <div class="help-card">
-          <div class="help-h">À quoi sert cette page ?</div>
-          <div class="help-p">Surveillance des mouvements “whales” et activité inhabituelle.</div>
-        </div>
-        <div class="help-card">
-          <div class="help-h">Comment l'utiliser ?</div>
-          <div class="help-p">Ne poursuis pas le prix: utilise ces infos comme contexte, pas comme signal unique.</div>
-        </div>
-      </div>
-
-      <div class="help-meta">
-        <div class="meta-pill">Données</div>
-        <div class="meta-pill">Blockchain.info + CoinGecko (prix)</div>
-        <div class="meta-pill">Dernière maj</div>
-        <div class="meta-pill"><span>{last_updated} UTC</span></div>
-        <div class="meta-pill">Statut</div>
-        <div class="meta-pill">{'OK' if api_ok else 'CACHE'}</div>
-      </div>
-
-      <div class="help-note">
-        Note données: certaines infos proviennent de sources externes (APIs, webhooks, données de marché) et peuvent avoir un délai ou des variations.
-        Rien ici n'est une garantie: vérifie toujours avant d'exécuter un trade.
-        <br><br>
-        <b>Historique:</b> les événements sont conservés environ <b>{history_hours:g}h</b> (purge automatique après).
-      </div>
-    </div>
-    
-    </div>
-"""
-
-    SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-    return _simple_page("AI Whale Watcher", content, sidebar_html=SID, request=request, show_title=False)
+    return _simple_page("AI Whale Watcher", body_html, request=request, show_title=False)
 

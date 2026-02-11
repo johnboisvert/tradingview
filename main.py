@@ -70097,9 +70097,11 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
     safe_title = _html_escape(title or "CryptoIA")
     sidebar_block = ""
     main_margin = "0"
+    page_wrap_margin = "0 auto"
     if sidebar_html:
         sidebar_block = "<aside class='sidebar'>%s</aside>" % sidebar_html
         main_margin = "280px"
+        page_wrap_margin = "0"
 
     title_block = ("<div class='page-title'>%s</div>" % safe_title) if show_title else ""
 
@@ -70135,8 +70137,9 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
       padding: 22px 22px 60px;
     }}
     .page-wrap {{
+      width: 100%;
       max-width: 1400px;
-      margin: 0 auto;
+      margin: {page_wrap_margin};
     }}
     .page-title {{
       font-size: 32px;

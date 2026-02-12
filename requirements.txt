@@ -16,7 +16,8 @@ python-multipart==0.0.6
 starlette==0.35.1
 
 # 📡 HTTP CLIENTS
-httpx==0.26.0
+# Note: httpx version compatible avec python-telegram-bot
+httpx==0.25.2
 aiohttp==3.9.1
 requests==2.31.0
 

@@ -1,9 +1,7 @@
-INFO:     Will watch for changes in these directories: ['/workspace/tradingview-main']
+INFO:     Started server process [1388]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [3472] using WatchFiles
-INFO:     Started server process [3475]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
 ⚠️  stripe non installé - mode simulation
 ⚠️  Coinbase Commerce non configuré
 ✅ Tables subscription OK (sqlite)
@@ -13,16 +11,7 @@ INFO:     Application startup complete.
 ✅ Table trades OK (sqlite)
 ✅ SQL Ready! Trades: 0
 ⚠️ Rate limiter désactivé (ModuleNotFoundError)
-✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770923406)
-✅ Routes d'abonnement activées
-✅ SessionMiddleware forcé en premier (request.session OK)
-⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
-✅ Compte admin par défaut créé: admin / admin123
-Routes 2-3 créées: AI News, AI Predictor
-Routes 4-7 créées
-Routes 4-7 créées
-Routes 4-7 créées
-✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770923407)
+✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770930632)
 ✅ Routes d'abonnement activées
 ✅ SessionMiddleware forcé en premier (request.session OK)
 ⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
@@ -30,93 +19,7 @@ Routes 2-3 créées: AI News, AI Predictor
 Routes 4-7 créées
 Routes 4-7 créées
 Routes 4-7 créées
-
-╔══════════════════════════════════════════════════════════════╗
-║           🚀 CryptoIA Trading Platform v2.0                  ║
-╠══════════════════════════════════════════════════════════════╣
-║  Environment: development                                   ║
-║  Database: sqlite                                           ║
-║  Stripe: ❌ Disabled                                       ║
-║  Coinbase: ❌ Disabled                                     ║
-║  Telegram: ❌ Disabled                                     ║
-║  OpenAI: ❌ Disabled                                       ║
-║  SendGrid: ❌ Disabled                                     ║
-╚══════════════════════════════════════════════════════════════╝
-
-✅ Tables d'authentification initialisées
-✅ Service d'authentification initialisé
-✅ Routes API v2 chargées
-✅ Routes API v2 enregistrées (/api/v2/*)
-✅ Service d'authentification chargé
-✅ Service données crypto chargé
-✅ Table portfolio OK (sqlite) -> /tmp/ai_trader/portfolio.db
-✅ Table plan_access vide, insertion des routes par défaut
-✅ Tables ebooks et contact créées (sqlite)
-✅ Base de données Academy initialisée
-✅ Academy DB créée dans startup_event
-⚠️ start_background_monitor: background_monitor absent/non-async (désactivé).
-✅ Table portfolio OK (sqlite) -> /tmp/ai_trader/portfolio.db
-✅ Tables ebooks et contact créées (sqlite)
-✅ Base de données Academy initialisée
-✅ Academy DB créée dans startup_event
-⚠️ start_background_monitor: background_monitor absent/non-async (désactivé).
-
-======================================================================
-🤖 MONITEUR AUTOMATIQUE DES TP/SL DÉMARRÉ
-   Vérification toutes les 30 secondes
-   Utilise current_price du webhook Pine Script
-======================================================================
-
-⚠️ Une instance du moniteur est déjà active, skip
-INFO:     127.0.0.1:44400 - "GET /academy/module/1/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45078 - "GET /academy/module/1/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45088 - "GET /academy/module/2/lesson/2 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45104 - "GET /academy/module/3/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45120 - "GET /academy/module/8/lesson/2 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39336 - "GET /academy HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39346 - "GET /academy HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54042 - "GET /academy HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54050 - "GET /academy HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52802 - "GET /academy HTTP/1.1" 200 OK
-INFO:     127.0.0.1:44032 - "GET /academy/module/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:44042 - "GET /academy/module/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54756 - "GET /academy HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54758 - "GET /academy/module/1/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54774 - "GET /academy/module/5/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54780 - "GET /academy/module/10/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54794 - "GET /academy/module/15/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54798 - "GET /academy/module/20/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54804 - "GET /academy/module/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54818 - "GET /academy/module/5 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54822 - "GET /academy/module/10 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54826 - "GET /academy/module/15 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54842 - "GET /academy/module/20 HTTP/1.1" 200 OK
-WARNING:  WatchFiles detected changes in 'youtube_videos.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [3475]
-INFO:     Started server process [3929]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-⚠️  stripe non installé - mode simulation
-⚠️  Coinbase Commerce non configuré
-✅ Tables subscription OK (sqlite)
-✅ Module subscription_system chargé (avec Coinbase Commerce)
-✅ Module subscription_system chargé
-⚠️  psycopg2 non installé - utilisation de SQLite en fallback
-✅ Table trades OK (sqlite)
-✅ SQL Ready! Trades: 0
-⚠️ Rate limiter désactivé (ModuleNotFoundError)
-✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770923773)
-✅ Routes d'abonnement activées
-✅ SessionMiddleware forcé en premier (request.session OK)
-⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
-Routes 2-3 créées: AI News, AI Predictor
-Routes 4-7 créées
-Routes 4-7 créées
-Routes 4-7 créées
-✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770923773)
+✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770930632)
 ✅ Routes d'abonnement activées
 ✅ SessionMiddleware forcé en premier (request.session OK)
 ⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
@@ -161,30 +64,26 @@ Routes 4-7 créées
 ======================================================================
 
 ⚠️ Une instance du moniteur est déjà active, skip
-INFO:     127.0.0.1:48402 - "GET /academy/module/11/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48408 - "GET /academy/module/15/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48416 - "GET /academy/module/18/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48226 - "GET /academy/module/1/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48242 - "GET /academy/module/1/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48256 - "GET /academy/module/2/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48268 - "GET /academy/module/3/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48270 - "GET /academy/module/4/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48274 - "GET /academy/module/5/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48282 - "GET /academy/module/6/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48294 - "GET /academy/module/7/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48308 - "GET /academy/module/8/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48314 - "GET /academy/module/9/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48320 - "GET /academy/module/10/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48322 - "GET /academy/module/11/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48336 - "GET /academy/module/12/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48352 - "GET /academy/module/13/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48356 - "GET /academy/module/14/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48372 - "GET /academy/module/15/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48378 - "GET /academy/module/16/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48390 - "GET /academy/module/17/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48392 - "GET /academy/module/18/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48402 - "GET /academy/module/19/lesson/1 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:48418 - "GET /academy/module/20/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48428 - "GET /academy/module/22/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60336 - "GET /academy/module/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60340 - "GET /academy/module/2 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60344 - "GET /academy/module/3 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60354 - "GET /academy/module/4 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60368 - "GET /academy/module/5 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60382 - "GET /academy/module/6 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60392 - "GET /academy/module/7 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60402 - "GET /academy/module/8 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60414 - "GET /academy/module/9 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60416 - "GET /academy/module/10 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60430 - "GET /academy/module/11 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60434 - "GET /academy/module/12 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60444 - "GET /academy/module/13 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60460 - "GET /academy/module/14 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60464 - "GET /academy/module/15 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60474 - "GET /academy/module/16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60486 - "GET /academy/module/17 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60488 - "GET /academy/module/18 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60492 - "GET /academy/module/19 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60494 - "GET /academy/module/20 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60510 - "GET /academy/module/21 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60518 - "GET /academy/module/22 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48428 - "GET /academy/module/21/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48438 - "GET /academy/module/22/lesson/1 HTTP/1.1" 200 OK

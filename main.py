@@ -68386,7 +68386,9 @@ async def academy_module(request: Request, module_id: int):
 
 @app.get("/academy/module/{module_id}/lesson/{lesson_id}", response_class=HTMLResponse)
 async def academy_lesson(request: Request, module_id: int, lesson_id: int):
-    """Page d'une leçon spécifique."""
+    """Page d'une leçon spécifique avec contenu complet."""
+    from academy_content import get_lesson_content
+    
     # Get user without requiring authentication
     user = None
     try:
@@ -68407,7 +68409,64 @@ async def academy_lesson(request: Request, module_id: int, lesson_id: int):
     if not lesson:
         return HTMLResponse("<h1>Leçon non trouvée</h1>", status_code=404)
     
-    # Simple lesson page
+    # Get lesson content
+    lesson_content = get_lesson_content(module_id, lesson_id)
+    
+    # Build key points HTML
+    key_points_html = ""
+    for point in lesson_content.get("key_points", []):
+        key_points_html += f"<li>{point}</li>"
+    
+    # Build quiz HTML if exists
+    quiz_html = ""
+    quiz_data = lesson_content.get("quiz", [])
+    if quiz_data and lesson_content.get("is_quiz"):
+        quiz_html = """
+        <div class="quiz-section">
+            <h2>🎯 Quiz</h2>
+            <div id="quiz-container">
+        """
+        for i, q in enumerate(quiz_data):
+            quiz_html += f"""
+                <div class="quiz-question" data-question="{i}" data-correct="{q['correct']}">
+                    <h4>Question {i+1}: {q['question']}</h4>
+                    <div class="quiz-options">
+            """
+            for j, opt in enumerate(q['options']):
+                quiz_html += f"""
+                        <label class="quiz-option">
+                            <input type="radio" name="q{i}" value="{j}">
+                            <span>{opt}</span>
+                        </label>
+                """
+            quiz_html += """
+                    </div>
+                </div>
+            """
+        quiz_html += """
+            </div>
+            <button class="btn btn-primary" onclick="checkQuiz()">Vérifier mes réponses</button>
+            <div id="quiz-result" style="display:none; margin-top: 20px;"></div>
+        </div>
+        """
+    
+    # Video section
+    video_html = ""
+    if lesson_content.get("video_url"):
+        video_html = f"""
+        <div class="video-container">
+            <iframe src="{lesson_content['video_url']}" frameborder="0" allowfullscreen></iframe>
+        </div>
+        """
+    else:
+        video_html = """
+        <div class="video-placeholder">
+            <span>🎬</span>
+            <p style="font-size: 18px; color: #94a3b8;">Vidéo de la leçon</p>
+            <p style="color: #64748b; margin-top: 10px;">La vidéo sera disponible prochainement</p>
+        </div>
+        """
+    
     html = f"""
     <!DOCTYPE html>
     <html lang="fr">
@@ -68423,6 +68482,7 @@ async def academy_lesson(request: Request, module_id: int, lesson_id: int):
                 background: #0a0f1c;
                 color: #f1f5f9;
                 min-height: 100vh;
+                line-height: 1.7;
             }}
             .container {{
                 max-width: 900px;
@@ -68434,6 +68494,7 @@ async def academy_lesson(request: Request, module_id: int, lesson_id: int):
                 gap: 10px;
                 margin-bottom: 30px;
                 font-size: 14px;
+                flex-wrap: wrap;
             }}
             .breadcrumb a {{
                 color: #64748b;
@@ -68445,24 +68506,36 @@ async def academy_lesson(request: Request, module_id: int, lesson_id: int):
             h1 {{
                 font-size: 32px;
                 margin-bottom: 20px;
+                background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
             }}
             .lesson-meta {{
                 display: flex;
                 gap: 20px;
                 margin-bottom: 30px;
                 color: #94a3b8;
+                flex-wrap: wrap;
             }}
-            .video-placeholder {{
+            .video-placeholder, .video-container {{
                 background: #1a2234;
                 border-radius: 16px;
-                padding: 100px 40px;
-                text-align: center;
                 margin-bottom: 30px;
+                overflow: hidden;
+            }}
+            .video-placeholder {{
+                padding: 80px 40px;
+                text-align: center;
             }}
             .video-placeholder span {{
                 font-size: 64px;
                 display: block;
                 margin-bottom: 20px;
+            }}
+            .video-container iframe {{
+                width: 100%;
+                height: 450px;
             }}
             .content-box {{
                 background: #1a2234;
@@ -68472,17 +68545,60 @@ async def academy_lesson(request: Request, module_id: int, lesson_id: int):
             }}
             .content-box h2 {{
                 font-size: 20px;
-                margin-bottom: 16px;
+                margin-bottom: 20px;
+                color: #06b6d4;
+            }}
+            .content-box h3 {{
+                font-size: 18px;
+                margin: 24px 0 12px 0;
+                color: #f1f5f9;
+            }}
+            .content-box h4 {{
+                font-size: 16px;
+                margin: 20px 0 10px 0;
+                color: #94a3b8;
             }}
             .content-box p {{
                 color: #94a3b8;
-                line-height: 1.8;
+                margin-bottom: 16px;
+            }}
+            .content-box ul, .content-box ol {{
+                color: #94a3b8;
+                padding-left: 24px;
+                margin-bottom: 16px;
+            }}
+            .content-box li {{
+                margin-bottom: 8px;
+            }}
+            .content-box strong {{
+                color: #06b6d4;
+            }}
+            .key-points {{
+                background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(139,92,246,0.1));
+                border: 1px solid rgba(6,182,212,0.3);
+            }}
+            .key-points ul {{
+                list-style: none;
+                padding: 0;
+            }}
+            .key-points li {{
+                padding: 12px 16px;
+                background: rgba(255,255,255,0.03);
+                border-radius: 8px;
+                margin-bottom: 8px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }}
+            .key-points li::before {{
+                content: "✅";
             }}
             .nav-buttons {{
                 display: flex;
                 justify-content: space-between;
                 gap: 16px;
                 margin-top: 40px;
+                flex-wrap: wrap;
             }}
             .btn {{
                 display: inline-flex;
@@ -68493,6 +68609,9 @@ async def academy_lesson(request: Request, module_id: int, lesson_id: int):
                 font-weight: 600;
                 text-decoration: none;
                 transition: all 0.3s;
+                border: none;
+                cursor: pointer;
+                font-size: 14px;
             }}
             .btn-primary {{
                 background: linear-gradient(135deg, #06b6d4, #8b5cf6);
@@ -68505,6 +68624,7 @@ async def academy_lesson(request: Request, module_id: int, lesson_id: int):
             }}
             .btn:hover {{
                 transform: translateY(-2px);
+                box-shadow: 0 10px 30px rgba(6,182,212,0.3);
             }}
             .progress-indicator {{
                 background: #1a2234;
@@ -68526,6 +68646,75 @@ async def academy_lesson(request: Request, module_id: int, lesson_id: int):
                 height: 100%;
                 background: linear-gradient(90deg, #06b6d4, #8b5cf6);
                 width: {int((lesson_id / len(module['lessons'])) * 100)}%;
+                transition: width 0.3s;
+            }}
+            .quiz-section {{
+                background: #1a2234;
+                border-radius: 16px;
+                padding: 30px;
+                margin-bottom: 30px;
+            }}
+            .quiz-section h2 {{
+                margin-bottom: 24px;
+                color: #06b6d4;
+            }}
+            .quiz-question {{
+                margin-bottom: 24px;
+                padding: 20px;
+                background: rgba(255,255,255,0.03);
+                border-radius: 12px;
+            }}
+            .quiz-question h4 {{
+                margin-bottom: 16px;
+                color: #f1f5f9;
+            }}
+            .quiz-options {{
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }}
+            .quiz-option {{
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px 16px;
+                background: rgba(255,255,255,0.05);
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }}
+            .quiz-option:hover {{
+                background: rgba(6,182,212,0.1);
+            }}
+            .quiz-option input {{
+                accent-color: #06b6d4;
+            }}
+            .quiz-option.correct {{
+                background: rgba(16,185,129,0.2);
+                border: 1px solid #10b981;
+            }}
+            .quiz-option.incorrect {{
+                background: rgba(239,68,68,0.2);
+                border: 1px solid #ef4444;
+            }}
+            #quiz-result {{
+                padding: 20px;
+                border-radius: 12px;
+                text-align: center;
+                font-size: 18px;
+            }}
+            #quiz-result.success {{
+                background: rgba(16,185,129,0.2);
+                color: #10b981;
+            }}
+            #quiz-result.fail {{
+                background: rgba(239,68,68,0.2);
+                color: #ef4444;
+            }}
+            @media (max-width: 768px) {{
+                .container {{ padding: 20px 16px; }}
+                h1 {{ font-size: 24px; }}
+                .video-container iframe {{ height: 250px; }}
             }}
         </style>
     </head>
@@ -68554,39 +68743,73 @@ async def academy_lesson(request: Request, module_id: int, lesson_id: int):
             <div class="lesson-meta">
                 <span>⏱️ {lesson['duration']}</span>
                 <span>📝 {lesson['type']}</span>
-                <span>📚 Module: {module['title']}</span>
+                <span>📚 {module['title']}</span>
             </div>
             
-            <div class="video-placeholder">
-                <span>🎬</span>
-                <p style="font-size: 18px; color: #94a3b8;">Contenu de la leçon</p>
-                <p style="color: #64748b; margin-top: 10px;">Cette section contiendra le contenu vidéo/article de la leçon.</p>
-            </div>
+            {video_html}
             
             <div class="content-box">
-                <h2>📖 Résumé de la leçon</h2>
-                <p>
-                    Cette leçon fait partie du module "{module['title']}". 
-                    Elle vous permettra d'approfondir vos connaissances en trading crypto.
-                    Le contenu complet sera disponible prochainement.
-                </p>
+                <h2>📖 Contenu de la leçon</h2>
+                {lesson_content.get('content', '<p>Contenu en cours de préparation...</p>')}
             </div>
             
-            <div class="content-box">
+            {quiz_html}
+            
+            <div class="content-box key-points">
                 <h2>✅ Points clés à retenir</h2>
-                <ul style="color: #94a3b8; padding-left: 20px; line-height: 2;">
-                    <li>Point clé 1 de cette leçon</li>
-                    <li>Point clé 2 de cette leçon</li>
-                    <li>Point clé 3 de cette leçon</li>
+                <ul>
+                    {key_points_html}
                 </ul>
             </div>
             
             <div class="nav-buttons">
-                {"<a href='/academy/module/" + str(module_id) + "/lesson/" + str(lesson_id - 1) + "' class='btn btn-secondary'>← Leçon précédente</a>" if lesson_id > 1 else "<span></span>"}
+                {"<a href='/academy/module/" + str(module_id) + "/lesson/" + str(lesson_id - 1) + "' class='btn btn-secondary'>← Leçon précédente</a>" if lesson_id > 1 else "<a href='/academy/module/" + str(module_id) + "' class='btn btn-secondary'>← Retour au module</a>"}
                 
                 {"<a href='/academy/module/" + str(module_id) + "/lesson/" + str(lesson_id + 1) + "' class='btn btn-primary'>Leçon suivante →</a>" if lesson_id < len(module['lessons']) else "<a href='/academy/module/" + str(module_id) + "' class='btn btn-primary'>✅ Terminer le module</a>"}
             </div>
         </div>
+        
+        <script>
+        function checkQuiz() {{
+            const questions = document.querySelectorAll('.quiz-question');
+            let correct = 0;
+            let total = questions.length;
+            
+            questions.forEach((q, i) => {{
+                const correctAnswer = parseInt(q.dataset.correct);
+                const selected = q.querySelector('input:checked');
+                const options = q.querySelectorAll('.quiz-option');
+                
+                options.forEach((opt, j) => {{
+                    opt.classList.remove('correct', 'incorrect');
+                    if (j === correctAnswer) {{
+                        opt.classList.add('correct');
+                    }}
+                }});
+                
+                if (selected) {{
+                    const selectedValue = parseInt(selected.value);
+                    if (selectedValue === correctAnswer) {{
+                        correct++;
+                    }} else {{
+                        selected.closest('.quiz-option').classList.add('incorrect');
+                    }}
+                }}
+            }});
+            
+            const result = document.getElementById('quiz-result');
+            result.style.display = 'block';
+            const percentage = Math.round((correct / total) * 100);
+            
+            if (percentage >= 80) {{
+                result.className = 'success';
+                result.innerHTML = `🎉 Bravo ! Vous avez obtenu ${{correct}}/${{total}} (${{percentage}}%) - Module validé !`;
+            }} else {{
+                result.className = 'fail';
+                result.innerHTML = `📚 Score: ${{correct}}/${{total}} (${{percentage}}%) - Il faut 80% pour valider. Réessayez !`;
+            }}
+        }}
+        </script>
     </body>
     </html>
     """

@@ -240,6 +240,41 @@ from fastapi import (
 # --- FastAPI app (doit exister avant les routes/middlewares ci-dessous) ---
 app = FastAPI()
 
+# --- Route deduplication safeguard (prevents duplicate /ai-news, etc.) ---
+def _dedupe_routes(_app):
+    """Keep only the last declared route per (path, methods)."""
+    try:
+        routes = list(getattr(_app.router, 'routes', []) or [])
+    except Exception:
+        return
+    seen = set()
+    kept_rev = []
+    for r in reversed(routes):
+        path = getattr(r, 'path', None)
+        methods = tuple(sorted(list(getattr(r, 'methods', []) or [])))
+        key = (path, methods)
+        if key in seen:
+            continue
+        seen.add(key)
+        kept_rev.append(r)
+    try:
+        _app.router.routes = list(reversed(kept_rev))
+    except Exception:
+        pass
+
+@app.on_event('startup')
+async def _startup_dedupe_routes():
+    # If the file accidentally defines the same route multiple times,
+    # this ensures only the last version is active (avoids random 500s).
+    try:
+        before = len(getattr(app.router, 'routes', []) or [])
+        _dedupe_routes(app)
+        after = len(getattr(app.router, 'routes', []) or [])
+        if after != before:
+            print(f'✅ Routes dédupliquées: {before} -> {after}')
+    except Exception as e:
+        print(f'⚠️ Route dedupe failed: {e}')
+
 from fastapi.responses import (
     HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse,
     StreamingResponse, FileResponse
@@ -70804,4 +70839,3 @@ try:
     _dedupe_routes_keep_last(app)
 except Exception as _e:
     print("⚠️ Route dedupe guard failed:", _e)
-

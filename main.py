@@ -35109,7 +35109,7 @@ async def ai_alerts_inbox(request: Request):
 @app.get("/ai-news", response_class=HTMLResponse)
 async def ai_news():
     """Actualités crypto - TOP 50"""
-    cryptos = await get_top_50_cryptos()
+    cryptos = (await get_top_50_cryptos()) or []
     news_html = ""
     for crypto in cryptos[:50]:
         price = crypto.get('current_price', 0)
@@ -35309,16 +35309,21 @@ print("Routes 2-3 créées: AI News, AI Predictor")
 @app.get("/ai-predictor", response_class=HTMLResponse)
 async def ai_predictor():
     """Prédictions de prix - TOP 50"""
-    cryptos = await get_top_50_cryptos()
-    
+    cryptos = (await get_top_50_cryptos()) or []
     # Gnrer les cartes pour les 3 priodes
     predictions_7d = ""
     predictions_30d = ""
     predictions_90d = ""
     
     for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
+        try:
+            price = float(crypto.get('current_price') or 0)
+        except (TypeError, ValueError):
+            price = 0.0
+        try:
+            change_24h = float(crypto.get('price_change_percentage_24h') or 0)
+        except (TypeError, ValueError):
+            change_24h = 0.0
         name = crypto.get('name', 'Unknown')
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
@@ -35633,7 +35638,7 @@ async def ai_predictor():
 @app.get("/ai-whale", response_class=HTMLResponse)
 async def ai_whale():
     """Détection mouvements whales - TOP 50"""
-    cryptos = await get_top_50_cryptos()
+    cryptos = (await get_top_50_cryptos()) or []
     whale_html = ""
     for crypto in cryptos[:50]:
         price = crypto.get('current_price', 0)
@@ -35837,7 +35842,7 @@ print("Routes 4-7 créées")
 @app.get("/ai-patterns", response_class=HTMLResponse)
 async def ai_patterns():
     """Reconnaissance patterns - TOP 50"""
-    cryptos = await get_top_50_cryptos()
+    cryptos = (await get_top_50_cryptos()) or []
     patterns_html = ""
     for crypto in cryptos[:50]:
         price = crypto.get('current_price', 0)
@@ -36049,7 +36054,7 @@ print("Routes 4-7 créées")
 @app.get("/ai-sentiment", response_class=HTMLResponse)
 async def ai_sentiment():
     """Analyse sentiment - TOP 50"""
-    cryptos = await get_top_50_cryptos()
+    cryptos = (await get_top_50_cryptos()) or []
     sentiment_html = ""
     for crypto in cryptos[:50]:
         price = crypto.get('current_price', 0)
@@ -36279,711 +36284,888 @@ print("Routes 4-7 créées")
 
 
 # ===========================
-# AI TOKEN SCANNER (WOW UI + real data)
+# AI TOKEN SCANNER - CACHE (anti 429)
 # ===========================
+AI_TOKEN_SCAN_CACHE_ENABLED = os.getenv("AI_TOKEN_SCAN_CACHE_ENABLED", "1").strip() not in ("0","false","False","no","NO")
+try:
+    AI_TOKEN_SCAN_CACHE_TTL = int(os.getenv("AI_TOKEN_SCAN_CACHE_TTL", "90") or "90")  # seconds
+except Exception:
+    AI_TOKEN_SCAN_CACHE_TTL = 90
 
-# Cache (évite rate-limit CoinGecko)
-TOKEN_SCANNER_CACHE: Dict[str, object] = {}
-TOKEN_SCANNER_CACHE_TTL_SEC = 60  # 1 min
+_AI_TOKEN_SCAN_CACHE = {}  # key -> {"ts": float, "data": dict}
 
-def _ts_cache_get(key: str, ttl: int = TOKEN_SCANNER_CACHE_TTL_SEC):
-    try:
-        item = TOKEN_SCANNER_CACHE.get(key)
-        if not item:
-            return None
-        ts = item.get("ts", 0)
-        if (time.time() - ts) > ttl:
-            return None
-        return item.get("value")
-    except Exception:
+def _ai_token_scan_cache_key(q: str, chain: str) -> str:
+    qn = (q or "").strip().lower()
+    cn = _norm_chain(chain)
+    return f"{cn}||{qn}"
+
+def _ai_token_scan_cache_get(key: str):
+    if not AI_TOKEN_SCAN_CACHE_ENABLED:
         return None
-
-def _ts_cache_set(key: str, value: object):
+    item = _AI_TOKEN_SCAN_CACHE.get(key)
+    if not item:
+        return None
     try:
-        TOKEN_SCANNER_CACHE[key] = {"ts": time.time(), "value": value}
+        ts = float(item.get("ts", 0))
+    except Exception:
+        ts = 0.0
+    if (time.time() - ts) > AI_TOKEN_SCAN_CACHE_TTL:
+        _AI_TOKEN_SCAN_CACHE.pop(key, None)
+        return None
+    return item.get("data")
+
+def _ai_token_scan_cache_set(key: str, data: dict):
+    if not AI_TOKEN_SCAN_CACHE_ENABLED:
+        return
+    if not isinstance(data, dict):
+        return
+    _AI_TOKEN_SCAN_CACHE[key] = {"ts": time.time(), "data": data}
+
+async def _ai_token_scanner_run_cached(q: str, chain: str):
+    """Exécute le scan avec cache mémoire (TTL) pour éviter de spammer les APIs."""
+    key = _ai_token_scan_cache_key(q, chain)
+    cached = _ai_token_scan_cache_get(key)
+    if cached is not None:
+        return cached, True
+
+    result = await _ai_token_scanner_run(q=q, chain=chain)
+    # On cache seulement les résultats "ok" (sinon on garde l’erreur fraîche)
+    try:
+        if isinstance(result, dict) and result.get("ok"):
+            _ai_token_scan_cache_set(key, result)
     except Exception:
         pass
 
-async def _coingecko_search(query: str) -> Dict[str, object]:
-    cache_key = f"cg:search:{query.lower().strip()}"
-    cached = _ts_cache_get(cache_key)
-    if cached is not None:
-        return cached
+    return result, False
 
-    url = "https://api.coingecko.com/api/v3/search"
+
+@app.get("/ai-token-scanner", response_class=HTMLResponse)
+async def ai_token_scanner_page(request: Request):
+    """
+    AI Token Scanner
+    - Page UI (sidebar + background) + formulaire de scan.
+    - Le contrôle d'accès (plans) est géré par le middleware permissions.
+      (Et l'admin doit toujours bypass, cf. logique d'accès globale.)
+    """
+    q = (request.query_params.get("q") or "").strip()
+    chain = _norm_chain(request.query_params.get("chain") or "auto")
+
+    result = None
+    error = None
+    cache_hit = False
+    if q:
+        try:
+            result, cache_hit = await _ai_token_scanner_run_cached(q=q, chain=chain)
+        except Exception as e:
+            cache_hit = False
+            error = f"Erreur lors du scan: {e}"
+
     try:
-        async with httpx.AsyncClient(timeout=12) as client:
-            r = await client.get(url, params={"query": query})
-            r.raise_for_status()
-            data = r.json()
-            _ts_cache_set(cache_key, data)
-            return data
+        html_page = _render_ai_token_scanner_page(q=q, chain=chain, result=result, error=error, cache_hit=cache_hit)
     except Exception as e:
-        return {"error": str(e), "coins": []}
+        print(f"❌ ai-token-scanner render error (GET): {e}")
+        # Fallback minimal (évite écran 500 vide)
+        html_page = f"<h1>Internal Server Error</h1><pre>{html.escape(str(e))}</pre>"
+    return HTMLResponse(content=html_page)
 
-async def _coingecko_markets(ids: List[str]) -> List[Dict[str, object]]:
-    ids = [i for i in ids if i]
-    if not ids:
-        return []
-    ids_key = ",".join(ids)
-    cache_key = f"cg:mk:{ids_key}"
-    cached = _ts_cache_get(cache_key)
-    if cached is not None:
-        return cached
 
-    url = "https://api.coingecko.com/api/v3/coins/markets"
-    params = {
-        "vs_currency": "usd",
-        "ids": ids_key,
-        "order": "market_cap_desc",
-        "per_page": min(50, max(1, len(ids))),
-        "page": 1,
-        "sparkline": "false",
-        "price_change_percentage": "24h",
-    }
+
+
+@app.post("/ai-token-scanner")
+async def ai_token_scanner_scan(request: Request):
+    """
+    Submit formulaire -> rend la même page avec les résultats.
+    (On évite Form() pour ne pas dépendre d'un import additionnel.)
+    """
+    form = await request.form()
+    q = (form.get("q") or "").strip()
+    chain = _norm_chain(form.get("chain") or "auto")
+
+    # Rendu direct (pas de redirect) pour afficher erreurs + résultats proprement
+    result = None
+    error = None
+    cache_hit = False
+    if not q:
+        error = "Entre un symbole, un nom ou une adresse de contrat."
+    else:
+        try:
+            result, cache_hit = await _ai_token_scanner_run_cached(q=q, chain=chain)
+        except Exception as e:
+            cache_hit = False
+            error = f"Erreur lors du scan: {e}"
+
     try:
-        async with httpx.AsyncClient(timeout=12) as client:
-            r = await client.get(url, params=params)
+        html_page = _render_ai_token_scanner_page(q=q, chain=chain, result=result, error=error, cache_hit=cache_hit)
+    except Exception as e:
+        print(f"❌ ai-token-scanner render error (POST): {e}")
+        html_page = f"<h1>Internal Server Error</h1><pre>{html.escape(str(e))}</pre>"
+    return HTMLResponse(content=html_page)
+
+
+@app.get("/api/ai-token-scanner/scan")
+async def api_ai_token_scanner_scan(q: str = "", chain: str = "auto"):
+    """
+    API JSON optionnelle (utile si un jour tu veux un scan en AJAX).
+    """
+    q = (q or "").strip()
+    chain = (chain or "auto").strip().lower()
+    if not q:
+        return JSONResponse({"ok": False, "error": "Missing q"}, status_code=400)
+    try:
+        result, cache_hit = await _ai_token_scanner_run_cached(q=q, chain=chain)
+        return JSONResponse({"ok": True, "result": result})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+# =========================
+# AI TOKEN SCANNER - ENGINE
+# =========================
+
+def _is_evm_address(s: str) -> bool:
+    s = (s or "").strip()
+    return bool(re.fullmatch(r"0x[a-fA-F0-9]{40}", s))
+
+def _safe_float(x, default=None):
+    try:
+        if x is None:
+            return default
+        return float(x)
+    except Exception:
+        return default
+
+def _fmt_usd(x):
+    v = _safe_float(x, None)
+    if v is None:
+        return "—"
+    # Format lisible
+    if abs(v) >= 1_000_000_000:
+        return f"${v/1_000_000_000:.2f}B"
+    if abs(v) >= 1_000_000:
+        return f"${v/1_000_000:.2f}M"
+    if abs(v) >= 1_000:
+        return f"${v/1_000:.2f}K"
+    return f"${v:,.2f}"
+
+def _fmt_num(x):
+    v = _safe_float(x, None)
+    if v is None:
+        return "—"
+    if abs(v) >= 1_000_000_000:
+        return f"{v/1_000_000_000:.2f}B"
+    if abs(v) >= 1_000_000:
+        return f"{v/1_000_000:.2f}M"
+    if abs(v) >= 1_000:
+        return f"{v/1_000:.2f}K"
+    return f"{v:,.2f}"
+
+def _norm_chain(chain: str) -> str:
+    c = (chain or "auto").strip().lower()
+    aliases = {
+        "eth": "ethereum",
+        "ethereum": "ethereum",
+        "bsc": "bsc",
+        "binance": "bsc",
+        "binance-smart-chain": "bsc",
+        "polygon": "polygon",
+        "matic": "polygon",
+        "arbitrum": "arbitrum",
+        "arb": "arbitrum",
+        "base": "base",
+        "sol": "solana",
+        "solana": "solana",
+        "avax": "avalanche",
+        "avalanche": "avalanche",
+    }
+    return aliases.get(c, c if c else "auto")
+
+
+# --- AI Token Scanner helpers -------------------------------------------------
+
+# Petit cache mémoire pour réduire les appels externes (CoinGecko est rapidement limité)
+_HTTP_CACHE = {}
+_HTTP_CACHE_LOCK = asyncio.Lock()
+
+def _http_cache_key(url, params):
+    if not params:
+        return url
+    try:
+        items = sorted((str(k), str(v)) for k, v in params.items())
+    except Exception:
+        return url
+    return url + "?" + "&".join([f"{k}={v}" for k, v in items])
+
+async def _fetch_json(url: str, params: dict = None, headers: dict = None, timeout: float = 15.0, cache_ttl: int = 0, ttl_seconds: int | None = None, use_coingecko_key: bool = True, **_ignored_kwargs):
+    """Fetch JSON with small retries + optional caching.
+
+    - Retries on 429 and some transient errors
+    - Adds CoinGecko API key header if configured
+    - Optional in-memory TTL cache to avoid rate limits
+    """
+    # Backward-compat: allow callers to pass ttl_seconds (alias of cache_ttl)
+    if ttl_seconds is not None and (not cache_ttl or cache_ttl <= 0):
+        try:
+            cache_ttl = int(ttl_seconds)
+        except Exception:
+            cache_ttl = 0
+
+    params = params or {}
+    headers = headers or {}
+
+    # Add user-agent
+    headers.setdefault("User-Agent", "CryptoIA/1.0 (+https://www.cryptoia.ca)")
+
+    # CoinGecko API key support (optional)
+    # - Demo key header: x-cg-demo-api-key
+    # - Pro key header:  x-cg-pro-api-key
+    cg_demo_key = (os.getenv("COINGECKO_API_KEY") or "").strip()
+    cg_pro_key = (os.getenv("COINGECKO_PRO_API_KEY") or "").strip()
+    if use_coingecko_key and "api.coingecko.com" in url:
+        if cg_pro_key:
+            headers.setdefault("x-cg-pro-api-key", cg_pro_key)
+        elif cg_demo_key:
+            headers.setdefault("x-cg-demo-api-key", cg_demo_key)
+        # Default cache TTL for CoinGecko if not provided
+        if cache_ttl <= 0:
+            cache_ttl = 45
+
+    cache_key = _http_cache_key(url, params) if cache_ttl and cache_ttl > 0 else None
+    now = time.time()
+
+    # Try cache
+    if cache_key:
+        async with _HTTP_CACHE_LOCK:
+            hit = _HTTP_CACHE.get(cache_key)
+            if hit:
+                exp, payload = hit
+                if exp > now:
+                    return payload
+                else:
+                    _HTTP_CACHE.pop(cache_key, None)
+
+    max_retries = 4
+    backoff = 1.0
+
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                r = await client.get(url, params=params, headers=headers)
+            # Handle rate limit
+            if r.status_code == 429:
+                # Rate limit: wait and retry (or fail on last attempt)
+                if attempt >= max_retries - 1:
+                    raise RuntimeError("CoinGecko est temporairement limité (HTTP 429). Réessaie dans 30–60 secondes.")
+                retry_after = r.headers.get("retry-after")
+                try:
+                    wait_s = float(retry_after) if retry_after else backoff
+                except Exception:
+                    wait_s = backoff
+                wait_s = max(1.0, min(60.0, wait_s))
+                await asyncio.sleep(wait_s)
+                backoff = min(60.0, backoff * 2.0)
+                continue
+
             r.raise_for_status()
-            data = r.json()
-            _ts_cache_set(cache_key, data)
-            return data
-    except Exception:
-        return []
+            payload = r.json()
 
-def _score_token(market_row: Dict[str, object]) -> Dict[str, object]:
-    """
-    Heuristique (pas un conseil financier):
-    - Momentum 24h
-    - Liquidité: vol/mcap
-    - Taille de volume (log)
-    """
-    sym = (market_row.get("symbol") or "").upper()
-    name = market_row.get("name") or sym or "—"
+            # Store cache
+            if cache_key:
+                async with _HTTP_CACHE_LOCK:
+                    _HTTP_CACHE[cache_key] = (time.time() + float(cache_ttl), payload)
 
-    price = market_row.get("current_price")
-    chg24 = market_row.get("price_change_percentage_24h") or 0.0
-    mcap = market_row.get("market_cap") or 0
-    vol = market_row.get("total_volume") or 0
-    rank = market_row.get("market_cap_rank") or None
+            return payload
 
-    # Liquidity proxy
-    liq = (vol / mcap) if (mcap and vol) else 0.0
+        except httpx.HTTPStatusError as e:
+            status = getattr(e.response, "status_code", None)
+            if status == 429:
+                if attempt >= max_retries - 1:
+                    raise RuntimeError("CoinGecko est temporairement limité (HTTP 429). Réessaie dans 30–60 secondes.") from e
+                # Already handled above, but just in case
+                await asyncio.sleep(backoff)
+                backoff = min(60.0, backoff * 2.0)
+                continue
+            # For other status codes, raise with a clean message
+            raise RuntimeError(f"Erreur API (HTTP {status})") from e
+        except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as e:
+            # Transient: retry
+            if attempt < max_retries - 1:
+                await asyncio.sleep(backoff)
+                backoff = min(60.0, backoff * 2.0)
+                continue
+            raise RuntimeError("Erreur réseau (timeout/connexion). Réessaie.") from e
+        except Exception as e:
+            # Unknown
+            raise
 
-    # Points
-    # Momentum: +/-25 pts
-    momentum_pts = max(-25.0, min(25.0, chg24 / 2.0))
 
-    # Liquidity: 0..25 pts (0.10 => 25)
-    liquidity_pts = min(25.0, max(0.0, liq * 250.0))
+def _pick_best_pair(pairs: list[dict]) -> dict | None:
+    if not pairs:
+        return None
+    def score(p):
+        liq = _safe_float((p.get("liquidity") or {}).get("usd"), 0.0) or 0.0
+        vol = _safe_float((p.get("volume") or {}).get("h24"), 0.0) or 0.0
+        return liq * 0.7 + vol * 0.3
+    return sorted(pairs, key=score, reverse=True)[0]
 
-    # Volume: 0..25 pts (log scale)
-    try:
-        vol_log = math.log10(max(1.0, float(vol)))
-    except Exception:
-        vol_log = 0.0
-    volume_pts = min(25.0, max(0.0, (vol_log - 5.0) * 5.0))  # 100k => 0, 100M => 15, 10B => 25
-
-    base = 50.0
-    score = base + momentum_pts + liquidity_pts + volume_pts
-    score = max(0.0, min(100.0, score))
-
-    # Simple label
-    if chg24 >= 8 and liq >= 0.03:
-        label = "Bullish"
-        badge = "good"
-    elif chg24 <= -8 and liq >= 0.03:
-        label = "Bearish"
-        badge = "bad"
-    elif liq < 0.01:
-        label = "Illiquide"
-        badge = "warn"
-    else:
-        label = "Neutre"
-        badge = "neutral"
-
-    # Flags
+def _risk_flags(summary: dict) -> list[str]:
     flags = []
-    if mcap and mcap < 20_000_000:
-        flags.append("small cap")
-    if liq < 0.01:
-        flags.append("low liquidity")
-    if abs(chg24) >= 15:
-        flags.append("high volatility")
+    liq = _safe_float(summary.get("liquidity_usd"), None)
+    vol = _safe_float(summary.get("volume_24h_usd"), None)
+    mcap = _safe_float(summary.get("market_cap_usd"), None)
+    fdv = _safe_float(summary.get("fdv_usd"), None)
+    age_days = _safe_float(summary.get("pair_age_days"), None)
+    chg24 = _safe_float(summary.get("price_change_24h_pct"), None)
 
+    if liq is not None and liq < 50_000:
+        flags.append("Liquidité très faible (< $50K) → glissement + manipulation plus faciles.")
+    if vol is not None and vol < 10_000:
+        flags.append("Volume 24h faible (< $10K) → activité limitée, risque de spread élevé.")
+    if fdv is not None and mcap is not None and mcap > 0:
+        ratio = fdv / mcap
+        if ratio >= 5:
+            flags.append(f"FDV très élevé vs market cap (≈ {ratio:.1f}x) → dilution potentielle.")
+    if age_days is not None and age_days < 7:
+        flags.append("Pair très récente (< 7 jours) → données limitées, risque plus élevé.")
+    if chg24 is not None and abs(chg24) >= 50:
+        flags.append("Variation 24h extrême (±50%+) → volatilité très forte.")
+    return flags
+
+def _sparkline_svg(values, width: int = 160, height: int = 38, stroke: str = "currentColor", w: int | None = None, h: int | None = None, **_kwargs) -> str:
+    """Return a tiny inline SVG sparkline (server-side, no JS)."""
+    # Compat: older callers pass w/h instead of width/height
+    if w is not None:
+        width = int(w)
+    if h is not None:
+        height = int(h)
+    if not values or len(values) < 2:
+        return ""
+    try:
+        vals = [float(v) for v in values if v is not None]
+    except Exception:
+        return ""
+    if len(vals) < 2:
+        return ""
+    lo, hi = min(vals), max(vals)
+    rng = (hi - lo) if (hi - lo) != 0 else 1.0
+    pts = []
+    for i, v in enumerate(vals):
+        x = 1 + (width - 2) * (i / (len(vals) - 1))
+        y = 1 + (height - 2) * ((hi - v) / rng)
+        pts.append(f"{x:.1f},{y:.1f}")
+    poly = " ".join(pts)
+    return (
+        f'<svg class="sparkline" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+        f'xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+        f'<polyline points="{poly}" fill="none" stroke="{stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />'
+        f'</svg>'
+    )
+
+
+async def _scan_with_dexscreener_by_address(address: str) -> dict:
+    url = f"https://api.dexscreener.com/latest/dex/tokens/{address}"
+    data = await _fetch_json(url)
+    pairs = data.get("pairs") or []
+    best = _pick_best_pair(pairs)
+
+    def map_pair(p):
+        liq = (p.get("liquidity") or {}).get("usd")
+        vol = (p.get("volume") or {}).get("h24")
+        fdv = p.get("fdv")
+        price = p.get("priceUsd")
+        created = p.get("pairCreatedAt")
+        age_days = None
+        if created:
+            try:
+                # DexScreener renvoie souvent un timestamp ms
+                ts = int(created)
+                if ts > 10_000_000_000:  # ms
+                    ts = ts / 1000.0
+                age_days = (time.time() - float(ts)) / 86400.0
+            except Exception:
+                age_days = None
+        return {
+            "chain": p.get("chainId"),
+            "dex": (p.get("dexId") or "").title(),
+            "pair": (p.get("baseToken") or {}).get("symbol"),
+            "quote": (p.get("quoteToken") or {}).get("symbol"),
+            "pair_url": p.get("url"),
+            "price_usd": _safe_float(price, None),
+            "liquidity_usd": _safe_float(liq, None),
+            "volume_24h_usd": _safe_float(vol, None),
+            "fdv_usd": _safe_float(fdv, None),
+            "pair_created_at": created,
+            "pair_age_days": age_days,
+        }
+
+    top_pairs = [map_pair(p) for p in pairs[:12]]
+    best_m = map_pair(best) if best else None
     return {
-        "id": market_row.get("id"),
-        "symbol": sym,
-        "name": name,
-        "price": price,
-        "chg24": float(chg24 or 0.0),
-        "mcap": mcap,
-        "vol": vol,
-        "liq": liq,
-        "rank": rank,
-        "score": float(score),
-        "label": label,
-        "badge": badge,
-        "flags": flags,
-        "image": market_row.get("image"),
+        "source": "dexscreener",
+        "token_address": address,
+        "best_pair": best_m,
+        "pairs": top_pairs,
     }
 
-def _fmt_money(x):
-    try:
-        if x is None:
-            return "—"
-        x = float(x)
-        if x >= 1_000_000_000:
-            return f"${x/1_000_000_000:.2f}B"
-        if x >= 1_000_000:
-            return f"${x/1_000_000:.2f}M"
-        if x >= 1_000:
-            return f"${x/1_000:.2f}K"
-        return f"${x:,.2f}"
-    except Exception:
-        return "—"
+async def _scan_with_coingecko(query: str) -> dict:
+    # Search
+    sdata = await _fetch_json("https://api.coingecko.com/api/v3/search", params={"query": query})
+    coins = sdata.get("coins") or []
+    if not coins:
+        raise ValueError("Aucun token trouvé sur CoinGecko avec cette recherche.")
+    coin = coins[0]
+    coin_id = coin.get("id")
+    if not coin_id:
+        raise ValueError("CoinGecko: id manquant.")
+    # Details
+    cdata = await _fetch_json(
+        f"https://api.coingecko.com/api/v3/coins/{coin_id}",
+        params={
+            "localization": "false",
+            "tickers": "false",
+            "market_data": "true",
+            "community_data": "true",
+            "developer_data": "false",
+            "sparkline": "false",
+        },
+    )
+    md = cdata.get("market_data") or {}
+    links = cdata.get("links") or {}
 
-def _fmt_price(x):
-    try:
-        if x is None:
-            return "—"
-        x = float(x)
-        if x >= 1:
-            return f"${x:,.4f}"
-        if x >= 0.01:
-            return f"${x:,.6f}"
-        return f"${x:,.8f}"
-    except Exception:
-        return "—"
+    def get_usd(d, key):
+        try:
+            return d.get(key, {}).get("usd")
+        except Exception:
+            return None
 
-def _fmt_pct(x):
-    try:
-        x = float(x)
-        sign = "+" if x >= 0 else ""
-        return f"{sign}{x:.2f}%"
-    except Exception:
-        return "—"
+    summary = {
+        "source": "coingecko",
+        "id": coin_id,
+        "name": cdata.get("name") or coin.get("name"),
+        "symbol": (cdata.get("symbol") or coin.get("symbol") or "").upper(),
+        "thumb": coin.get("thumb") or "",
+        "homepage": (links.get("homepage") or [""])[0] if isinstance(links.get("homepage"), list) else links.get("homepage"),
+        "coingecko_url": links.get("homepage", [""])[0] if isinstance(links.get("homepage"), list) else "",
+        "market_cap_usd": _safe_float(get_usd(md, "market_cap"), None),
+        "fdv_usd": _safe_float(get_usd(md, "fully_diluted_valuation"), None),
+        "volume_24h_usd": _safe_float(get_usd(md, "total_volume"), None),
+        "price_usd": _safe_float(get_usd(md, "current_price"), None),
+        "price_change_24h_pct": _safe_float(md.get("price_change_percentage_24h"), None),
+        "circulating_supply": _safe_float(md.get("circulating_supply"), None),
+        "total_supply": _safe_float(md.get("total_supply"), None),
+        "max_supply": _safe_float(md.get("max_supply"), None),
+        "rank": cdata.get("market_cap_rank"),
+        "categories": cdata.get("categories") or [],
+        "platforms": cdata.get("platforms") or {},
+    }
+    return summary
 
-def _render_ai_token_scanner_page(
-    request: Request,
-    q: str = "",
-    rows: List[Dict[str, object]] = None,
-    error: str = "",
-    info: str = "",
-) -> HTMLResponse:
-    rows = rows or []
-    q_safe = (q or "").strip()
+async def _ai_token_scanner_run(q: str, chain: str = "auto") -> dict:
+    """
+    Retourne un dict JSON-serializable:
+    {
+      "query": ..., "chain": ...,
+      "summary": {...}, "dex": {...}, "flags": [...]
+    }
+    """
+    q = (q or "").strip()
+    chain = _norm_chain(chain)
 
-    # --- UI: header pills
-    last_update = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-    status_txt = "OK" if not error else "DEGRADED"
+    # 1) Si adresse EVM -> DexScreener direct
+    if _is_evm_address(q):
+        dex = await _scan_with_dexscreener_by_address(q)
+        best = dex.get("best_pair") or {}
+        summary = {
+            "name": (best.get("pair") or "Token").upper(),
+            "symbol": (best.get("pair") or "").upper(),
+            "chain": best.get("chain") or chain,
+            "contract": q,
+            "price_usd": best.get("price_usd"),
+            "liquidity_usd": best.get("liquidity_usd"),
+            "volume_24h_usd": best.get("volume_24h_usd"),
+            "fdv_usd": best.get("fdv_usd"),
+            "pair_age_days": best.get("pair_age_days"),
+            "price_change_24h_pct": None,
+            "market_cap_usd": None,
+        }
+        flags = _risk_flags(summary)
+        return {"query": q, "chain": chain, "summary": summary, "dex": dex, "flags": flags}
 
-    # --- UI: results blocks
-    if not q_safe:
-        hero_note = "Entre un symbole (ex: BTC, ETH, SOL) puis clique Scanner."
-    else:
-        hero_note = f"Résultats pour: <b>{html.escape(q_safe)}</b>"
+    # 2) Sinon CoinGecko (nom/symbole)
+    cg = await _scan_with_coingecko(q)
 
-    # Empty / error panels
-    msg_html = ""
+    # 3) Si on a une adresse de contrat pour la chaîne demandée -> DexScreener pour la liquidité
+    contract = None
+    platforms = cg.get("platforms") or {}
+    if chain != "auto":
+        contract = platforms.get(chain) or None
+    # fallback: si chain=auto et une seule plateforme non vide, on prend la première
+    if not contract and platforms:
+        # garder la première adresse non vide
+        for k, v in platforms.items():
+            if v:
+                contract = v
+                if chain == "auto":
+                    chain = k
+                break
+
+    dex = None
+    liq = None
+    pair_age_days = None
+    if contract and _is_evm_address(contract):
+        try:
+            dex = await _scan_with_dexscreener_by_address(contract)
+            best = dex.get("best_pair") or {}
+            liq = best.get("liquidity_usd")
+            pair_age_days = best.get("pair_age_days")
+        except Exception:
+            dex = None
+
+    summary = {
+        "name": cg.get("name"),
+        "symbol": cg.get("symbol"),
+        "chain": chain,
+        "contract": contract,
+        "price_usd": cg.get("price_usd"),
+        "market_cap_usd": cg.get("market_cap_usd"),
+        "fdv_usd": cg.get("fdv_usd"),
+        "volume_24h_usd": cg.get("volume_24h_usd"),
+        "liquidity_usd": liq,
+        "pair_age_days": pair_age_days,
+        "price_change_24h_pct": cg.get("price_change_24h_pct"),
+        "rank": cg.get("rank"),
+        "homepage": cg.get("homepage"),
+        "thumb": cg.get("thumb"),
+        "categories": cg.get("categories") or [],
+    }
+
+    flags = _risk_flags(summary)
+
+    return {"query": q, "chain": chain, "summary": summary, "dex": dex, "flags": flags}
+
+
+# =========================
+# AI TOKEN SCANNER - RENDER
+# =========================
+
+def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error: str | None, cache_hit: bool = False) -> str:
+    q_esc = html.escape(q or "")
+    chain = _norm_chain(chain)
+    cache_badge = '<span class="badge-cache">Résultat en cache</span>' if cache_hit else ''
+    error_html = ""
     if error:
-        msg_html = f"""
-        <div class="notice danger">
-          <div class="notice-title">Erreur API</div>
-          <div class="notice-body">{html.escape(error)}</div>
-        </div>
-        """
-    elif info:
-        msg_html = f"""
-        <div class="notice info">
-          <div class="notice-title">Info</div>
-          <div class="notice-body">{html.escape(info)}</div>
-        </div>
-        """
-    elif q_safe and not rows:
-        msg_html = """
-        <div class="notice warn">
-          <div class="notice-title">Aucun résultat</div>
-          <div class="notice-body">Essaie un autre symbole (ex: BTC, ETH, SOL, PEPE) ou vérifie l’orthographe.</div>
-        </div>
-        """
-    elif not q_safe:
-        msg_html = """
-        <div class="notice neutral">
-          <div class="notice-title">Aucun résultat affiché</div>
-          <div class="notice-body">Les scores s’affichent après un scan. Les “targets watchlist” (si configurés) sont prioritaires.</div>
+        error_html = f"""
+        <div class="alert alert-error">
+          <strong>Erreur :</strong> {html.escape(error)}
         </div>
         """
 
-    # KPI cards for top row
-    kpi_html = ""
-    table_html = ""
-    if rows:
-        top = rows[0]
-        kpi_html = f"""
-        <div class="kpi-grid">
-          <div class="kpi">
-            <div class="kpi-label">Score IA</div>
-            <div class="kpi-value">{top["score"]:.0f}/100</div>
-            <div class="kpi-sub"><span class="badge {top["badge"]}">{html.escape(top["label"])}</span></div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label">Prix</div>
-            <div class="kpi-value">{_fmt_price(top["price"])}</div>
-            <div class="kpi-sub">{html.escape(top["symbol"])} • rang {top.get("rank") or "—"}</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label">Variation 24h</div>
-            <div class="kpi-value">{_fmt_pct(top["chg24"])}</div>
-            <div class="kpi-sub">Momentum 24h (CoinGecko)</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label">Liquidité (vol/mcap)</div>
-            <div class="kpi-value">{top["liq"]*100:.2f}%</div>
-            <div class="kpi-sub">Proxy de liquidité</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label">Market Cap</div>
-            <div class="kpi-value">{_fmt_money(top["mcap"])}</div>
-            <div class="kpi-sub">Capitalisation</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label">Volume 24h</div>
-            <div class="kpi-value">{_fmt_money(top["vol"])}</div>
-            <div class="kpi-sub">Volume total 24h</div>
-          </div>
-        </div>
-        """
+    result_html = ""
+    if result and isinstance(result, dict):
+        s = result.get("summary") or {}
+        flags = result.get("flags") or []
+        dex = result.get("dex")
 
-        # Table
-        trs = []
-        for r in rows[:20]:
-            flags = " • ".join(r.get("flags") or [])
-            flags_html = f'<div class="muted small">{html.escape(flags)}</div>' if flags else ""
-            img = r.get("image") or ""
-            img_html = f'<img class="coin-logo" src="{html.escape(img)}" alt=""/>' if img else '<div class="coin-logo ph"></div>'
-            trs.append(f"""
-            <tr>
-              <td class="td-coin">
-                <div class="coin">
-                  {img_html}
-                  <div>
-                    <div class="coin-name">{html.escape(r["name"])}</div>
-                    <div class="muted small">{html.escape(r["symbol"])} {('• rang ' + str(r.get('rank'))) if r.get('rank') else ''}</div>
-                  </div>
+        contract = s.get("contract") or ""
+        chain_lbl = (s.get("chain") or "—").upper()
+        name = html.escape(str(s.get("name") or "—"))
+        sym = html.escape(str(s.get("symbol") or "—"))
+        price = _fmt_usd(s.get("price_usd"))
+        mcap = _fmt_usd(s.get("market_cap_usd"))
+        fdv = _fmt_usd(s.get("fdv_usd"))
+        vol = _fmt_usd(s.get("volume_24h_usd"))
+        liq = _fmt_usd(s.get("liquidity_usd"))
+        rank = s.get("rank") or "—"
+        chg = s.get("price_change_24h_pct")
+        chg_txt = "—" if chg is None else f"{chg:.2f}%"
+        age = s.get("pair_age_days")
+        age_txt = "—" if age is None else f"{age:.1f} jours"
+
+        # Flags
+        if flags:
+            flags_html = "".join([f"<li>{html.escape(f)}</li>" for f in flags])
+            flags_block = f"""
+              <div class="card">
+                <div class="card-title">⚠️ Signaux de risque</div>
+                <ul class="list">{flags_html}</ul>
+              </div>
+            """
+        else:
+            flags_block = f"""
+              <div class="card">
+                <div class="card-title">✅ Signaux de risque</div>
+                <div class="muted">Aucun drapeau évident détecté avec les heuristiques de base.</div>
+              </div>
+            """
+
+        # Dex pairs table
+        pairs_block = ""
+        if dex and (dex.get("pairs") or []):
+            rows = []
+            for p in (dex.get("pairs") or [])[:10]:
+                url = p.get("pair_url") or ""
+                link = f'<a class="link" href="{html.escape(url)}" target="_blank" rel="noopener">Voir</a>' if url else "—"
+                rows.append(
+                    f"<tr>"
+                    f"<td>{html.escape(str(p.get('chain') or '—'))}</td>"
+                    f"<td>{html.escape(str(p.get('dex') or '—'))}</td>"
+                    f"<td>{html.escape(str(p.get('pair') or '—'))}/{html.escape(str(p.get('quote') or '—'))}</td>"
+                    f"<td>{_fmt_usd(p.get('liquidity_usd'))}</td>"
+                    f"<td>{_fmt_usd(p.get('volume_24h_usd'))}</td>"
+                    f"<td>{_fmt_usd(p.get('fdv_usd'))}</td>"
+                    f"<td>{link}</td>"
+                    f"</tr>"
+                )
+            pairs_block = f"""
+              <div class="card">
+                <div class="card-title">📊 Paires Dex (DexScreener)</div>
+                <div class="muted">Top paires détectées (tri approximatif par liquidité/volume).</div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Chaîne</th><th>DEX</th><th>Paire</th><th>Liquidité</th><th>Volume 24h</th><th>FDV</th><th>Lien</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {''.join(rows)}
+                    </tbody>
+                  </table>
                 </div>
-              </td>
-              <td class="mono">{r["score"]:.0f}</td>
-              <td class="mono">{_fmt_price(r["price"])}</td>
-              <td class="mono">{_fmt_pct(r["chg24"])}</td>
-              <td class="mono">{r["liq"]*100:.2f}%</td>
-              <td class="mono">{_fmt_money(r["mcap"])}</td>
-              <td class="mono">{_fmt_money(r["vol"])}</td>
-              <td><span class="badge {r["badge"]}">{html.escape(r["label"])}</span>{flags_html}</td>
-            </tr>
-            """)
+              </div>
+            """
 
-        table_html = f"""
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Résultats</div>
-              <div class="muted">Triés par score (max 20). Heuristique = contexte, pas un signal unique.</div>
+        contract_line = ""
+        if contract:
+            contract_line = f"""
+              <div class="row">
+                <div class="label">Contrat</div>
+                <div class="value mono">{html.escape(contract)}</div>
+              </div>
+            """
+
+        result_html = f"""
+        <div class="section">
+          <div class="grid">
+            <div class="card">
+              <div class="card-title">🧾 Résumé</div>
+              <div class="row"><div class="label">Nom</div><div class="value">{name}</div></div>
+              <div class="row"><div class="label">Symbole</div><div class="value">{sym}</div></div>
+              <div class="row"><div class="label">Chaîne</div><div class="value">{html.escape(chain_lbl)}</div></div>
+              {contract_line}
+              <div class="row"><div class="label">Prix</div><div class="value">{price}</div></div>
+              <div class="row"><div class="label">Market Cap</div><div class="value">{mcap}</div></div>
+              <div class="row"><div class="label">FDV</div><div class="value">{fdv}</div></div>
+              <div class="row"><div class="label">Volume 24h</div><div class="value">{vol}</div></div>
+              <div class="row"><div class="label">Liquidité (DEX)</div><div class="value">{liq}</div></div>
+              <div class="row"><div class="label">Δ 24h</div><div class="value">{chg_txt}</div></div>
+              <div class="row"><div class="label">Âge pair</div><div class="value">{age_txt}</div></div>
+              <div class="row"><div class="label">Rank</div><div class="value">{html.escape(str(rank))}</div></div>
+              <div class="muted" style="margin-top:10px;">
+                Note: données publiques (CoinGecko / DexScreener). Ceci n'est pas un conseil financier.
+              </div>
+              <div class="card" style="margin-top:16px; background: rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.18);">
+                <h3 style="margin:0 0 8px 0; color:#ffffff;">Comment utiliser cette page</h3>
+                <ul style="margin:0; padding-left:18px; color:#c7d0df; line-height:1.65;">
+                  <li><b>But :</b> scanner des tokens et sortir des <b>signaux de tri</b> (activité, momentum, liquidité) à partir de données publiques.</li>
+                  <li><b>Étapes :</b> ajuste les filtres → lance le scan → lis les “flags” → ouvre ensuite le graphique pour valider.</li>
+                  <li><b>Interprétation :</b> un flag “positif” = conditions intéressantes, pas une certitude; un flag “négatif” = prudence.</li>
+                  <li><b>Meilleure pratique :</b> combine avec <b>Market Regime</b> (tendance vs range) + ton plan de risque (Position Sizer / SL).</li>
+                </ul>
+              </div>
+
             </div>
+
+            {flags_block}
           </div>
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Actif</th>
-                  <th>Score</th>
-                  <th>Prix</th>
-                  <th>24h</th>
-                  <th>Vol/Mcap</th>
-                  <th>Mcap</th>
-                  <th>Volume</th>
-                  <th>Lecture</th>
-                </tr>
-              </thead>
-              <tbody>
-                {''.join(trs)}
-              </tbody>
-            </table>
-          </div>
+
+          {pairs_block}
         </div>
         """
 
-    # Quick chips (client-side set)
-    chips = ["BTC", "ETH", "SOL", "PEPE", "LINK", "DOGE"]
-    chips_html = "".join([f'<button type="button" class="chip" data-chip="{c}">{c}</button>' for c in chips])
-
-    # Full page HTML
-    html_out = f"""<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Token Scanner — CryptoIA</title>
-  {BASE_CSS}
+  {CSS}
   <style>
-    :root {{
-      --ts-card: rgba(255,255,255,0.06);
-      --ts-card2: rgba(255,255,255,0.04);
-      --ts-border: rgba(255,255,255,0.10);
-      --ts-border2: rgba(255,255,255,0.14);
-      --ts-text: rgba(255,255,255,0.92);
-      --ts-muted: rgba(255,255,255,0.68);
-      --ts-shadow: 0 18px 60px rgba(0,0,0,0.35);
-      --ts-radius: 20px;
-    }}
-    .page {{ display:flex; min-height:100vh; background: radial-gradient(1200px 600px at 55% 0%, rgba(124,58,237,0.25), rgba(0,0,0,0) 55%), radial-gradient(1000px 600px at 10% 30%, rgba(56,189,248,0.10), rgba(0,0,0,0) 60%), #050a12; }}
-    .sidebar {{ position:fixed; left:0; top:0; bottom:0; width:280px; overflow-y:auto; }}
-    .content {{ margin-left:280px; width:calc(100% - 280px); padding: 26px 28px 40px; }}
-    .wrap {{ max-width: 1260px; margin: 0 auto; }}
-
-    .hero {{
-      background: linear-gradient(135deg, rgba(124,58,237,0.25), rgba(56,189,248,0.10)) , rgba(255,255,255,0.02);
-      border: 1px solid var(--ts-border);
-      border-radius: 26px;
-      padding: 26px;
-      box-shadow: var(--ts-shadow);
-      position: relative;
-      overflow: hidden;
-    }}
-    .hero:before {{
-      content:"";
-      position:absolute; inset:-1px;
-      background: radial-gradient(900px 400px at 70% 0%, rgba(56,189,248,0.16), rgba(0,0,0,0) 55%),
-                  radial-gradient(700px 400px at 20% 30%, rgba(124,58,237,0.20), rgba(0,0,0,0) 60%);
-      opacity: 0.9;
-      pointer-events:none;
-    }}
-    .hero > * {{ position:relative; z-index:1; }}
-    .hero-top {{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }}
-    .title {{ display:flex; align-items:center; gap:12px; }}
-    .dot {{ width:10px; height:10px; border-radius:999px; background:#38bdf8; box-shadow:0 0 0 6px rgba(56,189,248,0.15); }}
-    h1 {{ margin:0; font-size: 46px; letter-spacing:-0.03em; }}
-    .subtitle {{ margin: 10px 0 0; color: var(--ts-muted); max-width: 900px; line-height: 1.45; }}
-    .pill-row {{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }}
-    .pill {{ display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background: rgba(255,255,255,0.06); border: 1px solid var(--ts-border); color: var(--ts-text); font-size: 13px; }}
-    .pill .k {{ color: var(--ts-muted); }}
-    .pill.good i {{ background:#22c55e; }}
-    .pill.warn i {{ background:#f59e0b; }}
-    .pill i {{ width:8px; height:8px; border-radius:999px; display:inline-block; }}
-
-    .grid {{ display:grid; grid-template-columns: 1.2fr 0.8fr; gap:16px; margin-top:18px; }}
-    @media (max-width: 1100px) {{
-      .content {{ margin-left:0; width:100%; padding:18px; }}
-      .sidebar {{ position:static; width:100%; }}
-      .grid {{ grid-template-columns: 1fr; }}
-      h1 {{ font-size: 38px; }}
+    .badge-cache {{
+      display: inline-block;
+      margin-left: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(0, 255, 200, 0.12);
+      border: 1px solid rgba(0, 255, 200, 0.25);
+      color: #9fffe9;
+      vertical-align: middle;
     }}
 
-    .card {{
-      background: var(--ts-card);
-      border: 1px solid var(--ts-border);
-      border-radius: var(--ts-radius);
-      padding: 18px;
+    .page {{
+      display: flex;
+      min-height: 100vh;
+      background: radial-gradient(circle at 20% 20%, rgba(0,255,255,0.10), transparent 40%),
+                  radial-gradient(circle at 80% 30%, rgba(0,140,255,0.10), transparent 45%),
+                  radial-gradient(circle at 50% 80%, rgba(0,255,140,0.06), transparent 50%),
+                  #060913;
     }}
-    .card-head {{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom: 12px; }}
-    .card-title {{ font-weight: 800; font-size: 16px; }}
-    .muted {{ color: var(--ts-muted); }}
-    .small {{ font-size: 12px; }}
-    .mono {{ font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }}
-
-    .form {{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }}
-    .input {{
+    .content {{
       flex: 1;
-      min-width: 240px;
+      padding: 30px 30px 60px 30px;
+    }}
+    .container {{
+      max-width: 1100px;
+      margin: 0 auto;
+    }}
+    .hero {{
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      backdrop-filter: blur(14px);
+    }}
+    .hero h1 {{
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0.2px;
+    }}
+    .hero p {{
+      margin: 8px 0 0 0;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.4;
+    }}
+    .form {{
+      display: grid;
+      grid-template-columns: 1fr 220px 140px;
+      gap: 10px;
+      margin-top: 16px;
+    }}
+    .input, .select {{
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
       background: rgba(0,0,0,0.25);
-      border: 1px solid rgba(255,255,255,0.14);
-      color: rgba(255,255,255,0.92);
-      padding: 12px 14px;
-      border-radius: 14px;
+      color: white;
       outline: none;
     }}
     .btn {{
-      background: linear-gradient(135deg, rgba(124,58,237,0.95), rgba(56,189,248,0.70));
-      color: #fff;
-      border: 0;
-      padding: 12px 16px;
-      border-radius: 14px;
-      font-weight: 800;
+      border: none;
       cursor: pointer;
-      box-shadow: 0 10px 30px rgba(124,58,237,0.25);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-weight: 700;
+      color: #001015;
+      background: linear-gradient(135deg, #00F5FF, #00FF88);
+      box-shadow: 0 12px 30px rgba(0,255,200,0.15);
     }}
-    .btn:active {{ transform: translateY(1px); }}
-    .chips {{ display:flex; gap:8px; flex-wrap:wrap; margin-top: 10px; }}
-    .chip {{
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: rgba(255,255,255,0.90);
-      border-radius: 999px;
-      padding: 7px 10px;
-      font-size: 12px;
-      cursor: pointer;
+    .btn:hover {{
+      filter: brightness(1.05);
     }}
-    .chip:hover {{ border-color: rgba(255,255,255,0.20); }}
-
-    .notice {{
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,0.12);
-      padding: 14px 14px;
-      background: rgba(0,0,0,0.22);
-      margin-top: 12px;
-    }}
-    .notice-title {{ font-weight: 900; margin-bottom: 6px; }}
-    .notice.info {{ border-color: rgba(56,189,248,0.25); }}
-    .notice.warn {{ border-color: rgba(245,158,11,0.25); }}
-    .notice.danger {{ border-color: rgba(239,68,68,0.25); }}
-    .notice.neutral {{ border-color: rgba(255,255,255,0.14); }}
-
-    .kpi-grid {{
-      margin-top: 16px;
-      display:grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 12px;
-    }}
-    @media (max-width: 1100px) {{
-      .kpi-grid {{ grid-template-columns: repeat(2, 1fr); }}
-    }}
-    .kpi {{
-      background: var(--ts-card2);
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 18px;
-      padding: 14px;
-    }}
-    .kpi-label {{ color: var(--ts-muted); font-size: 12px; }}
-    .kpi-value {{ font-size: 20px; font-weight: 900; margin-top: 6px; }}
-    .kpi-sub {{ margin-top: 6px; color: var(--ts-muted); font-size: 12px; }}
-
-    .badge {{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.06);
-      font-size: 12px;
-      font-weight: 800;
-    }}
-    .badge.good {{ border-color: rgba(34,197,94,0.35); background: rgba(34,197,94,0.10); }}
-    .badge.bad {{ border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.10); }}
-    .badge.warn {{ border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.10); }}
-    .badge.neutral {{ border-color: rgba(148,163,184,0.35); background: rgba(148,163,184,0.10); }}
-
-    .table-wrap {{ overflow:auto; border-radius: 18px; border: 1px solid rgba(255,255,255,0.10); }}
-    .table {{ width:100%; border-collapse: collapse; min-width: 980px; }}
-    .table thead th {{
-      text-align:left;
-      font-size: 12px;
+    .hint {{
+      margin-top: 10px;
       color: rgba(255,255,255,0.65);
-      padding: 12px 14px;
-      background: rgba(0,0,0,0.22);
-      border-bottom: 1px solid rgba(255,255,255,0.10);
-      letter-spacing: .08em;
-      text-transform: uppercase;
+      font-size: 13px;
     }}
-    .table tbody td {{
+    .alert {{
+      margin-top: 16px;
       padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.06);
+    }}
+    .alert-error {{
+      border-color: rgba(255,70,70,0.35);
+      background: rgba(255,70,70,0.12);
+    }}
+    .section {{
+      margin-top: 18px;
+    }}
+    .grid {{
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 14px;
+    }}
+    .card {{
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      backdrop-filter: blur(14px);
+    }}
+    .card-title {{
+      font-weight: 800;
+      margin-bottom: 10px;
+      letter-spacing: 0.2px;
+    }}
+    .row {{
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 10px;
+      padding: 6px 0;
       border-bottom: 1px solid rgba(255,255,255,0.06);
+    }}
+    .row:last-child {{ border-bottom: none; }}
+    .label {{ color: rgba(255,255,255,0.65); font-size: 13px; }}
+    .value {{ color: rgba(255,255,255,0.92); font-weight: 650; }}
+    .muted {{ color: rgba(255,255,255,0.65); font-size: 13px; }}
+    .mono {{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }}
+    .list {{ margin: 0; padding-left: 18px; color: rgba(255,255,255,0.85); }}
+    .table-wrap {{ overflow:auto; margin-top: 10px; }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 820px;
+    }}
+    th, td {{
+      text-align: left;
+      padding: 10px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.88);
+      font-size: 13px;
       vertical-align: top;
     }}
-    .td-coin {{ min-width: 260px; }}
-    .coin {{ display:flex; align-items:center; gap:12px; }}
-    .coin-logo {{
-      width: 34px; height: 34px;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.10);
-      background: rgba(255,255,255,0.06);
-      object-fit: cover;
+    th {{ color: rgba(255,255,255,0.65); font-weight: 800; }}
+    .link {{ color: #00F5FF; text-decoration: none; }}
+    .link:hover {{ text-decoration: underline; }}
+    @media (max-width: 980px) {{
+      .form {{ grid-template-columns: 1fr; }}
+      .grid {{ grid-template-columns: 1fr; }}
+      .row {{ grid-template-columns: 120px 1fr; }}
     }}
-    .coin-logo.ph {{ display:inline-block; }}
-    .coin-name {{ font-weight: 900; }}
   </style>
 </head>
 <body>
   <div class="page">
-    {SIDEBAR_HTML}
-    <main class="content">
-      <div class="wrap">
-        <section class="hero">
-          <div class="hero-top">
-            <div>
-              <div class="title">
-                <span class="dot"></span>
-                <h1>AI Token Scanner</h1>
-              </div>
-              <div class="subtitle">
-                On calcule un score basé sur <b>momentum 24h</b>, <b>liquidité (vol/mcap)</b>, et <b>taille du volume</b>.
-                {hero_note}
-              </div>
-              <div class="pill-row" style="margin-top:14px">
-                <span class="pill good"><i></i><span class="k">Statut</span> {status_txt}</span>
-                <span class="pill"><span class="k">Dernière maj</span> {last_update}</span>
-                <span class="pill"><span class="k">Source</span> CoinGecko</span>
-                <span class="pill"><span class="k">Mode</span> scan manuel</span>
-              </div>
-            </div>
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-              <a class="pill" href="/watchlist"><span class="k">Tip</span> Ajoute des targets</a>
+    {SIDEBAR}
+    <div class="content">
+      <div class="container">
+        <div class="hero">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:10px;height:10px;border-radius:99px;background:#00F5FF; box-shadow:0 0 20px rgba(0,245,255,0.35);"></div>
+            <h1>AI Token Scanner {cache_badge}</h1>
+          
+          
+            <div class="muted" style="margin-top:6px;">
+              On calcule un score basé sur: <b>momentum 24h</b>, <b>liquidité (vol/mcap)</b>, et <b>spikes de volume</b>.
+              Les alertes watchlist (targets) passent en priorité.
             </div>
           </div>
 
-          <div class="grid">
-            <div class="card">
-              <div class="card-head">
-                <div>
-                  <div class="card-title">Scanner un token</div>
-                  <div class="muted small">Symbole (BTC) ou liste (BTC, ETH, SOL). Les scores sont indicatifs.</div>
-                </div>
-              </div>
-              <form class="form" method="get" action="/ai-token-scanner">
-                <input class="input" type="text" name="q" value="{html.escape(q_safe)}" placeholder="Ex: BTC, ETH, SOL"/>
-                <button class="btn" type="submit">Scanner</button>
-              </form>
-              <div class="chips" id="chips">{chips_html}</div>
-              {msg_html}
-              {kpi_html}
-            </div>
-
-            <div class="card">
-              <div class="card-head">
-                <div>
-                  <div class="card-title">Lecture rapide</div>
-                  <div class="muted small">Comment lire le score</div>
-                </div>
-              </div>
-              <div class="muted" style="line-height:1.55">
-                <ul style="margin:0; padding-left:18px">
-                  <li><b>Score élevé</b> = momentum + liquidité + volume (pas une garantie).</li>
-                  <li><b>Vol/Mcap</b> bas = risques de slippage / illiquidité.</li>
-                  <li><b>Volatilité</b> élevée = prudence (surtout small caps).</li>
-                  <li>Utilise ça comme <b>contexte</b>, pas comme signal unique.</li>
-                </ul>
-              </div>
-            </div>
+          <div style="margin-top:14px;">
+            {cards_html if cards_html else '<div class="card">Aucun signal pour le moment. Ajoute des coins à ta watchlist ou reviens plus tard.</div>'}
           </div>
-        </section>
 
-        <div style="height:16px"></div>
-
-        {table_html}
-
-        <div style="height:18px"></div>
-
-        <section class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Aide</div>
-              <div class="muted small">À quoi sert cette page ?</div>
-            </div>
-          </div>
-          <div class="muted" style="line-height:1.55">
-            Cette page sert à repérer rapidement les tokens qui bougent (24h) avec une liquidité suffisante.
-            Les données proviennent d’APIs externes et peuvent avoir un délai ou des variations.
-            Rien ici n’est une recommandation d’investissement.
-          </div>
-          <div class="pill-row" style="margin-top:12px">
-            <span class="pill"><span class="k">Données</span> CoinGecko</span>
-            <span class="pill"><span class="k">Dernière maj</span> {last_update}</span>
-            <span class="pill"><span class="k">Statut</span> {status_txt}</span>
-          </div>
-        </section>
-
-      </div>
-    </main>
-  </div>
-
-  <script>
-    (function(){{
-      const chips = document.getElementById('chips');
-      if(!chips) return;
-      const input = document.querySelector('input[name="q"]');
-      chips.addEventListener('click', (e) => {{
-        const btn = e.target.closest('button[data-chip]');
-        if(!btn || !input) return;
-        input.value = btn.getAttribute('data-chip') || '';
-        input.form && input.form.submit();
-      }});
-    }})();
-  </script>
-</body>
-</html>
-"""
-    return HTMLResponse(html_out)
-
-@app.get("/ai-token-scanner")
-async def ai_token_scanner_page(request: Request, q: str = ""):
-    q = (q or "").strip()
-
-    # Page idle
-    if not q:
-        return _render_ai_token_scanner_page(request, q=q)
-
-    # Multi tokens support (BTC, ETH, SOL)
-    tokens = [t.strip() for t in re.split(r"[,\s]+", q) if t.strip()]
-    tokens = tokens[:5]
-
-    # Resolve ids
-    ids = []
-    resolved = []  # for info
-    for t in tokens:
-        # Contract support: only simple EVM '0x..' for now (display info)
-        if t.startswith("0x") and len(t) == 42:
-            return _render_ai_token_scanner_page(
-                request,
-                q=q,
-                rows=[],
-                info="Les adresses de contrat EVM ne sont pas encore supportées ici. Entre un symbole (ex: BTC)."
-            )
-
-        search = await _coingecko_search(t)
-        coins = (search or {}).get("coins") or []
-        if not coins:
-            continue
-
-        # best match by symbol
-        best = None
-        t_l = t.lower()
-        for c in coins:
-            if (c.get("symbol") or "").lower() == t_l:
-                best = c
-                break
-        if not best:
-            best = coins[0]
-        cid = best.get("id")
-        if cid:
-            ids.append(cid)
-            resolved.append(f"{(best.get('symbol') or '').upper()}→{best.get('name') or cid}")
-
-    if not ids:
-        return _render_ai_token_scanner_page(
-            request,
-            q=q,
-            rows=[],
-            info="Aucun token trouvé sur CoinGecko pour cette requête."
-        )
-
-    markets = await _coingecko_markets(ids)
-    if not markets:
-        return _render_ai_token_scanner_page(
-            request,
-            q=q,
-            rows=[],
-            error="Impossible de récupérer les données CoinGecko (rate-limit ou erreur réseau)."
-        )
-
-    scored = [_score_token(r) for r in markets]
-    scored.sort(key=lambda x: x.get("score", 0), reverse=True)
-
-    return _render_ai_token_scanner_page(
-        request,
-        q=q,
-        rows=scored,
-        info=("Résolution: " + ", ".join(resolved)) if resolved else ""
-    )
+          
+        </div>
+      </main>
+    </div>
+    """
+    return HTMLResponse(html)
 
 # ============= AI SETUP BUILDER (Explainable) =============
 async def _binance_klines(symbol: str, interval: str, limit: int = 500, ttl_seconds: int = 60):
@@ -65287,7 +65469,7 @@ async def ai_alerts_inbox(request: Request):
 @app.get("/ai-news", response_class=HTMLResponse)
 async def ai_news():
     """Actualités crypto - TOP 50"""
-    cryptos = await get_top_50_cryptos()
+    cryptos = (await get_top_50_cryptos()) or []
     news_html = ""
     for crypto in cryptos[:50]:
         price = crypto.get('current_price', 0)
@@ -65487,16 +65669,21 @@ print("Routes 2-3 créées: AI News, AI Predictor")
 @app.get("/ai-predictor", response_class=HTMLResponse)
 async def ai_predictor():
     """Prédictions de prix - TOP 50"""
-    cryptos = await get_top_50_cryptos()
-    
+    cryptos = (await get_top_50_cryptos()) or []
     # Gnrer les cartes pour les 3 priodes
     predictions_7d = ""
     predictions_30d = ""
     predictions_90d = ""
     
     for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
+        try:
+            price = float(crypto.get('current_price') or 0)
+        except (TypeError, ValueError):
+            price = 0.0
+        try:
+            change_24h = float(crypto.get('price_change_percentage_24h') or 0)
+        except (TypeError, ValueError):
+            change_24h = 0.0
         name = crypto.get('name', 'Unknown')
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
@@ -65811,7 +65998,7 @@ async def ai_predictor():
 @app.get("/ai-whale", response_class=HTMLResponse)
 async def ai_whale():
     """Détection mouvements whales - TOP 50"""
-    cryptos = await get_top_50_cryptos()
+    cryptos = (await get_top_50_cryptos()) or []
     whale_html = ""
     for crypto in cryptos[:50]:
         price = crypto.get('current_price', 0)
@@ -66015,7 +66202,7 @@ print("Routes 4-7 créées")
 @app.get("/ai-patterns", response_class=HTMLResponse)
 async def ai_patterns():
     """Reconnaissance patterns - TOP 50"""
-    cryptos = await get_top_50_cryptos()
+    cryptos = (await get_top_50_cryptos()) or []
     patterns_html = ""
     for crypto in cryptos[:50]:
         price = crypto.get('current_price', 0)
@@ -66227,7 +66414,7 @@ print("Routes 4-7 créées")
 @app.get("/ai-sentiment", response_class=HTMLResponse)
 async def ai_sentiment():
     """Analyse sentiment - TOP 50"""
-    cryptos = await get_top_50_cryptos()
+    cryptos = (await get_top_50_cryptos()) or []
     sentiment_html = ""
     for crypto in cryptos[:50]:
         price = crypto.get('current_price', 0)
@@ -70001,7 +70188,6 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
 </html>""".format(
         safe_title=safe_title,
         main_margin=main_margin,
-        page_wrap_margin=page_wrap_margin,
         sidebar_block=sidebar_block,
         title_block=title_block,
         body_html=body_html,
@@ -70346,8 +70532,7 @@ async def ai_whale_watcher(request: Request):
     # IMPORTANT: ne jamais écraser les classes globales (.page-wrap, .content, etc.)
     whale_css = """
     <style>
-      /* Alignement: évite le centrage involontaire et suit le layout des autres pages */
-      .ww-root{width:100%;max-width:none;margin:0;padding:0;}
+      .ww-root{max-width:1400px;margin:0; padding-top:6px;}
       .ww-hero{
         background: radial-gradient(1200px 600px at 20% 10%, rgba(120,70,255,.30), transparent 60%),
                     linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
@@ -70377,22 +70562,18 @@ async def ai_whale_watcher(request: Request):
         padding:14px;box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
       }
       .ww-card h3{margin:0 0 10px 0;font-size:16px;color:rgba(255,255,255,.92)}
-      .ww-form{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr auto;gap:10px;align-items:end}
-      @media (max-width: 1100px){.ww-form{grid-template-columns:1fr 1fr}.ww-submit{grid-column:1/-1;width:100%}}
+      .ww-form{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
       .ww-field{display:flex;flex-direction:column;gap:6px}
       .ww-field label{font-size:12px;color:rgba(255,255,255,.70)}
       .ww-field select,.ww-field input{
         height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
-        background:rgba(0,0,0,.18);color:rgba(255,255,255,.92);padding:0 12px;width:100%;min-width:0;
+        background:rgba(0,0,0,.18);color:rgba(255,255,255,.92);padding:0 12px;min-width:140px;
       }
-      .ww-field input{min-width:0}
+      .ww-field input{min-width:120px}
       .ww-submit{
         height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
-        background:rgba(255,255,255,.08);color:rgba(255,255,255,.92);padding:0 14px;font-weight:800;cursor:pointer;white-space:nowrap;
+        background:rgba(255,255,255,.08);color:rgba(255,255,255,.92);padding:0 14px;font-weight:800;cursor:pointer;
       }
-.ww-btnfield label{visibility:hidden;}
-.ww-btnfield{min-width:140px;}
-.ww-btnfield .ww-submit{width:100%;}
       .ww-tablewrap{overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,.10)}
       table.ww-table{width:100%;border-collapse:separate;border-spacing:0;background:rgba(0,0,0,.14);min-width:760px}
       .ww-table th,.ww-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;white-space:nowrap}
@@ -70517,10 +70698,7 @@ async def ai_whale_watcher(request: Request):
                   <option value="200" {_limit_sel(200)}>200</option>
                 </select>
               </div>
-<div class="ww-field ww-btnfield">
-  <label>&nbsp;</label>
-  <button class="ww-submit" type="submit">Appliquer</button>
-</div>
+              <button class="ww-submit" type="submit">Appliquer</button>
             </form>
             <div class="ww-note">Astuce: un seuil très haut (ex: 100 BTC / 1 000 ETH) peut afficher 0 évènement. Les valeurs USD sont indicatives (CoinGecko).</div>
           </div>

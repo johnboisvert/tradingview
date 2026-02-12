@@ -65326,7 +65326,7 @@ async def ai_signals_page(request: Request):
     </script>
     '''
     sidebar_html = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-    return HTMLResponse(content=_simple_page("AI SIGNALS", result_html, sidebar_html, request=request))
+    return HTMLResponse(content=_simple_page("AI SIGNALS", result_html, request=request, sidebar_html=sidebar_html, active_page="ai-signals"))
 @app.get("/ai-alerts", response_class=HTMLResponse)
 async def ai_alerts_inbox(request: Request):
     cards_html = ""
@@ -65467,13 +65467,13 @@ async def ai_news():
     cryptos = await get_top_50_cryptos()
     news_html = ""
     for crypto in cryptos[:50]:
-        price = _safe_float(crypto.get('current_price', 0))
-        change_24h = _safe_float(crypto.get('price_change_percentage_24h', 0))
+        price = _safe_float(crypto.get('current_price'), 0.0)
+        change_24h = _safe_float(crypto.get('price_change_percentage_24h'), 0.0)
         name = crypto.get('name', '')
         symbol = crypto.get('symbol', '').upper()
-        rank = crypto.get('market_cap_rank', 0)
-        mcap = _safe_float(crypto.get('market_cap', 0))
-        volume = crypto.get('total_volume', 0)
+        rank = int(_safe_float(crypto.get('market_cap_rank'), 0) or 0)
+        mcap = _safe_float(crypto.get('market_cap'), 0.0)
+        volume = _safe_float(crypto.get('total_volume'), 0.0)
         price_str = f"{price:,.6f}" if price < 1 else f"{price:,.2f}"
         change_class = "positive" if change_24h > 0 else "negative"
         trend = "📈" if change_24h > 0 else "📉"
@@ -65492,7 +65492,7 @@ async def ai_news():
                 </div>
                 <div class="change-info {change_class}">
                     <div class="label">24h</div>
-                    <div class="value">{change_24h:+.2f}%</div>
+                    <div class="value">{change_text}</div>
                 </div>
                 <div class="mcap-info">
                     <div class="label">Market Cap</div>
@@ -65671,29 +65671,57 @@ async def ai_predictor():
     predictions_30d = ""
     predictions_90d = ""
     
+    def _safe_float(x, default=0.0):
+        try:
+            return float(x) if x is not None else default
+        except Exception:
+            return default
+
     for crypto in cryptos[:50]:
-        price = _safe_float(crypto.get('current_price', 0))
-        change_24h = _safe_float(crypto.get('price_change_percentage_24h', 0))
-        name = crypto.get('name', 'Unknown')
+        raw_price = crypto.get('current_price')
+        raw_change = crypto.get('price_change_percentage_24h')
+        price = _safe_float(raw_price, 0.0)
+        change_24h = _safe_float(raw_change, 0.0)
+        name = crypto.get('name', '')
         symbol = crypto.get('symbol', '').upper()
-        rank = crypto.get('market_cap_rank', 0)
-        price_str = f"{price:,.6f}" if price < 1 else f"{price:,.2f}"
-        
-        # Prdictions
-        pred_7d = price * (1 + (change_24h * 3) / 100)
-        pred_30d = price * (1 + (change_24h * 10) / 100)
-        pred_90d = price * (1 + (change_24h * 25) / 100)
-        
-        pred_7d_str = f"{pred_7d:,.6f}" if pred_7d < 1 else f"{pred_7d:,.2f}"
-        pred_30d_str = f"{pred_30d:,.6f}" if pred_30d < 1 else f"{pred_30d:,.2f}"
-        pred_90d_str = f"{pred_90d:,.6f}" if pred_90d < 1 else f"{pred_90d:,.2f}"
-        
-        perc_7d = ((pred_7d - price) / price * 100) if price > 0 else 0
-        perc_30d = ((pred_30d - price) / price * 100) if price > 0 else 0
-        perc_90d = ((pred_90d - price) / price * 100) if price > 0 else 0
-        
-        change_class = "positive" if change_24h > 0 else "negative"
-        
+        rank = int(_safe_float(crypto.get('market_cap_rank'), 0) or 0)
+        if raw_price is None:
+            price_str = "N/A"
+        else:
+            price_str = f"{price:,.6f}" if price < 1 else f"{price:,.2f}"
+        if raw_change is None:
+            change_text = "N/A"
+            change_class = "neutral"
+        else:
+            change_text = f"{change_text}"
+        # change_class already set above (handles None safely)
+
+        # Prédictions (heuristique simple)
+        if raw_price is None or raw_change is None or price <= 0:
+            pred_7d_str = "N/A"
+            pred_30d_str = "N/A"
+            pred_90d_str = "N/A"
+            perc_7d_text = "N/A"
+            perc_30d_text = "N/A"
+            perc_90d_text = "N/A"
+            perc_7d_class = perc_30d_class = perc_90d_class = "neutral"
+        else:
+            pred_7d = price * (1 + (change_24h * 3) / 100)
+            pred_30d = price * (1 + (change_24h * 10) / 100)
+            pred_90d = price * (1 + (change_24h * 25) / 100)
+            pred_7d_str = f"{pred_7d:,.6f}" if pred_7d < 1 else f"{pred_7d:,.2f}"
+            pred_30d_str = f"{pred_30d:,.6f}" if pred_30d < 1 else f"{pred_30d:,.2f}"
+            pred_90d_str = f"{pred_90d:,.6f}" if pred_90d < 1 else f"{pred_90d:,.2f}"
+            perc_7d = ((pred_7d - price) / price * 100) if price > 0 else 0
+            perc_30d = ((pred_30d - price) / price * 100) if price > 0 else 0
+            perc_90d = ((pred_90d - price) / price * 100) if price > 0 else 0
+            perc_7d_text = f"{perc_7d:+.1f}%"
+            perc_30d_text = f"{perc_30d:+.1f}%"
+            perc_90d_text = f"{perc_90d:+.1f}%"
+            perc_7d_class = "positive" if perc_7d > 0 else ("negative" if perc_7d < 0 else "neutral")
+            perc_30d_class = "positive" if perc_30d > 0 else ("negative" if perc_30d < 0 else "neutral")
+            perc_90d_class = "positive" if perc_90d > 0 else ("negative" if perc_90d < 0 else "neutral")
+
         # Carte pour 7 jours
         card_7d = f"""
         <div class="pred-card">
@@ -65704,12 +65732,12 @@ async def ai_predictor():
             <div class="current-section">
                 <div class="label">Prix Actuel</div>
                 <div class="current-price">${price_str}</div>
-                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
+                <div class="price-change {change_class}">{change_text} (24h)</div>
             </div>
             <div class="prediction-section">
                 <div class="pred-label">Prédiction 7 jours</div>
                 <div class="pred-price">${pred_7d_str}</div>
-                <div class="pred-change {'positive' if perc_7d > 0 else 'negative'}">{perc_7d:+.1f}%</div>
+                <div class="pred-change {perc_7d_class}">{perc_7d_text}</div>
                 <div class="confidence">Confiance: 78%</div>
             </div>
         </div>
@@ -65725,12 +65753,12 @@ async def ai_predictor():
             <div class="current-section">
                 <div class="label">Prix Actuel</div>
                 <div class="current-price">${price_str}</div>
-                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
+                <div class="price-change {change_class}">{change_text} (24h)</div>
             </div>
             <div class="prediction-section">
                 <div class="pred-label">Prédiction 30 jours</div>
                 <div class="pred-price">${pred_30d_str}</div>
-                <div class="pred-change {'positive' if perc_30d > 0 else 'negative'}">{perc_30d:+.1f}%</div>
+                <div class="pred-change {perc_30d_class}">{perc_30d_text}</div>
                 <div class="confidence">Confiance: 65%</div>
             </div>
         </div>
@@ -65746,12 +65774,12 @@ async def ai_predictor():
             <div class="current-section">
                 <div class="label">Prix Actuel</div>
                 <div class="current-price">${price_str}</div>
-                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
+                <div class="price-change {change_class}">{change_text} (24h)</div>
             </div>
             <div class="prediction-section">
                 <div class="pred-label">Prédiction 90 jours</div>
                 <div class="pred-price">${pred_90d_str}</div>
-                <div class="pred-change {'positive' if perc_90d > 0 else 'negative'}">{perc_90d:+.1f}%</div>
+                <div class="pred-change {perc_90d_class}">{perc_90d_text}</div>
                 <div class="confidence">Confiance: 52%</div>
             </div>
         </div>
@@ -70080,7 +70108,7 @@ try:
 except Exception:
     from fastapi.responses import HTMLResponse as _HTMLResponse  # type: ignore
 
-def _simple_page(title: str, body_html: str, request=None, sidebar_html="", active_page: str | None = None, show_title: bool = True, sidebar: str | None = None, **_kwargs):
+def _simple_page(title: str, body_html: str, sidebar_html: str = "", request=None, active_page: str | None = None, show_title: bool = True, sidebar: str | None = None, **_kwargs):
     """Wrapper HTML stable (retourne toujours une HTMLResponse).
 
     - sidebar_html: HTML du menu gauche (optionnel).
@@ -70776,5 +70804,4 @@ try:
     _dedupe_routes_keep_last(app)
 except Exception as _e:
     print("⚠️ Route dedupe guard failed:", _e)
-
 

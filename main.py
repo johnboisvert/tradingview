@@ -37109,6 +37109,9 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
     .value {{ color: rgba(255,255,255,0.92); font-weight: 650; }}
     .muted {{ color: rgba(255,255,255,0.65); font-size: 13px; }}
     .mono {{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }}
+    .pill {{ display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color:#fff; text-decoration:none; font-size:12px; margin-left:6px; }}
+    .pill:hover{{ background: rgba(255,255,255,0.10); }}
+
     .list {{ margin: 0; padding-left: 18px; color: rgba(255,255,255,0.85); }}
     .table-wrap {{ overflow:auto; margin-top: 10px; }}
     table {{
@@ -37152,7 +37155,7 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
           </div>
 
           <div style="margin-top:14px;">
-            {cards_html if cards_html else '<div class="card">Aucun signal pour le moment. Ajoute des coins à ta watchlist ou reviens plus tard.</div>'}
+            {result_html if result_html else '<div class="card muted"><b>Aucun résultat affiché.</b><br>Entre un symbole (ex: <code>BTC</code>, <code>ETH</code>, <code>SOL</code>) ou une adresse de contrat, puis clique <b>Scanner</b>.<br>Essais rapides: <a class="pill" href="/ai-token-scanner?q=BTC">BTC</a> <a class="pill" href="/ai-token-scanner?q=ETH">ETH</a> <a class="pill" href="/ai-token-scanner?q=SOL">SOL</a> <a class="pill" href="/ai-token-scanner?q=PEPE">PEPE</a></div>'}
           </div>
 
           
@@ -67507,7 +67510,7 @@ def _render_ai_token_scanner_page(q: str, chain: str, result: dict | None, error
           </div>
 
           <div style="margin-top:14px;">
-            {cards_html if cards_html else '<div class="card">Aucun signal pour le moment. Ajoute des coins à ta watchlist ou reviens plus tard.</div>'}
+            {result_html if result_html else '<div class="card muted"><b>Aucun résultat affiché.</b><br>Entre un symbole (ex: <code>BTC</code>, <code>ETH</code>, <code>SOL</code>) ou une adresse de contrat, puis clique <b>Scanner</b>.<br>Essais rapides: <a class="pill" href="/ai-token-scanner?q=BTC">BTC</a> <a class="pill" href="/ai-token-scanner?q=ETH">ETH</a> <a class="pill" href="/ai-token-scanner?q=SOL">SOL</a> <a class="pill" href="/ai-token-scanner?q=PEPE">PEPE</a></div>'}
           </div>
 
           

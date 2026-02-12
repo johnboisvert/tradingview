@@ -7452,6 +7452,7 @@ def check_route_permission(user: dict, path: str) -> bool:
             "/static", "/health", "/favicon.ico",
             "/login", "/logout", "/register", "/pricing", "/pricing-complete",
             "/tv-webhook", "/api", "/webhook", "/contact", "/terms", "/privacy",
+            "/academy",  # Academy pages are public
         )
         if route_path in ("/", ""):
             return True
@@ -40219,6 +40220,7 @@ def check_route_permission(user: dict, path: str) -> bool:
             "/static", "/health", "/favicon.ico",
             "/login", "/logout", "/register", "/pricing", "/pricing-complete",
             "/tv-webhook", "/api", "/webhook", "/contact", "/terms", "/privacy",
+            "/academy",  # Academy pages are public
         )
         if route_path in ("/", ""):
             return True
@@ -67721,6 +67723,874 @@ async def crypto_academy(request: Request):
 async def trading_academy(request: Request):
     """Alias public de /academy pour le menu 'Trading Academy'."""
     return await academy(request)
+
+
+
+# ============================================
+# ACADEMY MODULES DATA & ROUTES
+# ============================================
+
+ACADEMY_MODULES = {
+    1: {
+        "id": 1,
+        "title": "Introduction au Trading Crypto",
+        "icon": "📚",
+        "level": "beginner",
+        "level_label": "🌱 Débutant",
+        "description": "Découvrez les bases du trading de cryptomonnaies, le fonctionnement des marchés et les concepts essentiels pour bien démarrer votre parcours de trader.",
+        "duration": "2h",
+        "students": "2,847",
+        "instructor": {"name": "Thomas Martin", "title": "Expert Trading Crypto"},
+        "learning_outcomes": [
+            "Comprendre le fonctionnement des marchés crypto",
+            "Maîtriser le vocabulaire essentiel du trading",
+            "Savoir lire les informations de base d'un actif",
+            "Créer et sécuriser votre premier compte exchange"
+        ],
+        "prerequisites": [],
+        "lessons": [
+            {"id": 1, "title": "Qu'est-ce que le trading crypto ?", "duration": "15 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Les différents types de cryptomonnaies", "duration": "12 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Comment fonctionne un exchange", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Vocabulaire essentiel du trader", "duration": "20 min", "type": "Article", "status": "locked"},
+            {"id": 5, "title": "Créer son compte sur un exchange", "duration": "10 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 6, "title": "Sécuriser son compte (2FA)", "duration": "8 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 7, "title": "Effectuer son premier dépôt", "duration": "12 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 8, "title": "Quiz : Les bases du trading", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    2: {
+        "id": 2,
+        "title": "Lecture des Graphiques",
+        "icon": "📊",
+        "level": "beginner",
+        "level_label": "🌱 Débutant",
+        "description": "Apprenez à lire et interpréter les graphiques de prix, les chandeliers japonais et les différents timeframes pour analyser le marché.",
+        "duration": "2.5h",
+        "students": "2,156",
+        "instructor": {"name": "Sophie Dubois", "title": "Analyste Technique Senior"},
+        "learning_outcomes": [
+            "Lire un graphique de prix en chandelier",
+            "Comprendre les différents timeframes",
+            "Identifier les tendances haussières et baissières",
+            "Utiliser les outils de base de TradingView"
+        ],
+        "prerequisites": [{"id": 1, "title": "Introduction au Trading Crypto"}],
+        "lessons": [
+            {"id": 1, "title": "Introduction aux graphiques", "duration": "12 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Les chandeliers japonais", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Anatomie d'une bougie", "duration": "15 min", "type": "Article", "status": "locked"},
+            {"id": 4, "title": "Les timeframes expliqués", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Identifier une tendance", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 6, "title": "Introduction à TradingView", "duration": "20 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 7, "title": "Configurer son workspace", "duration": "12 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 8, "title": "Exercice pratique : Analyse de BTC", "duration": "15 min", "type": "Exercice", "status": "locked"},
+            {"id": 9, "title": "Exercice pratique : Analyse de ETH", "duration": "15 min", "type": "Exercice", "status": "locked"},
+            {"id": 10, "title": "Quiz : Lecture des graphiques", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    3: {
+        "id": 3,
+        "title": "Gestion du Capital",
+        "icon": "💰",
+        "level": "beginner",
+        "level_label": "🌱 Débutant",
+        "description": "Maîtrisez les principes fondamentaux de la gestion de capital et de la préservation de votre portefeuille pour trader sereinement.",
+        "duration": "1.5h",
+        "students": "1,923",
+        "instructor": {"name": "Marc Laurent", "title": "Risk Manager"},
+        "learning_outcomes": [
+            "Définir votre capital de trading",
+            "Calculer la taille de vos positions",
+            "Appliquer la règle des 1-2%",
+            "Protéger votre capital contre les pertes"
+        ],
+        "prerequisites": [{"id": 1, "title": "Introduction au Trading Crypto"}],
+        "lessons": [
+            {"id": 1, "title": "Pourquoi la gestion du capital est cruciale", "duration": "10 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Définir son capital de trading", "duration": "12 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "La règle des 1-2%", "duration": "15 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Calculer la taille de position", "duration": "18 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 5, "title": "Diversification du portefeuille", "duration": "14 min", "type": "Article", "status": "locked"},
+            {"id": 6, "title": "Quiz : Gestion du capital", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    4: {
+        "id": 4,
+        "title": "Types d'Ordres",
+        "icon": "🎯",
+        "level": "beginner",
+        "level_label": "🌱 Débutant",
+        "description": "Comprenez les différents types d'ordres (market, limit, stop-loss) et apprenez quand les utiliser efficacement.",
+        "duration": "1.5h",
+        "students": "1,756",
+        "instructor": {"name": "Thomas Martin", "title": "Expert Trading Crypto"},
+        "learning_outcomes": [
+            "Maîtriser les ordres market et limit",
+            "Configurer des stop-loss efficaces",
+            "Utiliser les ordres take-profit",
+            "Comprendre le slippage"
+        ],
+        "prerequisites": [{"id": 1, "title": "Introduction au Trading Crypto"}, {"id": 2, "title": "Lecture des Graphiques"}],
+        "lessons": [
+            {"id": 1, "title": "Les ordres Market", "duration": "12 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Les ordres Limit", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Les ordres Stop-Loss", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Les ordres Take-Profit", "duration": "12 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Comprendre le slippage", "duration": "10 min", "type": "Article", "status": "locked"},
+            {"id": 6, "title": "Exercice : Placer des ordres", "duration": "15 min", "type": "Exercice", "status": "locked"},
+            {"id": 7, "title": "Quiz : Types d'ordres", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    5: {
+        "id": 5,
+        "title": "Sécurité & Wallets",
+        "icon": "🔐",
+        "level": "beginner",
+        "level_label": "🌱 Débutant",
+        "description": "Protégez vos actifs avec les meilleures pratiques de sécurité et la gestion des portefeuilles crypto.",
+        "duration": "1h",
+        "students": "1,534",
+        "instructor": {"name": "Pierre Secure", "title": "Expert Cybersécurité"},
+        "learning_outcomes": [
+            "Sécuriser vos comptes exchange",
+            "Comprendre les hot et cold wallets",
+            "Configurer un hardware wallet",
+            "Éviter les arnaques courantes"
+        ],
+        "prerequisites": [{"id": 1, "title": "Introduction au Trading Crypto"}],
+        "lessons": [
+            {"id": 1, "title": "Les bases de la sécurité crypto", "duration": "12 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Hot wallets vs Cold wallets", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Configurer un Ledger", "duration": "18 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 4, "title": "Les arnaques à éviter", "duration": "15 min", "type": "Article", "status": "locked"},
+            {"id": 5, "title": "Quiz : Sécurité crypto", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    6: {
+        "id": 6,
+        "title": "Psychologie du Trader",
+        "icon": "🧠",
+        "level": "beginner",
+        "level_label": "🌱 Débutant",
+        "description": "Développez le bon état d'esprit pour trader avec discipline et gérer vos émotions efficacement.",
+        "duration": "1.5h",
+        "students": "1,892",
+        "instructor": {"name": "Dr. Marie Psy", "title": "Psychologue du Trading"},
+        "learning_outcomes": [
+            "Identifier vos biais émotionnels",
+            "Gérer le FOMO et la peur",
+            "Développer une discipline de fer",
+            "Créer une routine de trading"
+        ],
+        "prerequisites": [],
+        "lessons": [
+            {"id": 1, "title": "L'importance de la psychologie", "duration": "12 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Le FOMO expliqué", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Gérer la peur et la cupidité", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Créer un journal de trading", "duration": "12 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 5, "title": "Routine du trader gagnant", "duration": "15 min", "type": "Article", "status": "locked"},
+            {"id": 6, "title": "Quiz : Psychologie du trading", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    7: {
+        "id": 7,
+        "title": "Supports & Résistances",
+        "icon": "📉",
+        "level": "intermediate",
+        "level_label": "📈 Intermédiaire",
+        "description": "Identifiez les niveaux clés du marché et apprenez à trader les zones de support et résistance.",
+        "duration": "2h",
+        "students": "1,456",
+        "instructor": {"name": "Sophie Dubois", "title": "Analyste Technique Senior"},
+        "learning_outcomes": [
+            "Identifier les supports et résistances",
+            "Tracer des lignes de tendance",
+            "Trader les rebonds et cassures",
+            "Combiner avec d'autres indicateurs"
+        ],
+        "prerequisites": [{"id": 2, "title": "Lecture des Graphiques"}],
+        "lessons": [
+            {"id": 1, "title": "Qu'est-ce qu'un support ?", "duration": "14 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Qu'est-ce qu'une résistance ?", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Tracer des niveaux clés", "duration": "18 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 4, "title": "Les lignes de tendance", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Trader les rebonds", "duration": "15 min", "type": "Vidéo", "status": "locked"},
+            {"id": 6, "title": "Trader les cassures", "duration": "15 min", "type": "Vidéo", "status": "locked"},
+            {"id": 7, "title": "Exercice pratique", "duration": "20 min", "type": "Exercice", "status": "locked"},
+            {"id": 8, "title": "Quiz : S&R", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    8: {
+        "id": 8,
+        "title": "Indicateurs Techniques",
+        "icon": "📊",
+        "level": "intermediate",
+        "level_label": "📈 Intermédiaire",
+        "description": "Maîtrisez RSI, MACD, Bollinger Bands et autres indicateurs essentiels pour votre analyse technique.",
+        "duration": "3h",
+        "students": "1,678",
+        "instructor": {"name": "Jean Technique", "title": "Trader Professionnel"},
+        "learning_outcomes": [
+            "Utiliser le RSI efficacement",
+            "Interpréter le MACD",
+            "Trader avec les Bollinger Bands",
+            "Combiner plusieurs indicateurs"
+        ],
+        "prerequisites": [{"id": 2, "title": "Lecture des Graphiques"}, {"id": 7, "title": "Supports & Résistances"}],
+        "lessons": [
+            {"id": 1, "title": "Introduction aux indicateurs", "duration": "12 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Le RSI en détail", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Divergences RSI", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Le MACD expliqué", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Signaux MACD", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 6, "title": "Bollinger Bands", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 7, "title": "Moyennes mobiles", "duration": "15 min", "type": "Vidéo", "status": "locked"},
+            {"id": 8, "title": "Stochastique", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 9, "title": "Combiner les indicateurs", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 10, "title": "Exercice pratique", "duration": "20 min", "type": "Exercice", "status": "locked"},
+            {"id": 11, "title": "Exercice avancé", "duration": "20 min", "type": "Exercice", "status": "locked"},
+            {"id": 12, "title": "Quiz : Indicateurs", "duration": "15 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    9: {
+        "id": 9,
+        "title": "Patterns Chartistes",
+        "icon": "🎨",
+        "level": "intermediate",
+        "level_label": "📈 Intermédiaire",
+        "description": "Reconnaissez les figures chartistes (triangles, têtes-épaules, double top/bottom) et tradez-les efficacement.",
+        "duration": "2.5h",
+        "students": "1,234",
+        "instructor": {"name": "Sophie Dubois", "title": "Analyste Technique Senior"},
+        "learning_outcomes": [
+            "Identifier les triangles",
+            "Reconnaître les têtes-épaules",
+            "Trader les double top/bottom",
+            "Calculer les objectifs de prix"
+        ],
+        "prerequisites": [{"id": 7, "title": "Supports & Résistances"}],
+        "lessons": [
+            {"id": 1, "title": "Introduction aux patterns", "duration": "12 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Les triangles", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Tête et épaules", "duration": "20 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Double top & bottom", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Les drapeaux et fanions", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 6, "title": "Les wedges", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 7, "title": "Calculer les objectifs", "duration": "15 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 8, "title": "Exercice : Identifier les patterns", "duration": "20 min", "type": "Exercice", "status": "locked"},
+            {"id": 9, "title": "Exercice : Trader les patterns", "duration": "20 min", "type": "Exercice", "status": "locked"},
+            {"id": 10, "title": "Quiz : Patterns chartistes", "duration": "12 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    10: {
+        "id": 10,
+        "title": "Chandeliers Avancés",
+        "icon": "🕯️",
+        "level": "intermediate",
+        "level_label": "📈 Intermédiaire",
+        "description": "Approfondissez votre connaissance des patterns de chandeliers japonais pour anticiper les retournements.",
+        "duration": "2h",
+        "students": "1,123",
+        "instructor": {"name": "Kenji Yamamoto", "title": "Expert Chandeliers Japonais"},
+        "learning_outcomes": [
+            "Maîtriser les patterns de retournement",
+            "Identifier les patterns de continuation",
+            "Combiner chandeliers et volumes",
+            "Appliquer en conditions réelles"
+        ],
+        "prerequisites": [{"id": 2, "title": "Lecture des Graphiques"}],
+        "lessons": [
+            {"id": 1, "title": "Rappel : Les bases des chandeliers", "duration": "10 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Doji et ses variantes", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Marteau et pendu", "duration": "12 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Engulfing patterns", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Morning & Evening Star", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 6, "title": "Three soldiers & crows", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 7, "title": "Harami patterns", "duration": "12 min", "type": "Vidéo", "status": "locked"},
+            {"id": 8, "title": "Exercice pratique", "duration": "18 min", "type": "Exercice", "status": "locked"},
+            {"id": 9, "title": "Quiz : Chandeliers avancés", "duration": "12 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    11: {
+        "id": 11,
+        "title": "Fibonacci & Retracements",
+        "icon": "📐",
+        "level": "intermediate",
+        "level_label": "📈 Intermédiaire",
+        "description": "Utilisez les niveaux de Fibonacci pour identifier les zones de retournement et les objectifs de prix.",
+        "duration": "1.5h",
+        "students": "987",
+        "instructor": {"name": "Sophie Dubois", "title": "Analyste Technique Senior"},
+        "learning_outcomes": [
+            "Comprendre la suite de Fibonacci",
+            "Tracer les retracements",
+            "Identifier les extensions",
+            "Combiner avec S&R"
+        ],
+        "prerequisites": [{"id": 7, "title": "Supports & Résistances"}],
+        "lessons": [
+            {"id": 1, "title": "La suite de Fibonacci", "duration": "10 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Les retracements", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Tracer sur TradingView", "duration": "12 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 4, "title": "Les extensions", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Zones de confluence", "duration": "15 min", "type": "Vidéo", "status": "locked"},
+            {"id": 6, "title": "Exercice pratique", "duration": "18 min", "type": "Exercice", "status": "locked"},
+            {"id": 7, "title": "Quiz : Fibonacci", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    12: {
+        "id": 12,
+        "title": "Analyse des Volumes",
+        "icon": "📈",
+        "level": "intermediate",
+        "level_label": "📈 Intermédiaire",
+        "description": "Comprenez l'importance des volumes dans la validation des mouvements de prix et des breakouts.",
+        "duration": "1.5h",
+        "students": "876",
+        "instructor": {"name": "Jean Technique", "title": "Trader Professionnel"},
+        "learning_outcomes": [
+            "Lire les volumes correctement",
+            "Valider les breakouts",
+            "Identifier les divergences",
+            "Utiliser le Volume Profile"
+        ],
+        "prerequisites": [{"id": 2, "title": "Lecture des Graphiques"}],
+        "lessons": [
+            {"id": 1, "title": "Introduction aux volumes", "duration": "12 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Volume et tendance", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Valider un breakout", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Divergences de volume", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Volume Profile", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 6, "title": "Quiz : Volumes", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    13: {
+        "id": 13,
+        "title": "Scalping & Day Trading",
+        "icon": "⚡",
+        "level": "advanced",
+        "level_label": "🔥 Avancé",
+        "description": "Maîtrisez les techniques de trading à court terme pour profiter des micro-mouvements du marché.",
+        "duration": "3h",
+        "students": "1,567",
+        "instructor": {"name": "Alex Speed", "title": "Scalper Professionnel"},
+        "learning_outcomes": [
+            "Configurer votre setup scalping",
+            "Identifier les opportunités rapides",
+            "Gérer le risque en scalping",
+            "Optimiser vos entrées/sorties"
+        ],
+        "prerequisites": [{"id": 8, "title": "Indicateurs Techniques"}, {"id": 3, "title": "Gestion du Capital"}],
+        "lessons": [
+            {"id": 1, "title": "Introduction au scalping", "duration": "14 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Setup et outils", "duration": "18 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 3, "title": "Timeframes pour scalping", "duration": "12 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Stratégie momentum", "duration": "20 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Stratégie breakout", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 6, "title": "Gestion du risque", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 7, "title": "Day trading vs Scalping", "duration": "14 min", "type": "Article", "status": "locked"},
+            {"id": 8, "title": "Session de trading live", "duration": "30 min", "type": "Vidéo", "status": "locked"},
+            {"id": 9, "title": "Exercice pratique", "duration": "25 min", "type": "Exercice", "status": "locked"},
+            {"id": 10, "title": "Quiz : Scalping", "duration": "12 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    14: {
+        "id": 14,
+        "title": "Swing Trading",
+        "icon": "📊",
+        "level": "advanced",
+        "level_label": "🔥 Avancé",
+        "description": "Apprenez à capturer les mouvements de plusieurs jours à plusieurs semaines avec des stratégies swing.",
+        "duration": "2h",
+        "students": "1,234",
+        "instructor": {"name": "Marc Swing", "title": "Swing Trader Expert"},
+        "learning_outcomes": [
+            "Identifier les setups swing",
+            "Gérer des positions multi-jours",
+            "Utiliser les alertes efficacement",
+            "Optimiser le ratio risque/récompense"
+        ],
+        "prerequisites": [{"id": 7, "title": "Supports & Résistances"}, {"id": 9, "title": "Patterns Chartistes"}],
+        "lessons": [
+            {"id": 1, "title": "Qu'est-ce que le swing trading ?", "duration": "12 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Timeframes optimaux", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Identifier les swings", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Stratégie pullback", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Gestion des positions", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 6, "title": "Configurer les alertes", "duration": "12 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 7, "title": "Exercice pratique", "duration": "20 min", "type": "Exercice", "status": "locked"},
+            {"id": 8, "title": "Quiz : Swing trading", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    15: {
+        "id": 15,
+        "title": "Trading de Breakout",
+        "icon": "🎯",
+        "level": "advanced",
+        "level_label": "🔥 Avancé",
+        "description": "Identifiez et tradez les cassures de niveaux clés avec des stratégies de breakout éprouvées.",
+        "duration": "2h",
+        "students": "1,098",
+        "instructor": {"name": "Jean Technique", "title": "Trader Professionnel"},
+        "learning_outcomes": [
+            "Identifier les vrais breakouts",
+            "Éviter les faux breakouts",
+            "Calculer les objectifs",
+            "Gérer les entrées et sorties"
+        ],
+        "prerequisites": [{"id": 7, "title": "Supports & Résistances"}, {"id": 12, "title": "Analyse des Volumes"}],
+        "lessons": [
+            {"id": 1, "title": "Anatomie d'un breakout", "duration": "14 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Breakout vs Fakeout", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Confirmation par volume", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Stratégie d'entrée", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Calculer les objectifs", "duration": "14 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 6, "title": "Exercice pratique", "duration": "20 min", "type": "Exercice", "status": "locked"},
+            {"id": 7, "title": "Quiz : Breakout trading", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    16: {
+        "id": 16,
+        "title": "Risk Management Pro",
+        "icon": "🛡️",
+        "level": "advanced",
+        "level_label": "🔥 Avancé",
+        "description": "Techniques avancées de gestion des risques, position sizing et protection du capital.",
+        "duration": "2h",
+        "students": "1,345",
+        "instructor": {"name": "Marc Laurent", "title": "Risk Manager"},
+        "learning_outcomes": [
+            "Calculer le Kelly Criterion",
+            "Optimiser le position sizing",
+            "Gérer les drawdowns",
+            "Créer un plan de risk management"
+        ],
+        "prerequisites": [{"id": 3, "title": "Gestion du Capital"}],
+        "lessons": [
+            {"id": 1, "title": "Risk management avancé", "duration": "14 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Kelly Criterion", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Position sizing avancé", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Gérer les drawdowns", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Corrélation des actifs", "duration": "12 min", "type": "Article", "status": "locked"},
+            {"id": 6, "title": "Créer son plan", "duration": "18 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 7, "title": "Exercice pratique", "duration": "20 min", "type": "Exercice", "status": "locked"},
+            {"id": 8, "title": "Quiz : Risk management", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    17: {
+        "id": 17,
+        "title": "Trading Mobile & Alertes",
+        "icon": "📱",
+        "level": "advanced",
+        "level_label": "🔥 Avancé",
+        "description": "Configurez vos alertes et tradez efficacement depuis votre mobile sans manquer d'opportunités.",
+        "duration": "1h",
+        "students": "876",
+        "instructor": {"name": "Thomas Martin", "title": "Expert Trading Crypto"},
+        "learning_outcomes": [
+            "Configurer TradingView mobile",
+            "Créer des alertes efficaces",
+            "Trader depuis votre téléphone",
+            "Automatiser les notifications"
+        ],
+        "prerequisites": [{"id": 2, "title": "Lecture des Graphiques"}],
+        "lessons": [
+            {"id": 1, "title": "Setup mobile optimal", "duration": "12 min", "type": "Tutoriel", "status": "in-progress"},
+            {"id": 2, "title": "Créer des alertes prix", "duration": "14 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 3, "title": "Alertes sur indicateurs", "duration": "12 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 4, "title": "Notifications Telegram", "duration": "10 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 5, "title": "Quiz : Trading mobile", "duration": "8 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    18: {
+        "id": 18,
+        "title": "Trading avec l'IA",
+        "icon": "🤖",
+        "level": "expert",
+        "level_label": "💎 Expert",
+        "description": "Exploitez la puissance de l'intelligence artificielle pour optimiser vos décisions de trading.",
+        "duration": "3h",
+        "students": "2,134",
+        "instructor": {"name": "Dr. AI Expert", "title": "Spécialiste IA Trading"},
+        "learning_outcomes": [
+            "Comprendre l'IA dans le trading",
+            "Utiliser les signaux IA",
+            "Interpréter les prédictions",
+            "Combiner IA et analyse technique"
+        ],
+        "prerequisites": [{"id": 8, "title": "Indicateurs Techniques"}],
+        "lessons": [
+            {"id": 1, "title": "L'IA dans le trading", "duration": "16 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Types d'algorithmes", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Signaux IA CryptoIA", "duration": "20 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 4, "title": "Interpréter les scores", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Backtesting avec IA", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 6, "title": "Limites de l'IA", "duration": "12 min", "type": "Article", "status": "locked"},
+            {"id": 7, "title": "Stratégie hybride", "duration": "20 min", "type": "Vidéo", "status": "locked"},
+            {"id": 8, "title": "Exercice pratique", "duration": "25 min", "type": "Exercice", "status": "locked"},
+            {"id": 9, "title": "Session live IA", "duration": "30 min", "type": "Vidéo", "status": "locked"},
+            {"id": 10, "title": "Quiz : Trading IA", "duration": "12 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    19: {
+        "id": 19,
+        "title": "Analyse On-Chain",
+        "icon": "⛓️",
+        "level": "expert",
+        "level_label": "💎 Expert",
+        "description": "Analysez les données blockchain pour anticiper les mouvements des whales et du marché.",
+        "duration": "2.5h",
+        "students": "987",
+        "instructor": {"name": "Chain Analyst", "title": "Expert Blockchain"},
+        "learning_outcomes": [
+            "Lire les données on-chain",
+            "Suivre les mouvements des whales",
+            "Analyser les flux d'exchange",
+            "Utiliser Glassnode et autres outils"
+        ],
+        "prerequisites": [{"id": 1, "title": "Introduction au Trading Crypto"}],
+        "lessons": [
+            {"id": 1, "title": "Introduction on-chain", "duration": "14 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Métriques essentielles", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Tracking des whales", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Flux d'exchange", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Utiliser Glassnode", "duration": "20 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 6, "title": "MVRV et autres ratios", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 7, "title": "Exercice pratique", "duration": "20 min", "type": "Exercice", "status": "locked"},
+            {"id": 8, "title": "Quiz : On-chain", "duration": "12 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    20: {
+        "id": 20,
+        "title": "DeFi & Yield Farming",
+        "icon": "🌾",
+        "level": "expert",
+        "level_label": "💎 Expert",
+        "description": "Maîtrisez les protocoles DeFi, le yield farming et les stratégies de rendement passif.",
+        "duration": "2.5h",
+        "students": "1,456",
+        "instructor": {"name": "DeFi Master", "title": "Expert DeFi"},
+        "learning_outcomes": [
+            "Comprendre les protocoles DeFi",
+            "Fournir de la liquidité",
+            "Optimiser le yield farming",
+            "Gérer les risques DeFi"
+        ],
+        "prerequisites": [{"id": 5, "title": "Sécurité & Wallets"}],
+        "lessons": [
+            {"id": 1, "title": "Introduction à la DeFi", "duration": "14 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Les DEX expliqués", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Fournir de la liquidité", "duration": "18 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 4, "title": "Impermanent Loss", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Yield Farming basics", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 6, "title": "Stratégies avancées", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 7, "title": "Risques et sécurité", "duration": "14 min", "type": "Article", "status": "locked"},
+            {"id": 8, "title": "Exercice pratique", "duration": "20 min", "type": "Exercice", "status": "locked"},
+            {"id": 9, "title": "Quiz : DeFi", "duration": "12 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    21: {
+        "id": 21,
+        "title": "Détection de Gems",
+        "icon": "💎",
+        "level": "expert",
+        "level_label": "💎 Expert",
+        "description": "Apprenez à identifier les projets crypto à fort potentiel avant qu'ils n'explosent.",
+        "duration": "2h",
+        "students": "1,789",
+        "instructor": {"name": "Gem Hunter", "title": "Analyste Fondamental"},
+        "learning_outcomes": [
+            "Analyser les tokenomics",
+            "Évaluer les équipes",
+            "Identifier les red flags",
+            "Trouver les gems early"
+        ],
+        "prerequisites": [{"id": 1, "title": "Introduction au Trading Crypto"}, {"id": 19, "title": "Analyse On-Chain"}],
+        "lessons": [
+            {"id": 1, "title": "Qu'est-ce qu'une gem ?", "duration": "12 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Analyser les tokenomics", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Évaluer l'équipe", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Red flags à éviter", "duration": "16 min", "type": "Vidéo", "status": "locked"},
+            {"id": 5, "title": "Outils de recherche", "duration": "18 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 6, "title": "Exercice : Analyser un projet", "duration": "25 min", "type": "Exercice", "status": "locked"},
+            {"id": 7, "title": "Quiz : Détection gems", "duration": "10 min", "type": "Quiz", "status": "locked"}
+        ]
+    },
+    22: {
+        "id": 22,
+        "title": "Masterclass Trading Pro",
+        "icon": "🏆",
+        "level": "expert",
+        "level_label": "💎 Expert",
+        "description": "Le module ultime combinant toutes les compétences pour devenir un trader professionnel.",
+        "duration": "4h",
+        "students": "2,345",
+        "instructor": {"name": "Trading Master", "title": "Trader Institutionnel"},
+        "learning_outcomes": [
+            "Créer votre système de trading",
+            "Backtester vos stratégies",
+            "Optimiser votre performance",
+            "Passer au niveau professionnel"
+        ],
+        "prerequisites": [{"id": 13, "title": "Scalping & Day Trading"}, {"id": 14, "title": "Swing Trading"}, {"id": 16, "title": "Risk Management Pro"}],
+        "lessons": [
+            {"id": 1, "title": "Mindset du trader pro", "duration": "16 min", "type": "Vidéo", "status": "in-progress"},
+            {"id": 2, "title": "Créer son système", "duration": "20 min", "type": "Vidéo", "status": "locked"},
+            {"id": 3, "title": "Définir ses règles", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 4, "title": "Backtesting complet", "duration": "25 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 5, "title": "Journal de trading pro", "duration": "16 min", "type": "Tutoriel", "status": "locked"},
+            {"id": 6, "title": "Analyser ses performances", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 7, "title": "Optimisation continue", "duration": "14 min", "type": "Vidéo", "status": "locked"},
+            {"id": 8, "title": "Gestion fiscale", "duration": "16 min", "type": "Article", "status": "locked"},
+            {"id": 9, "title": "Devenir trader à plein temps", "duration": "18 min", "type": "Vidéo", "status": "locked"},
+            {"id": 10, "title": "Session de coaching", "duration": "30 min", "type": "Vidéo", "status": "locked"},
+            {"id": 11, "title": "Plan d'action personnel", "duration": "20 min", "type": "Exercice", "status": "locked"},
+            {"id": 12, "title": "Exercice final", "duration": "30 min", "type": "Exercice", "status": "locked"},
+            {"id": 13, "title": "Exercice bonus", "duration": "25 min", "type": "Exercice", "status": "locked"},
+            {"id": 14, "title": "Quiz intermédiaire", "duration": "12 min", "type": "Quiz", "status": "locked"},
+            {"id": 15, "title": "Quiz final", "duration": "15 min", "type": "Quiz", "status": "locked"}
+        ]
+    }
+}
+
+@app.get("/academy/module/{module_id}", response_class=HTMLResponse)
+async def academy_module(request: Request, module_id: int):
+    """Page détaillée d'un module Academy."""
+    # Get user without requiring authentication
+    user = None
+    try:
+        user = get_user_from_request(request)
+    except:
+        pass
+    
+    if module_id not in ACADEMY_MODULES:
+        return HTMLResponse(
+            content="<h1>Module non trouvé</h1><p>Ce module n'existe pas.</p><a href='/academy'>Retour à l'Academy</a>",
+            status_code=404
+        )
+    
+    module = ACADEMY_MODULES[module_id]
+    user_progress = 0  # Would be fetched from DB
+    
+    try:
+        return templates.TemplateResponse("academy_module.html", {
+            "request": request,
+            "module": module,
+            "user": user,
+            "user_progress": user_progress
+        })
+    except Exception as e:
+        # Fallback
+        return HTMLResponse(f"<h1>{module['title']}</h1><p>Erreur de chargement du template: {e}</p>")
+
+@app.get("/academy/module/{module_id}/lesson/{lesson_id}", response_class=HTMLResponse)
+async def academy_lesson(request: Request, module_id: int, lesson_id: int):
+    """Page d'une leçon spécifique."""
+    # Get user without requiring authentication
+    user = None
+    try:
+        user = get_user_from_request(request)
+    except:
+        pass
+    
+    if module_id not in ACADEMY_MODULES:
+        return HTMLResponse("<h1>Module non trouvé</h1>", status_code=404)
+    
+    module = ACADEMY_MODULES[module_id]
+    lesson = None
+    for l in module["lessons"]:
+        if l["id"] == lesson_id:
+            lesson = l
+            break
+    
+    if not lesson:
+        return HTMLResponse("<h1>Leçon non trouvée</h1>", status_code=404)
+    
+    # Simple lesson page
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{lesson['title']} - {module['title']}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                font-family: 'Inter', sans-serif;
+                background: #0a0f1c;
+                color: #f1f5f9;
+                min-height: 100vh;
+            }}
+            .container {{
+                max-width: 900px;
+                margin: 0 auto;
+                padding: 40px 20px;
+            }}
+            .breadcrumb {{
+                display: flex;
+                gap: 10px;
+                margin-bottom: 30px;
+                font-size: 14px;
+            }}
+            .breadcrumb a {{
+                color: #64748b;
+                text-decoration: none;
+            }}
+            .breadcrumb a:hover {{
+                color: #06b6d4;
+            }}
+            h1 {{
+                font-size: 32px;
+                margin-bottom: 20px;
+            }}
+            .lesson-meta {{
+                display: flex;
+                gap: 20px;
+                margin-bottom: 30px;
+                color: #94a3b8;
+            }}
+            .video-placeholder {{
+                background: #1a2234;
+                border-radius: 16px;
+                padding: 100px 40px;
+                text-align: center;
+                margin-bottom: 30px;
+            }}
+            .video-placeholder span {{
+                font-size: 64px;
+                display: block;
+                margin-bottom: 20px;
+            }}
+            .content-box {{
+                background: #1a2234;
+                border-radius: 16px;
+                padding: 30px;
+                margin-bottom: 30px;
+            }}
+            .content-box h2 {{
+                font-size: 20px;
+                margin-bottom: 16px;
+            }}
+            .content-box p {{
+                color: #94a3b8;
+                line-height: 1.8;
+            }}
+            .nav-buttons {{
+                display: flex;
+                justify-content: space-between;
+                gap: 16px;
+                margin-top: 40px;
+            }}
+            .btn {{
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 14px 24px;
+                border-radius: 12px;
+                font-weight: 600;
+                text-decoration: none;
+                transition: all 0.3s;
+            }}
+            .btn-primary {{
+                background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+                color: white;
+            }}
+            .btn-secondary {{
+                background: #1a2234;
+                color: #f1f5f9;
+                border: 1px solid rgba(255,255,255,0.1);
+            }}
+            .btn:hover {{
+                transform: translateY(-2px);
+            }}
+            .progress-indicator {{
+                background: #1a2234;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 30px;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+            }}
+            .progress-bar {{
+                flex: 1;
+                height: 8px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 4px;
+                overflow: hidden;
+            }}
+            .progress-fill {{
+                height: 100%;
+                background: linear-gradient(90deg, #06b6d4, #8b5cf6);
+                width: {int((lesson_id / len(module['lessons'])) * 100)}%;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <nav class="breadcrumb">
+                <a href="/">🏠 Accueil</a>
+                <span>›</span>
+                <a href="/academy">📚 Academy</a>
+                <span>›</span>
+                <a href="/academy/module/{module_id}">{module['title']}</a>
+                <span>›</span>
+                <span style="color: #f1f5f9;">Leçon {lesson_id}</span>
+            </nav>
+            
+            <div class="progress-indicator">
+                <span>📊 Progression</span>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <span>{lesson_id}/{len(module['lessons'])}</span>
+            </div>
+            
+            <h1>{lesson['title']}</h1>
+            
+            <div class="lesson-meta">
+                <span>⏱️ {lesson['duration']}</span>
+                <span>📝 {lesson['type']}</span>
+                <span>📚 Module: {module['title']}</span>
+            </div>
+            
+            <div class="video-placeholder">
+                <span>🎬</span>
+                <p style="font-size: 18px; color: #94a3b8;">Contenu de la leçon</p>
+                <p style="color: #64748b; margin-top: 10px;">Cette section contiendra le contenu vidéo/article de la leçon.</p>
+            </div>
+            
+            <div class="content-box">
+                <h2>📖 Résumé de la leçon</h2>
+                <p>
+                    Cette leçon fait partie du module "{module['title']}". 
+                    Elle vous permettra d'approfondir vos connaissances en trading crypto.
+                    Le contenu complet sera disponible prochainement.
+                </p>
+            </div>
+            
+            <div class="content-box">
+                <h2>✅ Points clés à retenir</h2>
+                <ul style="color: #94a3b8; padding-left: 20px; line-height: 2;">
+                    <li>Point clé 1 de cette leçon</li>
+                    <li>Point clé 2 de cette leçon</li>
+                    <li>Point clé 3 de cette leçon</li>
+                </ul>
+            </div>
+            
+            <div class="nav-buttons">
+                {"<a href='/academy/module/" + str(module_id) + "/lesson/" + str(lesson_id - 1) + "' class='btn btn-secondary'>← Leçon précédente</a>" if lesson_id > 1 else "<span></span>"}
+                
+                {"<a href='/academy/module/" + str(module_id) + "/lesson/" + str(lesson_id + 1) + "' class='btn btn-primary'>Leçon suivante →</a>" if lesson_id < len(module['lessons']) else "<a href='/academy/module/" + str(module_id) + "' class='btn btn-primary'>✅ Terminer le module</a>"}
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(html)
 
 
 @app.get("/academy-progress", response_class=HTMLResponse)

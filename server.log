@@ -1,7 +1,7 @@
 INFO:     Will watch for changes in these directories: ['/workspace/tradingview-main']
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [1835] using WatchFiles
-INFO:     Started server process [1837]
+INFO:     Started reloader process [1267] using WatchFiles
+INFO:     Started server process [1269]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 ⚠️  stripe non installé - mode simulation
@@ -13,7 +13,7 @@ INFO:     Application startup complete.
 ✅ Table trades OK (sqlite)
 ✅ SQL Ready! Trades: 0
 ⚠️ Rate limiter désactivé (ModuleNotFoundError)
-✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770914423)
+✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770915856)
 ✅ Routes d'abonnement activées
 ✅ SessionMiddleware forcé en premier (request.session OK)
 ⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
@@ -21,7 +21,7 @@ Routes 2-3 créées: AI News, AI Predictor
 Routes 4-7 créées
 Routes 4-7 créées
 Routes 4-7 créées
-✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770914423)
+✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770915856)
 ✅ Routes d'abonnement activées
 ✅ SessionMiddleware forcé en premier (request.session OK)
 ⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
@@ -66,5 +66,8 @@ Routes 4-7 créées
 ======================================================================
 
 ⚠️ Une instance du moniteur est déjà active, skip
-INFO:     127.0.0.1:36450 - "GET /academy HTTP/1.1" 200 OK
-INFO:     127.0.0.1:36464 - "GET /academy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35382 - "GET /academy/module/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35396 - "GET /academy/module/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54974 - "GET /academy/module/1/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54984 - "GET /academy/module/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54992 - "GET /academy/module/3 HTTP/1.1" 200 OK

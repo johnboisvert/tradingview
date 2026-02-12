@@ -1,21 +1,51 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+set -e
 
-# Railway donne PORT automatiquement (souvent 8080)
-PORT="${PORT:-8080}"
+echo "🚀 Démarrage de CryptoIA Trading Platform..."
 
-# DB_DIR: si tu l'as mis dans Railway -> Variables, on le respecte
-DB_DIR="${DB_DIR:-/app/data}"
+# Variables d'environnement par défaut
+PORT=${PORT:-8080}
+HOST=${HOST:-0.0.0.0}
+WORKERS=${WORKERS:-1}
+LOG_LEVEL=${LOG_LEVEL:-info}
 
-echo "PORT=$PORT"
-echo "DB_DIR=$DB_DIR"
+# Afficher la configuration
+echo "📋 Configuration:"
+echo "   - Port: $PORT"
+echo "   - Host: $HOST"
+echo "   - Workers: $WORKERS"
+echo "   - Log Level: $LOG_LEVEL"
 
-mkdir -p "$DB_DIR" /tmp/ai_trader /tmp/ebooks || true
-chmod -R 777 "$DB_DIR" /tmp/ai_trader /tmp/ebooks || true
+# Vérifier les variables critiques
+if [ -z "$SECRET_KEY" ]; then
+    echo "⚠️  SECRET_KEY non défini - génération automatique"
+    export SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
+fi
 
-# Important: exec pour que Uvicorn soit PID1 (meilleure stabilité Railway)
-exec python -m uvicorn main:app \
-  --host 0.0.0.0 \
-  --port "$PORT" \
-  --proxy-headers \
-  --forwarded-allow-ips="*"
+# Initialiser la base de données si nécessaire
+echo "🗄️  Initialisation de la base de données..."
+python3 -c "
+try:
+    from auth_service import auth_service
+    print('✅ Tables auth initialisées')
+except Exception as e:
+    print(f'⚠️  Erreur init auth: {e}')
+
+try:
+    from subscription_system import init_subscription_tables
+    init_subscription_tables()
+    print('✅ Tables subscription initialisées')
+except Exception as e:
+    print(f'⚠️  Erreur init subscription: {e}')
+" 2>/dev/null || echo "⚠️  Initialisation partielle"
+
+# Démarrer l'application
+echo "🌐 Démarrage du serveur..."
+exec uvicorn main:app \
+    --host "$HOST" \
+    --port "$PORT" \
+    --workers "$WORKERS" \
+    --log-level "$LOG_LEVEL" \
+    --access-log \
+    --proxy-headers \
+    --forwarded-allow-ips "*"

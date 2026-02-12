@@ -3122,6 +3122,94 @@ if _app is not None:
     _app.add_middleware(HelpFooterMiddleware)
 
 # =============================
+# Sidebar Injection Middleware
+# Injecte automatiquement le SIDEBAR dans toutes les pages HTML qui ne l ont pas
+# =============================
+if BaseHTTPMiddleware and Response:
+    class SidebarInjectionMiddleware(BaseHTTPMiddleware):
+        """Middleware qui injecte le SIDEBAR dans toutes les pages HTML."""
+        
+        # Pages qui ne doivent PAS avoir le sidebar (login, admin, etc.)
+        EXCLUDED_PATHS = {
+            "/login", "/register", "/admin-login", "/logout",
+            "/health", "/favicon.ico"
+        }
+        EXCLUDED_PREFIXES = ("/api", "/static", "/assets", "/css", "/js", "/img", "/_")
+        
+        async def dispatch(self, request, call_next):
+            response = await call_next(request)
+            try:
+                ct = (response.headers.get("content-type") or "").lower()
+                path = (request.url.path or "")
+                
+                # Verifier si on doit exclure cette page
+                if path in self.EXCLUDED_PATHS:
+                    return response
+                for prefix in self.EXCLUDED_PREFIXES:
+                    if path.startswith(prefix):
+                        return response
+                
+                # Seulement HTML
+                if "text/html" not in ct:
+                    return response
+                
+                # Recuperer le body
+                body = b""
+                if hasattr(response, "body_iterator") and response.body_iterator is not None:
+                    async for chunk in response.body_iterator:
+                        body += chunk
+                else:
+                    body = getattr(response, "body", b"") or b""
+                
+                html_text = body.decode("utf-8", errors="ignore")
+                
+                # Verifier si le sidebar est deja present
+                if 'class="sidebar"' in html_text or 'id="sidebar"' in html_text or "class='sidebar'" in html_text or "id='sidebar'" in html_text:
+                    new_headers = dict(response.headers)
+                    new_headers.pop("content-length", None)
+                    return Response(content=body, status_code=response.status_code, headers=new_headers, media_type="text/html")
+                
+                # Verifier si cest une page HTML complete
+                if "</body>" not in html_text.lower():
+                    new_headers = dict(response.headers)
+                    new_headers.pop("content-length", None)
+                    return Response(content=body, status_code=response.status_code, headers=new_headers, media_type="text/html")
+                
+                # Recuperer le SIDEBAR global
+                sidebar_html = globals().get("SIDEBAR", "")
+                if not sidebar_html:
+                    new_headers = dict(response.headers)
+                    new_headers.pop("content-length", None)
+                    return Response(content=body, status_code=response.status_code, headers=new_headers, media_type="text/html")
+                
+                # CSS pour ajuster le contenu principal avec le sidebar
+                sidebar_wrapper_css = '<style>body{margin:0}.sidebar-injected-wrapper{margin-left:280px;min-height:100vh;transition:margin-left 0.3s ease}@media(max-width:768px){.sidebar-injected-wrapper{margin-left:0}.sidebar{transform:translateX(-100%);transition:transform 0.3s ease}.sidebar.active{transform:translateX(0)}}</style>'
+                
+                # Injecter le sidebar apres <body>
+                body_match = re.search(r'<body[^>]*>', html_text, re.IGNORECASE)
+                if body_match:
+                    body_tag_end = body_match.end()
+                    html_before = html_text[:body_tag_end]
+                    html_after = html_text[body_tag_end:]
+                    closing_body = re.search(r'</body>', html_after, re.IGNORECASE)
+                    if closing_body:
+                        content_before_close = html_after[:closing_body.start()]
+                        content_after_close = html_after[closing_body.start():]
+                        new_html = html_before + sidebar_wrapper_css + sidebar_html + '<div class="sidebar-injected-wrapper">' + content_before_close + '</div>' + content_after_close
+                        body = new_html.encode("utf-8")
+                
+                new_headers = dict(response.headers)
+                new_headers.pop("content-length", None)
+                return Response(content=body, status_code=response.status_code, headers=new_headers, media_type="text/html")
+            except Exception:
+                pass
+            return response
+
+_sidebar_app = globals().get("app")
+if _sidebar_app is not None:
+    _sidebar_app.add_middleware(SidebarInjectionMiddleware)
+
+# =============================
 # Meta statut global (affiché dans le footer d'aide)
 # =============================
 @app.get("/api/v2/meta/status")
@@ -52807,820 +52895,6 @@ async def telegram_page():
     return HTMLResponse(SIDEBAR + html)
 
 
-@app.get("/trades", response_class=HTMLResponse)
-async def trades_page():
-    html = SIDEBAR + """<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📊 Trades Premium</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; padding: 20px; min-height: 100vh; }
-        .container { max-width: 1600px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%); padding: 40px; border-radius: 20px; text-align: center; margin-bottom: 30px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4); position: relative; overflow: hidden; }
-        .header::before { content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%; background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.1), transparent); animation: shine 3s infinite; }
-        @keyframes shine { 0%, 100% { left: -100%; } 50% { left: 100%; } }
-        .header h1 { font-size: 48px; background: linear-gradient(to right, #60a5fa, #a78bfa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; position: relative; z-index: 1; }
-        .header p { color: #94a3b8; font-size: 18px; position: relative; z-index: 1; }
-        .nav { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; justify-content: center; }
-        .nav a { padding: 12px 24px; background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border-radius: 12px; text-decoration: none; color: #e2e8f0; transition: all 0.3s; border: 1px solid rgba(51, 65, 85, 0.5); }
-        .nav a:hover { background: rgba(51, 65, 85, 0.9); border-color: #60a5fa; transform: translateY(-2px); box-shadow: 0 10px 30px rgba(96, 165, 250, 0.2); }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .stat-card { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 30px; border-radius: 16px; border: 1px solid rgba(96, 165, 250, 0.2); position: relative; overflow: hidden; transition: all 0.3s; }
-        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 20px 50px rgba(96, 165, 250, 0.3); border-color: #60a5fa; }
-        .stat-card::before { content: ''; position: absolute; top: 0; right: 0; width: 100px; height: 100px; background: radial-gradient(circle, rgba(96, 165, 250, 0.1), transparent); border-radius: 50%; }
-        .stat-icon { font-size: 36px; margin-bottom: 15px; }
-        .stat-label { color: #94a3b8; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
-        .stat-value { font-size: 42px; font-weight: 700; background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
-        .stat-change { font-size: 13px; color: #10b981; }
-        .stat-change.negative { color: #ef4444; }
-        .controls { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(10px); padding: 25px; border-radius: 16px; margin-bottom: 30px; border: 1px solid rgba(51, 65, 85, 0.5); display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
-        button { padding: 14px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 15px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
-        button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6); }
-        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
-        .btn-danger:hover { box-shadow: 0 8px 25px rgba(239, 68, 68, 0.6); }
-        .btn-success { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
-        select, input { padding: 14px 20px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.5); border-radius: 12px; color: #e2e8f0; font-size: 14px; transition: all 0.3s; }
-        select:focus, input:focus { outline: none; border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1); }
-        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .chart-card { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); padding: 25px; border-radius: 16px; border: 1px solid rgba(51, 65, 85, 0.5); }
-        .chart-card h3 { color: #60a5fa; margin-bottom: 20px; font-size: 20px; }
-        .trades-container { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); padding: 25px; border-radius: 16px; border: 1px solid rgba(51, 65, 85, 0.5); overflow-x: auto; }
-        .trades-container h2 { color: #60a5fa; margin-bottom: 20px; font-size: 24px; display: flex; align-items: center; gap: 10px; }
-        table { width: 100%; border-collapse: collapse; min-width: 1100px; }
-        table th { background: rgba(15, 23, 42, 0.8); padding: 16px; text-align: left; color: #60a5fa; font-weight: 600; border-bottom: 2px solid #334155; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
-        table td { padding: 18px 16px; border-bottom: 1px solid rgba(51, 65, 85, 0.5); font-size: 14px; }
-        table tr { transition: all 0.2s; cursor: pointer; }
-        table tr:hover { background: rgba(15, 23, 42, 0.6); }
-        .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .badge-long { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .badge-short { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-        .badge-open { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
-        .badge-closed { background: rgba(148, 163, 184, 0.2); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); }
-        .confidence-meter { width: 100%; height: 8px; background: rgba(15, 23, 42, 0.8); border-radius: 4px; overflow: hidden; margin-top: 8px; }
-        .confidence-fill { height: 100%; background: linear-gradient(to right, #ef4444, #f59e0b, #10b981); border-radius: 4px; transition: width 0.5s ease; }
-        .rr-display { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; background: rgba(167, 139, 250, 0.1); border-radius: 8px; border: 1px solid rgba(167, 139, 250, 0.3); }
-        .rr-value { font-weight: 700; color: #a78bfa; }
-        .price { font-family: 'Courier New', monospace; font-weight: 600; }
-        .price-hit { color: #10b981; font-weight: 700; background: rgba(16, 185, 129, 0.1); padding: 4px 8px; border-radius: 6px; }
-        .price-sl-hit { color: #ef4444; font-weight: 700; background: rgba(239, 68, 68, 0.1); padding: 4px 8px; border-radius: 6px; }
-        .time-display { color: #94a3b8; font-size: 13px; white-space: nowrap; }
-        .time-display .date { display: block; font-size: 11px; color: #64748b; }
-        .spinner { border: 5px solid rgba(51, 65, 85, 0.3); border-top: 5px solid #60a5fa; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 60px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); z-index: 1000; align-items: center; justify-content: center; }
-        .modal.show { display: flex; }
-        .modal-content { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 40px; border-radius: 20px; max-width: 600px; width: 90%; border: 1px solid rgba(96, 165, 250, 0.3); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); max-height: 90vh; overflow-y: auto; }
-        .modal-close { float: right; font-size: 28px; cursor: pointer; color: #94a3b8; transition: color 0.3s; }
-        .modal-close:hover { color: #ef4444; }
-        .alert { padding: 16px 20px; border-radius: 12px; margin: 20px 0; display: flex; align-items: center; gap: 12px; font-size: 14px; }
-        .alert-success { background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981; color: #10b981; }
-        .alert-error { background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; color: #ef4444; }
-        .alert-info { background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; color: #3b82f6; }
-        @media (max-width: 768px) { .header h1 { font-size: 32px; } .stats-grid { grid-template-columns: 1fr; } .charts-grid { grid-template-columns: 1fr; } .controls { flex-direction: column; } button, select, input { width: 100%; } table { font-size: 12px; } table th, table td { padding: 10px 8px; } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-in { animation: fadeIn 0.5s ease; }
-    </style>
-""" + CSS + """</head>
-<body>
-    <div class="container">
-        <div class="header fade-in">
-            <h1>📊 Gestion des Trades Premium</h1>
-            <p>Plateforme avancée de suivi et d'analyse de trading</p>
-        </div>
-        
-        <div style="height:15px;"></div>
-        <div class="stats-grid fade-in" id="statsGrid">
-            <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-label">Total Trades</div><div class="stat-value" id="totalTrades">0</div><div class="stat-change" id="totalChange">+0 cette semaine</div></div>
-            <div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-label">Trades Ouverts</div><div class="stat-value" id="openTrades">0</div><div class="stat-change" id="openChange">Actifs maintenant</div></div>
-            <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Win Rate</div><div class="stat-value" id="winRate">0%</div><div class="stat-change" id="winChange">+0% ce mois</div></div>
-            <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">P&L Total</div><div class="stat-value" id="totalPnl">$0</div><div class="stat-change" id="pnlChange">+$0 aujourd'hui</div></div>
-            <div class="stat-card"><div class="stat-icon">🎲</div><div class="stat-label">Confiance Moyenne</div><div class="stat-value" id="avgConfidence">0%</div><div class="stat-change">Score IA moyen</div></div>
-            <div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-label">TP Atteints</div><div class="stat-value" id="tpHits">0</div><div class="stat-change">Targets touchés</div></div>
-        </div>
-        <div class="controls fade-in">
-            <button onclick="addDemo()" class="btn-success">➕ Ajouter Trade Démo</button>
-            <button onclick="load()">🔄 Rafraîchir</button>
-            <select id="filterStatus" onchange="filterTrades()"><option value="all">Tous les statuts</option><option value="OPEN">Ouverts</option><option value="CLOSED">Fermés</option></select>
-            <select id="filterSide" onchange="filterTrades()"><option value="all">Tous les types</option><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select>
-            <input type="text" id="searchSymbol" placeholder="🔍 Rechercher symbole..." onkeyup="filterTrades()">
-            <button onclick="clearAll()" class="btn-danger">🗑️ Effacer Tous</button>
-        </div>
-        <div class="charts-grid fade-in">
-            <div class="chart-card"><h3>📊 Performance Hebdomadaire</h3><canvas id="performanceChart"></canvas></div>
-            <div class="chart-card"><h3>🥧 Distribution des Trades</h3><canvas id="distributionChart"></canvas></div>
-        </div>
-        <div class="trades-container fade-in">
-            <h2><span>💼 Tous les Trades</span><span id="tradesCount" style="font-size: 16px; color: #94a3b8; margin-left: auto;">(0)</span></h2>
-            <div id="trades"><div class="spinner"></div></div>
-        </div>
-
-        <!-- P&L Hebdomadaire -->
-        <div class="trades-container fade-in" style="margin-top:30px;">
-            <h2><span>📊 P&L de la Semaine</span></h2>
-            <p style="color:#94a3b8;margin-bottom:20px;">Vos performances jour par jour (reset automatique chaque lundi)</p>
-
-            <div id="weeklyPnlContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:15px;margin-bottom:20px;">
-                <div class="spinner"></div>
-            </div>
-
-            <div style="display:flex;gap:15px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-                <div class="stat-card" style="flex:1;min-width:200px;margin-bottom:0;">
-                    <div class="stat-label">Total de la Semaine</div>
-                    <div class="stat-value" id="weeklyTotal" style="font-size:36px;font-weight:700;color:#e2e8f0;">--</div>
-                </div>
-                <button onclick="resetWeeklyPnl()" class="btn-danger">🔄 Reset Semaine</button>
-            </div>
-
-            <p style="color:#64748b;font-size:12px;margin-top:15px;">
-                ℹ️ Le P&L se met à jour automatiquement quand un trade se ferme. Reset automatique chaque lundi à minuit.
-            </p>
-        </div>
-    </div>
-    <div class="modal" id="tradeModal">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closeModal()">&times;</span>
-            <div id="modalContent"></div>
-        </div>
-    </div>
-    <script>
-        let allTrades = []; let performanceChart = null; let distributionChart = null;
-        
-        function formatPrice(price, isHit, isSL) {
-            if (price === undefined || price === null) return '$0.00';
-            
-            // Formatage intelligent selon le prix
-            let decimals;
-            const numPrice = parseFloat(price);
-            
-            if (numPrice < 0.001) {
-                decimals = 8;  // Memecoins (SHIB, PEPE, CHEEMS, etc.)
-            } else if (numPrice < 1) {
-                decimals = 6;  // Petites cryptos
-            } else if (numPrice < 100) {
-                decimals = 4;  // Altcoins moyens
-            } else {
-                decimals = 2;  // BTC, ETH, etc.
-            }
-            
-            // Formater et supprimer les zros inutiles
-            let formatted = '$' + numPrice.toFixed(decimals);
-            formatted = formatted.replace(/\.?0+$/, ''); // Supprimer les zéros à la fin
-            if (formatted.endsWith('.')) formatted = formatted.slice(0, -1); // Supprimer le point si nécessaire
-            
-            if (isHit && isSL) {
-                return '<span class="price-sl-hit">' + formatted + ' ❌</span>';
-            } else if (isHit) {
-                return '<span class="price-hit">' + formatted + ' ✅</span>';
-            }
-            return '<span class="price">' + formatted + '</span>';
-        }
-        
-        function formatTime(timestamp) {
-            if (!timestamp) return 'N/A';
-            const date = new Date(timestamp);
-            const time = date.toLocaleTimeString('fr-CA', { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                hour12: false,
-                timeZone: 'America/Montreal'
-            });
-            const dateStr = date.toLocaleDateString('fr-CA', { 
-                day: '2-digit', 
-                month: '2-digit', 
-                year: 'numeric',
-                timeZone: 'America/Montreal'
-            });
-            return '<div class="time-display">' + time + '<span class="date">' + dateStr + '</span></div>';
-        }
-        
-        async function load() { 
-            try { 
-                const response = await fetch('/api/trades'); 
-                const data = await response.json(); 
-                allTrades = data.trades || []; 
-                updateStats(); 
-                updateCharts(); 
-                displayTrades(allTrades); 
-                checkTPSLHits(); // Vérifier immédiatement après le chargement
-            } catch (error) { 
-                console.error('Error loading trades:', error); 
-                document.getElementById('trades').innerHTML = '<div class="alert alert-error">❌ Erreur de chargement des données</div>'; 
-            } 
-        }
-        
-        // Mettre  jour les TP/SL toutes les 10 secondes
-        let checkInterval;
-        function startRealTimeChecks() {
-            checkTPSLHits(); // Vérifier immédiatement
-            checkInterval = setInterval(checkTPSLHits, 10000); // Puis toutes les 10 secondes
-        }
-        
-        function calculateTradePnL(trade) {
-            // Calcul du P&L simplifi : 1R (Risk) = $100
-            // TP1 = +$100, TP2 = +$200, TP3 = +$300, SL/Revirement = -$100
-            
-            if (trade.status !== 'closed') return 0; // Trade ouvert = 0 P&L
-            
-            const RISK_AMOUNT = 100; // 1R = $100
-            
-            // Si SL touch ou revirement sans TP = perte de 1R ($100)
-            if (trade.sl_hit || (trade.closed_reason && trade.closed_reason.includes('Revirement') && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit)) {
-                return -RISK_AMOUNT; // -$100
-            }
-            
-            // Compter les TP atteints (on prend le plus haut)
-            if (trade.tp3_hit) {
-                return RISK_AMOUNT * 3; // +$300
-            } else if (trade.tp2_hit) {
-                return RISK_AMOUNT * 2; // +$200
-            } else if (trade.tp1_hit) {
-                return RISK_AMOUNT * 1; // +$100
-            }
-            
-            return 0; // Trade fermé sans TP ni SL (cas rare)
-        }
-        
-        // NOUVELLE FONCTION: Vrifier automatiquement les TP/SL en temps rel
-        async function checkTPSLHits() {
-            try {
-                // Rcuprer les symboles uniques
-                const symbols = [...new Set(allTrades.filter(t => t.status === 'open').map(t => t.symbol))];
-                if (symbols.length === 0) return;
-                
-                // Rcuprer les prix actuels EN TEMPS REL (max 250  la fois)
-                const priceMap = {};
-                const chunkSize = 250;
-                
-                for (let i = 0; i < symbols.length; i += chunkSize) {
-                    const chunk = symbols.slice(i, i + chunkSize);
-                    const ids = chunk.map(s => s.toLowerCase().replace('usdt', '')).join(',');
-                    
-                    try {
-                        const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
-                        if (response.ok) {
-                            const data = await response.json();
-                            for (const [key, value] of Object.entries(data)) {
-                                // IMPORTANT: Reconstruire le symbole correctement
-                                const symbol = key.toUpperCase() + 'USDT';
-                                priceMap[symbol] = value.usd;
-                                console.log(`💹 Prix ACTUEL ${symbol}: $${value.usd}`);
-                            }
-                        }
-                    } catch (e) {
-                        console.log('⚠️ Prix API indisponible');
-                    }
-                }
-                
-                // Vrifier chaque trade ouvert
-                for (let index = 0; index < allTrades.length; index++) {
-                    const trade = allTrades[index];
-                    if (trade.status !== 'open') continue;
-                    
-                    // TOUJOURS utiliser le prix ACTUEL de l'API, JAMAIS le prix du webhook
-                    const currentPrice = priceMap[trade.symbol];
-                    if (!currentPrice) {
-                        console.log(`⚠️ Pas de prix pour ${trade.symbol}`);
-                        continue;
-                    }
-                    
-                    let tradeModified = false;
-                    
-                    // Prparer l'objet de mise  jour
-                    const updateData = {
-                        symbol: trade.symbol,
-                        timestamp: trade.timestamp,
-                        tp1_hit: trade.tp1_hit || false,
-                        tp2_hit: trade.tp2_hit || false,
-                        tp3_hit: trade.tp3_hit || false,
-                        sl_hit: trade.sl_hit || false,
-                        status: trade.status,
-                        current_price: currentPrice  // 🔥 Mettre à jour le prix stocké
-                    };
-                    
-                    // Vrifier TP/SL
-                    if (trade.side === 'LONG') {
-                        // LONG: Prix monte
-                        if (currentPrice >= trade.tp1 && !trade.tp1_hit) {
-                            trade.tp1_hit = true;
-                            updateData.tp1_hit = true;
-                            tradeModified = true;
-                            console.log(`🎯 ${trade.symbol} TP1 ATTEINT à $${currentPrice}`);
-                        }
-                        if (currentPrice >= trade.tp2 && !trade.tp2_hit) {
-                            trade.tp2_hit = true;
-                            updateData.tp2_hit = true;
-                            tradeModified = true;
-                            console.log(`🎯🎯 ${trade.symbol} TP2 ATTEINT à $${currentPrice}`);
-                        }
-                        if (currentPrice >= trade.tp3 && !trade.tp3_hit) {
-                            trade.tp3_hit = true;
-                            updateData.tp3_hit = true;
-                            tradeModified = true;
-                            console.log(`🎯🎯🎯 ${trade.symbol} TP3 ATTEINT à $${currentPrice}`);
-                        }
-                        
-                        // SL seulement si AUCUN TP atteint
-                        if (currentPrice <= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
-                            console.warn(`❌ ${trade.symbol} SL ATTEINT à $${currentPrice} (seuil: $${trade.sl})`);
-                            trade.sl_hit = true;
-                            updateData.sl_hit = true;
-                            tradeModified = true;
-                        }
-                    } else if (trade.side === 'SHORT') {
-                        // SHORT: Prix descend
-                        if (currentPrice <= trade.tp1 && !trade.tp1_hit) {
-                            trade.tp1_hit = true;
-                            updateData.tp1_hit = true;
-                            tradeModified = true;
-                            console.log(`🎯 ${trade.symbol} TP1 ATTEINT à $${currentPrice}`);
-                        }
-                        if (currentPrice <= trade.tp2 && !trade.tp2_hit) {
-                            trade.tp2_hit = true;
-                            updateData.tp2_hit = true;
-                            tradeModified = true;
-                            console.log(`🎯🎯 ${trade.symbol} TP2 ATTEINT à $${currentPrice}`);
-                        }
-                        if (currentPrice <= trade.tp3 && !trade.tp3_hit) {
-                            trade.tp3_hit = true;
-                            updateData.tp3_hit = true;
-                            tradeModified = true;
-                            console.log(`🎯🎯🎯 ${trade.symbol} TP3 ATTEINT à $${currentPrice}`);
-                        }
-                        
-                        // SL seulement si AUCUN TP atteint
-                        if (currentPrice >= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
-                            console.warn(`❌ ${trade.symbol} SL ATTEINT à $${currentPrice} (seuil: $${trade.sl})`);
-                            trade.sl_hit = true;
-                            updateData.sl_hit = true;
-                            tradeModified = true;
-                        }
-                    }
-                    
-                    // Si un TP atteint, fermer le trade
-                    if (trade.tp1_hit || trade.tp2_hit || trade.tp3_hit || trade.sl_hit) {
-                        trade.status = 'closed';
-                        updateData.status = 'closed';
-                    }
-                    
-                    // CRITIQUE: Envoyer la mise  jour au serveur
-                    if (tradeModified) {
-                        try {
-                            const response = await fetch('/api/trades/update-status', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify(updateData)
-                            });
-                            
-                            const result = await response.json();
-                            if (result.status === 'success') {
-                                console.log(`✅ Trade ${trade.symbol} mis à jour sur le serveur`);
-                                updateTradeRow(trade, index);
-                            } else {
-                                console.error(`❌ Erreur mise à jour ${trade.symbol}:`, result.message);
-                            }
-                        } catch (error) {
-                            console.error('❌ Erreur lors de la synchronisation:', error);
-                        }
-                    }
-                }
-                
-                // Recharger les statistiques aprs vrification
-                await updateStats();
-                
-            } catch (error) {
-                console.error('❌ Erreur dans checkTPSLHits:', error);
-            }
-        }
-        
-        function updateTradeRow(trade, index) {
-            const row = document.querySelector(`tr[data-trade-index="${index}"]`);
-            if (!row) return;
-            
-            // Mettre  jour la cellule SL (ne pas afficher en rouge si un TP est atteint)
-            const slCell = row.cells[4];
-            if (slCell) {
-                const shouldShowSLHit = trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit;
-                slCell.innerHTML = formatPrice(trade.sl, shouldShowSLHit, true);
-            }
-            
-            // Mettre  jour les cellules TP
-            const tp1Cell = row.cells[5];
-            if (tp1Cell) {
-                tp1Cell.innerHTML = formatPrice(trade.tp1, trade.tp1_hit, false);
-                tp1Cell.style.background = trade.tp1_hit ? 'rgba(16, 185, 129, 0.2)' : '';
-            }
-            
-            const tp2Cell = row.cells[6];
-            if (tp2Cell) {
-                tp2Cell.innerHTML = formatPrice(trade.tp2, trade.tp2_hit, false);
-                tp2Cell.style.background = trade.tp2_hit ? 'rgba(16, 185, 129, 0.2)' : '';
-            }
-            
-            const tp3Cell = row.cells[7];
-            if (tp3Cell) {
-                tp3Cell.innerHTML = formatPrice(trade.tp3, trade.tp3_hit, false);
-                tp3Cell.style.background = trade.tp3_hit ? 'rgba(16, 185, 129, 0.2)' : '';
-            }
-            
-            // Mettre  jour la colonne CLOSE (index 10)
-            const closeCell = row.cells[10];
-            if (closeCell) {
-                if (trade.tp3_hit) {
-                    closeCell.innerHTML = '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP3</span>';
-                } else if (trade.tp2_hit) {
-                    closeCell.innerHTML = '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP2</span>';
-                } else if (trade.tp1_hit) {
-                    closeCell.innerHTML = '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP1</span>';
-                } else if (trade.sl_hit) {
-                    closeCell.innerHTML = '<span class="badge" style="background: #ef4444; color: white; font-weight: 700;">❌ ÉCHOUÉ</span>';
-                }
-            }
-            
-            // Mettre  jour la couleur de la ligne (vert si TP, rouge si SL seulement)
-            if (trade.tp1_hit || trade.tp2_hit || trade.tp3_hit) {
-                row.style.background = 'rgba(16, 185, 129, 0.1)'; // Vert si TP atteint
-            } else if (trade.sl_hit) {
-                row.style.background = 'rgba(239, 68, 68, 0.1)'; // Rouge si SL atteint
-            } else {
-                row.style.background = ''; // Normal sinon
-            }
-        } 
-        
-        async function updateStats() {
-            try { 
-                const response = await fetch('/api/stats'); 
-                const stats = await response.json(); 
-                document.getElementById('totalTrades').textContent = stats.total_trades || 0; 
-                document.getElementById('openTrades').textContent = stats.open_trades || 0; 
-                document.getElementById('winRate').textContent = (stats.win_rate || 0).toFixed(1) + '%'; 
-                const totalPnl = allTrades.reduce((sum, t) => sum + calculateTradePnL(t), 0); 
-                const pnlElement = document.getElementById('totalPnl');
-                pnlElement.textContent = (totalPnl >= 0 ? '+' : '') + '$' + totalPnl.toFixed(2);
-                pnlElement.style.color = totalPnl >= 0 ? '#10b981' : '#ef4444'; // Vert si positif, rouge si négatif
-                
-                const avgConf = allTrades.length > 0 ? allTrades.reduce((sum, t) => sum + (t.confidence || 0), 0) / allTrades.length : 0; 
-                document.getElementById('avgConfidence').textContent = avgConf.toFixed(1) + '%'; 
-                const tpHits = allTrades.reduce((sum, t) => sum + (t.tp1_hit ? 1 : 0) + (t.tp2_hit ? 1 : 0) + (t.tp3_hit ? 1 : 0), 0);
-                document.getElementById('tpHits').textContent = tpHits; 
-            } catch (error) { 
-                console.error('Error updating stats:', error); 
-            } 
-        }
-        
-        function displayTrades(trades) {
-            const container = document.getElementById('trades');
-            document.getElementById('tradesCount').textContent = '(' + trades.length + ')';
-            if (trades.length === 0) {
-                container.innerHTML = '<div class="alert alert-info">📭 Aucun trade trouvé</div>';
-                return;
-            }
-            
-            let html = '<table><thead><tr><th>Heure</th><th>Symbole</th><th>Type</th><th>Entry</th><th>SL</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Confiance</th><th>Statut</th><th>Close</th><th>Actions</th></tr></thead><tbody>';
-            
-            trades.forEach((trade, index) => {
-                const side = trade.side || 'N/A';
-                const sideClass = side === 'LONG' ? 'badge-long' : 'badge-short';
-                const status = trade.status || 'OPEN';
-                const statusClass = status === 'OPEN' ? 'badge-open' : 'badge-closed';
-                
-                html += '<tr data-trade-index="' + index + '" onclick="showTradeDetails(' + index + ')">';
-                html += '<td>' + formatTime(trade.timestamp) + '</td>';
-                html += '<td><strong>' + (trade.symbol || 'N/A') + '</strong></td>';
-                html += '<td><span class="badge ' + sideClass + '">' + side + '</span></td>';
-                html += '<td>' + formatPrice(trade.entry, false, false) + '</td>';
-                html += '<td>' + formatPrice(trade.sl, (trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit), true) + '</td>';
-                html += '<td>' + formatPrice(trade.tp1, trade.tp1_hit, false) + '</td>';
-                html += '<td>' + formatPrice(trade.tp2, trade.tp2_hit, false) + '</td>';
-                html += '<td>' + formatPrice(trade.tp3, trade.tp3_hit, false) + '</td>';
-                html += '<td><div><strong>' + (trade.confidence || 0).toFixed(1) + '%</strong>';
-                html += '<div class="confidence-meter"><div class="confidence-fill" style="width: ' + (trade.confidence || 0) + '%"></div></div></div></td>';
-                html += '<td><span class="badge ' + statusClass + '">' + status + '</span></td>';
-                
-                // Colonne CLOSE avec messages clairs
-                html += '<td>';
-                if (trade.status === 'closed') {
-                    if (trade.tp3_hit) {
-                        html += '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP3</span>';
-                    } else if (trade.tp2_hit) {
-                        html += '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP2</span>';
-                    } else if (trade.tp1_hit) {
-                        html += '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP1</span>';
-                    } else if (trade.sl_hit) {
-                        html += '<span class="badge" style="background: #ef4444; color: white; font-weight: 700;">❌ ÉCHOUÉ</span>';
-                    } else if (trade.closed_reason && trade.closed_reason.includes('Revirement')) {
-                        html += '<span class="badge" style="background: #f59e0b; color: white; font-weight: 700;">🔄 REVIREMENT</span>';
-                    } else {
-                        html += '<span class="badge" style="background: #64748b; color: white;">CLOSED</span>';
-                    }
-                } else {
-                    html += '<span style="color: #64748b;">—</span>';
-                }
-                html += '</td>';
-                
-                html += '<td style="white-space: nowrap;">';
-                html += '<button onclick="event.stopPropagation(); toggleTP(' + index + ', 1)" style="padding: 6px 10px; font-size: 11px; margin: 2px; background: ' + (trade.tp1_hit ? '#10b981' : '#334155') + ';">TP1</button>';
-                html += '<button onclick="event.stopPropagation(); toggleTP(' + index + ', 2)" style="padding: 6px 10px; font-size: 11px; margin: 2px; background: ' + (trade.tp2_hit ? '#10b981' : '#334155') + ';">TP2</button>';
-                html += '<button onclick="event.stopPropagation(); toggleTP(' + index + ', 3)" style="padding: 6px 10px; font-size: 11px; margin: 2px; background: ' + (trade.tp3_hit ? '#10b981' : '#334155') + ';">TP3</button>';
-                html += '<button onclick="event.stopPropagation(); toggleSL(' + index + ')" style="padding: 6px 10px; font-size: 11px; margin: 2px; background: ' + (trade.sl_hit ? '#ef4444' : '#334155') + ';">SL</button>';
-                html += '</td>';
-                html += '</tr>';
-            });
-            
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        }
-        
-        function filterTrades() { 
-            const statusFilter = document.getElementById('filterStatus').value; 
-            const sideFilter = document.getElementById('filterSide').value; 
-            const searchQuery = document.getElementById('searchSymbol').value.toLowerCase(); 
-            let filtered = allTrades.filter(trade => { 
-                const matchStatus = statusFilter === 'all' || trade.status === statusFilter; 
-                const matchSide = sideFilter === 'all' || trade.side === sideFilter; 
-                const matchSymbol = !searchQuery || (trade.symbol && trade.symbol.toLowerCase().includes(searchQuery)); 
-                return matchStatus && matchSide && matchSymbol; 
-            }); 
-            displayTrades(filtered); 
-        }
-        
-        function showTradeDetails(index) {
-            const trade = allTrades[index];
-            const modal = document.getElementById('tradeModal');
-            const content = document.getElementById('modalContent');
-            const sideClass = trade.side === 'LONG' ? 'badge-long' : 'badge-short';
-            const statusClass = trade.status === 'OPEN' ? 'badge-open' : 'badge-closed';
-            const timestamp = trade.timestamp ? new Date(trade.timestamp).toLocaleString('fr-CA', { 
-                dateStyle: 'full', 
-                timeStyle: 'short',
-                timeZone: 'America/Montreal'
-            }) : 'N/A';
-            
-            // Helper pour formater les prix avec coloration
-            const smartFormat = (price) => {
-                if (!price) return '$0.00';
-                const numPrice = parseFloat(price);
-                let decimals;
-                if (numPrice < 0.001) decimals = 8;
-                else if (numPrice < 1) decimals = 6;
-                else if (numPrice < 100) decimals = 4;
-                else decimals = 2;
-                let formatted = '$' + numPrice.toFixed(decimals);
-                formatted = formatted.replace(/\.?0+$/, '');
-                if (formatted.endsWith('.')) formatted = formatted.slice(0, -1);
-                return formatted;
-            };
-            
-            const formatTPPrice = (price, isHit) => {
-                if (!price) return '$0.00';
-                const formatted = smartFormat(price);
-                return isHit ? '<span class="price-hit">' + formatted + ' ✅</span>' : formatted;
-            };
-            
-            const formatSLPrice = (price, isHit) => {
-                if (!price) return '$0.00';
-                const formatted = smartFormat(price);
-                return isHit ? '<span class="price-sl-hit">' + formatted + ' ❌</span>' : formatted;
-            };
-            
-            content.innerHTML = '<h2 style="color: #60a5fa; margin-bottom: 15px;">' + (trade.symbol || 'N/A') + ' - Détails du Trade</h2>' +
-                '<p style="color: #94a3b8; margin-bottom: 25px; font-size: 14px;">🕐 ' + timestamp + '</p>' +
-                '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px;">' +
-                '<div><div class="stat-label">Type</div><span class="badge ' + sideClass + '" style="font-size: 16px; padding: 10px 20px;">' + (trade.side || 'N/A') + '</span></div>' +
-                '<div><div class="stat-label">Statut</div><span class="badge ' + statusClass + '" style="font-size: 16px; padding: 10px 20px;">' + (trade.status || 'OPEN') + '</span></div>' +
-                '</div>' +
-                '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px;">' +
-                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">Entry Price</div><div class="stat-value" style="font-size: 28px;">' + smartFormat(trade.entry) + '</div></div>' +
-                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">Stop Loss</div><div class="stat-value" style="font-size: 28px;">' + formatSLPrice(trade.sl, trade.sl_hit) + '</div></div>' +
-                '</div>' +
-                '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">' +
-                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">TP1</div><div class="stat-value" style="font-size: 24px;">' + formatTPPrice(trade.tp1, trade.tp1_hit) + '</div></div>' +
-                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">TP2</div><div class="stat-value" style="font-size: 24px;">' + formatTPPrice(trade.tp2, trade.tp2_hit) + '</div></div>' +
-                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">TP3</div><div class="stat-value" style="font-size: 24px;">' + formatTPPrice(trade.tp3, trade.tp3_hit) + '</div></div>' +
-                '</div>' +
-                '<div style="margin-bottom: 25px;">' +
-                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">Confiance IA</div><div style="font-size: 28px; color: #10b981; font-weight: 700;">' + (trade.confidence || 0).toFixed(1) + '%</div></div>' +
-                '</div>' +
-                (trade.note ? '<div style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px; margin-bottom: 25px;"><div class="stat-label">Note</div><p style="color: #e2e8f0; margin-top: 10px; line-height: 1.6;">' + trade.note + '</p></div>' : '') +
-                '<button onclick="closeModal()" style="width: 100%; margin-top: 10px;">Fermer</button>';
-            
-            modal.classList.add('show');
-        }
-        
-        function closeModal() { document.getElementById('tradeModal').classList.remove('show'); }
-        
-        async function toggleTP(index, tpNumber) {
-            const trade = allTrades[index];
-            const tpKey = 'tp' + tpNumber + '_hit';
-            const newValue = !trade[tpKey];
-            
-            try {
-                const response = await fetch('/api/trades/update-status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        symbol: trade.symbol,
-                        timestamp: trade.timestamp,
-                        [tpKey]: newValue
-                    })
-                });
-                
-                if (response.ok) {
-                    trade[tpKey] = newValue;
-                    load();
-                    showAlert('✅ TP' + tpNumber + ' ' + (newValue ? 'atteint' : 'réinitialisé'), 'success');
-                }
-            } catch (error) {
-                showAlert('❌ Erreur lors de la mise à jour', 'error');
-            }
-        }
-        
-        async function toggleSL(index) {
-            const trade = allTrades[index];
-            const newValue = !trade.sl_hit;
-            
-            try {
-                const response = await fetch('/api/trades/update-status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        symbol: trade.symbol,
-                        timestamp: trade.timestamp,
-                        sl_hit: newValue,
-                        status: newValue ? 'closed' : 'open'
-                    })
-                });
-                
-                if (response.ok) {
-                    trade.sl_hit = newValue;
-                    trade.status = newValue ? 'closed' : 'open';
-                    load();
-                    showAlert('✅ SL ' + (newValue ? 'atteint' : 'réinitialisé'), newValue ? 'error' : 'success');
-                }
-            } catch (error) {
-                showAlert('❌ Erreur lors de la mise à jour', 'error');
-            }
-        }
-        
-        function updateCharts() { 
-            const performanceCtx = document.getElementById('performanceChart').getContext('2d'); 
-            if (performanceChart) performanceChart.destroy(); 
-            performanceChart = new Chart(performanceCtx, { type: 'line', data: { labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'], datasets: [{ label: 'P&L', data: [120, 190, 150, 220, 280, 240, 300], borderColor: '#60a5fa', backgroundColor: 'rgba(96, 165, 250, 0.1)', tension: 0.4, fill: true }] }, options: { responsive: false, plugins: { legend: { labels: { color: '#e2e8f0' } } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51, 65, 85, 0.3)' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51, 65, 85, 0.3)' } } } } }); 
-            const distributionCtx = document.getElementById('distributionChart').getContext('2d'); 
-            if (distributionChart) distributionChart.destroy(); 
-            const longCount = allTrades.filter(t => t.side === 'LONG').length; 
-            const shortCount = allTrades.filter(t => t.side === 'SHORT').length; 
-            distributionChart = new Chart(distributionCtx, { type: 'doughnut', data: { labels: ['LONG', 'SHORT'], datasets: [{ data: [longCount, shortCount], backgroundColor: ['rgba(16, 185, 129, 0.8)', 'rgba(239, 68, 68, 0.8)'], borderColor: ['rgba(16, 185, 129, 1)', 'rgba(239, 68, 68, 1)'], borderWidth: 2 }] }, options: { responsive: false, plugins: { legend: { position: 'bottom', labels: { color: '#e2e8f0', padding: 20 } } } } }); 
-        }
-        
-        async function addDemo() { 
-            try { 
-                await fetch('/api/trades/add-demo'); 
-                load(); 
-                showAlert('✅ Trade démo ajouté avec succès!', 'success'); 
-            } catch (error) { 
-                showAlert('❌ Erreur lors de l\\'ajout du trade', 'error'); 
-            } 
-        }
-        
-        async function clearAll() { 
-            if (confirm('⚠️ Êtes-vous sûr de vouloir effacer tous les trades?')) { 
-                try { 
-                    await fetch('/api/trades/clear', { method: 'DELETE' }); 
-                    load(); 
-                    showAlert('✅ Tous les trades ont été effacés', 'success'); 
-                } catch (error) { 
-                    showAlert('❌ Erreur lors de la suppression', 'error'); 
-                } 
-            } 
-        }
-        
-        function showAlert(message, type) { 
-            const alertDiv = document.createElement('div'); 
-            alertDiv.className = 'alert alert-' + type + ' fade-in'; 
-            alertDiv.textContent = message; 
-            alertDiv.style.position = 'fixed'; 
-            alertDiv.style.top = '20px'; 
-            alertDiv.style.right = '20px'; 
-            alertDiv.style.zIndex = '9999'; 
-            document.body.appendChild(alertDiv); 
-            setTimeout(() => { alertDiv.remove(); }, 3000); 
-        }
-        
-        window.onclick = function(event) { const modal = document.getElementById('tradeModal'); if (event.target === modal) closeModal(); }
-
-        // ============= P&L HEBDOMADAIRE =============
-        async function loadWeeklyPnl() {
-            try {
-                const res = await fetch('/api/weekly-pnl');
-                const data = await res.json();
-                
-                if (!data.ok) {
-                    console.error('❌ Erreur API weekly-pnl:', data.error);
-                    document.getElementById('weeklyPnlContainer').innerHTML = 
-                        '<p style="color:#ef4444;text-align:center;padding:20px;">❌ Erreur de chargement</p>';
-                    return;
-                }
-                
-                console.log('✅ P&L hebdomadaire chargé:', data);
-                
-                let html = '';
-                data.weekly_data.forEach(day => {
-                    const isToday = day.day_en === data.current_day;
-                    const pnlColor = day.pnl > 0 ? '#10b981' : (day.pnl < 0 ? '#ef4444' : '#64748b');
-                    const bgColor = isToday ? 'rgba(96, 165, 250, 0.1)' : 'rgba(15, 23, 42, 0.8)';
-                    const borderColor = isToday ? '#60a5fa' : 'transparent';
-                    
-                    html += `
-                        <div style="
-                            background:${bgColor};
-                            padding:20px;
-                            border-radius:12px;
-                            border:2px solid ${borderColor};
-                            text-align:center;
-                            transition:all 0.3s;
-                            box-shadow:0 2px 8px rgba(0,0,0,0.2);
-                        ">
-                            <div style="color:#94a3b8;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
-                                ${day.day_fr}
-                            </div>
-                            <div style="font-size:26px;font-weight:700;color:${pnlColor};">
-                                ${day.pnl >= 0 ? '+' : ''}$${day.pnl.toFixed(2)}
-                            </div>
-                            ${isToday ? '<div style="color:#60a5fa;font-size:11px;margin-top:5px;">👈 Aujourd&apos;hui</div>' : ''}
-                        </div>
-                    `;
-                });
-                
-                document.getElementById('weeklyPnlContainer').innerHTML = html;
-                
-                const totalColor = data.total_week > 0 ? '#10b981' : (data.total_week < 0 ? '#ef4444' : '#64748b');
-                document.getElementById('weeklyTotal').innerHTML = 
-                    `<span style="color:${totalColor}">${data.total_week >= 0 ? '+' : ''}$${data.total_week.toFixed(2)}</span>`;
-                
-            } catch (error) {
-                console.error('❌ Erreur loadWeeklyPnl:', error);
-                document.getElementById('weeklyPnlContainer').innerHTML = 
-                    '<p style="color:#ef4444;text-align:center;padding:20px;">❌ Impossible de charger le P&L</p>';
-            }
-        }
-
-        async function resetWeeklyPnl() {
-            if (!confirm('Voulez-vous vraiment réinitialiser le P&L de la semaine ?')) {
-                return;
-            }
-            
-            try {
-                const res = await fetch('/api/weekly-pnl/reset', { method: 'POST' });
-                const data = await res.json();
-                
-                if (data.ok) {
-                    alert('✅ ' + data.message);
-                    loadWeeklyPnl();
-                } else {
-                    alert('❌ Erreur: ' + data.error);
-                }
-            } catch (error) {
-                console.error('❌ Erreur resetWeeklyPnl:', error);
-                alert('❌ Impossible de réinitialiser le P&L');
-            }
-        }
-
-
-        load(); 
-        startRealTimeChecks(); // Démarrer la vérification en temps réel des TP/SL
-        loadWeeklyPnl();
-        setInterval(load, 30000); 
-        setInterval(loadWeeklyPnl, 30000);
-        console.log('🚀 Trades Premium initialisé');
-    </script>
-
-    <div style="max-width: 1200px; margin: 60px auto 40px; padding: 40px; background: rgba(59,130,246,0.05); border-radius: 20px; border: 1px solid rgba(59,130,246,0.3);">
-        <h2 style="text-align: center; color: #3b82f6; font-size: 2em; margin-bottom: 30px;">Guide - Mes Trades</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-            <div style="padding: 25px; background: rgba(59,130,246,0.1); border-radius: 15px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #3b82f6; margin-bottom: 15px;">TP / SL</h3>
-                <p style="color: #cbd5e1; line-height: 1.6;">Configurez Take Profit et Stop Loss intelligents pour chaque position avec trailing stop automatique.</p>
-            </div>
-            <div style="padding: 25px; background: rgba(59,130,246,0.1); border-radius: 15px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #3b82f6; margin-bottom: 15px;">Suivi Temps Réel</h3>
-                <p style="color: #cbd5e1; line-height: 1.6;">Monitoring de vos positions 24/7 avec alertes Telegram quand TP ou SL est atteint.</p>
-            </div>
-            <div style="padding: 25px; background: rgba(59,130,246,0.1); border-radius: 15px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #3b82f6; margin-bottom: 15px;">Trailing Stop</h3>
-                <p style="color: #cbd5e1; line-height: 1.6;">Votre stop loss suit automatiquement le prix à la hausse pour maximiser vos gains.</p>
-            </div>
-        </div>
-    </div>
-
-</body>
-</html>"""
-    return HTMLResponse(html)
 
 
 """
@@ -68410,21 +67684,33 @@ def _feature_placeholder(title: str, subtitle: str, status: str = "Maintenance")
 
 @app.get("/academy", response_class=HTMLResponse)
 async def academy(request: Request):
-    # Page "vitrine" publique + fallback pour éviter les 404
+    """Page Academy avec design WOW - Formation Trading Complète."""
     user = get_user_from_request(request)
+    user_progress = 0  # Default progress
+    user_plan = "Free"
+    
     if user:
-        subtitle = "Bienvenue dans l’Academy. Cette section est en cours de réintégration (contenu + suivi de progression)."
-        return HTMLResponse(_feature_placeholder("Academy", subtitle, status="Bêta"))
-    subtitle = "Espace formation CryptoIA (en cours de réintégration). Connecte-toi pour voir tes modules et ton suivi."
-    body = f"""
-      <h1 style="margin:0 0 8px 0">Academy</h1>
-      <p style="margin:0 0 14px 0;color:#cbd5e1;max-width:820px">{subtitle}</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
-        <a class="btn" href="/login">Se connecter</a>
-        <a class="btn-outline" href="/pricing-complete">Voir les plans</a>
-      </div>
-    """
-    return _simple_page("Academy", body, sidebar=SIDEBAR_FULL)
+        user_plan = getattr(user, 'plan', 'Free') or 'Free'
+        # Here you could fetch actual user progress from database
+        user_progress = 0  # Would be fetched from DB
+    
+    # Try to render the template
+    try:
+        return templates.TemplateResponse("academy.html", {
+            "request": request,
+            "user": user,
+            "user_plan": user_plan,
+            "user_progress": user_progress
+        })
+    except Exception as e:
+        # Fallback if template fails
+        return HTMLResponse(f"""
+        <!doctype html><html><head><meta charset='utf-8'><title>Academy</title></head>
+        <body style='font-family:system-ui;padding:24px'>
+        <h1>Academy</h1>
+        <p>La page est en cours de déploiement. Si tu vois ça, c'est que le template <code>academy.html</code> est absent.</p>
+        </body></html>
+        """)
 
 @app.get("/crypto-academy", response_class=HTMLResponse)
 async def crypto_academy(request: Request):
@@ -70564,3 +69850,36 @@ async def ai_whale_watcher(request: Request):
     """
 
     return _simple_page("AI Whale Watcher", body_html, request=request, show_title=False, sidebar_html=(globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or ""), active_page="/ai-whale-watcher")
+
+# ============================================================================
+# 🌐 INTÉGRATION API v2 - DONNÉES CRYPTO EN TEMPS RÉEL
+# ============================================================================
+try:
+    from api_routes import api_router
+    app.include_router(api_router)
+    print("✅ Routes API v2 enregistrées (/api/v2/*)")
+except ImportError as e:
+    print(f"⚠️ api_routes non disponible: {e}")
+except Exception as e:
+    print(f"⚠️ Erreur lors de l'intégration API v2: {e}")
+
+# ============================================================================
+# 🔐 INTÉGRATION AUTH SERVICE
+# ============================================================================
+try:
+    from auth_service import auth_service
+    if auth_service:
+        print("✅ Service d'authentification chargé")
+except ImportError as e:
+    print(f"⚠️ auth_service non disponible: {e}")
+
+# ============================================================================
+# 📊 INTÉGRATION CRYPTO DATA SERVICE
+# ============================================================================
+try:
+    from crypto_data_service import crypto_service
+    if crypto_service:
+        print("✅ Service données crypto chargé")
+except ImportError as e:
+    print(f"⚠️ crypto_data_service non disponible: {e}")
+

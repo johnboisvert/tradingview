@@ -1,0 +1,70 @@
+INFO:     Will watch for changes in these directories: ['/workspace/tradingview-main']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [1835] using WatchFiles
+INFO:     Started server process [1837]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+⚠️  stripe non installé - mode simulation
+⚠️  Coinbase Commerce non configuré
+✅ Tables subscription OK (sqlite)
+✅ Module subscription_system chargé (avec Coinbase Commerce)
+✅ Module subscription_system chargé
+⚠️  psycopg2 non installé - utilisation de SQLite en fallback
+✅ Table trades OK (sqlite)
+✅ SQL Ready! Trades: 0
+⚠️ Rate limiter désactivé (ModuleNotFoundError)
+✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770914423)
+✅ Routes d'abonnement activées
+✅ SessionMiddleware forcé en premier (request.session OK)
+⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
+Routes 2-3 créées: AI News, AI Predictor
+Routes 4-7 créées
+Routes 4-7 créées
+Routes 4-7 créées
+✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770914423)
+✅ Routes d'abonnement activées
+✅ SessionMiddleware forcé en premier (request.session OK)
+⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
+Routes 2-3 créées: AI News, AI Predictor
+Routes 4-7 créées
+Routes 4-7 créées
+Routes 4-7 créées
+
+╔══════════════════════════════════════════════════════════════╗
+║           🚀 CryptoIA Trading Platform v2.0                  ║
+╠══════════════════════════════════════════════════════════════╣
+║  Environment: development                                   ║
+║  Database: sqlite                                           ║
+║  Stripe: ❌ Disabled                                       ║
+║  Coinbase: ❌ Disabled                                     ║
+║  Telegram: ❌ Disabled                                     ║
+║  OpenAI: ❌ Disabled                                       ║
+║  SendGrid: ❌ Disabled                                     ║
+╚══════════════════════════════════════════════════════════════╝
+
+✅ Tables d'authentification initialisées
+✅ Service d'authentification initialisé
+✅ Routes API v2 chargées
+✅ Routes API v2 enregistrées (/api/v2/*)
+✅ Service d'authentification chargé
+✅ Service données crypto chargé
+✅ Table portfolio OK (sqlite) -> /tmp/ai_trader/portfolio.db
+✅ Tables ebooks et contact créées (sqlite)
+✅ Base de données Academy initialisée
+✅ Academy DB créée dans startup_event
+⚠️ start_background_monitor: background_monitor absent/non-async (désactivé).
+✅ Table portfolio OK (sqlite) -> /tmp/ai_trader/portfolio.db
+✅ Tables ebooks et contact créées (sqlite)
+✅ Base de données Academy initialisée
+✅ Academy DB créée dans startup_event
+⚠️ start_background_monitor: background_monitor absent/non-async (désactivé).
+
+======================================================================
+🤖 MONITEUR AUTOMATIQUE DES TP/SL DÉMARRÉ
+   Vérification toutes les 30 secondes
+   Utilise current_price du webhook Pine Script
+======================================================================
+
+⚠️ Une instance du moniteur est déjà active, skip
+INFO:     127.0.0.1:36450 - "GET /academy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36464 - "GET /academy HTTP/1.1" 200 OK

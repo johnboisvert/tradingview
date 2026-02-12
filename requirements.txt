@@ -1,48 +1,78 @@
-# 🔐 SÉCURITÉ - CRITIQUE
+# ============================================================================
+# 🚀 CryptoIA Trading Platform - Dependencies
+# Optimisé pour Railway / Production
+# ============================================================================
+
+# 🔐 SÉCURITÉ
 bcrypt==4.1.2
 slowapi==0.1.9
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
 
-# Core FastAPI
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
+# 🌐 CORE FASTAPI
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
 python-multipart==0.0.6
-httpx==0.25.1
-jinja2
-psycopg2-binary==2.9.9
+starlette==0.35.1
 
-# Paiements
-stripe==7.4.0
+# 📡 HTTP CLIENTS
+# Note: httpx version compatible avec python-telegram-bot
+httpx==0.25.2
+aiohttp==3.9.1
+requests==2.31.0
+
+# 🗄️ BASE DE DONNÉES
+psycopg2-binary==2.9.9
+SQLAlchemy==2.0.25
+
+# 💳 PAIEMENTS
+stripe==7.10.0
 coinbase-commerce==1.0.1
 
-# APIs & Communication
-requests==2.31.0
-python-telegram-bot==20.6
-aiohttp==3.9.1
-httpcore==1.0.5
+# 📱 COMMUNICATION
+python-telegram-bot==20.7
+sendgrid==6.11.0
 
-# Utilities
-python-dotenv==1.0.1
-pytz==2023.3
-pydantic==2.5.0
-apscheduler
+# 🤖 IA & ML
+openai==1.12.0
 
-# Emails & PDF
-sendgrid==6.10.0
-reportlab==4.0.7
-
-# OpenAI
-openai==1.51.0
-
-# Data Parsing
-beautifulsoup4==4.12.3
-
-# Trading & Crypto
-ccxt==4.0.96
-cryptography==41.0.7
-
-# 📊 NOUVELLE SECTION: ANALYSE TECHNIQUE AVANCÉE
-pandas==2.1.4
-numpy==1.26.2
+# 📊 ANALYSE TECHNIQUE
+pandas==2.2.0
+numpy==1.26.3
 ta==0.11.0
-scipy==1.11.4
-itsdangerous>=2.2
+scipy==1.12.0
+
+# 🔧 UTILITAIRES
+python-dotenv==1.0.1
+pytz==2024.1
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# ⏰ SCHEDULING
+apscheduler==3.10.4
+
+# 📄 PDF & DOCUMENTS
+reportlab==4.0.8
+
+# 🔍 WEB SCRAPING
+beautifulsoup4==4.12.3
+lxml==5.1.0
+
+# 🔐 CRYPTO
+cryptography==42.0.2
+ccxt==4.2.18
+
+# 📝 TEMPLATES
+jinja2==3.1.3
+MarkupSafe==2.1.4
+
+# 🔒 SESSIONS & COOKIES
+itsdangerous==2.1.2
+
+# 📈 WEBSOCKETS
+websockets==12.0
+
+# 🧪 TESTS (optionnel)
+pytest==7.4.4
+pytest-asyncio==0.23.3
+httpx-sse==0.4.0

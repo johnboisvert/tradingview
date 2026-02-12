@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Academy - CryptoIA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #0a0f1c;
+            --bg-secondary: #111827;
+            --bg-card: #1a2234;
+            --bg-card-hover: #1f2937;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-pink: #ec4899;
+            --accent-red: #ef4444;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: rgba(255,255,255,0.08);
+            --glow-cyan: rgba(6, 182, 212, 0.3);
+            --glow-purple: rgba(139, 92, 246, 0.3);
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            background: 
+                radial-gradient(ellipse 80% 50% at 20% -20%, rgba(6, 182, 212, 0.15), transparent),
+                radial-gradient(ellipse 60% 40% at 80% 0%, rgba(139, 92, 246, 0.12), transparent),
+                radial-gradient(ellipse 50% 30% at 50% 100%, rgba(16, 185, 129, 0.08), transparent);
+        }
+        
+        .main-content {
+            padding: 30px 40px 60px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 60px 20px 80px;
+            position: relative;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--glow-cyan) 0%, transparent 70%);
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(139, 92, 246, 0.2));
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            margin-bottom: 24px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(6, 182, 212, 0); }
+        }
+        
+        .hero h1 {
+            font-size: 56px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #fff 0%, var(--accent-cyan) 50%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            letter-spacing: -1px;
+        }
+        
+        .hero p {
+            font-size: 20px;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 40px;
+        }
+        
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 42px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Progress Bar */
+        .progress-section {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 50px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .progress-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .progress-percentage {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--accent-cyan);
+        }
+        
+        .progress-bar {
+            height: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 10px;
+            width: 0%;
+            transition: width 1.5s ease-out;
+            animation: progressGlow 2s infinite;
+        }
+        
+        @keyframes progressGlow {
+            0%, 100% { box-shadow: 0 0 10px var(--glow-cyan); }
+            50% { box-shadow: 0 0 20px var(--glow-purple); }
+        }
+        
+        /* Category Tabs */
+        .category-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .category-tab {
+            padding: 12px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .category-tab:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
+        }
+        
+        .category-tab.active {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(139, 92, 246, 0.2));
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+        
+        /* Section Title */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+        
+        .section-icon {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 14px;
+            font-size: 24px;
+        }
+        
+        .section-title {
+            font-size: 28px;
+            font-weight: 800;
+        }
+        
+        .section-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        
+        /* Module Grid */
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+        
+        .module-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 28px;
+            border: 1px solid var(--border-color);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        
+        .module-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+        }
+        
+        .module-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 20px 40px rgba(6, 182, 212, 0.15);
+        }
+        
+        .module-card:hover::before {
+            transform: scaleX(1);
+        }
+        
+        .module-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .module-icon {
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+        
+        .module-icon.beginner { background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1)); }
+        .module-icon.intermediate { background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.1)); }
+        .module-icon.advanced { background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1)); }
+        .module-icon.expert { background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1)); }
+        
+        .module-info {
+            flex: 1;
+        }
+        
+        .module-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+        
+        .module-level {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .module-level.beginner { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+        .module-level.intermediate { background: rgba(245, 158, 11, 0.15); color: var(--accent-orange); }
+        .module-level.advanced { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+        .module-level.expert { background: rgba(139, 92, 246, 0.15); color: var(--accent-purple); }
+        
+        .module-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+        
+        .module-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .module-stats {
+            display: flex;
+            gap: 16px;
+        }
+        
+        .module-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        
+        .module-progress {
+            width: 60px;
+            height: 60px;
+            position: relative;
+        }
+        
+        .module-progress svg {
+            transform: rotate(-90deg);
+        }
+        
+        .module-progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+        
+        /* Locked Module */
+        .module-card.locked {
+            opacity: 0.6;
+        }
+        
+        .module-card.locked::after {
+            content: '🔒';
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            border-radius: 24px;
+            padding: 50px;
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .cta-title {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+        
+        .cta-description {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 32px;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            color: white;
+            box-shadow: 0 8px 24px rgba(6, 182, 212, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(6, 182, 212, 0.4);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--accent-cyan);
+            background: var(--bg-card-hover);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 20px;
+            }
+            
+            .hero h1 {
+                font-size: 36px;
+            }
+            
+            .hero p {
+                font-size: 16px;
+            }
+            
+            .hero-stats {
+                gap: 30px;
+            }
+            
+            .stat-number {
+                font-size: 32px;
+            }
+            
+            .modules-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .cta-section {
+                padding: 30px 20px;
+            }
+        }
+        
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .module-card {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+        
+        .module-card:nth-child(1) { animation-delay: 0.1s; }
+        .module-card:nth-child(2) { animation-delay: 0.15s; }
+        .module-card:nth-child(3) { animation-delay: 0.2s; }
+        .module-card:nth-child(4) { animation-delay: 0.25s; }
+        .module-card:nth-child(5) { animation-delay: 0.3s; }
+        .module-card:nth-child(6) { animation-delay: 0.35s; }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+    <div class="main-content">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-badge">
+                <span>🎓</span>
+                <span>Formation Trading Complète</span>
+            </div>
+            <h1>Trading Academy</h1>
+            <p>Maîtrisez le trading crypto avec notre programme complet. Des bases aux stratégies avancées, devenez un trader professionnel.</p>
+            
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-number">22</div>
+                    <div class="stat-label">Modules</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">150+</div>
+                    <div class="stat-label">Leçons</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">40h</div>
+                    <div class="stat-label">De contenu</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">5K+</div>
+                    <div class="stat-label">Étudiants</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Progress Section -->
+        <section class="progress-section">
+            <div class="progress-header">
+                <div>
+                    <div class="progress-title">📊 Votre progression globale</div>
+                    <div style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">Continuez votre apprentissage pour débloquer de nouvelles fonctionnalités</div>
+                </div>
+                <div class="progress-percentage">0%</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%;"></div>
+            </div>
+        </section>
+        
+        <!-- Category Tabs -->
+        <div class="category-tabs">
+            <div class="category-tab active" data-category="all">🎯 Tous les modules</div>
+            <div class="category-tab" data-category="beginner">🌱 Débutant</div>
+            <div class="category-tab" data-category="intermediate">📈 Intermédiaire</div>
+            <div class="category-tab" data-category="advanced">🔥 Avancé</div>
+            <div class="category-tab" data-category="expert">💎 Expert</div>
+        </div>
+        
+        <!-- Beginner Modules -->
+        <section class="module-section" data-level="beginner">
+            <div class="section-header">
+                <div class="section-icon">🌱</div>
+                <div>
+                    <div class="section-title">Fondamentaux du Trading</div>
+                    <div class="section-subtitle">Niveau Débutant • 6 modules</div>
+                </div>
+            </div>
+            
+            <div class="modules-grid">
+                <div class="module-card" onclick="window.location.href='/academy/module/1'">
+                    <div class="module-header">
+                        <div class="module-icon beginner">📚</div>
+                        <div class="module-info">
+                            <div class="module-title">Introduction au Trading Crypto</div>
+                            <span class="module-level beginner">🌱 Débutant</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Découvrez les bases du trading de cryptomonnaies, le fonctionnement des marchés et les concepts essentiels pour bien démarrer.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 8 leçons</div>
+                            <div class="module-stat">⏱️ 2h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-green)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/2'">
+                    <div class="module-header">
+                        <div class="module-icon beginner">📊</div>
+                        <div class="module-info">
+                            <div class="module-title">Lecture des Graphiques</div>
+                            <span class="module-level beginner">🌱 Débutant</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Apprenez à lire et interpréter les graphiques de prix, les chandeliers japonais et les timeframes.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 10 leçons</div>
+                            <div class="module-stat">⏱️ 2.5h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-green)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/3'">
+                    <div class="module-header">
+                        <div class="module-icon beginner">💰</div>
+                        <div class="module-info">
+                            <div class="module-title">Gestion du Capital</div>
+                            <span class="module-level beginner">🌱 Débutant</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Maîtrisez les principes fondamentaux de la gestion de capital et de la préservation de votre portefeuille.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 6 leçons</div>
+                            <div class="module-stat">⏱️ 1.5h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-green)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/4'">
+                    <div class="module-header">
+                        <div class="module-icon beginner">🎯</div>
+                        <div class="module-info">
+                            <div class="module-title">Types d'Ordres</div>
+                            <span class="module-level beginner">🌱 Débutant</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Comprenez les différents types d'ordres (market, limit, stop-loss) et quand les utiliser efficacement.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 7 leçons</div>
+                            <div class="module-stat">⏱️ 1.5h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-green)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/5'">
+                    <div class="module-header">
+                        <div class="module-icon beginner">🔐</div>
+                        <div class="module-info">
+                            <div class="module-title">Sécurité & Wallets</div>
+                            <span class="module-level beginner">🌱 Débutant</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Protégez vos actifs avec les meilleures pratiques de sécurité et la gestion des portefeuilles crypto.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 5 leçons</div>
+                            <div class="module-stat">⏱️ 1h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-green)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/6'">
+                    <div class="module-header">
+                        <div class="module-icon beginner">🧠</div>
+                        <div class="module-info">
+                            <div class="module-title">Psychologie du Trader</div>
+                            <span class="module-level beginner">🌱 Débutant</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Développez le bon état d'esprit pour trader avec discipline et gérer vos émotions efficacement.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 6 leçons</div>
+                            <div class="module-stat">⏱️ 1.5h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-green)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Intermediate Modules -->
+        <section class="module-section" data-level="intermediate">
+            <div class="section-header">
+                <div class="section-icon">📈</div>
+                <div>
+                    <div class="section-title">Analyse Technique</div>
+                    <div class="section-subtitle">Niveau Intermédiaire • 6 modules</div>
+                </div>
+            </div>
+            
+            <div class="modules-grid">
+                <div class="module-card" onclick="window.location.href='/academy/module/7'">
+                    <div class="module-header">
+                        <div class="module-icon intermediate">📉</div>
+                        <div class="module-info">
+                            <div class="module-title">Supports & Résistances</div>
+                            <span class="module-level intermediate">📈 Intermédiaire</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Identifiez les niveaux clés du marché et apprenez à trader les zones de support et résistance.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 8 leçons</div>
+                            <div class="module-stat">⏱️ 2h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-orange)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/8'">
+                    <div class="module-header">
+                        <div class="module-icon intermediate">📊</div>
+                        <div class="module-info">
+                            <div class="module-title">Indicateurs Techniques</div>
+                            <span class="module-level intermediate">📈 Intermédiaire</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Maîtrisez RSI, MACD, Bollinger Bands et autres indicateurs essentiels pour votre analyse.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 12 leçons</div>
+                            <div class="module-stat">⏱️ 3h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-orange)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/9'">
+                    <div class="module-header">
+                        <div class="module-icon intermediate">🎨</div>
+                        <div class="module-info">
+                            <div class="module-title">Patterns Chartistes</div>
+                            <span class="module-level intermediate">📈 Intermédiaire</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Reconnaissez les figures chartistes (triangles, têtes-épaules, double top/bottom) et tradez-les.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 10 leçons</div>
+                            <div class="module-stat">⏱️ 2.5h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-orange)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/10'">
+                    <div class="module-header">
+                        <div class="module-icon intermediate">🕯️</div>
+                        <div class="module-info">
+                            <div class="module-title">Chandeliers Avancés</div>
+                            <span class="module-level intermediate">📈 Intermédiaire</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Approfondissez votre connaissance des patterns de chandeliers japonais pour anticiper les retournements.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 9 leçons</div>
+                            <div class="module-stat">⏱️ 2h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-orange)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/11'">
+                    <div class="module-header">
+                        <div class="module-icon intermediate">📐</div>
+                        <div class="module-info">
+                            <div class="module-title">Fibonacci & Retracements</div>
+                            <span class="module-level intermediate">📈 Intermédiaire</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Utilisez les niveaux de Fibonacci pour identifier les zones de retournement et les objectifs de prix.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 7 leçons</div>
+                            <div class="module-stat">⏱️ 1.5h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-orange)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/12'">
+                    <div class="module-header">
+                        <div class="module-icon intermediate">📈</div>
+                        <div class="module-info">
+                            <div class="module-title">Analyse des Volumes</div>
+                            <span class="module-level intermediate">📈 Intermédiaire</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Comprenez l'importance des volumes dans la validation des mouvements de prix et des breakouts.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 6 leçons</div>
+                            <div class="module-stat">⏱️ 1.5h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-orange)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Advanced Modules -->
+        <section class="module-section" data-level="advanced">
+            <div class="section-header">
+                <div class="section-icon">🔥</div>
+                <div>
+                    <div class="section-title">Stratégies Avancées</div>
+                    <div class="section-subtitle">Niveau Avancé • 5 modules</div>
+                </div>
+            </div>
+            
+            <div class="modules-grid">
+                <div class="module-card" onclick="window.location.href='/academy/module/13'">
+                    <div class="module-header">
+                        <div class="module-icon advanced">⚡</div>
+                        <div class="module-info">
+                            <div class="module-title">Scalping & Day Trading</div>
+                            <span class="module-level advanced">🔥 Avancé</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Maîtrisez les techniques de trading à court terme pour profiter des micro-mouvements du marché.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 10 leçons</div>
+                            <div class="module-stat">⏱️ 3h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-red)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/14'">
+                    <div class="module-header">
+                        <div class="module-icon advanced">📊</div>
+                        <div class="module-info">
+                            <div class="module-title">Swing Trading</div>
+                            <span class="module-level advanced">🔥 Avancé</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Apprenez à capturer les mouvements de plusieurs jours à plusieurs semaines avec des stratégies swing.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 8 leçons</div>
+                            <div class="module-stat">⏱️ 2h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-red)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/15'">
+                    <div class="module-header">
+                        <div class="module-icon advanced">🎯</div>
+                        <div class="module-info">
+                            <div class="module-title">Trading de Breakout</div>
+                            <span class="module-level advanced">🔥 Avancé</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Identifiez et tradez les cassures de niveaux clés avec des stratégies de breakout éprouvées.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 7 leçons</div>
+                            <div class="module-stat">⏱️ 2h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-red)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/16'">
+                    <div class="module-header">
+                        <div class="module-icon advanced">🛡️</div>
+                        <div class="module-info">
+                            <div class="module-title">Risk Management Pro</div>
+                            <span class="module-level advanced">🔥 Avancé</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Techniques avancées de gestion des risques, position sizing et protection du capital.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 8 leçons</div>
+                            <div class="module-stat">⏱️ 2h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-red)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/17'">
+                    <div class="module-header">
+                        <div class="module-icon advanced">📱</div>
+                        <div class="module-info">
+                            <div class="module-title">Trading Mobile & Alertes</div>
+                            <span class="module-level advanced">🔥 Avancé</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Configurez vos alertes et tradez efficacement depuis votre mobile sans manquer d'opportunités.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 5 leçons</div>
+                            <div class="module-stat">⏱️ 1h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-red)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Expert Modules -->
+        <section class="module-section" data-level="expert">
+            <div class="section-header">
+                <div class="section-icon">💎</div>
+                <div>
+                    <div class="section-title">Expertise & IA</div>
+                    <div class="section-subtitle">Niveau Expert • 5 modules</div>
+                </div>
+            </div>
+            
+            <div class="modules-grid">
+                <div class="module-card" onclick="window.location.href='/academy/module/18'">
+                    <div class="module-header">
+                        <div class="module-icon expert">🤖</div>
+                        <div class="module-info">
+                            <div class="module-title">Trading avec l'IA</div>
+                            <span class="module-level expert">💎 Expert</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Exploitez la puissance de l'intelligence artificielle pour optimiser vos décisions de trading.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 10 leçons</div>
+                            <div class="module-stat">⏱️ 3h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-purple)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/19'">
+                    <div class="module-header">
+                        <div class="module-icon expert">⛓️</div>
+                        <div class="module-info">
+                            <div class="module-title">Analyse On-Chain</div>
+                            <span class="module-level expert">💎 Expert</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Analysez les données blockchain pour anticiper les mouvements des whales et du marché.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 8 leçons</div>
+                            <div class="module-stat">⏱️ 2.5h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-purple)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/20'">
+                    <div class="module-header">
+                        <div class="module-icon expert">🌾</div>
+                        <div class="module-info">
+                            <div class="module-title">DeFi & Yield Farming</div>
+                            <span class="module-level expert">💎 Expert</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Maîtrisez les protocoles DeFi, le yield farming et les stratégies de rendement passif.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 9 leçons</div>
+                            <div class="module-stat">⏱️ 2.5h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-purple)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/21'">
+                    <div class="module-header">
+                        <div class="module-icon expert">💎</div>
+                        <div class="module-info">
+                            <div class="module-title">Détection de Gems</div>
+                            <span class="module-level expert">💎 Expert</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Apprenez à identifier les projets crypto à fort potentiel avant qu'ils n'explosent.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 7 leçons</div>
+                            <div class="module-stat">⏱️ 2h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-purple)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="module-card" onclick="window.location.href='/academy/module/22'">
+                    <div class="module-header">
+                        <div class="module-icon expert">🏆</div>
+                        <div class="module-info">
+                            <div class="module-title">Masterclass Trading Pro</div>
+                            <span class="module-level expert">💎 Expert</span>
+                        </div>
+                    </div>
+                    <div class="module-description">
+                        Le module ultime combinant toutes les compétences pour devenir un trader professionnel.
+                    </div>
+                    <div class="module-meta">
+                        <div class="module-stats">
+                            <div class="module-stat">📖 15 leçons</div>
+                            <div class="module-stat">⏱️ 4h</div>
+                        </div>
+                        <div class="module-progress">
+                            <svg width="60" height="60">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="var(--accent-purple)" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                            </svg>
+                            <span class="module-progress-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- CTA Section -->
+        <section class="cta-section">
+            <h2 class="cta-title">🚀 Prêt à devenir un trader pro ?</h2>
+            <p class="cta-description">
+                Accédez à l'intégralité de nos modules de formation et commencez votre parcours vers l'excellence en trading crypto.
+            </p>
+            <div class="cta-buttons">
+                <a href="/login" class="btn btn-primary">
+                    <span>🎓</span>
+                    <span>Commencer maintenant</span>
+                </a>
+                <a href="/pricing-complete" class="btn btn-secondary">
+                    <span>💎</span>
+                    <span>Voir les abonnements</span>
+                </a>
+            </div>
+        </section>
+    </div>
+    
+    <script>
+        // Category filter functionality
+        document.querySelectorAll('.category-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Update active tab
+                document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                const category = this.dataset.category;
+                
+                // Show/hide sections based on category
+                document.querySelectorAll('.module-section').forEach(section => {
+                    if (category === 'all') {
+                        section.style.display = 'block';
+                    } else {
+                        section.style.display = section.dataset.level === category ? 'block' : 'none';
+                    }
+                });
+            });
+        });
+        
+        // Animate progress bar on load
+        window.addEventListener('load', function() {
+            // This would be dynamic based on user's actual progress
+            const progressFill = document.querySelector('.progress-fill');
+            if (progressFill) {
+                setTimeout(() => {
+                    progressFill.style.width = '0%'; // Would be user's actual progress
+                }, 500);
+            }
+        });
+    </script>
+</body>
+</html>

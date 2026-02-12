@@ -35109,15 +35109,15 @@ async def ai_alerts_inbox(request: Request):
 @app.get("/ai-news", response_class=HTMLResponse)
 async def ai_news():
     """Actualités crypto - TOP 50"""
-    cryptos = (await get_top_50_cryptos()) or []
+    cryptos = await get_top_50_cryptos()
     news_html = ""
     for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
+        price = _safe_float(crypto.get('current_price', 0))
+        change_24h = _safe_float(crypto.get('price_change_percentage_24h', 0))
         name = crypto.get('name', '')
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
-        mcap = crypto.get('market_cap', 0)
+        mcap = _safe_float(crypto.get('market_cap', 0))
         volume = crypto.get('total_volume', 0)
         price_str = f"{price:,.6f}" if price < 1 else f"{price:,.2f}"
         change_class = "positive" if change_24h > 0 else "negative"
@@ -35309,21 +35309,16 @@ print("Routes 2-3 créées: AI News, AI Predictor")
 @app.get("/ai-predictor", response_class=HTMLResponse)
 async def ai_predictor():
     """Prédictions de prix - TOP 50"""
-    cryptos = (await get_top_50_cryptos()) or []
+    cryptos = await get_top_50_cryptos()
+    
     # Gnrer les cartes pour les 3 priodes
     predictions_7d = ""
     predictions_30d = ""
     predictions_90d = ""
     
     for crypto in cryptos[:50]:
-        try:
-            price = float(crypto.get('current_price') or 0)
-        except (TypeError, ValueError):
-            price = 0.0
-        try:
-            change_24h = float(crypto.get('price_change_percentage_24h') or 0)
-        except (TypeError, ValueError):
-            change_24h = 0.0
+        price = _safe_float(crypto.get('current_price', 0))
+        change_24h = _safe_float(crypto.get('price_change_percentage_24h', 0))
         name = crypto.get('name', 'Unknown')
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
@@ -35638,11 +35633,11 @@ async def ai_predictor():
 @app.get("/ai-whale", response_class=HTMLResponse)
 async def ai_whale():
     """Détection mouvements whales - TOP 50"""
-    cryptos = (await get_top_50_cryptos()) or []
+    cryptos = await get_top_50_cryptos()
     whale_html = ""
     for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
+        price = _safe_float(crypto.get('current_price', 0))
+        change_24h = _safe_float(crypto.get('price_change_percentage_24h', 0))
         name = crypto.get('name', '')
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
@@ -35842,11 +35837,11 @@ print("Routes 4-7 créées")
 @app.get("/ai-patterns", response_class=HTMLResponse)
 async def ai_patterns():
     """Reconnaissance patterns - TOP 50"""
-    cryptos = (await get_top_50_cryptos()) or []
+    cryptos = await get_top_50_cryptos()
     patterns_html = ""
     for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
+        price = _safe_float(crypto.get('current_price', 0))
+        change_24h = _safe_float(crypto.get('price_change_percentage_24h', 0))
         name = crypto.get('name', '')
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
@@ -36054,11 +36049,11 @@ print("Routes 4-7 créées")
 @app.get("/ai-sentiment", response_class=HTMLResponse)
 async def ai_sentiment():
     """Analyse sentiment - TOP 50"""
-    cryptos = (await get_top_50_cryptos()) or []
+    cryptos = await get_top_50_cryptos()
     sentiment_html = ""
     for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
+        price = _safe_float(crypto.get('current_price', 0))
+        change_24h = _safe_float(crypto.get('price_change_percentage_24h', 0))
         change_7d = crypto.get('price_change_percentage_7d_in_currency', change_24h * 3)
         name = crypto.get('name', '')
         symbol = crypto.get('symbol', '').upper()
@@ -65469,15 +65464,15 @@ async def ai_alerts_inbox(request: Request):
 @app.get("/ai-news", response_class=HTMLResponse)
 async def ai_news():
     """Actualités crypto - TOP 50"""
-    cryptos = (await get_top_50_cryptos()) or []
+    cryptos = await get_top_50_cryptos()
     news_html = ""
     for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
+        price = _safe_float(crypto.get('current_price', 0))
+        change_24h = _safe_float(crypto.get('price_change_percentage_24h', 0))
         name = crypto.get('name', '')
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
-        mcap = crypto.get('market_cap', 0)
+        mcap = _safe_float(crypto.get('market_cap', 0))
         volume = crypto.get('total_volume', 0)
         price_str = f"{price:,.6f}" if price < 1 else f"{price:,.2f}"
         change_class = "positive" if change_24h > 0 else "negative"
@@ -65669,21 +65664,16 @@ print("Routes 2-3 créées: AI News, AI Predictor")
 @app.get("/ai-predictor", response_class=HTMLResponse)
 async def ai_predictor():
     """Prédictions de prix - TOP 50"""
-    cryptos = (await get_top_50_cryptos()) or []
+    cryptos = await get_top_50_cryptos()
+    
     # Gnrer les cartes pour les 3 priodes
     predictions_7d = ""
     predictions_30d = ""
     predictions_90d = ""
     
     for crypto in cryptos[:50]:
-        try:
-            price = float(crypto.get('current_price') or 0)
-        except (TypeError, ValueError):
-            price = 0.0
-        try:
-            change_24h = float(crypto.get('price_change_percentage_24h') or 0)
-        except (TypeError, ValueError):
-            change_24h = 0.0
+        price = _safe_float(crypto.get('current_price', 0))
+        change_24h = _safe_float(crypto.get('price_change_percentage_24h', 0))
         name = crypto.get('name', 'Unknown')
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
@@ -65998,11 +65988,11 @@ async def ai_predictor():
 @app.get("/ai-whale", response_class=HTMLResponse)
 async def ai_whale():
     """Détection mouvements whales - TOP 50"""
-    cryptos = (await get_top_50_cryptos()) or []
+    cryptos = await get_top_50_cryptos()
     whale_html = ""
     for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
+        price = _safe_float(crypto.get('current_price', 0))
+        change_24h = _safe_float(crypto.get('price_change_percentage_24h', 0))
         name = crypto.get('name', '')
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
@@ -66202,11 +66192,11 @@ print("Routes 4-7 créées")
 @app.get("/ai-patterns", response_class=HTMLResponse)
 async def ai_patterns():
     """Reconnaissance patterns - TOP 50"""
-    cryptos = (await get_top_50_cryptos()) or []
+    cryptos = await get_top_50_cryptos()
     patterns_html = ""
     for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
+        price = _safe_float(crypto.get('current_price', 0))
+        change_24h = _safe_float(crypto.get('price_change_percentage_24h', 0))
         name = crypto.get('name', '')
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
@@ -66414,11 +66404,11 @@ print("Routes 4-7 créées")
 @app.get("/ai-sentiment", response_class=HTMLResponse)
 async def ai_sentiment():
     """Analyse sentiment - TOP 50"""
-    cryptos = (await get_top_50_cryptos()) or []
+    cryptos = await get_top_50_cryptos()
     sentiment_html = ""
     for crypto in cryptos[:50]:
-        price = crypto.get('current_price', 0)
-        change_24h = crypto.get('price_change_percentage_24h', 0)
+        price = _safe_float(crypto.get('current_price', 0))
+        change_24h = _safe_float(crypto.get('price_change_percentage_24h', 0))
         change_7d = crypto.get('price_change_percentage_7d_in_currency', change_24h * 3)
         name = crypto.get('name', '')
         symbol = crypto.get('symbol', '').upper()
@@ -70188,6 +70178,7 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
 </html>""".format(
         safe_title=safe_title,
         main_margin=main_margin,
+        page_wrap_margin=page_wrap_margin,
         sidebar_block=sidebar_block,
         title_block=title_block,
         body_html=body_html,
@@ -70532,7 +70523,8 @@ async def ai_whale_watcher(request: Request):
     # IMPORTANT: ne jamais écraser les classes globales (.page-wrap, .content, etc.)
     whale_css = """
     <style>
-      .ww-root{max-width:1400px;margin:0; padding-top:6px;}
+      /* Alignement: évite le centrage involontaire et suit le layout des autres pages */
+      .ww-root{width:100%;max-width:none;margin:0;padding:0;}
       .ww-hero{
         background: radial-gradient(1200px 600px at 20% 10%, rgba(120,70,255,.30), transparent 60%),
                     linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
@@ -70562,18 +70554,22 @@ async def ai_whale_watcher(request: Request):
         padding:14px;box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
       }
       .ww-card h3{margin:0 0 10px 0;font-size:16px;color:rgba(255,255,255,.92)}
-      .ww-form{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+      .ww-form{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr auto;gap:10px;align-items:end}
+      @media (max-width: 1100px){.ww-form{grid-template-columns:1fr 1fr}.ww-submit{grid-column:1/-1;width:100%}}
       .ww-field{display:flex;flex-direction:column;gap:6px}
       .ww-field label{font-size:12px;color:rgba(255,255,255,.70)}
       .ww-field select,.ww-field input{
         height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
-        background:rgba(0,0,0,.18);color:rgba(255,255,255,.92);padding:0 12px;min-width:140px;
+        background:rgba(0,0,0,.18);color:rgba(255,255,255,.92);padding:0 12px;width:100%;min-width:0;
       }
-      .ww-field input{min-width:120px}
+      .ww-field input{min-width:0}
       .ww-submit{
         height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
-        background:rgba(255,255,255,.08);color:rgba(255,255,255,.92);padding:0 14px;font-weight:800;cursor:pointer;
+        background:rgba(255,255,255,.08);color:rgba(255,255,255,.92);padding:0 14px;font-weight:800;cursor:pointer;white-space:nowrap;
       }
+.ww-btnfield label{visibility:hidden;}
+.ww-btnfield{min-width:140px;}
+.ww-btnfield .ww-submit{width:100%;}
       .ww-tablewrap{overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,.10)}
       table.ww-table{width:100%;border-collapse:separate;border-spacing:0;background:rgba(0,0,0,.14);min-width:760px}
       .ww-table th,.ww-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;white-space:nowrap}
@@ -70698,7 +70694,10 @@ async def ai_whale_watcher(request: Request):
                   <option value="200" {_limit_sel(200)}>200</option>
                 </select>
               </div>
-              <button class="ww-submit" type="submit">Appliquer</button>
+<div class="ww-field ww-btnfield">
+  <label>&nbsp;</label>
+  <button class="ww-submit" type="submit">Appliquer</button>
+</div>
             </form>
             <div class="ww-note">Astuce: un seuil très haut (ex: 100 BTC / 1 000 ETH) peut afficher 0 évènement. Les valeurs USD sont indicatives (CoinGecko).</div>
           </div>
@@ -70742,3 +70741,40 @@ async def ai_whale_watcher(request: Request):
     """
 
     return _simple_page("AI Whale Watcher", body_html, request=request, show_title=False, sidebar_html=(globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or ""), active_page="/ai-whale-watcher")
+
+
+# =========================
+# ROUTE DEDUPLICATION GUARD
+# =========================
+# main.py a été modifié de nombreuses fois; il peut contenir des routes dupliquées (même path + méthode).
+# Starlette prend la première route enregistrée, ce qui fait que les corrections "plus bas" ne s'appliquent pas.
+# Ce guard conserve uniquement la DERNIÈRE définition pour chaque (path, méthodes).
+def _dedupe_routes_keep_last(_app):
+    try:
+        routes = list(getattr(_app.router, "routes", []) or [])
+    except Exception:
+        return
+    seen = set()
+    kept_reversed = []
+    for r in reversed(routes):
+        path = getattr(r, "path", None)
+        methods = getattr(r, "methods", None)
+        # On déduplique seulement les routes HTTP "classiques"
+        if isinstance(path, str) and methods:
+            key = (path, tuple(sorted([m.upper() for m in methods if isinstance(m, str)])))
+            if key in seen:
+                continue
+            seen.add(key)
+        kept_reversed.append(r)
+    try:
+        _app.router.routes = list(reversed(kept_reversed))
+    except Exception:
+        pass
+
+# Applique immédiatement au chargement du module (après toutes les définitions)
+try:
+    _dedupe_routes_keep_last(app)
+except Exception as _e:
+    print("⚠️ Route dedupe guard failed:", _e)
+
+

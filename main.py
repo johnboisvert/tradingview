@@ -70524,16 +70524,7 @@ async def ai_whale_watcher(request: Request):
     whale_css = """
     <style>
       /* Alignement: évite le centrage involontaire et suit le layout des autres pages */
-      .ww-root{
-        width:100%;
-        max-width:1400px;
-        margin:0;
-        margin-right:auto; /* si un parent est en flex/center */
-        padding-top:6px;
-        box-sizing:border-box;
-        flex:1 1 auto;
-        align-self:stretch;
-      }
+      .ww-root{width:100%;max-width:none;margin:0;padding:0;}
       .ww-hero{
         background: radial-gradient(1200px 600px at 20% 10%, rgba(120,70,255,.30), transparent 60%),
                     linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.03));

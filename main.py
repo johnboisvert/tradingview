@@ -5501,6 +5501,16 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             "/crypto-academy",
             "/trading-academy",
             "/tv-webhook",
+            # Pages AI temporairement publiques pour tests CSS
+            "/ai-whale-watcher",
+            "/ai-opportunity-scanner", 
+            "/ai-market-regime",
+            "/ai-assistant",
+            "/ai-news",
+            "/ai-signals",
+            "/ai-token-scanner",
+            "/ai-alerts",
+            "/ai-setup-builder",
         }
         PUBLIC_PREFIXES = ("/static", "/assets", "/css", "/js", "/img")
 
@@ -5637,6 +5647,7 @@ SIDEBAR = """<style>
 }
 /* Décalage du contenu pour éviter superposition avec sidebar */
 body{margin:0 !important;padding-left:280px !important;transition:padding-left 0.3s}
+.content,.main-content,.ww-root,.page-content,.main{margin-left:0!important;padding-left:0!important}
 .container,.main-content,body>div:not(.sidebar){margin-left:0!important}
 @media (max-width: 768px){
 body{padding-left:0 !important}
@@ -5964,7 +5975,7 @@ CSS = """
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; }
-.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.container { max-width: 1600px; margin: 0 auto; padding: 20px; }
 .card { background: #1e293b; border-radius: 16px; padding: 30px; margin-bottom: 20px; border: 1px solid #334155; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
 .header { text-align: center; margin-bottom: 40px; padding: 40px 0; }
 .header h1 { font-size: 48px; font-weight: 800; background: linear-gradient(to right, #60a5fa, #a78bfa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 15px; }
@@ -10171,7 +10182,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
 
 
 <!-- ==================== SECTIONS EXPLICATIVES ==================== -->
-<div style="max-width: 1400px; margin: 60px auto 40px auto; padding: 0 20px;">
+<div style="max-width: 1600px; margin: 60px auto 40px auto; padding: 0 20px;">
     
     <!-- Comment ça marche? -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
@@ -20443,7 +20454,7 @@ async def stats_dashboard():
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }}
         
-        .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
+        .container {{ max-width: 1600px; margin: 0 auto; padding: 20px; }}
         h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
         
         .data-badge {{ text-align: center; margin-bottom: 20px; padding: 12px; background: rgba(0, 255, 136, 0.1); border: 2px solid #00ff88; border-radius: 8px; color: #00ff88; font-weight: bold; }}
@@ -26422,7 +26433,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             <style>
                 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
                 body {{ font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }}
-                .container {{ max-width: 1400px; margin: 0 auto; }}
+                .container {{ max-width: 1600px; margin: 0 auto; }}
                 h1 {{ color: #60a5fa; margin-bottom: 30px; }}
                 .stats {{
                     display: grid;
@@ -28063,7 +28074,7 @@ async def fear_greed_chart():
                 padding-bottom: 40px;
             }}
             .container {{ 
-                max-width: 1400px; 
+                max-width: 1600px; 
                 margin: 40px auto; 
                 background: #1e293b; 
                 padding: 40px; 
@@ -28254,7 +28265,7 @@ async def backtesting_page(request: Request):
                 padding-bottom: 50px;
             }}
             
-            .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
+            .container {{ max-width: 1600px; margin: 0 auto; padding: 20px; }}
             
             .header {{
                 background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
@@ -32473,7 +32484,7 @@ def _render_ai_token_scanner_page(
     }}
     .page {{ display:flex; min-height:100vh; background: radial-gradient(1200px 600px at 55% 0%, rgba(124,58,237,0.25), rgba(0,0,0,0) 55%), radial-gradient(1000px 600px at 10% 30%, rgba(56,189,248,0.10), rgba(0,0,0,0) 60%), #050a12; }}
     .sidebar {{ position:fixed; left:0; top:0; bottom:0; width:280px; overflow-y:auto; }}
-    .content {{ margin-left:280px; width:calc(100% - 280px); padding: 26px 28px 40px; }}
+    .content {{ margin-left:0; width:100%; padding: 26px 28px 40px; }}
     .wrap {{ max-width: 1260px; margin: 0 auto; }}
 
     .hero {{
@@ -33918,6 +33929,16 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             "/crypto-academy",
             "/trading-academy",
             "/tv-webhook",
+            # Pages AI temporairement publiques pour tests CSS
+            "/ai-whale-watcher",
+            "/ai-opportunity-scanner", 
+            "/ai-market-regime",
+            "/ai-assistant",
+            "/ai-news",
+            "/ai-signals",
+            "/ai-token-scanner",
+            "/ai-alerts",
+            "/ai-setup-builder",
         }
         PUBLIC_PREFIXES = ("/static", "/assets", "/css", "/js", "/img")
 
@@ -38327,7 +38348,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
 
 
 <!-- ==================== SECTIONS EXPLICATIVES ==================== -->
-<div style="max-width: 1400px; margin: 60px auto 40px auto; padding: 0 20px;">
+<div style="max-width: 1600px; margin: 60px auto 40px auto; padding: 0 20px;">
     
     <!-- Comment ça marche? -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
@@ -46958,7 +46979,7 @@ async def stats_dashboard():
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }}
         
-        .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
+        .container {{ max-width: 1600px; margin: 0 auto; padding: 20px; }}
         h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
         
         .data-badge {{ text-align: center; margin-bottom: 20px; padding: 12px; background: rgba(0, 255, 136, 0.1); border: 2px solid #00ff88; border-radius: 8px; color: #00ff88; font-weight: bold; }}
@@ -50598,7 +50619,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             <style>
                 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
                 body {{ font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }}
-                .container {{ max-width: 1400px; margin: 0 auto; }}
+                .container {{ max-width: 1600px; margin: 0 auto; }}
                 h1 {{ color: #60a5fa; margin-bottom: 30px; }}
                 .stats {{
                     display: grid;
@@ -52239,7 +52260,7 @@ async def fear_greed_chart():
                 padding-bottom: 40px;
             }}
             .container {{ 
-                max-width: 1400px; 
+                max-width: 1600px; 
                 margin: 40px auto; 
                 background: #1e293b; 
                 padding: 40px; 
@@ -52430,7 +52451,7 @@ async def backtesting_page(request: Request):
                 padding-bottom: 50px;
             }}
             
-            .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
+            .container {{ max-width: 1600px; margin: 0 auto; padding: 20px; }}
             
             .header {{
                 background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
@@ -60655,7 +60676,7 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
     safe_title = _html_escape(title or "CryptoIA")
     sidebar_block = ""
     main_margin = "0"
-    page_wrap_margin = "0 auto"
+    page_wrap_margin = "0"
     if sidebar_html:
         sidebar_block = "<aside class='sidebar'>%s</aside>" % sidebar_html
         main_margin = "280px"
@@ -60692,11 +60713,11 @@ def _simple_page(title: str, body_html: str, request=None, sidebar_html="", acti
     }}
     .main {{
       margin-left:{main_margin};
-      padding: 22px 22px 60px;
+      padding: 10px 16px 30px;
     }}
     .page-wrap {{
       width: 100%;
-      max-width: 1400px;
+      max-width: 1600px;
       margin: {page_wrap_margin};
     }}
     .page-title {{

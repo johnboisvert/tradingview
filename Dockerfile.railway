@@ -1,0 +1,47 @@
+# ============================================================================
+# 🐳 CryptoIA Trading Platform - Dockerfile Optimisé pour Railway
+# Version légère pour éviter les timeouts
+# ============================================================================
+
+FROM python:3.11-slim
+
+# Variables d'environnement
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PORT=8080
+
+WORKDIR /app
+
+# Copier et installer les dépendances Python (version minimale)
+COPY requirements-minimal.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Copier uniquement les fichiers essentiels
+COPY main.py /app/
+COPY academy_content.py /app/
+COPY academy_content_extended.py /app/
+COPY config.py /app/
+COPY auth_service.py /app/
+COPY subscription_system.py /app/
+COPY crypto_data_service.py /app/
+COPY api_routes.py /app/
+COPY pages_redesign.py /app/
+COPY pages_redesign_part2.py /app/
+COPY pages_redesign_part3.py /app/
+COPY youtube_videos.py /app/
+
+# Copier les templates et static
+COPY templates/ /app/templates/
+COPY static/ /app/static/
+COPY support/ /app/support/
+
+# Créer les répertoires nécessaires
+RUN mkdir -p /app/data /tmp/uploads && chmod -R 777 /app/data /tmp/uploads
+
+# Exposer le port
+EXPOSE 8080
+
+# Commande de démarrage simple
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

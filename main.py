@@ -27662,13 +27662,14 @@ async def calculatrice_trades():
         }
         
         .warning-box {
-            background: rgba(239, 68, 68, 0.1);
-            border-left: 4px solid #ef4444;
-            padding: 15px;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #7f1d1d, #991b1b) !important;
+            border-left: 6px solid #fbbf24 !important;
+            padding: 20px;
+            border-radius: 12px;
             margin: 20px 0;
-            color: #fca5a5;
-            font-size: 14px;
+            color: #fef3c7 !important;
+            font-size: 15px;
+            box-shadow: 0 4px 20px rgba(127, 29, 29, 0.5);
         }
         
         .info-box {
@@ -57240,13 +57241,14 @@ async def calculatrice_trades():
         }
         
         .warning-box {
-            background: rgba(239, 68, 68, 0.1);
-            border-left: 4px solid #ef4444;
-            padding: 15px;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #7f1d1d, #991b1b) !important;
+            border-left: 6px solid #fbbf24 !important;
+            padding: 20px;
+            border-radius: 12px;
             margin: 20px 0;
-            color: #fca5a5;
-            font-size: 14px;
+            color: #fef3c7 !important;
+            font-size: 15px;
+            box-shadow: 0 4px 20px rgba(127, 29, 29, 0.5);
         }
         
         .info-box {
@@ -68572,6 +68574,25 @@ async def academy_lesson(request: Request, module_id: int, lesson_id: int):
             }}
             .content-box strong {{
                 color: #06b6d4;
+            }}
+            /* Style pour les boîtes d'avertissement - RÈGLE D'OR */
+            .content-box .warning-box,
+            .content-box div[style*="background: #fff3cd"],
+            .content-box div[style*="background:#fff3cd"] {{
+                background: linear-gradient(135deg, #7f1d1d, #991b1b) !important;
+                color: #fef3c7 !important;
+                padding: 20px !important;
+                border-radius: 12px !important;
+                margin: 20px 0 !important;
+                border-left: 6px solid #fbbf24 !important;
+                box-shadow: 0 4px 20px rgba(127, 29, 29, 0.5) !important;
+            }}
+            .content-box .warning-box strong,
+            .content-box div[style*="background: #fff3cd"] strong,
+            .content-box div[style*="background:#fff3cd"] strong {{
+                color: #fbbf24 !important;
+                font-size: 1.2em !important;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
             }}
             .key-points {{
                 background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(139,92,246,0.1));

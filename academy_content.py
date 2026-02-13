@@ -59,7 +59,7 @@ LESSON_CONTENT = {
                 <li><strong>Stress émotionnel</strong> : Les pertes peuvent affecter votre santé mentale</li>
             </ul>
             
-            <div class="warning-box" style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px;">
+            <div class="warning-box" class="warning-box" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 5px solid #dc2626; box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);">
                 <strong>⚠️ RÈGLE D'OR :</strong> Ne tradez JAMAIS avec de l'argent que vous ne pouvez pas vous permettre de perdre. Commencez petit, apprenez, puis augmentez progressivement.
             </div>
         """,

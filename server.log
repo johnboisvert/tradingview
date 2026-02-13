@@ -1,7 +1,10 @@
-INFO:     Started server process [1388]
+INFO:     Will watch for changes in these directories: ['/workspace/tradingview-main']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [1624] using WatchFiles
+INFO:     Started server process [1626]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+✅ Pages redesignées v2.0 chargées avec succès
 ⚠️  stripe non installé - mode simulation
 ⚠️  Coinbase Commerce non configuré
 ✅ Tables subscription OK (sqlite)
@@ -11,7 +14,7 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ✅ Table trades OK (sqlite)
 ✅ SQL Ready! Trades: 0
 ⚠️ Rate limiter désactivé (ModuleNotFoundError)
-✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770930632)
+✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770990480)
 ✅ Routes d'abonnement activées
 ✅ SessionMiddleware forcé en premier (request.session OK)
 ⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
@@ -19,7 +22,7 @@ Routes 2-3 créées: AI News, AI Predictor
 Routes 4-7 créées
 Routes 4-7 créées
 Routes 4-7 créées
-✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770930632)
+✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770990481)
 ✅ Routes d'abonnement activées
 ✅ SessionMiddleware forcé en premier (request.session OK)
 ⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
@@ -64,26 +67,4 @@ Routes 4-7 créées
 ======================================================================
 
 ⚠️ Une instance du moniteur est déjà active, skip
-INFO:     127.0.0.1:48226 - "GET /academy/module/1/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48242 - "GET /academy/module/1/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48256 - "GET /academy/module/2/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48268 - "GET /academy/module/3/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48270 - "GET /academy/module/4/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48274 - "GET /academy/module/5/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48282 - "GET /academy/module/6/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48294 - "GET /academy/module/7/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48308 - "GET /academy/module/8/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48314 - "GET /academy/module/9/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48320 - "GET /academy/module/10/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48322 - "GET /academy/module/11/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48336 - "GET /academy/module/12/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48352 - "GET /academy/module/13/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48356 - "GET /academy/module/14/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48372 - "GET /academy/module/15/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48378 - "GET /academy/module/16/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48390 - "GET /academy/module/17/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48392 - "GET /academy/module/18/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48402 - "GET /academy/module/19/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48418 - "GET /academy/module/20/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48428 - "GET /academy/module/21/lesson/1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48438 - "GET /academy/module/22/lesson/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47470 - "GET /strategie HTTP/1.1" 200 OK

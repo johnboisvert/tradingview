@@ -43,5 +43,8 @@ RUN mkdir -p /app/data /tmp/uploads && chmod -R 777 /app/data /tmp/uploads
 # Exposer le port
 EXPOSE 8080
 
-# Commande de démarrage simple
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Script de démarrage qui gère la variable PORT
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]

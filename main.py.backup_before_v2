@@ -5575,42 +5575,31 @@ class PermissionMiddleware(BaseHTTPMiddleware):
 
         # --------- chemins publics / statiques ---------
         PUBLIC_PATHS = {
-    "/",
-    "/health",
-    "/favicon.ico",
-    "/login",
-    "/logout",
-    "/register",
-    "/admin-login",
-    "/contact",
-    "/pricing",
-    "/pricing-complete",
-    "/telechargements",
-    "/crypto-pepites",
-    "/academy",
-    "/crypto-academy",
-    "/trading-academy",
-    "/tv-webhook",
-    "/ai-whale",
-    "/ai-whale-watcher",
-    "/ai-opportunity-scanner",
-    "/ai-market-regime",
-    "/ai-assistant",
-    "/ai-news",
-    "/ai-signals",
-    "/ai-token-scanner",
-    "/ai-alerts",
-    "/ai-setup-builder",
-    "/ai-predictor",
-    "/ai-patterns",
-    "/ai-sentiment",
-    "/ai-sizer",
-    "/ai-exit",
-    "/ai-timeframe",
-    "/ai-liquidity",
-    "/ai-gem-hunter",
-    "/ai-technical-analysis"
-}
+            "/", "/health", "/favicon.ico",
+            "/login", "/logout", "/register",
+            "/admin-login",
+            "/contact", "/pricing", "/pricing-complete",
+            "/telechargements", "/crypto-pepites",
+            "/academy",
+            "/crypto-academy",
+            "/trading-academy",
+            "/tv-webhook",
+            # Pages AI temporairement publiques pour tests CSS
+            "/ai-whale",
+            "/ai-whale-watcher",
+            "/ai-opportunity-scanner", 
+            "/ai-market-regime",
+            "/ai-assistant",
+            "/ai-news",
+            "/ai-signals",
+            "/ai-token-scanner",
+            "/ai-alerts",
+            "/ai-setup-builder",
+            "/ai-predictor",
+            "/ai-patterns", 
+            "/ai-sentiment",
+            "/ai-sizer",
+        }
         PUBLIC_PREFIXES = ("/static", "/assets", "/css", "/js", "/img")
 
         if path in PUBLIC_PATHS or path.startswith(PUBLIC_PREFIXES):
@@ -31020,65 +31009,139 @@ async def ai_signals_page(request: Request):
 
 
 
-
 @app.get("/ai-alerts", response_class=HTMLResponse)
 async def ai_alerts_inbox(request: Request):
-    """AI Alerts - Alertes de Marché Révolutionnaire"""
+    """AI Alerts / Inbox (données réelles CoinGecko)."""
+    cards_html = ""
+    result_html = ""  # safety: always defined
+    style = (request.query_params.get("style") or "scalp").strip().lower()
+    if style not in ("scalp", "swing"):
+        style = "scalp"
+
     try:
-        SID = globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-        
-        alerts_data = []
-        try:
-            coins = _coingecko_markets_top50()
-            if isinstance(coins, list):
-                for c in coins[:30]:
-                    ch24 = c.get("price_change_percentage_24h") or 0
-                    ch1 = c.get("price_change_percentage_1h_in_currency") or 0
-                    ch7 = c.get("price_change_percentage_7d_in_currency") or 0
-                    
-                    alert_type = "neutral"
-                    reason = "Mouvement normal"
-                    confidence = 50
-                    
-                    if ch24 > 10:
-                        alert_type = "bullish"
-                        reason = f"Forte hausse de {ch24:.1f}% en 24h"
-                        confidence = min(95, 50 + int(ch24))
-                    elif ch24 > 5:
-                        alert_type = "bullish"
-                        reason = f"Hausse significative de {ch24:.1f}% en 24h"
-                        confidence = min(85, 50 + int(ch24))
-                    elif ch24 < -10:
-                        alert_type = "bearish"
-                        reason = f"Forte baisse de {ch24:.1f}% en 24h"
-                        confidence = min(95, 50 + int(abs(ch24)))
-                    elif ch24 < -5:
-                        alert_type = "bearish"
-                        reason = f"Baisse significative de {ch24:.1f}% en 24h"
-                        confidence = min(85, 50 + int(abs(ch24)))
-                    
-                    if abs(ch24) > 3 or abs(ch1 or 0) > 2:
-                        alerts_data.append({
-                            "symbol": c.get("symbol", "").upper(),
-                            "name": c.get("name", ""),
-                            "price": c.get("current_price"),
-                            "ch1": ch1,
-                            "ch24": ch24,
-                            "ch7": ch7,
-                            "volume": c.get("total_volume"),
-                            "type": alert_type,
-                            "reason": reason,
-                            "confidence": confidence
-                        })
-                
-                alerts_data.sort(key=lambda x: abs(x.get("ch24") or 0), reverse=True)
-        except Exception as e:
-            print(f"Erreur données alerts: {e}")
-        
-        html = get_ai_alerts_page(SID, alerts_data)
-        return HTMLResponse(html)
+        markets = await get_top_50_cryptos()
     except Exception as e:
-        return HTMLResponse(f"<h1>Erreur</h1><p>{e}</p>")
+        markets = []
+        print(f"⚠️ CoinGecko indisponible (ai-alerts): {e}")
+
+    alerts = []
+    for m in (markets or [])[:30]:
+        s = _ai_alerts_score(m, style=style)
+        alerts.append((s["score"], m, s))
+    alerts.sort(key=lambda x: x[0], reverse=True)
+
+    cards = []
+    for score, m, s in alerts[:20]:
+        name = m.get("name") or m.get("symbol", "").upper()
+        sym = (m.get("symbol") or "").upper()
+        price = m.get("current_price")
+        price_str = f"${price:,.6f}" if isinstance(price, (int, float)) else "-"
+        img = m.get("image") or ""
+
+        badge_class = "badge-bull" if s["label"] == "Bullish" else ("badge-bear" if s["label"] == "Bearish" else "badge-neutral")
+        reasons_html = "".join([f"<li>{html.escape(r)}</li>" for r in s["reasons"]])
+
+        cards.append(
+            f"""
+            <div class="alert-card">
+              <div class="alert-head">
+                <div class="alert-left">
+                  <div class="token">
+                    {'<img class="token-img" src="'+img+'" alt="">' if img else ''}
+                    <div>
+                      <div class="token-name">{html.escape(name)} <span class="token-sym">{html.escape(sym)}</span></div>
+                      <div class="token-sub">{price_str} · 1h <b>{s['ch1']:+.2f}%</b> · 24h <b>{s['ch24']:+.2f}%</b> · 7d <b>{s['ch7']:+.2f}%</b></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="alert-right">
+                  <div class="badge {badge_class}">{s['label']}</div>
+                  <div class="score">{s['score']}/100</div>
+                  <div class="conf">Confiance {int(s['confidence'])}%</div>
+                </div>
+              </div>
+              <div class="alert-body">
+                <ul class="reasons">{reasons_html}</ul>
+                <div class="meta">Style: <b>{style}</b> · Volume/MCAP: <b>{(s['v2m']*100):.2f}%</b></div>
+              </div>
+            </div>
+            """
+        )
+
+    cards_html = "\n".join(cards) if cards else '<div class="empty">Aucune donnée pour le moment. Réessaie dans 1-2 minutes.</div>'
+
+    result_html = cards_html
+    result_html = cards_html
+    html_page = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CryptoIA — AI Alerts</title>
+  <style>
+    body{{margin:0;background:#0b1220;color:#e9eef9;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}}
+    a{{color:inherit}}
+    .wrap{{display:flex;min-height:100vh}}
+    .sidebar{{width:260px;flex:0 0 260px;background:rgba(255,255,255,.03);border-right:1px solid rgba(255,255,255,.06)}}
+    .main{{flex:1;padding:22px 22px 40px}}
+    .title{{display:flex;align-items:end;gap:12px;flex-wrap:wrap}}
+    .title h1{{margin:0;font-size:28px;letter-spacing:.2px}}
+    .title p{{margin:6px 0 0;color:rgba(233,238,249,.75)}}
+    .toolbar{{margin:16px 0 10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}}
+    .btn{{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);text-decoration:none}}
+    .btn.active{{background:rgba(255,255,255,.12)}}
+    .grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:12px}}
+    .alert-card{{border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);border-radius:18px;overflow:hidden}}
+    .alert-head{{display:flex;justify-content:space-between;gap:14px;padding:14px 14px 10px}}
+    .token{{display:flex;gap:10px;align-items:center}}
+    .token-img{{width:34px;height:34px;border-radius:12px;background:rgba(255,255,255,.08)}}
+    .token-name{{font-weight:700}}
+    .token-sym{{opacity:.8;font-weight:700;margin-left:6px}}
+    .token-sub{{margin-top:2px;font-size:13px;color:rgba(233,238,249,.75)}}
+    .alert-right{{text-align:right;min-width:120px}}
+    .badge{{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700;font-size:12px;border:1px solid rgba(255,255,255,.12)}}
+    .badge-bull{{background:rgba(0,255,163,.12)}}
+    .badge-bear{{background:rgba(255,67,89,.12)}}
+    .badge-neutral{{background:rgba(255,255,255,.08)}}
+    .score{{margin-top:6px;font-size:20px;font-weight:800}}
+    .conf{{margin-top:2px;font-size:12px;color:rgba(233,238,249,.75)}}
+    .alert-body{{padding:0 14px 14px}}
+    .reasons{{margin:8px 0 8px 18px;color:rgba(233,238,249,.85)}}
+    .meta{{font-size:12px;color:rgba(233,238,249,.7)}}
+    .empty{{padding:16px;border:1px dashed rgba(255,255,255,.18);border-radius:14px;color:rgba(233,238,249,.75)}}
+    .note{{margin-top:16px;padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.25);color:rgba(233,238,249,.78)}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <aside class="sidebar">{SIDEBAR_FULL}</aside>
+    <main class="main">
+      <div class="title">
+        <div>
+          <h1>AI Alerts — Inbox</h1>
+          <p>Feed d’alertes basé sur des données réelles (CoinGecko). Style <b>{style}</b>.</p>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <a class="btn {'active' if style=='scalp' else ''}" href="/ai-alerts?style=scalp">Scalp (1h/volume)</a>
+        <a class="btn {'active' if style=='swing' else ''}" href="/ai-alerts?style=swing">Swing (24h/7d)</a>
+        <a class="btn" href="/ai-alerts">Rafraîchir</a>
+      </div>
+
+      <div class="grid">
+        {result_html}
+      </div>
+
+      <div class="note">
+        <b>Note:</b> ce score est un modèle de scoring heuristique (inspiré ML) pour aider à prioriser des coins à surveiller.
+        Il ne constitue pas un conseil financier.
+      </div>
+    </main>
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(html_page)
 
 @app.get("/ai-news", response_class=HTMLResponse)
 async def ai_news():
@@ -32288,21 +32351,73 @@ def _atr(highs, lows, closes, period: int = 14):
         atr = ((atr * (period - 1)) + tr) / period
     return atr
 
-
-@app.get("/ai-setup-builder", response_class=HTMLResponse)
+@app.get("/ai-setup-builder")
 async def ai_setup_builder(request: Request):
-    """AI Setup Builder - Constructeur de Setup Révolutionnaire"""
-    try:
-        SID = globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-        q = dict(request.query_params)
-        symbol = q.get("symbol", "")
-        timeframe = q.get("timeframe", "1h")
-        strategy = q.get("strategy", "breakout")
-        
-        html = get_ai_setup_builder_page(SID, symbol, timeframe, strategy)
-        return HTMLResponse(html)
-    except Exception as e:
-        return HTMLResponse(f"<h1>Erreur</h1><p>{e}</p>")
+    # Route publique pour test - pas de vérification d'authentification
+
+    # valeurs par défaut
+    symbol = (request.query_params.get("symbol") or "BTCUSDT").upper().strip()
+    interval = (request.query_params.get("tf") or "15m").strip()
+    style = (request.query_params.get("style") or "day").strip()
+    risk = (request.query_params.get("risk") or "1").strip()
+
+    # Ancien rendu attendait `cards_html` et `wl_html` (bug: variables non définies)
+    cards_html = ""  # no results on GET
+    wl_html = ""
+
+    html = f"""
+    <style>{GLOBAL_STYLES}</style>
+    <div class="app-shell">
+      {SIDEBAR}
+      <main class="main">
+        <div class="container">
+          <h1 style="margin:0;">🧩 AI Setup Builder (Explainable)</h1>
+          <div class="muted" style="margin-top:6px;">
+            Génère des setups basés sur <b>vraies chandelles OHLCV Binance</b> + logique IA explainable (règles + score).
+          </div>
+
+          <div class="card" style="margin-top:14px;">
+            <form method="post" action="/ai-setup-builder" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;">
+              <div>
+                <div class="muted">Symbol (Binance)</div>
+                <input name="symbol" value="{escape_html(symbol)}" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+              </div>
+              <div>
+                <div class="muted">Timeframe</div>
+                <select name="tf" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+                  {''.join([f'<option value="{t}" {"selected" if t==interval else ""}>{t}</option>' for t in ["5m","15m","1h","4h","1d"]])}
+                </select>
+              </div>
+              <div>
+                <div class="muted">Style</div>
+                <select name="style" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+                  {''.join([f'<option value="{t}" {"selected" if t==style else ""}>{t}</option>' for t in ["scalp","day","swing"]])}
+                </select>
+              </div>
+              <div>
+                <div class="muted">Risque / trade (%)</div>
+                <input name="risk" value="{escape_html(risk)}" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
+              </div>
+              <div style="grid-column:1/-1;display:flex;gap:10px;justify-content:flex-end;">
+                <button class="btn" type="submit">Générer setups</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card" style="margin-top:14px;">
+            <div style="font-weight:800;">Ce que la page fait</div>
+            <ul style="margin:10px 0 0 18px;">
+              <li>Récupère 500 chandelles depuis Binance (API publique).</li>
+              <li>Calcule EMA20/EMA50, RSI14, ATR14, volume moyen.</li>
+              <li>Détecte un régime (Trend / Range) puis propose 1-3 setups avec entry/stop/target + explication.</li>
+            </ul>
+          </div>
+
+        </div>
+      </main>
+    </div>
+    """
+    return HTMLResponse(html)
 
 @app.post("/ai-setup-builder")
 async def ai_setup_builder_generate(request: Request):
@@ -32567,76 +32682,248 @@ async def ai_setup_builder_generate(request: Request):
     return HTMLResponse(html)
 
 
-
-@app.get("/ai-liquidity", response_class=HTMLResponse)
+@app.get("/ai-liquidity")
 async def ai_liquidity(request: Request):
-    """AI Liquidity - Score de Liquidité Révolutionnaire"""
+    """AI Liquidity — Top 50: score de liquidité relative (volume/marketcap)."""
     try:
-        SID = globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-        
-        coins_data = []
-        try:
-            coins_data = _coingecko_markets_top50()
-            if not isinstance(coins_data, list):
-                coins_data = []
-        except Exception as e:
-            print(f"Erreur données liquidity: {e}")
-        
-        html = get_ai_liquidity_page(SID, coins_data)
-        return HTMLResponse(html)
-    except Exception as e:
-        return HTMLResponse(f"<h1>Erreur</h1><p>{e}</p>")
+        if not is_logged_in(request):
+            return RedirectResponse(url=f"/login?redirect=%2Fai-liquidity", status_code=303)
 
-@app.get("/ai-timeframe", response_class=HTMLResponse)
-async def ai_timeframe(request: Request):
-    """AI Timeframe - Recommandation Intelligente Révolutionnaire"""
-    try:
-        SID = globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-        
-        import math
-        btc_price = None
-        btc_change = None
-        volatility = None
-        regime = "Normal"
-        
-        try:
-            url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily"
-            chart = await _fetch_json(url, ttl_seconds=180, use_coingecko_key=True)
-            prices = chart.get("prices") if isinstance(chart, dict) else None
-            
-            returns = []
-            if prices and isinstance(prices, list) and len(prices) > 5:
-                for i in range(1, len(prices)):
-                    p0 = float(prices[i-1][1])
-                    p1 = float(prices[i][1])
-                    if p0 > 0:
-                        returns.append(math.log(p1/p0))
-            
-            if returns and len(returns) > 1:
-                mean_return = sum(returns) / len(returns)
-                variance = sum((x - mean_return)**2 for x in returns) / len(returns)
-                volatility = (variance ** 0.5) * math.sqrt(365)
-            
-            mk = _coingecko_markets_top50()
-            btc_row = next((r for r in (mk if isinstance(mk, list) else []) if r.get("id") == "bitcoin" or r.get("symbol") == "btc"), None)
-            if btc_row:
-                btc_price = btc_row.get("current_price")
-                btc_change = btc_row.get("price_change_percentage_24h")
-            
-            if volatility is not None:
-                if volatility >= 0.95:
-                    regime = "Volatilité très élevée"
-                elif volatility >= 0.70:
-                    regime = "Volatilité élevée"
-                elif volatility <= 0.45:
-                    regime = "Volatilité faible"
-        except Exception as e:
-            print(f"Erreur données timeframe: {e}")
-        
-        html = get_ai_timeframe_page(SID, btc_price, btc_change, volatility, regime)
+        # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
+        rows = _coingecko_markets_top50()
+        rows = rows if isinstance(rows, list) else []
+        items=[]
+        ratios=[]
+        for c in rows:
+            vol=c.get("total_volume"); mcap=c.get("market_cap")
+            ratio=(float(vol)/float(mcap)) if vol and mcap and float(mcap)>0 else 0.0
+            ratios.append(ratio)
+        max_ratio=max(ratios) if ratios else 0.0
+
+        for c in rows:
+            sym=(c.get("symbol") or "").upper()
+            name=c.get("name") or sym
+            price=c.get("current_price")
+            ch24=c.get("price_change_percentage_24h")
+            vol=c.get("total_volume")
+            mcap=c.get("market_cap")
+            ratio=(float(vol)/float(mcap)) if vol and mcap and float(mcap)>0 else 0.0
+            # score simple (0-100)
+            score=0
+            if max_ratio>0:
+                score = min(100, int(100 * (math.log10(ratio*100+1) / math.log10(max_ratio*100+1))))
+            tier="Faible"
+            tag="tag danger"
+            if score>=70: tier, tag="Élevée","tag success"
+            elif score>=40: tier, tag="Moyenne","tag"
+
+            items.append({
+                "sym":sym,"name":name,"price":price,"ch24":ch24,
+                "mcap":mcap,"vol":vol,"ratio":ratio,"score":score,"tier":tier,"tag":tag
+            })
+
+        items.sort(key=lambda x: (-x["score"], -x["ratio"]))
+
+        table_rows="".join([
+            f"""<tr>
+              <td><b>{r['sym']}</b><div style='font-size:12px;color:#9fb0c7'>{r['name']}</div></td>
+              <td>{_fmt_usd(r['price'])}</td>
+              <td>{_fmt_pct(r['ch24'])}</td>
+              <td>{_fmt_usd(r['mcap'])}</td>
+              <td>{_fmt_usd(r['vol'])}</td>
+              <td>{r['ratio']*100:.2f}%</td>
+              <td><span class='{r['tag']}'>{r['score']}/100 • {r['tier']}</span></td>
+            </tr>""" for r in items
+        ])
+
+        html=f"""<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Liquidity — CryptoIA</title>
+  <style>{GLOBAL_STYLES}</style>
+  <style>
+  body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
+  .container {{ max-width: 1200px; margin: 0 auto; }}
+  .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}
+  .muted {{ color:#9fb0c7; }}
+  .tag {{ display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(96,165,250,.15); border:1px solid rgba(96,165,250,.35); }}
+  .tag.success {{ background:rgba(16,185,129,.14); border-color:rgba(16,185,129,.35); }}
+  .tag.danger {{ background:rgba(239,68,68,.14); border-color:rgba(239,68,68,.35); }}
+  table {{ width:100%; border-collapse: collapse; margin-top: 14px; }}
+  th,td {{ padding: 10px 12px; border-bottom:1px solid rgba(255,255,255,.06); text-align:left; vertical-align:top; }}
+  th {{ color:#cfd7e6; font-size:13px; text-transform:uppercase; letter-spacing:.06em; }}
+  tr:hover td {{ background: rgba(255,255,255,.03); }}
+</style></head>
+<body>
+{SIDEBAR_HTML}
+<div class="container">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
+      <div>
+        <h1 style="margin:0;">AI Liquidity</h1>
+        <p class="muted" style="margin:8px 0 0 0;">Top 50 (market cap) — score de liquidité relative basé sur <b>Volume 24h / Market Cap</b>.</p>
+      </div>
+      <div class="muted" style="font-size:13px;">Dernière mise à jour: <b>{_now_utc_str()}</b></div>
+    </div>
+
+    <div style="margin-top:14px;" class="muted">
+      <b>Pourquoi c'est utile ?</b>  
+      Une liquidité relative élevée = exécutions plus “propres”, moins de slippage, et des mouvements souvent plus “suivables”.
+      À l’inverse, liquidité faible = mouvements plus erratiques (risque de mèches / manip).
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Coin</th><th>Prix</th><th>24h</th><th>Market Cap</th><th>Volume 24h</th><th>Vol/Mcap</th><th>Score</th></tr>
+      </thead>
+      <tbody>
+        {table_rows if table_rows else '<tr><td colspan="7" class="muted">Aucune donnée pour le moment.</td></tr>'}
+      </tbody>
+    </table>
+      <div class="card" style="margin-top:16px;">
+        <h2 style="margin:0 0 10px 0;">Comment utiliser cette page</h2>
+        <ul style="margin:0 0 0 18px; line-height:1.55;">
+          <li><b>But</b> : savoir quels coins sont “tradables” (liquidité relative élevée = exécutions plus propres).</li>
+          <li><b>Score</b> : basé sur <b>Volume 24h / Market Cap</b> (proxy simple de liquidité relative).</li>
+          <li><b>À privilégier</b> : scalps et entrées rapides sur les scores élevés (slippage souvent plus faible).</li>
+          <li><b>À éviter</b> : scores faibles = mouvements erratiques / mèches / risque de manipulation plus élevé.</li>
+          <li><b>Données</b> : CoinGecko (volume & market cap) — données publiques, mises à jour régulièrement.</li>
+        </ul>
+      </div>
+
+
+    <div style="margin-top:18px;" class="card">
+      <h2 style="margin:0 0 8px 0;">Comment utiliser cette page</h2>
+      <ul class="muted" style="margin:0; padding-left:18px;">
+        <li>Avant de trader un coin, regarde son <b>Score</b>: <b>≥70</b> = conditions plus stables; <b>&lt;40</b> = prudence.</li>
+        <li>Combine avec <b>AI Alerts</b> pour repérer “où ça bouge” et “où c’est tradable”.</li>
+        <li>Ce score est une heuristique rapide (pas un conseil financier).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body></html>"""
         return HTMLResponse(html)
     except Exception as e:
-        return HTMLResponse(f"<h1>Erreur</h1><p>{e}</p>")
+        return _simple_page("AI Liquidity", f"""<div class='card' style='background:#fff;border:1px solid #eee;border-radius:14px;padding:18px;'><h2 style='margin:0 0 8px 0;'>Données indisponibles</h2><p style='margin:0;color:#444;'>Impossible de charger les données CoinGecko pour le moment.</p><pre style='margin:12px 0 0 0; white-space:pre-wrap; background:#fafafa; border:1px solid #eee; padding:12px; border-radius:12px; color:#666;'>{e}</pre></div>""", request=request, sidebar=SIDEBAR)
+
+@app.get("/ai-timeframe")
+async def ai_timeframe(request: Request):
+    """AI Timeframe — recommandation de timeframe basée sur volatilité BTC (30j)."""
+    try:
+        if not is_logged_in(request):
+            return RedirectResponse(url=f"/login?redirect=%2Fai-timeframe", status_code=303)
+
+        # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
+        # prix BTC 30j
+        url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily"
+        chart = await _fetch_json(url, ttl_seconds=180, use_coingecko_key=True)
+        prices = chart.get("prices") if isinstance(chart, dict) else None
+        returns=[]
+        if prices and isinstance(prices, list) and len(prices) > 5:
+            for i in range(1, len(prices)):
+                p0 = float(prices[i-1][1]); p1=float(prices[i][1])
+                if p0>0:
+                    returns.append(math.log(p1/p0))
+        vol_annual=None
+        if returns:
+            vol_annual = ( (sum((x-(sum(returns)/len(returns)))**2 for x in returns)/len(returns))**0.5 * math.sqrt(365) ) if len(returns) > 1 else 0.0
+
+        # dernière variation 24h BTC via markets
+        mk = _coingecko_markets_top50()
+        btc_row = next((r for r in (mk if isinstance(mk,list) else []) if (r.get("id")=="bitcoin" or (r.get("symbol")=="btc"))), None)
+        btc_ch24 = btc_row.get("price_change_percentage_24h") if btc_row else None
+        btc_price = btc_row.get("current_price") if btc_row else None
+
+        regime="Normal"
+        if vol_annual is not None:
+            if vol_annual >= 0.95:
+                regime="Volatilité très élevée"
+            elif vol_annual >= 0.70:
+                regime="Volatilité élevée"
+            elif vol_annual <= 0.45:
+                regime="Volatilité faible"
+
+        # recommandation
+        rec = []
+        if regime in ("Volatilité très élevée","Volatilité élevée"):
+            rec = [
+                ("Scalp / court-terme", "5m → 15m", "Cherche des setups rapides, stops serrés, prends des profits partiels."),
+                ("Day-trade", "15m → 1h", "Attends confirmations (break+retest), évite l’overtrade."),
+                ("Swing", "4h", "Réduis la taille, vise des zones clés, patience.")
+            ]
+        else:
+            rec = [
+                ("Scalp / court-terme", "15m", "Moins de range explosif: privilégie la précision (VWAP/levels)."),
+                ("Day-trade", "1h → 4h", "Meilleure lisibilité structurelle (tendance / range)."),
+                ("Swing", "4h → 1D", "Les signaux durent plus longtemps: setups plus “propres”.")
+            ]
+
+        vol_txt = f"{vol_annual*100:.1f}%" if vol_annual is not None else "—"
+        btc_txt = _fmt_usd(btc_price)
+        btc_ch_txt = _fmt_pct(btc_ch24)
+
+        rec_rows = "".join([f"<tr><td><b>{a}</b></td><td>{b}</td><td class='muted'>{c}</td></tr>" for a,b,c in rec])
+
+        html=f"""<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Timeframe — CryptoIA</title>
+  <style>{GLOBAL_STYLES}</style>
+  <style>
+  body {{ margin:0 !important; padding-left:280px !important; transition: padding-left .3s; }}
+  .container {{ max-width: 1100px; margin: 0 auto; }}
+  .card {{ background: rgba(18,41,59,.55); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:22px; }}
+  .muted {{ color:#9fb0c7; }}
+  .pill {{ display:inline-flex; gap:10px; align-items:center; padding:8px 12px; border-radius:999px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); }}
+  table {{ width:100%; border-collapse: collapse; margin-top: 14px; }}
+  th,td {{ padding: 10px 12px; border-bottom:1px solid rgba(255,255,255,.06); text-align:left; vertical-align:top; }}
+  th {{ color:#cfd7e6; font-size:13px; text-transform:uppercase; letter-spacing:.06em; }}
+  tr:hover td {{ background: rgba(255,255,255,.03); }}
+</style></head>
+<body>
+{SIDEBAR_HTML}
+<div class="container">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
+      <div>
+        <h1 style="margin:0;">AI Timeframe</h1>
+        <p class="muted" style="margin:8px 0 0 0;">Recommandation de timeframe basée sur la <b>volatilité BTC (30 jours)</b> + dynamique récente.</p>
+      </div>
+      <div class="muted" style="font-size:13px;">Dernière mise à jour: <b>{_now_utc_str()}</b></div>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
+      <div class="pill"><b>BTC</b> <span class="muted">{btc_txt}</span></div>
+      <div class="pill"><b>BTC (24h)</b> <span class="muted">{btc_ch_txt}</span></div>
+      <div class="pill"><b>Volatilité (annualisée)</b> <span class="muted">{vol_txt}</span></div>
+      <div class="pill"><b>Régime</b> <span class="muted">{regime}</span></div>
+    </div>
+
+    <div style="margin-top:14px;" class="muted">
+      <b>Pourquoi c'est utile ?</b>  
+      Quand la volatilité est haute, les timeframes très petits peuvent devenir “bruyants” — ou au contraire offrir des scalps rapides.  
+      Ici, on te donne un <b>cadre</b> pour choisir un TF cohérent avec le marché, avant de chercher tes setups.
+    </div>
+
+    <table>
+      <thead><tr><th>Style</th><th>Timeframe conseillé</th><th>Pourquoi</th></tr></thead>
+      <tbody>{rec_rows}</tbody>
+    </table>
+
+    <div style="margin-top:18px;" class="card">
+      <h2 style="margin:0 0 8px 0;">Comment utiliser cette page</h2>
+      <ul class="muted" style="margin:0; padding-left:18px;">
+        <li>Commence par ce TF conseillé, puis <b>descends</b> d’un cran pour optimiser ton entrée (ex: 1h → 15m).</li>
+        <li>Combine avec <b>AI Market Regime</b> (trend/range) pour adapter la stratégie (breakouts vs mean-reversion).</li>
+        <li>Ce n’est pas un conseil financier — c’est une aide de cadrage basée sur données publiques.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body></html>"""
+        return HTMLResponse(html)
+
+    except Exception as e:
+        return _simple_page("AI Liquidity", f"""<div class='card' style='background:#fff;border:1px solid #eee;border-radius:14px;padding:18px;'><h2 style='margin:0 0 8px 0;'>Données indisponibles</h2><p style='margin:0;color:#444;'>Impossible de charger les données CoinGecko pour le moment.</p><pre style='margin:12px 0 0 0; white-space:pre-wrap; background:#fafafa; border:1px solid #eee; padding:12px; border-radius:12px; color:#666;'>{e}</pre></div>""", request=request, sidebar=SIDEBAR)
 
 # ============================================================
 # ✅ Routes manquantes (évite 404) + pages robustes (anti-500)
@@ -33092,42 +33379,31 @@ class PermissionMiddleware(BaseHTTPMiddleware):
 
         # --------- chemins publics / statiques ---------
         PUBLIC_PATHS = {
-    "/",
-    "/health",
-    "/favicon.ico",
-    "/login",
-    "/logout",
-    "/register",
-    "/admin-login",
-    "/contact",
-    "/pricing",
-    "/pricing-complete",
-    "/telechargements",
-    "/crypto-pepites",
-    "/academy",
-    "/crypto-academy",
-    "/trading-academy",
-    "/tv-webhook",
-    "/ai-whale",
-    "/ai-whale-watcher",
-    "/ai-opportunity-scanner",
-    "/ai-market-regime",
-    "/ai-assistant",
-    "/ai-news",
-    "/ai-signals",
-    "/ai-token-scanner",
-    "/ai-alerts",
-    "/ai-setup-builder",
-    "/ai-predictor",
-    "/ai-patterns",
-    "/ai-sentiment",
-    "/ai-sizer",
-    "/ai-exit",
-    "/ai-timeframe",
-    "/ai-liquidity",
-    "/ai-gem-hunter",
-    "/ai-technical-analysis"
-}
+            "/", "/health", "/favicon.ico",
+            "/login", "/logout", "/register",
+            "/admin-login",
+            "/contact", "/pricing", "/pricing-complete",
+            "/telechargements", "/crypto-pepites",
+            "/academy",
+            "/crypto-academy",
+            "/trading-academy",
+            "/tv-webhook",
+            # Pages AI temporairement publiques pour tests CSS
+            "/ai-whale",
+            "/ai-whale-watcher",
+            "/ai-opportunity-scanner", 
+            "/ai-market-regime",
+            "/ai-assistant",
+            "/ai-news",
+            "/ai-signals",
+            "/ai-token-scanner",
+            "/ai-alerts",
+            "/ai-setup-builder",
+            "/ai-predictor",
+            "/ai-patterns", 
+            "/ai-sentiment",
+            "/ai-sizer",
+        }
         PUBLIC_PREFIXES = ("/static", "/assets", "/css", "/js", "/img")
 
         if path in PUBLIC_PATHS or path.startswith(PUBLIC_PREFIXES):
@@ -56557,7 +56833,10 @@ async def ai_setup_builder_generate(request: Request):
 async def ai_liquidity(request: Request):
     """AI Liquidity — Top 50: score de liquidité relative (volume/marketcap)."""
     try:
-                # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
+        if not is_logged_in(request):
+            return RedirectResponse(url=f"/login?redirect=%2Fai-liquidity", status_code=303)
+
+        # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
         rows = _coingecko_markets_top50()
         rows = rows if isinstance(rows, list) else []
         items=[]
@@ -56678,7 +56957,10 @@ async def ai_liquidity(request: Request):
 async def ai_timeframe(request: Request):
     """AI Timeframe — recommandation de timeframe basée sur volatilité BTC (30j)."""
     try:
-                # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
+        if not is_logged_in(request):
+            return RedirectResponse(url=f"/login?redirect=%2Fai-timeframe", status_code=303)
+
+        # Accès géré par PermissionMiddleware (évite double-check qui peut casser la page)
         # prix BTC 30j
         url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily"
         chart = await _fetch_json(url, ttl_seconds=180, use_coingecko_key=True)
@@ -56909,126 +57191,187 @@ async def ai_sizer_page(request: Request):
     return HTMLResponse(SIDEBAR + html_content)
 
 
-
 @app.get("/ai-exit", response_class=HTMLResponse)
 async def ai_exit_page(request: Request):
-    """AI Exit - Calculateur TP/SL Professionnel Révolutionnaire"""
+    """Aide simple TP/SL selon RR."""
+    SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
+    q = dict(request.query_params)
+    entry = q.get("entry", "")
+    stop = q.get("stop", "")
+    rr = q.get("rr", "2")
+    direction = q.get("direction", "long")
+    out = ""
     try:
-        SID = globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-        q = dict(request.query_params)
-        entry = q.get("entry", "")
-        stop = q.get("stop", "")
-        rr = q.get("rr", "2")
-        direction = q.get("direction", "long")
-        
-        html = get_ai_exit_page(SID, entry, stop, rr, direction)
-        return HTMLResponse(html)
+        if entry and stop:
+            e = float(entry); s = float(stop); rr_f = float(rr)
+            risk = abs(e - s)
+            if risk <= 0:
+                raise ValueError("Entry et Stop doivent être différents.")
+            tp = (e + risk * rr_f) if direction == "long" else (e - risk * rr_f)
+            out = f"""
+            <div class="card" style="margin-top:14px">
+              <h3 style="margin:0 0 10px 0">Sortie proposée</h3>
+              <div class="grid">
+                <div><div class="muted">Entry</div><div><b>{e:,.6f}</b></div></div>
+                <div><div class="muted">Stop</div><div><b>{s:,.6f}</b></div></div>
+                <div><div class="muted">RR</div><div><b>{rr_f:g}R</b></div></div>
+                <div><div class="muted">Take Profit (TP)</div><div><b>{tp:,.6f}</b></div></div>
+              </div>
+              <div class="muted" style="margin-top:10px">* Tu peux split TP1/TP2 ensuite (ex: 1R et 2R).</div>
+            </div>
+            """
     except Exception as e:
-        return HTMLResponse(f"<h1>Erreur</h1><p>{e}</p>")
+        out = f'<div class="card" style="margin-top:14px;border-color:#ef4444"><b>Erreur:</b> {escape_html(e)}</div>'
 
+    body = f"""
+    <div class="card">
+      <div class="muted" style="margin-bottom:12px">Entre ton entry/stop + RR désiré, on calcule un TP cohérent.</div>
+      <form method="get">
+        <div class="grid">
+          <div><label>Entry</label><input name="entry" value="{escape_html(entry)}"></div>
+          <div><label>Stop</label><input name="stop" value="{escape_html(stop)}"></div>
+          <div><label>RR (ex: 2)</label><input name="rr" value="{escape_html(rr)}"></div>
+          <div><label>Direction</label>
+            <select name="direction">
+              <option value="long" {'selected' if direction=='long' else ''}>Long</option>
+              <option value="short" {'selected' if direction=='short' else ''}>Short</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px"><button type="submit">Calculer TP</button></div>
+      </form>
+    </div>
+    {out}
+    """
+    return _simple_page("AI Exit — TP/SL simple", body, SID)
 
 @app.get("/ai-gem-hunter", response_class=HTMLResponse)
 async def ai_gem_hunter_page(request: Request):
-    """AI Gem Hunter - Découverte de Pépites Révolutionnaire"""
+    """Gem Hunter (trending) — robuste."""
+    SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
+    items = []
+    err = ""
     try:
-        SID = globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-        
-        trending_coins = []
+        url = "https://api.coingecko.com/api/v3/search/trending"
         try:
-            url = "https://api.coingecko.com/api/v3/search/trending"
             import httpx
             with httpx.Client(timeout=10.0) as client:
                 r = client.get(url, headers={"accept": "application/json"})
                 r.raise_for_status()
                 js = r.json() or {}
-                trending_coins = js.get("coins", [])[:15]
-        except Exception as e:
-            print(f"Erreur trending: {e}")
-            try:
-                import requests
-                r = requests.get("https://api.coingecko.com/api/v3/search/trending", timeout=10)
-                r.raise_for_status()
-                js = r.json() or {}
-                trending_coins = js.get("coins", [])[:15]
-            except:
-                pass
-        
-        html = get_ai_gem_hunter_page(SID, trending_coins)
-        return HTMLResponse(html)
+        except Exception:
+            import requests
+            r = requests.get(url, timeout=10)
+            r.raise_for_status()
+            js = r.json() or {}
+        coins = (js.get("coins") or [])[:15]
+        for c in coins:
+            item = (c or {}).get("item") or {}
+            items.append({
+                "name": item.get("name") or "",
+                "symbol": item.get("symbol") or "",
+                "rank": item.get("market_cap_rank"),
+            })
     except Exception as e:
-        return HTMLResponse(f"<h1>Erreur</h1><p>{e}</p>")
+        err = str(e)
 
+    if err:
+        body = f'<div class="card" style="border-color:#ef4444"><b>Erreur CoinGecko:</b> {escape_html(err)}</div>'
+    else:
+        rows = "".join(
+            f'<tr><td style="padding:10px;border-bottom:1px solid #1f2937">{escape_html(i["name"])} <span class="muted">({escape_html(i["symbol"])})</span></td><td style="padding:10px;border-bottom:1px solid #1f2937" class="muted">Rank: {escape_html(i["rank"])}</td></tr>'
+            for i in items
+        )
+        body = f"""
+        <div class="card">
+          <div class="muted" style="margin-bottom:10px">Trending CoinGecko (idées rapides). Pas un conseil financier.</div>
+          <table style="width:100%;border-collapse:collapse">
+            {rows or '<tr><td class="muted" style="padding:10px">Aucune donnée.</td></tr>'}
+          </table>
+        </div>
+        """
+
+    return _simple_page("AI Gem Hunter — Trending", body, SID)
 
 @app.get("/ai-technical-analysis", response_class=HTMLResponse)
 async def ai_technical_analysis_page(request: Request):
-    """AI Technical Analysis - Analyse Technique Révolutionnaire"""
+    """Analyse technique simple (fallback)."""
+    SID = globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
+    q = dict(request.query_params)
+    symbol = (q.get("symbol") or "BTCUSDT").upper()
+    interval = (q.get("interval") or "1h")
+    summary_html = ""
+
     try:
-        SID = globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""
-        q = dict(request.query_params)
-        symbol = (q.get("symbol") or "BTCUSDT").upper()
-        interval = q.get("interval") or "1h"
-        
-        analysis_data = None
-        
-        if symbol:
-            try:
-                import httpx
-                import pandas as pd
-                import numpy as np
-                
-                url = "https://api.binance.com/api/v3/klines"
-                params = {"symbol": symbol, "interval": interval, "limit": 200}
-                
-                with httpx.Client(timeout=10.0) as client:
-                    r = client.get(url, params=params)
-                    r.raise_for_status()
-                    kl = r.json() or []
-                
-                if kl:
-                    df = pd.DataFrame(kl, columns=["open_time","open","high","low","close","volume","close_time","qav","num_trades","taker_base","taker_quote","ignore"])
-                    for col in ["open","high","low","close","volume"]:
-                        df[col] = pd.to_numeric(df[col], errors="coerce")
-                    
-                    df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
-                    df["ema50"] = df["close"].ewm(span=50, adjust=False).mean()
-                    
-                    delta = df["close"].diff()
-                    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-                    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-                    rs = gain / loss.replace(0, np.nan)
-                    df["rsi14"] = 100 - (100 / (1 + rs))
-                    
-                    ema12 = df["close"].ewm(span=12, adjust=False).mean()
-                    ema26 = df["close"].ewm(span=26, adjust=False).mean()
-                    df["macd"] = ema12 - ema26
-                    df["signal"] = df["macd"].ewm(span=9, adjust=False).mean()
-                    
-                    df["bb_mid"] = df["close"].rolling(20).mean()
-                    df["bb_std"] = df["close"].rolling(20).std()
-                    df["bb_upper"] = df["bb_mid"] + 2 * df["bb_std"]
-                    df["bb_lower"] = df["bb_mid"] - 2 * df["bb_std"]
-                    
-                    last = df.dropna().iloc[-1]
-                    trend = "Bullish" if last["ema20"] > last["ema50"] else "Bearish"
-                    
-                    analysis_data = {
-                        "close": float(last["close"]),
-                        "ema20": float(last["ema20"]),
-                        "ema50": float(last["ema50"]),
-                        "rsi": float(last["rsi14"]),
-                        "trend": trend,
-                        "macd": float(last["macd"]),
-                        "signal": float(last["signal"]),
-                        "bb_upper": float(last["bb_upper"]),
-                        "bb_lower": float(last["bb_lower"])
-                    }
-            except Exception as e:
-                print(f"Erreur analyse technique: {e}")
-        
-        html = get_ai_technical_analysis_page(SID, symbol, interval, analysis_data)
-        return HTMLResponse(html)
+        import httpx, pandas as pd, numpy as np
+        url = "https://api.binance.com/api/v3/klines"
+        params = {"symbol": symbol, "interval": interval, "limit": 200}
+        with httpx.Client(timeout=10.0) as client:
+            r = client.get(url, params=params)
+            r.raise_for_status()
+            kl = r.json() or []
+        if not kl:
+            raise ValueError("Aucune donnée Binance retournée.")
+        df = pd.DataFrame(kl, columns=["open_time","open","high","low","close","volume","close_time","qav","num_trades","taker_base","taker_quote","ignore"])
+        for col in ["open","high","low","close","volume"]:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        df["close"] = df["close"].astype(float)
+
+        df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
+        df["ema50"] = df["close"].ewm(span=50, adjust=False).mean()
+
+        delta = df["close"].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        rs = gain / loss.replace(0, np.nan)
+        df["rsi14"] = 100 - (100 / (1 + rs))
+
+        last = df.dropna().iloc[-1]
+        trend = "Bullish" if last["ema20"] > last["ema50"] else "Bearish"
+
+        summary_html = f"""
+        <div class="card" style="margin-top:14px">
+          <div class="grid">
+            <div><div class="muted">Close</div><div><b>{float(last['close']):,.6f}</b></div></div>
+            <div><div class="muted">Trend EMA20/50</div><div><b>{trend}</b></div></div>
+            <div><div class="muted">EMA20</div><div><b>{float(last['ema20']):,.6f}</b></div></div>
+            <div><div class="muted">EMA50</div><div><b>{float(last['ema50']):,.6f}</b></div></div>
+            <div><div class="muted">RSI14</div><div><b>{float(last['rsi14']):,.2f}</b></div></div>
+          </div>
+          <div class="muted" style="margin-top:10px">* Page légère (fallback).</div>
+        </div>
+        """
     except Exception as e:
-        return HTMLResponse(f"<h1>Erreur</h1><p>{e}</p>")
+        summary_html = f'<div class="card" style="margin-top:14px;border-color:#ef4444"><b>Erreur:</b> {escape_html(e)}</div>'
+
+    options = ['1m','5m','15m','1h','4h','1d']
+    body = f"""
+    <div class="card">
+      <form method="get">
+        <div class="grid">
+          <div><label>Symbol (Binance)</label><input name="symbol" value="{escape_html(symbol)}"></div>
+          <div><label>Interval</label>
+            <select name="interval">
+              {''.join(f'<option value="{i}" ' + ('selected' if i==interval else '') + f'>{i}</option>' for i in options)}
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px"><button type="submit">Analyser</button></div>
+      </form>
+    </div>
+    {summary_html}
+    """
+    return _simple_page("AI Technical Analysis", body, SID)
+
+
+
+# --------------------------
+# Final: alias sidebar full (compat)
+# --------------------------
+if not globals().get("SIDEBAR_FULL"):
+    globals()["SIDEBAR_FULL"] = globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR") or ""
+
+
 
 # ===================== RESTORED/MISSING PAGES =====================
 
@@ -60846,6 +61189,6 @@ async def ai_technical_analysis_revolutionary(request: Request):
     except Exception as e:
         return HTMLResponse(f"<h1>Erreur</h1><p>{e}</p>")
 
-# ROUTES REDESIGNÉES
+ ROUTES REDESIGNÉES
 # ============================================================================
 

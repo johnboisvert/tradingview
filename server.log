@@ -1,7 +1,7 @@
 INFO:     Will watch for changes in these directories: ['/workspace/tradingview-main']
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [1566] using WatchFiles
-INFO:     Started server process [1574]
+INFO:     Started reloader process [5036] using WatchFiles
+INFO:     Started server process [5038]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 ✅ Pages redesignées v2.0 chargées avec succès
@@ -14,15 +14,13 @@ INFO:     Application startup complete.
 ✅ Table trades OK (sqlite)
 ✅ SQL Ready! Trades: 0
 ⚠️ Rate limiter désactivé (ModuleNotFoundError)
-✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770996274)
+✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1771012038)
 ✅ Routes d'abonnement activées
 ✅ SessionMiddleware forcé en premier (request.session OK)
 ⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
 Routes 2-3 créées: AI News, AI Predictor
 Routes 4-7 créées
-Routes 4-7 créées
-Routes 4-7 créées
-✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770996274)
+✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1771012038)
 ✅ Routes d'abonnement activées
 ✅ SessionMiddleware forcé en premier (request.session OK)
 ⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
@@ -67,12 +65,40 @@ Routes 4-7 créées
 ======================================================================
 
 ⚠️ Une instance du moniteur est déjà active, skip
-INFO:     127.0.0.1:54184 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54188 - "GET /login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54192 - "GET /admin-login HTTP/1.1" 302 Found
-INFO:     127.0.0.1:54196 - "GET /admin-dashboard HTTP/1.1" 302 Found
-INFO:     127.0.0.1:54202 - "GET /strategie HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54214 - "GET /dashboard HTTP/1.1" 200 OK
-INFO:     127.0.0.1:35398 - "POST /login HTTP/1.1" 303 See Other
-🔎 /admin-dashboard auth: username='admin' email='' user_role='admin' is_admin=True
-INFO:     127.0.0.1:35410 - "GET /admin-dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45904 - "GET /ai-exit HTTP/1.1" 200 OK
+Erreur données timeframe: name '_coingecko_markets_top50' is not defined
+INFO:     127.0.0.1:45918 - "GET /ai-timeframe HTTP/1.1" 200 OK
+Erreur données liquidity: name '_coingecko_markets_top50' is not defined
+INFO:     127.0.0.1:45930 - "GET /ai-liquidity HTTP/1.1" 200 OK
+Erreur données alerts: name '_coingecko_markets_top50' is not defined
+INFO:     127.0.0.1:45946 - "GET /ai-alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45954 - "GET /ai-setup-builder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45966 - "GET /ai-gem-hunter HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45980 - "GET /ai-technical-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35126 - "GET /ai-predictor HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35138 - "GET /ai-token-scanner HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35140 - "GET /ai-patterns HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35146 - "GET /ai-sentiment HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35148 - "GET /ai-sizer HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35158 - "GET /ai-news HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52650 - "GET /ai-signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52652 - "GET /ai-whale HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52654 - "GET /ai-opportunity-scanner HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52670 - "GET /ai-market-regime HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52686 - "GET /ai-assistant HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52690 - "GET /ai-exit HTTP/1.1" 200 OK
+Erreur données timeframe: name '_coingecko_markets_top50' is not defined
+INFO:     127.0.0.1:52698 - "GET /ai-timeframe HTTP/1.1" 200 OK
+Erreur données liquidity: name '_coingecko_markets_top50' is not defined
+INFO:     127.0.0.1:52712 - "GET /ai-liquidity HTTP/1.1" 200 OK
+Erreur données alerts: name '_coingecko_markets_top50' is not defined
+INFO:     127.0.0.1:52720 - "GET /ai-alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52724 - "GET /ai-setup-builder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52734 - "GET /ai-gem-hunter HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52738 - "GET /ai-technical-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52754 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52756 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52760 - "GET /spot-trading HTTP/1.1" 302 Found
+INFO:     127.0.0.1:52762 - "GET /converter HTTP/1.1" 302 Found
+INFO:     127.0.0.1:52764 - "GET /calculator HTTP/1.1" 302 Found
+INFO:     127.0.0.1:52778 - "GET /admin HTTP/1.1" 302 Found

@@ -3394,6 +3394,80 @@ if _sidebar_app is not None:
 # =============================
 # Meta statut global (affiché dans le footer d'aide)
 # =============================
+
+# === FONCTION COINGECKO TOP 50 ===
+_COINGECKO_CACHE = {"data": None, "timestamp": 0}
+_COINGECKO_CACHE_TTL = 60  # 60 secondes
+
+def _coingecko_markets_top50():
+    """Récupère le top 50 des cryptos par market cap depuis CoinGecko (synchrone avec cache)."""
+    import time
+    import requests
+    
+    now = time.time()
+    if _COINGECKO_CACHE["data"] and (now - _COINGECKO_CACHE["timestamp"]) < _COINGECKO_CACHE_TTL:
+        return _COINGECKO_CACHE["data"]
+    
+    try:
+        url = "https://api.coingecko.com/api/v3/coins/markets"
+        params = {
+            "vs_currency": "usd",
+            "order": "market_cap_desc",
+            "per_page": 50,
+            "page": 1,
+            "sparkline": "false",
+            "price_change_percentage": "1h,24h,7d"
+        }
+        headers = {"User-Agent": "CryptoIA/1.0"}
+        
+        # Ajouter clé API si disponible
+        import os
+        cg_key = os.getenv("COINGECKO_API_KEY", "").strip()
+        if cg_key:
+            headers["x-cg-demo-api-key"] = cg_key
+        
+        resp = requests.get(url, params=params, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            _COINGECKO_CACHE["data"] = data
+            _COINGECKO_CACHE["timestamp"] = now
+            return data
+        else:
+            print(f"CoinGecko API error: {resp.status_code}")
+            return _COINGECKO_CACHE["data"] or []
+    except Exception as e:
+        print(f"CoinGecko fetch error: {e}")
+        return _COINGECKO_CACHE["data"] or []
+
+async def _coingecko_markets_top50_async():
+    """Version async de _coingecko_markets_top50."""
+    import time
+    
+    now = time.time()
+    if _COINGECKO_CACHE["data"] and (now - _COINGECKO_CACHE["timestamp"]) < _COINGECKO_CACHE_TTL:
+        return _COINGECKO_CACHE["data"]
+    
+    try:
+        url = "https://api.coingecko.com/api/v3/coins/markets"
+        params = {
+            "vs_currency": "usd",
+            "order": "market_cap_desc",
+            "per_page": 50,
+            "page": 1,
+            "sparkline": "false",
+            "price_change_percentage": "1h,24h,7d"
+        }
+        data = await _fetch_json(url, params=params, timeout=15, cache_ttl=60)
+        if data and isinstance(data, list):
+            _COINGECKO_CACHE["data"] = data
+            _COINGECKO_CACHE["timestamp"] = now
+            return data
+        return _COINGECKO_CACHE["data"] or []
+    except Exception as e:
+        print(f"CoinGecko async fetch error: {e}")
+        return _COINGECKO_CACHE["data"] or []
+
+
 @app.get("/api/v2/meta/status")
 async def api_meta_status():
     try:

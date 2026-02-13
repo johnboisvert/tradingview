@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ module.title }} - Trading Academy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #0a0f1c;
+            --bg-secondary: #111827;
+            --bg-card: #1a2234;
+            --bg-card-hover: #1f2937;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-pink: #ec4899;
+            --accent-red: #ef4444;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: rgba(255,255,255,0.08);
+            --glow-cyan: rgba(6, 182, 212, 0.3);
+            --glow-purple: rgba(139, 92, 246, 0.3);
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            background: 
+                radial-gradient(ellipse 80% 50% at 20% -20%, rgba(6, 182, 212, 0.15), transparent),
+                radial-gradient(ellipse 60% 40% at 80% 0%, rgba(139, 92, 246, 0.12), transparent),
+                radial-gradient(ellipse 50% 30% at 50% 100%, rgba(16, 185, 129, 0.08), transparent);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 40px;
+        }
+        
+        /* Breadcrumb */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .breadcrumb a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .breadcrumb a:hover {
+            color: var(--accent-cyan);
+        }
+        
+        .breadcrumb span {
+            color: var(--text-muted);
+        }
+        
+        .breadcrumb .current {
+            color: var(--text-primary);
+        }
+        
+        /* Module Header */
+        .module-header {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 40px;
+            align-items: flex-start;
+        }
+        
+        .module-icon-large {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 24px;
+            font-size: 48px;
+            flex-shrink: 0;
+        }
+        
+        .module-icon-large.beginner { background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.1)); }
+        .module-icon-large.intermediate { background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(245, 158, 11, 0.1)); }
+        .module-icon-large.advanced { background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(239, 68, 68, 0.1)); }
+        .module-icon-large.expert { background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.1)); }
+        
+        .module-info-header h1 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #fff 0%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .module-level-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .module-level-badge.beginner { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+        .module-level-badge.intermediate { background: rgba(245, 158, 11, 0.15); color: var(--accent-orange); }
+        .module-level-badge.advanced { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+        .module-level-badge.expert { background: rgba(139, 92, 246, 0.15); color: var(--accent-purple); }
+        
+        .module-description {
+            font-size: 16px;
+            color: var(--text-secondary);
+            max-width: 700px;
+            line-height: 1.8;
+        }
+        
+        .module-stats-header {
+            display: flex;
+            gap: 24px;
+            margin-top: 20px;
+        }
+        
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .stat-badge span:first-child {
+            font-size: 18px;
+        }
+        
+        /* Progress Section */
+        .progress-section {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 24px 30px;
+            margin-bottom: 40px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .progress-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .progress-percentage {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--accent-cyan);
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 10px;
+            transition: width 1s ease-out;
+        }
+        
+        /* Layout */
+        .content-layout {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 30px;
+        }
+        
+        @media (max-width: 1024px) {
+            .content-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Lessons List */
+        .lessons-section h2 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .lessons-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .lesson-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px 24px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .lesson-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateX(8px);
+            box-shadow: 0 8px 24px rgba(6, 182, 212, 0.15);
+        }
+        
+        .lesson-number {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+        
+        .lesson-card.completed .lesson-number {
+            background: var(--accent-green);
+        }
+        
+        .lesson-card.locked .lesson-number {
+            background: var(--bg-secondary);
+            color: var(--text-muted);
+        }
+        
+        .lesson-info {
+            flex: 1;
+        }
+        
+        .lesson-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .lesson-meta {
+            font-size: 13px;
+            color: var(--text-muted);
+            display: flex;
+            gap: 16px;
+        }
+        
+        .lesson-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-icon {
+            font-size: 20px;
+        }
+        
+        .lesson-card.completed .status-icon { color: var(--accent-green); }
+        .lesson-card.in-progress .status-icon { color: var(--accent-cyan); }
+        .lesson-card.locked .status-icon { color: var(--text-muted); }
+        
+        /* Sidebar */
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .sidebar-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .sidebar-card h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* What you'll learn */
+        .learn-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .learn-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .learn-item span:first-child {
+            color: var(--accent-green);
+            font-size: 16px;
+        }
+        
+        /* Prerequisites */
+        .prereq-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .prereq-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .prereq-item:hover {
+            background: var(--bg-card-hover);
+            color: var(--accent-cyan);
+        }
+        
+        /* CTA Button */
+        .btn-start {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border: none;
+            border-radius: 14px;
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            margin-top: 10px;
+        }
+        
+        .btn-start:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(6, 182, 212, 0.4);
+        }
+        
+        .btn-secondary {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 14px 24px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            margin-top: 10px;
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(6, 182, 212, 0.1);
+        }
+        
+        /* Instructor Card */
+        .instructor-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        
+        .instructor-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .instructor-name {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .instructor-title {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .module-header {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            
+            .module-info-header h1 {
+                font-size: 28px;
+            }
+            
+            .module-stats-header {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="/">🏠 Accueil</a>
+            <span>›</span>
+            <a href="/academy">📚 Academy</a>
+            <span>›</span>
+            <span class="current">{{ module.title }}</span>
+        </nav>
+        
+        <!-- Module Header -->
+        <div class="module-header">
+            <div class="module-icon-large {{ module.level }}">{{ module.icon }}</div>
+            <div class="module-info-header">
+                <h1>{{ module.title }}</h1>
+                <span class="module-level-badge {{ module.level }}">{{ module.level_label }}</span>
+                <p class="module-description">{{ module.description }}</p>
+                <div class="module-stats-header">
+                    <div class="stat-badge">
+                        <span>📖</span>
+                        <span>{{ module.lessons|length }} leçons</span>
+                    </div>
+                    <div class="stat-badge">
+                        <span>⏱️</span>
+                        <span>{{ module.duration }}</span>
+                    </div>
+                    <div class="stat-badge">
+                        <span>👥</span>
+                        <span>{{ module.students }} étudiants</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Progress -->
+        <div class="progress-section">
+            <div class="progress-header">
+                <div class="progress-title">📊 Votre progression dans ce module</div>
+                <div class="progress-percentage">{{ user_progress }}%</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {{ user_progress }}%;"></div>
+            </div>
+        </div>
+        
+        <!-- Content Layout -->
+        <div class="content-layout">
+            <!-- Lessons List -->
+            <div class="lessons-section">
+                <h2>📖 Contenu du module</h2>
+                <div class="lessons-list">
+                    {% for lesson in module.lessons %}
+                    <div class="lesson-card {{ lesson.status }}" onclick="window.location.href='/academy/module/{{ module.id }}/lesson/{{ lesson.id }}'">
+                        <div class="lesson-number">{{ lesson.id }}</div>
+                        <div class="lesson-info">
+                            <div class="lesson-title">{{ lesson.title }}</div>
+                            <div class="lesson-meta">
+                                <span>⏱️ {{ lesson.duration }}</span>
+                                <span>📝 {{ lesson.type }}</span>
+                            </div>
+                        </div>
+                        <div class="lesson-status">
+                            {% if lesson.status == 'completed' %}
+                            <span class="status-icon">✅</span>
+                            {% elif lesson.status == 'in-progress' %}
+                            <span class="status-icon">▶️</span>
+                            {% else %}
+                            <span class="status-icon">🔒</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Sidebar -->
+            <div class="sidebar-section">
+                <!-- CTA Card -->
+                <div class="sidebar-card">
+                    <a href="/academy/module/{{ module.id }}/lesson/1" class="btn-start">
+                        <span>🚀</span>
+                        <span>Commencer le module</span>
+                    </a>
+                    <a href="/academy" class="btn-secondary">
+                        <span>←</span>
+                        <span>Retour à l'Academy</span>
+                    </a>
+                </div>
+                
+                <!-- What you'll learn -->
+                <div class="sidebar-card">
+                    <h3>✨ Ce que vous apprendrez</h3>
+                    <div class="learn-list">
+                        {% for item in module.learning_outcomes %}
+                        <div class="learn-item">
+                            <span>✓</span>
+                            <span>{{ item }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Prerequisites -->
+                {% if module.prerequisites %}
+                <div class="sidebar-card">
+                    <h3>📋 Prérequis</h3>
+                    <div class="prereq-list">
+                        {% for prereq in module.prerequisites %}
+                        <a href="/academy/module/{{ prereq.id }}" class="prereq-item">
+                            <span>📚</span>
+                            <span>{{ prereq.title }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Instructor -->
+                <div class="sidebar-card">
+                    <h3>👨‍🏫 Formateur</h3>
+                    <div class="instructor-info">
+                        <div class="instructor-avatar">👨‍💼</div>
+                        <div>
+                            <div class="instructor-name">{{ module.instructor.name }}</div>
+                            <div class="instructor-title">{{ module.instructor.title }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

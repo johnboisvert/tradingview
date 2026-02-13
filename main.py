@@ -5878,6 +5878,34 @@ try:
 except Exception:
     SIDEBAR_HTML = ""
 
+# CSS global pour les pages
+CSS = """
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.card { background: #1e293b; border-radius: 16px; padding: 30px; margin-bottom: 20px; border: 1px solid #334155; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+.header { text-align: center; margin-bottom: 40px; padding: 40px 0; }
+.header h1 { font-size: 48px; font-weight: 800; background: linear-gradient(to right, #60a5fa, #a78bfa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 15px; }
+.header p { color: #94a3b8; font-size: 18px; }
+.alert { padding: 15px 20px; border-radius: 10px; margin-bottom: 20px; font-weight: 500; }
+.alert-success { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #10b981; }
+.alert-error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; }
+.alert-warning { background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; color: #f59e0b; }
+.btn { padding: 12px 24px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.3s; border: none; font-size: 14px; }
+.btn-primary { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3); }
+.spinner { width: 40px; height: 40px; border: 4px solid rgba(96, 165, 250, 0.3); border-top-color: #60a5fa; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+input, select, textarea { width: 100%; padding: 12px 16px; background: #0f172a; border: 2px solid #334155; border-radius: 10px; color: #e2e8f0; font-size: 14px; transition: all 0.3s; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2); }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 15px; text-align: left; border-bottom: 1px solid #334155; }
+th { background: #0f172a; color: #94a3b8; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+tr:hover { background: rgba(96, 165, 250, 0.1); }
+</style>
+"""
+
 
 
 # ==================================
@@ -36095,7 +36123,6 @@ async def html_placeholder_middleware(request: Request, call_next):
         print(f"⚠️ placeholder middleware error: {e}")
         return resp
 
-@app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = None, redirect: str = None):
     """Page de connexion"""
     error_msg = ""
@@ -36281,7 +36308,6 @@ async def login(request: Request, response: Response):
 # ============================================================================
 # Alias /admin-login -> /login (compatibilité)
 # ============================================================================
-@app.get("/admin-login", response_class=HTMLResponse)
 async def admin_login_alias_get(request: Request, next: str = "/admin-dashboard"):
     # On redirige vers la page de login principale en conservant ?next=
     try:
@@ -37977,7 +38003,6 @@ async def health_check():
     return {"status": "alive", "timestamp": datetime.now().isoformat()}
 
 
-@app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(session_token: Optional[str] = Cookie(None)):
     user = get_user_from_token(session_token)
 
@@ -49329,563 +49354,6 @@ except Exception:
     pass
 
 PLAN_ROUTE_OPTIONS = [r for r, _ in PLAN_ROUTES]
-
-@app.get("/admin-dashboard", response_class=HTMLResponse)
-async def admin_dashboard(request: Request):
-    # --- Auth admin robuste (cookie session_token uniquement) ---
-    # IMPORTANT: on n'utilise PAS request.session (Starlette) pour l'auth admin
-    # afin d'éviter toute élévation via cookie de session signé avec une clé faible.
-    user = get_user_from_request(request)
-
-    if not user or not (user.get("username") or user.get("email")):
-        return RedirectResponse(url="/admin-login?next=/admin-dashboard", status_code=302)
-
-    username = (user.get("username") or "").strip()
-    email = (user.get("email") or "").strip()
-
-    # Vérification admin: rôle dans l'objet user (issu du login) uniquement
-    user_role = (user.get("role") or "").strip().lower()
-    is_admin = (user_role == "admin") or bool(user.get("is_admin"))
-
-    print(
-        f"🔎 /admin-dashboard auth: username={username!r} email={email!r} "
-        f"user_role={user_role!r} is_admin={is_admin}"
-    )
-
-    if not is_admin:
-        return RedirectResponse(url="/admin-login?next=/admin-dashboard", status_code=302)
-
-    # Sidebar (style + HTML) — évite NameError si non défini
-    try:
-        _sb_style = (SIDEBAR.split("</style>", 1)[0] + "</style>") if ("</style>" in SIDEBAR) else ""
-        _sb_html = SIDEBAR.split("</style>", 1)[1] if ("</style>" in SIDEBAR) else SIDEBAR
-    except Exception:
-        _sb_style, _sb_html = "", ""
-
-    # Prix des forfaits (utilisés dans le HTML ci-dessous)
-    # On récupère depuis la config/DB via get_plan_price() avec fallback sûr.
-    premium_price = get_plan_price("premium")
-    advanced_price = get_plan_price("advanced")
-    pro_price = get_plan_price("pro")
-    elite_price = get_plan_price("elite")
-
-    # Génération HTML des routes (évite NameError: routes_html)
-    try:
-        # Liste complète des pages configurables (catalogue) sous forme de *route keys*
-        # Ex: "dashboard", "ai-market-regime", etc. (sans "/" au début)
-        # NOTE: Dans ce projet, PLAN_ROUTES est un catalogue (liste de tuples), pas un dict.
-        _all_routes = []
-        for _r in (PLAN_ROUTE_OPTIONS or []):
-            _r = str(_r).strip()
-            if not _r:
-                continue
-            if _r not in _all_routes:
-                _all_routes.append(_r)
-
-        # Plan initial affiché dans l'UI (les valeurs seront ensuite chargées via JS)
-        _initial_allowed = set(get_plan_access("free") or [])
-
-        _parts = []
-        for _r in _all_routes:
-            _checked = "checked" if _r in _initial_allowed else ""
-            _label = ROUTE_LABELS.get(_r, _r)
-            _parts.append(
-                "<div class='route-item'>"
-                "<label>"
-                f"<input class='route-checkbox' type='checkbox' name='routes' value='{_html.escape(_r)}' {_checked}>"
-                f"<span class='route-path'>{_html.escape(_r)}</span>"
-                f"<span class='route-label'>{_html.escape(_label)}</span>"
-                "</label>"
-                "</div>"
-            )
-        routes_html = "\n".join(_parts)
-    except Exception as _e:
-        routes_html = (
-            "<div style='color:#b91c1c;font-weight:800;'>"
-            "Erreur génération routes: "
-            f"{_html.escape(str(_e))}"
-            "</div>"
-        )
-
-    page_html = f"""<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Admin Dashboard</title>
-  {_sb_style}
-  <style>
-    body {{
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-    }}
-
-    .page-wrap {{
-      max-width: 1200px;
-      margin: 30px auto;
-      padding: 0 20px 40px 20px;
-    }}
-
-    .header-card {{
-      background: rgba(255,255,255,0.98);
-      border-radius: 16px;
-      padding: 18px 20px;
-      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
-      margin-bottom: 18px;
-    }}
-
-    .header-card h1 {{
-      margin: 0;
-      font-size: 36px;
-    }}
-
-    .header-card p {{
-      margin: 6px 0 0 0;
-      color: #475569;
-    }}
-
-    .grid {{
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-    }}
-
-    @media (max-width: 980px) {{
-      .grid {{ grid-template-columns: 1fr; }}
-      .header-card h1 {{ font-size: 28px; }}
-    }}
-
-    .card {{
-      background: rgba(255,255,255,0.98);
-      border-radius: 16px;
-      padding: 18px 18px 16px 18px;
-      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
-    }}
-
-    .card h2 {{
-      margin: 0 0 8px 0;
-      font-size: 22px;
-    }}
-
-    .help {{
-      margin: 0 0 12px 0;
-      color: #475569;
-      font-size: 13px;
-    }}
-
-    .field {{
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }}
-
-    .field label {{
-      width: 170px;
-      font-weight: 800;
-    }}
-
-    .field input {{
-      flex: 1;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 10px 10px;
-      font-size: 14px;
-    }}
-
-    .btn {{
-      border: none;
-      cursor: pointer;
-      padding: 12px 14px;
-      border-radius: 12px;
-      background: #667eea;
-      color: #fff;
-      font-weight: 900;
-    }}
-
-    .plan-tabs {{
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin: 10px 0 12px 0;
-    }}
-
-    .tab {{
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: none;
-      cursor: pointer;
-      font-weight: 800;
-      background: #111827;
-      color: #fff;
-      opacity: .85;
-    }}
-
-    .tab.active {{
-      background: #10b981;
-      color: #052e1b;
-      opacity: 1;
-    }}
-
-    .routes-box {{
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 12px;
-      max-height: 360px;
-      overflow: auto;
-      background: #f8fafc;
-    }}
-
-    .route-item {{
-      padding: 8px 6px;
-      border-bottom: 1px solid #e2e8f0;
-    }}
-
-    .route-item:last-child {{
-      border-bottom: none;
-    }}
-
-    .route-item label {{
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      font-weight: 700;
-      color: #0f172a;
-    }}
-
-    .actions {{
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-    }}
-
-    .btn-green {{
-      background: #10b981;
-      color: #052e1b;
-    }}
-    .btn-red {{
-      background: #ef4444;
-    }}
-
-    .status {{
-      margin-top: 12px;
-      background: #dcfce7;
-      color: #14532d;
-      padding: 10px 12px;
-      border-radius: 12px;
-      font-weight: 800;
-      display: none;
-    }}
-  </style>
-</head>
-<body>
-  {_sb_html}
-  <div class="page-wrap">
-    <div class="header-card">
-      <h1>👑 Admin Dashboard</h1>
-      <p>Gestion des prix &amp; accès par forfait (les modifications s'appliquent automatiquement sur <b>/pricing-complete</b>).</p>
-    </div>
-
-    <div class="grid">
-      <div class="card">
-        <h2>💰 Gestion des Prix des Abonnements</h2>
-        <p class="help">Modifiez les prix ici (CAD). Puis cliquez sur <b>Sauvegarder</b>.</p>
-
-        <div class="field">
-          <label>Premium (1 mois)</label>
-          <input id="price_premium" type="number" step="0.01" value="{premium_price:.2f}" />
-          <span>CAD</span>
-        </div>
-        <div class="field">
-          <label>Advanced (3 mois)</label>
-          <input id="price_advanced" type="number" step="0.01" value="{advanced_price:.2f}" />
-          <span>CAD</span>
-        </div>
-        <div class="field">
-          <label>Pro (6 mois)</label>
-          <input id="price_pro" type="number" step="0.01" value="{pro_price:.2f}" />
-          <span>CAD</span>
-        </div>
-        <div class="field">
-          <label>Elite (1 an)</label>
-          <input id="price_elite" type="number" step="0.01" value="{elite_price:.2f}" />
-          <span>CAD</span>
-        </div>
-
-        <button class="btn" onclick="savePrices()">💾 Sauvegarder les prix</button>
-        <div id="statusPrices" class="status"></div>
-      </div>
-
-      <div class="card">
-        <h2>🎯 Gestion des Accès par Forfait</h2>
-        <p class="help">Clique un plan, coche/décoche les pages, puis <b>Enregistrer</b>.</p>
-
-        <div class="plan-tabs">
-          <button class="tab active" data-plan="free" onclick="selectPlan('free', this)">Gratuit</button>
-          <button class="tab" data-plan="premium" onclick="selectPlan('premium', this)">Premium</button>
-          <button class="tab" data-plan="advanced" onclick="selectPlan('advanced', this)">Advanced</button>
-          <button class="tab" data-plan="pro" onclick="selectPlan('pro', this)">Pro</button>
-          <button class="tab" data-plan="elite" onclick="selectPlan('elite', this)">Elite</button>
-        </div>
-
-        <div class="routes-box" id="routesBox">
-          {routes_html}
-        </div>
-
-        <div class="actions">
-          <button class="btn btn-green" onclick="selectAll()">✅ Tout sélectionner</button>
-          <button class="btn btn-red" onclick="selectNone()">❌ Tout désélectionner</button>
-          <button class="btn" onclick="saveAccess()">💾 Enregistrer Accès du Plan</button>
-        </div>
-
-        <div id="statusAccess" class="status"></div>
-      </div>
-
-    </div>
-
-    <div class="grid" style="margin-top:18px; grid-template-columns: 1fr;">
-      <div class="card">
-        <h2>🛠️ Outils Admin (modules avancés)</h2>
-        <p class="help">Accès direct aux modules qui existaient déjà mais n'étaient pas visibles ici.</p>
-        <div class="actions">
-          <a class="btn btn-green" href="/admin-dashboard/ebooks" style="text-decoration:none;display:inline-block;">📚 Gestion Ebooks</a>
-          <a class="btn" href="/admin-dashboard/messages" style="text-decoration:none;display:inline-block;">📩 Messages Contact</a>
-          <a class="btn" href="/admin-dashboard/list-promos" style="text-decoration:none;display:inline-block;">🏷️ Codes Promo</a>
-          <a class="btn" href="/admin-dashboard/update-plan-features" style="text-decoration:none;display:inline-block;">🧩 Features par Plan</a>
-          <a class="btn" href="/admin-dashboard/revenue-intelligence" style="text-decoration:none;display:inline-block;">📈 Revenue</a>
-          <a class="btn" href="/admin-dashboard/retention-dashboard" style="text-decoration:none;display:inline-block;">🔁 Retention</a>
-          <a class="btn" href="/admin-dashboard/conversion-funnel" style="text-decoration:none;display:inline-block;">🧲 Funnel</a>
-        </div>
-        <p class="help" style="margin-top:12px;">Si tu vois une erreur sur les promos: lance <b>/admin-dashboard/init-promo-table</b> une fois, puis recharge.</p>
-      </div>
-
-<hr style="margin:16px 0; border:none; border-top:1px solid #e5e7eb;">
-<h3 style="margin:0 0 10px 0;">➕ Ajouter un utilisateur</h3>
-<div style="display:grid; grid-template-columns:1fr; gap:10px;">
-  <div>
-    <label style="display:block; font-weight:800; margin-bottom:6px;">Email (identifiant)</label>
-    <input id="newUserEmail" type="email" placeholder="ex: client@gmail.com" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;">
-  </div>
-
-  <div>
-    <label style="display:block; font-weight:800; margin-bottom:6px;">Plan</label>
-    <select id="newUserPlan" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;">
-      <option value="free">Gratuit</option>
-      <option value="premium">Premium</option>
-      <option value="advanced">Advanced</option>
-      <option value="pro">Pro</option>
-      <option value="elite">Elite</option>
-    </select>
-  </div>
-
-  <div>
-    <label style="display:block; font-weight:800; margin-bottom:6px;">Mot de passe (optionnel)</label>
-    <div style="display:flex; gap:8px; align-items:center;">
-                <input id="newUserPassword" type="password" placeholder="laisser vide = mot de passe temporaire" style="flex:1; width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;">
-                <button type="button" id="toggleNewUserPassword" style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; cursor:pointer; font-weight:700;">Afficher</button>
-              </div>
-              <div style="margin-top:6px; font-size:12px; color:#6b7280;">
-                (Sécurité) Les mots de passe existants ne peuvent pas être affichés. Ici tu peux seulement définir / réinitialiser un mot de passe.
-              </div>
-  </div>
-
-  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-    <button class="btn" id="btnCreateUser" type="button">Créer l'utilisateur</button>
-    <a href="/admin-users" style="text-decoration:none; padding:12px 14px; border-radius:12px; background:#111827; color:#fff; font-weight:900;">Gestion complète</a>
-  </div>
-
-  <div id="createUserMsg"></div>
-</div>
-
-    </div>
-
-    </div>
-  </div>
-
-  <script>
-    let CURRENT_PLAN = "free";
-
-    function setStatus(id, msg, ok=true) {{
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.style.display = "block";
-      el.textContent = msg;
-      el.style.background = ok ? "#dcfce7" : "#fee2e2";
-      el.style.color = ok ? "#14532d" : "#7f1d1d";
-    }}
-
-    async function selectPlan(plan, btn) {{
-      CURRENT_PLAN = plan;
-      document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
-      if (btn) btn.classList.add("active");
-      await loadAccess();
-    }}
-
-    function selectAll() {{
-      document.querySelectorAll(".route-checkbox").forEach(cb => cb.checked = true);
-    }}
-    function selectNone() {{
-      document.querySelectorAll(".route-checkbox").forEach(cb => cb.checked = false);
-    }}
-
-    let _loadAccessToken = 0;
-
-    async function loadAccess() {{
-      const myToken = ++_loadAccessToken;
-      try {{
-        const resp = await fetch(`/admin/get-plan-access/${{CURRENT_PLAN}}`);
-        const data = await resp.json();
-        if (myToken !== _loadAccessToken) {{ return; }}
-        const raw = (data.allowed || data.routes || []);
-        const allowed = new Set(raw.map(x => String(x || '').replace(/^\//,'').trim()).filter(Boolean));
-        document.querySelectorAll(".route-checkbox").forEach(cb => {{
-          const v = String(cb.value || '').replace(/^\//,'').trim();
-          cb.checked = allowed.has(v);
-        }});
-      }} catch (e) {{
-        setStatus("statusAccess", "Erreur chargement accès: " + e, false);
-      }}
-    }}
-
-    async function saveAccess() {{
-      const selected = Array.from(document.querySelectorAll(".route-checkbox"))
-        .filter(cb => cb.checked)
-        .map(cb => cb.value);
-
-      try {{
-        const resp = await fetch("/admin/save-plan-access", {{
-          method: "POST",
-          headers: {{ "Content-Type": "application/json" }},
-          body: JSON.stringify({{ plan: CURRENT_PLAN, routes: selected }})
-        }});
-        const data = await resp.json().catch(() => ({{}}));
-        if (!resp.ok) {{
-          setStatus("statusAccess", "Erreur: " + (data.detail || data.message || "impossible"), false);
-          return;
-        }}
-        if (data && data.success === false) {{
-          setStatus("statusAccess", "Erreur: " + (data.error || data.message || "impossible"), false);
-          return;
-        }}
-        setStatus("statusAccess", "Accès enregistrés.");
-      }} catch (e) {{
-        setStatus("statusAccess", "Erreur réseau: " + e, false);
-      }}
-    }}
-
-    async function savePrices() {{
-      // Les inputs type=number peuvent renvoyer une virgule selon la locale (ex: "20,01").
-      // parseFloat("20,01") => 20, donc on normalise la virgule en point.
-      const _num = (v) => {{
-        try {{
-          return parseFloat(String(v ?? "0").replace(",", ".")) || 0;
-        }} catch (e) {{
-          return 0;
-        }}
-      }};
-
-      const payload = {{
-        premium: _num(document.getElementById("price_premium").value),
-        advanced: _num(document.getElementById("price_advanced").value),
-        pro: _num(document.getElementById("price_pro").value),
-        elite: _num(document.getElementById("price_elite").value),
-      }};
-
-      try {{
-        const resp = await fetch("/admin/save-prices", {{
-          method: "POST",
-          headers: {{ "Content-Type": "application/json" }},
-          body: JSON.stringify(payload)
-        }});
-        const data = await resp.json().catch(() => ({{}}));
-        if (!resp.ok) {{
-          setStatus("statusPrices", "Erreur: " + (data.detail || data.message || "impossible"), false);
-          return;
-        }}
-        if (data && data.success === false) {{
-          setStatus("statusPrices", "Erreur: " + (data.error || data.message || "impossible"), false);
-          return;
-        }}
-        setStatus("statusPrices", "Prix enregistrés.");
-      }} catch (e) {{
-        setStatus("statusPrices", "Erreur réseau: " + e, false);
-      }}
-    }}
-
-    // init
-    loadAccess();
-  
-
-// ===== Admin: Ajouter utilisateur (email-only) =====
-(function(){{
-  const btn = document.getElementById("btnCreateUser");
-  if(!btn) return;
-
-  btn.addEventListener("click", async () => {{
-    const emailEl = document.getElementById("newUserEmail");
-    const planEl  = document.getElementById("newUserPlan");
-    const passEl  = document.getElementById("newUserPassword");
-    
-    const toggleBtn = document.getElementById("toggleNewUserPassword");
-    if(toggleBtn && passEl){{
-      toggleBtn.addEventListener("click", () => {{
-        const isPwd = passEl.type === "password";
-        passEl.type = isPwd ? "text" : "password";
-        toggleBtn.textContent = isPwd ? "Masquer" : "Afficher";
-      }});
-    }}
-
-    const msgEl   = document.getElementById("createUserMsg");
-
-    const email = (emailEl?.value || "").trim();
-    const plan = (planEl?.value || "free").trim();
-    const role = "user";
-    const password = (passEl?.value || "").trim();
-
-    if(msgEl){{ msgEl.innerHTML = ""; }}
-
-    if(!email || !email.includes("@")){{
-      if(msgEl){{ msgEl.innerHTML = '<div style="padding:12px; border-radius:12px; background:#fee2e2; color:#991b1b; font-weight:800;">❌ Email invalide</div>'; }}
-      return;
-    }}
-
-    try{{
-      const res = await fetch("/admin/add-user", {{
-        method: "POST",
-        headers: {{"Content-Type":"application/json","Accept":"application/json","X-Requested-With":"XMLHttpRequest"}},
-        body: JSON.stringify({{ username: email, password, role, plan }})
-      }});
-      const data = await res.json();
-
-      if(data?.success){{
-        const pw = data?.temp_password ? ` Mot de passe temporaire: <b>${{data.temp_password}}</b>` : "";
-        if(msgEl){{ msgEl.innerHTML = `<div style="padding:12px; border-radius:12px; background:#dcfce7; color:#166534; font-weight:800;">✅ Utilisateur créé.${{pw}}</div>`; }}
-        if(emailEl) emailEl.value = "";
-        if(passEl) passEl.value = "";
-        if(planEl) planEl.value = "free";
-      }} else {{
-        const m = (data && data.message) ? data.message : "Erreur";
-        if(msgEl){{ msgEl.innerHTML = `<div style="padding:12px; border-radius:12px; background:#fee2e2; color:#991b1b; font-weight:800;">❌ ${{m}}</div>`; }}
-      }}
-    }} catch(e){{
-      if(msgEl){{ msgEl.innerHTML = `<div style="padding:12px; border-radius:12px; background:#fee2e2; color:#991b1b; font-weight:800;">❌ ${{e}}</div>`; }}
-    }}
-  }});
-}})();
-
-</script>
-</body>
-</html>"""
-    return HTMLResponse(page_html)
-
-
-
-
-# ============================
-# Admin: Messages Contact + Gestion Ebooks (ajout ciblé)
-# ============================
 
 def _require_admin(request: Request):
     """Retourne (user, None) si admin, sinon (user, RedirectResponse)."""

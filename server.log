@@ -1,7 +1,7 @@
 INFO:     Will watch for changes in these directories: ['/workspace/tradingview-main']
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [1624] using WatchFiles
-INFO:     Started server process [1626]
+INFO:     Started reloader process [931] using WatchFiles
+INFO:     Started server process [933]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 ✅ Pages redesignées v2.0 chargées avec succès
@@ -14,7 +14,7 @@ INFO:     Application startup complete.
 ✅ Table trades OK (sqlite)
 ✅ SQL Ready! Trades: 0
 ⚠️ Rate limiter désactivé (ModuleNotFoundError)
-✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770990480)
+✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770992779)
 ✅ Routes d'abonnement activées
 ✅ SessionMiddleware forcé en premier (request.session OK)
 ⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
@@ -22,7 +22,7 @@ Routes 2-3 créées: AI News, AI Predictor
 Routes 4-7 créées
 Routes 4-7 créées
 Routes 4-7 créées
-✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770990481)
+✅ Templates Jinja2 configurés (logo=/static/logo.png?v=1770992779)
 ✅ Routes d'abonnement activées
 ✅ SessionMiddleware forcé en premier (request.session OK)
 ⚠️  Utilisation de SQLite pour l'authentification: /tmp/ai_trader/ai_trader.db
@@ -67,4 +67,5 @@ Routes 4-7 créées
 ======================================================================
 
 ⚠️ Une instance du moniteur est déjà active, skip
-INFO:     127.0.0.1:47470 - "GET /strategie HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52072 - "GET /admin-dashboard HTTP/1.1" 302 Found
+INFO:     127.0.0.1:52074 - "GET /strategie HTTP/1.1" 200 OK

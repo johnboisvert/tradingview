@@ -3067,7 +3067,7 @@ import os
 import html as _html_mod
 
 # Global fallbacks used by several pages (avoid NameError)
-SIDEBAR_FULL = globals().get("SIDEBAR_FULL", "")
+# SIDEBAR_FULL défini plus tard après SIDEBAR
 cards_html = globals().get("cards_html", "")
 
 def escape_html(value):
@@ -5084,7 +5084,7 @@ var t1 = performance.now();
 
     </script>
     """
-    return _simple_page("AI Opportunity Scanner", body_html, sidebar_html=(globals().get("SIDEBAR_FULL") or globals().get("SIDEBAR") or ""), request=request, show_title=False)
+    return _simple_page("AI Opportunity Scanner", body_html, sidebar_html=SIDEBAR_FULL, request=request, show_title=False)
 @app.get("/static/{file_path:path}")
 async def _serve_static(file_path: str):
     """Sert les fichiers statiques (logo/CSS/JS) depuis les répertoires candidats."""
@@ -23312,11 +23312,18 @@ async def ai_assistant_page(request: Request):
       --r: 18px;
     }
     body{
+      margin: 0;
+      padding: 20px;
+      margin-left: 280px;
+      min-height: 100vh;
       background:
         radial-gradient(900px 420px at 18% 6%, rgba(78,161,255,.22), transparent 55%),
         radial-gradient(800px 420px at 82% 10%, rgba(167,139,250,.16), transparent 55%),
         radial-gradient(700px 420px at 50% 92%, rgba(52,211,153,.12), transparent 60%),
         linear-gradient(180deg, var(--bg0), var(--bg1) 45%, #06070d);
+    }
+    @media (max-width: 768px) {
+      body { margin-left: 0; padding: 15px; }
     }
     .hero{
       border:1px solid var(--stroke);
@@ -30275,11 +30282,18 @@ async def ai_signals_page(request: Request):
       --r: 18px;
     }
     body{
+      margin: 0;
+      padding: 20px;
+      margin-left: 280px;
+      min-height: 100vh;
       background:
         radial-gradient(900px 420px at 18% 6%, rgba(78,161,255,.22), transparent 55%),
         radial-gradient(800px 420px at 82% 10%, rgba(167,139,250,.16), transparent 55%),
         radial-gradient(700px 420px at 50% 92%, rgba(52,211,153,.12), transparent 60%),
         linear-gradient(180deg, var(--bg0), var(--bg1) 45%, #06070d);
+    }
+    @media (max-width: 768px) {
+      body { margin-left: 0; padding: 15px; }
     }
     .hero{
       border:1px solid var(--stroke);
@@ -39742,7 +39756,7 @@ async def ai_market_regime_page(request: Request):
     </div>
     """
 
-    return _simple_page("AI Market Regime", body, sidebar_html=SIDEBAR_FULL)
+    return _simple_page("AI Market Regime", body, sidebar_html=SIDEBAR_FULL, request=request)
 
 
 # ----------------------------------------------------------------------
@@ -61284,7 +61298,7 @@ async def ai_whale_watcher(request: Request):
     </div>
     """
 
-    return _simple_page("AI Whale Watcher", body_html, request=request, show_title=False, sidebar_html=(globals().get("SIDEBAR_HTML") or globals().get("SIDEBAR_FULL") or ""), active_page="/ai-whale-watcher")
+    return _simple_page("AI Whale Watcher", body_html, request=request, show_title=False, sidebar_html=SIDEBAR_FULL, active_page="/ai-whale-watcher")
 
 # ============================================================================
 # 🌐 INTÉGRATION API v2 - DONNÉES CRYPTO EN TEMPS RÉEL

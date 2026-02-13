@@ -1,3 +1,4 @@
+from ai_pages_functions import get_ai_timeframe_page, get_ai_liquidity_page, get_ai_alerts_page, get_ai_gem_hunter_page, get_ai_technical_analysis_page
 import pathlib
 from typing import Optional
 import html

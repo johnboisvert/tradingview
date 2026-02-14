@@ -838,8 +838,9 @@ def get_ai_liquidity_page(sidebar_html: str, coins_data: list) -> str:
 
 
 def get_ai_alerts_page(sidebar_html: str, alerts_data: list) -> str:
-    """Page AI Alerts - Alertes de trading intelligentes"""
+    """Page AI Alerts - Alertes de trading intelligentes avec création d'alertes"""
     
+    # Générer les alertes existantes
     alerts_html = ""
     for alert in (alerts_data or [])[:15]:
         symbol = alert.get("symbol", "BTC")
@@ -869,15 +870,19 @@ def get_ai_alerts_page(sidebar_html: str, alerts_data: list) -> str:
                 <span class="alert-time">{timestamp}</span>
             </div>
             <div class="alert-message">{message}</div>
+            <div class="alert-actions">
+                <button class="btn-action btn-edit" onclick="editAlert(this)">✏️ Modifier</button>
+                <button class="btn-action btn-delete" onclick="deleteAlert(this)">🗑️ Supprimer</button>
+            </div>
         </div>
         """
     
     if not alerts_html:
         alerts_html = """
         <div class="no-alerts">
-            <span class="no-alerts-icon">✅</span>
-            <p>Aucune alerte active pour le moment</p>
-            <p class="muted">Les alertes apparaîtront ici lorsque des conditions de marché importantes seront détectées</p>
+            <span class="no-alerts-icon">🔔</span>
+            <p>Aucune alerte active</p>
+            <p class="muted">Créez votre première alerte ci-dessous</p>
         </div>
         """
     
@@ -886,7 +891,7 @@ def get_ai_alerts_page(sidebar_html: str, alerts_data: list) -> str:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Alerts</title>
+    <title>AI Alerts - Alertes Intelligentes</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ 
@@ -916,18 +921,123 @@ def get_ai_alerts_page(sidebar_html: str, alerts_data: list) -> str:
         }}
         .hero p {{ color: #a0a0a0; font-size: 1.1rem; }}
         
-        .alerts-container {{
+        .main-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }}
+        
+        @media (max-width: 1200px) {{
+            .main-grid {{ grid-template-columns: 1fr; }}
+        }}
+        
+        .section-card {{
+            background: rgba(30, 30, 50, 0.8);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }}
+        
+        .section-title {{
+            font-size: 1.4rem;
+            color: #fff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        /* Formulaire de création d'alerte */
+        .create-alert-form {{
             display: flex;
             flex-direction: column;
+            gap: 20px;
+        }}
+        
+        .form-group {{
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }}
+        
+        .form-group label {{
+            color: #a0a0a0;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }}
+        
+        .form-row {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 15px;
         }}
         
+        .form-group input,
+        .form-group select {{
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 14px 16px;
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }}
+        
+        .form-group input:focus,
+        .form-group select:focus {{
+            outline: none;
+            border-color: #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+        }}
+        
+        .form-group select option {{
+            background: #1a1a2e;
+            color: #fff;
+        }}
+        
+        .btn-create {{
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }}
+        
+        .btn-create:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+        }}
+        
+        /* Liste des alertes */
+        .alerts-list {{
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 500px;
+            overflow-y: auto;
+        }}
+        
         .alert-card {{
-            background: rgba(30, 30, 50, 0.8);
+            background: rgba(20, 20, 40, 0.8);
             border-radius: 16px;
             padding: 20px;
             border-left: 4px solid;
+            transition: all 0.3s ease;
         }}
+        
+        .alert-card:hover {{
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }}
+        
         .alert-card.alert-high {{
             border-left-color: #ef4444;
             background: rgba(239, 68, 68, 0.1);
@@ -944,54 +1054,180 @@ def get_ai_alerts_page(sidebar_html: str, alerts_data: list) -> str:
         .alert-header {{
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
             margin-bottom: 10px;
+            flex-wrap: wrap;
         }}
-        .alert-icon {{ font-size: 1.2rem; }}
+        
         .alert-symbol {{
             font-weight: 700;
-            color: #fff;
             font-size: 1.1rem;
+            color: #fff;
         }}
+        
         .alert-type {{
-            background: rgba(255,255,255,0.1);
-            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 12px;
             border-radius: 20px;
             font-size: 0.8rem;
-            color: #9ca3af;
+            color: #a0a0a0;
         }}
+        
         .alert-time {{
             margin-left: auto;
-            color: #6b7280;
+            color: #666;
             font-size: 0.85rem;
         }}
+        
         .alert-message {{
-            color: #d1d5db;
+            color: #c0c0c0;
+            font-size: 0.95rem;
             line-height: 1.5;
+        }}
+        
+        .alert-actions {{
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }}
+        
+        .btn-action {{
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }}
+        
+        .btn-edit {{
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }}
+        
+        .btn-edit:hover {{
+            background: rgba(59, 130, 246, 0.4);
+        }}
+        
+        .btn-delete {{
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }}
+        
+        .btn-delete:hover {{
+            background: rgba(239, 68, 68, 0.4);
         }}
         
         .no-alerts {{
             text-align: center;
-            padding: 60px 20px;
-            background: rgba(30, 30, 50, 0.5);
-            border-radius: 20px;
+            padding: 40px;
+            color: #666;
         }}
+        
         .no-alerts-icon {{
-            font-size: 4rem;
+            font-size: 3rem;
             display: block;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }}
-        .no-alerts p {{
-            font-size: 1.2rem;
-            color: #9ca3af;
+        
+        /* Types d'alertes prédéfinies */
+        .preset-alerts {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 20px;
         }}
-        .no-alerts .muted {{
+        
+        .preset-btn {{
+            background: rgba(30, 30, 60, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+        }}
+        
+        .preset-btn:hover {{
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }}
+        
+        .preset-btn .preset-icon {{
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }}
+        
+        .preset-btn .preset-title {{
+            color: #fff;
+            font-weight: 600;
             font-size: 0.95rem;
-            margin-top: 10px;
+        }}
+        
+        .preset-btn .preset-desc {{
+            color: #666;
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }}
+        
+        /* Stats */
+        .stats-row {{
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }}
+        
+        .stat-card {{
+            background: rgba(30, 30, 50, 0.8);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }}
+        
+        .stat-value {{
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ef4444, #f87171);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }}
+        
+        .stat-label {{
+            color: #666;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }}
+        
+        /* Toast notification */
+        .toast {{
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(16, 185, 129, 0.4);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }}
+        
+        .toast.show {{
+            transform: translateY(0);
+            opacity: 1;
         }}
         
         @media (max-width: 768px) {{
             .content {{ margin-left: 0; padding: 15px; }}
+            .stats-row {{ grid-template-columns: repeat(2, 1fr); }}
+            .form-row {{ grid-template-columns: 1fr; }}
+            .preset-alerts {{ grid-template-columns: 1fr; }}
         }}
     </style>
 </head>
@@ -1000,16 +1236,331 @@ def get_ai_alerts_page(sidebar_html: str, alerts_data: list) -> str:
     <div class="content">
         <div class="hero">
             <h1>🔔 AI Alerts</h1>
-            <p>Alertes de trading intelligentes basées sur l'analyse du marché</p>
+            <p>Créez et gérez vos alertes de trading intelligentes - Soyez notifié des mouvements importants du marché</p>
         </div>
         
-        <div class="alerts-container">
-            {alerts_html}
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value" id="total-alerts">0</div>
+                <div class="stat-label">Alertes Actives</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="triggered-today">0</div>
+                <div class="stat-label">Déclenchées Aujourd'hui</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="price-alerts">0</div>
+                <div class="stat-label">Alertes Prix</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="indicator-alerts">0</div>
+                <div class="stat-label">Alertes Indicateurs</div>
+            </div>
+        </div>
+        
+        <div class="main-grid">
+            <div class="section-card">
+                <h2 class="section-title">➕ Créer une Alerte</h2>
+                <form class="create-alert-form" id="alertForm" onsubmit="createAlert(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cryptomonnaie</label>
+                            <select name="symbol" id="alertSymbol">
+                                <option value="BTCUSDT">Bitcoin (BTC)</option>
+                                <option value="ETHUSDT">Ethereum (ETH)</option>
+                                <option value="BNBUSDT">BNB</option>
+                                <option value="SOLUSDT">Solana (SOL)</option>
+                                <option value="XRPUSDT">XRP</option>
+                                <option value="ADAUSDT">Cardano (ADA)</option>
+                                <option value="DOGEUSDT">Dogecoin (DOGE)</option>
+                                <option value="MATICUSDT">Polygon (MATIC)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Type d'Alerte</label>
+                            <select name="type" id="alertType" onchange="updateFormFields()">
+                                <option value="price_above">Prix au-dessus de</option>
+                                <option value="price_below">Prix en-dessous de</option>
+                                <option value="percent_change">Variation % en</option>
+                                <option value="rsi_overbought">RSI Suracheté (>70)</option>
+                                <option value="rsi_oversold">RSI Survendu (<30)</option>
+                                <option value="volume_spike">Pic de Volume</option>
+                                <option value="ma_cross">Croisement MA</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group" id="valueGroup">
+                            <label id="valueLabel">Prix cible ($)</label>
+                            <input type="number" name="value" id="alertValue" placeholder="Ex: 100000" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label>Priorité</label>
+                            <select name="priority" id="alertPriority">
+                                <option value="high">🔴 Haute</option>
+                                <option value="medium" selected>🟡 Moyenne</option>
+                                <option value="low">🟢 Basse</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Note personnelle (optionnel)</label>
+                        <input type="text" name="note" id="alertNote" placeholder="Ex: Niveau de support important">
+                    </div>
+                    
+                    <button type="submit" class="btn-create">
+                        <span>🔔</span> Créer l'Alerte
+                    </button>
+                </form>
+                
+                <h3 style="color: #888; margin-top: 30px; margin-bottom: 15px; font-size: 1rem;">⚡ Alertes Rapides</h3>
+                <div class="preset-alerts">
+                    <button class="preset-btn" onclick="quickAlert('btc_100k')">
+                        <div class="preset-icon">₿</div>
+                        <div class="preset-title">BTC à $100,000</div>
+                        <div class="preset-desc">Alerte quand BTC atteint 100K</div>
+                    </button>
+                    <button class="preset-btn" onclick="quickAlert('eth_5k')">
+                        <div class="preset-icon">⟠</div>
+                        <div class="preset-title">ETH à $5,000</div>
+                        <div class="preset-desc">Alerte quand ETH atteint 5K</div>
+                    </button>
+                    <button class="preset-btn" onclick="quickAlert('btc_drop_5')">
+                        <div class="preset-icon">📉</div>
+                        <div class="preset-title">BTC -5% en 1h</div>
+                        <div class="preset-desc">Alerte si BTC chute de 5%</div>
+                    </button>
+                    <button class="preset-btn" onclick="quickAlert('volume_spike')">
+                        <div class="preset-icon">📊</div>
+                        <div class="preset-title">Pic de Volume</div>
+                        <div class="preset-desc">Volume 3x supérieur à la moyenne</div>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="section-card">
+                <h2 class="section-title">📋 Mes Alertes Actives</h2>
+                <div class="alerts-list" id="alertsList">
+                    {alerts_html}
+                </div>
+            </div>
         </div>
     </div>
     
+    <div class="toast" id="toast">✅ Alerte créée avec succès!</div>
+    
     <script>
-        setTimeout(() => location.reload(), 30000);
+        // Stockage local des alertes
+        let userAlerts = JSON.parse(localStorage.getItem('cryptoAlerts') || '[]');
+        
+        function updateStats() {{
+            document.getElementById('total-alerts').textContent = userAlerts.length;
+            document.getElementById('triggered-today').textContent = userAlerts.filter(a => a.triggered).length;
+            document.getElementById('price-alerts').textContent = userAlerts.filter(a => a.type.includes('price')).length;
+            document.getElementById('indicator-alerts').textContent = userAlerts.filter(a => !a.type.includes('price')).length;
+        }}
+        
+        function updateFormFields() {{
+            const type = document.getElementById('alertType').value;
+            const valueLabel = document.getElementById('valueLabel');
+            const valueInput = document.getElementById('alertValue');
+            
+            switch(type) {{
+                case 'price_above':
+                case 'price_below':
+                    valueLabel.textContent = 'Prix cible ($)';
+                    valueInput.placeholder = 'Ex: 100000';
+                    valueInput.step = '0.01';
+                    break;
+                case 'percent_change':
+                    valueLabel.textContent = 'Variation (%)';
+                    valueInput.placeholder = 'Ex: 5';
+                    valueInput.step = '0.1';
+                    break;
+                case 'rsi_overbought':
+                case 'rsi_oversold':
+                    valueLabel.textContent = 'Seuil RSI';
+                    valueInput.placeholder = type === 'rsi_overbought' ? '70' : '30';
+                    valueInput.step = '1';
+                    break;
+                case 'volume_spike':
+                    valueLabel.textContent = 'Multiplicateur volume';
+                    valueInput.placeholder = 'Ex: 3';
+                    valueInput.step = '0.5';
+                    break;
+                case 'ma_cross':
+                    valueLabel.textContent = 'Période MA';
+                    valueInput.placeholder = 'Ex: 50';
+                    valueInput.step = '1';
+                    break;
+            }}
+        }}
+        
+        function createAlert(event) {{
+            event.preventDefault();
+            
+            const alert = {{
+                id: Date.now(),
+                symbol: document.getElementById('alertSymbol').value,
+                type: document.getElementById('alertType').value,
+                value: parseFloat(document.getElementById('alertValue').value) || 0,
+                priority: document.getElementById('alertPriority').value,
+                note: document.getElementById('alertNote').value,
+                created: new Date().toISOString(),
+                triggered: false
+            }};
+            
+            userAlerts.push(alert);
+            localStorage.setItem('cryptoAlerts', JSON.stringify(userAlerts));
+            
+            renderAlerts();
+            updateStats();
+            showToast('✅ Alerte créée avec succès!');
+            
+            // Reset form
+            document.getElementById('alertForm').reset();
+        }}
+        
+        function quickAlert(preset) {{
+            let alert = {{ id: Date.now(), created: new Date().toISOString(), triggered: false }};
+            
+            switch(preset) {{
+                case 'btc_100k':
+                    alert = {{ ...alert, symbol: 'BTCUSDT', type: 'price_above', value: 100000, priority: 'high', note: 'BTC à 100K!' }};
+                    break;
+                case 'eth_5k':
+                    alert = {{ ...alert, symbol: 'ETHUSDT', type: 'price_above', value: 5000, priority: 'high', note: 'ETH à 5K!' }};
+                    break;
+                case 'btc_drop_5':
+                    alert = {{ ...alert, symbol: 'BTCUSDT', type: 'percent_change', value: -5, priority: 'high', note: 'Chute BTC -5%' }};
+                    break;
+                case 'volume_spike':
+                    alert = {{ ...alert, symbol: 'BTCUSDT', type: 'volume_spike', value: 3, priority: 'medium', note: 'Pic de volume 3x' }};
+                    break;
+            }}
+            
+            userAlerts.push(alert);
+            localStorage.setItem('cryptoAlerts', JSON.stringify(userAlerts));
+            
+            renderAlerts();
+            updateStats();
+            showToast('✅ Alerte rapide créée!');
+        }}
+        
+        function deleteAlert(btn) {{
+            const card = btn.closest('.alert-card');
+            const alertId = card.dataset.alertId;
+            
+            userAlerts = userAlerts.filter(a => a.id != alertId);
+            localStorage.setItem('cryptoAlerts', JSON.stringify(userAlerts));
+            
+            card.style.transform = 'translateX(100px)';
+            card.style.opacity = '0';
+            setTimeout(() => {{
+                renderAlerts();
+                updateStats();
+            }}, 300);
+            
+            showToast('🗑️ Alerte supprimée');
+        }}
+        
+        function editAlert(btn) {{
+            const card = btn.closest('.alert-card');
+            const alertId = card.dataset.alertId;
+            const alert = userAlerts.find(a => a.id == alertId);
+            
+            if (alert) {{
+                document.getElementById('alertSymbol').value = alert.symbol;
+                document.getElementById('alertType').value = alert.type;
+                document.getElementById('alertValue').value = alert.value;
+                document.getElementById('alertPriority').value = alert.priority;
+                document.getElementById('alertNote').value = alert.note || '';
+                
+                // Supprimer l'ancienne alerte
+                userAlerts = userAlerts.filter(a => a.id != alertId);
+                localStorage.setItem('cryptoAlerts', JSON.stringify(userAlerts));
+                renderAlerts();
+                updateStats();
+                
+                showToast('✏️ Modifiez et recréez l\'alerte');
+            }}
+        }}
+        
+        function getTypeLabel(type) {{
+            const labels = {{
+                'price_above': 'Prix >',
+                'price_below': 'Prix <',
+                'percent_change': 'Variation %',
+                'rsi_overbought': 'RSI Suracheté',
+                'rsi_oversold': 'RSI Survendu',
+                'volume_spike': 'Pic Volume',
+                'ma_cross': 'Croisement MA'
+            }};
+            return labels[type] || type;
+        }}
+        
+        function renderAlerts() {{
+            const container = document.getElementById('alertsList');
+            
+            if (userAlerts.length === 0) {{
+                container.innerHTML = `
+                    <div class="no-alerts">
+                        <span class="no-alerts-icon">🔔</span>
+                        <p>Aucune alerte active</p>
+                        <p class="muted">Créez votre première alerte ci-dessus</p>
+                    </div>
+                `;
+                return;
+            }}
+            
+            container.innerHTML = userAlerts.map(alert => {{
+                const priorityClass = {{
+                    'high': 'alert-high',
+                    'medium': 'alert-medium',
+                    'low': 'alert-low'
+                }}[alert.priority] || 'alert-medium';
+                
+                const priorityIcon = {{
+                    'high': '🔴',
+                    'medium': '🟡',
+                    'low': '🟢'
+                }}[alert.priority] || '🟡';
+                
+                const symbolName = alert.symbol.replace('USDT', '');
+                const created = new Date(alert.created).toLocaleString('fr-FR');
+                
+                return `
+                    <div class="alert-card ${{priorityClass}}" data-alert-id="${{alert.id}}">
+                        <div class="alert-header">
+                            <span class="alert-icon">${{priorityIcon}}</span>
+                            <span class="alert-symbol">${{symbolName}}</span>
+                            <span class="alert-type">${{getTypeLabel(alert.type)}}: ${{alert.value}}</span>
+                            <span class="alert-time">${{created}}</span>
+                        </div>
+                        <div class="alert-message">${{alert.note || 'Alerte personnalisée'}}</div>
+                        <div class="alert-actions">
+                            <button class="btn-action btn-edit" onclick="editAlert(this)">✏️ Modifier</button>
+                            <button class="btn-action btn-delete" onclick="deleteAlert(this)">🗑️ Supprimer</button>
+                        </div>
+                    </div>
+                `;
+            }}).join('');
+        }}
+        
+        function showToast(message) {{
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }}
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {{
+            renderAlerts();
+            updateStats();
+        }});
     </script>
 </body>
 </html>"""

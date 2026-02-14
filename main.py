@@ -32381,266 +32381,384 @@ async def ai_setup_builder(request: Request):
 
 @app.post("/ai-setup-builder")
 async def ai_setup_builder_generate(request: Request):
+    """Génère un setup de trading basé sur l'analyse technique"""
     if not is_logged_in(request):
         return RedirectResponse(url="/login", status_code=303)
 
-    form = await request.form()
-    symbol = (form.get("symbol") or "BTCUSDT").upper().strip()
-    interval = (form.get("tf") or "15m").strip()
-    style = (form.get("style") or "day").strip()
-    risk_raw = (form.get("risk") or "1").strip()
-
     try:
-        risk_pct = float(risk_raw)
-    except Exception:
-        risk_pct = 1.0
-    risk_pct = max(0.1, min(5.0, risk_pct))
+        form = await request.form()
+        symbol = (form.get("symbol") or "BTCUSDT").upper().strip()
+        interval = (form.get("tf") or "15m").strip()
+        style = (form.get("style") or "day").strip()
+        risk_raw = (form.get("risk") or "1").strip()
 
-    kl = await _binance_klines(symbol, interval, limit=500, ttl_seconds=60)
-    if not kl or not isinstance(kl, list):
-        return HTMLResponse(f"""<style>{GLOBAL_STYLES}</style><div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card">Impossible de récupérer les chandelles Binance pour {escape_html(symbol)} ({escape_html(interval)}).</div></div>""")
-
-    # Parse chandelles
-    opens, highs, lows, closes, vols, times = [], [], [], [], [], []
-    for row in kl:
         try:
-            times.append(int(row[0]))
-            opens.append(float(row[1]))
-            highs.append(float(row[2]))
-            lows.append(float(row[3]))
-            closes.append(float(row[4]))
-            vols.append(float(row[5]))
+            risk_pct = float(risk_raw)
         except Exception:
-            continue
+            risk_pct = 1.0
+        risk_pct = max(0.1, min(5.0, risk_pct))
 
-    if len(closes) < 60:
-        return HTMLResponse(f"""<style>{GLOBAL_STYLES}</style><div class="container" style="padding:24px;"><h1>🧩 AI Setup Builder</h1><div class="card">Pas assez de données pour analyser {escape_html(symbol)}.</div></div>""")
+        # Récupérer les données de Binance
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit=100"
+            async with session.get(url, timeout=10) as resp:
+                if resp.status != 200:
+                    raise Exception(f"Binance API error: {resp.status}")
+                kl = await resp.json()
 
-    last_price = closes[-1]
-    ema20 = _ema(closes[-200:], 20)
-    ema50 = _ema(closes[-250:], 50)
-    rsi14 = _rsi(closes[-200:], 14)
-    atr14 = _atr(highs[-200:], lows[-200:], closes[-200:], 14)
-    vol_avg = sum(vols[-50:]) / max(1, len(vols[-50:]))
-
-    # Régime simple
-    regime = "Range"
-    trend_strength = 0.0
-    if ema20 and ema50 and last_price:
-        spread = abs(ema20 - ema50) / last_price
-        trend_strength = spread
-        if ema20 > ema50 and spread > 0.004:
-            regime = "Trend ↑"
-        elif ema20 < ema50 and spread > 0.004:
-            regime = "Trend ↓"
-
-    # Paramètres style (targets/stop basés ATR)
-    if not atr14 or atr14 <= 0:
-        atr14 = max(1e-9, last_price * 0.002)
-
-    if style == "scalp":
-        stop_mult, tp_mult = 1.0, 1.5
-    elif style == "swing":
-        stop_mult, tp_mult = 2.0, 3.5
-    else:
-        stop_mult, tp_mult = 1.5, 2.5
-
-    setups = []
-
-    def push_setup(title, direction, entry, stop, target, confidence, why):
-        rr = (abs(target-entry) / max(1e-9, abs(entry-stop))) if entry and stop else 0
-        setups.append({
-            "title": title,
-            "direction": direction,
-            "entry": entry,
-            "stop": stop,
-            "target": target,
-            "rr": rr,
-            "confidence": int(max(0, min(100, confidence))),
-            "why": why[:8]
-        })
-
-    # 1) Trend pullback (si Trend)
-    if regime.startswith("Trend") and ema20:
-        dist = abs(last_price - ema20)
-        near = dist <= 0.6 * atr14
-        if near and rsi14 is not None and 40 <= rsi14 <= 65:
-            direction = "Long" if regime.endswith("↑") else "Short"
-            entry = last_price
-            stop = entry - stop_mult*atr14 if direction=="Long" else entry + stop_mult*atr14
-            target = entry + tp_mult*atr14 if direction=="Long" else entry - tp_mult*atr14
-            confidence = 72 if trend_strength > 0.006 else 66
-            why = [
-                f"Régime: {regime} (EMA20 vs EMA50)",
-                f"Prix proche EMA20 (distance {dist:.4g} ≤ 0.6×ATR)",
-                f"RSI14 = {rsi14:.1f} (zone saine pour pullback)",
-                f"ATR14 = {atr14:.4g} (stop/target calibrés)",
-            ]
-            push_setup("Pullback EMA20", direction, entry, stop, target, confidence, why)
-
-    # 2) Breakout volume (20 périodes)
-    hi20 = max(highs[-20:])
-    lo20 = min(lows[-20:])
-    vol_now = vols[-1]
-    vol_spike = vol_now > 1.5 * vol_avg if vol_avg else False
-
-    if last_price >= 0.995*hi20 and vol_spike:
-        entry = last_price
-        stop = entry - stop_mult*atr14
-        target = entry + tp_mult*atr14
-        why = [
-            "Breakout proche du plus haut 20 périodes",
-            f"Volume spike: vol last = {vol_now:.4g} > 1.5×moyenne(50) {vol_avg:.4g}",
-            f"ATR14 = {atr14:.4g}",
-        ]
-        push_setup("Breakout + Volume", "Long", entry, stop, target, 70, why)
-
-    if last_price <= 1.005*lo20 and vol_spike:
-        entry = last_price
-        stop = entry + stop_mult*atr14
-        target = entry - tp_mult*atr14
-        why = [
-            "Breakdown proche du plus bas 20 périodes",
-            f"Volume spike: vol last = {vol_now:.4g} > 1.5×moyenne(50) {vol_avg:.4g}",
-            f"ATR14 = {atr14:.4g}",
-        ]
-        push_setup("Breakdown + Volume", "Short", entry, stop, target, 70, why)
-
-    # 3) Range mean reversion (si Range)
-    if regime == "Range":
-        # Bollinger simple
-        window = closes[-20:]
-        sma20 = sum(window)/len(window)
-        variance = sum((x - sma20)**2 for x in window)/len(window)
-        std = math.sqrt(variance)
-        lower = sma20 - 2*std
-        upper = sma20 + 2*std
-
-        if rsi14 is not None and last_price <= lower and rsi14 <= 35:
-            entry = last_price
-            stop = entry - stop_mult*atr14
-            target = sma20  # retour moyenne
-            why = [
-                "Régime: Range",
-                f"Prix sous bande basse (BB20-2σ)",
-                f"RSI14 bas: {rsi14:.1f}",
-                f"Target = retour SMA20 ({sma20:.4g})",
-            ]
-            push_setup("Mean-reversion (BB20)", "Long", entry, stop, target, 64, why)
-
-        if rsi14 is not None and last_price >= upper and rsi14 >= 65:
-            entry = last_price
-            stop = entry + stop_mult*atr14
-            target = sma20
-            why = [
-                "Régime: Range",
-                f"Prix au-dessus bande haute (BB20+2σ)",
-                f"RSI14 élevé: {rsi14:.1f}",
-                f"Target = retour SMA20 ({sma20:.4g})",
-            ]
-            push_setup("Mean-reversion (BB20)", "Short", entry, stop, target, 64, why)
-
-    # Tri et garder max 3
-    setups.sort(key=lambda x: (x["confidence"], x["rr"]), reverse=True)
-    setups = setups[:3]
-
-    gen_utc = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-    last_candle_utc = datetime.utcfromtimestamp(times[-1]/1000).strftime("%Y-%m-%d %H:%M:%S") if times else "?"
-    metrics = f"""
-      <div class="card" style="margin-top:14px;">
-        <div style="font-weight:800;">📊 Snapshot live</div>
-        <div class="muted" style="margin-top:6px;">
-          Symbol: <b>{escape_html(symbol)}</b> • TF: <b>{escape_html(interval)}</b> • Dernière bougie: <b>{last_candle_utc} UTC</b> • Généré: <b>{gen_utc} UTC</b>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-          <span class="badge">Prix {last_price:.6g}</span>
-          <span class="badge">EMA20 {ema20:.6g if ema20 else "—"}</span>
-          <span class="badge">EMA50 {ema50:.6g if ema50 else "—"}</span>
-          <span class="badge">RSI14 {rsi14:.1f if rsi14 is not None else "—"}</span>
-          <span class="badge">ATR14 {atr14:.6g}</span>
-          <span class="badge">Régime {escape_html(regime)}</span>
-          <span class="badge">Risque {risk_pct:.1f}%</span>
-        </div>
-      </div>
-    """
-
-    setups_html = ""
-    if not setups:
-        setups_html = '<div class="card" style="margin-top:14px;">Aucun setup fort détecté sur ce snapshot. Essaie un autre timeframe ou un autre coin.</div>'
-    else:
-        for st in setups:
-            why_html = "".join([f"<li>{escape_html(x)}</li>" for x in st["why"]])
-            setups_html += f"""
-            <div class="card" style="margin-top:14px;">
-              <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                <div style="font-size:18px;font-weight:900;">{escape_html(st["title"])}</div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-                  <span class="badge">{escape_html(st["direction"])}</span>
-                  <span class="badge">RR {st["rr"]:.2f}</span>
-                  <span class="badge">Confiance {st["confidence"]}%</span>
+        if not kl or len(kl) < 20:
+            return HTMLResponse(f"""
+            <!DOCTYPE html>
+            <html><head><title>Setup Builder</title>
+            <style>
+                body {{ background: #0a0a0f; color: #fff; font-family: system-ui; padding: 40px; }}
+                .error {{ background: rgba(239,68,68,0.2); border: 1px solid #ef4444; border-radius: 12px; padding: 30px; max-width: 600px; margin: 0 auto; }}
+                h1 {{ color: #ef4444; }}
+                a {{ color: #3b82f6; }}
+            </style></head>
+            <body>
+                <div class="error">
+                    <h1>⚠️ Données insuffisantes</h1>
+                    <p>Impossible de récupérer assez de données pour {symbol}.</p>
+                    <p><a href="/ai-setup-builder">← Retour</a></p>
                 </div>
-              </div>
-              <div class="muted" style="margin-top:8px;">
-                Entry: <b>{st["entry"]:.6g}</b> • Stop: <b>{st["stop"]:.6g}</b> • Target: <b>{st["target"]:.6g}</b>
-              </div>
-              <div style="margin-top:10px;">
-                <div style="font-weight:800;">Pourquoi ce setup ?</div>
-                <ul style="margin:8px 0 0 18px;">{why_html}</ul>
-              </div>
+            </body></html>
+            """)
+
+        # Parser les données
+        closes = [float(k[4]) for k in kl]
+        highs = [float(k[2]) for k in kl]
+        lows = [float(k[3]) for k in kl]
+        
+        last_price = closes[-1]
+        
+        # Calculs techniques simples
+        sma20 = sum(closes[-20:]) / 20
+        sma50 = sum(closes[-50:]) / 50 if len(closes) >= 50 else sma20
+        
+        # ATR simplifié
+        tr_list = []
+        for i in range(1, min(15, len(closes))):
+            tr = max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1]))
+            tr_list.append(tr)
+        atr = sum(tr_list) / len(tr_list) if tr_list else last_price * 0.02
+        
+        # RSI simplifié
+        gains, losses = [], []
+        for i in range(1, min(15, len(closes))):
+            change = closes[i] - closes[i-1]
+            gains.append(max(0, change))
+            losses.append(max(0, -change))
+        avg_gain = sum(gains) / len(gains) if gains else 0
+        avg_loss = sum(losses) / len(losses) if losses else 1
+        rs = avg_gain / avg_loss if avg_loss > 0 else 100
+        rsi = 100 - (100 / (1 + rs))
+        
+        # Déterminer la tendance
+        if sma20 > sma50 * 1.005:
+            trend = "HAUSSIER"
+            trend_color = "#10b981"
+            direction = "LONG"
+        elif sma20 < sma50 * 0.995:
+            trend = "BAISSIER"
+            trend_color = "#ef4444"
+            direction = "SHORT"
+        else:
+            trend = "NEUTRE"
+            trend_color = "#f59e0b"
+            direction = "ATTENDRE"
+        
+        # Calculer les niveaux
+        if style == "scalp":
+            stop_mult, tp_mult = 1.0, 1.5
+        elif style == "swing":
+            stop_mult, tp_mult = 2.5, 4.0
+        else:
+            stop_mult, tp_mult = 1.5, 2.5
+        
+        entry = last_price
+        if direction == "LONG":
+            stop_loss = entry - (atr * stop_mult)
+            take_profit = entry + (atr * tp_mult)
+        elif direction == "SHORT":
+            stop_loss = entry + (atr * stop_mult)
+            take_profit = entry - (atr * tp_mult)
+        else:
+            stop_loss = entry - (atr * stop_mult)
+            take_profit = entry + (atr * tp_mult)
+        
+        risk_reward = abs(take_profit - entry) / abs(entry - stop_loss) if abs(entry - stop_loss) > 0 else 0
+        
+        # Confiance basée sur les indicateurs
+        confidence = 50
+        if trend != "NEUTRE":
+            confidence += 15
+        if 30 < rsi < 70:
+            confidence += 10
+        if risk_reward >= 2:
+            confidence += 15
+        confidence = min(95, confidence)
+        
+        symbol_clean = symbol.replace("USDT", "")
+        
+        return HTMLResponse(f"""
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Setup Généré - {symbol_clean}</title>
+            <style>
+                * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+                body {{ 
+                    font-family: 'Segoe UI', system-ui, sans-serif; 
+                    background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0f0f1a 100%);
+                    color: #e0e0e0; 
+                    min-height: 100vh;
+                    padding: 30px;
+                }}
+                .container {{ max-width: 900px; margin: 0 auto; }}
+                .header {{
+                    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.2));
+                    border-radius: 20px;
+                    padding: 30px;
+                    margin-bottom: 30px;
+                    border: 1px solid rgba(139, 92, 246, 0.3);
+                    text-align: center;
+                }}
+                .header h1 {{
+                    font-size: 2rem;
+                    background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    margin-bottom: 10px;
+                }}
+                .setup-card {{
+                    background: rgba(30, 30, 50, 0.9);
+                    border-radius: 20px;
+                    padding: 30px;
+                    margin-bottom: 20px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                }}
+                .setup-header {{
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 25px;
+                    padding-bottom: 20px;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                }}
+                .symbol-info h2 {{
+                    font-size: 1.8rem;
+                    color: #fff;
+                }}
+                .symbol-info .timeframe {{
+                    color: #888;
+                    font-size: 0.9rem;
+                }}
+                .direction-badge {{
+                    padding: 12px 24px;
+                    border-radius: 30px;
+                    font-weight: 700;
+                    font-size: 1.1rem;
+                }}
+                .direction-long {{ background: rgba(16, 185, 129, 0.3); color: #10b981; border: 1px solid #10b981; }}
+                .direction-short {{ background: rgba(239, 68, 68, 0.3); color: #ef4444; border: 1px solid #ef4444; }}
+                .direction-wait {{ background: rgba(245, 158, 11, 0.3); color: #f59e0b; border: 1px solid #f59e0b; }}
+                
+                .levels-grid {{
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 15px;
+                    margin-bottom: 25px;
+                }}
+                .level-card {{
+                    background: rgba(20, 20, 40, 0.8);
+                    border-radius: 12px;
+                    padding: 20px;
+                    text-align: center;
+                }}
+                .level-label {{ color: #888; font-size: 0.85rem; margin-bottom: 8px; }}
+                .level-value {{ font-size: 1.3rem; font-weight: 700; }}
+                .level-entry {{ color: #3b82f6; }}
+                .level-stop {{ color: #ef4444; }}
+                .level-tp {{ color: #10b981; }}
+                .level-rr {{ color: #f59e0b; }}
+                
+                .indicators {{
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 15px;
+                    margin-bottom: 25px;
+                }}
+                .indicator {{
+                    background: rgba(20, 20, 40, 0.8);
+                    border-radius: 12px;
+                    padding: 15px;
+                    text-align: center;
+                }}
+                .indicator-label {{ color: #888; font-size: 0.8rem; }}
+                .indicator-value {{ font-size: 1.1rem; font-weight: 600; margin-top: 5px; }}
+                
+                .confidence-bar {{
+                    background: rgba(20, 20, 40, 0.8);
+                    border-radius: 12px;
+                    padding: 20px;
+                    margin-bottom: 25px;
+                }}
+                .confidence-label {{ color: #888; margin-bottom: 10px; }}
+                .bar-container {{
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 10px;
+                    height: 20px;
+                    overflow: hidden;
+                }}
+                .bar-fill {{
+                    height: 100%;
+                    border-radius: 10px;
+                    transition: width 1s ease;
+                }}
+                .confidence-value {{
+                    text-align: right;
+                    margin-top: 8px;
+                    font-weight: 700;
+                    font-size: 1.2rem;
+                }}
+                
+                .analysis {{
+                    background: rgba(20, 20, 40, 0.8);
+                    border-radius: 12px;
+                    padding: 20px;
+                }}
+                .analysis h3 {{ color: #fff; margin-bottom: 15px; }}
+                .analysis ul {{ list-style: none; }}
+                .analysis li {{
+                    padding: 10px 0;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }}
+                .analysis li:last-child {{ border-bottom: none; }}
+                
+                .btn-back {{
+                    display: inline-block;
+                    background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+                    color: white;
+                    padding: 14px 28px;
+                    border-radius: 12px;
+                    text-decoration: none;
+                    font-weight: 600;
+                    margin-top: 20px;
+                    transition: all 0.3s ease;
+                }}
+                .btn-back:hover {{
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+                }}
+                
+                @media (max-width: 768px) {{
+                    .levels-grid {{ grid-template-columns: repeat(2, 1fr); }}
+                    .indicators {{ grid-template-columns: 1fr; }}
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🧩 Setup de Trading Généré</h1>
+                    <p>Analyse technique complète basée sur les données en temps réel</p>
+                </div>
+                
+                <div class="setup-card">
+                    <div class="setup-header">
+                        <div class="symbol-info">
+                            <h2>{symbol_clean}/USDT</h2>
+                            <span class="timeframe">Timeframe: {interval} | Style: {style.capitalize()}</span>
+                        </div>
+                        <span class="direction-badge direction-{'long' if direction == 'LONG' else 'short' if direction == 'SHORT' else 'wait'}">{direction}</span>
+                    </div>
+                    
+                    <div class="levels-grid">
+                        <div class="level-card">
+                            <div class="level-label">Prix Actuel</div>
+                            <div class="level-value level-entry">${last_price:,.2f}</div>
+                        </div>
+                        <div class="level-card">
+                            <div class="level-label">Stop Loss</div>
+                            <div class="level-value level-stop">${stop_loss:,.2f}</div>
+                        </div>
+                        <div class="level-card">
+                            <div class="level-label">Take Profit</div>
+                            <div class="level-value level-tp">${take_profit:,.2f}</div>
+                        </div>
+                        <div class="level-card">
+                            <div class="level-label">Risk/Reward</div>
+                            <div class="level-value level-rr">{risk_reward:.2f}x</div>
+                        </div>
+                    </div>
+                    
+                    <div class="indicators">
+                        <div class="indicator">
+                            <div class="indicator-label">Tendance</div>
+                            <div class="indicator-value" style="color: {trend_color}">{trend}</div>
+                        </div>
+                        <div class="indicator">
+                            <div class="indicator-label">RSI (14)</div>
+                            <div class="indicator-value" style="color: {'#ef4444' if rsi > 70 else '#10b981' if rsi < 30 else '#f59e0b'}">{rsi:.1f}</div>
+                        </div>
+                        <div class="indicator">
+                            <div class="indicator-label">ATR</div>
+                            <div class="indicator-value">${atr:,.2f}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="confidence-bar">
+                        <div class="confidence-label">Niveau de Confiance</div>
+                        <div class="bar-container">
+                            <div class="bar-fill" style="width: {confidence}%; background: linear-gradient(90deg, {'#10b981' if confidence >= 70 else '#f59e0b' if confidence >= 50 else '#ef4444'}, {'#34d399' if confidence >= 70 else '#fbbf24' if confidence >= 50 else '#f87171'});"></div>
+                        </div>
+                        <div class="confidence-value" style="color: {'#10b981' if confidence >= 70 else '#f59e0b' if confidence >= 50 else '#ef4444'}">{confidence}%</div>
+                    </div>
+                    
+                    <div class="analysis">
+                        <h3>📊 Analyse</h3>
+                        <ul>
+                            <li>{'✅' if sma20 > sma50 else '⚠️'} SMA20 {'au-dessus' if sma20 > sma50 else 'en-dessous'} de SMA50</li>
+                            <li>{'✅' if 30 < rsi < 70 else '⚠️'} RSI en zone {'neutre' if 30 < rsi < 70 else 'extrême'} ({rsi:.1f})</li>
+                            <li>{'✅' if risk_reward >= 2 else '⚠️'} Ratio R/R {'favorable' if risk_reward >= 2 else 'à améliorer'} ({risk_reward:.2f}x)</li>
+                            <li>📈 Risque par trade: {risk_pct}% du capital</li>
+                        </ul>
+                    </div>
+                    
+                    <a href="/ai-setup-builder" class="btn-back">← Générer un Nouveau Setup</a>
+                </div>
             </div>
-            """
-
-    html = f"""
-    <style>{GLOBAL_STYLES}</style>
-    <div class="app-shell">
-      {SIDEBAR}
-      <main class="main">
-        <div class="container">
-          <h1 style="margin:0;">🧩 AI Setup Builder</h1>
-          <div class="muted" style="margin-top:6px;">Setups générés à partir de vraies chandelles Binance (TTL ~60s) + logique explainable.</div>
-
-          <div class="card" style="margin-top:14px;">
-            <form method="post" action="/ai-setup-builder" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;">
-              <div>
-                <div class="muted">Symbol (Binance)</div>
-                <input name="symbol" value="{escape_html(symbol)}" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-              </div>
-              <div>
-                <div class="muted">Timeframe</div>
-                <select name="tf" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                  {''.join([f'<option value="{t}" {"selected" if t==interval else ""}>{t}</option>' for t in ["5m","15m","1h","4h","1d"]])}
-                </select>
-              </div>
-              <div>
-                <div class="muted">Style</div>
-                <select name="style" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-                  {''.join([f'<option value="{t}" {"selected" if t==style else ""}>{t}</option>' for t in ["scalp","day","swing"]])}
-                </select>
-              </div>
-              <div>
-                <div class="muted">Risque / trade (%)</div>
-                <input name="risk" value="{risk_pct:.1f}" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f12;color:#fff;">
-              </div>
-              <div style="grid-column:1/-1;display:flex;gap:10px;justify-content:flex-end;">
-                <button class="btn" type="submit">Regénérer</button>
-              </div>
-            </form>
-          </div>
-
-          {metrics}
-          {setups_html}
-
-          <div class="card" style="margin-top:14px;">
-            <div style="font-weight:800;">⚠️ Note</div>
-            <div class="muted" style="margin-top:6px;">Ceci est un outil d’aide à la décision, pas un conseil financier. Vérifie toujours le contexte (news, volatilité, liquidité) avant de trader.</div>
-          </div>
-
-        </div>
-      </main>
-    </div>
-    """
-    return HTMLResponse(html)
-
+        </body>
+        </html>
+        """)
+        
+    except Exception as e:
+        return HTMLResponse(f"""
+        <!DOCTYPE html>
+        <html><head><title>Erreur</title>
+        <style>
+            body {{ background: #0a0a0f; color: #fff; font-family: system-ui; padding: 40px; }}
+            .error {{ background: rgba(239,68,68,0.2); border: 1px solid #ef4444; border-radius: 12px; padding: 30px; max-width: 600px; margin: 0 auto; }}
+            h1 {{ color: #ef4444; }}
+            a {{ color: #3b82f6; }}
+            pre {{ background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; overflow-x: auto; margin-top: 15px; font-size: 0.85rem; }}
+        </style></head>
+        <body>
+            <div class="error">
+                <h1>⚠️ Erreur lors de la génération</h1>
+                <p>Une erreur s'est produite lors de l'analyse.</p>
+                <pre>{str(e)}</pre>
+                <p style="margin-top: 20px;"><a href="/ai-setup-builder">← Réessayer</a></p>
+            </div>
+        </body></html>
+        """)
 
 
 @app.get("/ai-liquidity", response_class=HTMLResponse)

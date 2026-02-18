@@ -16,13 +16,14 @@ interface Indicator {
   icon: string;
   value: number;
   desc: string;
+  source: string;
 }
 
 const PHASES: PhaseData[] = [
-  { id: "accumulation", name: "Accumulation", icon: "❄️", color: "#3b82f6", range: [0, 25], desc: "Phase de bottom — Smart money accumule" },
-  { id: "early_bull", name: "Early Bull", icon: "🌱", color: "#22c55e", range: [25, 50], desc: "Début de reprise — BTC mène le marché" },
-  { id: "bull_run", name: "Bull Run", icon: "🚀", color: "#f59e0b", range: [50, 75], desc: "Phase euphorique — Tout monte!" },
-  { id: "distribution", name: "Distribution", icon: "🐻", color: "#ef4444", range: [75, 100], desc: "Sommet du cycle — Prudence maximale" },
+  { id: "accumulation", name: "Accumulation", icon: "❄️", color: "#3b82f6", range: [0, 25], desc: "Phase de bottom — Le smart money accumule discrètement" },
+  { id: "early_bull", name: "Début Haussier", icon: "🌱", color: "#22c55e", range: [25, 50], desc: "Début de reprise — BTC mène le marché, les altcoins suivent" },
+  { id: "bull_run", name: "Bull Run", icon: "🚀", color: "#f59e0b", range: [50, 75], desc: "Phase euphorique — Tout monte, les volumes explosent !" },
+  { id: "distribution", name: "Distribution", icon: "🐻", color: "#ef4444", range: [75, 100], desc: "Sommet du cycle — Le smart money vend, prudence maximale" },
 ];
 
 function getPhase(score: number): PhaseData {
@@ -41,70 +42,135 @@ export default function BullrunPhase() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch BTC data for indicators
-      const res = await fetch(
+      // 1. Fetch BTC data
+      const btcRes = await fetch(
         "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin&sparkline=false&price_change_percentage=24h,7d,30d"
       );
       let btcPrice = 0;
+      let btcChange24h = 0;
+      let btcChange7d = 0;
       let btcChange30d = 0;
       let btcAthPct = 0;
-      if (res.ok) {
-        const data = await res.json();
+      if (btcRes.ok) {
+        const data = await btcRes.json();
         if (Array.isArray(data) && data.length > 0) {
           btcPrice = (data[0].current_price as number) || 0;
+          btcChange24h = (data[0].price_change_percentage_24h as number) || 0;
+          btcChange7d = (data[0].price_change_percentage_7d_in_currency as number) || 0;
           btcChange30d = (data[0].price_change_percentage_30d_in_currency as number) || 0;
           btcAthPct = (data[0].ath_change_percentage as number) || 0;
         }
       }
 
-      // Fetch global data for dominance
+      // 2. Fetch global market data
       const globalRes = await fetch("https://api.coingecko.com/api/v3/global");
       let btcDominance = 50;
+      let totalMarketCap = 0;
+      let totalVolume = 0;
       if (globalRes.ok) {
         const globalData = await globalRes.json();
         btcDominance = globalData?.data?.market_cap_percentage?.btc || 50;
+        totalMarketCap = globalData?.data?.total_market_cap?.usd || 0;
+        totalVolume = globalData?.data?.total_volume?.usd || 0;
       }
 
-      // Fetch Fear & Greed
+      // 3. Fetch Fear & Greed Index
       let fearGreed = 50;
+      let fgClassification = "Neutre";
       try {
         const fgRes = await fetch("https://api.alternative.me/fng/?limit=1");
         if (fgRes.ok) {
           const fgData = await fgRes.json();
           fearGreed = parseInt(fgData?.data?.[0]?.value || "50");
+          fgClassification = fgData?.data?.[0]?.value_classification || "Neutral";
         }
       } catch {
-        fearGreed = 50;
+        // keep default
       }
 
-      // Calculate indicators
-      const btcTrend = Math.max(0, Math.min(100, 50 + btcChange30d * 1.5));
-      const volumeScore = Math.max(0, Math.min(100, 40 + Math.random() * 30));
-      const dominanceScore = Math.max(0, Math.min(100, btcDominance));
-      const socialScore = Math.max(0, Math.min(100, fearGreed * 0.8 + Math.random() * 20));
-      const onchainScore = Math.max(0, Math.min(100, 35 + Math.random() * 35));
+      // Translate Fear & Greed classification
+      const fgTranslations: Record<string, string> = {
+        "Extreme Fear": "Peur Extrême",
+        "Fear": "Peur",
+        "Neutral": "Neutre",
+        "Greed": "Avidité",
+        "Extreme Greed": "Avidité Extrême",
+      };
+      const fgFr = fgTranslations[fgClassification] || fgClassification;
+
+      // 4. Calculate real indicators (NO random values)
+      // BTC Price Trend: based on 30d change, normalized 0-100
+      const btcTrendScore = Math.max(0, Math.min(100, Math.round(50 + btcChange30d * 1.5)));
+
+      // Volume ratio: volume/marketcap ratio as activity indicator
+      const volumeRatio = totalMarketCap > 0 ? (totalVolume / totalMarketCap) * 100 : 5;
+      const volumeScore = Math.max(0, Math.min(100, Math.round(volumeRatio * 10)));
+
+      // BTC Dominance score: lower dominance = more bullish for alts = higher cycle score
+      const dominanceScore = Math.max(0, Math.min(100, Math.round(100 - btcDominance)));
+
+      // ATH proximity: how close BTC is to ATH (0 = at ATH, -100 = very far)
+      const athScore = Math.max(0, Math.min(100, Math.round(100 + btcAthPct)));
+
+      // Momentum: based on short-term vs long-term trend
+      const momentumScore = Math.max(0, Math.min(100, Math.round(50 + btcChange24h * 2 + btcChange7d * 0.5)));
 
       const inds: Indicator[] = [
-        { name: "BTC Price Trend", icon: "₿", value: Math.round(btcTrend), desc: `Tendance du prix BTC sur 30 jours (${btcChange30d >= 0 ? "+" : ""}${btcChange30d.toFixed(1)}%)` },
-        { name: "Market Volume", icon: "📊", value: Math.round(volumeScore), desc: "Volume de trading relatif au marché" },
-        { name: "Fear & Greed", icon: "😨", value: fearGreed, desc: "Indice de sentiment du marché crypto" },
-        { name: "BTC Dominance", icon: "👑", value: Math.round(dominanceScore), desc: `Part de marché de Bitcoin (${btcDominance.toFixed(1)}%)` },
-        { name: "Social Sentiment", icon: "💬", value: Math.round(socialScore), desc: "Activité et sentiment sur les réseaux sociaux" },
-        { name: "On-Chain Activity", icon: "⛓️", value: Math.round(onchainScore), desc: "Transactions et adresses actives sur la blockchain" },
+        {
+          name: "Tendance Prix BTC",
+          icon: "₿",
+          value: btcTrendScore,
+          desc: `BTC: $${btcPrice.toLocaleString("fr-FR")} — Variation 30j: ${btcChange30d >= 0 ? "+" : ""}${btcChange30d.toFixed(1)}%`,
+          source: "CoinGecko",
+        },
+        {
+          name: "Volume du Marché",
+          icon: "📊",
+          value: volumeScore,
+          desc: `Volume 24h: $${(totalVolume / 1e9).toFixed(1)}Mds — Ratio Vol/Cap: ${volumeRatio.toFixed(2)}%`,
+          source: "CoinGecko",
+        },
+        {
+          name: "Fear & Greed Index",
+          icon: "😨",
+          value: fearGreed,
+          desc: `Indice de sentiment: ${fearGreed}/100 — ${fgFr}`,
+          source: "Alternative.me",
+        },
+        {
+          name: "Dominance BTC",
+          icon: "👑",
+          value: Math.round(btcDominance),
+          desc: `Part de marché Bitcoin: ${btcDominance.toFixed(1)}% — Cap totale: $${(totalMarketCap / 1e12).toFixed(2)}T`,
+          source: "CoinGecko",
+        },
+        {
+          name: "Proximité ATH",
+          icon: "🎯",
+          value: athScore,
+          desc: `BTC est à ${Math.abs(btcAthPct).toFixed(1)}% de son ATH — ${athScore > 80 ? "Très proche" : athScore > 50 ? "En approche" : "Encore loin"}`,
+          source: "CoinGecko",
+        },
+        {
+          name: "Momentum Court Terme",
+          icon: "⚡",
+          value: momentumScore,
+          desc: `24h: ${btcChange24h >= 0 ? "+" : ""}${btcChange24h.toFixed(1)}% — 7j: ${btcChange7d >= 0 ? "+" : ""}${btcChange7d.toFixed(1)}%`,
+          source: "CoinGecko",
+        },
       ];
 
       setIndicators(inds);
 
-      // Calculate overall score
-      const avgScore = inds.reduce((s, ind) => s + ind.value, 0) / inds.length;
-      // Adjust: if BTC near ATH, higher score; if far from ATH, lower score
-      const athAdjust = Math.max(0, Math.min(100, 100 + btcAthPct));
-      const finalScore = Math.round((avgScore * 0.6 + athAdjust * 0.4));
-      setScore(Math.max(0, Math.min(99, finalScore)));
+      // Calculate overall cycle score (weighted average, no random)
+      const weights = [0.25, 0.10, 0.20, 0.15, 0.20, 0.10];
+      const values = [btcTrendScore, volumeScore, fearGreed, dominanceScore, athScore, momentumScore];
+      const weightedScore = values.reduce((sum, val, i) => sum + val * weights[i], 0);
+      setScore(Math.max(0, Math.min(99, Math.round(weightedScore))));
 
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
     } catch {
-      // keep existing
+      // keep existing data
     } finally {
       setLoading(false);
     }
@@ -119,7 +185,7 @@ export default function BullrunPhase() {
   const phase = getPhase(score);
 
   function getIndColor(v: number) {
-    if (v <= 30) return "#3b82f6";
+    if (v <= 25) return "#3b82f6";
     if (v <= 50) return "#22c55e";
     if (v <= 70) return "#f59e0b";
     return "#ef4444";
@@ -137,22 +203,22 @@ export default function BullrunPhase() {
         </div>
 
         <div className="relative z-10 max-w-[1440px] mx-auto p-7 pb-20">
-          {/* Header */}
+          {/* En-tête */}
           <div className="text-center mb-9 pt-10">
             <h1 className="text-[clamp(32px,5vw,52px)] font-black tracking-[-2px] bg-gradient-to-r from-[#f59e0b] via-[#ef4444] via-[#f59e0b] to-[#22c55e] bg-clip-text text-transparent bg-[length:300%_auto] animate-pulse">
-              🚀 Bull Run Phase Tracker
+              🚀 Suivi des Phases du Bull Run
             </h1>
             <p className="text-[#64748b] text-[17px] mt-3 font-medium">
-              Identifiez la phase actuelle du cycle crypto avec des indicateurs multi-facteurs
+              Identifiez la phase actuelle du cycle crypto avec des indicateurs multi-facteurs en temps réel
             </p>
             <div className="inline-flex items-center gap-2 bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.25)] rounded-full px-[18px] py-1.5 text-xs text-[#f59e0b] font-bold mt-4 uppercase tracking-[1.5px]">
               <span className="w-2 h-2 rounded-full bg-[#f59e0b] shadow-[0_0_8px_#f59e0b] animate-pulse" />
-              LIVE — Analyse temps réel
+              EN DIRECT — Analyse temps réel
             </div>
           </div>
 
-          {/* Phase Hero */}
-          <div className="bg-[rgba(15,23,42,0.85)] backdrop-blur-[24px] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6 relative overflow-hidden hover:border-[rgba(148,163,184,0.18)] hover:shadow-[0_25px_80px_rgba(0,0,0,0.4)] transition-all">
+          {/* Phase Principale */}
+          <div className="bg-[rgba(15,23,42,0.85)] backdrop-blur-[24px] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
 
             {loading && indicators.length === 0 ? (
@@ -189,8 +255,8 @@ export default function BullrunPhase() {
             )}
           </div>
 
-          {/* Timeline */}
-          <div className="bg-[rgba(15,23,42,0.85)] backdrop-blur-[24px] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6 relative overflow-hidden hover:border-[rgba(148,163,184,0.18)] hover:shadow-[0_25px_80px_rgba(0,0,0,0.4)] transition-all">
+          {/* Chronologie des Phases */}
+          <div className="bg-[rgba(15,23,42,0.85)] backdrop-blur-[24px] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
             <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
               <span className="text-[22px]">🗺️</span> Phases du Cycle
@@ -218,14 +284,17 @@ export default function BullrunPhase() {
                     >
                       {p.name}
                     </div>
+                    <div className="text-[10px] text-[#475569] mt-1">
+                      {p.range[0]}-{p.range[1]}
+                    </div>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Indicators */}
-          <div className="bg-[rgba(15,23,42,0.85)] backdrop-blur-[24px] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6 relative overflow-hidden hover:border-[rgba(148,163,184,0.18)] hover:shadow-[0_25px_80px_rgba(0,0,0,0.4)] transition-all">
+          {/* Indicateurs Clés */}
+          <div className="bg-[rgba(15,23,42,0.85)] backdrop-blur-[24px] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
             <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
               <span className="text-[22px]">📊</span> Indicateurs Clés
@@ -252,15 +321,16 @@ export default function BullrunPhase() {
                         style={{ width: `${ind.value}%`, background: color }}
                       />
                     </div>
-                    <p className="text-xs text-[#64748b] mt-2 leading-relaxed">{ind.desc}</p>
+                    <p className="text-xs text-[#94a3b8] mt-2 leading-relaxed">{ind.desc}</p>
+                    <p className="text-[10px] text-[#475569] mt-1">Source : {ind.source}</p>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Education / Guide des Phases */}
-          <div className="bg-[rgba(15,23,42,0.85)] backdrop-blur-[24px] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 relative overflow-hidden hover:border-[rgba(148,163,184,0.18)] hover:shadow-[0_25px_80px_rgba(0,0,0,0.4)] transition-all">
+          {/* Guide des Phases */}
+          <div className="bg-[rgba(15,23,42,0.85)] backdrop-blur-[24px] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
             <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
               <span className="text-[22px]">📖</span> Guide des Phases
@@ -273,7 +343,7 @@ export default function BullrunPhase() {
                   ❄️ Accumulation
                 </h3>
                 <p className="text-[#94a3b8] text-[13px] leading-relaxed mb-2">
-                  Phase post-crash. Le marché est en bas, les investisseurs smart money accumulent. Sentiment très négatif.
+                  Phase post-crash. Le marché est au plus bas, les investisseurs avisés accumulent discrètement. Sentiment très négatif.
                 </p>
                 <ul className="space-y-1">
                   <li className="text-[#94a3b8] text-[13px]">📉 Prix bas, volumes faibles</li>
@@ -282,17 +352,17 @@ export default function BullrunPhase() {
                 </ul>
               </div>
 
-              {/* Early Bull */}
+              {/* Début Haussier */}
               <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 relative overflow-hidden hover:translate-y-[-4px] hover:border-[rgba(148,163,184,0.18)] transition-all">
                 <div className="absolute top-0 left-0 w-1 h-full bg-[#22c55e]" />
                 <h3 className="text-[15px] font-extrabold mb-2.5 flex items-center gap-2 text-[#22c55e]">
-                  🌱 Early Bull
+                  🌱 Début Haussier
                 </h3>
                 <p className="text-[#94a3b8] text-[13px] leading-relaxed mb-2">
-                  Début de la reprise. BTC commence à monter, les altcoins suivent lentement.
+                  Début de la reprise. BTC commence à monter, les altcoins suivent lentement. Le développement reprend.
                 </p>
                 <ul className="space-y-1">
-                  <li className="text-[#94a3b8] text-[13px]">📈 BTC +50-100% depuis le bottom</li>
+                  <li className="text-[#94a3b8] text-[13px]">📈 BTC +50-100% depuis le creux</li>
                   <li className="text-[#94a3b8] text-[13px]">🏗️ Développement actif</li>
                   <li className="text-[13px]">💡 <strong className="text-white">Accumuler BTC + blue chips</strong></li>
                 </ul>
@@ -305,10 +375,10 @@ export default function BullrunPhase() {
                   🚀 Bull Run
                 </h3>
                 <p className="text-[#94a3b8] text-[13px] leading-relaxed mb-2">
-                  Phase euphorique. Tout monte, les altcoins explosent, les médias en parlent.
+                  Phase euphorique. Tout monte, les altcoins explosent, les médias en parlent partout.
                 </p>
                 <ul className="space-y-1">
-                  <li className="text-[#94a3b8] text-[13px]">🤑 Greed Index &gt; 75</li>
+                  <li className="text-[#94a3b8] text-[13px]">🤑 Indice Greed &gt; 75</li>
                   <li className="text-[#94a3b8] text-[13px]">📊 Volumes records</li>
                   <li className="text-[13px]">💡 <strong className="text-white">Prendre des profits progressivement</strong></li>
                 </ul>
@@ -321,18 +391,22 @@ export default function BullrunPhase() {
                   🐻 Distribution
                 </h3>
                 <p className="text-[#94a3b8] text-[13px] leading-relaxed mb-2">
-                  Le smart money vend. Les prix stagnent puis chutent. Le marché entre en bear market.
+                  Le smart money vend. Les prix stagnent puis chutent. Le marché entre en phase baissière.
                 </p>
                 <ul className="space-y-1">
                   <li className="text-[#94a3b8] text-[13px]">📉 Divergences baissières</li>
-                  <li className="text-[#94a3b8] text-[13px]">💸 Outflows des exchanges</li>
-                  <li className="text-[13px]">💡 <strong className="text-white">Sécuriser les gains, cash is king</strong></li>
+                  <li className="text-[#94a3b8] text-[13px]">💸 Sorties de capitaux des exchanges</li>
+                  <li className="text-[13px]">💡 <strong className="text-white">Sécuriser les gains, le cash est roi</strong></li>
                 </ul>
               </div>
             </div>
+
+            <p className="text-[#64748b] text-xs mt-5 text-center">
+              Tous les indicateurs sont calculés à partir de données réelles (CoinGecko, Alternative.me). Aucune donnée simulée ou aléatoire.
+            </p>
           </div>
 
-          {/* Refresh button */}
+          {/* Bouton Rafraîchir */}
           <button
             onClick={fetchData}
             disabled={loading}

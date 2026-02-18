@@ -1,81 +1,227 @@
+import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
-import { useState } from "react";
+import { Gem, RefreshCw, TrendingUp, TrendingDown, ArrowUpDown, Search } from "lucide-react";
 
-const PAIRS = [
-  { pair: "BTC/USDT", price: "97,245.30", change: 2.4, vol: "2.1B" },
-  { pair: "ETH/USDT", price: "3,421.50", change: -1.2, vol: "890M" },
-  { pair: "SOL/USDT", price: "198.75", change: 8.5, vol: "650M" },
-  { pair: "BNB/USDT", price: "612.40", change: 3.1, vol: "320M" },
-  { pair: "XRP/USDT", price: "2.45", change: -0.8, vol: "280M" },
-  { pair: "ADA/USDT", price: "0.892", change: 4.2, vol: "180M" },
-];
+const SPOT_BG =
+  "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/b3c0b3a0-ae42-46d0-9f3a-9f12780c9e10.png";
+
+interface SpotCoin {
+  id: string;
+  symbol: string;
+  name: string;
+  price: number;
+  change24h: number;
+  high24h: number;
+  low24h: number;
+  volume: number;
+  market_cap: number;
+  image: string;
+  ath: number;
+  athChangePercent: number;
+}
+
+function formatNum(n: number): string {
+  if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
+  return `$${n.toFixed(2)}`;
+}
 
 export default function SpotTrading() {
-  const [side, setSide] = useState<"buy" | "sell">("buy");
+  const [coins, setCoins] = useState<SpotCoin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState("");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"market_cap" | "change24h" | "volume">("market_cap");
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h"
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setCoins(
+            data.map((c: Record<string, unknown>) => ({
+              id: c.id as string,
+              symbol: ((c.symbol as string) || "").toUpperCase(),
+              name: c.name as string,
+              price: (c.current_price as number) || 0,
+              change24h: (c.price_change_percentage_24h as number) || 0,
+              high24h: (c.high_24h as number) || 0,
+              low24h: (c.low_24h as number) || 0,
+              volume: (c.total_volume as number) || 0,
+              market_cap: (c.market_cap as number) || 0,
+              image: c.image as string,
+              ath: (c.ath as number) || 0,
+              athChangePercent: (c.ath_change_percentage as number) || 0,
+            }))
+          );
+        }
+      }
+      setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
+    } catch {
+      // keep existing
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 60000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  const filtered = coins
+    .filter((c) => !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.symbol.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === "change24h") return b.change24h - a.change24h;
+      if (sortBy === "volume") return b.volume - a.volume;
+      return b.market_cap - a.market_cap;
+    });
+
+  const totalVol = coins.reduce((s, c) => s + c.volume, 0);
+  const avgChange = coins.length ? coins.reduce((s, c) => s + c.change24h, 0) / coins.length : 0;
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] flex">
+    <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-8">
-        <h1 className="text-3xl font-bold text-white mb-2">💎 Spot Trading</h1>
-        <p className="text-gray-400 mb-8">Interface de trading spot avec données en temps réel</p>
+      <main className="ml-[260px] p-6 min-h-screen">
+        {/* Hero */}
+        <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
+          <img src={SPOT_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/75 to-transparent" />
+          <div className="relative z-10 h-full flex items-center justify-between px-8">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <Gem className="w-7 h-7 text-cyan-400" />
+                <h1 className="text-2xl font-extrabold">Spot Trading</h1>
+              </div>
+              <p className="text-sm text-gray-400">Marché spot en temps réel • Top 50 cryptos • Prix, Volume, ATH</p>
+            </div>
+            <button onClick={fetchData} disabled={loading}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-sm font-semibold transition-all">
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              {lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}
+            </button>
+          </div>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Order Book */}
-          <div className="lg:col-span-2 bg-[#111827] rounded-2xl border border-white/[0.06] p-6">
-            <h2 className="text-lg font-bold text-white mb-4">📋 Paires de Trading</h2>
-            <table className="w-full">
+        {/* KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
+            <p className="text-xs text-gray-500 font-semibold mb-1">Paires Disponibles</p>
+            <p className="text-2xl font-extrabold">{coins.length}</p>
+          </div>
+          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
+            <p className="text-xs text-gray-500 font-semibold mb-1">Volume Total 24h</p>
+            <p className="text-2xl font-extrabold text-cyan-400">{formatNum(totalVol)}</p>
+          </div>
+          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
+            <p className="text-xs text-gray-500 font-semibold mb-1">Variation Moyenne</p>
+            <p className={`text-2xl font-extrabold ${avgChange >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+              {avgChange >= 0 ? "+" : ""}{avgChange.toFixed(2)}%
+            </p>
+          </div>
+          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
+            <p className="text-xs text-gray-500 font-semibold mb-1">En Hausse</p>
+            <p className="text-2xl font-extrabold text-emerald-400">
+              {coins.filter((c) => c.change24h > 0).length}/{coins.length}
+            </p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 mb-6">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex-1 min-w-[200px] relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+                placeholder="Rechercher une crypto..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/30 border border-white/[0.08] text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50" />
+            </div>
+            <div className="flex items-center gap-2">
+              <ArrowUpDown className="w-4 h-4 text-gray-500" />
+              {([
+                { key: "market_cap" as const, label: "Market Cap" },
+                { key: "change24h" as const, label: "24h %" },
+                { key: "volume" as const, label: "Volume" },
+              ]).map((s) => (
+                <button key={s.key} onClick={() => setSortBy(s.key)}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                    sortBy === s.key
+                      ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                      : "bg-white/[0.04] text-gray-400 border border-white/[0.06] hover:bg-white/[0.08]"
+                  }`}>{s.label}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-[#111827] border border-white/[0.06] rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1100px]">
               <thead>
-                <tr className="text-gray-500 text-xs uppercase border-b border-white/[0.06]">
-                  <th className="text-left pb-3">Paire</th>
-                  <th className="text-right pb-3">Prix</th>
-                  <th className="text-right pb-3">24h</th>
-                  <th className="text-right pb-3">Volume</th>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">#</th>
+                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Paire</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Prix</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">24h</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">High 24h</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Low 24h</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Volume</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Market Cap</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">ATH</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">vs ATH</th>
                 </tr>
               </thead>
               <tbody>
-                {PAIRS.map((p, i) => (
-                  <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02] cursor-pointer">
-                    <td className="py-4 text-white font-bold">{p.pair}</td>
-                    <td className="text-right text-white font-semibold">${p.price}</td>
-                    <td className={`text-right font-semibold ${p.change >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                      {p.change >= 0 ? "+" : ""}{p.change}%
+                {filtered.map((c, i) => (
+                  <tr key={c.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                    <td className="py-3 px-4 text-sm text-gray-500 font-semibold">{i + 1}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        {c.image ? <img src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full" /> : (
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-[10px] font-bold">{c.symbol.slice(0, 2)}</div>
+                        )}
+                        <div>
+                          <p className="text-sm font-bold">{c.symbol}/USDT</p>
+                          <p className="text-[10px] text-gray-500">{c.name}</p>
+                        </div>
+                      </div>
                     </td>
-                    <td className="text-right text-gray-400">${p.vol}</td>
+                    <td className="py-3 px-4 text-right text-sm font-bold">
+                      ${c.price >= 1 ? c.price.toLocaleString("en-US", { maximumFractionDigits: 2 }) : c.price.toFixed(6)}
+                    </td>
+                    <td className={`py-3 px-4 text-right text-sm font-bold ${c.change24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      <div className="flex items-center justify-end gap-1">
+                        {c.change24h >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                        {c.change24h >= 0 ? "+" : ""}{c.change24h.toFixed(2)}%
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-right text-sm text-gray-300">
+                      ${c.high24h >= 1 ? c.high24h.toLocaleString("en-US", { maximumFractionDigits: 2 }) : c.high24h.toFixed(6)}
+                    </td>
+                    <td className="py-3 px-4 text-right text-sm text-gray-300">
+                      ${c.low24h >= 1 ? c.low24h.toLocaleString("en-US", { maximumFractionDigits: 2 }) : c.low24h.toFixed(6)}
+                    </td>
+                    <td className="py-3 px-4 text-right text-sm text-gray-300">{formatNum(c.volume)}</td>
+                    <td className="py-3 px-4 text-right text-sm text-gray-300">{formatNum(c.market_cap)}</td>
+                    <td className="py-3 px-4 text-right text-sm text-gray-300">
+                      ${c.ath >= 1 ? c.ath.toLocaleString("en-US", { maximumFractionDigits: 2 }) : c.ath.toFixed(6)}
+                    </td>
+                    <td className={`py-3 px-4 text-right text-sm font-bold ${c.athChangePercent >= -10 ? "text-emerald-400" : c.athChangePercent >= -50 ? "text-amber-400" : "text-red-400"}`}>
+                      {c.athChangePercent.toFixed(1)}%
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-
-          {/* Order Form */}
-          <div className="bg-[#111827] rounded-2xl border border-white/[0.06] p-6">
-            <h2 className="text-lg font-bold text-white mb-4">📝 Passer un Ordre</h2>
-            <div className="flex gap-2 mb-6">
-              <button onClick={() => setSide("buy")} className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${side === "buy" ? "bg-emerald-500 text-white" : "bg-white/[0.05] text-gray-400"}`}>
-                Acheter
-              </button>
-              <button onClick={() => setSide("sell")} className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${side === "sell" ? "bg-red-500 text-white" : "bg-white/[0.05] text-gray-400"}`}>
-                Vendre
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-gray-400 text-xs font-semibold block mb-1">Prix (USDT)</label>
-                <input type="text" defaultValue="97,245.30" className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm" />
-              </div>
-              <div>
-                <label className="text-gray-400 text-xs font-semibold block mb-1">Montant (BTC)</label>
-                <input type="text" placeholder="0.00" className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm" />
-              </div>
-              <div>
-                <label className="text-gray-400 text-xs font-semibold block mb-1">Total (USDT)</label>
-                <input type="text" placeholder="0.00" className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm" readOnly />
-              </div>
-              <button className={`w-full py-3 rounded-xl font-bold text-white text-sm ${side === "buy" ? "bg-emerald-500 hover:bg-emerald-600" : "bg-red-500 hover:bg-red-600"} transition-colors`}>
-                {side === "buy" ? "Acheter BTC" : "Vendre BTC"}
-              </button>
-            </div>
           </div>
         </div>
       </main>

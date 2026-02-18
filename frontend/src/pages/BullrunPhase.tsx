@@ -9,6 +9,7 @@ interface PhaseData {
   color: string;
   range: [number, number];
   desc: string;
+  action: string;
 }
 
 interface Indicator {
@@ -20,15 +21,6 @@ interface Indicator {
   source: string;
 }
 
-/*
-  Phases du cycle crypto — basées sur l'analyse du cycle 2024-2026 :
-  - Halving BTC : Avril 2024
-  - ATH BTC : ~$126,200 en Octobre 2025
-  - Correction : -46% depuis l'ATH, ~$65K en Février 2026
-  - Phase actuelle : Distribution / Correction Post-Pic
-  Sources : CoinGecko, Alternative.me, analyses on-chain (Glassnode, CryptoQuant)
-*/
-
 const PHASES: PhaseData[] = [
   {
     id: "accumulation",
@@ -37,38 +29,43 @@ const PHASES: PhaseData[] = [
     color: "#3b82f6",
     range: [0, 20],
     desc: "Phase de bottom — Le smart money accumule discrètement. Sentiment très négatif, volumes faibles.",
+    action: "Meilleur moment pour acheter — DCA agressif",
   },
   {
     id: "early_bull",
     name: "Début Haussier",
     icon: "🌱",
     color: "#22c55e",
-    range: [20, 45],
+    range: [20, 40],
     desc: "Début de reprise — BTC mène le marché, les altcoins suivent lentement. Confiance qui revient.",
+    action: "Accumuler BTC + blue chips (ETH, SOL)",
   },
   {
     id: "bull_run",
     name: "Bull Run",
     icon: "🚀",
     color: "#f59e0b",
-    range: [45, 70],
-    desc: "Phase euphorique — Tout monte, les volumes explosent, les médias en parlent partout !",
+    range: [40, 65],
+    desc: "Phase haussière — Les volumes augmentent, les altcoins commencent à surperformer BTC.",
+    action: "Prendre des profits progressivement (20-30%)",
   },
   {
-    id: "distribution",
-    name: "Distribution / Pic",
+    id: "euphoria",
+    name: "Euphorie / Distribution",
     icon: "⚠️",
     color: "#f97316",
-    range: [70, 85],
-    desc: "Sommet du cycle — Le smart money commence à vendre. Euphorie maximale, prudence requise.",
+    range: [65, 85],
+    desc: "Sommet du cycle — Euphorie maximale, le smart money distribue. Prudence requise !",
+    action: "Sécuriser les gains — Convertir en stablecoins",
   },
   {
     id: "correction",
-    name: "Correction Post-Pic",
+    name: "Correction / Bear",
     icon: "📉",
     color: "#ef4444",
     range: [85, 100],
-    desc: "Correction majeure après l'ATH. Le marché cherche un plancher. Phase de transition incertaine.",
+    desc: "Correction majeure — Le marché cherche un plancher. Phase de transition incertaine.",
+    action: "Patience — Attendre les signaux de reprise",
   },
 ];
 
@@ -145,29 +142,29 @@ export default function BullrunPhase() {
       };
       const fgFr = fgTranslations[fgClassification] || fgClassification;
 
-      // 4. Calculate indicators based on REAL data
-      // Distance from ATH — key cycle indicator
-      const athDistance = Math.abs(btcAthPct); // e.g., 46% below ATH
+      // 4. Calculate indicators based on REAL data only
+      const athDistance = Math.abs(btcAthPct);
+
       const athSignal =
-        athDistance < 10
-          ? "Proche de l'ATH — Zone de distribution"
+        athDistance < 5
+          ? "Très proche de l'ATH — Zone d'euphorie"
+          : athDistance < 15
+          ? "Proche de l'ATH — Marché fort"
           : athDistance < 30
-          ? "Correction modérée"
+          ? "Correction modérée depuis l'ATH"
           : athDistance < 50
           ? "Correction significative — Zone de transition"
-          : "Bear market profond — Zone d'accumulation";
+          : "Très loin de l'ATH — Zone d'accumulation potentielle";
 
-      // BTC Dominance signal
       const domSignal =
         btcDominance > 60
-          ? "Dominance élevée — Fuite vers BTC"
+          ? "Dominance élevée — Fuite vers BTC (risk-off)"
           : btcDominance > 50
-          ? "Dominance modérée — BTC mène"
+          ? "Dominance modérée — BTC mène le marché"
           : btcDominance > 40
           ? "Dominance en baisse — Altcoins en force"
           : "Dominance basse — Altseason probable";
 
-      // Volume activity
       const volumeRatio = totalMarketCap > 0 ? (totalVolume / totalMarketCap) * 100 : 5;
       const volumeSignal =
         volumeRatio > 8
@@ -178,7 +175,6 @@ export default function BullrunPhase() {
           ? "Volume faible — Marché calme"
           : "Volume très faible — Apathie du marché";
 
-      // Momentum 30d
       const momentumSignal =
         btcChange30d > 20
           ? "Momentum très haussier"
@@ -190,7 +186,6 @@ export default function BullrunPhase() {
           ? "Momentum baissier"
           : "Momentum très baissier";
 
-      // Fear & Greed signal
       const fgSignal =
         fearGreed >= 75
           ? "Avidité extrême — Prudence !"
@@ -201,12 +196,6 @@ export default function BullrunPhase() {
           : fearGreed >= 25
           ? "Peur — Opportunité potentielle"
           : "Peur extrême — Capitulation ?";
-
-      // Halving cycle position
-      // Halving: April 2024, current: Feb 2026 = ~22 months post-halving
-      // Historically, BTC peaks 12-18 months post-halving
-      const monthsPostHalving = 22;
-      const halvingSignal = `${monthsPostHalving} mois post-halving — Fenêtre historique de 17 mois dépassée`;
 
       const inds: Indicator[] = [
         {
@@ -249,57 +238,49 @@ export default function BullrunPhase() {
           desc: `Volume 24h: $${(totalVolume / 1e9).toFixed(1)}Mds — Ratio Vol/Cap: ${volumeRatio.toFixed(2)}%`,
           source: "CoinGecko",
         },
-        {
-          name: "Cycle Post-Halving",
-          icon: "⏰",
-          value: Math.min(100, Math.round((monthsPostHalving / 24) * 100)),
-          signal: halvingSignal,
-          desc: `Halving: Avril 2024 — Nous sommes à ${monthsPostHalving} mois. Pic historique: 12-18 mois post-halving.`,
-          source: "Analyse historique",
-        },
       ];
 
       setIndicators(inds);
 
       /*
-        Score du cycle — Logique basée sur la recherche :
-        - BTC a atteint ~$126,200 en Oct 2025 (ATH)
-        - Correction de ~46% depuis l'ATH
-        - Fenêtre de 17 mois post-halving dépassée
-        - On-chain: 0 indicateurs surchauffés
-        - Phase actuelle: Distribution/Correction Post-Pic (score 85-95)
+        Score composite basé UNIQUEMENT sur les données réelles :
+        - Distance ATH (30%) : plus on est proche = plus haussier
+        - Fear & Greed (25%) : sentiment du marché
+        - Momentum 30j (20%) : direction du prix
+        - Volume ratio (10%) : activité du marché
+        - BTC Dominance (15%) : rotation des capitaux
         
-        Calcul pondéré :
-        - Si très loin de l'ATH (>40%) + post-halving avancé = phase correction
-        - Si proche de l'ATH (<10%) + F&G élevé = phase distribution
-        - Si loin de l'ATH (>60%) + F&G bas = accumulation
+        Score 0-100 mappé aux phases :
+        0-20: Accumulation (loin ATH, peur extrême, momentum négatif)
+        20-40: Début haussier
+        40-65: Bull Run
+        65-85: Euphorie/Distribution
+        85-100: Correction/Bear
       */
-      let cycleScore: number;
 
-      if (athDistance > 40 && monthsPostHalving > 17) {
-        // Correction post-pic significative, fenêtre historique dépassée
-        cycleScore = 88 + Math.min(10, athDistance / 10);
-      } else if (athDistance > 30) {
-        // Correction modérée
-        cycleScore = 78 + athDistance / 5;
-      } else if (athDistance < 10 && fearGreed > 70) {
-        // Proche ATH + euphorie = distribution
-        cycleScore = 72 + (10 - athDistance);
-      } else if (athDistance > 60 && fearGreed < 25) {
-        // Très loin ATH + peur extrême = accumulation
-        cycleScore = 5 + fearGreed / 5;
-      } else if (athDistance > 50) {
-        // Accumulation tardive
-        cycleScore = 15 + (60 - athDistance);
-      } else {
-        // Zone intermédiaire
-        const athComponent = Math.max(0, Math.min(100, 100 - athDistance * 2));
-        const fgComponent = fearGreed;
-        const momentumComponent = Math.max(0, Math.min(100, 50 + btcChange30d * 2));
-        cycleScore = athComponent * 0.35 + fgComponent * 0.30 + momentumComponent * 0.20 + (100 - btcDominance) * 0.15;
-      }
+      // ATH component: closer to ATH = higher score (more bullish/euphoric)
+      // athDistance 0% = score 100, athDistance 80% = score 0
+      const athScore = Math.max(0, Math.min(100, 100 - athDistance * 1.25));
 
-      setScore(Math.max(0, Math.min(99, Math.round(cycleScore))));
+      // Fear & Greed: direct mapping (0=fear, 100=greed)
+      const fgScore = fearGreed;
+
+      // Momentum: positive = bullish
+      const momentumScore = Math.max(0, Math.min(100, 50 + btcChange30d * 1.5));
+
+      // Volume: higher = more active
+      const volumeScore = Math.max(0, Math.min(100, volumeRatio * 12));
+
+      // Dominance: lower dominance = more altseason = later in cycle
+      const domScore = Math.max(0, Math.min(100, (60 - btcDominance) * 3 + 50));
+
+      // Weighted composite
+      let composite = athScore * 0.30 + fgScore * 0.25 + momentumScore * 0.20 + volumeScore * 0.10 + domScore * 0.15;
+
+      // Clamp to 0-99
+      composite = Math.max(0, Math.min(99, Math.round(composite)));
+
+      setScore(composite);
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
     } catch {
       // keep existing data
@@ -317,9 +298,9 @@ export default function BullrunPhase() {
   const phase = getPhase(score);
 
   function getIndColor(signal: string) {
-    if (signal.includes("haussier") || signal.includes("Altseason") || signal.includes("Opportunité") || signal.includes("Capitulation")) return "#22c55e";
-    if (signal.includes("baissier") || signal.includes("Prudence") || signal.includes("Fuite") || signal.includes("dépassée")) return "#ef4444";
-    if (signal.includes("neutre") || signal.includes("Indécision") || signal.includes("modéré") || signal.includes("calme")) return "#f59e0b";
+    if (signal.includes("haussier") || signal.includes("Altseason") || signal.includes("Opportunité") || signal.includes("Capitulation") || signal.includes("fort")) return "#22c55e";
+    if (signal.includes("baissier") || signal.includes("Prudence") || signal.includes("Fuite") || signal.includes("euphorie")) return "#ef4444";
+    if (signal.includes("neutre") || signal.includes("Indécision") || signal.includes("modéré") || signal.includes("calme") || signal.includes("Correction")) return "#f59e0b";
     return "#94a3b8";
   }
 
@@ -340,11 +321,11 @@ export default function BullrunPhase() {
               📊 Suivi des Phases du Cycle Crypto
             </h1>
             <p className="text-[#64748b] text-[17px] mt-3 font-medium max-w-[700px] mx-auto">
-              Analyse multi-facteurs en temps réel basée sur les données on-chain, le sentiment et les indicateurs de marché
+              Analyse multi-facteurs en temps réel basée sur les données de marché, le sentiment et les indicateurs
             </p>
-            <div className="inline-flex items-center gap-2 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.25)] rounded-full px-[18px] py-1.5 text-xs text-[#ef4444] font-bold mt-4 uppercase tracking-[1.5px]">
-              <span className="w-2 h-2 rounded-full bg-[#ef4444] shadow-[0_0_8px_#ef4444] animate-pulse" />
-              EN DIRECT — Cycle 2024-2026
+            <div className="inline-flex items-center gap-2 bg-[rgba(99,102,241,0.1)] border border-[rgba(99,102,241,0.25)] rounded-full px-[18px] py-1.5 text-xs text-[#818cf8] font-bold mt-4 uppercase tracking-[1.5px]">
+              <span className="w-2 h-2 rounded-full bg-[#818cf8] shadow-[0_0_8px_#818cf8] animate-pulse" />
+              EN DIRECT — Données 100% réelles
             </div>
           </div>
 
@@ -363,13 +344,9 @@ export default function BullrunPhase() {
                 <p className="text-[#94a3b8] text-base max-w-[600px] mx-auto leading-relaxed mb-2">
                   {phase.desc}
                 </p>
-
-                {/* Context box */}
-                <div className="bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)] rounded-xl p-4 max-w-[600px] mx-auto mb-6">
-                  <p className="text-sm text-[#f87171] font-medium">
-                    📌 Contexte : BTC a atteint son ATH (~$126K) en Octobre 2025. Correction de ~46% depuis.
-                    La fenêtre historique de 17 mois post-halving (Avril 2024) est dépassée.
-                    Signaux contradictoires : 0 indicateurs on-chain surchauffés, mais drawdown significatif.
+                <div className="bg-[rgba(99,102,241,0.08)] border border-[rgba(99,102,241,0.2)] rounded-xl p-3 max-w-[500px] mx-auto mb-6">
+                  <p className="text-sm text-[#818cf8] font-medium">
+                    💡 Action recommandée : {phase.action}
                   </p>
                 </div>
 
@@ -383,7 +360,6 @@ export default function BullrunPhase() {
                 {/* Progress bar with phase markers */}
                 <div className="max-w-[600px] mx-auto">
                   <div className="h-4 bg-[rgba(148,163,184,0.08)] rounded-xl overflow-hidden relative">
-                    {/* Phase segments */}
                     {PHASES.map((p) => (
                       <div
                         key={p.id}
@@ -395,7 +371,6 @@ export default function BullrunPhase() {
                         }}
                       />
                     ))}
-                    {/* Indicator */}
                     <div
                       className="absolute top-[-2px] w-1.5 h-[calc(100%+4px)] bg-white rounded-sm shadow-[0_0_12px_rgba(255,255,255,0.6)] transition-all duration-[1500ms] z-10"
                       style={{ left: `${score}%` }}
@@ -405,10 +380,15 @@ export default function BullrunPhase() {
                     <span className="text-[#3b82f6]">Accumulation</span>
                     <span className="text-[#22c55e]">Début</span>
                     <span className="text-[#f59e0b]">Bull Run</span>
-                    <span className="text-[#f97316]">Distribution</span>
+                    <span className="text-[#f97316]">Euphorie</span>
                     <span className="text-[#ef4444]">Correction</span>
                   </div>
                 </div>
+
+                {/* Methodology note */}
+                <p className="text-[10px] text-[#475569] mt-4 max-w-[500px] mx-auto">
+                  Score calculé en temps réel : Distance ATH (30%) + Fear&Greed (25%) + Momentum 30j (20%) + Dominance BTC (15%) + Volume (10%)
+                </p>
               </div>
             )}
           </div>
@@ -416,7 +396,7 @@ export default function BullrunPhase() {
           {/* Chronologie des Phases */}
           <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6 relative overflow-hidden">
             <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
-              <span className="text-[22px]">🗺️</span> Phases du Cycle 2024-2026
+              <span className="text-[22px]">🗺️</span> Phases du Cycle
             </div>
             <div className="flex gap-1">
               {PHASES.map((p) => {
@@ -490,111 +470,41 @@ export default function BullrunPhase() {
             </div>
           </div>
 
-          {/* Scénarios 2026 — basés sur la recherche */}
-          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6 relative overflow-hidden">
-            <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
-              <span className="text-[22px]">🔮</span> Scénarios Probables 2026
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[15px] font-extrabold text-[#f59e0b]">📊 Scénario Base (50%)</h3>
-                  <span className="text-xs bg-[rgba(245,158,11,0.15)] text-[#f59e0b] px-2 py-0.5 rounded-full font-bold">50%</span>
-                </div>
-                <p className="text-[#94a3b8] text-sm leading-relaxed mb-2">
-                  Range-bound entre $90K–$120K jusqu'à un catalyseur macro. Le marché consolide après la correction.
-                </p>
-                <p className="text-xs text-[#64748b]">Catalyseurs : Décision Fed, ETF flows</p>
-              </div>
-              <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[15px] font-extrabold text-[#22c55e]">🚀 Scénario Haussier (25%)</h3>
-                  <span className="text-xs bg-[rgba(34,197,94,0.15)] text-[#22c55e] px-2 py-0.5 rounded-full font-bold">25%</span>
-                </div>
-                <p className="text-[#94a3b8] text-sm leading-relaxed mb-2">
-                  $120K–$180K porté par les lancements 401(k) crypto, baisses de taux Fed, et adoption institutionnelle.
-                </p>
-                <p className="text-xs text-[#64748b]">Catalyseurs : 401(k), baisses de taux</p>
-              </div>
-              <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[15px] font-extrabold text-[#ef4444]">📉 Scénario Baissier (25%)</h3>
-                  <span className="text-xs bg-[rgba(239,68,68,0.15)] text-[#ef4444] px-2 py-0.5 rounded-full font-bold">25%</span>
-                </div>
-                <p className="text-[#94a3b8] text-sm leading-relaxed mb-2">
-                  $60K–$80K sur détérioration macro. Les ETFs créent un plancher plus élevé que les cycles précédents.
-                </p>
-                <p className="text-xs text-[#64748b]">Risques : Récession, régulation</p>
-              </div>
-            </div>
-            <p className="text-[#64748b] text-xs mt-4 text-center">
-              Valeur espérée pondérée : ~$109K — Source : Analyses institutionnelles, Février 2026
-            </p>
-          </div>
-
           {/* Guide des Phases */}
           <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 relative overflow-hidden">
             <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
               <span className="text-[22px]">📖</span> Guide des Phases du Cycle
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-[#3b82f6]" />
-                <h3 className="text-[15px] font-extrabold mb-2.5 text-[#3b82f6]">❄️ Accumulation</h3>
-                <p className="text-[#94a3b8] text-[13px] leading-relaxed mb-2">
-                  Phase post-crash. Le marché est au plus bas, les investisseurs avisés accumulent. Sentiment très négatif, volumes au plus bas.
-                </p>
-                <p className="text-[13px]">💡 <strong className="text-white">Meilleur moment pour acheter</strong></p>
-              </div>
-              <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-[#22c55e]" />
-                <h3 className="text-[15px] font-extrabold mb-2.5 text-[#22c55e]">🌱 Début Haussier</h3>
-                <p className="text-[#94a3b8] text-[13px] leading-relaxed mb-2">
-                  Début de la reprise. BTC commence à monter, les altcoins suivent lentement. Confiance qui revient progressivement.
-                </p>
-                <p className="text-[13px]">💡 <strong className="text-white">Accumuler BTC + blue chips</strong></p>
-              </div>
-              <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-[#f59e0b]" />
-                <h3 className="text-[15px] font-extrabold mb-2.5 text-[#f59e0b]">🚀 Bull Run</h3>
-                <p className="text-[#94a3b8] text-[13px] leading-relaxed mb-2">
-                  Phase euphorique. Tout monte, les altcoins explosent, les médias en parlent partout. Volumes records.
-                </p>
-                <p className="text-[13px]">💡 <strong className="text-white">Prendre des profits progressivement</strong></p>
-              </div>
-              <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-[#f97316]" />
-                <h3 className="text-[15px] font-extrabold mb-2.5 text-[#f97316]">⚠️ Distribution</h3>
-                <p className="text-[#94a3b8] text-[13px] leading-relaxed mb-2">
-                  Le smart money vend. Euphorie maximale mais les gros portefeuilles se délestent. Divergences baissières apparaissent.
-                </p>
-                <p className="text-[13px]">💡 <strong className="text-white">Sécuriser les gains</strong></p>
-              </div>
-              <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-[#ef4444]" />
-                <h3 className="text-[15px] font-extrabold mb-2.5 text-[#ef4444]">📉 Correction Post-Pic</h3>
-                <p className="text-[#94a3b8] text-[13px] leading-relaxed mb-2">
-                  Correction majeure après l'ATH. Le marché cherche un plancher. Phase de transition — les ETFs créent un "hiver contrôlé" vs les crashs de -80% des cycles précédents.
-                </p>
-                <p className="text-[13px]">💡 <strong className="text-white">Patience, attendre les signaux de reprise</strong></p>
-              </div>
+              {PHASES.map((p) => (
+                <div key={p.id} className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 h-full" style={{ background: p.color }} />
+                  <h3 className="text-[15px] font-extrabold mb-2.5" style={{ color: p.color }}>
+                    {p.icon} {p.name}
+                  </h3>
+                  <p className="text-[#94a3b8] text-[13px] leading-relaxed mb-2">{p.desc}</p>
+                  <p className="text-[13px]">
+                    💡 <strong className="text-white">{p.action}</strong>
+                  </p>
+                </div>
+              ))}
               <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-[#8b5cf6]" />
                 <h3 className="text-[15px] font-extrabold mb-2.5 text-[#8b5cf6]">🔑 Signaux à Surveiller</h3>
                 <ul className="space-y-1.5 text-[13px] text-[#94a3b8]">
-                  <li>📈 Basis APR &gt; 8% → Prochain leg up</li>
-                  <li>💰 ETF inflows &gt; $1Mds/semaine</li>
-                  <li>📊 ISM PMI en hausse au-dessus de 50</li>
-                  <li>🔥 On-chain composite &gt; 90% → Surchauffe</li>
-                  <li>📖 Order book depth en recovery</li>
+                  <li>📈 Fear & Greed &gt; 80 → Euphorie (prudence)</li>
+                  <li>📉 Fear & Greed &lt; 20 → Capitulation (opportunité)</li>
+                  <li>👑 BTC Dominance en chute → Altseason</li>
+                  <li>📊 Volume en hausse + prix stable → Accumulation</li>
+                  <li>🎯 Proche de l'ATH + F&G élevé → Distribution</li>
                 </ul>
               </div>
             </div>
 
             <p className="text-[#64748b] text-xs mt-5 text-center">
-              Tous les indicateurs sont calculés à partir de données réelles (CoinGecko, Alternative.me, analyses on-chain). Aucune donnée simulée.
+              ⚠️ Tous les indicateurs sont calculés à partir de données réelles (CoinGecko, Alternative.me). Aucune donnée simulée ou hardcodée.
               <br />
-              Sources : CoinGecko API, Alternative.me Fear & Greed, analyses institutionnelles (Glassnode, CryptoQuant)
+              Ce n'est pas un conseil financier. Faites toujours vos propres recherches (DYOR).
             </p>
           </div>
 

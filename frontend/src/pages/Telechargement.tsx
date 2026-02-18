@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Sidebar from "../components/Sidebar";
 
 interface DownloadItem {
@@ -7,22 +8,21 @@ interface DownloadItem {
   format: string;
   size: string;
   category: string;
-  downloadUrl: string;
 }
 
 const DOWNLOADS: DownloadItem[] = [
-  { title: "Guide du Débutant Crypto", icon: "📘", description: "Guide complet pour débuter dans le trading de cryptomonnaies. Couvre les bases, les exchanges, et les premières stratégies.", format: "PDF", size: "2.4 MB", category: "Guides", downloadUrl: "#" },
-  { title: "Cheat Sheet Analyse Technique", icon: "📊", description: "Résumé visuel de tous les indicateurs techniques : RSI, MACD, Bollinger, patterns chartistes.", format: "PDF", size: "1.8 MB", category: "Cheat Sheets", downloadUrl: "#" },
-  { title: "Template Journal de Trading", icon: "📝", description: "Spreadsheet pour suivre vos trades, calculer vos performances et analyser vos erreurs.", format: "XLSX", size: "450 KB", category: "Templates", downloadUrl: "#" },
-  { title: "Checklist Risk Management", icon: "🛡️", description: "Liste de vérification avant chaque trade : position sizing, stop loss, risk/reward.", format: "PDF", size: "320 KB", category: "Cheat Sheets", downloadUrl: "#" },
-  { title: "Glossaire Crypto A-Z", icon: "📖", description: "Dictionnaire complet des termes crypto et trading : de A comme Altcoin à Z comme Zero-Knowledge.", format: "PDF", size: "1.2 MB", category: "Guides", downloadUrl: "#" },
-  { title: "Template Plan de Trading", icon: "📋", description: "Modèle de plan de trading professionnel avec objectifs, règles et stratégies.", format: "PDF", size: "580 KB", category: "Templates", downloadUrl: "#" },
-  { title: "Patterns Chartistes Illustrés", icon: "🔍", description: "Guide visuel de tous les patterns chartistes avec exemples réels et probabilités.", format: "PDF", size: "3.1 MB", category: "Guides", downloadUrl: "#" },
-  { title: "Calculateur Position Size", icon: "🧮", description: "Spreadsheet pour calculer automatiquement la taille de vos positions.", format: "XLSX", size: "280 KB", category: "Templates", downloadUrl: "#" },
-  { title: "Calendrier Économique 2025", icon: "📅", description: "Dates clés des événements économiques et crypto pour 2025.", format: "PDF", size: "890 KB", category: "Calendriers", downloadUrl: "#" },
-  { title: "Stratégies Backtestées", icon: "📈", description: "Compilation de 10 stratégies de trading backtestées avec résultats détaillés.", format: "PDF", size: "4.2 MB", category: "Guides", downloadUrl: "#" },
-  { title: "Infographie DeFi", icon: "🏦", description: "Infographie complète de l'écosystème DeFi : protocoles, TVL, rendements.", format: "PNG", size: "1.5 MB", category: "Infographies", downloadUrl: "#" },
-  { title: "Wallpaper CryptoIA", icon: "🖼️", description: "Pack de fonds d'écran CryptoIA pour desktop et mobile.", format: "ZIP", size: "12 MB", category: "Extras", downloadUrl: "#" },
+  { title: "Guide du Débutant Crypto", icon: "📘", description: "Guide complet pour débuter dans le trading de cryptomonnaies. Couvre les bases, les exchanges, et les premières stratégies.", format: "PDF", size: "2.4 MB", category: "Guides" },
+  { title: "Cheat Sheet Analyse Technique", icon: "📊", description: "Résumé visuel de tous les indicateurs techniques : RSI, MACD, Bollinger, patterns chartistes.", format: "PDF", size: "1.8 MB", category: "Cheat Sheets" },
+  { title: "Template Journal de Trading", icon: "📝", description: "Spreadsheet pour suivre vos trades, calculer vos performances et analyser vos erreurs.", format: "XLSX", size: "450 KB", category: "Templates" },
+  { title: "Checklist Risk Management", icon: "🛡️", description: "Liste de vérification avant chaque trade : position sizing, stop loss, risk/reward.", format: "PDF", size: "320 KB", category: "Cheat Sheets" },
+  { title: "Glossaire Crypto A-Z", icon: "📖", description: "Dictionnaire complet des termes crypto et trading : de A comme Altcoin à Z comme Zero-Knowledge.", format: "PDF", size: "1.2 MB", category: "Guides" },
+  { title: "Template Plan de Trading", icon: "📋", description: "Modèle de plan de trading professionnel avec objectifs, règles et stratégies.", format: "PDF", size: "580 KB", category: "Templates" },
+  { title: "Patterns Chartistes Illustrés", icon: "🔍", description: "Guide visuel de tous les patterns chartistes avec exemples réels et probabilités.", format: "PDF", size: "3.1 MB", category: "Guides" },
+  { title: "Calculateur Position Size", icon: "🧮", description: "Spreadsheet pour calculer automatiquement la taille de vos positions.", format: "XLSX", size: "280 KB", category: "Templates" },
+  { title: "Calendrier Économique 2026", icon: "📅", description: "Dates clés des événements économiques et crypto pour 2026.", format: "PDF", size: "890 KB", category: "Calendriers" },
+  { title: "Stratégies Backtestées", icon: "📈", description: "Compilation de 10 stratégies de trading backtestées avec résultats détaillés.", format: "PDF", size: "4.2 MB", category: "Guides" },
+  { title: "Infographie DeFi", icon: "🏦", description: "Infographie complète de l'écosystème DeFi : protocoles, TVL, rendements.", format: "PNG", size: "1.5 MB", category: "Infographies" },
+  { title: "Wallpaper CryptoIA", icon: "🖼️", description: "Pack de fonds d'écran CryptoIA pour desktop et mobile.", format: "ZIP", size: "12 MB", category: "Extras" },
 ];
 
 const CATEGORIES = ["Tous", "Guides", "Cheat Sheets", "Templates", "Calendriers", "Infographies", "Extras"];
@@ -37,6 +37,20 @@ const FORMAT_COLORS: Record<string, string> = {
 export default function Telechargement() {
   const [catFilter, setCatFilter] = useState("Tous");
   const filtered = catFilter === "Tous" ? DOWNLOADS : DOWNLOADS.filter((d) => d.category === catFilter);
+
+  const handleDownload = (item: DownloadItem) => {
+    // Create a simple text file with the resource info as a placeholder
+    const content = `${item.title}\n\n${item.description}\n\nFormat: ${item.format}\nTaille: ${item.size}\nCatégorie: ${item.category}\n\n---\nCette ressource sera bientôt disponible en téléchargement complet.\nMerci de votre patience ! — CryptoIA Platform`;
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${item.title.replace(/\s+/g, "_")}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="flex min-h-screen bg-[#030712]">
@@ -94,7 +108,10 @@ export default function Telechargement() {
                 <p className="text-xs text-gray-400 mb-4 leading-relaxed line-clamp-2">{item.description}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-xs bg-white/[0.04] text-gray-500 px-2 py-1 rounded-lg">{item.category}</span>
-                  <button className="px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs font-bold rounded-xl hover:shadow-lg hover:shadow-purple-500/20 transition-all opacity-80 group-hover:opacity-100">
+                  <button
+                    onClick={() => handleDownload(item)}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs font-bold rounded-xl hover:shadow-lg hover:shadow-purple-500/20 transition-all opacity-80 group-hover:opacity-100"
+                  >
                     📥 Télécharger
                   </button>
                 </div>

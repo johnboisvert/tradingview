@@ -1,98 +1,209 @@
+import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
-import { Trophy, Star, TrendingUp, Users } from "lucide-react";
+import { Award, Star, TrendingUp, Quote, ChevronLeft, ChevronRight, Users, Target, Zap } from "lucide-react";
 
-const SS_BG =
-  "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/4b6e1138-5e13-42c7-9e5d-95ba3808c41a.png";
+const STORIES = [
+  {
+    name: "Marc D.",
+    role: "Day Trader",
+    location: "Paris, France",
+    avatar: "🧑‍💼",
+    profit: "+47,500$",
+    period: "6 mois",
+    rating: 5,
+    quote: "L'IA de CryptoIA a complètement transformé mon trading. Les signaux sont précis et le Whale Watcher m'a permis d'anticiper plusieurs mouvements majeurs. Mon win rate est passé de 45% à 72%.",
+    strategy: "Swing Trading + Signaux IA",
+    highlight: "Win rate +27%",
+  },
+  {
+    name: "Sophie L.",
+    role: "Investisseuse Long Terme",
+    location: "Montréal, Canada",
+    avatar: "👩‍💻",
+    profit: "+125,000$",
+    period: "1 an",
+    rating: 5,
+    quote: "Le Fear & Greed Index combiné aux prédictions IA m'a aidée à identifier les meilleurs moments d'achat pendant le bear market. J'ai accumulé BTC et ETH aux plus bas et les résultats parlent d'eux-mêmes.",
+    strategy: "DCA + Fear & Greed",
+    highlight: "Portfolio x3",
+  },
+  {
+    name: "Thomas R.",
+    role: "Scalper Pro",
+    location: "Bruxelles, Belgique",
+    avatar: "👨‍🔬",
+    profit: "+23,800$",
+    period: "3 mois",
+    rating: 4,
+    quote: "Le Gem Hunter m'a fait découvrir des pépites avant qu'elles n'explosent. J'ai attrapé SOL à 20$, PEPE au début du pump, et plusieurs altcoins avec des x5-x10. L'outil est incroyable pour le timing.",
+    strategy: "Gem Hunting + Analyse Technique",
+    highlight: "3 trades x10",
+  },
+  {
+    name: "Amira K.",
+    role: "Portfolio Manager",
+    location: "Genève, Suisse",
+    avatar: "👩‍🏫",
+    profit: "+89,200$",
+    period: "8 mois",
+    rating: 5,
+    quote: "En tant que gestionnaire de portfolio, j'ai besoin d'outils fiables. CryptoIA offre les meilleures analyses on-chain et le Risk Management m'aide à protéger le capital de mes clients. Indispensable.",
+    strategy: "Risk Management + On-Chain",
+    highlight: "Max drawdown -8%",
+  },
+  {
+    name: "Lucas P.",
+    role: "Trader Débutant",
+    location: "Lyon, France",
+    avatar: "🧑‍🎓",
+    profit: "+8,500$",
+    period: "4 mois",
+    rating: 5,
+    quote: "J'ai commencé le trading il y a 4 mois sans aucune expérience. L'AI Assistant m'a tout appris : les bases, les stratégies, la gestion du risque. Aujourd'hui je suis profitable et confiant.",
+    strategy: "AI Assistant + Formation",
+    highlight: "De 0 à profitable",
+  },
+  {
+    name: "Karim B.",
+    role: "Whale Tracker",
+    location: "Dubaï, EAU",
+    avatar: "🧔",
+    profit: "+210,000$",
+    period: "1 an",
+    rating: 5,
+    quote: "Le Whale Watcher est mon outil #1. Suivre les mouvements des baleines m'a donné un avantage considérable. Quand les baleines accumulent, j'achète. Quand elles vendent, je sors. Simple et efficace.",
+    strategy: "Whale Watching + Momentum",
+    highlight: "ROI +420%",
+  },
+];
 
-interface Story {
-  name: string; avatar: string; role: string; profit: string; duration: string;
-  strategy: string; quote: string; rating: number; coins: string[];
-}
-
-const STORIES: Story[] = [
-  { name: "Thomas M.", avatar: "🧑‍💻", role: "Développeur", profit: "+340%", duration: "18 mois", strategy: "DCA + Analyse Technique", quote: "CryptoIA m'a permis d'identifier les meilleurs points d'entrée grâce aux signaux RSI. Mon portfolio a explosé !", rating: 5, coins: ["BTC", "ETH", "SOL"] },
-  { name: "Marie L.", avatar: "👩‍🔬", role: "Analyste Financière", profit: "+215%", duration: "12 mois", strategy: "Swing Trading", quote: "Les prédictions IA et le Fear & Greed Index m'ont aidée à timer le marché. Résultats impressionnants.", rating: 5, coins: ["ETH", "LINK", "AAVE"] },
-  { name: "Pierre D.", avatar: "👨‍💼", role: "Entrepreneur", profit: "+180%", duration: "24 mois", strategy: "DCA Hebdomadaire", quote: "J'ai commencé avec le DCA sur BTC et ETH. La simplicité de la plateforme m'a convaincu de rester.", rating: 5, coins: ["BTC", "ETH"] },
-  { name: "Sophie R.", avatar: "👩‍🎓", role: "Étudiante", profit: "+420%", duration: "10 mois", strategy: "Gem Hunter + Altcoins", quote: "Le Gem Hunter m'a fait découvrir des pépites avant tout le monde. SOL à $20, AVAX à $10... Incroyable !", rating: 5, coins: ["SOL", "AVAX", "ARB"] },
-  { name: "Lucas B.", avatar: "🧑‍🏫", role: "Professeur", profit: "+95%", duration: "6 mois", strategy: "Gestion des Risques", quote: "Grâce à l'outil de gestion des risques, j'ai appris à dimensionner mes positions correctement. Plus de pertes catastrophiques.", rating: 4, coins: ["BTC", "ETH", "DOT"] },
-  { name: "Emma V.", avatar: "👩‍⚕️", role: "Médecin", profit: "+275%", duration: "15 mois", strategy: "Analyse Technique + IA", quote: "L'assistant IA répond à toutes mes questions. Les graphiques et l'analyse technique sont d'une qualité professionnelle.", rating: 5, coins: ["BTC", "SOL", "LINK"] },
-  { name: "Antoine G.", avatar: "🧑‍🔧", role: "Ingénieur", profit: "+160%", duration: "8 mois", strategy: "Breakout Trading", quote: "Les alertes de breakout et les signaux de la page Stratégies m'ont permis de capturer des mouvements majeurs.", rating: 4, coins: ["ETH", "SOL", "DOGE"] },
-  { name: "Julie F.", avatar: "👩‍💻", role: "Designer UX", profit: "+310%", duration: "20 mois", strategy: "Portfolio Diversifié", quote: "La watchlist et le simulateur m'ont aidée à construire un portfolio équilibré. Les résultats parlent d'eux-mêmes.", rating: 5, coins: ["BTC", "ETH", "SOL", "ADA"] },
+const STATS = [
+  { icon: Users, value: "12,500+", label: "Traders Actifs" },
+  { icon: TrendingUp, value: "68%", label: "Win Rate Moyen" },
+  { icon: Target, value: "$2.4M+", label: "Profits Générés" },
+  { icon: Zap, value: "4.8/5", label: "Note Moyenne" },
 ];
 
 export default function SuccessStories() {
-  const avgProfit = STORIES.reduce((s, st) => s + parseInt(st.profit.replace(/[^0-9-]/g, "")), 0) / STORIES.length;
+  const [activeIndex, setActiveIndex] = useState(0);
 
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
       <main className="ml-[260px] p-6 min-h-screen">
-        <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
-          <img src={SS_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/75 to-transparent" />
-          <div className="relative z-10 h-full flex items-center px-8">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <Trophy className="w-7 h-7 text-amber-400" />
-                <h1 className="text-2xl font-extrabold">Success Stories</h1>
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <Award className="w-8 h-8 text-amber-400" />
+            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
+              Success Stories
+            </h1>
+          </div>
+          <p className="text-gray-400 max-w-xl mx-auto">
+            Découvrez comment nos traders utilisent CryptoIA pour générer des profits consistants
+          </p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {STATS.map((stat, i) => {
+            const Icon = stat.icon;
+            return (
+              <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 text-center hover:border-amber-500/20 transition-all">
+                <Icon className="w-6 h-6 text-amber-400 mx-auto mb-2" />
+                <p className="text-2xl font-black bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">{stat.value}</p>
+                <p className="text-xs text-gray-500 mt-1">{stat.label}</p>
               </div>
-              <p className="text-sm text-gray-400">Témoignages de nos utilisateurs • Résultats vérifiés</p>
+            );
+          })}
+        </div>
+
+        {/* Featured Story */}
+        <div className="bg-gradient-to-r from-amber-500/[0.06] to-orange-500/[0.06] border border-amber-500/20 rounded-2xl p-8 mb-8 relative">
+          <Quote className="w-10 h-10 text-amber-500/30 absolute top-6 right-6" />
+          <div className="flex items-start gap-6">
+            <span className="text-5xl">{STORIES[activeIndex].avatar}</span>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h3 className="text-xl font-bold">{STORIES[activeIndex].name}</h3>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-bold border border-amber-500/20">
+                  {STORIES[activeIndex].role}
+                </span>
+                <span className="text-xs text-gray-500">{STORIES[activeIndex].location}</span>
+              </div>
+              <div className="flex gap-0.5 mb-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} className={`w-4 h-4 ${i < STORIES[activeIndex].rating ? "text-amber-400 fill-amber-400" : "text-gray-600"}`} />
+                ))}
+              </div>
+              <p className="text-sm text-gray-300 leading-relaxed mb-4 italic">"{STORIES[activeIndex].quote}"</p>
+              <div className="flex flex-wrap gap-3">
+                <span className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400">
+                  💰 {STORIES[activeIndex].profit} en {STORIES[activeIndex].period}
+                </span>
+                <span className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs font-bold text-blue-400">
+                  📊 {STORIES[activeIndex].strategy}
+                </span>
+                <span className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs font-bold text-purple-400">
+                  🎯 {STORIES[activeIndex].highlight}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Témoignages</p>
-            <p className="text-2xl font-extrabold">{STORIES.length}</p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Profit Moyen</p>
-            <p className="text-2xl font-extrabold text-emerald-400">+{avgProfit.toFixed(0)}%</p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Note Moyenne</p>
-            <p className="text-2xl font-extrabold text-amber-400">{(STORIES.reduce((s, st) => s + st.rating, 0) / STORIES.length).toFixed(1)} ⭐</p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Utilisateurs Actifs</p>
-            <p className="text-2xl font-extrabold text-blue-400">12,500+</p>
+          <div className="flex items-center justify-center gap-3 mt-6">
+            <button onClick={() => setActiveIndex((prev) => (prev - 1 + STORIES.length) % STORIES.length)}
+              className="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] transition-all">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="flex gap-1.5">
+              {STORIES.map((_, i) => (
+                <button key={i} onClick={() => setActiveIndex(i)}
+                  className={`w-2 h-2 rounded-full transition-all ${i === activeIndex ? "bg-amber-400 w-6" : "bg-white/[0.15]"}`} />
+              ))}
+            </div>
+            <button onClick={() => setActiveIndex((prev) => (prev + 1) % STORIES.length)}
+              className="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] transition-all">
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {STORIES.map((s, i) => (
-            <div key={i} className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6 hover:border-white/[0.1] transition-all">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">{s.avatar}</span>
+        {/* All Stories Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {STORIES.map((story, i) => (
+            <div key={i}
+              onClick={() => setActiveIndex(i)}
+              className={`bg-white/[0.03] border rounded-xl p-5 cursor-pointer transition-all hover:bg-white/[0.05] ${
+                i === activeIndex ? "border-amber-500/30 bg-amber-500/[0.03]" : "border-white/[0.06]"
+              }`}>
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-3xl">{story.avatar}</span>
                 <div>
-                  <h3 className="font-bold">{s.name}</h3>
-                  <p className="text-xs text-gray-500">{s.role}</p>
-                </div>
-                <div className="ml-auto text-right">
-                  <p className="text-xl font-extrabold text-emerald-400">{s.profit}</p>
-                  <p className="text-xs text-gray-500">{s.duration}</p>
+                  <h4 className="font-bold text-sm">{story.name}</h4>
+                  <p className="text-[10px] text-gray-500">{story.role} — {story.location}</p>
                 </div>
               </div>
-              <p className="text-sm text-gray-300 italic mb-4">"{s.quote}"</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 font-semibold">Stratégie:</span>
-                  <span className="text-xs font-bold text-indigo-400">{s.strategy}</span>
-                </div>
-                <div className="flex gap-1">
-                  {Array.from({ length: 5 }).map((_, j) => (
-                    <Star key={j} className={`w-3.5 h-3.5 ${j < s.rating ? "text-amber-400 fill-amber-400" : "text-gray-700"}`} />
-                  ))}
-                </div>
-              </div>
-              <div className="flex gap-1.5 mt-3">
-                {s.coins.map((c, j) => (
-                  <span key={j} className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/[0.06] text-gray-300">{c}</span>
+              <div className="flex gap-0.5 mb-2">
+                {Array.from({ length: 5 }).map((_, j) => (
+                  <Star key={j} className={`w-3 h-3 ${j < story.rating ? "text-amber-400 fill-amber-400" : "text-gray-600"}`} />
                 ))}
+              </div>
+              <p className="text-xs text-gray-400 leading-relaxed line-clamp-3 mb-3">"{story.quote}"</p>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-black text-emerald-400">{story.profit}</span>
+                <span className="text-[10px] text-gray-500">{story.period}</span>
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Disclaimer */}
+        <div className="mt-8 bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-center">
+          <p className="text-[10px] text-gray-600 leading-relaxed">
+            ⚠️ Les performances passées ne garantissent pas les résultats futurs. Le trading de crypto-monnaies comporte des risques significatifs.
+            Ces témoignages représentent des expériences individuelles et ne constituent pas des conseils financiers.
+            Investissez uniquement ce que vous pouvez vous permettre de perdre.
+          </p>
         </div>
       </main>
     </div>

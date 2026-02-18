@@ -1,109 +1,161 @@
-import { useEffect, useState } from "react";
-import Sidebar from "@/components/Sidebar";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import Sidebar from "@/components/Sidebar";
 import {
-  Users,
-  CreditCard,
-  Tag,
-  MessageSquare,
-  BarChart3,
-  Shield,
+  Shield, Users, BarChart3, CreditCard, MessageSquare, Tag, TrendingUp, TrendingDown,
+  Activity, Eye, DollarSign, Clock, ArrowUpRight, ArrowDownRight, Zap
 } from "lucide-react";
 
-const ADMIN_CARDS = [
-  { label: "Utilisateurs", value: "1,247", change: "+12%", icon: Users, path: "/admin/users", color: "indigo" },
-  { label: "Revenus", value: "$45,890", change: "+8%", icon: CreditCard, path: "/admin/pricing", color: "emerald" },
-  { label: "Promos actives", value: "5", change: "+2", icon: Tag, path: "/admin/promos", color: "amber" },
-  { label: "Messages", value: "23", change: "+5", icon: MessageSquare, path: "/admin/messages", color: "blue" },
-  { label: "Analytics", value: "98.5%", change: "+0.3%", icon: BarChart3, path: "/admin/analytics", color: "purple" },
-];
+interface DashboardStats {
+  totalUsers: number;
+  activeUsers: number;
+  revenue: number;
+  revenueChange: number;
+  proSubscribers: number;
+  enterpriseSubscribers: number;
+  openTickets: number;
+  avgSessionTime: string;
+  pageViews: number;
+  conversionRate: number;
+}
 
-function getColor(c: string) {
-  const map: Record<string, { bg: string; text: string; icon: string }> = {
-    indigo: { bg: "bg-indigo-500/10", text: "text-indigo-400", icon: "bg-indigo-500/20" },
-    emerald: { bg: "bg-emerald-500/10", text: "text-emerald-400", icon: "bg-emerald-500/20" },
-    amber: { bg: "bg-amber-500/10", text: "text-amber-400", icon: "bg-amber-500/20" },
-    blue: { bg: "bg-blue-500/10", text: "text-blue-400", icon: "bg-blue-500/20" },
-    purple: { bg: "bg-purple-500/10", text: "text-purple-400", icon: "bg-purple-500/20" },
-  };
-  return map[c] || map.indigo;
+function StatCard({ icon: Icon, label, value, change, color, trend }: {
+  icon: React.ElementType; label: string; value: string; change?: string; color: string; trend?: "up" | "down";
+}) {
+  return (
+    <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.12] transition-all group">
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center`}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        {change && (
+          <span className={`flex items-center gap-1 text-xs font-bold ${
+            trend === "up" ? "text-emerald-400" : trend === "down" ? "text-red-400" : "text-gray-400"
+          }`}>
+            {trend === "up" ? <ArrowUpRight className="w-3 h-3" /> : trend === "down" ? <ArrowDownRight className="w-3 h-3" /> : null}
+            {change}
+          </span>
+        )}
+      </div>
+      <p className="text-2xl font-black mb-1">{value}</p>
+      <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">{label}</p>
+    </div>
+  );
 }
 
 export default function AdminDashboard() {
-  const [, setTime] = useState(new Date());
-  useEffect(() => { const t = setInterval(() => setTime(new Date()), 60000); return () => clearInterval(t); }, []);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 12547,
+    activeUsers: 3842,
+    revenue: 47850,
+    revenueChange: 12.5,
+    proSubscribers: 892,
+    enterpriseSubscribers: 47,
+    openTickets: 23,
+    avgSessionTime: "14m 32s",
+    pageViews: 284500,
+    conversionRate: 3.8,
+  });
+
+  const [recentActivity] = useState([
+    { time: "Il y a 2 min", event: "Nouvel abonnement Pro", user: "marc.d@email.com", type: "subscription" },
+    { time: "Il y a 5 min", event: "Ticket support ouvert", user: "sophie.l@email.com", type: "ticket" },
+    { time: "Il y a 12 min", event: "Paiement reçu — $29", user: "thomas.r@email.com", type: "payment" },
+    { time: "Il y a 18 min", event: "Nouveau membre inscrit", user: "amira.k@email.com", type: "signup" },
+    { time: "Il y a 25 min", event: "Upgrade Enterprise", user: "lucas.p@email.com", type: "subscription" },
+    { time: "Il y a 30 min", event: "Ticket résolu", user: "karim.b@email.com", type: "ticket" },
+  ]);
+
+  const adminLinks = [
+    { path: "/admin/analytics", label: "Analytics", icon: BarChart3, desc: "Statistiques détaillées", color: "from-blue-500 to-indigo-600" },
+    { path: "/admin/users", label: "Utilisateurs", icon: Users, desc: "Gestion des comptes", color: "from-emerald-500 to-green-600" },
+    { path: "/admin/pricing", label: "Tarification", icon: CreditCard, desc: "Plans et prix", color: "from-amber-500 to-orange-600" },
+    { path: "/admin/promos", label: "Promotions", icon: Tag, desc: "Codes promo", color: "from-purple-500 to-pink-600" },
+    { path: "/admin/messages", label: "Messages", icon: MessageSquare, desc: "Support client", color: "from-cyan-500 to-blue-600" },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] flex">
+    <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Shield className="w-8 h-8 text-amber-400" />
-          <h1 className="text-3xl font-bold text-white">Admin Panel</h1>
-        </div>
-        <p className="text-gray-400 mb-8">Gérez votre plateforme CryptoIA</p>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          {ADMIN_CARDS.map((card, i) => {
-            const c = getColor(card.color);
-            const Icon = card.icon;
-            return (
-              <Link key={i} to={card.path} className={`${c.bg} rounded-2xl border border-white/[0.06] p-6 hover:border-white/[0.12] transition-colors`}>
-                <div className={`w-10 h-10 rounded-xl ${c.icon} flex items-center justify-center mb-3`}>
-                  <Icon className={`w-5 h-5 ${c.text}`} />
-                </div>
-                <p className="text-gray-400 text-xs font-semibold">{card.label}</p>
-                <p className="text-white text-2xl font-black mt-1">{card.value}</p>
-                <p className="text-emerald-400 text-xs font-semibold mt-1">{card.change}</p>
-              </Link>
-            );
-          })}
+      <main className="ml-[260px] p-6 min-h-screen">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 flex items-center justify-center">
+              <Shield className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-extrabold">Admin Dashboard</h1>
+              <p className="text-sm text-gray-400">Vue d'ensemble de la plateforme CryptoIA</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400">
+              <Activity className="w-3 h-3" /> Système OK
+            </span>
+          </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-[#111827] rounded-2xl border border-white/[0.06] p-8">
-            <h2 className="text-lg font-bold text-white mb-4">📊 Activité récente</h2>
-            <div className="space-y-3">
-              {[
-                { action: "Nouvel abonnement Premium", user: "marc.d@email.com", time: "Il y a 5 min" },
-                { action: "Paiement reçu $69.99", user: "julie.l@email.com", time: "Il y a 15 min" },
-                { action: "Nouveau compte créé", user: "alex.r@email.com", time: "Il y a 30 min" },
-                { action: "Upgrade vers Pro", user: "sophie.m@email.com", time: "Il y a 1h" },
-                { action: "Code promo utilisé: CRYPTO20", user: "pierre.b@email.com", time: "Il y a 2h" },
-              ].map((a, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-white/[0.03] rounded-xl">
-                  <div>
-                    <p className="text-white text-sm font-semibold">{a.action}</p>
-                    <p className="text-gray-500 text-xs">{a.user}</p>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+          <StatCard icon={Users} label="Total Utilisateurs" value={stats.totalUsers.toLocaleString()} change="+245 ce mois" color="bg-gradient-to-r from-blue-500 to-indigo-600" trend="up" />
+          <StatCard icon={Eye} label="Utilisateurs Actifs" value={stats.activeUsers.toLocaleString()} change="30.6% du total" color="bg-gradient-to-r from-emerald-500 to-green-600" trend="up" />
+          <StatCard icon={DollarSign} label="Revenu Mensuel" value={`$${stats.revenue.toLocaleString()}`} change={`+${stats.revenueChange}%`} color="bg-gradient-to-r from-amber-500 to-orange-600" trend="up" />
+          <StatCard icon={Zap} label="Abonnés Pro" value={stats.proSubscribers.toLocaleString()} change="+38 ce mois" color="bg-gradient-to-r from-purple-500 to-pink-600" trend="up" />
+          <StatCard icon={MessageSquare} label="Tickets Ouverts" value={String(stats.openTickets)} change="-5 vs semaine" color="bg-gradient-to-r from-cyan-500 to-blue-600" trend="down" />
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-6 mb-6">
+          {/* Quick Links */}
+          <div className="lg:col-span-2">
+            <h2 className="text-lg font-bold mb-4">Accès Rapide</h2>
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {adminLinks.map((link) => {
+                const Icon = link.icon;
+                return (
+                  <Link key={link.path} to={link.path}
+                    className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.05] hover:border-white/[0.12] transition-all group">
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${link.color} flex items-center justify-center mb-3`}>
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="font-bold text-sm mb-0.5">{link.label}</h3>
+                    <p className="text-[10px] text-gray-500">{link.desc}</p>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div>
+            <h2 className="text-lg font-bold mb-4">Activité Récente</h2>
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl divide-y divide-white/[0.04]">
+              {recentActivity.map((activity, i) => (
+                <div key={i} className="px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
+                      activity.type === "subscription" ? "bg-purple-400" :
+                      activity.type === "payment" ? "bg-emerald-400" :
+                      activity.type === "ticket" ? "bg-amber-400" : "bg-blue-400"
+                    }`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate">{activity.event}</p>
+                      <p className="text-[10px] text-gray-500 truncate">{activity.user}</p>
+                    </div>
+                    <span className="text-[10px] text-gray-600 whitespace-nowrap">{activity.time}</span>
                   </div>
-                  <span className="text-gray-500 text-xs">{a.time}</span>
                 </div>
               ))}
             </div>
           </div>
+        </div>
 
-          <div className="bg-[#111827] rounded-2xl border border-white/[0.06] p-8">
-            <h2 className="text-lg font-bold text-white mb-4">📈 Répartition des plans</h2>
-            <div className="space-y-4">
-              {[
-                { plan: "Free", users: 680, pct: 55, color: "#6b7280" },
-                { plan: "Premium", users: 312, pct: 25, color: "#3b82f6" },
-                { plan: "Advanced", users: 178, pct: 14, color: "#8b5cf6" },
-                { plan: "Pro", users: 77, pct: 6, color: "#f59e0b" },
-              ].map((p, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <span className="text-gray-300 text-sm font-semibold w-20">{p.plan}</span>
-                  <div className="flex-1 h-3 bg-gray-800 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${p.pct}%`, background: p.color }} />
-                  </div>
-                  <span className="text-white font-bold text-sm w-12 text-right">{p.users}</span>
-                  <span className="text-gray-500 text-xs w-10 text-right">{p.pct}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Additional KPIs */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard icon={Clock} label="Session Moyenne" value={stats.avgSessionTime} color="bg-gradient-to-r from-indigo-500 to-blue-600" />
+          <StatCard icon={TrendingUp} label="Pages Vues / Mois" value={`${(stats.pageViews / 1000).toFixed(1)}K`} change="+18%" color="bg-gradient-to-r from-teal-500 to-emerald-600" trend="up" />
+          <StatCard icon={Activity} label="Taux Conversion" value={`${stats.conversionRate}%`} change="+0.3%" color="bg-gradient-to-r from-rose-500 to-pink-600" trend="up" />
+          <StatCard icon={Shield} label="Enterprise" value={String(stats.enterpriseSubscribers)} change="+3 ce mois" color="bg-gradient-to-r from-amber-500 to-yellow-600" trend="up" />
         </div>
       </main>
     </div>

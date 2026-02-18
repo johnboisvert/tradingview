@@ -13,15 +13,16 @@ import {
   Zap,
   LogOut,
   ChevronRight,
+  ArrowLeft,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/users", label: "Utilisateurs", icon: Users },
-  { path: "/pricing", label: "Prix & Forfaits", icon: CreditCard },
-  { path: "/promos", label: "Codes Promo", icon: Tag },
-  { path: "/messages", label: "Messages & Ebooks", icon: MessageSquare },
-  { path: "/analytics", label: "Analytics", icon: BarChart3 },
+  { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/admin/users", label: "Utilisateurs", icon: Users },
+  { path: "/admin/pricing", label: "Prix & Forfaits", icon: CreditCard },
+  { path: "/admin/promos", label: "Codes Promo", icon: Tag },
+  { path: "/admin/messages", label: "Messages & Ebooks", icon: MessageSquare },
+  { path: "/admin/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -93,6 +94,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Bottom section */}
         <div className="p-3 border-t border-white/[0.06]">
+          <Link
+            to="/"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-indigo-400 hover:text-white hover:bg-indigo-500/10 transition-all w-full mb-2"
+          >
+            <ArrowLeft className="w-[18px] h-[18px]" />
+            <span>Retour au Dashboard</span>
+          </Link>
           <div className="px-3 py-3 rounded-xl bg-gradient-to-r from-indigo-500/10 to-purple-500/5 border border-indigo-500/10 mb-3">
             <div className="flex items-center gap-2 mb-1">
               <Zap className="w-3.5 h-3.5 text-amber-400" />

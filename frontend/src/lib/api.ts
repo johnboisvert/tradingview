@@ -301,9 +301,3 @@ function getMockData(path: string): unknown {
 
   return { success: true, message: "OK" };
 }
-
-// ============================================================
-// Web SDK Client (used by AuthCallback)
-// ============================================================
-import { createClient } from '@metagptx/web-sdk';
-export const client = createClient();

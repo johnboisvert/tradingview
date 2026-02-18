@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  Shield,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -97,6 +98,46 @@ export default function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Admin Section Divider */}
+        {!collapsed && (
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-3 mt-6">
+            Administration
+          </p>
+        )}
+        {collapsed && <div className="my-4 border-t border-white/[0.06]" />}
+
+        {/* Admin Link */}
+        <Link
+          to="/admin"
+          className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 relative ${
+            location.pathname.startsWith("/admin")
+              ? "bg-gradient-to-r from-amber-500/15 to-orange-500/10 text-white"
+              : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
+          }`}
+        >
+          {location.pathname.startsWith("/admin") && (
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-gradient-to-b from-amber-400 to-orange-500 rounded-r-full" />
+          )}
+          <div
+            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+              location.pathname.startsWith("/admin")
+                ? "bg-amber-500/20 text-amber-400"
+                : "bg-white/[0.04] text-gray-500 group-hover:text-gray-300 group-hover:bg-white/[0.06]"
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+          </div>
+          {!collapsed && (
+            <span
+              className={`text-sm font-semibold truncate ${
+                location.pathname.startsWith("/admin") ? "text-white" : ""
+              }`}
+            >
+              Admin Panel
+            </span>
+          )}
+        </Link>
       </nav>
 
       {/* Collapse Button */}

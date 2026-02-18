@@ -43,6 +43,14 @@ import DefiYield from "./pages/DefiYield";
 import AISignals from "./pages/AISignals";
 import NarrativeRadar from "./pages/NarrativeRadar";
 import RugScamShield from "./pages/RugScamShield";
+import OpportunityScanner from "./pages/OpportunityScanner";
+import AIPatterns from "./pages/AIPatterns";
+import AISentiment from "./pages/AISentiment";
+import TimeframeAnalysis from "./pages/TimeframeAnalysis";
+import AISetupBuilder from "./pages/AISetupBuilder";
+import PepitesCrypto from "./pages/PepitesCrypto";
+import TradingAcademy from "./pages/TradingAcademy";
+import Telechargement from "./pages/Telechargement";
 import NotFound from "./pages/NotFound";
 
 function App() {
@@ -68,6 +76,7 @@ function App() {
         <Route path="/graphiques" element={<Graphiques />} />
         <Route path="/backtesting" element={<Backtesting />} />
         <Route path="/portfolio-tracker" element={<PortfolioTracker />} />
+        <Route path="/timeframe-analysis" element={<TimeframeAnalysis />} />
 
         {/* Intelligence IA */}
         <Route path="/ai-assistant" element={<AIAssistant />} />
@@ -78,8 +87,13 @@ function App() {
         <Route path="/gem-hunter" element={<GemHunter />} />
         <Route path="/position-sizer" element={<PositionSizer />} />
         <Route path="/ai-signals" element={<AISignals />} />
+        <Route path="/ai-patterns" element={<AIPatterns />} />
+        <Route path="/ai-sentiment" element={<AISentiment />} />
+        <Route path="/ai-setup-builder" element={<AISetupBuilder />} />
         <Route path="/narrative-radar" element={<NarrativeRadar />} />
         <Route path="/rug-scam-shield" element={<RugScamShield />} />
+        <Route path="/opportunity-scanner" element={<OpportunityScanner />} />
+        <Route path="/pepites-crypto" element={<PepitesCrypto />} />
 
         {/* Outils */}
         <Route path="/stats-avancees" element={<StatsAvancees />} />
@@ -92,6 +106,8 @@ function App() {
         <Route path="/onchain-metrics" element={<OnChainMetrics />} />
         <Route path="/defi-yield" element={<DefiYield />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/trading-academy" element={<TradingAcademy />} />
+        <Route path="/telechargement" element={<Telechargement />} />
 
         {/* Compte */}
         <Route path="/abonnements" element={<Abonnements />} />

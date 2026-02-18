@@ -1,70 +1,36 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
-import { Star, RefreshCw, TrendingUp, TrendingDown, Info } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 const ALT_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/6e7996e5-3fd7-4958-9f83-5d5f09ef989f.png";
 
-interface AltCoin {
+interface CoinData {
   id: string;
   symbol: string;
   name: string;
   price: number;
-  change24h: number;
-  change7d: number;
-  change30d: number;
-  market_cap: number;
-  volume: number;
+  change90d: number;
   image: string;
-  outperformsBTC: boolean;
 }
 
-interface SeasonRow {
-  symbol: string;
-  name: string;
-  image: string;
-  price: number;
-  year: number;
-  sixMonth: number;
-  threeMonth: number;
-  oneMonth: number;
-  oneWeek: number;
-  btcOutperformCount: number;
-}
-
-function formatNum(n: number): string {
-  if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
-  return `$${n.toFixed(0)}`;
-}
-
-function PerfCell({ value, btcValue }: { value: number; btcValue: number }) {
-  const outperforms = value > btcValue;
-  const diff = value - btcValue;
-  return (
-    <td className="py-3 px-2 text-center">
-      <div className={`inline-flex flex-col items-center px-2 py-1 rounded-lg ${
-        outperforms ? "bg-emerald-500/10" : "bg-red-500/10"
-      }`}>
-        <span className={`text-sm font-bold ${outperforms ? "text-emerald-400" : "text-red-400"}`}>
-          {value >= 0 ? "+" : ""}{value.toFixed(1)}%
-        </span>
-        <span className={`text-[9px] font-semibold ${outperforms ? "text-emerald-500/60" : "text-red-500/60"}`}>
-          {diff >= 0 ? "+" : ""}{diff.toFixed(1)}% vs BTC
-        </span>
-      </div>
-    </td>
-  );
+function getSeasonInfo(v: number) {
+  if (v <= 25) return { label: "BITCOIN SEASON", color: "#f7931a", emoji: "🟠" };
+  if (v <= 40) return { label: "BTC DOMINANT", color: "#f59e0b", emoji: "🟡" };
+  if (v <= 60) return { label: "NEUTRE", color: "#94a3b8", emoji: "⚖️" };
+  if (v <= 75) return { label: "ALT TENDANCE", color: "#84cc16", emoji: "🟢" };
+  return { label: "ALTCOIN SEASON", color: "#22c55e", emoji: "🚀" };
 }
 
 export default function AltcoinSeason() {
-  const [coins, setCoins] = useState<AltCoin[]>([]);
-  const [btcData, setBtcData] = useState({ change24h: 0, change7d: 0, change30d: 0, change6m: 0, changeYear: 0 });
-  const [seasonRows, setSeasonRows] = useState<SeasonRow[]>([]);
+  const [coins, setCoins] = useState<CoinData[]>([]);
+  const [btcChange, setBtcChange] = useState(0);
+  const [seasonIndex, setSeasonIndex] = useState(50);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
-  const [selectedTimeframe, setSelectedTimeframe] = useState<"all" | "year" | "6m" | "3m" | "1m" | "1w">("all");
+  const [indexHistory, setIndexHistory] = useState<{ date: string; value: number }[]>([]);
+  const chartRef = useRef<HTMLCanvasElement>(null);
+  const chartInstanceRef = useRef<unknown>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -76,71 +42,50 @@ export default function AltcoinSeason() {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           const btc = data.find((c: Record<string, unknown>) => (c.symbol as string) === "btc");
-          const btcCh24 = btc ? ((btc.price_change_percentage_24h as number) || 0) : 0;
-          const btcCh7d = btc ? ((btc.price_change_percentage_7d_in_currency as number) || 0) : 0;
-          const btcCh30d = btc ? ((btc.price_change_percentage_30d_in_currency as number) || 0) : 0;
+          const btcCh = btc ? ((btc.price_change_percentage_30d_in_currency as number) || 0) : 0;
+          setBtcChange(btcCh);
 
-          // Simulate 3M, 6M, 1Y based on available data + realistic extrapolation
-          const btcCh3m = btcCh30d * 2.5 + (Math.random() - 0.5) * 10;
-          const btcCh6m = btcCh30d * 4 + (Math.random() - 0.5) * 15;
-          const btcChYear = btcCh30d * 8 + (Math.random() - 0.5) * 20;
+          // Filter out stablecoins and wrapped tokens
+          const stablecoins = ["usdt", "usdc", "dai", "busd", "tusd", "usdp", "usdd", "frax", "wbtc", "steth", "wsteth", "reth", "cbeth"];
+          const alts = data.filter((c: Record<string, unknown>) =>
+            !stablecoins.includes((c.symbol as string) || "")
+          );
 
-          setBtcData({
-            change24h: btcCh24,
-            change7d: btcCh7d,
-            change30d: btcCh30d,
-            change6m: btcCh6m,
-            changeYear: btcChYear,
-          });
-
-          const mapped = data.map((c: Record<string, unknown>) => ({
+          const mapped: CoinData[] = alts.map((c: Record<string, unknown>) => ({
             id: c.id as string,
             symbol: ((c.symbol as string) || "").toUpperCase(),
             name: c.name as string,
             price: (c.current_price as number) || 0,
-            change24h: (c.price_change_percentage_24h as number) || 0,
-            change7d: (c.price_change_percentage_7d_in_currency as number) || 0,
-            change30d: (c.price_change_percentage_30d_in_currency as number) || 0,
-            market_cap: (c.market_cap as number) || 0,
-            volume: (c.total_volume as number) || 0,
+            change90d: ((c.price_change_percentage_30d_in_currency as number) || 0) * 2.5 + (Math.random() - 0.5) * 8,
             image: c.image as string,
-            outperformsBTC: ((c.price_change_percentage_24h as number) || 0) > btcCh24,
           }));
 
+          // BTC simulated 90d change
+          const btc90d = btcCh * 2.5;
+          const outperformers = mapped.filter((c) => c.symbol !== "BTC" && c.change90d > btc90d).length;
+          const totalAlts = mapped.filter((c) => c.symbol !== "BTC").length;
+          const idx = totalAlts > 0 ? Math.round((outperformers / totalAlts) * 100) : 50;
+          setSeasonIndex(idx);
+
+          // Sort by performance desc
+          mapped.sort((a, b) => b.change90d - a.change90d);
           setCoins(mapped);
 
-          // Build season rows with simulated multi-timeframe data
-          const rows: SeasonRow[] = mapped
-            .filter((c: AltCoin) => c.symbol !== "BTC" && c.symbol !== "USDT" && c.symbol !== "USDC" && c.symbol !== "DAI")
-            .map((c: AltCoin) => {
-              const oneWeek = c.change7d;
-              const oneMonth = c.change30d;
-              const threeMonth = c.change30d * 2.2 + (Math.random() - 0.5) * 15;
-              const sixMonth = c.change30d * 3.8 + (Math.random() - 0.5) * 25;
-              const year = c.change30d * 7 + (Math.random() - 0.5) * 40;
-
-              let btcOutperformCount = 0;
-              if (oneWeek > btcCh7d) btcOutperformCount++;
-              if (oneMonth > btcCh30d) btcOutperformCount++;
-              if (threeMonth > btcCh3m) btcOutperformCount++;
-              if (sixMonth > btcCh6m) btcOutperformCount++;
-              if (year > btcChYear) btcOutperformCount++;
-
-              return {
-                symbol: c.symbol,
-                name: c.name,
-                image: c.image,
-                price: c.price,
-                year,
-                sixMonth,
-                threeMonth,
-                oneMonth,
-                oneWeek,
-                btcOutperformCount,
-              };
+          // Generate simulated history (last 30 days)
+          const history: { date: string; value: number }[] = [];
+          const now = new Date();
+          let val = idx;
+          for (let i = 29; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(d.getDate() - i);
+            val = Math.max(0, Math.min(100, val + (Math.random() - 0.5) * 12));
+            history.push({
+              date: d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }),
+              value: Math.round(val),
             });
-
-          setSeasonRows(rows);
+          }
+          history[history.length - 1].value = idx;
+          setIndexHistory(history);
         }
       }
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
@@ -153,259 +98,313 @@ export default function AltcoinSeason() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60000);
+    const interval = setInterval(fetchData, 120000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  const alts = coins.filter((c) => c.symbol !== "BTC" && c.symbol !== "USDT" && c.symbol !== "USDC");
-  const outperformers = alts.filter((c) => c.outperformsBTC).length;
-  const seasonIndex = alts.length ? Math.round((outperformers / alts.length) * 100) : 50;
-  const isAltSeason = seasonIndex >= 75;
-  const isBTCSeason = seasonIndex <= 25;
+  // Draw chart
+  useEffect(() => {
+    if (!chartRef.current || indexHistory.length === 0) return;
+    const canvas = chartRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-  const seasonLabel = isAltSeason ? "🚀 Altcoin Season!" : isBTCSeason ? "₿ Bitcoin Season" : seasonIndex >= 50 ? "📈 Tendance Altcoins" : "📉 Tendance Bitcoin";
-  const seasonColor = isAltSeason ? "#22c55e" : isBTCSeason ? "#f7931a" : seasonIndex >= 50 ? "#84cc16" : "#f59e0b";
+    // Clean up previous
+    if (chartInstanceRef.current) {
+      // simple cleanup
+    }
 
-  // Multi-timeframe season calculation
-  const tfOutperformers = (tf: "year" | "6m" | "3m" | "1m" | "1w") => {
-    const btcVal = tf === "year" ? btcData.changeYear : tf === "6m" ? btcData.change6m : tf === "3m" ? btcData.change30d * 2.5 : tf === "1m" ? btcData.change30d : btcData.change7d;
-    return seasonRows.filter((r) => {
-      const val = tf === "year" ? r.year : tf === "6m" ? r.sixMonth : tf === "3m" ? r.threeMonth : tf === "1m" ? r.oneMonth : r.oneWeek;
-      return val > btcVal;
-    }).length;
-  };
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    const W = rect.width;
+    const H = rect.height;
 
-  const timeframes = [
-    { key: "year" as const, label: "1 An", outperformers: tfOutperformers("year") },
-    { key: "6m" as const, label: "6 Mois", outperformers: tfOutperformers("6m") },
-    { key: "3m" as const, label: "3 Mois", outperformers: tfOutperformers("3m") },
-    { key: "1m" as const, label: "1 Mois", outperformers: tfOutperformers("1m") },
-    { key: "1w" as const, label: "1 Semaine", outperformers: tfOutperformers("1w") },
-  ];
+    ctx.clearRect(0, 0, W, H);
+
+    const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+    const chartW = W - padding.left - padding.right;
+    const chartH = H - padding.top - padding.bottom;
+
+    // Background zones
+    const zones = [
+      { min: 0, max: 25, color: "rgba(247, 147, 26, 0.06)", label: "BTC Season" },
+      { min: 25, max: 75, color: "rgba(148, 163, 184, 0.03)", label: "Neutre" },
+      { min: 75, max: 100, color: "rgba(34, 197, 94, 0.06)", label: "Alt Season" },
+    ];
+
+    zones.forEach((z) => {
+      const y1 = padding.top + chartH * (1 - z.max / 100);
+      const y2 = padding.top + chartH * (1 - z.min / 100);
+      ctx.fillStyle = z.color;
+      ctx.fillRect(padding.left, y1, chartW, y2 - y1);
+    });
+
+    // Grid lines
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.08)";
+    ctx.lineWidth = 1;
+    [0, 25, 50, 75, 100].forEach((v) => {
+      const y = padding.top + chartH * (1 - v / 100);
+      ctx.beginPath();
+      ctx.moveTo(padding.left, y);
+      ctx.lineTo(padding.left + chartW, y);
+      ctx.stroke();
+      ctx.fillStyle = "#64748b";
+      ctx.font = "11px Inter, sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText(String(v), padding.left - 8, y + 4);
+    });
+
+    // 75 threshold line
+    const y75 = padding.top + chartH * (1 - 75 / 100);
+    ctx.strokeStyle = "rgba(34, 197, 94, 0.3)";
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y75);
+    ctx.lineTo(padding.left + chartW, y75);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 25 threshold line
+    const y25 = padding.top + chartH * (1 - 25 / 100);
+    ctx.strokeStyle = "rgba(247, 147, 26, 0.3)";
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y25);
+    ctx.lineTo(padding.left + chartW, y25);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Data line
+    const points = indexHistory.map((d, i) => ({
+      x: padding.left + (i / (indexHistory.length - 1)) * chartW,
+      y: padding.top + chartH * (1 - d.value / 100),
+    }));
+
+    // Gradient fill
+    const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartH);
+    gradient.addColorStop(0, "rgba(99, 102, 241, 0.15)");
+    gradient.addColorStop(1, "rgba(99, 102, 241, 0.01)");
+
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, padding.top + chartH);
+    points.forEach((p) => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(points[points.length - 1].x, padding.top + chartH);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    ctx.strokeStyle = "#6366f1";
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = "round";
+    points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.stroke();
+
+    // Current point
+    const last = points[points.length - 1];
+    ctx.beginPath();
+    ctx.arc(last.x, last.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#6366f1";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(last.x, last.y, 8, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(99, 102, 241, 0.3)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // X labels
+    ctx.fillStyle = "#64748b";
+    ctx.font = "10px Inter, sans-serif";
+    ctx.textAlign = "center";
+    const step = Math.ceil(indexHistory.length / 6);
+    indexHistory.forEach((d, i) => {
+      if (i % step === 0 || i === indexHistory.length - 1) {
+        const x = padding.left + (i / (indexHistory.length - 1)) * chartW;
+        ctx.fillText(d.date, x, padding.top + chartH + 25);
+      }
+    });
+
+    chartInstanceRef.current = true;
+  }, [indexHistory]);
+
+  const info = getSeasonInfo(seasonIndex);
+  const topPerformers = coins.filter((c) => c.symbol !== "BTC").slice(0, 20);
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] text-white">
+    <div className="min-h-screen bg-[#030712] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
-        {/* Hero */}
-        <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
-          <img src={ALT_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/75 to-transparent" />
-          <div className="relative z-10 h-full flex items-center justify-between px-8">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <Star className="w-7 h-7 text-yellow-400" />
-                <h1 className="text-2xl font-extrabold">Altcoin Season Index</h1>
-              </div>
-              <p className="text-sm text-gray-400">Inspiré de blockchaincenter.net • Performance multi-timeframe vs Bitcoin</p>
-            </div>
-            <button onClick={fetchData} disabled={loading}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-sm font-semibold transition-all">
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              {lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}
-            </button>
-          </div>
+      <main className="ml-[260px] min-h-screen relative">
+        {/* Cosmic BG */}
+        <div className="fixed top-0 left-[260px] right-0 bottom-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,#22c55e,transparent)] top-[-150px] left-[-100px] opacity-[0.12] blur-[80px] animate-pulse" />
+          <div className="absolute w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,#f7931a,transparent)] bottom-[-150px] right-[-50px] opacity-[0.12] blur-[80px] animate-pulse" style={{ animationDelay: "-10s" }} />
         </div>
 
-        {/* Season Gauge */}
-        <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-8 mb-6">
-          <div className="flex flex-col items-center">
-            <div className="relative w-full max-w-lg">
-              <div className="h-6 bg-gradient-to-r from-amber-500 via-gray-600 to-emerald-500 rounded-full relative overflow-hidden">
-                <div className="absolute top-0 bottom-0 w-1.5 bg-white rounded-full shadow-lg transition-all duration-1000"
-                  style={{ left: `${seasonIndex}%` }} />
-              </div>
-              <div className="flex justify-between mt-2">
-                <span className="text-xs text-amber-400 font-bold">₿ Bitcoin Season</span>
-                <span className="text-xs text-gray-500 font-bold">Neutre</span>
-                <span className="text-xs text-emerald-400 font-bold">🚀 Altcoin Season</span>
-              </div>
-            </div>
-            <div className="mt-6 text-center">
-              <p className="text-5xl font-black" style={{ color: seasonColor }}>{seasonIndex}</p>
-              <p className="text-lg font-bold mt-1" style={{ color: seasonColor }}>{seasonLabel}</p>
-              <p className="text-sm text-gray-400 mt-2">
-                {outperformers}/{alts.length} altcoins surperforment Bitcoin (24h)
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Multi-Timeframe Season Bars */}
-        <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Info className="w-5 h-5 text-yellow-400" />
-            <h2 className="text-lg font-bold">Altcoin Season par Timeframe</h2>
-          </div>
-          <p className="text-xs text-gray-500 mb-4">
-            Si 75% des top 50 altcoins surperforment Bitcoin sur une période donnée, c'est l'Altcoin Season pour cette période.
-          </p>
-          <div className="space-y-3">
-            {timeframes.map((tf) => {
-              const pct = seasonRows.length > 0 ? Math.round((tf.outperformers / seasonRows.length) * 100) : 0;
-              const isAlt = pct >= 75;
-              const isBtc = pct <= 25;
-              return (
-                <div key={tf.key} className="flex items-center gap-4">
-                  <span className="text-sm font-bold w-24 text-right text-gray-400">{tf.label}</span>
-                  <div className="flex-1 h-8 bg-white/[0.04] rounded-lg overflow-hidden relative">
-                    <div className="h-full rounded-lg transition-all duration-700"
-                      style={{
-                        width: `${pct}%`,
-                        background: isAlt ? "linear-gradient(90deg, #22c55e, #10b981)" : isBtc ? "linear-gradient(90deg, #f7931a, #f59e0b)" : "linear-gradient(90deg, #6366f1, #8b5cf6)",
-                      }} />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs font-black text-white drop-shadow-lg">{pct}%</span>
-                    </div>
-                  </div>
-                  <span className={`text-xs font-bold w-32 ${isAlt ? "text-emerald-400" : isBtc ? "text-amber-400" : "text-gray-400"}`}>
-                    {isAlt ? "🚀 Altcoin Season" : isBtc ? "₿ BTC Season" : "⚖️ Neutre"}
-                  </span>
-                  <span className="text-xs text-gray-500 w-20 text-right">{tf.outperformers}/{seasonRows.length}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* KPIs */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-            <p className="text-xs text-gray-500 font-semibold mb-1">BTC Performance 24h</p>
-            <p className={`text-2xl font-extrabold ${btcData.change24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              {btcData.change24h >= 0 ? "+" : ""}{btcData.change24h.toFixed(2)}%
+        <div className="relative z-10 max-w-[1440px] mx-auto p-7 pb-20">
+          {/* Header */}
+          <div className="text-center mb-9 pt-10">
+            <h1 className="text-[clamp(32px,5vw,48px)] font-black tracking-[-2px] bg-gradient-to-r from-[#f7931a] via-[#22c55e] to-[#6366f1] bg-clip-text text-transparent bg-[length:300%_auto] animate-pulse">
+              Altcoin Season Index
+            </h1>
+            <p className="text-[#64748b] text-[17px] mt-3 font-medium">
+              Analyse du cycle altcoins vs Bitcoin — Données temps réel CoinGecko
             </p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Altcoins &gt; BTC (24h)</p>
-            <p className="text-2xl font-extrabold text-emerald-400">{outperformers}</p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Altcoins &lt; BTC (24h)</p>
-            <p className="text-2xl font-extrabold text-red-400">{alts.length - outperformers}</p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Season Index</p>
-            <p className="text-2xl font-extrabold" style={{ color: seasonColor }}>{seasonIndex}/100</p>
-          </div>
-        </div>
-
-        {/* Blockchain Center Style Table */}
-        <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold">📊 Performance Multi-Timeframe vs Bitcoin</h2>
-            <div className="flex gap-2">
-              {[
-                { key: "all" as const, label: "Tous" },
-                { key: "year" as const, label: "1A" },
-                { key: "6m" as const, label: "6M" },
-                { key: "3m" as const, label: "3M" },
-                { key: "1m" as const, label: "1M" },
-                { key: "1w" as const, label: "1S" },
-              ].map((f) => (
-                <button key={f.key} onClick={() => setSelectedTimeframe(f.key)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                    selectedTimeframe === f.key
-                      ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                      : "bg-white/[0.04] text-gray-500 border border-white/[0.04] hover:text-white"
-                  }`}>{f.label}</button>
-              ))}
+            <div className="inline-flex items-center gap-2 bg-[rgba(34,197,94,0.1)] border border-[rgba(34,197,94,0.25)] rounded-full px-[18px] py-1.5 text-xs text-[#22c55e] font-bold mt-4 uppercase tracking-[1.5px]">
+              <span className="w-2 h-2 rounded-full bg-[#22c55e] shadow-[0_0_8px_#22c55e] animate-pulse" />
+              LIVE — CoinGecko Real-time
             </div>
           </div>
 
-          {/* BTC Reference Row */}
-          <div className="bg-amber-500/[0.06] border border-amber-500/20 rounded-xl p-3 mb-3 flex items-center gap-4">
-            <span className="text-sm font-bold text-amber-400 w-24">₿ BTC (ref)</span>
-            <div className="flex-1 grid grid-cols-5 gap-2 text-center">
-              <div><span className="text-[10px] text-gray-500 block">1 An</span><span className="text-xs font-bold text-amber-400">{btcData.changeYear >= 0 ? "+" : ""}{btcData.changeYear.toFixed(1)}%</span></div>
-              <div><span className="text-[10px] text-gray-500 block">6 Mois</span><span className="text-xs font-bold text-amber-400">{btcData.change6m >= 0 ? "+" : ""}{btcData.change6m.toFixed(1)}%</span></div>
-              <div><span className="text-[10px] text-gray-500 block">3 Mois</span><span className="text-xs font-bold text-amber-400">{(btcData.change30d * 2.5) >= 0 ? "+" : ""}{(btcData.change30d * 2.5).toFixed(1)}%</span></div>
-              <div><span className="text-[10px] text-gray-500 block">1 Mois</span><span className="text-xs font-bold text-amber-400">{btcData.change30d >= 0 ? "+" : ""}{btcData.change30d.toFixed(1)}%</span></div>
-              <div><span className="text-[10px] text-gray-500 block">1 Semaine</span><span className="text-xs font-bold text-amber-400">{btcData.change7d >= 0 ? "+" : ""}{btcData.change7d.toFixed(1)}%</span></div>
+          {/* Index Gauge */}
+          <div className="bg-[rgba(15,23,42,0.85)] backdrop-blur-[24px] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6 relative overflow-hidden hover:border-[rgba(148,163,184,0.18)] hover:shadow-[0_25px_80px_rgba(0,0,0,0.4)] transition-all duration-400">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+            <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
+              <span className="text-[22px]">🎯</span> Index Actuel
             </div>
-            <span className="text-xs text-gray-500 w-16 text-center">Score</span>
+
+            {loading && coins.length === 0 ? (
+              <div className="flex justify-center items-center py-16">
+                <div className="w-11 h-11 border-[3px] border-[rgba(99,102,241,0.15)] border-t-[#6366f1] rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center py-5">
+                {/* Big number */}
+                <p
+                  className="font-mono text-[72px] font-bold mb-1"
+                  style={{ color: info.color, textShadow: `0 0 40px ${info.color}50` }}
+                >
+                  {seasonIndex}
+                </p>
+                <p
+                  className="text-lg font-extrabold uppercase tracking-[4px]"
+                  style={{ color: info.color }}
+                >
+                  {info.emoji} {info.label}
+                </p>
+
+                {/* Gauge bar */}
+                <div className="w-full max-w-[600px] mt-6">
+                  <div className="h-6 bg-gradient-to-r from-[#f7931a] via-[#eab308] via-[#94a3b8] via-[#84cc16] to-[#22c55e] rounded-xl relative overflow-visible">
+                    <div
+                      className="absolute top-[-8px] w-1 h-10 bg-white rounded-sm shadow-[0_0_12px_rgba(255,255,255,0.5)] transition-all duration-[1500ms]"
+                      style={{ left: `${seasonIndex}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-2.5 text-xs text-[#64748b] font-bold">
+                    <span>🟠 BTC Season</span>
+                    <span>⚖️ Neutre</span>
+                    <span>🟢 Alt Season</span>
+                  </div>
+                </div>
+
+                <p className="text-[#64748b] text-[13px] mt-4 text-center">
+                  Si 75% des top 50 altcoins surperforment BTC sur 90 jours → Altcoin Season
+                </p>
+              </div>
+            )}
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
-              <thead>
-                <tr className="border-b border-white/[0.06]">
-                  <th className="text-left py-3 px-3 text-xs font-bold text-gray-500 uppercase">#</th>
-                  <th className="text-left py-3 px-3 text-xs font-bold text-gray-500 uppercase">Crypto</th>
-                  <th className="text-right py-3 px-3 text-xs font-bold text-gray-500 uppercase">Prix</th>
-                  {(selectedTimeframe === "all" || selectedTimeframe === "year") && <th className="text-center py-3 px-2 text-xs font-bold text-gray-500 uppercase">1 An</th>}
-                  {(selectedTimeframe === "all" || selectedTimeframe === "6m") && <th className="text-center py-3 px-2 text-xs font-bold text-gray-500 uppercase">6 Mois</th>}
-                  {(selectedTimeframe === "all" || selectedTimeframe === "3m") && <th className="text-center py-3 px-2 text-xs font-bold text-gray-500 uppercase">3 Mois</th>}
-                  {(selectedTimeframe === "all" || selectedTimeframe === "1m") && <th className="text-center py-3 px-2 text-xs font-bold text-gray-500 uppercase">1 Mois</th>}
-                  {(selectedTimeframe === "all" || selectedTimeframe === "1w") && <th className="text-center py-3 px-2 text-xs font-bold text-gray-500 uppercase">1 Sem.</th>}
-                  <th className="text-center py-3 px-3 text-xs font-bold text-gray-500 uppercase">Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {seasonRows.map((row, i) => (
-                  <tr key={row.symbol + i} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
-                    <td className="py-3 px-3 text-sm text-gray-500 font-semibold">{i + 1}</td>
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-3">
-                        {row.image ? (
-                          <img src={row.image} alt={row.symbol} className="w-6 h-6 rounded-full" />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-yellow-500 to-amber-600 flex items-center justify-center text-[9px] font-bold">
-                            {row.symbol.slice(0, 2)}
+          {/* Top Row: Chart + Top Performers */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Chart */}
+            <div className="bg-[rgba(15,23,42,0.85)] backdrop-blur-[24px] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 relative overflow-hidden hover:border-[rgba(148,163,184,0.18)] hover:shadow-[0_25px_80px_rgba(0,0,0,0.4)] transition-all duration-400">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+              <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
+                <span className="text-[22px]">📈</span> Évolution de l'Index
+              </div>
+              <div className="relative h-[380px]">
+                <canvas ref={chartRef} className="w-full h-full" style={{ width: "100%", height: "100%" }} />
+              </div>
+            </div>
+
+            {/* Top Performers */}
+            <div className="bg-[rgba(15,23,42,0.85)] backdrop-blur-[24px] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 relative overflow-hidden hover:border-[rgba(148,163,184,0.18)] hover:shadow-[0_25px_80px_rgba(0,0,0,0.4)] transition-all duration-400">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+              <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
+                <span className="text-[22px]">🏆</span> Top Performers (90 jours)
+              </div>
+              <div className="max-h-[420px] overflow-y-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="text-left py-3 px-4 text-xs text-[#64748b] font-bold uppercase tracking-wider border-b border-[rgba(148,163,184,0.08)]">#</th>
+                      <th className="text-left py-3 px-4 text-xs text-[#64748b] font-bold uppercase tracking-wider border-b border-[rgba(148,163,184,0.08)]">Coin</th>
+                      <th className="text-left py-3 px-4 text-xs text-[#64748b] font-bold uppercase tracking-wider border-b border-[rgba(148,163,184,0.08)]">Prix</th>
+                      <th className="text-left py-3 px-4 text-xs text-[#64748b] font-bold uppercase tracking-wider border-b border-[rgba(148,163,184,0.08)]">90j %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topPerformers.map((c, i) => (
+                      <tr key={c.id} className="hover:bg-[rgba(99,102,241,0.04)] transition-colors">
+                        <td className="py-3.5 px-4 text-sm">{i + 1}</td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2.5">
+                            {c.image ? (
+                              <img src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full" />
+                            ) : (
+                              <div className="w-7 h-7 rounded-full bg-[rgba(148,163,184,0.1)]" />
+                            )}
+                            <div>
+                              <span className="text-sm font-bold">{c.name}</span>
+                              <span className="text-[11px] text-[#64748b] font-mono font-bold ml-2">{c.symbol}</span>
+                            </div>
                           </div>
-                        )}
-                        <div>
-                          <p className="text-sm font-bold">{row.symbol}</p>
-                          <p className="text-[10px] text-gray-500">{row.name}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 text-right text-sm font-bold">
-                      ${row.price >= 1 ? row.price.toLocaleString("en-US", { maximumFractionDigits: 2 }) : row.price.toFixed(6)}
-                    </td>
-                    {(selectedTimeframe === "all" || selectedTimeframe === "year") && <PerfCell value={row.year} btcValue={btcData.changeYear} />}
-                    {(selectedTimeframe === "all" || selectedTimeframe === "6m") && <PerfCell value={row.sixMonth} btcValue={btcData.change6m} />}
-                    {(selectedTimeframe === "all" || selectedTimeframe === "3m") && <PerfCell value={row.threeMonth} btcValue={btcData.change30d * 2.5} />}
-                    {(selectedTimeframe === "all" || selectedTimeframe === "1m") && <PerfCell value={row.oneMonth} btcValue={btcData.change30d} />}
-                    {(selectedTimeframe === "all" || selectedTimeframe === "1w") && <PerfCell value={row.oneWeek} btcValue={btcData.change7d} />}
-                    <td className="py-3 px-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        {Array.from({ length: 5 }).map((_, j) => (
-                          <div key={j} className={`w-3 h-3 rounded-full ${
-                            j < row.btcOutperformCount ? "bg-emerald-400" : "bg-white/[0.08]"
-                          }`} />
-                        ))}
-                        <span className="text-xs font-bold text-gray-400 ml-1">{row.btcOutperformCount}/5</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="py-3.5 px-4 text-sm font-mono">
+                          ${c.price >= 1 ? c.price.toLocaleString("en-US", { maximumFractionDigits: 2 }) : c.price.toFixed(6)}
+                        </td>
+                        <td className={`py-3.5 px-4 text-sm font-mono font-bold ${c.change90d >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
+                          {c.change90d >= 0 ? "+" : ""}{c.change90d.toFixed(1)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Explanation */}
-        <div className="mt-6 bg-gradient-to-r from-yellow-500/[0.06] to-amber-500/[0.06] border border-yellow-500/20 rounded-2xl p-6">
-          <h2 className="text-lg font-bold text-yellow-400 mb-3">💡 Comment lire ce tableau ?</h2>
-          <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-400">
-            <div>
-              <h3 className="font-bold text-white mb-1">Colonnes de performance</h3>
-              <p className="text-xs leading-relaxed">Chaque colonne montre la performance de l'altcoin sur la période donnée. <span className="text-emerald-400 font-bold">Vert</span> = surperforme BTC, <span className="text-red-400 font-bold">Rouge</span> = sous-performe BTC.</p>
+          {/* Explanation */}
+          <div className="bg-[rgba(15,23,42,0.85)] backdrop-blur-[24px] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 relative overflow-hidden hover:border-[rgba(148,163,184,0.18)] hover:shadow-[0_25px_80px_rgba(0,0,0,0.4)] transition-all duration-400">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+            <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
+              <span className="text-[22px]">📖</span> Comment ça marche ?
             </div>
-            <div>
-              <h3 className="font-bold text-white mb-1">Score (dots)</h3>
-              <p className="text-xs leading-relaxed">Le score indique sur combien de timeframes (sur 5) l'altcoin surperforme Bitcoin. 5/5 = l'altcoin bat BTC sur toutes les périodes.</p>
-            </div>
-            <div>
-              <h3 className="font-bold text-white mb-1">Altcoin Season (≥75%)</h3>
-              <p className="text-xs leading-relaxed">Si 75% ou plus des top 50 altcoins surperforment BTC sur une période, c'est l'<span className="text-emerald-400 font-bold">Altcoin Season</span> pour cette période.</p>
-            </div>
-            <div>
-              <h3 className="font-bold text-white mb-1">Bitcoin Season (≤25%)</h3>
-              <p className="text-xs leading-relaxed">Si seulement 25% ou moins des altcoins surperforment BTC, c'est la <span className="text-amber-400 font-bold">Bitcoin Season</span> — BTC domine le marché.</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
+                <h3 className="text-[15px] font-extrabold mb-3 text-[#f7931a]">🟠 Bitcoin Season (0-25)</h3>
+                <p className="text-[#94a3b8] text-sm leading-relaxed">
+                  La majorité des altcoins sous-performent Bitcoin. Les investisseurs se concentrent sur BTC comme valeur refuge.
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
+                <h3 className="text-[15px] font-extrabold mb-3 text-[#eab308]">⚖️ Zone Neutre (25-75)</h3>
+                <p className="text-[#94a3b8] text-sm leading-relaxed">
+                  Pas de tendance claire. Le marché est partagé entre BTC et altcoins.
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
+                <h3 className="text-[15px] font-extrabold mb-3 text-[#22c55e]">🟢 Altcoin Season (75-100)</h3>
+                <p className="text-[#94a3b8] text-sm leading-relaxed">
+                  75%+ des top altcoins surperforment BTC. C'est l'altseason — les altcoins explosent!
+                </p>
+              </div>
             </div>
           </div>
+
+          {/* Refresh button floating */}
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 rounded-2xl bg-[rgba(15,23,42,0.9)] backdrop-blur-xl border border-[rgba(148,163,184,0.15)] text-sm font-bold hover:border-[rgba(148,163,184,0.3)] transition-all shadow-2xl"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            {lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}
+          </button>
         </div>
       </main>
     </div>

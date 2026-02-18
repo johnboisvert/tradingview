@@ -250,7 +250,15 @@ export default function TechnicalAnalysis() {
                 onChange={(e) => setSymbol(e.target.value)}
                 className="px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-sm text-white focus:outline-none"
               >
-                {["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "ADAUSDT", "XRPUSDT", "DOGEUSDT", "AVAXUSDT"].map((s) => (
+                {[
+                  "BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT","ADAUSDT","DOGEUSDT","TRXUSDT",
+                  "AVAXUSDT","LINKUSDT","DOTUSDT","MATICUSDT","SHIBUSDT","TONUSDT","ICPUSDT",
+                  "BCHUSDT","LTCUSDT","UNIUSDT","ATOMUSDT","XLMUSDT","NEARUSDT","APTUSDT",
+                  "FILUSDT","ARBUSDT","OPUSDT","VETUSDT","HBARUSDT","MKRUSDT","GRTUSDT",
+                  "INJUSDT","FTMUSDT","THETAUSDT","AAVEUSDT","ALGOUSDT","FLOWUSDT","AXSUSDT",
+                  "SANDUSDT","MANAUSDT","XTZUSDT","EOSUSDT","SNXUSDT","CRVUSDT","LDOUSDT",
+                  "RUNEUSDT","DYDXUSDT","SUIUSDT","SEIUSDT","TIAUSDT","JUPUSDT","WLDUSDT"
+                ].map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>

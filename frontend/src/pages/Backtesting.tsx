@@ -100,7 +100,15 @@ export default function Backtesting() {
               <div>
                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Paire</label>
                 <select value={symbol} onChange={(e) => setSymbol(e.target.value)} className="w-full px-4 py-3 bg-slate-800/80 border border-white/10 rounded-xl text-white text-sm focus:border-indigo-500 outline-none">
-                  {["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"].map((s) => (
+                  {[
+                    "BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT","ADAUSDT","DOGEUSDT","TRXUSDT",
+                    "AVAXUSDT","LINKUSDT","DOTUSDT","MATICUSDT","SHIBUSDT","TONUSDT","ICPUSDT",
+                    "BCHUSDT","LTCUSDT","UNIUSDT","ATOMUSDT","XLMUSDT","NEARUSDT","APTUSDT",
+                    "FILUSDT","ARBUSDT","OPUSDT","VETUSDT","HBARUSDT","MKRUSDT","GRTUSDT",
+                    "INJUSDT","FTMUSDT","THETAUSDT","AAVEUSDT","ALGOUSDT","FLOWUSDT","AXSUSDT",
+                    "SANDUSDT","MANAUSDT","XTZUSDT","EOSUSDT","SNXUSDT","CRVUSDT","LDOUSDT",
+                    "RUNEUSDT","DYDXUSDT","SUIUSDT","SEIUSDT","TIAUSDT","JUPUSDT","WLDUSDT"
+                  ].map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>

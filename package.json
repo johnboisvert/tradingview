@@ -2,11 +2,11 @@
   "name": "cryptoia-platform",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "install:frontend": "cd frontend && pnpm install",
-    "build": "cd frontend && pnpm run build",
-    "start": "npx serve frontend/dist -s -l tcp://0.0.0.0:${PORT:-3000}",
-    "postinstall": "cd frontend && pnpm install"
+    "postinstall": "cd frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "npx serve frontend/dist -s -l tcp://0.0.0.0:${PORT:-3000}"
   },
   "dependencies": {
     "serve": "^14.2.0"

@@ -102,7 +102,7 @@ function App() {
         <Route path="/calendrier" element={<Calendrier />} />
         <Route path="/news" element={<News />} />
         <Route path="/success-stories" element={<SuccessStories />} />
-        <Route path="/telegram-setup" element={<TelegramSetup />} />
+
         <Route path="/onchain-metrics" element={<OnChainMetrics />} />
         <Route path="/defi-yield" element={<DefiYield />} />
         <Route path="/contact" element={<Contact />} />
@@ -120,6 +120,7 @@ function App() {
         <Route path="/admin/promos" element={<Promos />} />
         <Route path="/admin/messages" element={<Messages />} />
         <Route path="/admin/users" element={<Users />} />
+        <Route path="/admin/telegram" element={<TelegramSetup />} />
 
         {/* Fallback */}
         <Route path="*" element={<NotFound />} />

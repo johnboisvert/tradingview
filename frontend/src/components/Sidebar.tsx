@@ -108,7 +108,7 @@ const NAV_SECTIONS = [
       { path: "/calendrier", label: "Calendrier", icon: Calendar },
       { path: "/news", label: "Nouvelles", icon: Newspaper },
       { path: "/success-stories", label: "Success Stories", icon: Award },
-      { path: "/telegram-setup", label: "Telegram", icon: Smartphone },
+
       { path: "/onchain-metrics", label: "On-Chain", icon: LinkIcon },
       { path: "/defi-yield", label: "DeFi Yield", icon: Landmark },
       { path: "/trading-academy", label: "Trading Academy", icon: GraduationCap },

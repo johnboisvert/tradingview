@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { path: "/admin/promos", label: "Codes Promo", icon: Tag },
   { path: "/admin/messages", label: "Messages & Ebooks", icon: MessageSquare },
   { path: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { path: "/admin/telegram", label: "Telegram Setup", icon: MessageSquare },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

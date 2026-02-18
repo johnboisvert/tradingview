@@ -35,6 +35,14 @@ import Pricing from "./pages/Pricing";
 import Promos from "./pages/Promos";
 import Messages from "./pages/Messages";
 import Users from "./pages/Users";
+import Contact from "./pages/Contact";
+import Backtesting from "./pages/Backtesting";
+import OnChainMetrics from "./pages/OnChainMetrics";
+import PortfolioTracker from "./pages/PortfolioTracker";
+import DefiYield from "./pages/DefiYield";
+import AISignals from "./pages/AISignals";
+import NarrativeRadar from "./pages/NarrativeRadar";
+import RugScamShield from "./pages/RugScamShield";
 import NotFound from "./pages/NotFound";
 
 function App() {
@@ -58,6 +66,8 @@ function App() {
         <Route path="/risk-management" element={<RiskManagement />} />
         <Route path="/watchlist" element={<Watchlist />} />
         <Route path="/graphiques" element={<Graphiques />} />
+        <Route path="/backtesting" element={<Backtesting />} />
+        <Route path="/portfolio-tracker" element={<PortfolioTracker />} />
 
         {/* Intelligence IA */}
         <Route path="/ai-assistant" element={<AIAssistant />} />
@@ -67,6 +77,9 @@ function App() {
         <Route path="/technical-analysis" element={<TechnicalAnalysis />} />
         <Route path="/gem-hunter" element={<GemHunter />} />
         <Route path="/position-sizer" element={<PositionSizer />} />
+        <Route path="/ai-signals" element={<AISignals />} />
+        <Route path="/narrative-radar" element={<NarrativeRadar />} />
+        <Route path="/rug-scam-shield" element={<RugScamShield />} />
 
         {/* Outils */}
         <Route path="/stats-avancees" element={<StatsAvancees />} />
@@ -76,6 +89,9 @@ function App() {
         <Route path="/news" element={<News />} />
         <Route path="/success-stories" element={<SuccessStories />} />
         <Route path="/telegram-setup" element={<TelegramSetup />} />
+        <Route path="/onchain-metrics" element={<OnChainMetrics />} />
+        <Route path="/defi-yield" element={<DefiYield />} />
+        <Route path="/contact" element={<Contact />} />
 
         {/* Compte */}
         <Route path="/abonnements" element={<Abonnements />} />

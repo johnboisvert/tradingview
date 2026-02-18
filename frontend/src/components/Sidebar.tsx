@@ -32,7 +32,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
-  LogOut,
+  Radio,
+  Briefcase,
+  Link as LinkIcon,
+  Landmark,
+  Target,
+  ShieldAlert,
+  Mail,
+  History,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -58,6 +65,8 @@ const NAV_SECTIONS = [
       { path: "/risk-management", label: "Risk Management", icon: AlertTriangle },
       { path: "/watchlist", label: "Watchlist", icon: Eye },
       { path: "/graphiques", label: "Graphiques", icon: LineChart },
+      { path: "/backtesting", label: "Backtesting", icon: History },
+      { path: "/portfolio-tracker", label: "Portfolio", icon: Briefcase },
     ],
   },
   {
@@ -69,6 +78,9 @@ const NAV_SECTIONS = [
       { path: "/whale-watcher", label: "Whale Watcher", icon: Fish },
       { path: "/technical-analysis", label: "Analyse Technique", icon: PieChart },
       { path: "/gem-hunter", label: "Gem Hunter", icon: Gem },
+      { path: "/ai-signals", label: "AI Signals", icon: Radio },
+      { path: "/narrative-radar", label: "Narrative Radar", icon: Target },
+      { path: "/rug-scam-shield", label: "Rug Shield", icon: ShieldAlert },
     ],
   },
   {
@@ -81,6 +93,9 @@ const NAV_SECTIONS = [
       { path: "/news", label: "Nouvelles", icon: Newspaper },
       { path: "/success-stories", label: "Success Stories", icon: Award },
       { path: "/telegram-setup", label: "Telegram", icon: Smartphone },
+      { path: "/onchain-metrics", label: "On-Chain", icon: LinkIcon },
+      { path: "/defi-yield", label: "DeFi Yield", icon: Landmark },
+      { path: "/contact", label: "Contact", icon: Mail },
     ],
   },
 ];

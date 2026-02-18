@@ -2,29 +2,130 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
-  Search,
-  Fish,
+  Frown,
+  Crown,
+  Star,
+  Flame,
   BarChart3,
-  Calculator,
   Gem,
+  Calculator,
+  Newspaper,
+  TrendingUp,
+  AlertTriangle,
+  Eye,
+  Bot,
+  Sparkles,
+  Search,
+  Activity,
+  Fish,
+  PieChart,
+  Gamepad2,
+  Award,
+  ArrowLeftRight,
+  Calendar,
+  Rocket,
+  LineChart,
+  Smartphone,
+  CreditCard,
+  Shield,
+  User,
   ChevronLeft,
   ChevronRight,
   Zap,
-  Shield,
+  LogOut,
 } from "lucide-react";
 
-const NAV_ITEMS = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/token-scanner", label: "AI Token Scanner", icon: Search },
-  { path: "/whale-watcher", label: "Whale Watcher", icon: Fish },
-  { path: "/technical-analysis", label: "Analyse Technique", icon: BarChart3 },
-  { path: "/position-sizer", label: "Position Sizer", icon: Calculator },
-  { path: "/gem-hunter", label: "Gem Hunter", icon: Gem },
+const NAV_SECTIONS = [
+  {
+    title: "Marché",
+    items: [
+      { path: "/", label: "Dashboard", icon: LayoutDashboard },
+      { path: "/fear-greed", label: "Fear & Greed", icon: Frown },
+      { path: "/dominance", label: "Dominance", icon: Crown },
+      { path: "/altcoin-season", label: "Altcoin Season", icon: Star },
+      { path: "/heatmap", label: "Heatmap", icon: Flame },
+      { path: "/bullrun-phase", label: "Bullrun Phase", icon: Rocket },
+      { path: "/market-regime", label: "Market Regime", icon: Activity },
+    ],
+  },
+  {
+    title: "Trading",
+    items: [
+      { path: "/strategy", label: "Stratégie", icon: BarChart3 },
+      { path: "/spot-trading", label: "Spot Trading", icon: Gem },
+      { path: "/calculatrice", label: "Calculatrice", icon: Calculator },
+      { path: "/trades", label: "Trades", icon: TrendingUp },
+      { path: "/risk-management", label: "Risk Management", icon: AlertTriangle },
+      { path: "/watchlist", label: "Watchlist", icon: Eye },
+      { path: "/graphiques", label: "Graphiques", icon: LineChart },
+    ],
+  },
+  {
+    title: "Intelligence IA",
+    items: [
+      { path: "/ai-assistant", label: "AI Assistant", icon: Bot },
+      { path: "/prediction-ia", label: "Prédiction IA", icon: Sparkles },
+      { path: "/token-scanner", label: "AI Scanner", icon: Search },
+      { path: "/whale-watcher", label: "Whale Watcher", icon: Fish },
+      { path: "/technical-analysis", label: "Analyse Technique", icon: PieChart },
+      { path: "/gem-hunter", label: "Gem Hunter", icon: Gem },
+    ],
+  },
+  {
+    title: "Outils",
+    items: [
+      { path: "/stats-avancees", label: "Stats Avancées", icon: BarChart3 },
+      { path: "/simulation", label: "Simulation", icon: Gamepad2 },
+      { path: "/convertisseur", label: "Convertisseur", icon: ArrowLeftRight },
+      { path: "/calendrier", label: "Calendrier", icon: Calendar },
+      { path: "/news", label: "Nouvelles", icon: Newspaper },
+      { path: "/success-stories", label: "Success Stories", icon: Award },
+      { path: "/telegram-setup", label: "Telegram", icon: Smartphone },
+    ],
+  },
+];
+
+const BOTTOM_ITEMS = [
+  { path: "/abonnements", label: "Abonnements", icon: CreditCard, color: "indigo" },
+  { path: "/admin", label: "Admin Panel", icon: Shield, color: "amber" },
+  { path: "/mon-compte", label: "Mon Compte", icon: User, color: "emerald" },
 ];
 
 export default function Sidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+
+  const isActive = (path: string) =>
+    location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
+
+  const getBottomColor = (color: string, active: boolean) => {
+    if (!active) return "text-gray-400 hover:text-white hover:bg-white/[0.04]";
+    const map: Record<string, string> = {
+      indigo: "bg-gradient-to-r from-indigo-500/15 to-blue-500/10 text-white",
+      amber: "bg-gradient-to-r from-amber-500/15 to-orange-500/10 text-white",
+      emerald: "bg-gradient-to-r from-emerald-500/15 to-green-500/10 text-white",
+    };
+    return map[color] || "";
+  };
+
+  const getBottomIconColor = (color: string, active: boolean) => {
+    if (!active) return "bg-white/[0.04] text-gray-500 group-hover:text-gray-300 group-hover:bg-white/[0.06]";
+    const map: Record<string, string> = {
+      indigo: "bg-indigo-500/20 text-indigo-400",
+      amber: "bg-amber-500/20 text-amber-400",
+      emerald: "bg-emerald-500/20 text-emerald-400",
+    };
+    return map[color] || "";
+  };
+
+  const getBottomBarColor = (color: string) => {
+    const map: Record<string, string> = {
+      indigo: "from-indigo-400 to-blue-500",
+      amber: "from-amber-400 to-orange-500",
+      emerald: "from-emerald-400 to-green-500",
+    };
+    return map[color] || "from-indigo-400 to-purple-500";
+  };
 
   return (
     <aside
@@ -52,99 +153,88 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 py-3 px-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+        {NAV_SECTIONS.map((section, si) => (
+          <div key={si} className={si > 0 ? "mt-4" : ""}>
+            {!collapsed && (
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-2">
+                {section.title}
+              </p>
+            )}
+            {collapsed && si > 0 && <div className="my-2 border-t border-white/[0.06]" />}
+            {section.items.map((item) => {
+              const active = isActive(item.path);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`group flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 relative ${
+                    active
+                      ? "bg-gradient-to-r from-indigo-500/15 to-purple-500/10 text-white"
+                      : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
+                  }`}
+                >
+                  {active && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-indigo-400 to-purple-500 rounded-r-full" />
+                  )}
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                      active
+                        ? "bg-indigo-500/20 text-indigo-400"
+                        : "bg-white/[0.04] text-gray-500 group-hover:text-gray-300 group-hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                  </div>
+                  {!collapsed && (
+                    <span className={`text-[13px] font-semibold truncate ${active ? "text-white" : ""}`}>
+                      {item.label}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
+
+        {/* Bottom Items */}
         {!collapsed && (
-          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-3">
-            Navigation
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-2 mt-4">
+            Compte
           </p>
         )}
-        {NAV_ITEMS.map((item) => {
-          const isActive =
-            location.pathname === item.path ||
-            (item.path !== "/" && location.pathname.startsWith(item.path));
+        {collapsed && <div className="my-2 border-t border-white/[0.06]" />}
+        {BOTTOM_ITEMS.map((item) => {
+          const active = isActive(item.path);
           const Icon = item.icon;
-
           return (
             <Link
               key={item.path}
               to={item.path}
-              className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 relative ${
-                isActive
-                  ? "bg-gradient-to-r from-indigo-500/15 to-purple-500/10 text-white"
-                  : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
-              }`}
+              className={`group flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 relative ${getBottomColor(item.color, active)}`}
             >
-              {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-gradient-to-b from-indigo-400 to-purple-500 rounded-r-full" />
+              {active && (
+                <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b ${getBottomBarColor(item.color)} rounded-r-full`} />
               )}
-              <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-                  isActive
-                    ? "bg-indigo-500/20 text-indigo-400"
-                    : "bg-white/[0.04] text-gray-500 group-hover:text-gray-300 group-hover:bg-white/[0.06]"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${getBottomIconColor(item.color, active)}`}>
+                <Icon className="w-3.5 h-3.5" />
               </div>
               {!collapsed && (
-                <span
-                  className={`text-sm font-semibold truncate ${
-                    isActive ? "text-white" : ""
-                  }`}
-                >
+                <span className={`text-[13px] font-semibold truncate ${active ? "text-white" : ""}`}>
                   {item.label}
                 </span>
               )}
             </Link>
           );
         })}
-
-        {/* Admin Section Divider */}
-        {!collapsed && (
-          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-3 mt-6">
-            Administration
-          </p>
-        )}
-        {collapsed && <div className="my-4 border-t border-white/[0.06]" />}
-
-        {/* Admin Link */}
-        <Link
-          to="/admin"
-          className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 relative ${
-            location.pathname.startsWith("/admin")
-              ? "bg-gradient-to-r from-amber-500/15 to-orange-500/10 text-white"
-              : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
-          }`}
-        >
-          {location.pathname.startsWith("/admin") && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-gradient-to-b from-amber-400 to-orange-500 rounded-r-full" />
-          )}
-          <div
-            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-              location.pathname.startsWith("/admin")
-                ? "bg-amber-500/20 text-amber-400"
-                : "bg-white/[0.04] text-gray-500 group-hover:text-gray-300 group-hover:bg-white/[0.06]"
-            }`}
-          >
-            <Shield className="w-4 h-4" />
-          </div>
-          {!collapsed && (
-            <span
-              className={`text-sm font-semibold truncate ${
-                location.pathname.startsWith("/admin") ? "text-white" : ""
-              }`}
-            >
-              Admin Panel
-            </span>
-          )}
-        </Link>
       </nav>
 
       {/* Collapse Button */}
-      <div className="px-3 pb-4">
+      <div className="px-3 pb-4 flex-shrink-0">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white transition-all text-xs font-semibold"
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white transition-all text-xs font-semibold"
         >
           {collapsed ? (
             <ChevronRight className="w-4 h-4" />

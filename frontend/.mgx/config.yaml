@@ -1,0 +1,4 @@
+build: pnpm run build
+build_path: dist
+dev: null
+install: pnpm install

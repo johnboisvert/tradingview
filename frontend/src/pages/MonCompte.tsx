@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
-import { getUserPlan, setUserPlan, getPlanDisplayInfo, USER_VISIBLE_PLANS, type PlanType } from "@/lib/subscription";
+import { getUserPlan, getPlanDisplayInfo, type PlanType } from "@/lib/subscription";
 import { isAdminAuthenticated } from "@/pages/AdminLogin";
 import { User, Shield, Bell, Key, LogOut, Calendar, CreditCard, Settings, Eye, EyeOff, Save, CheckCircle, Crown, ShieldCheck } from "lucide-react";
 
@@ -20,15 +20,7 @@ export default function MonCompte() {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handlePlanChange = (plan: PlanType) => {
-    setUserPlan(plan);
-    setCurrentPlan(plan);
-    setSaved(true);
-    setTimeout(() => {
-      setSaved(false);
-      window.location.reload();
-    }, 500);
-  };
+
 
   const planInfo = getPlanDisplayInfo(currentPlan);
 
@@ -156,45 +148,26 @@ export default function MonCompte() {
                 </div>
               </div>
 
-              {/* Plan Selector - only show for non-admin users */}
-              {!isAdmin && (
-                <div>
-                  <h3 className="text-sm font-bold text-gray-300 mb-3">Changer de plan (démo)</h3>
+              {/* Upgrade CTA - only show for non-admin users */}
+              {!isAdmin && currentPlan !== "elite" && (
+                <div className="p-5 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                  <h3 className="text-sm font-bold text-gray-300 mb-2">Passer à un plan supérieur</h3>
                   <p className="text-xs text-gray-500 mb-4">
-                    Sélectionnez un plan pour simuler l'accès aux différentes fonctionnalités.
+                    Débloquez plus de fonctionnalités en passant à un plan supérieur.
                   </p>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    {USER_VISIBLE_PLANS.map((plan) => {
-                      const info = getPlanDisplayInfo(plan);
-                      const isCurrentPlan = plan === currentPlan;
-                      return (
-                        <button
-                          key={plan}
-                          onClick={() => handlePlanChange(plan)}
-                          className={`relative p-4 rounded-xl border transition-all text-center ${
-                            isCurrentPlan
-                              ? `bg-gradient-to-r ${info.gradient} border-transparent text-white shadow-lg`
-                              : "bg-white/[0.03] border-white/[0.08] text-gray-400 hover:bg-white/[0.05] hover:border-white/[0.12]"
-                          }`}
-                        >
-                          {isCurrentPlan && (
-                            <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white flex items-center justify-center">
-                              <CheckCircle className="w-4 h-4 text-emerald-500" />
-                            </div>
-                          )}
-                          <Crown className={`w-6 h-6 mx-auto mb-2 ${isCurrentPlan ? "text-white" : info.color}`} />
-                          <p className={`text-sm font-bold ${isCurrentPlan ? "text-white" : info.color}`}>{info.label}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <a
+                    href="/abonnements"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-bold text-sm hover:brightness-110 transition-all"
+                  >
+                    <Crown className="w-4 h-4" /> Voir les abonnements
+                  </a>
                 </div>
               )}
 
-              {saved && (
+              {!isAdmin && currentPlan === "elite" && (
                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
                   <CheckCircle className="w-4 h-4" />
-                  <span>Plan mis à jour ! La page va se rafraîchir...</span>
+                  <span>Vous disposez du plan le plus complet. Profitez de toutes les fonctionnalités !</span>
                 </div>
               )}
             </div>

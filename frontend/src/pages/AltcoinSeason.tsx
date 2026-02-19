@@ -1,32 +1,20 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
 import { RefreshCw } from "lucide-react";
+import { fetchTop200, type CoinMarketData } from "@/lib/cryptoApi";
 
-interface CoinPerf {
-  id: string;
-  symbol: string;
-  name: string;
-  image: string;
-  price: number;
-  change24h: number;
-  change7d: number;
-  change30d: number;
-  marketCap: number;
-}
-
-const EXCLUDED = [
+const STABLECOINS = new Set([
   "tether", "usd-coin", "dai", "binance-usd", "true-usd", "paxos-standard",
   "usdd", "frax", "wrapped-bitcoin", "staked-ether", "lido-staked-ether",
   "wrapped-steth", "rocket-pool-eth", "coinbase-wrapped-staked-eth",
   "first-digital-usd", "ethena-usde", "usual-usd", "paypal-usd",
-];
+]);
 
 export default function AltcoinSeason() {
-  const [coins, setCoins] = useState<CoinPerf[]>([]);
-  const [btcPerf, setBtcPerf] = useState({ change24h: 0, change7d: 0, change30d: 0 });
+  const [coins, setCoins] = useState<CoinMarketData[]>([]);
+  const [btcPerf, setBtcPerf] = useState({ change30d: 0 });
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
-  const [timeframe, setTimeframe] = useState<"season" | "month" | "year">("season");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const [imagesLoaded, setImagesLoaded] = useState(0);
@@ -34,47 +22,23 @@ export default function AltcoinSeason() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h,7d,30d"
-      );
-      if (!res.ok) throw new Error("API error");
-      const data = await res.json();
-      if (!Array.isArray(data) || data.length === 0) throw new Error("No data");
+      const data = await fetchTop200(false);
+      const btcData = data.find((c) => c.id === "bitcoin");
+      setBtcPerf({ change30d: btcData?.price_change_percentage_30d_in_currency ?? 0 });
 
-      const btcData = data.find((c: Record<string, unknown>) => c.id === "bitcoin");
-      const btc24h = btcData?.price_change_percentage_24h_in_currency ?? btcData?.price_change_percentage_24h ?? 0;
-      const btc7d = btcData?.price_change_percentage_7d_in_currency ?? 0;
-      const btc30d = btcData?.price_change_percentage_30d_in_currency ?? 0;
-      setBtcPerf({ change24h: btc24h, change7d: btc7d, change30d: btc30d });
+      const filtered = data
+        .filter((c) => !STABLECOINS.has(c.id) && c.id !== "bitcoin")
+        .slice(0, 50);
 
-      const filtered = data.filter(
-        (c: Record<string, unknown>) =>
-          !EXCLUDED.includes(c.id as string) && c.id !== "bitcoin"
-      ).slice(0, 50);
+      setCoins(filtered);
 
-      const mapped: CoinPerf[] = filtered.map((c: Record<string, unknown>) => ({
-        id: c.id as string,
-        symbol: ((c.symbol as string) || "").toUpperCase(),
-        name: c.name as string,
-        image: c.image as string,
-        price: (c.current_price as number) || 0,
-        change24h: (c.price_change_percentage_24h_in_currency as number) ?? (c.price_change_percentage_24h as number) ?? 0,
-        change7d: (c.price_change_percentage_7d_in_currency as number) ?? 0,
-        change30d: (c.price_change_percentage_30d_in_currency as number) ?? 0,
-        marketCap: (c.market_cap as number) || 0,
-      }));
-
-      setCoins(mapped);
-
+      // Preload images
       let loaded = 0;
-      mapped.forEach((coin) => {
+      filtered.forEach((coin) => {
         if (coin.image && !imagesRef.current.has(coin.id)) {
           const img = new Image();
           img.crossOrigin = "anonymous";
-          img.onload = () => {
-            loaded++;
-            if (loaded >= mapped.length * 0.8) setImagesLoaded((p) => p + 1);
-          };
+          img.onload = () => { loaded++; if (loaded >= filtered.length * 0.7) setImagesLoaded((p) => p + 1); };
           img.onerror = () => { loaded++; };
           img.src = coin.image;
           imagesRef.current.set(coin.id, img);
@@ -95,42 +59,35 @@ export default function AltcoinSeason() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  // Calculate real-time season index from data
   const btcRef = btcPerf.change30d;
-  const outperformCount = coins.filter((c) => c.change30d > btcRef).length;
+  const outperformCount = coins.filter((c) => (c.price_change_percentage_30d_in_currency ?? 0) > btcRef).length;
   const seasonIndex = coins.length > 0 ? Math.round((outperformCount / coins.length) * 100) : 50;
+  const isAltSeason = seasonIndex >= 75;
+  const isBtcSeason = seasonIndex <= 25;
 
-  function getCoinPerf(c: CoinPerf) {
-    if (timeframe === "month") return c.change30d;
-    if (timeframe === "year") return c.change30d;
-    return c.change30d;
-  }
-
-  function getBtcRef() {
-    return btcPerf.change30d;
-  }
-
-  // Draw the horizontal bar chart on canvas
+  // Draw bar chart
   useEffect(() => {
     if (!canvasRef.current || coins.length === 0) return;
-
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const btcRefVal = getBtcRef();
-    const sorted = [...coins].sort((a, b) => (getCoinPerf(b) - btcRefVal) - (getCoinPerf(a) - btcRefVal));
+    const sorted = [...coins].sort((a, b) => {
+      const diffB = (b.price_change_percentage_30d_in_currency ?? 0) - btcRef;
+      const diffA = (a.price_change_percentage_30d_in_currency ?? 0) - btcRef;
+      return diffB - diffA;
+    });
 
     const dpr = window.devicePixelRatio || 1;
-    const barHeight = 30;
+    const barHeight = 28;
     const barGap = 2;
-    const topPadding = 55;
+    const topPadding = 50;
     const bottomPadding = 40;
-    const leftPadding = 140;
-    const rightPadding = 90;
+    const leftPadding = 130;
+    const rightPadding = 80;
     const totalHeight = topPadding + sorted.length * (barHeight + barGap) + bottomPadding;
-
     const containerWidth = canvas.parentElement?.clientWidth || 900;
+
     canvas.style.width = containerWidth + "px";
     canvas.style.height = totalHeight + "px";
     canvas.width = containerWidth * dpr;
@@ -145,13 +102,13 @@ export default function AltcoinSeason() {
     ctx.clearRect(0, 0, W, H);
 
     const maxAbsDiff = Math.max(
-      ...sorted.map((c) => Math.abs(getCoinPerf(c) - btcRefVal)),
+      ...sorted.map((c) => Math.abs((c.price_change_percentage_30d_in_currency ?? 0) - btcRef)),
       1
     );
 
-    const gridSteps = 5;
-    for (let i = -gridSteps; i <= gridSteps; i++) {
-      const x = centerX + (i / gridSteps) * (chartW / 2);
+    // Grid
+    for (let i = -5; i <= 5; i++) {
+      const x = centerX + (i / 5) * (chartW / 2);
       ctx.strokeStyle = i === 0 ? "rgba(247, 147, 26, 0.4)" : "rgba(148, 163, 184, 0.06)";
       ctx.lineWidth = i === 0 ? 2 : 0.5;
       ctx.beginPath();
@@ -160,12 +117,13 @@ export default function AltcoinSeason() {
       ctx.stroke();
     }
 
+    // Grid labels
     ctx.fillStyle = "#64748b";
     ctx.font = "10px Inter, system-ui, sans-serif";
     ctx.textAlign = "center";
-    for (let i = -gridSteps; i <= gridSteps; i++) {
-      const val = (i / gridSteps) * maxAbsDiff;
-      const x = centerX + (i / gridSteps) * (chartW / 2);
+    for (let i = -5; i <= 5; i++) {
+      const val = (i / 5) * maxAbsDiff;
+      const x = centerX + (i / 5) * (chartW / 2);
       ctx.fillText(`${val >= 0 ? "+" : ""}${val.toFixed(0)}%`, x, topPadding - 12);
     }
 
@@ -174,9 +132,10 @@ export default function AltcoinSeason() {
     ctx.textAlign = "center";
     ctx.fillText("▼ BTC", centerX, topPadding - 25);
 
+    // Bars
     sorted.forEach((coin, i) => {
       const y = topPadding + i * (barHeight + barGap);
-      const diff = getCoinPerf(coin) - btcRefVal;
+      const diff = (coin.price_change_percentage_30d_in_currency ?? 0) - btcRef;
       const isPositive = diff >= 0;
       const barW = Math.max(2, (Math.abs(diff) / maxAbsDiff) * (chartW / 2));
 
@@ -185,24 +144,18 @@ export default function AltcoinSeason() {
         ctx.fillRect(0, y, W, barHeight + barGap);
       }
 
+      // Icon
       const img = imagesRef.current.get(coin.id);
       if (img && img.complete && img.naturalWidth > 0) {
         try {
           ctx.save();
           ctx.beginPath();
-          ctx.arc(16, y + barHeight / 2, 10, 0, Math.PI * 2);
+          ctx.arc(16, y + barHeight / 2, 9, 0, Math.PI * 2);
           ctx.closePath();
           ctx.clip();
-          ctx.drawImage(img, 6, y + barHeight / 2 - 10, 20, 20);
+          ctx.drawImage(img, 7, y + barHeight / 2 - 9, 18, 18);
           ctx.restore();
-        } catch {
-          // skip
-        }
-      } else {
-        ctx.fillStyle = "rgba(148, 163, 184, 0.15)";
-        ctx.beginPath();
-        ctx.arc(16, y + barHeight / 2, 10, 0, Math.PI * 2);
-        ctx.fill();
+        } catch { /* skip */ }
       }
 
       ctx.fillStyle = "#475569";
@@ -211,42 +164,38 @@ export default function AltcoinSeason() {
       ctx.fillText(`${i + 1}`, 30, y + barHeight / 2 + 3);
 
       ctx.fillStyle = "#e2e8f0";
-      ctx.font = "bold 12px Inter, system-ui, sans-serif";
+      ctx.font = "bold 11px Inter, system-ui, sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText(coin.symbol, 44, y + barHeight / 2 + 4);
+      ctx.fillText(coin.symbol.toUpperCase(), 44, y + barHeight / 2 + 4);
 
       ctx.fillStyle = "#64748b";
       ctx.font = "10px Inter, system-ui, sans-serif";
       ctx.textAlign = "right";
-      const displayName = coin.name.length > 14 ? coin.name.slice(0, 14) + "…" : coin.name;
-      ctx.fillText(displayName, leftPadding - 8, y + barHeight / 2 + 4);
+      const name = coin.name.length > 12 ? coin.name.slice(0, 12) + "…" : coin.name;
+      ctx.fillText(name, leftPadding - 8, y + barHeight / 2 + 4);
 
       const barY = y + 4;
       const barH = barHeight - 8;
 
       if (isPositive) {
-        const gradient = ctx.createLinearGradient(centerX, 0, centerX + barW, 0);
-        gradient.addColorStop(0, "rgba(34, 197, 94, 0.8)");
-        gradient.addColorStop(1, "rgba(34, 197, 94, 0.5)");
-        ctx.fillStyle = gradient;
+        const grad = ctx.createLinearGradient(centerX, 0, centerX + barW, 0);
+        grad.addColorStop(0, "rgba(34, 197, 94, 0.8)");
+        grad.addColorStop(1, "rgba(34, 197, 94, 0.5)");
+        ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.roundRect(centerX + 1, barY, barW, barH, [0, 4, 4, 0]);
         ctx.fill();
-        ctx.fillStyle = "#22c55e";
-        ctx.fillRect(centerX + barW - 2, barY, 2, barH);
       } else {
-        const gradient = ctx.createLinearGradient(centerX - barW, 0, centerX, 0);
-        gradient.addColorStop(0, "rgba(239, 68, 68, 0.5)");
-        gradient.addColorStop(1, "rgba(239, 68, 68, 0.8)");
-        ctx.fillStyle = gradient;
+        const grad = ctx.createLinearGradient(centerX - barW, 0, centerX, 0);
+        grad.addColorStop(0, "rgba(239, 68, 68, 0.5)");
+        grad.addColorStop(1, "rgba(239, 68, 68, 0.8)");
+        ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.roundRect(centerX - barW - 1, barY, barW, barH, [4, 0, 0, 4]);
         ctx.fill();
-        ctx.fillStyle = "#ef4444";
-        ctx.fillRect(centerX - barW - 1, barY, 2, barH);
       }
 
-      ctx.font = "bold 11px Inter, system-ui, sans-serif";
+      ctx.font = "bold 10px Inter, system-ui, sans-serif";
       if (isPositive) {
         ctx.fillStyle = "#22c55e";
         ctx.textAlign = "left";
@@ -258,24 +207,20 @@ export default function AltcoinSeason() {
       }
     });
 
-    const legendY = H - 20;
+    // Legend
+    const ly = H - 20;
     ctx.font = "11px Inter, system-ui, sans-serif";
-    ctx.textAlign = "center";
     ctx.fillStyle = "#22c55e";
-    ctx.fillRect(W / 2 - 180, legendY, 14, 14);
+    ctx.fillRect(W / 2 - 180, ly, 14, 14);
     ctx.fillStyle = "#94a3b8";
     ctx.textAlign = "left";
-    ctx.fillText("Surperforme BTC", W / 2 - 162, legendY + 11);
+    ctx.fillText("Surperforme BTC", W / 2 - 162, ly + 11);
     ctx.fillStyle = "#ef4444";
-    ctx.fillRect(W / 2 + 30, legendY, 14, 14);
+    ctx.fillRect(W / 2 + 30, ly, 14, 14);
     ctx.fillStyle = "#94a3b8";
-    ctx.textAlign = "left";
-    ctx.fillText("Sous-performe BTC", W / 2 + 48, legendY + 11);
+    ctx.fillText("Sous-performe BTC", W / 2 + 48, ly + 11);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coins, timeframe, btcPerf, imagesLoaded]);
-
-  const isAltSeason = seasonIndex >= 75;
-  const isBtcSeason = seasonIndex <= 25;
+  }, [coins, btcPerf, imagesLoaded]);
 
   return (
     <div className="min-h-screen bg-[#030712] text-white">
@@ -288,47 +233,21 @@ export default function AltcoinSeason() {
 
         <div className="relative z-10 max-w-[1440px] mx-auto p-7 pb-20">
           {/* Header */}
-          <div className="text-center mb-4 pt-8">
-            <p className="text-[#64748b] text-sm mb-1">Blockchaincenter Tools</p>
-            <h1 className="text-[clamp(28px,4vw,42px)] font-black tracking-[-1px] text-white">
-              Altcoin Season Index
+          <div className="text-center mb-8 pt-8">
+            <h1 className="text-[clamp(28px,4vw,42px)] font-black tracking-[-1px] bg-gradient-to-r from-[#22c55e] via-[#f7931a] to-[#22c55e] bg-clip-text text-transparent">
+              🔄 Altcoin Season Index
             </h1>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex justify-center mb-0">
-            {(["season", "month", "year"] as const).map((key) => {
-              const labels: Record<string, string> = { season: "Season", month: "Month", year: "Year" };
-              const active = timeframe === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => setTimeframe(key)}
-                  className={`px-8 py-3.5 text-sm font-bold transition-all border-b-2 ${
-                    active
-                      ? "bg-[rgba(15,23,42,0.95)] border-[#6366f1] text-white"
-                      : "bg-[rgba(15,23,42,0.4)] border-transparent text-[#64748b] hover:text-[#94a3b8]"
-                  }`}
-                >
-                  {labels[key]}{" "}
-                  <span className={active ? "text-[#6366f1]" : "text-[#475569]"}>({seasonIndex})</span>
-                </button>
-              );
-            })}
+            <p className="text-[#64748b] text-sm mt-2">
+              Si 75% des Top 50 altcoins surperforment Bitcoin sur 30 jours, c&apos;est l&apos;Altcoin Season
+            </p>
+            <div className="inline-flex items-center gap-2 bg-[rgba(34,197,94,0.1)] border border-[rgba(34,197,94,0.25)] rounded-full px-5 py-1.5 text-xs text-[#22c55e] font-bold mt-3 uppercase tracking-widest">
+              <span className="w-2 h-2 rounded-full bg-[#22c55e] shadow-[0_0_8px_#22c55e] animate-pulse" />
+              LIVE — Données CoinGecko Top 200
+            </div>
           </div>
 
           {/* Main Season Card */}
-          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-b-3xl rounded-t-none p-8 mb-6 relative">
-            <h2 className="text-lg font-bold mb-1">
-              Altcoin Season Index{" "}
-              <span className="text-[#64748b] text-sm font-normal cursor-help" title="Si 75% des Top 50 coins surperforment Bitcoin sur la dernière saison (90 jours), c'est l'Altcoin Season">
-                ℹ️
-              </span>
-            </h2>
-            <p className="text-[#64748b] text-xs mb-6">
-              Si 75% des Top 50 coins surperforment Bitcoin sur la dernière saison (90 jours), c&apos;est l&apos;Altcoin Season
-            </p>
-
+          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6">
             {loading && coins.length === 0 ? (
               <div className="flex justify-center items-center py-16">
                 <div className="w-11 h-11 border-[3px] border-[rgba(99,102,241,0.15)] border-t-[#6366f1] rounded-full animate-spin" />
@@ -337,10 +256,10 @@ export default function AltcoinSeason() {
               <div className="flex flex-col items-center">
                 <p className="text-[#e2e8f0] text-xl font-bold mb-4">
                   {isAltSeason
-                    ? "C'est l'Altcoin Season ! 🚀"
+                    ? "🚀 C'est l'Altcoin Season !"
                     : isBtcSeason
-                    ? "C'est la Bitcoin Season ! 🟠"
-                    : "Ce n'est pas l'Altcoin Season !"}
+                    ? "🟠 C'est la Bitcoin Season !"
+                    : "⚖️ Ce n'est pas l'Altcoin Season"}
                 </p>
 
                 <p className="font-mono text-[96px] font-black leading-none mb-6 text-white">
@@ -348,7 +267,7 @@ export default function AltcoinSeason() {
                 </p>
 
                 {/* Gauge bar */}
-                <div className="w-full max-w-[600px] mb-2">
+                <div className="w-full max-w-[600px] mb-4">
                   <div
                     className="h-10 rounded-xl relative overflow-hidden"
                     style={{
@@ -372,95 +291,60 @@ export default function AltcoinSeason() {
                   </div>
                 </div>
 
-                {/* Real-time stats */}
-                <div className="mt-4 text-center">
-                  <p className="text-[#94a3b8] text-sm">
-                    <span className="text-[#22c55e] font-bold">{outperformCount}</span> sur{" "}
-                    <span className="text-white font-bold">{coins.length}</span> altcoins surperforment BTC (30j)
-                  </p>
-                  <p className="text-[#64748b] text-xs mt-1">
-                    BTC 30j: {btcPerf.change30d >= 0 ? "+" : ""}{btcPerf.change30d.toFixed(1)}%
-                  </p>
-                </div>
+                <p className="text-[#94a3b8] text-sm">
+                  <span className="text-[#22c55e] font-bold">{outperformCount}</span> sur{" "}
+                  <span className="text-white font-bold">{coins.length}</span> altcoins surperforment BTC (30j)
+                </p>
+                <p className="text-[#64748b] text-xs mt-1">
+                  BTC 30j: {btcPerf.change30d >= 0 ? "+" : ""}{btcPerf.change30d.toFixed(1)}%
+                </p>
               </div>
             )}
           </div>
 
-          {/* Blockchaincenter.net Embedded Table */}
-          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-6 mb-6 relative overflow-hidden">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-extrabold flex items-center gap-2">
-                <span>📊</span> Altcoin Season Index — Blockchaincenter.net
-              </h3>
-              <a
-                href="https://www.blockchaincenter.net/en/altcoin-season-index/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-[#6366f1] hover:text-[#818cf8] font-bold transition-colors"
-              >
-                Ouvrir sur blockchaincenter.net ↗
-              </a>
-            </div>
-            <div className="rounded-2xl overflow-hidden border border-[rgba(148,163,184,0.1)]">
-              <iframe
-                src="https://www.blockchaincenter.net/en/altcoin-season-index/"
-                title="Altcoin Season Index - Blockchaincenter"
-                className="w-full border-0"
-                style={{ height: "800px", background: "#1a1a2e" }}
-                loading="lazy"
-                sandbox="allow-scripts allow-same-origin allow-popups"
-              />
-            </div>
-            <p className="text-[#64748b] text-xs mt-3 text-center">
-              Source : <a href="https://www.blockchaincenter.net/en/altcoin-season-index/" target="_blank" rel="noopener noreferrer" className="text-[#6366f1] hover:underline">blockchaincenter.net</a> — Données mises à jour en temps réel
-            </p>
-          </div>
-
-          {/* Canvas Bar Chart */}
-          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-6 mb-6 relative overflow-hidden">
+          {/* Bar Chart */}
+          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-6 mb-6">
             <h3 className="text-lg font-extrabold mb-1">
-              Top 50 Performance sur la dernière{" "}
-              <span className="text-[#6366f1]">
-                {timeframe === "month" ? "période (30 jours)" : timeframe === "year" ? "année" : "saison (90 jours)"}
-              </span>
+              Top 50 Altcoins vs Bitcoin — Performance 30 jours
             </h3>
+            <p className="text-[#64748b] text-xs mb-4">
+              Barres vertes = surperforme BTC | Barres rouges = sous-performe BTC
+            </p>
             <div className="overflow-x-auto">
               <canvas ref={canvasRef} />
             </div>
-            <p className="text-[#64748b] text-xs mt-3 text-center">
-              Si 75% des Top 50 coins surperforment Bitcoin sur la dernière saison (90 jours), c&apos;est l&apos;Altcoin Season.
-              Exclus : Stablecoins (Tether, DAI…) et tokens adossés (WBTC, stETH, cLINK…)
-            </p>
           </div>
 
           {/* Explanation */}
-          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 relative overflow-hidden">
-            <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
-              <span className="text-[22px]">📖</span> Comment ça marche ?
-            </div>
+          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8">
+            <h3 className="text-lg font-extrabold mb-6 flex items-center gap-2">
+              <span>📖</span> Comment ça marche ?
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
-                <h3 className="text-[15px] font-extrabold mb-3 text-[#f7931a]">🟠 Bitcoin Season (0-25)</h3>
+                <h4 className="text-[15px] font-extrabold mb-3 text-[#f7931a]">🟠 Bitcoin Season (0-25)</h4>
                 <p className="text-[#94a3b8] text-sm leading-relaxed">
-                  La majorité des altcoins sous-performent Bitcoin. Les investisseurs se concentrent sur BTC comme valeur refuge. Moins de 25% des top 50 surperforment BTC.
+                  Moins de 25% des top 50 altcoins surperforment BTC. Les investisseurs se réfugient dans Bitcoin.
                 </p>
               </div>
               <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
-                <h3 className="text-[15px] font-extrabold mb-3 text-[#eab308]">⚖️ Zone Neutre (25-75)</h3>
+                <h4 className="text-[15px] font-extrabold mb-3 text-[#eab308]">⚖️ Zone Neutre (25-75)</h4>
                 <p className="text-[#94a3b8] text-sm leading-relaxed">
-                  Pas de tendance claire. Le marché est partagé entre BTC et altcoins. Entre 25% et 75% des top 50 surperforment BTC.
+                  Pas de tendance claire. Le marché est partagé entre BTC et altcoins.
                 </p>
               </div>
               <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
-                <h3 className="text-[15px] font-extrabold mb-3 text-[#22c55e]">🟢 Altcoin Season (75-100)</h3>
+                <h4 className="text-[15px] font-extrabold mb-3 text-[#22c55e]">🟢 Altcoin Season (75-100)</h4>
                 <p className="text-[#94a3b8] text-sm leading-relaxed">
-                  75%+ des top 50 altcoins surperforment BTC. C&apos;est l&apos;Altseason — les altcoins explosent ! Le moment où les altcoins brillent.
+                  75%+ des top 50 altcoins surperforment BTC. C&apos;est l&apos;Altseason !
                 </p>
               </div>
             </div>
+            <p className="text-[#64748b] text-xs mt-5 text-center">
+              Données en temps réel via CoinGecko API — Stablecoins et tokens adossés exclus du calcul
+            </p>
           </div>
 
-          {/* Refresh */}
           <button
             onClick={fetchData}
             disabled={loading}

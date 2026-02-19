@@ -85,31 +85,25 @@ export default function Watchlist() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=24h,7d"
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setAllCoins(
-            data.map((c: Record<string, unknown>) => ({
-              id: c.id as string,
-              symbol: ((c.symbol as string) || "").toUpperCase(),
-              name: c.name as string,
-              price: (c.current_price as number) || 0,
-              change24h: (c.price_change_percentage_24h as number) || 0,
-              change7d: (c.price_change_percentage_7d_in_currency as number) || 0,
-              market_cap: (c.market_cap as number) || 0,
-              volume: (c.total_volume as number) || 0,
-              high24h: (c.high_24h as number) || 0,
-              low24h: (c.low_24h as number) || 0,
-              image: c.image as string,
-              sparkline: (
-                (c.sparkline_in_7d as { price?: number[] })?.price || []
-              ).slice(-24),
-            }))
-          );
-        }
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const data = await fetchTop200(true);
+      if (data.length > 0) {
+        setAllCoins(
+          data.map((c) => ({
+            id: c.id,
+            symbol: (c.symbol || "").toUpperCase(),
+            name: c.name,
+            price: c.current_price || 0,
+            change24h: c.price_change_percentage_24h || 0,
+            change7d: c.price_change_percentage_7d_in_currency || 0,
+            market_cap: c.market_cap || 0,
+            volume: c.total_volume || 0,
+            high24h: (c as any).high_24h || 0,
+            low24h: (c as any).low_24h || 0,
+            image: c.image,
+            sparkline: (c.sparkline_in_7d?.price || []).slice(-24),
+          }))
+        );
       }
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
     } catch {

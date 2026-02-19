@@ -94,12 +94,13 @@ export default function Trades() {
   const fetchTrades = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=false"
-      );
-      if (res.ok) {
-        const prices: CryptoPrice[] = await res.json();
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const allData = await fetchTop200(false);
+      if (allData.length > 0) {
+        const prices: CryptoPrice[] = allData.slice(0, 20) as any;
         setTrades(generateDemoTrades(prices));
+      } else {
+        setTrades(generateDemoTrades([]));
       }
     } catch (e) {
       console.error("Fetch error:", e);

@@ -35,21 +35,17 @@ export default function Simulation() {
 
   const fetchCryptos = useCallback(async () => {
     try {
-      const res = await fetch(
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false"
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const data = await fetchTop200(false);
+      setCryptos(
+        data.map((c) => ({
+          id: c.id,
+          name: c.name,
+          symbol: c.symbol.toUpperCase(),
+          price: c.current_price,
+          change24h: c.price_change_percentage_24h || 0,
+        }))
       );
-      if (res.ok) {
-        const data = await res.json();
-        setCryptos(
-          (data as Array<Record<string, unknown>>).map((c) => ({
-            id: c.id as string,
-            name: c.name as string,
-            symbol: (c.symbol as string).toUpperCase(),
-            price: c.current_price as number,
-            change24h: (c.price_change_percentage_24h as number) || 0,
-          }))
-        );
-      }
     } catch (e) {
       console.error(e);
     } finally {

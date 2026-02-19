@@ -91,9 +91,10 @@ export default function FearGreed() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [fgRes, coinsRes] = await Promise.allSettled([
-        fetch("https://api.alternative.me/fng/?limit=30"),
-        fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h"),
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const [fgRes, top200Data] = await Promise.all([
+        fetch("https://api.alternative.me/fng/?limit=30").then(r => ({ status: "fulfilled" as const, value: r })).catch(() => ({ status: "rejected" as const, value: null as any })),
+        fetchTop200(false),
       ]);
 
       if (fgRes.status === "fulfilled" && fgRes.value.ok) {
@@ -114,11 +115,9 @@ export default function FearGreed() {
         }
       }
 
-      if (coinsRes.status === "fulfilled" && coinsRes.value.ok) {
-        const data = await coinsRes.value.json();
-        if (Array.isArray(data)) {
+      if (top200Data.length > 0) {
           setCoins(
-            data.map((c: Record<string, unknown>) => ({
+            top200Data.map((c: any) => ({
               id: c.id as string,
               symbol: ((c.symbol as string) || "").toUpperCase(),
               name: c.name as string,
@@ -128,7 +127,6 @@ export default function FearGreed() {
               image: c.image as string,
             }))
           );
-        }
       }
 
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));

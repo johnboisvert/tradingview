@@ -48,26 +48,12 @@ export default function OpportunityScanner() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch page 1 and page 2 for 100 coins
-      const urls = [
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h,7d",
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=2&sparkline=false&price_change_percentage=24h,7d",
-      ];
-
-      const results = await Promise.allSettled(urls.map((url) => fetch(url).then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })));
-
-      const allCoins: any[] = [];
-      for (const r of results) {
-        if (r.status === "fulfilled" && Array.isArray(r.value)) {
-          allCoins.push(...r.value);
-        }
-      }
+      // Fetch top 200 coins via shared cache
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const allCoins = await fetchTop200(false) as any[];
 
       if (allCoins.length === 0) {
-        throw new Error("Aucune donnée reçue de CoinGecko");
+        throw new Error("Aucune donnée reçue");
       }
 
       const opps: Opportunity[] = allCoins

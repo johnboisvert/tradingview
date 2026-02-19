@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
+import { RefreshCw, Search } from "lucide-react";
+import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 
 interface TFData {
+  id: string;
   symbol: string;
   name: string;
+  image: string;
   price: number;
   timeframes: Record<string, { trend: "bullish" | "bearish" | "neutral"; strength: number; signal: string }>;
   consensus: "STRONG BUY" | "BUY" | "NEUTRAL" | "SELL" | "STRONG SELL";
@@ -19,56 +23,72 @@ const CONSENSUS_STYLES: Record<string, { bg: string; text: string }> = {
   "STRONG SELL": { bg: "bg-red-500/15", text: "text-red-400" },
 };
 
+function buildTFData(c: CoinMarketData): TFData {
+  const change = c.price_change_percentage_24h || 0;
+  const change7d = c.price_change_percentage_7d_in_currency || 0;
+  const seed = c.id.split("").reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  const timeframes: TFData["timeframes"] = {};
+  let bullCount = 0;
+  let bearCount = 0;
+
+  TIMEFRAMES.forEach((tf, idx) => {
+    const pseudoR = ((seed * (idx + 1) * 9301 + 49297) % 233280) / 233280;
+    const bias = change > 0 ? 0.55 + change7d * 0.005 : 0.35 + change7d * 0.005;
+    let trend: "bullish" | "bearish" | "neutral";
+    let signal: string;
+    if (pseudoR < Math.max(0.1, Math.min(0.9, bias))) { trend = "bullish"; signal = "Achat"; bullCount++; }
+    else if (pseudoR < Math.max(0.2, Math.min(0.95, bias + 0.15))) { trend = "neutral"; signal = "Neutre"; }
+    else { trend = "bearish"; signal = "Vente"; bearCount++; }
+    timeframes[tf] = { trend, strength: Math.round(40 + pseudoR * 55), signal };
+  });
+
+  let consensus: TFData["consensus"];
+  if (bullCount >= 5) consensus = "STRONG BUY";
+  else if (bullCount >= 4) consensus = "BUY";
+  else if (bearCount >= 5) consensus = "STRONG SELL";
+  else if (bearCount >= 4) consensus = "SELL";
+  else consensus = "NEUTRAL";
+
+  return {
+    id: c.id,
+    symbol: c.symbol.toUpperCase(),
+    name: c.name,
+    image: c.image,
+    price: c.current_price,
+    timeframes,
+    consensus,
+  };
+}
+
 export default function TimeframeAnalysis() {
   const [data, setData] = useState<TFData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTF, setSelectedTF] = useState("ALL");
+  const [search, setSearch] = useState("");
+  const [lastUpdate, setLastUpdate] = useState("");
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const coins = await fetchTop200(false);
+      setData(coins.map(buildTFData));
+      setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
+    } catch {
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&sparkline=false");
-        const coins = await res.json();
-        const results: TFData[] = coins.map((c: any) => {
-          const change = c.price_change_percentage_24h || 0;
-          const timeframes: TFData["timeframes"] = {};
-          let bullCount = 0;
-          let bearCount = 0;
-
-          TIMEFRAMES.forEach((tf) => {
-            const bias = change > 0 ? 0.6 : 0.4;
-            const r = Math.random();
-            let trend: "bullish" | "bearish" | "neutral";
-            let signal: string;
-            if (r < bias) { trend = "bullish"; signal = "Achat"; bullCount++; }
-            else if (r < bias + 0.15) { trend = "neutral"; signal = "Neutre"; }
-            else { trend = "bearish"; signal = "Vente"; bearCount++; }
-            timeframes[tf] = { trend, strength: Math.round(40 + Math.random() * 55), signal };
-          });
-
-          let consensus: TFData["consensus"];
-          if (bullCount >= 5) consensus = "STRONG BUY";
-          else if (bullCount >= 4) consensus = "BUY";
-          else if (bearCount >= 5) consensus = "STRONG SELL";
-          else if (bearCount >= 4) consensus = "SELL";
-          else consensus = "NEUTRAL";
-
-          return {
-            symbol: c.symbol?.toUpperCase() || "N/A",
-            name: c.name || "Unknown",
-            price: c.current_price || 0,
-            timeframes,
-            consensus,
-          };
-        });
-        setData(results);
-      } catch {
-        setData([]);
-      }
-      setLoading(false);
-    };
     fetchData();
-  }, []);
+    const i = setInterval(fetchData, 120000);
+    return () => clearInterval(i);
+  }, [fetchData]);
+
+  const filtered = search
+    ? data.filter((d) => d.symbol.includes(search.toUpperCase()) || d.name.toLowerCase().includes(search.toLowerCase()))
+    : data;
 
   return (
     <div className="flex min-h-screen bg-[#030712]">
@@ -79,15 +99,24 @@ export default function TimeframeAnalysis() {
           <div className="absolute w-[500px] h-[500px] rounded-full bg-indigo-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />
         </div>
         <div className="relative z-10 max-w-[1440px] mx-auto">
-          <div className="text-center mb-10 pt-8">
-            <h1 className="text-5xl font-black bg-gradient-to-r from-cyan-400 via-indigo-500 to-cyan-400 bg-[length:300%_auto] bg-clip-text text-transparent animate-gradient">
+          <div className="text-center mb-8 pt-8">
+            <h1 className="text-5xl font-black bg-gradient-to-r from-cyan-400 via-indigo-500 to-cyan-400 bg-[length:300%_auto] bg-clip-text text-transparent">
               ⏱️ Timeframe Analysis
             </h1>
-            <p className="text-gray-500 mt-3 text-lg">Analyse multi-timeframe pour une vision complète du marché</p>
+            <p className="text-gray-500 mt-3 text-lg">Analyse multi-timeframe — Top 200 cryptos</p>
+            <div className="inline-flex items-center gap-2 mt-3 bg-cyan-500/10 border border-cyan-500/25 rounded-full px-5 py-1.5 text-xs text-cyan-400 font-bold uppercase tracking-widest">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4] animate-pulse" />
+              {data.length} cryptos • {lastUpdate || "..."}
+            </div>
           </div>
 
-          {/* TF Filter */}
-          <div className="flex flex-wrap gap-2 mb-6 justify-center">
+          {/* Search + TF Filter */}
+          <div className="flex flex-wrap gap-3 mb-6 items-center justify-center">
+            <div className="relative w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..."
+                className="w-full pl-9 pr-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-sm text-white placeholder-gray-500 focus:outline-none" />
+            </div>
             <button onClick={() => setSelectedTF("ALL")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedTF === "ALL" ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "bg-slate-800/50 text-gray-500 hover:text-white border border-white/5"}`}>
               Tous les TF
             </button>
@@ -96,17 +125,21 @@ export default function TimeframeAnalysis() {
                 {tf}
               </button>
             ))}
+            <button onClick={fetchData} disabled={loading} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-xs font-bold">
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> MAJ
+            </button>
           </div>
 
-          {loading ? (
+          {loading && data.length === 0 ? (
             <div className="flex justify-center py-16">
               <div className="w-11 h-11 border-3 border-cyan-500/15 border-t-cyan-400 rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="bg-slate-900/70 border border-white/5 rounded-3xl p-6 overflow-x-auto">
+            <div className="bg-slate-900/70 border border-white/5 rounded-3xl p-6 overflow-x-auto max-h-[700px] overflow-y-auto">
               <table className="w-full min-w-[900px]">
-                <thead>
+                <thead className="sticky top-0 bg-slate-900/95 z-10">
                   <tr className="border-b border-white/10">
+                    <th className="text-left text-xs text-gray-500 uppercase tracking-wider py-3 px-3">#</th>
                     <th className="text-left text-xs text-gray-500 uppercase tracking-wider py-3 px-3">Token</th>
                     <th className="text-left text-xs text-gray-500 uppercase tracking-wider py-3 px-3">Prix</th>
                     {(selectedTF === "ALL" ? TIMEFRAMES : [selectedTF]).map((tf) => (
@@ -116,30 +149,36 @@ export default function TimeframeAnalysis() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.map((d) => {
+                  {filtered.map((d, i) => {
                     const cStyle = CONSENSUS_STYLES[d.consensus];
                     return (
-                      <tr key={d.symbol} className="border-b border-white/5 hover:bg-cyan-500/5 transition-colors">
-                        <td className="py-3 px-3">
-                          <div className="font-bold text-white text-sm">{d.symbol}</div>
-                          <div className="text-xs text-gray-500">{d.name}</div>
+                      <tr key={d.id} className="border-b border-white/5 hover:bg-cyan-500/5 transition-colors">
+                        <td className="py-2.5 px-3 text-xs text-gray-500">{i + 1}</td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2">
+                            {d.image && <img src={d.image} alt={d.symbol} className="w-5 h-5 rounded-full" />}
+                            <div>
+                              <div className="font-bold text-white text-sm">{d.symbol}</div>
+                              <div className="text-[10px] text-gray-500">{d.name}</div>
+                            </div>
+                          </div>
                         </td>
-                        <td className="py-3 px-3 font-mono text-sm text-white">${d.price < 1 ? d.price.toFixed(4) : d.price.toLocaleString()}</td>
+                        <td className="py-2.5 px-3 font-mono text-sm text-white">${formatPrice(d.price)}</td>
                         {(selectedTF === "ALL" ? TIMEFRAMES : [selectedTF]).map((tf) => {
                           const tfData = d.timeframes[tf];
                           return (
-                            <td key={tf} className="py-3 px-3 text-center">
-                              <div className={`inline-flex flex-col items-center gap-1 px-3 py-2 rounded-xl ${tfData.trend === "bullish" ? "bg-emerald-500/10" : tfData.trend === "bearish" ? "bg-red-500/10" : "bg-gray-500/10"}`}>
-                                <span className={`text-xs font-bold ${tfData.trend === "bullish" ? "text-emerald-400" : tfData.trend === "bearish" ? "text-red-400" : "text-gray-400"}`}>
+                            <td key={tf} className="py-2.5 px-3 text-center">
+                              <div className={`inline-flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg ${tfData.trend === "bullish" ? "bg-emerald-500/10" : tfData.trend === "bearish" ? "bg-red-500/10" : "bg-gray-500/10"}`}>
+                                <span className={`text-[11px] font-bold ${tfData.trend === "bullish" ? "text-emerald-400" : tfData.trend === "bearish" ? "text-red-400" : "text-gray-400"}`}>
                                   {tfData.trend === "bullish" ? "▲" : tfData.trend === "bearish" ? "▼" : "—"} {tfData.signal}
                                 </span>
-                                <span className="text-[10px] text-gray-500">{tfData.strength}%</span>
+                                <span className="text-[9px] text-gray-500">{tfData.strength}%</span>
                               </div>
                             </td>
                           );
                         })}
-                        <td className="py-3 px-3 text-center">
-                          <span className={`text-xs font-bold px-3 py-1.5 rounded-xl ${cStyle.bg} ${cStyle.text}`}>{d.consensus}</span>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${cStyle.bg} ${cStyle.text}`}>{d.consensus}</span>
                         </td>
                       </tr>
                     );
@@ -149,7 +188,6 @@ export default function TimeframeAnalysis() {
             </div>
           )}
 
-          {/* Legend */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             {[
               { icon: "📈", title: "Multi-Timeframe", desc: "Analysez chaque token sur 6 timeframes différents pour confirmer la tendance.", color: "border-l-cyan-500" },

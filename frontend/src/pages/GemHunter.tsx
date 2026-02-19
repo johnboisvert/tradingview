@@ -51,14 +51,13 @@ export default function GemHunter() {
   const fetchGems = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h,7d"
-      );
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const allData = await fetchTop200(false);
 
-      if (res.ok) {
-        const data = await res.json();
-        const filtered = (data as Array<Record<string, unknown>>)
-          .filter((c) => {
+      if (allData.length > 0) {
+        const data = allData as any[];
+        const filtered = data
+          .filter((c: any) => {
             const mc = (c.market_cap as number) || 0;
             const vol = (c.total_volume as number) || 0;
             return mc >= 10_000_000 && mc <= 5_000_000_000 && vol >= 500_000;

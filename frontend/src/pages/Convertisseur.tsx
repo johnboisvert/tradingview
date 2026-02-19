@@ -46,15 +46,12 @@ export default function Convertisseur() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch crypto prices
-      const res = await fetch(
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false"
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
+      // Fetch crypto prices via shared cache
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const allData = await fetchTop200(false);
+      if (allData.length > 0) {
           setCoins(
-            data.map((c: Record<string, unknown>) => ({
+            allData.map((c: any) => ({
               id: c.id as string,
               symbol: ((c.symbol as string) || "").toUpperCase(),
               name: c.name as string,
@@ -62,7 +59,6 @@ export default function Convertisseur() {
               image: c.image as string,
             }))
           );
-        }
       }
 
       // Fetch fiat rates from a free API

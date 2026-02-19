@@ -85,26 +85,23 @@ export default function BullrunPhase() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Fetch BTC data
-      const btcRes = await fetch(
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin&sparkline=false&price_change_percentage=24h,7d,30d"
-      );
+      // 1. Fetch BTC data from top 200 cache
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const allCoins = await fetchTop200(false);
+      const btcData = allCoins.find((c: any) => c.id === "bitcoin") as any;
       let btcPrice = 0;
       let btcChange24h = 0;
       let btcChange7d = 0;
       let btcChange30d = 0;
       let btcAthPct = 0;
       let btcAth = 0;
-      if (btcRes.ok) {
-        const data = await btcRes.json();
-        if (Array.isArray(data) && data.length > 0) {
-          btcPrice = (data[0].current_price as number) || 0;
-          btcChange24h = (data[0].price_change_percentage_24h as number) || 0;
-          btcChange7d = (data[0].price_change_percentage_7d_in_currency as number) || 0;
-          btcChange30d = (data[0].price_change_percentage_30d_in_currency as number) || 0;
-          btcAthPct = (data[0].ath_change_percentage as number) || 0;
-          btcAth = (data[0].ath as number) || 0;
-        }
+      if (btcData) {
+        btcPrice = btcData.current_price || 0;
+        btcChange24h = btcData.price_change_percentage_24h || 0;
+        btcChange7d = btcData.price_change_percentage_7d_in_currency || 0;
+        btcChange30d = btcData.price_change_percentage_30d_in_currency || 0;
+        btcAthPct = btcData.ath_change_percentage || 0;
+        btcAth = btcData.ath || 0;
       }
 
       // 2. Fetch global market data

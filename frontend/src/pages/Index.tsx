@@ -141,17 +141,15 @@ export default function DashboardPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [coinsRes, globalRes, fgRes] = await Promise.allSettled([
-        fetch(
-          "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=true&price_change_percentage=24h"
-        ),
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const [coinsData, globalRes, fgRes] = await Promise.allSettled([
+        fetchTop200(true),
         fetch("https://api.coingecko.com/api/v3/global"),
         fetch("https://api.alternative.me/fng/?limit=1"),
       ]);
 
-      if (coinsRes.status === "fulfilled" && coinsRes.value.ok) {
-        const data = await coinsRes.value.json();
-        if (Array.isArray(data) && data.length > 0) setCoins(data);
+      if (coinsData.status === "fulfilled" && coinsData.value.length > 0) {
+        setCoins(coinsData.value as any);
       }
 
       if (globalRes.status === "fulfilled" && globalRes.value.ok) {

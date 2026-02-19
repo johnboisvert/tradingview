@@ -45,13 +45,11 @@ export default function Strategy() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const coinsRes = await fetch(
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=24h"
-      );
-      if (coinsRes.ok) {
-        const data = await coinsRes.json();
-        if (Array.isArray(data)) {
-          const sigs: CoinSignal[] = data.map((c: Record<string, unknown>) => {
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const allData = await fetchTop200(false);
+      if (allData.length > 0) {
+        const data = allData as any[];
+          const sigs: CoinSignal[] = data.map((c: any) => {
             const sparkline = (c.sparkline_in_7d as { price?: number[] })?.price || [];
             const rsi = sparkline.length > 20 ? computeRSI(sparkline.slice(-50)) : 50;
             const ch = (c.price_change_percentage_24h as number) || 0;
@@ -64,7 +62,6 @@ export default function Strategy() {
             return { symbol: ((c.symbol as string) || "").toUpperCase(), name: c.name as string, price: (c.current_price as number) || 0, change24h: ch, rsi: Math.round(rsi * 10) / 10, signal, strength: Math.min(100, strength), image: c.image as string };
           });
           setSignals(sigs);
-        }
       }
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
     } catch { /* keep */ } finally { setLoading(false); }

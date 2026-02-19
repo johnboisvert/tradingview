@@ -46,15 +46,14 @@ export default function TokenScanner() {
     setSearched(true);
 
     try {
-      const res = await fetch(
-        `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h`
-      );
-      if (res.ok) {
-        const data = await res.json();
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const allData = await fetchTop200(false);
+      if (allData.length > 0) {
+        const data = allData as any[];
         const q = query.toLowerCase();
-        const filtered = (data as Array<Record<string, unknown>>)
+        const filtered = data
           .filter(
-            (c) =>
+            (c: any) =>
               (c.name as string).toLowerCase().includes(q) ||
               (c.symbol as string).toLowerCase().includes(q) ||
               (c.id as string).toLowerCase().includes(q)

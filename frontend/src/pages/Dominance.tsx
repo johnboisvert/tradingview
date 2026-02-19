@@ -47,13 +47,11 @@ export default function Dominance() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h"
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const total = data.reduce((s: number, c: Record<string, unknown>) => s + ((c.market_cap as number) || 0), 0);
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const allData = await fetchTop200(false);
+      if (allData.length > 0) {
+        const data = allData as any[];
+          const total = data.reduce((s: number, c: any) => s + ((c.market_cap as number) || 0), 0);
           setTotalMC(total);
           setCoins(
             data.map((c: Record<string, unknown>, i: number) => ({
@@ -69,7 +67,6 @@ export default function Dominance() {
               color: COLORS[i % COLORS.length],
             }))
           );
-        }
       }
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
     } catch {

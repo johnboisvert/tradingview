@@ -35,13 +35,11 @@ export default function MarketRegime() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h,7d"
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setCoins(data.map((c: Record<string, unknown>) => {
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const allData = await fetchTop200(false);
+      if (allData.length > 0) {
+        const data = allData as any[];
+          setCoins(data.map((c: any) => {
             const ch24 = (c.price_change_percentage_24h as number) || 0;
             const ch7d = (c.price_change_percentage_7d_in_currency as number) || 0;
             const vol = (c.total_volume as number) || 0;
@@ -60,7 +58,6 @@ export default function MarketRegime() {
               regime: regime.label, regimeColor: regime.color,
             };
           }));
-        }
       }
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
     } catch { /* keep */ } finally { setLoading(false); }

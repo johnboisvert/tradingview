@@ -56,26 +56,18 @@ export default function Heatmap() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch 4 pages of 50 = 200 coins
-      const pages = [1, 2, 3, 4];
-      const results = await Promise.all(
-        pages.map((page) =>
-          fetch(
-            `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=${page}&sparkline=false&price_change_percentage=24h`
-          ).then((r) => (r.ok ? r.json() : []))
-        )
-      );
-      const allData = results.flat();
-      if (Array.isArray(allData) && allData.length > 0) {
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const allData = await fetchTop200(false);
+      if (allData.length > 0) {
         setCoins(
-          allData.map((c: Record<string, unknown>, idx: number) => ({
-            id: c.id as string,
-            symbol: ((c.symbol as string) || "").toUpperCase(),
-            name: c.name as string,
-            price: (c.current_price as number) || 0,
-            change24h: (c.price_change_percentage_24h as number) || 0,
-            market_cap: (c.market_cap as number) || 0,
-            image: c.image as string,
+          allData.map((c, idx) => ({
+            id: c.id,
+            symbol: c.symbol.toUpperCase(),
+            name: c.name,
+            price: c.current_price || 0,
+            change24h: c.price_change_percentage_24h || 0,
+            market_cap: c.market_cap || 0,
+            image: c.image,
             rank: idx + 1,
           }))
         );

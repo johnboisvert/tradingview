@@ -23,8 +23,8 @@ export default function PepitesCrypto() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=100&sparkline=false&price_change_percentage=24h");
-        const data = await res.json();
+        const { fetchTop200 } = await import("@/lib/cryptoApi");
+        const data = await fetchTop200(false) as any[];
         const smallCaps = data
           .filter((c: any) => c.market_cap && c.market_cap < 5e9 && c.market_cap > 10e6)
           .map((c: any) => {

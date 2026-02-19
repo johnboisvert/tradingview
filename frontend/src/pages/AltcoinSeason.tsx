@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ExternalLink } from "lucide-react";
 import { fetchTop200, type CoinMarketData } from "@/lib/cryptoApi";
 
 const STABLECOINS = new Set([
@@ -15,20 +15,34 @@ export default function AltcoinSeason() {
   const [btcPerf, setBtcPerf] = useState({ change30d: 0 });
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
+  const [fetchError, setFetchError] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const [imagesLoaded, setImagesLoaded] = useState(0);
+  const [viewMode, setViewMode] = useState<"live" | "reference">("live");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setFetchError(false);
     try {
       const data = await fetchTop200(false);
+      if (!data || data.length === 0) {
+        setFetchError(true);
+        setLoading(false);
+        return;
+      }
       const btcData = data.find((c) => c.id === "bitcoin");
       setBtcPerf({ change30d: btcData?.price_change_percentage_30d_in_currency ?? 0 });
 
       const filtered = data
         .filter((c) => !STABLECOINS.has(c.id) && c.id !== "bitcoin")
         .slice(0, 50);
+
+      if (filtered.length === 0) {
+        setFetchError(true);
+        setLoading(false);
+        return;
+      }
 
       setCoins(filtered);
 
@@ -47,7 +61,7 @@ export default function AltcoinSeason() {
 
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
     } catch {
-      // keep existing
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -246,74 +260,212 @@ export default function AltcoinSeason() {
             </div>
           </div>
 
-          {/* Main Season Card */}
-          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6">
-            {loading && coins.length === 0 ? (
-              <div className="flex justify-center items-center py-16">
-                <div className="w-11 h-11 border-[3px] border-[rgba(99,102,241,0.15)] border-t-[#6366f1] rounded-full animate-spin" />
+          {/* View Mode Toggle */}
+          <div className="flex justify-center gap-3 mb-6">
+            <button
+              onClick={() => setViewMode("live")}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                viewMode === "live"
+                  ? "bg-[#22c55e]/20 text-[#22c55e] border border-[#22c55e]/30"
+                  : "bg-white/[0.04] text-gray-400 border border-white/[0.06] hover:bg-white/[0.08]"
+              }`}
+            >
+              📊 Données CoinGecko Live
+            </button>
+            <button
+              onClick={() => setViewMode("reference")}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                viewMode === "reference"
+                  ? "bg-[#6366f1]/20 text-[#818cf8] border border-[#6366f1]/30"
+                  : "bg-white/[0.04] text-gray-400 border border-white/[0.06] hover:bg-white/[0.08]"
+              }`}
+            >
+              🌐 BlockchainCenter Index
+            </button>
+          </div>
+
+          {viewMode === "reference" ? (
+            /* BlockchainCenter.net Altcoin Season Index - Real reference */
+            <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-extrabold flex items-center gap-2">
+                  🌐 BlockchainCenter Altcoin Season Index
+                </h3>
+                <a
+                  href="https://www.blockchaincenter.net/en/altcoin-season-index/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-xs text-[#818cf8] hover:text-[#a5b4fc] transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Ouvrir sur BlockchainCenter
+                </a>
               </div>
-            ) : (
-              <div className="flex flex-col items-center">
-                <p className="text-[#e2e8f0] text-xl font-bold mb-4">
-                  {isAltSeason
-                    ? "🚀 C'est l'Altcoin Season !"
-                    : isBtcSeason
-                    ? "🟠 C'est la Bitcoin Season !"
-                    : "⚖️ Ce n'est pas l'Altcoin Season"}
-                </p>
-
-                <p className="font-mono text-[96px] font-black leading-none mb-6 text-white">
-                  {seasonIndex}
-                </p>
-
-                {/* Gauge bar */}
-                <div className="w-full max-w-[600px] mb-4">
-                  <div
-                    className="h-10 rounded-xl relative overflow-hidden"
-                    style={{
-                      background: "linear-gradient(90deg, #f7931a 0%, #eab308 25%, #94a3b8 50%, #84cc16 75%, #22c55e 100%)",
-                    }}
-                  >
-                    <div
-                      className="absolute top-0 w-1 h-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)] transition-all duration-[1500ms]"
-                      style={{ left: `${seasonIndex}%` }}
-                    />
-                    <div
-                      className="absolute -top-2 transition-all duration-[1500ms]"
-                      style={{ left: `calc(${seasonIndex}% - 6px)` }}
+              <div className="rounded-2xl overflow-hidden bg-black/30" style={{ height: "700px" }}>
+                <iframe
+                  src="https://www.blockchaincenter.net/en/altcoin-season-index/"
+                  title="Altcoin Season Index - BlockchainCenter"
+                  className="w-full h-full border-0"
+                  style={{ filter: "brightness(0.95)" }}
+                  sandbox="allow-scripts allow-same-origin allow-popups"
+                />
+              </div>
+              <p className="text-[#64748b] text-xs mt-3 text-center">
+                Source: blockchaincenter.net — Index de référence mondial pour l&apos;Altcoin Season
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Error state */}
+              {fetchError && coins.length === 0 && (
+                <div className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] rounded-2xl p-6 mb-6 text-center">
+                  <p className="text-red-400 font-bold mb-2">⚠️ Impossible de charger les données CoinGecko</p>
+                  <p className="text-[#94a3b8] text-sm mb-4">
+                    L&apos;API gratuite CoinGecko a des limites de requêtes. Essayez de rafraîchir dans 30 secondes ou consultez l&apos;index BlockchainCenter.
+                  </p>
+                  <div className="flex justify-center gap-3">
+                    <button
+                      onClick={fetchData}
+                      className="px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-sm font-semibold transition-all"
                     >
-                      <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-white" />
-                    </div>
-                  </div>
-                  <div className="flex justify-between mt-2 text-xs font-bold">
-                    <span className="text-[#f7931a]">← Bitcoin Season</span>
-                    <span className="text-[#22c55e]">Altcoin Season →</span>
+                      <RefreshCw className="w-4 h-4 inline mr-2" />
+                      Réessayer
+                    </button>
+                    <button
+                      onClick={() => setViewMode("reference")}
+                      className="px-4 py-2 rounded-xl bg-[#6366f1]/20 text-[#818cf8] border border-[#6366f1]/30 text-sm font-semibold transition-all hover:bg-[#6366f1]/30"
+                    >
+                      Voir BlockchainCenter Index
+                    </button>
                   </div>
                 </div>
+              )}
 
-                <p className="text-[#94a3b8] text-sm">
-                  <span className="text-[#22c55e] font-bold">{outperformCount}</span> sur{" "}
-                  <span className="text-white font-bold">{coins.length}</span> altcoins surperforment BTC (30j)
-                </p>
-                <p className="text-[#64748b] text-xs mt-1">
-                  BTC 30j: {btcPerf.change30d >= 0 ? "+" : ""}{btcPerf.change30d.toFixed(1)}%
-                </p>
+              {/* Main Season Card */}
+              <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6">
+                {loading && coins.length === 0 ? (
+                  <div className="flex justify-center items-center py-16">
+                    <div className="w-11 h-11 border-[3px] border-[rgba(99,102,241,0.15)] border-t-[#6366f1] rounded-full animate-spin" />
+                  </div>
+                ) : coins.length > 0 ? (
+                  <div className="flex flex-col items-center">
+                    <p className="text-[#e2e8f0] text-xl font-bold mb-4">
+                      {isAltSeason
+                        ? "🚀 C'est l'Altcoin Season !"
+                        : isBtcSeason
+                        ? "🟠 C'est la Bitcoin Season !"
+                        : "⚖️ Ce n'est pas l'Altcoin Season"}
+                    </p>
+
+                    <p className="font-mono text-[96px] font-black leading-none mb-6 text-white">
+                      {seasonIndex}
+                    </p>
+
+                    {/* Gauge bar */}
+                    <div className="w-full max-w-[600px] mb-4">
+                      <div
+                        className="h-10 rounded-xl relative overflow-hidden"
+                        style={{
+                          background: "linear-gradient(90deg, #f7931a 0%, #eab308 25%, #94a3b8 50%, #84cc16 75%, #22c55e 100%)",
+                        }}
+                      >
+                        <div
+                          className="absolute top-0 w-1 h-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)] transition-all duration-[1500ms]"
+                          style={{ left: `${seasonIndex}%` }}
+                        />
+                        <div
+                          className="absolute -top-2 transition-all duration-[1500ms]"
+                          style={{ left: `calc(${seasonIndex}% - 6px)` }}
+                        >
+                          <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-white" />
+                        </div>
+                      </div>
+                      <div className="flex justify-between mt-2 text-xs font-bold">
+                        <span className="text-[#f7931a]">← Bitcoin Season</span>
+                        <span className="text-[#22c55e]">Altcoin Season →</span>
+                      </div>
+                    </div>
+
+                    <p className="text-[#94a3b8] text-sm">
+                      <span className="text-[#22c55e] font-bold">{outperformCount}</span> sur{" "}
+                      <span className="text-white font-bold">{coins.length}</span> altcoins surperforment BTC (30j)
+                    </p>
+                    <p className="text-[#64748b] text-xs mt-1">
+                      BTC 30j: {btcPerf.change30d >= 0 ? "+" : ""}{btcPerf.change30d.toFixed(1)}%
+                    </p>
+
+                    {/* Top 50 altcoins performance table */}
+                    <div className="w-full mt-6 overflow-x-auto max-h-[400px] overflow-y-auto">
+                      <table className="w-full min-w-[600px]">
+                        <thead className="sticky top-0 bg-[rgba(15,23,42,0.98)] z-10">
+                          <tr className="border-b border-white/10">
+                            <th className="text-left text-xs text-gray-500 uppercase py-2 px-3">#</th>
+                            <th className="text-left text-xs text-gray-500 uppercase py-2 px-3">Altcoin</th>
+                            <th className="text-right text-xs text-gray-500 uppercase py-2 px-3">Perf 30j</th>
+                            <th className="text-right text-xs text-gray-500 uppercase py-2 px-3">vs BTC</th>
+                            <th className="text-center text-xs text-gray-500 uppercase py-2 px-3">Statut</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...coins].sort((a, b) => {
+                            const diffB = (b.price_change_percentage_30d_in_currency ?? 0) - btcRef;
+                            const diffA = (a.price_change_percentage_30d_in_currency ?? 0) - btcRef;
+                            return diffB - diffA;
+                          }).map((coin, i) => {
+                            const perf30d = coin.price_change_percentage_30d_in_currency ?? 0;
+                            const diff = perf30d - btcRef;
+                            const beats = diff > 0;
+                            return (
+                              <tr key={coin.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                                <td className="py-2 px-3 text-xs text-gray-500">{i + 1}</td>
+                                <td className="py-2 px-3">
+                                  <div className="flex items-center gap-2">
+                                    {coin.image && <img src={coin.image} alt={coin.symbol} className="w-5 h-5 rounded-full" />}
+                                    <span className="font-bold text-sm text-white">{coin.symbol.toUpperCase()}</span>
+                                    <span className="text-xs text-gray-500 truncate max-w-[80px]">{coin.name}</span>
+                                  </div>
+                                </td>
+                                <td className={`py-2 px-3 text-right font-mono text-sm font-bold ${perf30d >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                                  {perf30d >= 0 ? "+" : ""}{perf30d.toFixed(1)}%
+                                </td>
+                                <td className={`py-2 px-3 text-right font-mono text-sm font-bold ${beats ? "text-emerald-400" : "text-red-400"}`}>
+                                  {diff >= 0 ? "+" : ""}{diff.toFixed(1)}%
+                                </td>
+                                <td className="py-2 px-3 text-center">
+                                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    beats
+                                      ? "bg-emerald-500/20 text-emerald-400"
+                                      : "bg-red-500/20 text-red-400"
+                                  }`}>
+                                    {beats ? "✓ Bat BTC" : "✗ Sous BTC"}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            )}
-          </div>
 
-          {/* Bar Chart */}
-          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-6 mb-6">
-            <h3 className="text-lg font-extrabold mb-1">
-              Top 50 Altcoins vs Bitcoin — Performance 30 jours
-            </h3>
-            <p className="text-[#64748b] text-xs mb-4">
-              Barres vertes = surperforme BTC | Barres rouges = sous-performe BTC
-            </p>
-            <div className="overflow-x-auto">
-              <canvas ref={canvasRef} />
-            </div>
-          </div>
+              {/* Bar Chart */}
+              {coins.length > 0 && (
+                <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-6 mb-6">
+                  <h3 className="text-lg font-extrabold mb-1">
+                    Top 50 Altcoins vs Bitcoin — Performance 30 jours
+                  </h3>
+                  <p className="text-[#64748b] text-xs mb-4">
+                    Barres vertes = surperforme BTC | Barres rouges = sous-performe BTC
+                  </p>
+                  <div className="overflow-x-auto">
+                    <canvas ref={canvasRef} />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Explanation */}
           <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8">

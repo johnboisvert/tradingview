@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
-import { RefreshCw, TrendingUp, TrendingDown, Search } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, Search, Maximize2, Minimize2 } from "lucide-react";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 
 // TradingView symbol mapping for top coins
@@ -28,12 +28,12 @@ const TV_SYMBOLS: Record<string, string> = {
   aptos: "BINANCE:APTUSDT",
   "internet-computer": "BINANCE:ICPUSDT",
   "render-token": "BINANCE:RENDERUSDT",
-  "filecoin": "BINANCE:FILUSDT",
-  "cosmos": "BINANCE:ATOMUSDT",
-  "arbitrum": "BINANCE:ARBUSDT",
-  "optimism": "BINANCE:OPUSDT",
-  "injective": "BINANCE:INJUSDT",
-  "sui": "BINANCE:SUIUSDT",
+  filecoin: "BINANCE:FILUSDT",
+  cosmos: "BINANCE:ATOMUSDT",
+  arbitrum: "BINANCE:ARBUSDT",
+  optimism: "BINANCE:OPUSDT",
+  injective: "BINANCE:INJUSDT",
+  sui: "BINANCE:SUIUSDT",
   "sei-network": "BINANCE:SEIUSDT",
 };
 
@@ -48,6 +48,7 @@ export default function Graphiques() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const tvContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async () => {
@@ -232,63 +233,85 @@ export default function Graphiques() {
           </div>
         )}
 
-        {/* TradingView Chart */}
-        <div className="bg-[#111827] border border-white/[0.06] rounded-2xl overflow-hidden mb-6">
+        {/* TradingView Chart - MUCH LARGER */}
+        <div className={`bg-[#111827] border border-white/[0.06] rounded-2xl overflow-hidden mb-6 transition-all duration-300 ${
+          isFullscreen ? "fixed inset-0 z-50 rounded-none m-0" : ""
+        }`}>
+          <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2">
+              {selectedCoin?.image && <img src={selectedCoin.image} alt="" className="w-5 h-5 rounded-full" />}
+              <span className="text-sm font-bold">{selectedCoin?.symbol.toUpperCase()}/USDT</span>
+              <span className="text-xs text-gray-500">TradingView</span>
+            </div>
+            <button
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-xs font-semibold transition-all"
+            >
+              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              {isFullscreen ? "Réduire" : "Plein écran"}
+            </button>
+          </div>
           <div
             ref={tvContainerRef}
             className="tradingview-widget-container"
-            style={{ height: "600px", width: "100%" }}
+            style={{
+              height: isFullscreen ? "calc(100vh - 44px)" : "calc(100vh - 380px)",
+              minHeight: isFullscreen ? "auto" : "600px",
+              width: "100%",
+            }}
           />
         </div>
 
         {/* Top 200 Table */}
-        <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-          <h3 className="text-lg font-bold mb-4">📊 Top 200 Cryptos — Cliquez pour voir le graphique</h3>
-          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-            <table className="w-full min-w-[800px]">
-              <thead className="sticky top-0 bg-[#111827] z-10">
-                <tr className="border-b border-white/10">
-                  {["#", "Token", "Prix", "24h", "7j", "30j", "Volume 24h"].map((h) => (
-                    <th key={h} className="text-left text-xs text-gray-500 uppercase tracking-wider py-3 px-3">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {coins.map((c, i) => (
-                  <tr
-                    key={c.id}
-                    onClick={() => setSelected(c.id)}
-                    className={`border-b border-white/5 cursor-pointer transition-colors ${
-                      selected === c.id ? "bg-cyan-500/10" : "hover:bg-white/[0.03]"
-                    }`}
-                  >
-                    <td className="py-2.5 px-3 text-xs text-gray-500">{i + 1}</td>
-                    <td className="py-2.5 px-3">
-                      <div className="flex items-center gap-2">
-                        {c.image && <img src={c.image} alt={c.symbol} className="w-5 h-5 rounded-full" />}
-                        <span className="font-bold text-sm text-white">{c.symbol.toUpperCase()}</span>
-                        <span className="text-xs text-gray-500 truncate max-w-[100px]">{c.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-2.5 px-3 font-mono text-sm text-white">${formatPrice(c.current_price)}</td>
-                    <td className={`py-2.5 px-3 font-mono text-sm font-bold ${(c.price_change_percentage_24h || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                      {(c.price_change_percentage_24h || 0) >= 0 ? "+" : ""}{(c.price_change_percentage_24h || 0).toFixed(2)}%
-                    </td>
-                    <td className={`py-2.5 px-3 font-mono text-xs ${(c.price_change_percentage_7d_in_currency || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                      {(c.price_change_percentage_7d_in_currency || 0) >= 0 ? "+" : ""}{(c.price_change_percentage_7d_in_currency || 0).toFixed(1)}%
-                    </td>
-                    <td className={`py-2.5 px-3 font-mono text-xs ${(c.price_change_percentage_30d_in_currency || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                      {(c.price_change_percentage_30d_in_currency || 0) >= 0 ? "+" : ""}{(c.price_change_percentage_30d_in_currency || 0).toFixed(1)}%
-                    </td>
-                    <td className="py-2.5 px-3 font-mono text-xs text-gray-400">
-                      {c.total_volume >= 1e9 ? `$${(c.total_volume / 1e9).toFixed(1)}B` : `$${(c.total_volume / 1e6).toFixed(0)}M`}
-                    </td>
+        {!isFullscreen && (
+          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
+            <h3 className="text-lg font-bold mb-4">📊 Top 200 Cryptos — Cliquez pour voir le graphique</h3>
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+              <table className="w-full min-w-[800px]">
+                <thead className="sticky top-0 bg-[#111827] z-10">
+                  <tr className="border-b border-white/10">
+                    {["#", "Token", "Prix", "24h", "7j", "30j", "Volume 24h"].map((h) => (
+                      <th key={h} className="text-left text-xs text-gray-500 uppercase tracking-wider py-3 px-3">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {coins.map((c, i) => (
+                    <tr
+                      key={c.id}
+                      onClick={() => setSelected(c.id)}
+                      className={`border-b border-white/5 cursor-pointer transition-colors ${
+                        selected === c.id ? "bg-cyan-500/10" : "hover:bg-white/[0.03]"
+                      }`}
+                    >
+                      <td className="py-2.5 px-3 text-xs text-gray-500">{i + 1}</td>
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2">
+                          {c.image && <img src={c.image} alt={c.symbol} className="w-5 h-5 rounded-full" />}
+                          <span className="font-bold text-sm text-white">{c.symbol.toUpperCase()}</span>
+                          <span className="text-xs text-gray-500 truncate max-w-[100px]">{c.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-sm text-white">${formatPrice(c.current_price)}</td>
+                      <td className={`py-2.5 px-3 font-mono text-sm font-bold ${(c.price_change_percentage_24h || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {(c.price_change_percentage_24h || 0) >= 0 ? "+" : ""}{(c.price_change_percentage_24h || 0).toFixed(2)}%
+                      </td>
+                      <td className={`py-2.5 px-3 font-mono text-xs ${(c.price_change_percentage_7d_in_currency || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {(c.price_change_percentage_7d_in_currency || 0) >= 0 ? "+" : ""}{(c.price_change_percentage_7d_in_currency || 0).toFixed(1)}%
+                      </td>
+                      <td className={`py-2.5 px-3 font-mono text-xs ${(c.price_change_percentage_30d_in_currency || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {(c.price_change_percentage_30d_in_currency || 0) >= 0 ? "+" : ""}{(c.price_change_percentage_30d_in_currency || 0).toFixed(1)}%
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-xs text-gray-400">
+                        {c.total_volume >= 1e9 ? `$${(c.total_volume / 1e9).toFixed(1)}B` : `$${(c.total_volume / 1e6).toFixed(0)}M`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );

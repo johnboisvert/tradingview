@@ -10,18 +10,12 @@ import {
 const FAQ = [
   { q: "Puis-je annuler à tout moment ?", a: "Oui, vous pouvez annuler votre abonnement à tout moment depuis le portail Stripe. Votre accès reste actif jusqu'à la fin de la période payée." },
   { q: "Y a-t-il un essai gratuit ?", a: "Oui ! Le plan Premium inclut un essai gratuit de 7 jours. Aucune carte bancaire requise pour commencer." },
-  { q: "Quels moyens de paiement acceptez-vous ?", a: "Nous acceptons Visa, Mastercard, American Express via Stripe, les virements Interac e-Transfer, ainsi que les paiements en crypto (BTC, ETH, USDT)." },
+  { q: "Quels moyens de paiement acceptez-vous ?", a: "Nous acceptons Visa, Mastercard, American Express via Stripe, les virements Interac e-Transfer, ainsi que les paiements en crypto via NOWPayments (300+ cryptos)." },
   { q: "Les données sont-elles en temps réel ?", a: "Oui, toutes nos données proviennent d'APIs en temps réel (CoinGecko, Binance, Alternative.me) avec des mises à jour automatiques." },
   { q: "Comment fonctionne le paiement Interac ?", a: "Envoyez le montant exact à cryptoia2026@proton.me avec votre nom d'utilisateur en message. Votre plan sera activé sous 24h ouvrables." },
-  { q: "Comment payer en crypto ?", a: "Envoyez le montant en USDT (TRC-20 ou ERC-20) ou BTC à l'adresse indiquée. Partagez le hash de transaction par email pour activation rapide." },
+  { q: "Comment payer en crypto ?", a: "Cliquez sur 'Crypto (NOWPayments)', vous serez redirigé vers une page de paiement sécurisée supportant 300+ cryptos (BTC, ETH, USDT, SOL, BNB, etc.). Activation automatique après confirmation blockchain." },
+  { q: "Combien de temps pour l'activation crypto ?", a: "L'activation est automatique après confirmation blockchain, généralement entre 1 et 30 minutes selon la crypto choisie." },
 ];
-
-// ─── Crypto wallet addresses ─────────────────────────────────────────────────
-const CRYPTO_WALLETS = {
-  BTC: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-  ETH_USDT: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
-  TRC20_USDT: "TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE",
-};
 
 type PaymentMethod = "stripe" | "interac" | "crypto";
 
@@ -80,7 +74,6 @@ function PaymentModal({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Erreur Stripe");
-      // Redirect to Stripe Checkout
       window.location.href = data.url;
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Erreur lors de la création de la session");
@@ -89,10 +82,31 @@ function PaymentModal({
     }
   };
 
+  // ── NOWPayments crypto checkout ──────────────────────────────────────────
+  const handleNowPayments = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/v1/nowpayments/create_payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "App-Host": window.location.origin },
+        body: JSON.stringify({ plan: plan.key, amount_cad: priceNum }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Erreur NOWPayments");
+      if (!data.payment_url) throw new Error("URL de paiement introuvable");
+      window.location.href = data.payment_url;
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erreur lors de la création du paiement crypto");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const METHODS: { id: PaymentMethod; label: string; icon: React.ElementType; color: string }[] = [
     { id: "stripe", label: "Carte bancaire", icon: CreditCard, color: "text-indigo-400" },
     { id: "interac", label: "Interac e-Transfer", icon: Banknote, color: "text-emerald-400" },
-    { id: "crypto", label: "Crypto (BTC/USDT)", icon: Bitcoin, color: "text-amber-400" },
+    { id: "crypto", label: "Crypto (NOWPayments)", icon: Bitcoin, color: "text-amber-400" },
   ];
 
   return (
@@ -121,7 +135,7 @@ function PaymentModal({
               return (
                 <button
                   key={m.id}
-                  onClick={() => setMethod(m.id)}
+                  onClick={() => { setMethod(m.id); setError(""); }}
                   className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-medium transition-all ${
                     method === m.id
                       ? "border-indigo-500/60 bg-indigo-500/10 text-white"
@@ -192,7 +206,7 @@ function PaymentModal({
                   <span className="text-emerald-300 font-mono text-sm">cryptoia2026@proton.me</span>
                   <CopyButton text="cryptoia2026@proton.me" />
                 </div>
-                <ol className="space-y-2 text-xs text-gray-300 list-none" start={3}>
+                <ol className="space-y-2 text-xs text-gray-300 list-none">
                   <li className="flex gap-2">
                     <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 font-bold text-xs">3</span>
                     <span>
@@ -218,58 +232,59 @@ function PaymentModal({
             </div>
           )}
 
-          {/* ── Crypto ── */}
+          {/* ── NOWPayments Crypto ── */}
           {method === "crypto" && (
             <div className="space-y-4">
               <div className="bg-amber-500/[0.06] border border-amber-500/20 rounded-xl p-4 space-y-3">
-                <p className="font-semibold text-amber-300 text-sm">₿ Instructions paiement crypto</p>
-                <p className="text-xs text-gray-400">
-                  Envoyez l'équivalent de <strong className="text-white">${plan.price} CAD</strong> en crypto à l'une des adresses ci-dessous.
+                <p className="font-semibold text-amber-300 text-sm">₿ Paiement Crypto via NOWPayments</p>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  {["BTC", "ETH", "USDT", "SOL", "BNB", "LTC"].map((coin) => (
+                    <div key={coin} className="bg-black/20 rounded-lg py-1.5 text-xs font-mono text-gray-300 border border-white/[0.04]">
+                      {coin}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Vous serez redirigé vers la page de paiement sécurisée NOWPayments.
+                  Choisissez votre crypto parmi <strong className="text-white">300+ options</strong>.
+                  Activation automatique après confirmation blockchain.
                 </p>
-
-                {/* BTC */}
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-orange-400">Bitcoin (BTC)</p>
-                  <div className="bg-black/30 rounded-lg p-2.5 flex items-center justify-between gap-2">
-                    <span className="text-gray-300 font-mono text-xs break-all">{CRYPTO_WALLETS.BTC}</span>
-                    <CopyButton text={CRYPTO_WALLETS.BTC} />
+                <div className="space-y-1.5 text-xs text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
+                    <span>Taux de change fixe au moment du paiement</span>
                   </div>
-                </div>
-
-                {/* ETH/USDT ERC-20 */}
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-blue-400">USDT / ETH (ERC-20)</p>
-                  <div className="bg-black/30 rounded-lg p-2.5 flex items-center justify-between gap-2">
-                    <span className="text-gray-300 font-mono text-xs break-all">{CRYPTO_WALLETS.ETH_USDT}</span>
-                    <CopyButton text={CRYPTO_WALLETS.ETH_USDT} />
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
+                    <span>Confirmation automatique (1–30 min)</span>
                   </div>
-                </div>
-
-                {/* TRC-20 USDT */}
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-green-400">USDT (TRC-20 / Tron)</p>
-                  <div className="bg-black/30 rounded-lg p-2.5 flex items-center justify-between gap-2">
-                    <span className="text-gray-300 font-mono text-xs break-all">{CRYPTO_WALLETS.TRC20_USDT}</span>
-                    <CopyButton text={CRYPTO_WALLETS.TRC20_USDT} />
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
+                    <span>Aucun compte NOWPayments requis</span>
                   </div>
-                </div>
-
-                <div className="space-y-1.5 text-xs text-gray-400 pt-1">
-                  <p>📧 Après envoi, envoyez le <strong className="text-white">hash de transaction</strong> à :</p>
-                  <div className="bg-black/30 rounded-lg p-2 flex items-center justify-between">
-                    <span className="text-amber-300 font-mono">cryptoia2026@proton.me</span>
-                    <CopyButton text="cryptoia2026@proton.me" />
-                  </div>
-                  <p>✅ Activation sous <strong className="text-white">2–6h</strong> après confirmation blockchain</p>
                 </div>
               </div>
 
-              <a
-                href="mailto:cryptoia2026@proton.me"
-                className="w-full py-3 rounded-xl bg-amber-500/20 border border-amber-500/30 font-bold text-sm text-amber-300 hover:bg-amber-500/30 transition-all flex items-center justify-center gap-2"
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-xs text-red-400">
+                  {error}
+                </div>
+              )}
+
+              <button
+                onClick={handleNowPayments}
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 font-bold text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Envoyer le hash de transaction <ExternalLink className="w-4 h-4" />
-              </a>
+                {loading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Création du paiement…</>
+                ) : (
+                  <><Bitcoin className="w-4 h-4" /> Payer ${plan.price} CAD en Crypto <ExternalLink className="w-4 h-4" /></>
+                )}
+              </button>
+              <p className="text-center text-xs text-gray-500">
+                🔒 Paiement sécurisé par NOWPayments — Aucune donnée bancaire requise
+              </p>
             </div>
           )}
         </div>
@@ -432,7 +447,7 @@ export default function Abonnements() {
               <Banknote className="w-3.5 h-3.5" /> Interac e-Transfer
             </span>
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
-              <Bitcoin className="w-3.5 h-3.5" /> Crypto (BTC / USDT)
+              <Bitcoin className="w-3.5 h-3.5" /> Crypto via NOWPayments (300+)
             </span>
           </div>
         </div>

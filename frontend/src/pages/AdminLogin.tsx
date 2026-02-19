@@ -8,11 +8,11 @@ const ADMIN_CREDENTIALS = {
 };
 
 export function isAdminAuthenticated(): boolean {
-  return localStorage.getItem("cryptoia_admin_auth") === "true";
+  return sessionStorage.getItem("cryptoia_admin_auth") === "true";
 }
 
 export function adminLogout(): void {
-  localStorage.removeItem("cryptoia_admin_auth");
+  sessionStorage.removeItem("cryptoia_admin_auth");
 }
 
 export default function AdminLogin() {
@@ -33,7 +33,7 @@ export default function AdminLogin() {
         email === ADMIN_CREDENTIALS.email &&
         password === ADMIN_CREDENTIALS.password
       ) {
-        localStorage.setItem("cryptoia_admin_auth", "true");
+        sessionStorage.setItem("cryptoia_admin_auth", "true");
         navigate("/admin");
       } else {
         setError("Email ou mot de passe incorrect.");

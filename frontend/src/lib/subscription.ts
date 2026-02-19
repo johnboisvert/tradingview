@@ -6,6 +6,11 @@ import { isAdminAuthenticated } from "@/pages/AdminLogin";
 
 const USER_PLAN_KEY = "cryptoia_user_plan";
 
+// Clean up stale admin auth from localStorage (was moved to sessionStorage)
+if (typeof window !== "undefined") {
+  localStorage.removeItem("cryptoia_admin_auth");
+}
+
 // Plan hierarchy (higher index = more access)
 export const PLAN_HIERARCHY = ["free", "premium", "advanced", "pro", "elite"] as const;
 export type PlanType = (typeof PLAN_HIERARCHY)[number] | "admin";
@@ -92,8 +97,8 @@ export function isRouteAccessible(routePath: string, plan?: PlanType): boolean {
 
   const slug = ROUTE_TO_SLUG[routePath];
 
-  // If route is not mapped, allow access
-  if (!slug) return true;
+  // If route is not mapped, default to BLOCKED (secure by default)
+  if (!slug) return false;
 
   // Dashboard and basic routes always accessible
   if (slug === "dashboard") return true;

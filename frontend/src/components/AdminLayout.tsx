@@ -102,13 +102,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <ArrowLeft className="w-[18px] h-[18px]" />
             <span>Retour au Dashboard</span>
           </Link>
-          <div className="px-3 py-3 rounded-xl bg-gradient-to-r from-indigo-500/10 to-purple-500/5 border border-indigo-500/10 mb-3">
+          <div className="px-3 py-3 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/5 border border-emerald-500/10 mb-3">
             <div className="flex items-center gap-2 mb-1">
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-xs font-bold text-amber-400">Mode Demo</span>
+              <Zap className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-xs font-bold text-emerald-400">Données Locales</span>
             </div>
             <p className="text-[11px] text-gray-400 leading-relaxed">
-              Connectez votre API backend pour les données réelles.
+              Les données sont sauvegardées dans votre navigateur.
             </p>
           </div>
           <button className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-red-400 hover:bg-red-500/5 transition-all w-full">

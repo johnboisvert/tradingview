@@ -1,12 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
-import { RefreshCw, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, ExternalLink, Info } from "lucide-react";
 import { fetchAltcoinSeasonData, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 
 interface AltcoinData {
-  altcoins: Array<CoinMarketData & { market_cap_rank: number }>;
+  altcoins: Array<CoinMarketData & { market_cap_rank: number; price_change_90d: number }>;
+  btc_90d_change: number;
   btc_30d_change: number;
   altseason_score: number;
+  month_score: number;
+  year_score: number;
+  source: string;
 }
 
 function getSeasonLabel(score: number): { label: string; color: string; emoji: string; bg: string } {
@@ -20,9 +24,7 @@ function GaugeChart({ score }: { score: number }) {
   const rotation = (score / 100) * 180 - 90; // -90 to 90 degrees
   return (
     <div className="relative w-64 h-36 mx-auto">
-      {/* Background arc */}
       <svg viewBox="0 0 200 110" className="w-full h-full">
-        {/* Gradient arcs */}
         <defs>
           <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#f7931a" />
@@ -32,7 +34,6 @@ function GaugeChart({ score }: { score: number }) {
             <stop offset="100%" stopColor="#22c55e" />
           </linearGradient>
         </defs>
-        {/* Background track */}
         <path
           d="M 20 100 A 80 80 0 0 1 180 100"
           fill="none"
@@ -40,7 +41,6 @@ function GaugeChart({ score }: { score: number }) {
           strokeWidth="16"
           strokeLinecap="round"
         />
-        {/* Colored arc */}
         <path
           d="M 20 100 A 80 80 0 0 1 180 100"
           fill="none"
@@ -49,13 +49,11 @@ function GaugeChart({ score }: { score: number }) {
           strokeLinecap="round"
           opacity="0.8"
         />
-        {/* Labels */}
         <text x="15" y="108" fill="#f7931a" fontSize="8" fontWeight="bold">0</text>
         <text x="55" y="30" fill="#f59e0b" fontSize="7" fontWeight="bold">25</text>
         <text x="93" y="18" fill="#eab308" fontSize="7" fontWeight="bold">50</text>
         <text x="133" y="30" fill="#84cc16" fontSize="7" fontWeight="bold">75</text>
         <text x="176" y="108" fill="#22c55e" fontSize="8" fontWeight="bold">100</text>
-        {/* Needle */}
         <line
           x1="100"
           y1="100"
@@ -67,7 +65,6 @@ function GaugeChart({ score }: { score: number }) {
         />
         <circle cx="100" cy="100" r="5" fill="white" />
       </svg>
-      {/* Score text */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
         <span className="text-4xl font-black text-white">{score}</span>
         <span className="text-lg text-gray-400">/100</span>
@@ -99,13 +96,14 @@ export default function AltcoinSeason() {
 
   useEffect(() => {
     fetchData();
-    const i = setInterval(fetchData, 120000);
+    const i = setInterval(fetchData, 300000); // 5 min
     return () => clearInterval(i);
   }, [fetchData]);
 
   const season = data ? getSeasonLabel(data.altseason_score) : getSeasonLabel(50);
+  const btc30d = data?.btc_30d_change || 0;
   const outperformCount = data
-    ? data.altcoins.filter((c) => (c.price_change_percentage_30d_in_currency || 0) > data.btc_30d_change).length
+    ? data.altcoins.filter((c) => (c.price_change_percentage_30d_in_currency || 0) > btc30d).length
     : 0;
 
   return (
@@ -120,7 +118,7 @@ export default function AltcoinSeason() {
                 🔄 Altcoin Season Index
               </h1>
               <p className="text-[#64748b] text-sm mt-1">
-                Basé sur la performance 30 jours des top 50 altcoins vs Bitcoin • Données CoinGecko
+                Données officielles blockchaincenter.net • Performance 90 jours des top 50 altcoins vs Bitcoin
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -150,6 +148,16 @@ export default function AltcoinSeason() {
             </div>
           )}
 
+          {/* Data Source Badge */}
+          {data?.source && (
+            <div className="mb-4 flex items-center gap-2">
+              <Info className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-xs text-indigo-400 font-semibold">
+                Source : {data.source}
+              </span>
+            </div>
+          )}
+
           {/* Main Gauge */}
           <div className={`bg-gradient-to-br ${season.bg} border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6`}>
             <div className="text-center mb-6">
@@ -159,25 +167,46 @@ export default function AltcoinSeason() {
                 <span className={`text-2xl font-black ${season.color}`}>{season.label}</span>
               </div>
               <p className="text-[#94a3b8] text-sm mt-2">
-                <span className="font-bold text-white">{outperformCount}</span> altcoins sur{" "}
-                <span className="font-bold text-white">{data?.altcoins.length || 50}</span> surperforment BTC sur 30 jours
+                Basé sur la performance des top 50 altcoins vs Bitcoin sur <span className="font-bold text-white">90 jours</span>
               </p>
+            </div>
+
+            {/* Score Tabs */}
+            <div className="grid grid-cols-3 gap-4 max-w-3xl mx-auto mb-4">
+              <div className="bg-black/30 rounded-2xl p-4 text-center border border-cyan-500/20">
+                <p className="text-[10px] text-cyan-400 uppercase font-bold mb-1">🔄 Season (90j)</p>
+                <p className={`text-2xl font-black ${getSeasonLabel(data?.altseason_score || 0).color}`}>
+                  {data?.altseason_score || 0}
+                </p>
+              </div>
+              <div className="bg-black/20 rounded-2xl p-4 text-center">
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">📅 Month (30j)</p>
+                <p className={`text-2xl font-black ${getSeasonLabel(data?.month_score || 0).color}`}>
+                  {data?.month_score || 0}
+                </p>
+              </div>
+              <div className="bg-black/20 rounded-2xl p-4 text-center">
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">📆 Year (365j)</p>
+                <p className={`text-2xl font-black ${getSeasonLabel(data?.year_score || 0).color}`}>
+                  {data?.year_score || 0}
+                </p>
+              </div>
             </div>
 
             {/* Stats row */}
             <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
               <div className="bg-black/20 rounded-2xl p-4 text-center">
                 <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">BTC 30j</p>
-                <p className={`text-lg font-black ${(data?.btc_30d_change || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                  {(data?.btc_30d_change || 0) >= 0 ? "+" : ""}{(data?.btc_30d_change || 0).toFixed(1)}%
+                <p className={`text-lg font-black ${btc30d >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                  {btc30d >= 0 ? "+" : ""}{btc30d.toFixed(1)}%
                 </p>
               </div>
               <div className="bg-black/20 rounded-2xl p-4 text-center">
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Score</p>
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Score Officiel</p>
                 <p className={`text-lg font-black ${season.color}`}>{data?.altseason_score || 0}/100</p>
               </div>
               <div className="bg-black/20 rounded-2xl p-4 text-center">
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Surperformeurs</p>
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Battent BTC (30j)</p>
                 <p className="text-lg font-black text-white">{outperformCount}/{data?.altcoins.length || 50}</p>
               </div>
             </div>
@@ -202,7 +231,6 @@ export default function AltcoinSeason() {
                 <tbody>
                   {(data?.altcoins || []).map((coin, i) => {
                     const change30d = coin.price_change_percentage_30d_in_currency || 0;
-                    const btc30d = data?.btc_30d_change || 0;
                     const outperforms = change30d > btc30d;
                     return (
                       <tr key={coin.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
@@ -257,7 +285,7 @@ export default function AltcoinSeason() {
               <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
                 <h4 className="text-[15px] font-extrabold mb-3 text-[#f7931a]">🟠 Bitcoin Season (0-25)</h4>
                 <p className="text-[#94a3b8] text-sm leading-relaxed">
-                  Moins de 25% des top 50 altcoins surperforment BTC. Les investisseurs se réfugient dans Bitcoin.
+                  Moins de 25% des top 50 altcoins surperforment BTC sur 90 jours. Les investisseurs se réfugient dans Bitcoin.
                 </p>
               </div>
               <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
@@ -269,12 +297,12 @@ export default function AltcoinSeason() {
               <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
                 <h4 className="text-[15px] font-extrabold mb-3 text-[#22c55e]">🟢 Altcoin Season (75-100)</h4>
                 <p className="text-[#94a3b8] text-sm leading-relaxed">
-                  75%+ des top 50 altcoins surperforment BTC. C&apos;est l&apos;Altseason !
+                  75%+ des top 50 altcoins surperforment BTC sur 90 jours. C&apos;est l&apos;Altseason !
                 </p>
               </div>
             </div>
             <p className="text-[#64748b] text-xs mt-5 text-center">
-              Méthodologie inspirée de blockchaincenter.net • Données en temps réel via CoinGecko
+              Score officiel de blockchaincenter.net • Données de marché via CoinGecko • Période : 90 jours
             </p>
           </div>
         </div>

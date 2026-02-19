@@ -37,7 +37,11 @@ function getSeasonLabel(score: number): { label: string; color: string; emoji: s
 }
 
 function GaugeChart({ score }: { score: number }) {
-  const rotation = (score / 100) * 180 - 90; // -90 to 90 degrees
+  // Angle in radians: score 0 → π (left), score 50 → π/2 (top), score 100 → 0 (right)
+  const angle = Math.PI - (score / 100) * Math.PI;
+  const needleX = 100 + 65 * Math.cos(angle);
+  const needleY = 100 - 65 * Math.sin(angle); // negative because SVG Y-axis points down
+
   return (
     <div className="relative w-64 h-36 mx-auto">
       <svg viewBox="0 0 200 110" className="w-full h-full">
@@ -73,8 +77,8 @@ function GaugeChart({ score }: { score: number }) {
         <line
           x1="100"
           y1="100"
-          x2={100 + 65 * Math.cos((rotation * Math.PI) / 180)}
-          y2={100 + 65 * Math.sin((rotation * Math.PI) / 180)}
+          x2={needleX}
+          y2={needleY}
           stroke="white"
           strokeWidth="2.5"
           strokeLinecap="round"

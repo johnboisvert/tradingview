@@ -84,6 +84,7 @@ const NAV_SECTIONS = [
     items: [
       { path: "/ai-assistant", label: "AI Assistant", icon: Bot },
       { path: "/prediction-ia", label: "Prédiction IA", icon: Sparkles },
+      { path: "/crypto-ia", label: "Crypto IA", icon: Bot },
       { path: "/token-scanner", label: "AI Token Scanner", icon: Search },
       { path: "/opportunity-scanner", label: "Scanner Opportunités", icon: Scan },
       { path: "/whale-watcher", label: "Whale Watcher", icon: Fish },

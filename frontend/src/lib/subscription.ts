@@ -65,6 +65,7 @@ const ROUTE_TO_SLUG: Record<string, string> = {
   "/timeframe-analysis": "technical-analyzer",
   "/ai-assistant": "ai-coach",
   "/prediction-ia": "ai-signals",
+  "/crypto-ia": "ai-signals",
   "/token-scanner": "token-scanner",
   "/opportunity-scanner": "ai-signals",
   "/whale-watcher": "ai-whale-tracker",

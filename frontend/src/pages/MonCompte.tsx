@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
-import { getUserPlan, setUserPlan, getPlanDisplayInfo, PLAN_HIERARCHY, type PlanType } from "@/lib/subscription";
-import { User, Shield, Bell, Key, LogOut, Calendar, CreditCard, Settings, Eye, EyeOff, Save, CheckCircle, Crown } from "lucide-react";
+import { getUserPlan, setUserPlan, getPlanDisplayInfo, USER_VISIBLE_PLANS, type PlanType } from "@/lib/subscription";
+import { isAdminAuthenticated } from "@/pages/AdminLogin";
+import { User, Shield, Bell, Key, LogOut, Calendar, CreditCard, Settings, Eye, EyeOff, Save, CheckCircle, Crown, ShieldCheck } from "lucide-react";
 
 export default function MonCompte() {
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications" | "subscription">("profile");
   const [showApiKey, setShowApiKey] = useState(false);
   const [saved, setSaved] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<PlanType>(getUserPlan());
+  const isAdmin = isAdminAuthenticated();
 
   useEffect(() => {
     setCurrentPlan(getUserPlan());
@@ -24,7 +26,6 @@ export default function MonCompte() {
     setSaved(true);
     setTimeout(() => {
       setSaved(false);
-      // Force sidebar re-render by reloading
       window.location.reload();
     }, 500);
   };
@@ -59,8 +60,8 @@ export default function MonCompte() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
             { icon: Calendar, label: "Membre depuis", value: "Jan 2026", color: "text-blue-400" },
-            { icon: CreditCard, label: "Plan actuel", value: planInfo.label, color: planInfo.color },
-            { icon: Shield, label: "Statut", value: "Actif", color: "text-emerald-400" },
+            { icon: isAdmin ? ShieldCheck : CreditCard, label: "Plan actuel", value: planInfo.label, color: planInfo.color },
+            { icon: Shield, label: "Statut", value: isAdmin ? "Admin" : "Actif", color: isAdmin ? "text-red-400" : "text-emerald-400" },
             { icon: Bell, label: "Alertes actives", value: "3", color: "text-amber-400" },
           ].map((item, i) => {
             const Icon = item.icon;
@@ -128,6 +129,17 @@ export default function MonCompte() {
             <div className="space-y-6">
               <h2 className="text-lg font-bold flex items-center gap-2"><Crown className="w-5 h-5 text-amber-400" /> Gestion de l'Abonnement</h2>
 
+              {/* Admin Notice */}
+              {isAdmin && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                  <ShieldCheck className="w-5 h-5 text-red-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold text-red-400">Mode Administrateur Actif</p>
+                    <p className="text-xs text-gray-400">Vous avez un accès complet à toutes les fonctionnalités. Déconnectez-vous de l'admin pour revenir au plan utilisateur.</p>
+                  </div>
+                </div>
+              )}
+
               {/* Current Plan */}
               <div className={`bg-gradient-to-r ${planInfo.gradient} rounded-2xl p-6 relative overflow-hidden`}>
                 <div className="absolute inset-0 bg-black/60" />
@@ -135,45 +147,49 @@ export default function MonCompte() {
                   <p className="text-xs text-gray-300 uppercase tracking-wider mb-1">Plan actuel</p>
                   <h3 className="text-2xl font-extrabold mb-2">{planInfo.label}</h3>
                   <p className="text-sm text-gray-300">
-                    {currentPlan === "free"
+                    {currentPlan === "admin"
+                      ? "Accès administrateur complet à toutes les fonctionnalités."
+                      : currentPlan === "free"
                       ? "Accès limité aux fonctionnalités de base."
                       : `Vous avez accès à toutes les fonctionnalités du plan ${planInfo.label}.`}
                   </p>
                 </div>
               </div>
 
-              {/* Plan Selector */}
-              <div>
-                <h3 className="text-sm font-bold text-gray-300 mb-3">Changer de plan (démo)</h3>
-                <p className="text-xs text-gray-500 mb-4">
-                  Sélectionnez un plan pour simuler l'accès aux différentes fonctionnalités.
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                  {PLAN_HIERARCHY.map((plan) => {
-                    const info = getPlanDisplayInfo(plan);
-                    const isCurrentPlan = plan === currentPlan;
-                    return (
-                      <button
-                        key={plan}
-                        onClick={() => handlePlanChange(plan)}
-                        className={`relative p-4 rounded-xl border transition-all text-center ${
-                          isCurrentPlan
-                            ? `bg-gradient-to-r ${info.gradient} border-transparent text-white shadow-lg`
-                            : "bg-white/[0.03] border-white/[0.08] text-gray-400 hover:bg-white/[0.05] hover:border-white/[0.12]"
-                        }`}
-                      >
-                        {isCurrentPlan && (
-                          <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white flex items-center justify-center">
-                            <CheckCircle className="w-4 h-4 text-emerald-500" />
-                          </div>
-                        )}
-                        <Crown className={`w-6 h-6 mx-auto mb-2 ${isCurrentPlan ? "text-white" : info.color}`} />
-                        <p className={`text-sm font-bold ${isCurrentPlan ? "text-white" : info.color}`}>{info.label}</p>
-                      </button>
-                    );
-                  })}
+              {/* Plan Selector - only show for non-admin users */}
+              {!isAdmin && (
+                <div>
+                  <h3 className="text-sm font-bold text-gray-300 mb-3">Changer de plan (démo)</h3>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Sélectionnez un plan pour simuler l'accès aux différentes fonctionnalités.
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {USER_VISIBLE_PLANS.map((plan) => {
+                      const info = getPlanDisplayInfo(plan);
+                      const isCurrentPlan = plan === currentPlan;
+                      return (
+                        <button
+                          key={plan}
+                          onClick={() => handlePlanChange(plan)}
+                          className={`relative p-4 rounded-xl border transition-all text-center ${
+                            isCurrentPlan
+                              ? `bg-gradient-to-r ${info.gradient} border-transparent text-white shadow-lg`
+                              : "bg-white/[0.03] border-white/[0.08] text-gray-400 hover:bg-white/[0.05] hover:border-white/[0.12]"
+                          }`}
+                        >
+                          {isCurrentPlan && (
+                            <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white flex items-center justify-center">
+                              <CheckCircle className="w-4 h-4 text-emerald-500" />
+                            </div>
+                          )}
+                          <Crown className={`w-6 h-6 mx-auto mb-2 ${isCurrentPlan ? "text-white" : info.color}`} />
+                          <p className={`text-sm font-bold ${isCurrentPlan ? "text-white" : info.color}`}>{info.label}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {saved && (
                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">

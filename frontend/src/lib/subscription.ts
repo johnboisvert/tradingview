@@ -6,18 +6,12 @@ import { isAdminAuthenticated } from "@/pages/AdminLogin";
 
 const USER_PLAN_KEY = "cryptoia_user_plan";
 
-// SECURITY: Force reset user plan on every load.
-// Since there is no real payment/auth system yet, no user should have a paid plan.
-// Only admin (via sessionStorage admin auth) gets full access.
-// This prevents stale localStorage data from the old demo plan switcher.
+// SECURITY: Clean up legacy admin auth key (moved to sessionStorage).
+// We no longer force-reset paid plans — plan is set by Stripe webhook verification only.
 if (typeof window !== "undefined") {
   localStorage.removeItem("cryptoia_admin_auth"); // Clean up stale admin auth (moved to sessionStorage)
-  
-  // Force plan to "free" - paid plans will only be granted through a real payment system in the future
-  const currentStoredPlan = localStorage.getItem(USER_PLAN_KEY);
-  if (currentStoredPlan && currentStoredPlan !== "free") {
-    localStorage.setItem(USER_PLAN_KEY, "free");
-  }
+  // NOTE: Do NOT reset cryptoia_user_plan here — paid plans are set by backend verification
+  // and must persist across page reloads for paying users.
 }
 
 // Plan hierarchy (higher index = more access)

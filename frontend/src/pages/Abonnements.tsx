@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import { getPlanPrices, type PlanPrices } from "@/lib/api";
+import { getUserPlan } from "@/lib/subscription";
 import {
   CreditCard, Check, Star, Zap, Crown, Rocket, ArrowRight,
   X, Bitcoin, Banknote, Loader2, Copy, CheckCheck, ExternalLink,
@@ -324,6 +325,7 @@ function PaymentModal({
 export default function Abonnements() {
   const [prices, setPrices] = useState<PlanPrices | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const currentPlan = getUserPlan();
 
   useEffect(() => {
     getPlanPrices().then(setPrices);
@@ -441,8 +443,11 @@ export default function Abonnements() {
     },
   ];
 
+  const isCurrentPlan = (planKey: string) => planKey === currentPlan;
+
   const handlePlanClick = (plan: Plan) => {
-    if (plan.disabled) return;
+    if (isCurrentPlan(plan.key)) return;
+    if (plan.key === "free") return;
     if (plan.key === "elite") {
       window.location.href = "mailto:cryptoia2026@proton.me?subject=Abonnement Elite CryptoIA";
       return;
@@ -516,18 +521,26 @@ export default function Abonnements() {
                 </ul>
 
                 <button
-                  disabled={plan.disabled}
+                  disabled={isCurrentPlan(plan.key) || plan.key === "free"}
                   onClick={() => handlePlanClick(plan)}
                   className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
-                    plan.disabled
+                    isCurrentPlan(plan.key)
+                      ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 cursor-default"
+                      : plan.key === "free"
                       ? "bg-white/[0.05] text-gray-500 cursor-default"
                       : plan.popular
                       ? "bg-gradient-to-r from-amber-500 to-orange-600 hover:brightness-110 text-white"
                       : "bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-white"
                   }`}
                 >
-                  {plan.cta}
-                  {!plan.disabled && <ArrowRight className="w-3.5 h-3.5" />}
+                  {isCurrentPlan(plan.key) ? (
+                    <><Check className="w-3.5 h-3.5" /> Plan Actuel</>
+                  ) : (
+                    <>
+                      {plan.cta}
+                      {plan.key !== "free" && <ArrowRight className="w-3.5 h-3.5" />}
+                    </>
+                  )}
                 </button>
               </div>
             );

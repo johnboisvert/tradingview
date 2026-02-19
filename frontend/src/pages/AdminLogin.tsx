@@ -2,9 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Lock, Mail, Eye, EyeOff, AlertCircle } from "lucide-react";
 
+// SECURITY: Admin credentials read from environment variables at build time.
+// Set VITE_ADMIN_EMAIL and VITE_ADMIN_PASSWORD in your .env file or Railway environment.
+// Fallback values are used only if env vars are not set (development only).
 const ADMIN_CREDENTIALS = {
-  email: "admin@cryptoia.com",
-  password: "CryptoIA2024!",
+  email: import.meta.env.VITE_ADMIN_EMAIL || "admin@cryptoia.com",
+  password: import.meta.env.VITE_ADMIN_PASSWORD || "CryptoIA2024!",
 };
 
 export function isAdminAuthenticated(): boolean {

@@ -26,8 +26,9 @@ export default function PaymentSuccess() {
     if (provider === "nowpayments") {
       if (planParam) {
         setPlanName(planParam);
-        // Optimistically store plan; webhook will confirm server-side
-        localStorage.setItem("cryptoia_user_plan", planParam);
+        // SECURITY FIX: DO NOT set plan from URL params — plan activation must be done
+        // server-side via IPN webhook after blockchain confirmation.
+        // Removed: localStorage.setItem("cryptoia_user_plan", planParam);
         setStatus("success");
       } else {
         setStatus("error");

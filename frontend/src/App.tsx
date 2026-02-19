@@ -54,6 +54,7 @@ import Telechargement from "./pages/Telechargement";
 import AdminLogin from "./pages/AdminLogin";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ProtectedPlanRoute from "./components/ProtectedPlanRoute";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import NotFound from "./pages/NotFound";
 
 // Helper to wrap a page component with plan protection
@@ -118,6 +119,7 @@ function App() {
 
         {/* Compte - always accessible */}
         <Route path="/abonnements" element={<Abonnements />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/mon-compte" element={<MonCompte />} />
 
         {/* Admin Login */}

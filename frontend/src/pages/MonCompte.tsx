@@ -1,22 +1,41 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
-import { User, Shield, Bell, Key, LogOut, Mail, Calendar, CreditCard, Settings, Eye, EyeOff, Save, CheckCircle } from "lucide-react";
+import { getUserPlan, setUserPlan, getPlanDisplayInfo, PLAN_HIERARCHY, type PlanType } from "@/lib/subscription";
+import { User, Shield, Bell, Key, LogOut, Calendar, CreditCard, Settings, Eye, EyeOff, Save, CheckCircle, Crown } from "lucide-react";
 
 export default function MonCompte() {
-  const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications" | "api">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications" | "subscription">("profile");
   const [showApiKey, setShowApiKey] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<PlanType>(getUserPlan());
+
+  useEffect(() => {
+    setCurrentPlan(getUserPlan());
+  }, []);
 
   const handleSave = () => {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const handlePlanChange = (plan: PlanType) => {
+    setUserPlan(plan);
+    setCurrentPlan(plan);
+    setSaved(true);
+    setTimeout(() => {
+      setSaved(false);
+      // Force sidebar re-render by reloading
+      window.location.reload();
+    }, 500);
+  };
+
+  const planInfo = getPlanDisplayInfo(currentPlan);
+
   const tabs = [
     { id: "profile" as const, label: "Profil", icon: User },
+    { id: "subscription" as const, label: "Abonnement", icon: Crown },
     { id: "security" as const, label: "Sécurité", icon: Shield },
     { id: "notifications" as const, label: "Notifications", icon: Bell },
-    { id: "api" as const, label: "Clés API", icon: Key },
   ];
 
   return (
@@ -31,7 +50,7 @@ export default function MonCompte() {
             </div>
             <div>
               <h1 className="text-2xl font-extrabold">Mon Compte</h1>
-              <p className="text-sm text-gray-400">Gérez votre profil, sécurité et préférences</p>
+              <p className="text-sm text-gray-400">Gérez votre profil, abonnement et préférences</p>
             </div>
           </div>
         </div>
@@ -40,8 +59,8 @@ export default function MonCompte() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
             { icon: Calendar, label: "Membre depuis", value: "Jan 2026", color: "text-blue-400" },
-            { icon: CreditCard, label: "Plan actuel", value: "Gratuit", color: "text-gray-400" },
-            { icon: Shield, label: "Statut", value: "Vérifié", color: "text-emerald-400" },
+            { icon: CreditCard, label: "Plan actuel", value: planInfo.label, color: planInfo.color },
+            { icon: Shield, label: "Statut", value: "Actif", color: "text-emerald-400" },
             { icon: Bell, label: "Alertes actives", value: "3", color: "text-amber-400" },
           ].map((item, i) => {
             const Icon = item.icon;
@@ -78,80 +97,140 @@ export default function MonCompte() {
             <div className="space-y-5">
               <h2 className="text-lg font-bold flex items-center gap-2"><User className="w-5 h-5 text-emerald-400" /> Informations du Profil</h2>
               <div className="grid md:grid-cols-2 gap-4">
-                {[
-                  { label: "Nom d'utilisateur", placeholder: "trader_pro", type: "text" },
-                  { label: "Email", placeholder: "email@example.com", type: "email" },
-                  { label: "Prénom", placeholder: "Jean", type: "text" },
-                  { label: "Nom", placeholder: "Dupont", type: "text" },
-                ].map((field) => (
-                  <div key={field.label}>
-                    <label className="text-xs text-gray-500 font-semibold mb-1 block">{field.label}</label>
-                    <input type={field.type} placeholder={field.placeholder}
-                      className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/50" />
-                  </div>
-                ))}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nom complet</label>
+                  <input type="text" defaultValue="Utilisateur CryptoIA" className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Email</label>
+                  <input type="email" defaultValue="user@cryptoia.com" className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Téléphone</label>
+                  <input type="tel" defaultValue="+1 (514) 000-0000" className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Fuseau horaire</label>
+                  <select className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50">
+                    <option value="est">EST (UTC-5)</option>
+                    <option value="pst">PST (UTC-8)</option>
+                    <option value="cet">CET (UTC+1)</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="text-xs text-gray-500 font-semibold mb-1 block">Bio</label>
-                <textarea placeholder="Décrivez votre expérience en trading..."
-                  className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/50 h-24 resize-none" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 font-semibold mb-1 block">Fuseau horaire</label>
-                <select className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-sm text-white">
-                  <option>Europe/Paris (UTC+1)</option>
-                  <option>America/Montreal (UTC-5)</option>
-                  <option>America/New_York (UTC-5)</option>
-                  <option>Asia/Tokyo (UTC+9)</option>
-                </select>
-              </div>
-              <button onClick={handleSave}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 font-bold text-sm hover:brightness-110 transition-all">
-                {saved ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                {saved ? "Sauvegardé !" : "Sauvegarder"}
+              <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-sm hover:brightness-110 transition-all">
+                {saved ? <><CheckCircle className="w-4 h-4" /> Enregistré !</> : <><Save className="w-4 h-4" /> Enregistrer</>}
               </button>
+            </div>
+          )}
+
+          {activeTab === "subscription" && (
+            <div className="space-y-6">
+              <h2 className="text-lg font-bold flex items-center gap-2"><Crown className="w-5 h-5 text-amber-400" /> Gestion de l'Abonnement</h2>
+
+              {/* Current Plan */}
+              <div className={`bg-gradient-to-r ${planInfo.gradient} rounded-2xl p-6 relative overflow-hidden`}>
+                <div className="absolute inset-0 bg-black/60" />
+                <div className="relative z-10">
+                  <p className="text-xs text-gray-300 uppercase tracking-wider mb-1">Plan actuel</p>
+                  <h3 className="text-2xl font-extrabold mb-2">{planInfo.label}</h3>
+                  <p className="text-sm text-gray-300">
+                    {currentPlan === "free"
+                      ? "Accès limité aux fonctionnalités de base."
+                      : `Vous avez accès à toutes les fonctionnalités du plan ${planInfo.label}.`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Plan Selector */}
+              <div>
+                <h3 className="text-sm font-bold text-gray-300 mb-3">Changer de plan (démo)</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  Sélectionnez un plan pour simuler l'accès aux différentes fonctionnalités.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {PLAN_HIERARCHY.map((plan) => {
+                    const info = getPlanDisplayInfo(plan);
+                    const isCurrentPlan = plan === currentPlan;
+                    return (
+                      <button
+                        key={plan}
+                        onClick={() => handlePlanChange(plan)}
+                        className={`relative p-4 rounded-xl border transition-all text-center ${
+                          isCurrentPlan
+                            ? `bg-gradient-to-r ${info.gradient} border-transparent text-white shadow-lg`
+                            : "bg-white/[0.03] border-white/[0.08] text-gray-400 hover:bg-white/[0.05] hover:border-white/[0.12]"
+                        }`}
+                      >
+                        {isCurrentPlan && (
+                          <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white flex items-center justify-center">
+                            <CheckCircle className="w-4 h-4 text-emerald-500" />
+                          </div>
+                        )}
+                        <Crown className={`w-6 h-6 mx-auto mb-2 ${isCurrentPlan ? "text-white" : info.color}`} />
+                        <p className={`text-sm font-bold ${isCurrentPlan ? "text-white" : info.color}`}>{info.label}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {saved && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Plan mis à jour ! La page va se rafraîchir...</span>
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === "security" && (
             <div className="space-y-5">
-              <h2 className="text-lg font-bold flex items-center gap-2"><Shield className="w-5 h-5 text-blue-400" /> Sécurité</h2>
+              <h2 className="text-lg font-bold flex items-center gap-2"><Shield className="w-5 h-5 text-emerald-400" /> Sécurité</h2>
               <div className="space-y-4">
-                <div className="bg-black/20 rounded-xl p-5 border border-white/[0.04]">
-                  <h3 className="font-bold text-sm mb-3">Changer le mot de passe</h3>
-                  <div className="space-y-3">
-                    <input type="password" placeholder="Mot de passe actuel"
-                      className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50" />
-                    <input type="password" placeholder="Nouveau mot de passe"
-                      className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50" />
-                    <input type="password" placeholder="Confirmer le nouveau mot de passe"
-                      className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50" />
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Mot de passe actuel</label>
+                  <input type="password" placeholder="••••••••" className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nouveau mot de passe</label>
+                  <input type="password" placeholder="••••••••" className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Confirmer le mot de passe</label>
+                  <input type="password" placeholder="••••••••" className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50" />
+                </div>
+              </div>
+              <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-sm hover:brightness-110 transition-all">
+                {saved ? <><CheckCircle className="w-4 h-4" /> Enregistré !</> : <><Save className="w-4 h-4" /> Mettre à jour</>}
+              </button>
+
+              {/* 2FA */}
+              <div className="mt-6 p-4 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold">Authentification à deux facteurs (2FA)</h3>
+                    <p className="text-xs text-gray-500 mt-1">Ajoutez une couche de sécurité supplémentaire</p>
                   </div>
-                  <button className="mt-3 px-5 py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/20 text-blue-400 font-bold text-sm hover:bg-blue-500/25 transition-all">
-                    Mettre à jour
+                  <button className="px-4 py-2 rounded-lg bg-white/[0.06] text-xs font-semibold text-gray-400 hover:text-white hover:bg-white/[0.1] transition-all">
+                    Activer
                   </button>
                 </div>
-                <div className="bg-black/20 rounded-xl p-5 border border-white/[0.04]">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-bold text-sm">Authentification 2FA</h3>
-                      <p className="text-xs text-gray-500 mt-1">Ajoutez une couche de sécurité supplémentaire</p>
-                    </div>
-                    <button className="px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 font-bold text-xs hover:bg-emerald-500/25 transition-all">
-                      Activer
-                    </button>
+              </div>
+
+              {/* API Keys */}
+              <div className="mt-4 p-4 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-bold flex items-center gap-2"><Key className="w-4 h-4 text-amber-400" /> Clé API</h3>
+                    <p className="text-xs text-gray-500 mt-1">Votre clé pour accéder à l'API CryptoIA</p>
                   </div>
+                  <button onClick={() => setShowApiKey(!showApiKey)} className="text-gray-500 hover:text-white transition-colors">
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-                <div className="bg-black/20 rounded-xl p-5 border border-white/[0.04]">
-                  <h3 className="font-bold text-sm mb-2">Sessions actives</h3>
-                  <div className="space-y-2">
-                    {["Chrome — Paris, France (actuelle)", "Safari — Montréal, Canada"].map((s, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs">
-                        <span className="text-gray-400">{s}</span>
-                        {i > 0 && <button className="text-red-400 font-bold hover:text-red-300">Déconnecter</button>}
-                      </div>
-                    ))}
-                  </div>
+                <div className="px-4 py-3 bg-black/30 rounded-lg font-mono text-xs text-gray-400">
+                  {showApiKey ? "cia_sk_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" : "cia_sk_live_••••••••••••••••••••••••••••"}
                 </div>
               </div>
             </div>
@@ -159,79 +238,42 @@ export default function MonCompte() {
 
           {activeTab === "notifications" && (
             <div className="space-y-5">
-              <h2 className="text-lg font-bold flex items-center gap-2"><Bell className="w-5 h-5 text-amber-400" /> Préférences de Notification</h2>
+              <h2 className="text-lg font-bold flex items-center gap-2"><Bell className="w-5 h-5 text-emerald-400" /> Préférences de Notifications</h2>
               {[
-                { label: "Alertes de prix", desc: "Notification quand un prix cible est atteint", on: true },
-                { label: "Signaux de trading", desc: "Nouveaux signaux IA détectés", on: true },
-                { label: "Résumé quotidien", desc: "Récapitulatif journalier par email", on: false },
-                { label: "Mises à jour produit", desc: "Nouvelles fonctionnalités et améliorations", on: true },
-                { label: "Newsletter", desc: "Analyses hebdomadaires du marché", on: false },
+                { label: "Alertes de prix", desc: "Recevez des notifications quand un prix atteint votre cible", enabled: true },
+                { label: "Signaux IA", desc: "Notifications pour les nouveaux signaux de trading", enabled: true },
+                { label: "Nouvelles importantes", desc: "Alertes pour les actualités crypto majeures", enabled: false },
+                { label: "Rapport hebdomadaire", desc: "Résumé de vos performances chaque semaine", enabled: true },
+                { label: "Mises à jour produit", desc: "Nouvelles fonctionnalités et améliorations", enabled: false },
               ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between bg-black/20 rounded-xl p-4 border border-white/[0.04]">
+                <div key={i} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl">
                   <div>
-                    <h3 className="font-bold text-sm">{item.label}</h3>
-                    <p className="text-xs text-gray-500">{item.desc}</p>
+                    <p className="text-sm font-bold">{item.label}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
                   </div>
-                  <div className={`w-12 h-6 rounded-full transition-all relative cursor-pointer ${item.on ? "bg-amber-500" : "bg-white/[0.1]"}`}>
-                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${item.on ? "left-7" : "left-1"}`} />
-                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" defaultChecked={item.enabled} className="sr-only peer" />
+                    <div className="w-10 h-5 bg-white/[0.08] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 peer-checked:after:bg-white" />
+                  </label>
                 </div>
               ))}
-            </div>
-          )}
-
-          {activeTab === "api" && (
-            <div className="space-y-5">
-              <h2 className="text-lg font-bold flex items-center gap-2"><Key className="w-5 h-5 text-purple-400" /> Clés API</h2>
-              <div className="bg-black/20 rounded-xl p-5 border border-white/[0.04]">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-sm">Clé API CryptoIA</h3>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/20">Active</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input type={showApiKey ? "text" : "password"} readOnly value="cia_sk_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
-                    className="flex-1 px-4 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-sm text-white font-mono" />
-                  <button onClick={() => setShowApiKey(!showApiKey)}
-                    className="p-3 rounded-xl bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.1] transition-all">
-                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <p className="text-[10px] text-gray-600 mt-2">⚠️ Ne partagez jamais votre clé API. Régénérez-la si compromise.</p>
-              </div>
-              <div className="bg-black/20 rounded-xl p-5 border border-white/[0.04]">
-                <h3 className="font-bold text-sm mb-3">Connexions Externes</h3>
-                <div className="space-y-3">
-                  {[
-                    { name: "Binance", status: "Non connecté", color: "text-gray-500" },
-                    { name: "TradingView", status: "Non connecté", color: "text-gray-500" },
-                    { name: "Telegram Bot", status: "Non connecté", color: "text-gray-500" },
-                  ].map((conn, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <div>
-                        <span className="text-sm font-semibold">{conn.name}</span>
-                        <span className={`ml-2 text-xs ${conn.color}`}>{conn.status}</span>
-                      </div>
-                      <button className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-xs font-bold hover:bg-white/[0.1] transition-all">
-                        Connecter
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-sm hover:brightness-110 transition-all">
+                {saved ? <><CheckCircle className="w-4 h-4" /> Enregistré !</> : <><Save className="w-4 h-4" /> Enregistrer</>}
+              </button>
             </div>
           )}
         </div>
 
         {/* Danger Zone */}
-        <div className="mt-6 bg-red-500/[0.04] border border-red-500/15 rounded-2xl p-6">
-          <h3 className="font-bold text-sm text-red-400 mb-2">Zone Dangereuse</h3>
-          <p className="text-xs text-gray-500 mb-3">Ces actions sont irréversibles. Procédez avec prudence.</p>
+        <div className="mt-6 bg-red-500/[0.03] border border-red-500/10 rounded-2xl p-6">
+          <h3 className="text-sm font-bold text-red-400 mb-2">Zone Dangereuse</h3>
+          <p className="text-xs text-gray-500 mb-4">Ces actions sont irréversibles.</p>
           <div className="flex gap-3">
-            <button className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold hover:bg-red-500/20 transition-all flex items-center gap-2">
-              <LogOut className="w-3 h-3" /> Déconnexion
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition-all">
+              <LogOut className="w-3.5 h-3.5" /> Déconnexion
             </button>
-            <button className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold hover:bg-red-500/20 transition-all">
-              Supprimer le compte
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition-all">
+              <Settings className="w-3.5 h-3.5" /> Supprimer le compte
             </button>
           </div>
         </div>

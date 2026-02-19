@@ -53,65 +53,70 @@ import TradingAcademy from "./pages/TradingAcademy";
 import Telechargement from "./pages/Telechargement";
 import AdminLogin from "./pages/AdminLogin";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
+import ProtectedPlanRoute from "./components/ProtectedPlanRoute";
 import NotFound from "./pages/NotFound";
+
+// Helper to wrap a page component with plan protection
+function PlanProtected({ path, children }: { path: string; children: React.ReactNode }) {
+  return <ProtectedPlanRoute routePath={path}>{children}</ProtectedPlanRoute>;
+}
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Main Pages - Marché */}
+        {/* Main Pages - Marché (always accessible: dashboard, fear-greed, heatmap) */}
         <Route path="/" element={<Index />} />
-        <Route path="/fear-greed" element={<FearGreed />} />
-        <Route path="/dominance" element={<Dominance />} />
-        <Route path="/altcoin-season" element={<AltcoinSeason />} />
-        <Route path="/heatmap" element={<Heatmap />} />
-        <Route path="/bullrun-phase" element={<BullrunPhase />} />
-        <Route path="/market-regime" element={<MarketRegime />} />
+        <Route path="/fear-greed" element={<PlanProtected path="/fear-greed"><FearGreed /></PlanProtected>} />
+        <Route path="/dominance" element={<PlanProtected path="/dominance"><Dominance /></PlanProtected>} />
+        <Route path="/altcoin-season" element={<PlanProtected path="/altcoin-season"><AltcoinSeason /></PlanProtected>} />
+        <Route path="/heatmap" element={<PlanProtected path="/heatmap"><Heatmap /></PlanProtected>} />
+        <Route path="/bullrun-phase" element={<PlanProtected path="/bullrun-phase"><BullrunPhase /></PlanProtected>} />
+        <Route path="/market-regime" element={<PlanProtected path="/market-regime"><MarketRegime /></PlanProtected>} />
 
         {/* Trading */}
-        <Route path="/strategy" element={<Strategy />} />
-        <Route path="/spot-trading" element={<SpotTrading />} />
-        <Route path="/calculatrice" element={<Calculatrice />} />
-        <Route path="/trades" element={<Trades />} />
-        <Route path="/risk-management" element={<RiskManagement />} />
-        <Route path="/watchlist" element={<Watchlist />} />
-        <Route path="/graphiques" element={<Graphiques />} />
-        <Route path="/backtesting" element={<Backtesting />} />
-        <Route path="/portfolio-tracker" element={<PortfolioTracker />} />
-        <Route path="/timeframe-analysis" element={<TimeframeAnalysis />} />
+        <Route path="/strategy" element={<PlanProtected path="/strategy"><Strategy /></PlanProtected>} />
+        <Route path="/spot-trading" element={<PlanProtected path="/spot-trading"><SpotTrading /></PlanProtected>} />
+        <Route path="/calculatrice" element={<PlanProtected path="/calculatrice"><Calculatrice /></PlanProtected>} />
+        <Route path="/trades" element={<PlanProtected path="/trades"><Trades /></PlanProtected>} />
+        <Route path="/risk-management" element={<PlanProtected path="/risk-management"><RiskManagement /></PlanProtected>} />
+        <Route path="/watchlist" element={<PlanProtected path="/watchlist"><Watchlist /></PlanProtected>} />
+        <Route path="/graphiques" element={<PlanProtected path="/graphiques"><Graphiques /></PlanProtected>} />
+        <Route path="/backtesting" element={<PlanProtected path="/backtesting"><Backtesting /></PlanProtected>} />
+        <Route path="/portfolio-tracker" element={<PlanProtected path="/portfolio-tracker"><PortfolioTracker /></PlanProtected>} />
+        <Route path="/timeframe-analysis" element={<PlanProtected path="/timeframe-analysis"><TimeframeAnalysis /></PlanProtected>} />
 
         {/* Intelligence IA */}
-        <Route path="/ai-assistant" element={<AIAssistant />} />
-        <Route path="/prediction-ia" element={<PredictionIA />} />
-        <Route path="/token-scanner" element={<TokenScanner />} />
-        <Route path="/whale-watcher" element={<WhaleWatcher />} />
-        <Route path="/technical-analysis" element={<TechnicalAnalysis />} />
-        <Route path="/gem-hunter" element={<GemHunter />} />
-        <Route path="/position-sizer" element={<PositionSizer />} />
-        <Route path="/ai-signals" element={<AISignals />} />
-        <Route path="/ai-patterns" element={<AIPatterns />} />
-        <Route path="/ai-sentiment" element={<AISentiment />} />
-        <Route path="/ai-setup-builder" element={<AISetupBuilder />} />
-        <Route path="/narrative-radar" element={<NarrativeRadar />} />
-        <Route path="/rug-scam-shield" element={<RugScamShield />} />
-        <Route path="/opportunity-scanner" element={<OpportunityScanner />} />
-        <Route path="/pepites-crypto" element={<PepitesCrypto />} />
+        <Route path="/ai-assistant" element={<PlanProtected path="/ai-assistant"><AIAssistant /></PlanProtected>} />
+        <Route path="/prediction-ia" element={<PlanProtected path="/prediction-ia"><PredictionIA /></PlanProtected>} />
+        <Route path="/token-scanner" element={<PlanProtected path="/token-scanner"><TokenScanner /></PlanProtected>} />
+        <Route path="/opportunity-scanner" element={<PlanProtected path="/opportunity-scanner"><OpportunityScanner /></PlanProtected>} />
+        <Route path="/whale-watcher" element={<PlanProtected path="/whale-watcher"><WhaleWatcher /></PlanProtected>} />
+        <Route path="/technical-analysis" element={<PlanProtected path="/technical-analysis"><TechnicalAnalysis /></PlanProtected>} />
+        <Route path="/gem-hunter" element={<PlanProtected path="/gem-hunter"><GemHunter /></PlanProtected>} />
+        <Route path="/position-sizer" element={<PlanProtected path="/position-sizer"><PositionSizer /></PlanProtected>} />
+        <Route path="/ai-signals" element={<PlanProtected path="/ai-signals"><AISignals /></PlanProtected>} />
+        <Route path="/ai-patterns" element={<PlanProtected path="/ai-patterns"><AIPatterns /></PlanProtected>} />
+        <Route path="/ai-sentiment" element={<PlanProtected path="/ai-sentiment"><AISentiment /></PlanProtected>} />
+        <Route path="/ai-setup-builder" element={<PlanProtected path="/ai-setup-builder"><AISetupBuilder /></PlanProtected>} />
+        <Route path="/narrative-radar" element={<PlanProtected path="/narrative-radar"><NarrativeRadar /></PlanProtected>} />
+        <Route path="/pepites-crypto" element={<PlanProtected path="/pepites-crypto"><PepitesCrypto /></PlanProtected>} />
+        <Route path="/rug-scam-shield" element={<PlanProtected path="/rug-scam-shield"><RugScamShield /></PlanProtected>} />
 
         {/* Outils */}
-        <Route path="/stats-avancees" element={<StatsAvancees />} />
-        <Route path="/simulation" element={<Simulation />} />
-        <Route path="/convertisseur" element={<Convertisseur />} />
-        <Route path="/calendrier" element={<Calendrier />} />
-        <Route path="/news" element={<News />} />
+        <Route path="/stats-avancees" element={<PlanProtected path="/stats-avancees"><StatsAvancees /></PlanProtected>} />
+        <Route path="/simulation" element={<PlanProtected path="/simulation"><Simulation /></PlanProtected>} />
+        <Route path="/convertisseur" element={<PlanProtected path="/convertisseur"><Convertisseur /></PlanProtected>} />
+        <Route path="/calendrier" element={<PlanProtected path="/calendrier"><Calendrier /></PlanProtected>} />
+        <Route path="/news" element={<PlanProtected path="/news"><News /></PlanProtected>} />
         <Route path="/success-stories" element={<SuccessStories />} />
-
-        <Route path="/onchain-metrics" element={<OnChainMetrics />} />
-        <Route path="/defi-yield" element={<DefiYield />} />
+        <Route path="/onchain-metrics" element={<PlanProtected path="/onchain-metrics"><OnChainMetrics /></PlanProtected>} />
+        <Route path="/defi-yield" element={<PlanProtected path="/defi-yield"><DefiYield /></PlanProtected>} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/trading-academy" element={<TradingAcademy />} />
-        <Route path="/telechargement" element={<Telechargement />} />
+        <Route path="/trading-academy" element={<PlanProtected path="/trading-academy"><TradingAcademy /></PlanProtected>} />
+        <Route path="/telechargement" element={<PlanProtected path="/telechargement"><Telechargement /></PlanProtected>} />
 
-        {/* Compte */}
+        {/* Compte - always accessible */}
         <Route path="/abonnements" element={<Abonnements />} />
         <Route path="/mon-compte" element={<MonCompte />} />
 

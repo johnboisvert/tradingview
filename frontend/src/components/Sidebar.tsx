@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { getUserPlan, isRouteAccessible, getMinimumPlanForRoute, getPlanDisplayInfo } from "@/lib/subscription";
 import {
   LayoutDashboard,
   Frown,
@@ -47,6 +48,7 @@ import {
   GraduationCap,
   Download,
   Crosshair,
+  Lock,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -106,7 +108,6 @@ const NAV_SECTIONS = [
       { path: "/calendrier", label: "Calendrier", icon: Calendar },
       { path: "/news", label: "Nouvelles", icon: Newspaper },
       { path: "/success-stories", label: "Success Stories", icon: Award },
-
       { path: "/onchain-metrics", label: "On-Chain", icon: LinkIcon },
       { path: "/defi-yield", label: "DeFi Yield", icon: Landmark },
       { path: "/trading-academy", label: "Trading Academy", icon: GraduationCap },
@@ -125,6 +126,7 @@ const BOTTOM_ITEMS = [
 export default function Sidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const currentPlan = getUserPlan();
 
   const isActive = (path: string) =>
     location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
@@ -181,6 +183,19 @@ export default function Sidebar() {
         )}
       </div>
 
+      {/* Current Plan Badge */}
+      {!collapsed && (
+        <div className="px-4 pt-3 pb-1">
+          <Link to="/mon-compte" className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-all">
+            <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${getPlanDisplayInfo(currentPlan).gradient}`} />
+            <span className="text-[10px] text-gray-500 font-semibold">Plan:</span>
+            <span className={`text-[11px] font-bold ${getPlanDisplayInfo(currentPlan).color}`}>
+              {getPlanDisplayInfo(currentPlan).label}
+            </span>
+          </Link>
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="flex-1 py-3 px-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
         {NAV_SECTIONS.map((section, si) => (
@@ -194,22 +209,30 @@ export default function Sidebar() {
             {section.items.map((item) => {
               const active = isActive(item.path);
               const Icon = item.icon;
+              const accessible = isRouteAccessible(item.path, currentPlan);
+              const minPlan = !accessible ? getMinimumPlanForRoute(item.path) : null;
+              const minPlanInfo = minPlan ? getPlanDisplayInfo(minPlan) : null;
+
               return (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={`group flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 relative ${
-                    active
+                    !accessible
+                      ? "text-gray-600 hover:text-gray-500 hover:bg-white/[0.02]"
+                      : active
                       ? "bg-gradient-to-r from-indigo-500/15 to-purple-500/10 text-white"
                       : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
                   }`}
                 >
-                  {active && (
+                  {active && accessible && (
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-indigo-400 to-purple-500 rounded-r-full" />
                   )}
                   <div
                     className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-                      active
+                      !accessible
+                        ? "bg-white/[0.02] text-gray-600"
+                        : active
                         ? "bg-indigo-500/20 text-indigo-400"
                         : "bg-white/[0.04] text-gray-500 group-hover:text-gray-300 group-hover:bg-white/[0.06]"
                     }`}
@@ -217,9 +240,28 @@ export default function Sidebar() {
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   {!collapsed && (
-                    <span className={`text-[13px] font-semibold truncate ${active ? "text-white" : ""}`}>
-                      {item.label}
-                    </span>
+                    <>
+                      <span className={`text-[13px] font-semibold truncate flex-1 ${
+                        !accessible ? "text-gray-600" : active ? "text-white" : ""
+                      }`}>
+                        {item.label}
+                      </span>
+                      {!accessible && (
+                        <div className="flex items-center gap-1">
+                          <Lock className="w-3 h-3 text-gray-600" />
+                          {minPlanInfo && (
+                            <span className={`text-[9px] font-bold ${minPlanInfo.color} opacity-70`}>
+                              {minPlanInfo.label}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {collapsed && !accessible && (
+                    <div className="absolute top-0.5 right-0.5">
+                      <Lock className="w-2.5 h-2.5 text-gray-600" />
+                    </div>
                   )}
                 </Link>
               );

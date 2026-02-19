@@ -51,6 +51,8 @@ import AISetupBuilder from "./pages/AISetupBuilder";
 import PepitesCrypto from "./pages/PepitesCrypto";
 import TradingAcademy from "./pages/TradingAcademy";
 import Telechargement from "./pages/Telechargement";
+import AdminLogin from "./pages/AdminLogin";
+import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import NotFound from "./pages/NotFound";
 
 function App() {
@@ -113,14 +115,17 @@ function App() {
         <Route path="/abonnements" element={<Abonnements />} />
         <Route path="/mon-compte" element={<MonCompte />} />
 
-        {/* Admin */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/analytics" element={<Analytics />} />
-        <Route path="/admin/pricing" element={<Pricing />} />
-        <Route path="/admin/promos" element={<Promos />} />
-        <Route path="/admin/messages" element={<Messages />} />
-        <Route path="/admin/users" element={<Users />} />
-        <Route path="/admin/telegram" element={<TelegramSetup />} />
+        {/* Admin Login */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+
+        {/* Admin - Protected */}
+        <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
+        <Route path="/admin/analytics" element={<ProtectedAdminRoute><Analytics /></ProtectedAdminRoute>} />
+        <Route path="/admin/pricing" element={<ProtectedAdminRoute><Pricing /></ProtectedAdminRoute>} />
+        <Route path="/admin/promos" element={<ProtectedAdminRoute><Promos /></ProtectedAdminRoute>} />
+        <Route path="/admin/messages" element={<ProtectedAdminRoute><Messages /></ProtectedAdminRoute>} />
+        <Route path="/admin/users" element={<ProtectedAdminRoute><Users /></ProtectedAdminRoute>} />
+        <Route path="/admin/telegram" element={<ProtectedAdminRoute><TelegramSetup /></ProtectedAdminRoute>} />
 
         {/* Fallback */}
         <Route path="*" element={<NotFound />} />

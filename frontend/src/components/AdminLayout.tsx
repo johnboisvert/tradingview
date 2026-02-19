@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ArrowLeft,
 } from "lucide-react";
+import { adminLogout } from "@/pages/AdminLogin";
 
 const NAV_ITEMS = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const currentPage = NAV_ITEMS.find((item) => item.path === location.pathname)?.label || "Dashboard";
@@ -111,7 +113,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               Les données sont sauvegardées dans votre navigateur.
             </p>
           </div>
-          <button className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-red-400 hover:bg-red-500/5 transition-all w-full">
+          <button
+            onClick={() => {
+              adminLogout();
+              navigate("/admin/login");
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-red-400 hover:bg-red-500/5 transition-all w-full"
+          >
             <LogOut className="w-[18px] h-[18px]" />
             <span>Déconnexion</span>
           </button>

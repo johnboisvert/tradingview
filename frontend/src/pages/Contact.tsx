@@ -1,15 +1,36 @@
 import { useState } from "react";
 import Sidebar from "../components/Sidebar";
+import { sendContactMessage } from "@/lib/api";
+import { toast } from "sonner";
 
 export default function Contact() {
   const [form, setForm] = useState({ name: "", email: "", subject: "general", message: "" });
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSent(true);
-    setTimeout(() => setSent(false), 5000);
-    setForm({ name: "", email: "", subject: "general", message: "" });
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+      toast.error("Veuillez remplir tous les champs obligatoires.");
+      return;
+    }
+    setSending(true);
+    try {
+      await sendContactMessage({
+        name: form.name,
+        email: form.email,
+        subject: form.subject,
+        message: form.message,
+      });
+      setSent(true);
+      toast.success("Message envoyé avec succès !");
+      setForm({ name: "", email: "", subject: "general", message: "" });
+      setTimeout(() => setSent(false), 5000);
+    } catch {
+      toast.error("Erreur lors de l'envoi du message.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -59,7 +80,7 @@ export default function Contact() {
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Nom</label>
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Nom *</label>
                   <input
                     type="text"
                     value={form.name}
@@ -70,7 +91,7 @@ export default function Contact() {
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</label>
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Email *</label>
                   <input
                     type="email"
                     value={form.email}
@@ -96,7 +117,7 @@ export default function Contact() {
                 </select>
               </div>
               <div className="flex flex-col gap-1.5 mb-6">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Message</label>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Message *</label>
                 <textarea
                   value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
@@ -108,9 +129,10 @@ export default function Contact() {
               </div>
               <button
                 type="submit"
-                className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-blue-500/20 transition-all hover:-translate-y-0.5"
+                disabled={sending}
+                className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-blue-500/20 transition-all hover:-translate-y-0.5 disabled:opacity-50"
               >
-                📤 Envoyer le message
+                {sending ? "⏳ Envoi en cours..." : "📤 Envoyer le message"}
               </button>
             </form>
           </div>

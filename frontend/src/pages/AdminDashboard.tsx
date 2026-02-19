@@ -1,23 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import Sidebar from "@/components/Sidebar";
+import AdminLayout from "@/components/AdminLayout";
+import * as storeLib from "@/lib/store";
 import {
-  Shield, Users, BarChart3, CreditCard, MessageSquare, Tag, TrendingUp, TrendingDown,
-  Activity, Eye, DollarSign, Clock, ArrowUpRight, ArrowDownRight, Zap
+  Shield, Users, BarChart3, CreditCard, MessageSquare, Tag, TrendingUp,
+  Activity, Eye, DollarSign, Zap, ArrowUpRight, ArrowDownRight, BookOpen,
+  Download, Mail, FileText
 } from "lucide-react";
-
-interface DashboardStats {
-  totalUsers: number;
-  activeUsers: number;
-  revenue: number;
-  revenueChange: number;
-  proSubscribers: number;
-  enterpriseSubscribers: number;
-  openTickets: number;
-  avgSessionTime: string;
-  pageViews: number;
-  conversionRate: number;
-}
 
 function StatCard({ icon: Icon, label, value, change, color, trend }: {
   icon: React.ElementType; label: string; value: string; change?: string; color: string; trend?: "up" | "down";
@@ -44,99 +33,156 @@ function StatCard({ icon: Icon, label, value, change, color, trend }: {
 }
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 12547,
-    activeUsers: 3842,
-    revenue: 47850,
-    revenueChange: 12.5,
-    proSubscribers: 892,
-    enterpriseSubscribers: 47,
-    openTickets: 23,
-    avgSessionTime: "14m 32s",
-    pageViews: 284500,
-    conversionRate: 3.8,
-  });
+  const [stats, setStats] = useState<ReturnType<typeof storeLib.getDashboardStats> | null>(null);
 
-  const [recentActivity] = useState([
-    { time: "Il y a 2 min", event: "Nouvel abonnement Pro", user: "marc.d@email.com", type: "subscription" },
-    { time: "Il y a 5 min", event: "Ticket support ouvert", user: "sophie.l@email.com", type: "ticket" },
-    { time: "Il y a 12 min", event: "Paiement reçu — $29", user: "thomas.r@email.com", type: "payment" },
-    { time: "Il y a 18 min", event: "Nouveau membre inscrit", user: "amira.k@email.com", type: "signup" },
-    { time: "Il y a 25 min", event: "Upgrade Enterprise", user: "lucas.p@email.com", type: "subscription" },
-    { time: "Il y a 30 min", event: "Ticket résolu", user: "karim.b@email.com", type: "ticket" },
-  ]);
+  useEffect(() => {
+    setStats(storeLib.getDashboardStats());
+  }, []);
+
+  if (!stats) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   const adminLinks = [
     { path: "/admin/analytics", label: "Analytics", icon: BarChart3, desc: "Statistiques détaillées", color: "from-blue-500 to-indigo-600" },
-    { path: "/admin/users", label: "Utilisateurs", icon: Users, desc: "Gestion des comptes", color: "from-emerald-500 to-green-600" },
+    { path: "/admin/users", label: "Utilisateurs", icon: Users, desc: `${stats.totalUsers} comptes`, color: "from-emerald-500 to-green-600" },
     { path: "/admin/pricing", label: "Tarification", icon: CreditCard, desc: "Plans et prix", color: "from-amber-500 to-orange-600" },
-    { path: "/admin/promos", label: "Promotions", icon: Tag, desc: "Codes promo", color: "from-purple-500 to-pink-600" },
-    { path: "/admin/messages", label: "Messages", icon: MessageSquare, desc: "Support client", color: "from-cyan-500 to-blue-600" },
+    { path: "/admin/promos", label: "Promotions", icon: Tag, desc: `${stats.activePromos} actifs`, color: "from-purple-500 to-pink-600" },
+    { path: "/admin/messages", label: "Messages", icon: MessageSquare, desc: `${stats.unreadMessages} non lus`, color: "from-cyan-500 to-blue-600" },
   ];
 
+  // Build recent activity from real data
+  const recentActivity: { time: string; event: string; user: string; type: string }[] = [];
+
+  // Add recent messages
+  stats.messages.slice(0, 3).forEach((msg) => {
+    const date = new Date(msg.created_at);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const timeStr = diffMins < 60 ? `Il y a ${diffMins} min` : diffMins < 1440 ? `Il y a ${Math.floor(diffMins / 60)}h` : `Il y a ${Math.floor(diffMins / 1440)}j`;
+    recentActivity.push({
+      time: timeStr,
+      event: `Message: ${msg.subject}`,
+      user: msg.email,
+      type: "message",
+    });
+  });
+
+  // Add recent users
+  stats.users
+    .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
+    .slice(0, 3)
+    .forEach((u) => {
+      recentActivity.push({
+        time: u.created_at || "",
+        event: u.plan !== "free" ? `Abonnement ${u.plan}` : "Inscription gratuite",
+        user: u.username,
+        type: u.plan !== "free" ? "subscription" : "signup",
+      });
+    });
+
   return (
-    <div className="min-h-screen bg-[#0A0E1A] text-white">
-      <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 flex items-center justify-center">
-              <Shield className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-extrabold">Admin Dashboard</h1>
-              <p className="text-sm text-gray-400">Vue d'ensemble de la plateforme CryptoIA</p>
-            </div>
+    <AdminLayout>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 flex items-center justify-center">
+            <Shield className="w-6 h-6 text-white" />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400">
-              <Activity className="w-3 h-3" /> Système OK
-            </span>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-          <StatCard icon={Users} label="Total Utilisateurs" value={stats.totalUsers.toLocaleString()} change="+245 ce mois" color="bg-gradient-to-r from-blue-500 to-indigo-600" trend="up" />
-          <StatCard icon={Eye} label="Utilisateurs Actifs" value={stats.activeUsers.toLocaleString()} change="30.6% du total" color="bg-gradient-to-r from-emerald-500 to-green-600" trend="up" />
-          <StatCard icon={DollarSign} label="Revenu Mensuel" value={`$${stats.revenue.toLocaleString()}`} change={`+${stats.revenueChange}%`} color="bg-gradient-to-r from-amber-500 to-orange-600" trend="up" />
-          <StatCard icon={Zap} label="Abonnés Pro" value={stats.proSubscribers.toLocaleString()} change="+38 ce mois" color="bg-gradient-to-r from-purple-500 to-pink-600" trend="up" />
-          <StatCard icon={MessageSquare} label="Tickets Ouverts" value={String(stats.openTickets)} change="-5 vs semaine" color="bg-gradient-to-r from-cyan-500 to-blue-600" trend="down" />
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-6 mb-6">
-          {/* Quick Links */}
-          <div className="lg:col-span-2">
-            <h2 className="text-lg font-bold mb-4">Accès Rapide</h2>
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {adminLinks.map((link) => {
-                const Icon = link.icon;
-                return (
-                  <Link key={link.path} to={link.path}
-                    className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.05] hover:border-white/[0.12] transition-all group">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${link.color} flex items-center justify-center mb-3`}>
-                      <Icon className="w-5 h-5 text-white" />
-                    </div>
-                    <h3 className="font-bold text-sm mb-0.5">{link.label}</h3>
-                    <p className="text-[10px] text-gray-500">{link.desc}</p>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Recent Activity */}
           <div>
-            <h2 className="text-lg font-bold mb-4">Activité Récente</h2>
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl divide-y divide-white/[0.04]">
-              {recentActivity.map((activity, i) => (
+            <h1 className="text-2xl font-extrabold">Admin Dashboard</h1>
+            <p className="text-sm text-gray-400">Vue d'ensemble de la plateforme CryptoIA</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400">
+            <Activity className="w-3 h-3" /> Données en direct
+          </span>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+        <StatCard
+          icon={Users}
+          label="Total Utilisateurs"
+          value={stats.totalUsers.toLocaleString()}
+          color="bg-gradient-to-r from-blue-500 to-indigo-600"
+        />
+        <StatCard
+          icon={Zap}
+          label="Abonnés Payants"
+          value={stats.activeSubscriptions.toLocaleString()}
+          change={`${stats.conversionRate}% du total`}
+          color="bg-gradient-to-r from-purple-500 to-pink-600"
+          trend="up"
+        />
+        <StatCard
+          icon={DollarSign}
+          label="Revenu Estimé"
+          value={`$${stats.totalRevenue.toFixed(0)}`}
+          color="bg-gradient-to-r from-amber-500 to-orange-600"
+        />
+        <StatCard
+          icon={Mail}
+          label="Messages Non Lus"
+          value={String(stats.unreadMessages)}
+          change={`${stats.messages.length} total`}
+          color="bg-gradient-to-r from-cyan-500 to-blue-600"
+          trend={stats.unreadMessages > 0 ? "up" : undefined}
+        />
+        <StatCard
+          icon={BookOpen}
+          label="Ebooks Actifs"
+          value={String(stats.activeEbooks)}
+          change={`${stats.totalDownloads} DL`}
+          color="bg-gradient-to-r from-emerald-500 to-green-600"
+          trend="up"
+        />
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6 mb-6">
+        {/* Quick Links */}
+        <div className="lg:col-span-2">
+          <h2 className="text-lg font-bold mb-4">Accès Rapide</h2>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {adminLinks.map((link) => {
+              const Icon = link.icon;
+              return (
+                <Link key={link.path} to={link.path}
+                  className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.05] hover:border-white/[0.12] transition-all group">
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${link.color} flex items-center justify-center mb-3`}>
+                    <Icon className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="font-bold text-sm mb-0.5">{link.label}</h3>
+                  <p className="text-[10px] text-gray-500">{link.desc}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div>
+          <h2 className="text-lg font-bold mb-4">Activité Récente</h2>
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl divide-y divide-white/[0.04]">
+            {recentActivity.length === 0 ? (
+              <div className="px-4 py-8 text-center text-gray-500 text-sm">Aucune activité récente</div>
+            ) : (
+              recentActivity.slice(0, 6).map((activity, i) => (
                 <div key={i} className="px-4 py-3 hover:bg-white/[0.02] transition-colors">
                   <div className="flex items-start gap-3">
                     <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
                       activity.type === "subscription" ? "bg-purple-400" :
                       activity.type === "payment" ? "bg-emerald-400" :
-                      activity.type === "ticket" ? "bg-amber-400" : "bg-blue-400"
+                      activity.type === "message" ? "bg-cyan-400" : "bg-blue-400"
                     }`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold truncate">{activity.event}</p>
@@ -145,19 +191,51 @@ export default function AdminDashboard() {
                     <span className="text-[10px] text-gray-600 whitespace-nowrap">{activity.time}</span>
                   </div>
                 </div>
-              ))}
-            </div>
+              ))
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Additional KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard icon={Clock} label="Session Moyenne" value={stats.avgSessionTime} color="bg-gradient-to-r from-indigo-500 to-blue-600" />
-          <StatCard icon={TrendingUp} label="Pages Vues / Mois" value={`${(stats.pageViews / 1000).toFixed(1)}K`} change="+18%" color="bg-gradient-to-r from-teal-500 to-emerald-600" trend="up" />
-          <StatCard icon={Activity} label="Taux Conversion" value={`${stats.conversionRate}%`} change="+0.3%" color="bg-gradient-to-r from-rose-500 to-pink-600" trend="up" />
-          <StatCard icon={Shield} label="Enterprise" value={String(stats.enterpriseSubscribers)} change="+3 ce mois" color="bg-gradient-to-r from-amber-500 to-yellow-600" trend="up" />
-        </div>
-      </main>
-    </div>
+      {/* Plan Distribution */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        {stats.planDistribution.map((p) => (
+          <div key={p.plan} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 text-center">
+            <div className="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center" style={{ backgroundColor: `${p.color}20` }}>
+              <span className="text-sm font-black" style={{ color: p.color }}>{p.count}</span>
+            </div>
+            <p className="text-xs font-bold text-gray-400">{p.plan}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Additional KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard
+          icon={Tag}
+          label="Promos Actives"
+          value={String(stats.activePromos)}
+          color="bg-gradient-to-r from-rose-500 to-pink-600"
+        />
+        <StatCard
+          icon={Download}
+          label="Total Téléchargements"
+          value={stats.totalDownloads.toLocaleString()}
+          color="bg-gradient-to-r from-teal-500 to-emerald-600"
+        />
+        <StatCard
+          icon={Eye}
+          label="Taux Conversion"
+          value={`${stats.conversionRate}%`}
+          color="bg-gradient-to-r from-indigo-500 to-blue-600"
+        />
+        <StatCard
+          icon={FileText}
+          label="Total Ebooks"
+          value={String(stats.ebooks.length)}
+          color="bg-gradient-to-r from-amber-500 to-yellow-600"
+        />
+      </div>
+    </AdminLayout>
   );
 }

@@ -1,29 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
-
-interface DownloadItem {
-  title: string;
-  icon: string;
-  description: string;
-  format: string;
-  size: string;
-  category: string;
-}
-
-const DOWNLOADS: DownloadItem[] = [
-  { title: "Guide du Débutant Crypto", icon: "📘", description: "Guide complet pour débuter dans le trading de cryptomonnaies. Couvre les bases, les exchanges, et les premières stratégies.", format: "PDF", size: "2.4 MB", category: "Guides" },
-  { title: "Cheat Sheet Analyse Technique", icon: "📊", description: "Résumé visuel de tous les indicateurs techniques : RSI, MACD, Bollinger, patterns chartistes.", format: "PDF", size: "1.8 MB", category: "Cheat Sheets" },
-  { title: "Template Journal de Trading", icon: "📝", description: "Spreadsheet pour suivre vos trades, calculer vos performances et analyser vos erreurs.", format: "XLSX", size: "450 KB", category: "Templates" },
-  { title: "Checklist Risk Management", icon: "🛡️", description: "Liste de vérification avant chaque trade : position sizing, stop loss, risk/reward.", format: "PDF", size: "320 KB", category: "Cheat Sheets" },
-  { title: "Glossaire Crypto A-Z", icon: "📖", description: "Dictionnaire complet des termes crypto et trading : de A comme Altcoin à Z comme Zero-Knowledge.", format: "PDF", size: "1.2 MB", category: "Guides" },
-  { title: "Template Plan de Trading", icon: "📋", description: "Modèle de plan de trading professionnel avec objectifs, règles et stratégies.", format: "PDF", size: "580 KB", category: "Templates" },
-  { title: "Patterns Chartistes Illustrés", icon: "🔍", description: "Guide visuel de tous les patterns chartistes avec exemples réels et probabilités.", format: "PDF", size: "3.1 MB", category: "Guides" },
-  { title: "Calculateur Position Size", icon: "🧮", description: "Spreadsheet pour calculer automatiquement la taille de vos positions.", format: "XLSX", size: "280 KB", category: "Templates" },
-  { title: "Calendrier Économique 2026", icon: "📅", description: "Dates clés des événements économiques et crypto pour 2026.", format: "PDF", size: "890 KB", category: "Calendriers" },
-  { title: "Stratégies Backtestées", icon: "📈", description: "Compilation de 10 stratégies de trading backtestées avec résultats détaillés.", format: "PDF", size: "4.2 MB", category: "Guides" },
-  { title: "Infographie DeFi", icon: "🏦", description: "Infographie complète de l'écosystème DeFi : protocoles, TVL, rendements.", format: "PNG", size: "1.5 MB", category: "Infographies" },
-  { title: "Wallpaper CryptoIA", icon: "🖼️", description: "Pack de fonds d'écran CryptoIA pour desktop et mobile.", format: "ZIP", size: "12 MB", category: "Extras" },
-];
+import { getEbooks, incrementEbookDownloads, type Ebook } from "@/lib/api";
 
 const CATEGORIES = ["Tous", "Guides", "Cheat Sheets", "Templates", "Calendriers", "Infographies", "Extras"];
 
@@ -32,15 +9,50 @@ const FORMAT_COLORS: Record<string, string> = {
   XLSX: "bg-emerald-500/10 text-emerald-400",
   PNG: "bg-blue-500/10 text-blue-400",
   ZIP: "bg-purple-500/10 text-purple-400",
+  DOCX: "bg-indigo-500/10 text-indigo-400",
+};
+
+const PLAN_HIERARCHY = ["free", "premium", "advanced", "pro", "elite"];
+
+const PLAN_BADGE_COLORS: Record<string, string> = {
+  free: "bg-gray-500/10 text-gray-400 border-gray-500/20",
+  premium: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  advanced: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  pro: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  elite: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+};
+
+const ICON_MAP: Record<string, string> = {
+  Guides: "📘",
+  "Cheat Sheets": "📊",
+  Templates: "📋",
+  Calendriers: "📅",
+  Infographies: "🏦",
+  Extras: "🖼️",
 };
 
 export default function Telechargement() {
+  const [ebooks, setEbooks] = useState<Ebook[]>([]);
+  const [loading, setLoading] = useState(true);
   const [catFilter, setCatFilter] = useState("Tous");
-  const filtered = catFilter === "Tous" ? DOWNLOADS : DOWNLOADS.filter((d) => d.category === catFilter);
 
-  const handleDownload = (item: DownloadItem) => {
-    // Create a simple text file with the resource info as a placeholder
-    const content = `${item.title}\n\n${item.description}\n\nFormat: ${item.format}\nTaille: ${item.size}\nCatégorie: ${item.category}\n\n---\nCette ressource sera bientôt disponible en téléchargement complet.\nMerci de votre patience ! — CryptoIA Platform`;
+  useEffect(() => {
+    getEbooks()
+      .then((data) => setEbooks((data.ebooks || []).filter((e) => e.active)))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = catFilter === "Tous" ? ebooks : ebooks.filter((d) => d.category === catFilter);
+
+  const handleDownload = async (item: Ebook) => {
+    // Increment download count
+    await incrementEbookDownloads(item.id);
+    setEbooks((prev) =>
+      prev.map((e) => (e.id === item.id ? { ...e, downloads: e.downloads + 1 } : e))
+    );
+
+    // Create a placeholder download
+    const content = `${item.title}\n\n${item.description}\n\nFormat: ${item.format || "PDF"}\nTaille: ${item.size || "N/A"}\nCatégorie: ${item.category || "Guides"}\nPlan requis: ${item.plan_required}\n\n---\nCette ressource sera bientôt disponible en téléchargement complet.\nMerci de votre patience ! — CryptoIA Platform`;
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -51,6 +63,15 @@ export default function Telechargement() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  const categoryCounts = CATEGORIES.reduce((acc, cat) => {
+    if (cat === "Tous") {
+      acc[cat] = ebooks.length;
+    } else {
+      acc[cat] = ebooks.filter((e) => e.category === cat).length;
+    }
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <div className="flex min-h-screen bg-[#030712]">
@@ -65,66 +86,100 @@ export default function Telechargement() {
             <h1 className="text-5xl font-black bg-gradient-to-r from-purple-400 via-blue-400 to-purple-400 bg-[length:300%_auto] bg-clip-text text-transparent animate-gradient">
               📥 Téléchargements
             </h1>
-            <p className="text-gray-500 mt-3 text-lg">Guides, templates et ressources gratuites pour le trading crypto</p>
+            <p className="text-gray-500 mt-3 text-lg">Guides, templates et ressources pour le trading crypto</p>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            {[
-              { label: "Ressources", value: DOWNLOADS.length.toString(), icon: "📚" },
-              { label: "Guides", value: DOWNLOADS.filter((d) => d.category === "Guides").length.toString(), icon: "📘" },
-              { label: "Templates", value: DOWNLOADS.filter((d) => d.category === "Templates").length.toString(), icon: "📋" },
-              { label: "Gratuit", value: "100%", icon: "🎁" },
-            ].map((s) => (
-              <div key={s.label} className="bg-slate-900/70 border border-white/5 rounded-2xl p-5 text-center hover:-translate-y-1 transition-all">
-                <div className="text-2xl mb-1">{s.icon}</div>
-                <div className="text-xl font-black font-mono text-white">{s.value}</div>
-                <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">{s.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Category Filter */}
-          <div className="flex flex-wrap gap-2 mb-6 justify-center">
-            {CATEGORIES.map((cat) => (
-              <button key={cat} onClick={() => setCatFilter(cat)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${catFilter === cat ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" : "bg-slate-800/50 text-gray-500 hover:text-white border border-white/5"}`}>
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Downloads Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((item) => (
-              <div key={item.title} className="bg-slate-900/70 border border-white/5 rounded-2xl p-6 hover:border-purple-500/20 transition-all hover:-translate-y-1 group">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-3xl">{item.icon}</span>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold px-2 py-1 rounded-lg ${FORMAT_COLORS[item.format] || "bg-gray-500/10 text-gray-400"}`}>{item.format}</span>
-                    <span className="text-xs text-gray-500">{item.size}</span>
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <>
+              {/* Stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                {[
+                  { label: "Ressources", value: ebooks.length.toString(), icon: "📚" },
+                  { label: "Guides", value: ebooks.filter((d) => d.category === "Guides").length.toString(), icon: "📘" },
+                  { label: "Templates", value: ebooks.filter((d) => d.category === "Templates").length.toString(), icon: "📋" },
+                  { label: "Téléchargements", value: ebooks.reduce((s, e) => s + e.downloads, 0).toLocaleString(), icon: "📥" },
+                ].map((s) => (
+                  <div key={s.label} className="bg-slate-900/70 border border-white/5 rounded-2xl p-5 text-center hover:-translate-y-1 transition-all">
+                    <div className="text-2xl mb-1">{s.icon}</div>
+                    <div className="text-xl font-black font-mono text-white">{s.value}</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">{s.label}</div>
                   </div>
-                </div>
-                <h3 className="text-sm font-bold text-white mb-2">{item.title}</h3>
-                <p className="text-xs text-gray-400 mb-4 leading-relaxed line-clamp-2">{item.description}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs bg-white/[0.04] text-gray-500 px-2 py-1 rounded-lg">{item.category}</span>
-                  <button
-                    onClick={() => handleDownload(item)}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs font-bold rounded-xl hover:shadow-lg hover:shadow-purple-500/20 transition-all opacity-80 group-hover:opacity-100"
-                  >
-                    📥 Télécharger
-                  </button>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Info */}
-          <div className="mt-6 bg-slate-900/50 border border-white/5 rounded-2xl p-6 text-center">
-            <p className="text-sm text-gray-400">
-              💡 Toutes les ressources sont <strong className="text-white">100% gratuites</strong> pour les membres CryptoIA. De nouvelles ressources sont ajoutées chaque semaine.
-            </p>
-          </div>
+              {/* Category Filter */}
+              <div className="flex flex-wrap gap-2 mb-6 justify-center">
+                {CATEGORIES.filter((cat) => cat === "Tous" || categoryCounts[cat] > 0).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCatFilter(cat)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                      catFilter === cat
+                        ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                        : "bg-slate-800/50 text-gray-500 hover:text-white border border-white/5"
+                    }`}
+                  >
+                    {cat} ({categoryCounts[cat] || 0})
+                  </button>
+                ))}
+              </div>
+
+              {/* Downloads Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filtered.map((item) => (
+                  <div key={item.id} className="bg-slate-900/70 border border-white/5 rounded-2xl p-6 hover:border-purple-500/20 transition-all hover:-translate-y-1 group">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-3xl">{ICON_MAP[item.category || "Guides"] || "📄"}</span>
+                      <div className="flex items-center gap-2">
+                        {item.format && (
+                          <span className={`text-xs font-bold px-2 py-1 rounded-lg ${FORMAT_COLORS[item.format] || "bg-gray-500/10 text-gray-400"}`}>
+                            {item.format}
+                          </span>
+                        )}
+                        {item.size && <span className="text-xs text-gray-500">{item.size}</span>}
+                      </div>
+                    </div>
+                    <h3 className="text-sm font-bold text-white mb-2">{item.title}</h3>
+                    <p className="text-xs text-gray-400 mb-3 leading-relaxed line-clamp-2">{item.description}</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        {item.category && (
+                          <span className="text-xs bg-white/[0.04] text-gray-500 px-2 py-1 rounded-lg">{item.category}</span>
+                        )}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${PLAN_BADGE_COLORS[item.plan_required] || PLAN_BADGE_COLORS.free}`}>
+                          {item.plan_required === "free" ? "🆓 Gratuit" : `🔒 ${item.plan_required.charAt(0).toUpperCase() + item.plan_required.slice(1)}`}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-600">{item.downloads} DL</span>
+                    </div>
+                    <button
+                      onClick={() => handleDownload(item)}
+                      className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs font-bold rounded-xl hover:shadow-lg hover:shadow-purple-500/20 transition-all opacity-80 group-hover:opacity-100"
+                    >
+                      📥 Télécharger
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {filtered.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-sm">Aucune ressource dans cette catégorie.</p>
+                </div>
+              )}
+
+              {/* Info */}
+              <div className="mt-6 bg-slate-900/50 border border-white/5 rounded-2xl p-6 text-center">
+                <p className="text-sm text-gray-400">
+                  💡 Les ressources sont disponibles selon votre plan d'abonnement. De nouvelles ressources sont ajoutées chaque semaine.
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </main>
     </div>

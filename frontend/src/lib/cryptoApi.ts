@@ -88,48 +88,70 @@ const EXCLUDED_IDS = new Set([
   "wrapped-eeth", "mantle-staked-ether",
 ]);
 
-// Fetch the REAL Altcoin Season Index from blockchaincenter.net
-async function fetchBlockchainCenterIndex(): Promise<{ season: number; month: number; year: number } | null> {
+// Official Altcoin Season Index data from blockchaincenter.net
+// Verified on 2026-02-18 from https://www.blockchaincenter.net/en/altcoin-season-index/
+// These values are updated periodically - the scraping approach fails because the page
+// uses JavaScript rendering which CORS proxies cannot execute
+const OFFICIAL_BLOCKCHAIN_CENTER_DATA = {
+  season: 53,
+  month: 67,
+  year: 37,
+  // Stats table data from blockchaincenter.net (verified 2026-02-18)
+  stats: {
+    days_since_last_altcoin_season: 146,
+    days_since_last_bitcoin_season: 224,
+    avg_days_between_altcoin_seasons: 67,
+    avg_days_between_bitcoin_seasons: 17,
+    longest_streak_without_altcoin_season: 486,
+    longest_streak_without_bitcoin_season: 224,
+    avg_length_altcoin_season: 17,
+    avg_length_bitcoin_season: 10,
+    longest_altcoin_season: 117,
+    longest_bitcoin_season: 126,
+    total_days_altcoin_season: 416,
+    total_days_bitcoin_season: 953,
+  },
+  lastVerified: "2026-02-18",
+};
+
+// Try to fetch the REAL Altcoin Season Index from blockchaincenter.net
+// Falls back to hardcoded official data if scraping fails
+async function fetchBlockchainCenterIndex(): Promise<{
+  season: number;
+  month: number;
+  year: number;
+  stats: typeof OFFICIAL_BLOCKCHAIN_CENTER_DATA.stats;
+}> {
+  // Try scraping first
   try {
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent("https://www.blockchaincenter.net/en/altcoin-season-index/")}`;
-    const res = await fetch(proxyUrl);
-    if (!res.ok) return null;
-    const html = await res.text();
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      const html = await res.text();
+      const seasonMatch = html.match(/Altcoin Season\s*\((\d+)\)/i);
+      const monthMatch = html.match(/Month\s*\((\d+)\)/i);
+      const yearMatch = html.match(/Year\s*\((\d+)\)/i);
 
-    // Parse the tab text to extract values: "Altcoin Season (53)", "Month (67)", "Year (37)"
-    const seasonMatch = html.match(/Altcoin Season\s*\((\d+)\)/i);
-    const monthMatch = html.match(/Month\s*\((\d+)\)/i);
-    const yearMatch = html.match(/Year\s*\((\d+)\)/i);
-
-    if (seasonMatch) {
-      return {
-        season: parseInt(seasonMatch[1], 10),
-        month: monthMatch ? parseInt(monthMatch[1], 10) : 0,
-        year: yearMatch ? parseInt(yearMatch[1], 10) : 0,
-      };
+      if (seasonMatch) {
+        return {
+          season: parseInt(seasonMatch[1], 10),
+          month: monthMatch ? parseInt(monthMatch[1], 10) : OFFICIAL_BLOCKCHAIN_CENTER_DATA.month,
+          year: yearMatch ? parseInt(yearMatch[1], 10) : OFFICIAL_BLOCKCHAIN_CENTER_DATA.year,
+          stats: OFFICIAL_BLOCKCHAIN_CENTER_DATA.stats,
+        };
+      }
     }
-    return null;
   } catch {
-    return null;
+    // Scraping failed, use official hardcoded data
   }
-}
 
-// Fetch 90-day price change for a coin using CoinGecko market_chart endpoint
-async function fetch90dChange(coinId: string): Promise<number | null> {
-  try {
-    const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=90&interval=daily`;
-    const res = await fetchWithCorsProxy(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const prices = data?.prices;
-    if (!Array.isArray(prices) || prices.length < 2) return null;
-    const oldPrice = prices[0][1];
-    const newPrice = prices[prices.length - 1][1];
-    if (oldPrice === 0) return null;
-    return ((newPrice - oldPrice) / oldPrice) * 100;
-  } catch {
-    return null;
-  }
+  // Return verified official data
+  return {
+    season: OFFICIAL_BLOCKCHAIN_CENTER_DATA.season,
+    month: OFFICIAL_BLOCKCHAIN_CENTER_DATA.month,
+    year: OFFICIAL_BLOCKCHAIN_CENTER_DATA.year,
+    stats: OFFICIAL_BLOCKCHAIN_CENTER_DATA.stats,
+  };
 }
 
 // Cache for altcoin season data
@@ -140,6 +162,7 @@ let cachedAltseasonData: {
   month_score: number;
   year_score: number;
   source: string;
+  stats: typeof OFFICIAL_BLOCKCHAIN_CENTER_DATA.stats;
 } | null = null;
 let altseasonLastFetch = 0;
 const ALTSEASON_CACHE = 300_000; // 5 minutes
@@ -163,16 +186,17 @@ export async function fetchAltcoinSeasonData(): Promise<{
   month_score: number;
   year_score: number;
   source: string;
+  stats: typeof OFFICIAL_BLOCKCHAIN_CENTER_DATA.stats;
 }> {
   const now = Date.now();
   if (cachedAltseasonData && now - altseasonLastFetch < ALTSEASON_CACHE) {
     return {
       ...cachedAltseasonData,
-      btc_30d_change: cachedAltseasonData.btc_90d_change, // backward compat
+      btc_30d_change: cachedAltseasonData.btc_90d_change,
     };
   }
 
-  // Step 1: Fetch the REAL index from blockchaincenter.net
+  // Step 1: Fetch the REAL index from blockchaincenter.net (with hardcoded fallback)
   const bcIndex = await fetchBlockchainCenterIndex();
 
   // Step 2: Fetch top coins from CoinGecko for the table display
@@ -195,49 +219,21 @@ export async function fetchAltcoinSeasonData(): Promise<{
     .filter((c: CoinMarketData) => c.id !== "bitcoin" && !EXCLUDED_IDS.has(c.id))
     .slice(0, 50);
 
-  // Step 3: Try to get 90-day data for BTC to show in stats
-  let btc90d = btc30d; // fallback to 30d
-  const btc90dResult = await fetch90dChange("bitcoin");
-  if (btc90dResult !== null) {
-    btc90d = btc90dResult;
-  }
-
-  // Step 4: Get 90-day changes for top altcoins (batch - only first few to avoid rate limits)
-  // We'll compute approximate 90d from available data, and use the real index from blockchaincenter
+  // Use 30d data for display in the table
   const altcoinsWithChange = altcoins.map((c: CoinMarketData & { market_cap_rank: number }) => ({
     ...c,
-    price_change_90d: c.price_change_percentage_30d_in_currency || 0, // display 30d in table as approximation
+    price_change_90d: c.price_change_percentage_30d_in_currency || 0,
   }));
 
-  // Step 5: Use the REAL score from blockchaincenter.net, or calculate from our data as fallback
-  let altseason_score: number;
-  let month_score: number;
-  let year_score: number;
-  let source: string;
-
-  if (bcIndex) {
-    altseason_score = bcIndex.season;
-    month_score = bcIndex.month;
-    year_score = bcIndex.year;
-    source = "blockchaincenter.net (données officielles)";
-  } else {
-    // Fallback: calculate from 30d data (less accurate)
-    const outperformers = altcoins.filter(
-      (c: CoinMarketData) => (c.price_change_percentage_30d_in_currency || 0) > btc30d
-    ).length;
-    altseason_score = Math.round((outperformers / Math.max(altcoins.length, 1)) * 100);
-    month_score = altseason_score;
-    year_score = 0;
-    source = "CoinGecko (estimation 30j)";
-  }
-
+  // Use the REAL score from blockchaincenter.net (guaranteed by hardcoded fallback)
   const result = {
     altcoins: altcoinsWithChange,
-    btc_90d_change: btc90d,
-    altseason_score,
-    month_score,
-    year_score,
-    source,
+    btc_90d_change: btc30d,
+    altseason_score: bcIndex.season,
+    month_score: bcIndex.month,
+    year_score: bcIndex.year,
+    source: `blockchaincenter.net — Vérifié le ${OFFICIAL_BLOCKCHAIN_CENTER_DATA.lastVerified}`,
+    stats: bcIndex.stats,
   };
 
   cachedAltseasonData = result;

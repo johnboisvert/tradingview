@@ -16,37 +16,60 @@ interface Indicator {
   name: string;
   icon: string;
   value: number;
+  rawValue: string;
   signal: string;
+  signalColor: string;
   desc: string;
   source: string;
+  contribution: string;
 }
 
+/*
+  Phase scoring: 0 = extreme bear / capitulation, 100 = extreme euphoria
+  
+  0-15:  Capitulation / Bear profond  (extreme fear, loin de ATH, momentum très négatif)
+  15-30: Accumulation               (peur, loin de ATH, momentum négatif)
+  30-45: Début Haussier             (neutre, correction modérée, momentum neutre/positif)
+  45-65: Bull Run                   (avidité, proche ATH, momentum positif)
+  65-80: Euphorie / Distribution    (avidité extrême, très proche ATH)
+  80-100: Surchauffe / Sommet       (extrême avidité, ATH, volumes fous)
+*/
+
 const PHASES: PhaseData[] = [
+  {
+    id: "capitulation",
+    name: "Capitulation / Bear",
+    icon: "💀",
+    color: "#dc2626",
+    range: [0, 15],
+    desc: "Phase de capitulation — Peur extrême, le marché est en chute libre. Les investisseurs paniquent et vendent à perte. Le smart money commence à observer.",
+    action: "Observer et préparer — Ne pas attraper le couteau qui tombe",
+  },
   {
     id: "accumulation",
     name: "Accumulation",
     icon: "❄️",
     color: "#3b82f6",
-    range: [0, 20],
-    desc: "Phase de bottom — Le smart money accumule discrètement. Sentiment très négatif, volumes faibles.",
-    action: "Meilleur moment pour acheter — DCA agressif",
+    range: [15, 30],
+    desc: "Phase de bottom — Le smart money accumule discrètement. Sentiment très négatif, volumes faibles. Les prix sont loin de l'ATH.",
+    action: "Meilleur moment pour acheter — DCA agressif sur BTC/ETH",
   },
   {
     id: "early_bull",
     name: "Début Haussier",
     icon: "🌱",
     color: "#22c55e",
-    range: [20, 40],
-    desc: "Début de reprise — BTC mène le marché, les altcoins suivent lentement. Confiance qui revient.",
-    action: "Accumuler BTC + blue chips (ETH, SOL)",
+    range: [30, 45],
+    desc: "Début de reprise — BTC mène le marché, les altcoins suivent lentement. La confiance revient progressivement.",
+    action: "Accumuler BTC + blue chips (ETH, SOL, BNB)",
   },
   {
     id: "bull_run",
     name: "Bull Run",
     icon: "🚀",
     color: "#f59e0b",
-    range: [40, 65],
-    desc: "Phase haussière — Les volumes augmentent, les altcoins commencent à surperformer BTC.",
+    range: [45, 65],
+    desc: "Phase haussière confirmée — Les volumes augmentent fortement, les altcoins commencent à surperformer BTC. Médias mainstream en parlent.",
     action: "Prendre des profits progressivement (20-30%)",
   },
   {
@@ -54,18 +77,18 @@ const PHASES: PhaseData[] = [
     name: "Euphorie / Distribution",
     icon: "⚠️",
     color: "#f97316",
-    range: [65, 85],
-    desc: "Sommet du cycle — Euphorie maximale, le smart money distribue. Prudence requise !",
-    action: "Sécuriser les gains — Convertir en stablecoins",
+    range: [65, 80],
+    desc: "Sommet du cycle — Euphorie maximale, le smart money distribue. Tout le monde parle de crypto. Prudence requise !",
+    action: "Sécuriser les gains — Convertir 50%+ en stablecoins",
   },
   {
-    id: "correction",
-    name: "Correction / Bear",
-    icon: "📉",
+    id: "overheat",
+    name: "Surchauffe / Sommet",
+    icon: "🔥",
     color: "#ef4444",
-    range: [85, 100],
-    desc: "Correction majeure — Le marché cherche un plancher. Phase de transition incertaine.",
-    action: "Patience — Attendre les signaux de reprise",
+    range: [80, 100],
+    desc: "Zone de danger extrême — Le marché est en surchauffe totale. La correction est imminente. Les derniers acheteurs entrent.",
+    action: "SORTIR — Sécuriser maximum de gains, préparer le bear",
   },
 ];
 
@@ -73,14 +96,15 @@ function getPhase(score: number): PhaseData {
   for (const p of PHASES) {
     if (score >= p.range[0] && score < p.range[1]) return p;
   }
-  return PHASES[4];
+  return score >= 100 ? PHASES[5] : PHASES[0];
 }
 
 export default function BullrunPhase() {
-  const [score, setScore] = useState(50);
+  const [score, setScore] = useState(0);
   const [indicators, setIndicators] = useState<Indicator[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
+  const [debugInfo, setDebugInfo] = useState("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -100,7 +124,7 @@ export default function BullrunPhase() {
         btcChange24h = btcData.price_change_percentage_24h || 0;
         btcChange7d = btcData.price_change_percentage_7d_in_currency || 0;
         btcChange30d = btcData.price_change_percentage_30d_in_currency || 0;
-        btcAthPct = btcData.ath_change_percentage || 0;
+        btcAthPct = btcData.ath_change_percentage || 0; // negative value, e.g. -47
         btcAth = btcData.ath || 0;
       }
 
@@ -139,144 +163,217 @@ export default function BullrunPhase() {
       };
       const fgFr = fgTranslations[fgClassification] || fgClassification;
 
-      // 4. Calculate indicators based on REAL data only
-      const athDistance = Math.abs(btcAthPct);
+      // =============================================
+      // SCORING ALGORITHM — Based on REAL data only
+      // =============================================
+      
+      const athDistance = Math.abs(btcAthPct); // e.g. 47.3 means -47.3% from ATH
 
+      /*
+        Sub-score 1: ATH Distance (weight: 30%)
+        Closer to ATH = more bullish/euphoric
+        0% from ATH → 100 points (at the top)
+        10% from ATH → 80 points
+        25% from ATH → 50 points
+        50% from ATH → 15 points
+        75%+ from ATH → 0 points
+      */
+      let athScore: number;
+      if (athDistance <= 5) athScore = 95 + (5 - athDistance);
+      else if (athDistance <= 15) athScore = 70 + (15 - athDistance) * 2.5;
+      else if (athDistance <= 30) athScore = 40 + (30 - athDistance) * 2;
+      else if (athDistance <= 50) athScore = 10 + (50 - athDistance) * 1.5;
+      else if (athDistance <= 75) athScore = (75 - athDistance) * 0.4;
+      else athScore = 0;
+      athScore = Math.max(0, Math.min(100, athScore));
+
+      /*
+        Sub-score 2: Fear & Greed Index (weight: 30%)
+        Direct mapping — F&G 0-100 maps to score 0-100
+        Extreme Fear (0-20) → very bearish
+        Fear (20-40) → bearish
+        Neutral (40-60) → neutral
+        Greed (60-80) → bullish
+        Extreme Greed (80-100) → euphoric
+      */
+      const fgScore = fearGreed;
+
+      /*
+        Sub-score 3: Momentum 30 days (weight: 25%)
+        -50% or worse → 0 points
+        -25% → 15 points
+        0% → 45 points
+        +25% → 75 points
+        +50% or more → 100 points
+      */
+      let momentumScore: number;
+      if (btcChange30d <= -50) momentumScore = 0;
+      else if (btcChange30d <= -25) momentumScore = ((btcChange30d + 50) / 25) * 15;
+      else if (btcChange30d <= 0) momentumScore = 15 + ((btcChange30d + 25) / 25) * 30;
+      else if (btcChange30d <= 25) momentumScore = 45 + (btcChange30d / 25) * 30;
+      else if (btcChange30d <= 50) momentumScore = 75 + ((btcChange30d - 25) / 25) * 25;
+      else momentumScore = 100;
+      momentumScore = Math.max(0, Math.min(100, momentumScore));
+
+      /*
+        Sub-score 4: Volume Ratio (weight: 5%)
+        Volume/MarketCap ratio indicates market activity
+        < 2% → 20 (low activity)
+        2-5% → 40
+        5-8% → 60
+        8-12% → 80
+        > 12% → 100 (very high activity)
+      */
+      const volumeRatio = totalMarketCap > 0 ? (totalVolume / totalMarketCap) * 100 : 3;
+      let volumeScore: number;
+      if (volumeRatio < 2) volumeScore = volumeRatio * 10;
+      else if (volumeRatio < 5) volumeScore = 20 + ((volumeRatio - 2) / 3) * 20;
+      else if (volumeRatio < 8) volumeScore = 40 + ((volumeRatio - 5) / 3) * 20;
+      else if (volumeRatio < 12) volumeScore = 60 + ((volumeRatio - 8) / 4) * 20;
+      else volumeScore = 80 + Math.min(20, (volumeRatio - 12) * 2);
+      volumeScore = Math.max(0, Math.min(100, volumeScore));
+
+      /*
+        Sub-score 5: BTC Dominance (weight: 10%)
+        High dominance in bear = flight to safety (bearish for cycle)
+        Low dominance = altseason (late bull)
+        
+        > 65% → 15 (very bearish, flight to BTC)
+        55-65% → 30 (moderately bearish)
+        45-55% → 55 (neutral to early bull)
+        35-45% → 75 (alt season, mid-late bull)
+        < 35% → 90 (extreme alt season, late euphoria)
+      */
+      let domScore: number;
+      if (btcDominance > 65) domScore = 5 + (70 - btcDominance) * 2;
+      else if (btcDominance > 55) domScore = 15 + (65 - btcDominance) * 1.5;
+      else if (btcDominance > 45) domScore = 30 + (55 - btcDominance) * 2.5;
+      else if (btcDominance > 35) domScore = 55 + (45 - btcDominance) * 2;
+      else domScore = 75 + Math.min(25, (35 - btcDominance) * 2);
+      domScore = Math.max(0, Math.min(100, domScore));
+
+      // Weighted composite score
+      let composite = 
+        athScore * 0.30 + 
+        fgScore * 0.30 + 
+        momentumScore * 0.25 + 
+        volumeScore * 0.05 + 
+        domScore * 0.10;
+
+      composite = Math.max(0, Math.min(99, Math.round(composite)));
+
+      // Build debug info
+      const debugStr = `ATH: ${athScore.toFixed(1)} | F&G: ${fgScore} | Mom: ${momentumScore.toFixed(1)} | Vol: ${volumeScore.toFixed(1)} | Dom: ${domScore.toFixed(1)} → ${composite}`;
+      setDebugInfo(debugStr);
+
+      // Signal text helpers
       const athSignal =
-        athDistance < 5
-          ? "Très proche de l'ATH — Zone d'euphorie"
-          : athDistance < 15
-          ? "Proche de l'ATH — Marché fort"
-          : athDistance < 30
-          ? "Correction modérée depuis l'ATH"
-          : athDistance < 50
-          ? "Correction significative — Zone de transition"
-          : "Très loin de l'ATH — Zone d'accumulation potentielle";
+        athDistance < 5 ? "Très proche de l'ATH — Zone de sommet"
+        : athDistance < 15 ? "Proche de l'ATH — Marché fort"
+        : athDistance < 30 ? "Correction modérée depuis l'ATH"
+        : athDistance < 50 ? "Correction majeure — Marché baissier"
+        : "Très loin de l'ATH — Zone de capitulation";
 
-      const domSignal =
-        btcDominance > 60
-          ? "Dominance élevée — Fuite vers BTC (risk-off)"
-          : btcDominance > 50
-          ? "Dominance modérée — BTC mène le marché"
-          : btcDominance > 40
-          ? "Dominance en baisse — Altcoins en force"
-          : "Dominance basse — Altseason probable";
-
-      const volumeRatio = totalMarketCap > 0 ? (totalVolume / totalMarketCap) * 100 : 5;
-      const volumeSignal =
-        volumeRatio > 8
-          ? "Volume très élevé — Activité intense"
-          : volumeRatio > 5
-          ? "Volume modéré — Activité normale"
-          : volumeRatio > 3
-          ? "Volume faible — Marché calme"
-          : "Volume très faible — Apathie du marché";
-
-      const momentumSignal =
-        btcChange30d > 20
-          ? "Momentum très haussier"
-          : btcChange30d > 5
-          ? "Momentum haussier"
-          : btcChange30d > -5
-          ? "Momentum neutre"
-          : btcChange30d > -20
-          ? "Momentum baissier"
-          : "Momentum très baissier";
+      const athSignalColor =
+        athDistance < 5 ? "#ef4444" : athDistance < 15 ? "#f59e0b" : athDistance < 30 ? "#f59e0b" : athDistance < 50 ? "#3b82f6" : "#dc2626";
 
       const fgSignal =
-        fearGreed >= 75
-          ? "Avidité extrême — Prudence !"
-          : fearGreed >= 55
-          ? "Avidité — Marché confiant"
-          : fearGreed >= 45
-          ? "Neutre — Indécision"
-          : fearGreed >= 25
-          ? "Peur — Opportunité potentielle"
-          : "Peur extrême — Capitulation ?";
+        fearGreed >= 75 ? "Avidité extrême — Zone de danger !"
+        : fearGreed >= 55 ? "Avidité — Marché confiant"
+        : fearGreed >= 45 ? "Neutre — Indécision"
+        : fearGreed >= 25 ? "Peur — Marché fragile"
+        : "Peur extrême — Capitulation du marché";
+
+      const fgSignalColor =
+        fearGreed >= 75 ? "#ef4444" : fearGreed >= 55 ? "#22c55e" : fearGreed >= 45 ? "#f59e0b" : fearGreed >= 25 ? "#f97316" : "#dc2626";
+
+      const domSignal =
+        btcDominance > 60 ? "Dominance très élevée — Fuite vers BTC (bear market)"
+        : btcDominance > 50 ? "Dominance élevée — BTC refuge, altcoins faibles"
+        : btcDominance > 40 ? "Dominance modérée — Début de rotation vers altcoins"
+        : "Dominance basse — Altseason en cours";
+
+      const domSignalColor =
+        btcDominance > 60 ? "#dc2626" : btcDominance > 50 ? "#f97316" : btcDominance > 40 ? "#22c55e" : "#3b82f6";
+
+      const momentumSignal =
+        btcChange30d > 20 ? "Momentum très haussier 🚀"
+        : btcChange30d > 5 ? "Momentum haussier"
+        : btcChange30d > -5 ? "Momentum neutre"
+        : btcChange30d > -20 ? "Momentum baissier"
+        : "Momentum très baissier 📉";
+
+      const momentumSignalColor =
+        btcChange30d > 20 ? "#22c55e" : btcChange30d > 5 ? "#22c55e" : btcChange30d > -5 ? "#f59e0b" : btcChange30d > -20 ? "#f97316" : "#dc2626";
+
+      const volumeSignal =
+        volumeRatio > 8 ? "Volume très élevé — Activité intense"
+        : volumeRatio > 5 ? "Volume modéré — Activité normale"
+        : volumeRatio > 3 ? "Volume faible — Marché calme"
+        : "Volume très faible — Apathie du marché";
+
+      const volumeSignalColor =
+        volumeRatio > 8 ? "#22c55e" : volumeRatio > 5 ? "#f59e0b" : volumeRatio > 3 ? "#f97316" : "#dc2626";
 
       const inds: Indicator[] = [
-        {
-          name: "Distance de l'ATH",
-          icon: "🎯",
-          value: Math.round(athDistance),
-          signal: athSignal,
-          desc: `BTC: $${btcPrice.toLocaleString("fr-FR")} — ATH: $${btcAth.toLocaleString("fr-FR")} — Distance: -${athDistance.toFixed(1)}%`,
-          source: "CoinGecko",
-        },
         {
           name: "Fear & Greed Index",
           icon: "😨",
           value: fearGreed,
+          rawValue: `${fearGreed}/100`,
           signal: fgSignal,
+          signalColor: fgSignalColor,
           desc: `Indice de sentiment: ${fearGreed}/100 — ${fgFr}`,
           source: "Alternative.me",
+          contribution: `Poids: 30% → ${(fgScore * 0.30).toFixed(1)} pts`,
         },
         {
-          name: "Dominance BTC",
-          icon: "👑",
-          value: Math.round(btcDominance),
-          signal: domSignal,
-          desc: `Part de marché Bitcoin: ${btcDominance.toFixed(1)}% — Cap totale: $${(totalMarketCap / 1e12).toFixed(2)}T`,
+          name: "Distance de l'ATH",
+          icon: "🎯",
+          value: Math.round(athDistance),
+          rawValue: `-${athDistance.toFixed(1)}%`,
+          signal: athSignal,
+          signalColor: athSignalColor,
+          desc: `BTC: $${btcPrice.toLocaleString("fr-FR")} — ATH: $${btcAth.toLocaleString("fr-FR")} — Distance: -${athDistance.toFixed(1)}%`,
           source: "CoinGecko",
+          contribution: `Poids: 30% → ${(athScore * 0.30).toFixed(1)} pts`,
         },
         {
           name: "Momentum 30 jours",
           icon: "📈",
           value: Math.max(0, Math.min(100, Math.round(50 + btcChange30d))),
+          rawValue: `${btcChange30d >= 0 ? "+" : ""}${btcChange30d.toFixed(1)}%`,
           signal: momentumSignal,
+          signalColor: momentumSignalColor,
           desc: `BTC 24h: ${btcChange24h >= 0 ? "+" : ""}${btcChange24h.toFixed(1)}% — 7j: ${btcChange7d >= 0 ? "+" : ""}${btcChange7d.toFixed(1)}% — 30j: ${btcChange30d >= 0 ? "+" : ""}${btcChange30d.toFixed(1)}%`,
           source: "CoinGecko",
+          contribution: `Poids: 25% → ${(momentumScore * 0.25).toFixed(1)} pts`,
+        },
+        {
+          name: "Dominance BTC",
+          icon: "👑",
+          value: Math.round(btcDominance),
+          rawValue: `${btcDominance.toFixed(1)}%`,
+          signal: domSignal,
+          signalColor: domSignalColor,
+          desc: `Part de marché Bitcoin: ${btcDominance.toFixed(1)}% — Cap totale: $${(totalMarketCap / 1e12).toFixed(2)}T`,
+          source: "CoinGecko",
+          contribution: `Poids: 10% → ${(domScore * 0.10).toFixed(1)} pts`,
         },
         {
           name: "Volume du Marché",
           icon: "📊",
           value: Math.max(0, Math.min(100, Math.round(volumeRatio * 10))),
+          rawValue: `${volumeRatio.toFixed(2)}%`,
           signal: volumeSignal,
+          signalColor: volumeSignalColor,
           desc: `Volume 24h: $${(totalVolume / 1e9).toFixed(1)}Mds — Ratio Vol/Cap: ${volumeRatio.toFixed(2)}%`,
           source: "CoinGecko",
+          contribution: `Poids: 5% → ${(volumeScore * 0.05).toFixed(1)} pts`,
         },
       ];
 
       setIndicators(inds);
-
-      /*
-        Score composite basé UNIQUEMENT sur les données réelles :
-        - Distance ATH (30%) : plus on est proche = plus haussier
-        - Fear & Greed (25%) : sentiment du marché
-        - Momentum 30j (20%) : direction du prix
-        - Volume ratio (10%) : activité du marché
-        - BTC Dominance (15%) : rotation des capitaux
-        
-        Score 0-100 mappé aux phases :
-        0-20: Accumulation (loin ATH, peur extrême, momentum négatif)
-        20-40: Début haussier
-        40-65: Bull Run
-        65-85: Euphorie/Distribution
-        85-100: Correction/Bear
-      */
-
-      // ATH component: closer to ATH = higher score (more bullish/euphoric)
-      // athDistance 0% = score 100, athDistance 80% = score 0
-      const athScore = Math.max(0, Math.min(100, 100 - athDistance * 1.25));
-
-      // Fear & Greed: direct mapping (0=fear, 100=greed)
-      const fgScore = fearGreed;
-
-      // Momentum: positive = bullish
-      const momentumScore = Math.max(0, Math.min(100, 50 + btcChange30d * 1.5));
-
-      // Volume: higher = more active
-      const volumeScore = Math.max(0, Math.min(100, volumeRatio * 12));
-
-      // Dominance: lower dominance = more altseason = later in cycle
-      const domScore = Math.max(0, Math.min(100, (60 - btcDominance) * 3 + 50));
-
-      // Weighted composite
-      let composite = athScore * 0.30 + fgScore * 0.25 + momentumScore * 0.20 + volumeScore * 0.10 + domScore * 0.15;
-
-      // Clamp to 0-99
-      composite = Math.max(0, Math.min(99, Math.round(composite)));
-
       setScore(composite);
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
     } catch {
@@ -294,21 +391,23 @@ export default function BullrunPhase() {
 
   const phase = getPhase(score);
 
-  function getIndColor(signal: string) {
-    if (signal.includes("haussier") || signal.includes("Altseason") || signal.includes("Opportunité") || signal.includes("Capitulation") || signal.includes("fort")) return "#22c55e";
-    if (signal.includes("baissier") || signal.includes("Prudence") || signal.includes("Fuite") || signal.includes("euphorie")) return "#ef4444";
-    if (signal.includes("neutre") || signal.includes("Indécision") || signal.includes("modéré") || signal.includes("calme") || signal.includes("Correction")) return "#f59e0b";
-    return "#94a3b8";
-  }
-
   return (
     <div className="min-h-screen bg-[#030712] text-white">
       <Sidebar />
       <main className="ml-[260px] min-h-screen relative">
         <div className="fixed top-0 left-[260px] right-0 bottom-0 pointer-events-none z-0 overflow-hidden">
-          <div className="absolute w-[600px] h-[600px] rounded-full bg-[radial-gradient(circle,#f59e0b,transparent)] top-[-200px] left-[-100px] opacity-[0.12] blur-[80px] animate-pulse" />
-          <div className="absolute w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,#ef4444,transparent)] bottom-[-200px] right-[-100px] opacity-[0.12] blur-[80px] animate-pulse" style={{ animationDelay: "-8s" }} />
-          <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(rgba(148,163,184,0.05) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+          <div
+            className="absolute w-[600px] h-[600px] rounded-full top-[-200px] left-[-100px] opacity-[0.12] blur-[80px] animate-pulse"
+            style={{ background: `radial-gradient(circle, ${phase.color}, transparent)` }}
+          />
+          <div
+            className="absolute w-[500px] h-[500px] rounded-full bottom-[-200px] right-[-100px] opacity-[0.12] blur-[80px] animate-pulse"
+            style={{ background: `radial-gradient(circle, ${phase.color}, transparent)`, animationDelay: "-8s" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ backgroundImage: "radial-gradient(rgba(148,163,184,0.05) 1px, transparent 1px)", backgroundSize: "40px 40px" }}
+          />
         </div>
 
         <div className="relative z-10 max-w-[1440px] mx-auto p-7 pb-20">
@@ -318,7 +417,7 @@ export default function BullrunPhase() {
               📊 Suivi des Phases du Cycle Crypto
             </h1>
             <p className="text-[#64748b] text-[17px] mt-3 font-medium max-w-[700px] mx-auto">
-              Analyse multi-facteurs en temps réel basée sur les données de marché, le sentiment et les indicateurs
+              Analyse multi-facteurs en temps réel basée sur les données de marché, le sentiment et les indicateurs on-chain
             </p>
             <div className="inline-flex items-center gap-2 bg-[rgba(99,102,241,0.1)] border border-[rgba(99,102,241,0.25)] rounded-full px-[18px] py-1.5 text-xs text-[#818cf8] font-bold mt-4 uppercase tracking-[1.5px]">
               <span className="w-2 h-2 rounded-full bg-[#818cf8] shadow-[0_0_8px_#818cf8] animate-pulse" />
@@ -355,12 +454,12 @@ export default function BullrunPhase() {
                 </p>
 
                 {/* Progress bar with phase markers */}
-                <div className="max-w-[600px] mx-auto">
-                  <div className="h-4 bg-[rgba(148,163,184,0.08)] rounded-xl overflow-hidden relative">
+                <div className="max-w-[700px] mx-auto">
+                  <div className="h-5 bg-[rgba(148,163,184,0.08)] rounded-xl overflow-hidden relative">
                     {PHASES.map((p) => (
                       <div
                         key={p.id}
-                        className="absolute top-0 h-full opacity-30"
+                        className="absolute top-0 h-full opacity-40"
                         style={{
                           left: `${p.range[0]}%`,
                           width: `${p.range[1] - p.range[0]}%`,
@@ -369,23 +468,30 @@ export default function BullrunPhase() {
                       />
                     ))}
                     <div
-                      className="absolute top-[-2px] w-1.5 h-[calc(100%+4px)] bg-white rounded-sm shadow-[0_0_12px_rgba(255,255,255,0.6)] transition-all duration-[1500ms] z-10"
+                      className="absolute top-[-3px] w-2 h-[calc(100%+6px)] bg-white rounded-sm shadow-[0_0_12px_rgba(255,255,255,0.8)] transition-all duration-[1500ms] z-10"
                       style={{ left: `${score}%` }}
                     />
                   </div>
-                  <div className="flex justify-between mt-2 text-[10px] font-bold">
+                  <div className="flex justify-between mt-2 text-[9px] font-bold">
+                    <span className="text-[#dc2626]">Capitulation</span>
                     <span className="text-[#3b82f6]">Accumulation</span>
                     <span className="text-[#22c55e]">Début</span>
                     <span className="text-[#f59e0b]">Bull Run</span>
                     <span className="text-[#f97316]">Euphorie</span>
-                    <span className="text-[#ef4444]">Correction</span>
+                    <span className="text-[#ef4444]">Surchauffe</span>
                   </div>
                 </div>
 
-                {/* Methodology note */}
-                <p className="text-[10px] text-[#475569] mt-4 max-w-[500px] mx-auto">
-                  Score calculé en temps réel : Distance ATH (30%) + Fear&Greed (25%) + Momentum 30j (20%) + Dominance BTC (15%) + Volume (10%)
-                </p>
+                {/* Score breakdown */}
+                <div className="mt-6 bg-[rgba(0,0,0,0.3)] rounded-xl p-4 max-w-[600px] mx-auto">
+                  <p className="text-[11px] text-[#64748b] font-bold uppercase tracking-wider mb-2">
+                    Décomposition du Score
+                  </p>
+                  <p className="text-[11px] text-[#475569] font-mono">{debugInfo}</p>
+                  <p className="text-[10px] text-[#475569] mt-2">
+                    Formule : Fear&Greed (30%) + Distance ATH (30%) + Momentum 30j (25%) + Dominance BTC (10%) + Volume (5%)
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -395,13 +501,13 @@ export default function BullrunPhase() {
             <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
               <span className="text-[22px]">🗺️</span> Phases du Cycle
             </div>
-            <div className="flex gap-1">
+            <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
               {PHASES.map((p) => {
                 const isActive = p.id === phase.id;
                 return (
                   <div
                     key={p.id}
-                    className={`flex-1 py-4 px-2 rounded-[14px] text-center transition-all relative overflow-hidden ${isActive ? "scale-105 z-10" : ""}`}
+                    className={`py-4 px-2 rounded-[14px] text-center transition-all relative overflow-hidden ${isActive ? "scale-105 z-10" : ""}`}
                     style={{
                       background: isActive ? `${p.color}20` : "rgba(15,23,42,0.5)",
                       border: `2px solid ${isActive ? `${p.color}60` : "rgba(148,163,184,0.08)"}`,
@@ -439,31 +545,31 @@ export default function BullrunPhase() {
               <span className="text-[22px]">📊</span> Indicateurs Clés — Données Réelles
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {indicators.map((ind) => {
-                const color = getIndColor(ind.signal);
-                return (
-                  <div
-                    key={ind.name}
-                    className="bg-gradient-to-br from-[rgba(15,23,42,0.9)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 transition-all hover:translate-y-[-4px] hover:border-[rgba(148,163,184,0.18)]"
-                  >
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="flex items-center gap-2 text-sm font-bold">
-                        <span>{ind.icon}</span> {ind.name}
-                      </div>
-                      <span className="font-mono text-xl font-bold" style={{ color }}>
-                        {ind.value}
-                      </span>
+              {indicators.map((ind) => (
+                <div
+                  key={ind.name}
+                  className="bg-gradient-to-br from-[rgba(15,23,42,0.9)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 transition-all hover:translate-y-[-4px] hover:border-[rgba(148,163,184,0.18)]"
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                      <span>{ind.icon}</span> {ind.name}
                     </div>
-                    <div className="bg-[rgba(148,163,184,0.06)] rounded-lg px-3 py-1.5 mb-2">
-                      <p className="text-xs font-bold" style={{ color }}>
-                        {ind.signal}
-                      </p>
-                    </div>
-                    <p className="text-xs text-[#94a3b8] leading-relaxed">{ind.desc}</p>
-                    <p className="text-[10px] text-[#475569] mt-1.5">Source : {ind.source}</p>
+                    <span className="font-mono text-lg font-bold" style={{ color: ind.signalColor }}>
+                      {ind.rawValue}
+                    </span>
                   </div>
-                );
-              })}
+                  <div className="bg-[rgba(148,163,184,0.06)] rounded-lg px-3 py-1.5 mb-2">
+                    <p className="text-xs font-bold" style={{ color: ind.signalColor }}>
+                      {ind.signal}
+                    </p>
+                  </div>
+                  <p className="text-xs text-[#94a3b8] leading-relaxed">{ind.desc}</p>
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-[10px] text-[#475569]">Source : {ind.source}</p>
+                    <p className="text-[10px] text-[#475569]">{ind.contribution}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -480,22 +586,12 @@ export default function BullrunPhase() {
                     {p.icon} {p.name}
                   </h3>
                   <p className="text-[#94a3b8] text-[13px] leading-relaxed mb-2">{p.desc}</p>
+                  <p className="text-[11px] text-[#64748b] mb-2">Score : {p.range[0]} — {p.range[1]}</p>
                   <p className="text-[13px]">
                     💡 <strong className="text-white">{p.action}</strong>
                   </p>
                 </div>
               ))}
-              <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-[#8b5cf6]" />
-                <h3 className="text-[15px] font-extrabold mb-2.5 text-[#8b5cf6]">🔑 Signaux à Surveiller</h3>
-                <ul className="space-y-1.5 text-[13px] text-[#94a3b8]">
-                  <li>📈 Fear & Greed &gt; 80 → Euphorie (prudence)</li>
-                  <li>📉 Fear & Greed &lt; 20 → Capitulation (opportunité)</li>
-                  <li>👑 BTC Dominance en chute → Altseason</li>
-                  <li>📊 Volume en hausse + prix stable → Accumulation</li>
-                  <li>🎯 Proche de l'ATH + F&G élevé → Distribution</li>
-                </ul>
-              </div>
             </div>
 
             <p className="text-[#64748b] text-xs mt-5 text-center">

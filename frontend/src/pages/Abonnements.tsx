@@ -216,6 +216,33 @@ function PaymentModal({
                   </li>
                   <li className="flex gap-2">
                     <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 font-bold text-xs">4</span>
+                    <span>
+                      Si votre banque demande une <strong>question de sécurité</strong>, utilisez :
+                    </span>
+                  </li>
+                </ol>
+
+                {/* Security question box */}
+                <div className="bg-black/30 border border-emerald-500/20 rounded-xl p-3 space-y-2">
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Question de sécurité</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-emerald-200 text-xs font-mono">Quel est le nom de la plateforme ?</span>
+                      <CopyButton text="Quel est le nom de la plateforme ?" />
+                    </div>
+                  </div>
+                  <div className="border-t border-white/[0.05] pt-2 space-y-1">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Réponse</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white text-sm font-bold font-mono tracking-widest">CryptoIA</span>
+                      <CopyButton text="CryptoIA" />
+                    </div>
+                  </div>
+                </div>
+
+                <ol className="space-y-2 text-xs text-gray-300 list-none">
+                  <li className="flex gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 font-bold text-xs">5</span>
                     <span>Votre plan sera activé <strong className="text-white">sous 24h ouvrables</strong> après réception</span>
                   </li>
                 </ol>

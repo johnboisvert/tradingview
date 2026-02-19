@@ -6,9 +6,18 @@ import { isAdminAuthenticated } from "@/pages/AdminLogin";
 
 const USER_PLAN_KEY = "cryptoia_user_plan";
 
-// Clean up stale admin auth from localStorage (was moved to sessionStorage)
+// SECURITY: Force reset user plan on every load.
+// Since there is no real payment/auth system yet, no user should have a paid plan.
+// Only admin (via sessionStorage admin auth) gets full access.
+// This prevents stale localStorage data from the old demo plan switcher.
 if (typeof window !== "undefined") {
-  localStorage.removeItem("cryptoia_admin_auth");
+  localStorage.removeItem("cryptoia_admin_auth"); // Clean up stale admin auth (moved to sessionStorage)
+  
+  // Force plan to "free" - paid plans will only be granted through a real payment system in the future
+  const currentStoredPlan = localStorage.getItem(USER_PLAN_KEY);
+  if (currentStoredPlan && currentStoredPlan !== "free") {
+    localStorage.setItem(USER_PLAN_KEY, "free");
+  }
 }
 
 // Plan hierarchy (higher index = more access)
@@ -34,8 +43,9 @@ export function getUserPlan(): PlanType {
   return "free";
 }
 
-// Set current user plan
-export function setUserPlan(plan: PlanType): void {
+// Set current user plan (internal use only - not exported to prevent abuse)
+// In the future, this will be called after successful payment verification
+function setUserPlan(plan: PlanType): void {
   localStorage.setItem(USER_PLAN_KEY, plan);
 }
 

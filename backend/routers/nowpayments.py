@@ -6,10 +6,11 @@ import hmac
 import json
 import logging
 import os
+import time
 from typing import Literal, Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException, Request, Header
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,10 @@ PLAN_LABELS: dict[str, str] = {
 def _get_api_key() -> str:
     key = os.environ.get("NOWPAYMENTS_API_KEY", "")
     if not key:
-        raise HTTPException(status_code=503, detail="NOWPayments non configuré")
+        raise HTTPException(
+            status_code=503,
+            detail="NOWPayments non configuré — ajoutez NOWPAYMENTS_API_KEY dans Railway"
+        )
     return key
 
 
@@ -62,18 +66,6 @@ class CreateCryptoPaymentResponse(BaseModel):
     payment_id: str
 
 
-class IPNPayload(BaseModel):
-    payment_id: Optional[str] = None
-    payment_status: Optional[str] = None
-    order_id: Optional[str] = None
-    order_description: Optional[str] = None
-    price_amount: Optional[float] = None
-    price_currency: Optional[str] = None
-    pay_amount: Optional[float] = None
-    pay_currency: Optional[str] = None
-    actually_paid: Optional[float] = None
-
-
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -89,6 +81,8 @@ async def nowpayments_status():
                 headers={"x-api-key": api_key},
             )
             return resp.json()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"NOWPayments inaccessible: {str(e)}")
 
@@ -103,7 +97,7 @@ async def create_crypto_payment(data: CreateCryptoPaymentRequest, request: Reque
     host = _frontend_host(request)
 
     label = PLAN_LABELS.get(data.plan, f"Abonnement {data.plan.capitalize()} — CryptoIA")
-    order_id = f"cryptoia_{data.plan}_{int(__import__('time').time())}"
+    order_id = f"cryptoia_{data.plan}_{int(time.time())}"
 
     payload = {
         "price_amount": round(data.amount_cad, 2),
@@ -137,6 +131,7 @@ async def create_crypto_payment(data: CreateCryptoPaymentRequest, request: Reque
                     detail=f"Erreur NOWPayments: {resp.json().get('message', resp.text)}"
                 )
             result = resp.json()
+            logger.info(f"NOWPayments invoice created: id={result.get('id')}, order_id={order_id}, plan={data.plan}")
             return CreateCryptoPaymentResponse(
                 payment_url=result.get("invoice_url", ""),
                 payment_id=str(result.get("id", "")),
@@ -152,7 +147,10 @@ async def create_crypto_payment(data: CreateCryptoPaymentRequest, request: Reque
 async def nowpayments_webhook(request: Request):
     """
     IPN webhook — NOWPayments calls this when a payment status changes.
-    Verifies HMAC signature and activates the user plan on 'finished' status.
+    Verifies HMAC-SHA512 signature and logs plan activation on 'finished' status.
+
+    Configurez dans NOWPayments Dashboard :
+    IPN URL : https://votre-domaine.up.railway.app/api/v1/nowpayments/webhook
     """
     ipn_secret = _get_ipn_secret()
     body_bytes = await request.body()
@@ -183,8 +181,13 @@ async def nowpayments_webhook(request: Request):
         payment_status = payload.get("payment_status", "")
         order_id = payload.get("order_id", "")
         payment_id = str(payload.get("payment_id", ""))
+        actually_paid = payload.get("actually_paid", 0)
+        pay_currency = payload.get("pay_currency", "")
 
-        logger.info(f"NOWPayments IPN: payment_id={payment_id}, status={payment_status}, order_id={order_id}")
+        logger.info(
+            f"NOWPayments IPN: payment_id={payment_id}, status={payment_status}, "
+            f"order_id={order_id}, paid={actually_paid} {pay_currency}"
+        )
 
         # Extract plan from order_id (format: cryptoia_{plan}_{timestamp})
         plan = "unknown"
@@ -194,15 +197,18 @@ async def nowpayments_webhook(request: Request):
                 plan = parts[1]
 
         # Only activate on confirmed/finished status
-        if payment_status in ("finished", "confirmed", "partially_paid"):
-            logger.info(f"✅ Payment confirmed for plan={plan}, order_id={order_id}")
-            # Here you would update the user's plan in your database.
-            # Since this project uses localStorage on the frontend,
-            # the PaymentSuccess page handles local activation after redirect.
-            # For a real backend with user DB, you would do:
-            # await db.execute("UPDATE users SET plan=? WHERE order_id=?", plan, order_id)
+        if payment_status in ("finished", "confirmed"):
+            logger.info(f"✅ NOWPayments payment CONFIRMED: plan={plan}, order_id={order_id}, payment_id={payment_id}")
+            # TODO: Activate user plan in database when user auth is implemented
+            # await db.execute("UPDATE users SET plan=? WHERE nowpayments_order_id=?", plan, order_id)
 
-        return {"status": "ok", "payment_id": payment_id, "plan": plan}
+        elif payment_status == "partially_paid":
+            logger.warning(f"⚠️ NOWPayments partially_paid: plan={plan}, order_id={order_id}")
+
+        elif payment_status in ("failed", "refunded", "expired"):
+            logger.warning(f"❌ NOWPayments payment {payment_status}: plan={plan}, order_id={order_id}")
+
+        return {"status": "ok", "payment_id": payment_id, "plan": plan, "payment_status": payment_status}
 
     except HTTPException:
         raise

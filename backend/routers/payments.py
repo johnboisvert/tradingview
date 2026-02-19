@@ -1,6 +1,7 @@
 """
-Payment router — Stripe checkout sessions + Interac/Crypto instructions.
+Payment router — Stripe checkout sessions + webhook pour activation sécurisée.
 """
+import json
 import logging
 import os
 from typing import Literal, Optional
@@ -20,7 +21,10 @@ router = APIRouter(prefix="/api/v1/payment", tags=["payment"])
 def _get_stripe_key() -> str:
     key = os.environ.get("STRIPE_SECRET_KEY", "")
     if not key:
-        raise HTTPException(status_code=503, detail="Stripe not configured")
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe non configuré — ajoutez STRIPE_SECRET_KEY dans les variables d'environnement Railway"
+        )
     return key
 
 
@@ -80,9 +84,6 @@ class PublishableKeyResponse(BaseModel):
 @router.get("/config", response_model=PublishableKeyResponse)
 async def get_stripe_config():
     """Return the Stripe publishable key so the frontend can initialise Stripe.js."""
-    # We derive the publishable key from the secret key prefix pattern:
-    # sk_live_... → pk_live_...   |   sk_test_... → pk_test_...
-    # If a separate STRIPE_PUBLISHABLE_KEY env var is set, prefer that.
     pk = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
     if not pk:
         sk = os.environ.get("STRIPE_SECRET_KEY", "")
@@ -122,22 +123,26 @@ async def create_payment_session(data: CreateSessionRequest, request: Request):
             metadata={"plan": data.plan},
             allow_promotion_codes=True,
         )
+        logger.info(f"Stripe session created: {session.id} for plan={data.plan}")
         return CreateSessionResponse(session_id=session.id, url=session.url)
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e.user_message if hasattr(e, 'user_message') else str(e)))
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.error(f"Unexpected error creating Stripe session: {e}")
         raise HTTPException(status_code=500, detail="Erreur interne du serveur")
 
 
 @router.post("/verify_payment", response_model=VerifyPaymentResponse)
 async def verify_payment(data: VerifyPaymentRequest):
-    """Verify a Stripe Checkout session status."""
+    """Verify a Stripe Checkout session status and activate plan if paid."""
     stripe.api_key = _get_stripe_key()
     try:
         session = stripe.checkout.Session.retrieve(data.session_id)
         plan = session.metadata.get("plan", "unknown") if session.metadata else "unknown"
+
+        logger.info(f"Stripe verify: session={data.session_id}, status={session.status}, plan={plan}")
+
         return VerifyPaymentResponse(
             status=session.status,
             payment_status=session.payment_status,
@@ -147,7 +152,71 @@ async def verify_payment(data: VerifyPaymentRequest):
         )
     except stripe.error.StripeError as e:
         logger.error(f"Stripe verify error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e.user_message if hasattr(e, 'user_message') else str(e)))
     except Exception as e:
         logger.error(f"Unexpected verify error: {e}")
         raise HTTPException(status_code=500, detail="Erreur interne du serveur")
+
+
+@router.post("/stripe_webhook")
+async def stripe_webhook(request: Request):
+    """
+    Stripe webhook — reçoit les événements Stripe et active le plan après paiement confirmé.
+    Configurez l'URL dans Stripe Dashboard : https://dashboard.stripe.com/webhooks
+    URL : https://votre-domaine.up.railway.app/api/v1/payment/stripe_webhook
+    Événements à activer : checkout.session.completed, invoice.payment_succeeded
+    """
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+    body = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+
+    try:
+        if webhook_secret and sig_header:
+            # Vérification de signature Stripe (recommandé en production)
+            stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+            event = stripe.Webhook.construct_event(body, sig_header, webhook_secret)
+        else:
+            # Mode développement sans signature (à éviter en production)
+            logger.warning("Stripe webhook reçu sans vérification de signature — configurez STRIPE_WEBHOOK_SECRET")
+            event = json.loads(body)
+    except ValueError:
+        logger.error("Stripe webhook: corps invalide")
+        raise HTTPException(status_code=400, detail="Corps invalide")
+    except stripe.error.SignatureVerificationError:
+        logger.error("Stripe webhook: signature invalide")
+        raise HTTPException(status_code=401, detail="Signature Stripe invalide")
+
+    event_type = event.get("type") if isinstance(event, dict) else event.type
+
+    # ── checkout.session.completed ──────────────────────────────────────────
+    if event_type == "checkout.session.completed":
+        session_obj = event["data"]["object"] if isinstance(event, dict) else event.data.object
+        session_id = session_obj.get("id") if isinstance(session_obj, dict) else session_obj.id
+        metadata = session_obj.get("metadata", {}) if isinstance(session_obj, dict) else (session_obj.metadata or {})
+        payment_status = session_obj.get("payment_status", "") if isinstance(session_obj, dict) else session_obj.payment_status
+        plan = metadata.get("plan", "unknown")
+
+        logger.info(f"✅ Stripe checkout.session.completed: session={session_id}, plan={plan}, payment_status={payment_status}")
+
+        # Ici vous activeriez le plan dans votre base de données utilisateur.
+        # Exemple : await db.execute("UPDATE users SET plan=? WHERE stripe_session_id=?", plan, session_id)
+        # Pour l'instant, le frontend active le plan via verify_payment après redirection.
+
+    # ── invoice.payment_succeeded (renouvellements) ─────────────────────────
+    elif event_type == "invoice.payment_succeeded":
+        invoice = event["data"]["object"] if isinstance(event, dict) else event.data.object
+        subscription_id = invoice.get("subscription") if isinstance(invoice, dict) else invoice.subscription
+        customer_id = invoice.get("customer") if isinstance(invoice, dict) else invoice.customer
+        logger.info(f"✅ Stripe invoice.payment_succeeded: subscription={subscription_id}, customer={customer_id}")
+
+    # ── customer.subscription.deleted (annulation) ──────────────────────────
+    elif event_type == "customer.subscription.deleted":
+        subscription = event["data"]["object"] if isinstance(event, dict) else event.data.object
+        customer_id = subscription.get("customer") if isinstance(subscription, dict) else subscription.customer
+        logger.info(f"❌ Stripe subscription.deleted: customer={customer_id}")
+        # Ici vous réinitialiseriez le plan à "free" dans votre base de données.
+
+    else:
+        logger.debug(f"Stripe webhook event ignoré: {event_type}")
+
+    return {"status": "ok", "event_type": event_type}

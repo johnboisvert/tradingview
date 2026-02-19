@@ -28,7 +28,7 @@ export default function PaymentSuccess() {
         setPlanName(planParam);
         // SECURITY FIX: DO NOT set plan from URL params — plan activation must be done
         // server-side via IPN webhook after blockchain confirmation.
-        // Removed: localStorage.setItem("cryptoia_user_plan", planParam);
+        // The plan will be activated automatically once the webhook confirms payment.
         setStatus("success");
       } else {
         setStatus("error");
@@ -53,8 +53,12 @@ export default function PaymentSuccess() {
         const data = await res.json();
 
         if (data.status === "complete" || data.payment_status === "paid") {
-          setPlanName(data.plan || planParam);
-          localStorage.setItem("cryptoia_user_plan", data.plan || planParam);
+          const confirmedPlan = data.plan || planParam;
+          setPlanName(confirmedPlan);
+          // Only set plan after backend verification confirms payment
+          if (confirmedPlan) {
+            localStorage.setItem("cryptoia_user_plan", confirmedPlan);
+          }
           setStatus("success");
         } else {
           setStatus("error");

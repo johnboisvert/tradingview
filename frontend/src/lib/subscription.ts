@@ -6,12 +6,9 @@ import { isAdminAuthenticated } from "@/pages/AdminLogin";
 
 const USER_PLAN_KEY = "cryptoia_user_plan";
 
-// SECURITY: Clean up legacy admin auth key (moved to sessionStorage).
-// We no longer force-reset paid plans — plan is set by Stripe webhook verification only.
+// Clean up stale admin auth key (moved to sessionStorage in a previous version)
 if (typeof window !== "undefined") {
-  localStorage.removeItem("cryptoia_admin_auth"); // Clean up stale admin auth (moved to sessionStorage)
-  // NOTE: Do NOT reset cryptoia_user_plan here — paid plans are set by backend verification
-  // and must persist across page reloads for paying users.
+  localStorage.removeItem("cryptoia_admin_auth");
 }
 
 // Plan hierarchy (higher index = more access)
@@ -37,10 +34,14 @@ export function getUserPlan(): PlanType {
   return "free";
 }
 
-// Set current user plan (internal use only - not exported to prevent abuse)
-// In the future, this will be called after successful payment verification
-function setUserPlan(plan: PlanType): void {
+// Set current user plan — called after successful payment verification
+export function setUserPlan(plan: PlanType): void {
   localStorage.setItem(USER_PLAN_KEY, plan);
+}
+
+// Clear user plan (logout / reset)
+export function clearUserPlan(): void {
+  localStorage.removeItem(USER_PLAN_KEY);
 }
 
 // Route path to plan access slug mapping
@@ -90,6 +91,7 @@ const ROUTE_TO_SLUG: Record<string, string> = {
   "/contact": "dashboard",
   "/abonnements": "dashboard",
   "/mon-compte": "dashboard",
+  "/payment-success": "dashboard",
 };
 
 // Check if a route is accessible for a given plan

@@ -34,44 +34,28 @@ function setItem<T>(key: string, value: T): void {
 
 // ============================================================
 // Default Data
+// NOTE: Only admin user kept for production. Mock users removed.
 // ============================================================
 const DEFAULT_USERS: User[] = [
   { username: "admin", role: "admin", plan: "elite", subscription_end: "2027-02-17", created_at: "2024-01-15" },
-  { username: "marc@email.com", role: "user", plan: "pro", subscription_end: "2026-08-15", created_at: "2025-06-10" },
-  { username: "julie@gmail.com", role: "user", plan: "premium", subscription_end: "2026-04-20", created_at: "2025-11-03" },
-  { username: "alex@crypto.io", role: "user", plan: "elite", subscription_end: "2027-01-01", created_at: "2025-03-22" },
-  { username: "pierre@mail.com", role: "user", plan: "advanced", subscription_end: "2026-06-30", created_at: "2025-09-14" },
-  { username: "sarah@web.com", role: "user", plan: "free", created_at: "2026-01-05" },
-  { username: "thomas@dev.fr", role: "user", plan: "premium", subscription_end: "2026-05-18", created_at: "2025-12-20" },
-  { username: "emma@trade.ca", role: "user", plan: "pro", subscription_end: "2026-09-10", created_at: "2025-07-08" },
-  { username: "lucas@btc.net", role: "user", plan: "free", created_at: "2026-02-01" },
-  { username: "chloe@defi.xyz", role: "user", plan: "advanced", subscription_end: "2026-07-25", created_at: "2025-10-30" },
 ];
 
 const DEFAULT_PROMOS: PromoCode[] = [
-  { code: "LAUNCH50", discount: 50, type: "percent", max_uses: 100, current_uses: 47, active: true, created_at: "2025-12-01", expires_at: "2026-06-01" },
-  { code: "EARLYBIRD30", discount: 30, type: "percent", max_uses: 200, current_uses: 132, active: true, created_at: "2025-11-15", expires_at: "2026-03-15" },
-  { code: "WELCOME10", discount: 10, type: "percent", max_uses: 500, current_uses: 289, active: true, created_at: "2025-10-01" },
-  { code: "VIP2026", discount: 25, type: "percent", max_uses: 50, current_uses: 12, active: true, created_at: "2026-01-01", expires_at: "2026-12-31" },
-  { code: "EXPIRED20", discount: 20, type: "percent", max_uses: 100, current_uses: 100, active: false, created_at: "2025-06-01", expires_at: "2025-12-31" },
+  { code: "LAUNCH50", discount: 50, type: "percent", max_uses: 100, current_uses: 0, active: true, created_at: "2026-02-19", expires_at: "2026-08-01" },
+  { code: "WELCOME10", discount: 10, type: "percent", max_uses: 500, current_uses: 0, active: true, created_at: "2026-02-19" },
 ];
 
-const DEFAULT_MESSAGES: ContactMessage[] = [
-  { id: 1, name: "Jean Dupont", email: "jean@email.com", subject: "Question sur le plan Pro", message: "Bonjour, je voudrais savoir si le plan Pro inclut l'accès aux signaux AI en temps réel ?", created_at: "2026-02-17T10:30:00", read: false },
-  { id: 2, name: "Marie Martin", email: "marie@gmail.com", subject: "Problème de connexion", message: "Je n'arrive plus à me connecter depuis ce matin. Mon email est marie@gmail.com.", created_at: "2026-02-16T14:22:00", read: true },
-  { id: 3, name: "Paul Bernard", email: "paul@crypto.fr", subject: "Demande de partenariat", message: "Nous sommes une plateforme d'échange et aimerions discuter d'un partenariat.", created_at: "2026-02-15T09:15:00", read: false },
-  { id: 4, name: "Sophie Leroy", email: "sophie@web.ca", subject: "Remboursement", message: "Je souhaite annuler mon abonnement et obtenir un remboursement.", created_at: "2026-02-14T16:45:00", read: true },
-];
+const DEFAULT_MESSAGES: ContactMessage[] = [];
 
 const DEFAULT_EBOOKS: Ebook[] = [
-  { id: 1, title: "Guide Complet du Trading Crypto", description: "Apprenez les bases du trading de cryptomonnaies. Ce guide couvre tout, des exchanges aux premières stratégies.", file_path: "/ebooks/guide-trading.pdf", plan_required: "premium", active: true, downloads: 234, created_at: "2025-08-15", category: "Guides", format: "PDF", size: "2.4 MB" },
-  { id: 2, title: "Analyse Technique Avancée", description: "Maîtrisez les indicateurs techniques : RSI, MACD, Bollinger, patterns chartistes.", file_path: "/ebooks/analyse-technique.pdf", plan_required: "advanced", active: true, downloads: 156, created_at: "2025-10-20", category: "Guides", format: "PDF", size: "3.1 MB" },
-  { id: 3, title: "DeFi: Le Guide Ultime", description: "Tout sur la finance décentralisée : protocoles, TVL, rendements, farming.", file_path: "/ebooks/defi-guide.pdf", plan_required: "pro", active: true, downloads: 89, created_at: "2025-12-01", category: "Guides", format: "PDF", size: "1.8 MB" },
-  { id: 4, title: "Stratégies de Bull Run", description: "Comment profiter des cycles haussiers et maximiser vos gains.", file_path: "/ebooks/bull-run.pdf", plan_required: "elite", active: false, downloads: 45, created_at: "2026-01-10", category: "Guides", format: "PDF", size: "2.1 MB" },
-  { id: 5, title: "Cheat Sheet Analyse Technique", description: "Résumé visuel de tous les indicateurs techniques essentiels.", file_path: "/ebooks/cheatsheet-at.pdf", plan_required: "free", active: true, downloads: 412, created_at: "2025-07-01", category: "Cheat Sheets", format: "PDF", size: "1.8 MB" },
-  { id: 6, title: "Template Journal de Trading", description: "Spreadsheet pour suivre vos trades et analyser vos performances.", file_path: "/ebooks/journal-trading.xlsx", plan_required: "premium", active: true, downloads: 198, created_at: "2025-09-15", category: "Templates", format: "XLSX", size: "450 KB" },
-  { id: 7, title: "Checklist Risk Management", description: "Liste de vérification avant chaque trade : position sizing, stop loss, risk/reward.", file_path: "/ebooks/checklist-rm.pdf", plan_required: "free", active: true, downloads: 325, created_at: "2025-08-20", category: "Cheat Sheets", format: "PDF", size: "320 KB" },
-  { id: 8, title: "Glossaire Crypto A-Z", description: "Dictionnaire complet des termes crypto et trading.", file_path: "/ebooks/glossaire.pdf", plan_required: "free", active: true, downloads: 567, created_at: "2025-06-01", category: "Guides", format: "PDF", size: "1.2 MB" },
+  { id: 1, title: "Guide Complet du Trading Crypto", description: "Apprenez les bases du trading de cryptomonnaies. Ce guide couvre tout, des exchanges aux premières stratégies.", file_path: "/ebooks/guide-trading.pdf", plan_required: "premium", active: true, downloads: 0, created_at: "2026-02-19", category: "Guides", format: "PDF", size: "2.4 MB" },
+  { id: 2, title: "Analyse Technique Avancée", description: "Maîtrisez les indicateurs techniques : RSI, MACD, Bollinger, patterns chartistes.", file_path: "/ebooks/analyse-technique.pdf", plan_required: "advanced", active: true, downloads: 0, created_at: "2026-02-19", category: "Guides", format: "PDF", size: "3.1 MB" },
+  { id: 3, title: "DeFi: Le Guide Ultime", description: "Tout sur la finance décentralisée : protocoles, TVL, rendements, farming.", file_path: "/ebooks/defi-guide.pdf", plan_required: "pro", active: true, downloads: 0, created_at: "2026-02-19", category: "Guides", format: "PDF", size: "1.8 MB" },
+  { id: 4, title: "Stratégies de Bull Run", description: "Comment profiter des cycles haussiers et maximiser vos gains.", file_path: "/ebooks/bull-run.pdf", plan_required: "elite", active: true, downloads: 0, created_at: "2026-02-19", category: "Guides", format: "PDF", size: "2.1 MB" },
+  { id: 5, title: "Cheat Sheet Analyse Technique", description: "Résumé visuel de tous les indicateurs techniques essentiels.", file_path: "/ebooks/cheatsheet-at.pdf", plan_required: "free", active: true, downloads: 0, created_at: "2026-02-19", category: "Cheat Sheets", format: "PDF", size: "1.8 MB" },
+  { id: 6, title: "Template Journal de Trading", description: "Spreadsheet pour suivre vos trades et analyser vos performances.", file_path: "/ebooks/journal-trading.xlsx", plan_required: "premium", active: true, downloads: 0, created_at: "2026-02-19", category: "Templates", format: "XLSX", size: "450 KB" },
+  { id: 7, title: "Checklist Risk Management", description: "Liste de vérification avant chaque trade : position sizing, stop loss, risk/reward.", file_path: "/ebooks/checklist-rm.pdf", plan_required: "free", active: true, downloads: 0, created_at: "2026-02-19", category: "Cheat Sheets", format: "PDF", size: "320 KB" },
+  { id: 8, title: "Glossaire Crypto A-Z", description: "Dictionnaire complet des termes crypto et trading.", file_path: "/ebooks/glossaire.pdf", plan_required: "free", active: true, downloads: 0, created_at: "2026-02-19", category: "Guides", format: "PDF", size: "1.2 MB" },
 ];
 
 const DEFAULT_PLAN_PRICES: PlanPrices = {
@@ -83,9 +67,9 @@ const DEFAULT_PLAN_PRICES: PlanPrices = {
 
 const DEFAULT_PLAN_ACCESS: Record<string, string[]> = {
   free: ["dashboard", "fear-greed", "heatmap", "convertisseur", "calculatrice"],
-  premium: ["dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads"],
-  advanced: ["dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads", "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun"],
-  pro: ["dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads", "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun", "ai-whale-tracker", "ai-news-analyzer", "crypto-pepites", "defi-yield", "onchain", "portfolio", "market-simulation", "support"],
+  premium: ["dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads", "strategie", "technical-analyzer"],
+  advanced: ["dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads", "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun", "portfolio", "market-simulation"],
+  pro: ["dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads", "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun", "ai-whale-tracker", "ai-news-analyzer", "crypto-pepites", "defi-yield", "onchain", "portfolio", "market-simulation", "support", "token-scanner"],
   elite: ["dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads", "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun", "ai-whale-tracker", "ai-news-analyzer", "crypto-pepites", "defi-yield", "onchain", "portfolio", "market-simulation", "support", "ai-coach", "ai-swarm", "narrative-radar", "scam-shield", "altseason-copilot", "setup-builder", "token-scanner"],
 };
 

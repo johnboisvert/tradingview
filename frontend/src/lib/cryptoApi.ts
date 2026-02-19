@@ -1,4 +1,5 @@
 // Shared utility for fetching top 200 crypto data from CoinGecko
+// Uses CORS proxy for cross-origin requests from custom domains
 
 export interface CoinMarketData {
   id: string;
@@ -21,29 +22,47 @@ let cachedCoins: CoinMarketData[] = [];
 let lastFetchTime = 0;
 const CACHE_DURATION = 90_000; // 90 seconds
 
+async function fetchWithCorsProxy(url: string): Promise<Response> {
+  // Try direct first
+  try {
+    const res = await fetch(url);
+    if (res.ok) return res;
+  } catch {
+    // Direct failed, try proxy
+  }
+  // Use allorigins proxy
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+  return fetch(proxyUrl);
+}
+
 export async function fetchTop200(withSparkline = false): Promise<CoinMarketData[]> {
   const now = Date.now();
-  if (cachedCoins.length >= 200 && now - lastFetchTime < CACHE_DURATION && !withSparkline) {
+  if (cachedCoins.length >= 100 && now - lastFetchTime < CACHE_DURATION && !withSparkline) {
     return cachedCoins;
   }
 
   const sparkline = withSparkline ? "true" : "false";
-  const pages = [1, 2, 3, 4]; // 4 pages x 50 = 200
+  // Use 2 pages of 100 = 200 to minimize requests
+  const pages = [1, 2];
   const results: CoinMarketData[] = [];
 
   for (const page of pages) {
     try {
-      const res = await fetch(
-        `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=${page}&sparkline=${sparkline}&price_change_percentage=24h,7d,30d`
-      );
+      const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${page}&sparkline=${sparkline}&price_change_percentage=24h,7d,30d`;
+      const res = await fetchWithCorsProxy(url);
       if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          results.push(...data);
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          if (Array.isArray(data)) {
+            results.push(...data);
+          }
+        } catch {
+          // JSON parse failed
         }
       }
-      // Small delay between requests to avoid rate limiting
-      if (page < 4) await new Promise((r) => setTimeout(r, 300));
+      // Delay between requests to avoid rate limiting
+      if (page < 2) await new Promise((r) => setTimeout(r, 500));
     } catch {
       // Continue with what we have
       break;
@@ -56,6 +75,61 @@ export async function fetchTop200(withSparkline = false): Promise<CoinMarketData
   }
 
   return cachedCoins.length > 0 ? cachedCoins : results;
+}
+
+// Fetch top 50 altcoins performance vs BTC (for altcoin season)
+export async function fetchAltcoinSeasonData(): Promise<{
+  altcoins: Array<{
+    id: string;
+    symbol: string;
+    name: string;
+    image: string;
+    current_price: number;
+    price_change_percentage_24h: number;
+    price_change_percentage_30d_in_currency: number;
+    market_cap_rank: number;
+  }>;
+  btc_30d_change: number;
+  altseason_score: number;
+}> {
+  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=51&page=1&sparkline=false&price_change_percentage=24h,7d,30d`;
+  const res = await fetchWithCorsProxy(url);
+  
+  if (!res.ok) throw new Error("Failed to fetch data");
+  
+  const text = await res.text();
+  const data = JSON.parse(text);
+  
+  if (!Array.isArray(data)) throw new Error("Invalid data");
+
+  // Find BTC
+  const btc = data.find((c: CoinMarketData) => c.id === "bitcoin");
+  const btc30d = btc?.price_change_percentage_30d_in_currency || 0;
+
+  // Filter out stablecoins and wrapped tokens
+  const stableIds = new Set([
+    "tether", "usd-coin", "dai", "binance-usd", "true-usd", "paxos-standard",
+    "usdd", "frax", "gemini-dollar", "paypal-usd", "first-digital-usd",
+    "ethena-usde", "usual-usd", "usds", "usd1", "ripple-usd", "global-dollar",
+    "falcon-usd", "gho", "usdai",
+  ]);
+
+  const altcoins = data
+    .filter((c: CoinMarketData) => c.id !== "bitcoin" && !stableIds.has(c.id))
+    .slice(0, 50);
+
+  // Calculate altseason score: % of top 50 altcoins that outperformed BTC over 30d
+  const outperformers = altcoins.filter(
+    (c: CoinMarketData) => (c.price_change_percentage_30d_in_currency || 0) > btc30d
+  ).length;
+
+  const altseason_score = Math.round((outperformers / Math.max(altcoins.length, 1)) * 100);
+
+  return {
+    altcoins,
+    btc_30d_change: btc30d,
+    altseason_score,
+  };
 }
 
 export function formatPrice(price: number): string {

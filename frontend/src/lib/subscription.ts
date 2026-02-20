@@ -86,6 +86,7 @@ const ROUTE_TO_SLUG: Record<string, string> = {
   "/convertisseur": "convertisseur",
   "/calendrier": "calendrier",
   "/news": "nouvelles",
+  "/my-cryptoia": "dashboard",
   "/success-stories": "dashboard",
   "/onchain-metrics": "onchain",
   "/defi-yield": "defi-yield",

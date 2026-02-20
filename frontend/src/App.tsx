@@ -56,6 +56,7 @@ import TradingAcademy from "./pages/TradingAcademy";
 import Telechargement from "./pages/Telechargement";
 import AdminLogin from "./pages/AdminLogin";
 import Login from "./pages/Login";
+import MyCryptoIA from "./pages/MyCryptoIA";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ProtectedPlanRoute from "./components/ProtectedPlanRoute";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -123,6 +124,9 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/trading-academy" element={<PlanProtected path="/trading-academy"><TradingAcademy /></PlanProtected>} />
         <Route path="/telechargement" element={<PlanProtected path="/telechargement"><Telechargement /></PlanProtected>} />
+
+        {/* Mon Espace */}
+        <Route path="/my-cryptoia" element={<PlanProtected path="/my-cryptoia"><MyCryptoIA /></PlanProtected>} />
 
         {/* Compte - always accessible */}
         <Route path="/abonnements" element={<Abonnements />} />

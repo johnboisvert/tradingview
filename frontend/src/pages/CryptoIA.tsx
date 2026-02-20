@@ -330,58 +330,89 @@ export default function CryptoIA() {
     }
   }
 
-  // Load Top 200 from CoinGecko (4 pages x 50)
+  // Fetch a single CoinGecko page with retry
+  async function fetchCoinGeckoPage(page: number, retries = 2): Promise<CryptoItem[]> {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const res = await fetch(
+          `${COINGECKO_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=${page}&sparkline=false&price_change_percentage=24h`
+        );
+        if (res.status === 429) {
+          // Rate limited — wait and retry
+          await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+          continue;
+        }
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (!Array.isArray(data)) continue;
+        return data.map((coin: {
+          id: string; symbol: string; name: string;
+          market_cap_rank: number; current_price: number;
+          market_cap: number; price_change_percentage_24h: number;
+          image: string;
+        }, idx: number) => ({
+          id: coin.id,
+          symbol: coin.symbol?.toUpperCase(),
+          name: coin.name,
+          rank: coin.market_cap_rank || ((page - 1) * 50 + idx + 1),
+          price: coin.current_price,
+          market_cap: coin.market_cap,
+          price_change_24h: coin.price_change_percentage_24h,
+          image: coin.image,
+        }));
+      } catch {
+        if (attempt < retries) {
+          await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+        }
+      }
+    }
+    return [];
+  }
+
+  // Load Top 200 from CoinGecko (4 pages x 50) with staggered requests + API fallback
   async function loadCryptoList() {
     setLoadingList(true);
     try {
-      // First try the API's own list
-      const apiRes = await fetch(`${API_URL}/api/crypto-list`);
-      const apiData = await apiRes.json();
-      const apiList: CryptoItem[] = (apiData.cryptos || []).map((c: CryptoItem) => ({
-        ...c,
-        symbol: c.symbol?.toUpperCase() || c.symbol,
-      }));
-
-      // Then fetch CoinGecko Top 200 (pages 1-4, 50 per page)
-      const pages = [1, 2, 3, 4];
-      const results = await Promise.allSettled(
-        pages.map((page) =>
-          fetch(
-            `${COINGECKO_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=${page}&sparkline=false&price_change_percentage=24h`
-          ).then((r) => r.json())
+      // Start both sources in parallel
+      const apiPromise = fetch(`${API_URL}/api/crypto-list`)
+        .then((r) => r.json())
+        .then((data) =>
+          ((data.cryptos || []) as CryptoItem[]).map((c) => ({
+            ...c,
+            symbol: c.symbol?.toUpperCase() || c.symbol,
+          }))
         )
-      );
+        .catch(() => [] as CryptoItem[]);
 
+      // Fetch CoinGecko pages sequentially with small delays to avoid rate limits
       const cgCryptos: CryptoItem[] = [];
-      results.forEach((result, i) => {
-        if (result.status === "fulfilled" && Array.isArray(result.value)) {
-          result.value.forEach((coin: {
-            id: string; symbol: string; name: string;
-            market_cap_rank: number; current_price: number;
-            market_cap: number; price_change_percentage_24h: number;
-            image: string;
-          }, idx: number) => {
-            cgCryptos.push({
-              id: coin.id,
-              symbol: coin.symbol?.toUpperCase(),
-              name: coin.name,
-              rank: coin.market_cap_rank || (i * 50 + idx + 1),
-              price: coin.current_price,
-              market_cap: coin.market_cap,
-              price_change_24h: coin.price_change_percentage_24h,
-              image: coin.image,
-            });
-          });
+      for (const page of [1, 2, 3, 4]) {
+        const pageData = await fetchCoinGeckoPage(page);
+        cgCryptos.push(...pageData);
+        // Small delay between pages to avoid 429
+        if (page < 4 && pageData.length > 0) {
+          await new Promise((r) => setTimeout(r, 300));
         }
-      });
+      }
 
-      // Merge: CoinGecko list takes priority (more complete), fallback to API list
-      const merged = cgCryptos.length >= 50 ? cgCryptos : apiList;
-      const deduped = Array.from(new Map(merged.map((c) => [c.id, c])).values());
+      const apiList = await apiPromise;
+
+      // Merge both lists: CoinGecko data is richer, but combine with API list for coverage
+      const mergedMap = new Map<string, CryptoItem>();
+      // Add API list first (lower priority)
+      apiList.forEach((c: CryptoItem) => mergedMap.set(c.id, c));
+      // CoinGecko overwrites (higher priority, has images/prices/market_cap)
+      cgCryptos.forEach((c) => mergedMap.set(c.id, c));
+
+      const deduped = Array.from(mergedMap.values());
       deduped.sort((a, b) => (a.rank || 999) - (b.rank || 999));
 
-      setCryptos(deduped);
-      setFilteredCryptos(deduped);
+      if (deduped.length > 0) {
+        setCryptos(deduped);
+        setFilteredCryptos(deduped);
+      } else {
+        setError("Impossible de charger la liste des cryptos. Veuillez rafraîchir la page.");
+      }
     } catch {
       setError("Impossible de charger la liste des cryptos.");
     } finally {

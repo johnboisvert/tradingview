@@ -1,1 +1,0 @@
-web: cd frontend && node_modules/.bin/serve dist --single --listen $PORT

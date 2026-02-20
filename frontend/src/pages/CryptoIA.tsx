@@ -3,7 +3,8 @@ import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import {
   Bot, RefreshCw, TrendingUp, TrendingDown, Search,
-  Activity, AlertCircle, Brain, BarChart2, Zap, Info, Clock, Timer
+  Activity, AlertCircle, Brain, BarChart2, Zap, Info, Clock, Timer,
+  Shield, Target, ArrowDownRight, ArrowUpRight
 } from "lucide-react";
 import Footer from "@/components/Footer";
 
@@ -49,6 +50,10 @@ interface EnrichedPrediction extends PredictionResult {
     "24h": string;
     "7j": string;
   };
+  idealEntry?: number;
+  stopLoss?: number;
+  slPercentage?: number;
+  riskRewardRatio?: number;
 }
 
 function formatPrice(price: number): string {
@@ -103,6 +108,49 @@ function enrichPrediction(pred: PredictionResult, crypto: CryptoItem): EnrichedP
     return "🟡 NEUTRE";
   };
 
+  // === Ideal Entry Price & Stop Loss Calculation ===
+  // Volatility factor: higher volatility = wider SL buffer
+  const volFactor = Math.min(0.05, Math.max(0.01, volatility / 100));
+  // RSI factor: overbought/oversold adjusts entry aggressiveness
+  const rsiFactor = rsi > 70 ? 0.3 : rsi < 30 ? 0.7 : 0.5;
+
+  let idealEntry: number;
+  let stopLoss: number;
+
+  if (trend === "bullish") {
+    // For bullish: entry on a pullback toward support
+    // Blend between current price and support, weighted by RSI
+    const pullbackDepth = rsiFactor * 0.4 + 0.1; // 0.1 to 0.38 of the range
+    idealEntry = pred.current_price - (pred.current_price - support) * pullbackDepth;
+    // SL below support, adjusted by volatility (higher vol = wider SL)
+    const slBuffer = 1 - (0.02 + volFactor * 0.5); // 0.97 to 0.995
+    stopLoss = support * slBuffer;
+  } else if (trend === "bearish") {
+    // For bearish: entry on a bounce toward resistance
+    const bounceDepth = (1 - rsiFactor) * 0.4 + 0.1;
+    idealEntry = pred.current_price + (resistance - pred.current_price) * bounceDepth;
+    // SL above resistance, adjusted by volatility
+    const slBuffer = 1 + (0.02 + volFactor * 0.5); // 1.005 to 1.03
+    stopLoss = resistance * slBuffer;
+  } else {
+    // Neutral: entry at current price, tight SL
+    idealEntry = pred.current_price;
+    // SL based on direction of predicted price
+    if (pred.predicted_price >= pred.current_price) {
+      stopLoss = support * (1 - (0.015 + volFactor * 0.3));
+    } else {
+      stopLoss = resistance * (1 + (0.015 + volFactor * 0.3));
+    }
+  }
+
+  // Calculate SL percentage from entry
+  const slPercentage = Math.abs((stopLoss - idealEntry) / idealEntry) * 100;
+
+  // Risk/Reward ratio: potential gain vs potential loss
+  const potentialGain = Math.abs(pred.predicted_price - idealEntry);
+  const potentialLoss = Math.abs(idealEntry - stopLoss);
+  const riskRewardRatio = potentialLoss > 0 ? potentialGain / potentialLoss : 0;
+
   return {
     ...pred,
     rsi,
@@ -111,6 +159,10 @@ function enrichPrediction(pred: PredictionResult, crypto: CryptoItem): EnrichedP
     support,
     resistance,
     confidence_level,
+    idealEntry,
+    stopLoss,
+    slPercentage,
+    riskRewardRatio,
     timeframe_signals: {
       "1h": signalFor(0.25),
       "4h": signalFor(0.5),
@@ -799,6 +851,182 @@ export default function CryptoIA() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* Ideal Entry & Stop Loss */}
+            <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center">
+                  <Target className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-widest">🎯 Prix d'Entrée Idéal & Stop Loss</h3>
+                  <p className="text-xs text-gray-500">Calculés par l'IA à partir des données de marché en temps réel</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+                {/* Ideal Entry */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500/5 to-blue-500/5 border border-cyan-500/20 p-5">
+                  <div className="absolute top-3 right-3">
+                    {prediction.trend === "bullish" ? (
+                      <ArrowDownRight className="w-5 h-5 text-cyan-400/40" />
+                    ) : prediction.trend === "bearish" ? (
+                      <ArrowUpRight className="w-5 h-5 text-cyan-400/40" />
+                    ) : (
+                      <Target className="w-5 h-5 text-cyan-400/40" />
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-2">💎 Prix d'Entrée Idéal</p>
+                  <p className="text-2xl font-extrabold text-cyan-400">
+                    ${formatPrice(prediction.idealEntry || prediction.current_price)}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      prediction.trend === "bullish" ? "bg-emerald-500/20 text-emerald-400" :
+                      prediction.trend === "bearish" ? "bg-red-500/20 text-red-400" :
+                      "bg-amber-500/20 text-amber-400"
+                    }`}>
+                      {prediction.trend === "bullish" ? "Achat sur repli" :
+                       prediction.trend === "bearish" ? "Vente sur rebond" : "Entrée neutre"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {prediction.trend === "bullish"
+                      ? `Entrée optimale entre le support ($${formatPrice(prediction.support || 0)}) et le prix actuel`
+                      : prediction.trend === "bearish"
+                      ? `Entrée optimale entre le prix actuel et la résistance ($${formatPrice(prediction.resistance || 0)})`
+                      : "Entrée au prix actuel en zone neutre"}
+                  </p>
+                </div>
+
+                {/* Stop Loss */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500/5 to-orange-500/5 border border-red-500/20 p-5">
+                  <div className="absolute top-3 right-3">
+                    <Shield className="w-5 h-5 text-red-400/40" />
+                  </div>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-2">🛡️ Stop Loss (SL)</p>
+                  <p className="text-2xl font-extrabold text-red-400">
+                    ${formatPrice(prediction.stopLoss || 0)}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">
+                      -{(prediction.slPercentage || 0).toFixed(2)}% depuis l'entrée
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {prediction.trend === "bullish"
+                      ? `Placé sous le support ($${formatPrice(prediction.support || 0)}), ajusté à la volatilité`
+                      : prediction.trend === "bearish"
+                      ? `Placé au-dessus de la résistance ($${formatPrice(prediction.resistance || 0)}), ajusté à la volatilité`
+                      : "Basé sur les niveaux clés et la volatilité actuelle"}
+                  </p>
+                </div>
+
+                {/* Risk/Reward */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/5 to-pink-500/5 border border-purple-500/20 p-5">
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-2">⚖️ Ratio Risque / Récompense</p>
+                  <p className={`text-2xl font-extrabold ${
+                    (prediction.riskRewardRatio || 0) >= 2 ? "text-emerald-400" :
+                    (prediction.riskRewardRatio || 0) >= 1.5 ? "text-blue-400" :
+                    (prediction.riskRewardRatio || 0) >= 1 ? "text-amber-400" :
+                    "text-red-400"
+                  }`}>
+                    1:{(prediction.riskRewardRatio || 0).toFixed(2)}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      (prediction.riskRewardRatio || 0) >= 2 ? "bg-emerald-500/20 text-emerald-400" :
+                      (prediction.riskRewardRatio || 0) >= 1.5 ? "bg-blue-500/20 text-blue-400" :
+                      (prediction.riskRewardRatio || 0) >= 1 ? "bg-amber-500/20 text-amber-400" :
+                      "bg-red-500/20 text-red-400"
+                    }`}>
+                      {(prediction.riskRewardRatio || 0) >= 2 ? "🟢 Excellent" :
+                       (prediction.riskRewardRatio || 0) >= 1.5 ? "🔵 Favorable" :
+                       (prediction.riskRewardRatio || 0) >= 1 ? "🟡 Acceptable" :
+                       "🔴 Défavorable"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Gain potentiel: ${formatPrice(Math.abs(prediction.predicted_price - (prediction.idealEntry || prediction.current_price)))} | Risque: ${formatPrice(Math.abs((prediction.idealEntry || prediction.current_price) - (prediction.stopLoss || 0)))}
+                  </p>
+                </div>
+              </div>
+
+              {/* Visual price ladder */}
+              <div className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-4">
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-3">📊 Échelle de Prix</p>
+                {(() => {
+                  const entry = prediction.idealEntry || prediction.current_price;
+                  const sl = prediction.stopLoss || 0;
+                  const target = prediction.predicted_price;
+                  const isBullish = prediction.trend !== "bearish";
+                  const allPrices = [entry, sl, target, prediction.current_price];
+                  const minP = Math.min(...allPrices);
+                  const maxP = Math.max(...allPrices);
+                  const range = maxP - minP || 1;
+                  const pos = (p: number) => `${Math.max(2, Math.min(98, ((p - minP) / range) * 100))}%`;
+
+                  return (
+                    <div className="relative h-12 mb-6">
+                      {/* Track */}
+                      <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-1.5 bg-white/[0.08] rounded-full" />
+                      {/* Risk zone */}
+                      <div
+                        className={`absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full ${isBullish ? "bg-red-500/30" : "bg-red-500/30"}`}
+                        style={isBullish
+                          ? { left: pos(sl), width: `calc(${pos(entry)} - ${pos(sl)})` }
+                          : { left: pos(entry), width: `calc(${pos(sl)} - ${pos(entry)})` }
+                        }
+                      />
+                      {/* Reward zone */}
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-emerald-500/30"
+                        style={isBullish
+                          ? { left: pos(entry), width: `calc(${pos(target)} - ${pos(entry)})` }
+                          : { left: pos(target), width: `calc(${pos(entry)} - ${pos(target)})` }
+                        }
+                      />
+                      {/* SL marker */}
+                      <div className="absolute top-1/2 -translate-y-1/2" style={{ left: pos(sl) }}>
+                        <div className="w-3 h-3 rounded-full bg-red-500 border-2 border-red-300 shadow-[0_0_8px_rgba(239,68,68,0.5)] -translate-x-1/2" />
+                        <div className="absolute top-5 -translate-x-1/2 whitespace-nowrap">
+                          <span className="text-xs font-bold text-red-400">SL</span>
+                        </div>
+                      </div>
+                      {/* Entry marker */}
+                      <div className="absolute top-1/2 -translate-y-1/2" style={{ left: pos(entry) }}>
+                        <div className="w-3.5 h-3.5 rounded-full bg-cyan-500 border-2 border-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.5)] -translate-x-1/2" />
+                        <div className="absolute top-5 -translate-x-1/2 whitespace-nowrap">
+                          <span className="text-xs font-bold text-cyan-400">Entrée</span>
+                        </div>
+                      </div>
+                      {/* Current price marker */}
+                      <div className="absolute top-1/2 -translate-y-1/2" style={{ left: pos(prediction.current_price) }}>
+                        <div className="w-2.5 h-2.5 rounded-full bg-blue-400 border-2 border-blue-300 -translate-x-1/2 opacity-60" />
+                        <div className="absolute -top-5 -translate-x-1/2 whitespace-nowrap">
+                          <span className="text-xs font-semibold text-blue-400/60">Actuel</span>
+                        </div>
+                      </div>
+                      {/* Target marker */}
+                      <div className="absolute top-1/2 -translate-y-1/2" style={{ left: pos(target) }}>
+                        <div className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.5)] -translate-x-1/2" />
+                        <div className="absolute top-5 -translate-x-1/2 whitespace-nowrap">
+                          <span className="text-xs font-bold text-emerald-400">Cible</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Methodology note */}
+              <div className="mt-4 bg-cyan-500/5 border border-cyan-500/15 rounded-xl px-4 py-3 flex items-start gap-3">
+                <Info className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-cyan-400/80 font-semibold">
+                  Le prix d'entrée idéal est calculé en fonction de la tendance (haussière/baissière), du RSI, et de la distance entre le prix actuel et les niveaux de support/résistance. Le Stop Loss est positionné au-delà du niveau clé opposé, ajusté par la volatilité 24h ({(prediction.volatility || 0).toFixed(1)}%) pour éviter les déclenchements prématurés. Le ratio R:R compare le gain potentiel (vers le prix prédit) au risque (vers le SL).
+                </p>
               </div>
             </div>
 

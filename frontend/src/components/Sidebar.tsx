@@ -66,11 +66,23 @@ const NAV_SECTIONS = [
     title: "Mon Espace",
     items: [
       { path: "/my-cryptoia", label: "My CryptoIA", icon: LayoutDashboard },
+      { path: "/gamification", label: "Gamification & Badges", icon: Trophy },
+    ],
+  },
+  {
+    title: "IA & Analyse",
+    items: [
       { path: "/alertes-ia", label: "Alertes IA", icon: Bell },
       { path: "/score-confiance-ia", label: "Score Confiance IA", icon: Shield },
       { path: "/simulateur-strategie-ia", label: "Simulateur Stratégie IA", icon: Target },
       { path: "/rapport-hebdomadaire-ia", label: "Rapport Hebdomadaire IA", icon: FileText },
-      { path: "/gamification", label: "Gamification & Badges", icon: Trophy },
+      { path: "/backtesting-visuel", label: "Backtesting Visuel IA", icon: Activity },
+    ],
+  },
+  {
+    title: "Assistant",
+    items: [
+      { path: "/assistant-ia", label: "Assistant IA Conversationnel", icon: Bot },
     ],
   },
   {
@@ -105,8 +117,6 @@ const NAV_SECTIONS = [
   {
     title: "Intelligence IA",
     items: [
-      { path: "/assistant-ia", label: "Assistant IA Conversationnel", icon: Bot },
-      { path: "/backtesting-visuel", label: "Backtesting Visuel IA", icon: Activity },
       { path: "/prediction-ia", label: "Prédiction IA", icon: Sparkles },
       { path: "/crypto-ia", label: "Crypto IA", icon: Bot },
       { path: "/token-scanner", label: "AI Token Scanner", icon: Search },

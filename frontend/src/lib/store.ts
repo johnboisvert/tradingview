@@ -66,11 +66,46 @@ const DEFAULT_PLAN_PRICES: PlanPrices = {
 };
 
 const DEFAULT_PLAN_ACCESS: Record<string, string[]> = {
-  free: ["dashboard", "fear-greed", "heatmap", "convertisseur", "calculatrice"],
-  premium: ["dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads", "strategie", "technical-analyzer", "crypto-journal"],
-  advanced: ["dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads", "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun", "portfolio", "market-simulation", "crypto-journal", "screener-technique"],
-  pro: ["dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads", "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun", "ai-whale-tracker", "ai-news-analyzer", "crypto-pepites", "defi-yield", "onchain", "portfolio", "market-simulation", "support", "token-scanner", "crypto-journal", "screener-technique"],
-  elite: ["dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads", "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun", "ai-whale-tracker", "ai-news-analyzer", "crypto-pepites", "defi-yield", "onchain", "portfolio", "market-simulation", "support", "ai-coach", "ai-swarm", "narrative-radar", "scam-shield", "altseason-copilot", "setup-builder", "token-scanner", "crypto-journal", "screener-technique"],
+  // Gratuit : accès basique — Score Confiance IA en lecture seule (via ai-signals limité), 3 alertes max
+  free: [
+    "dashboard", "fear-greed", "heatmap", "convertisseur", "calculatrice",
+  ],
+  // Premium : MyCryptoIA, AlertesIA (illimitées), ScoreConfianceIA, RapportHebdomadaireIA, AssistantIA
+  premium: [
+    "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance",
+    "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads",
+    "strategie", "technical-analyzer", "crypto-journal",
+    "ai-signals", "ai-coach",
+  ],
+  // Advanced : + SimulateurStrategieIA, BacktestingVisuel
+  advanced: [
+    "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance",
+    "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads",
+    "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun",
+    "portfolio", "market-simulation", "crypto-journal", "screener-technique",
+    "ai-coach", "setup-builder", "backtesting-visuel",
+  ],
+  // Pro : + Gamification (badges exclusifs), PWA installable
+  pro: [
+    "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance",
+    "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads",
+    "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun",
+    "ai-whale-tracker", "ai-news-analyzer", "crypto-pepites", "defi-yield", "onchain",
+    "portfolio", "market-simulation", "support", "token-scanner",
+    "crypto-journal", "screener-technique",
+    "ai-coach", "setup-builder", "backtesting-visuel", "gamification",
+  ],
+  // Elite : accès complet à tout
+  elite: [
+    "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance",
+    "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads",
+    "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun",
+    "ai-whale-tracker", "ai-news-analyzer", "crypto-pepites", "defi-yield", "onchain",
+    "portfolio", "market-simulation", "support", "token-scanner",
+    "crypto-journal", "screener-technique",
+    "ai-coach", "ai-swarm", "narrative-radar", "scam-shield", "altseason-copilot",
+    "setup-builder", "backtesting-visuel", "gamification",
+  ],
 };
 
 // ============================================================

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
 import { RefreshCw, Search } from "lucide-react";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
+import PageHeader from "@/components/PageHeader";
 
 interface TFData {
   id: string;

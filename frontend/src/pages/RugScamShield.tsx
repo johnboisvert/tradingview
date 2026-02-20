@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Sidebar from "../components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 
 interface TokenSecurityData {
   is_open_source: string;

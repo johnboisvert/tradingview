@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 
 interface Narrative {
   name: string;

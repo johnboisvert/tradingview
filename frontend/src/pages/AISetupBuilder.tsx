@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 interface Setup {
   name: string;

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { getEbooks, incrementEbookDownloads, type Ebook } from "@/lib/api";
+import PageHeader from "@/components/PageHeader";
 
 const CATEGORIES = ["Tous", "Guides", "Cheat Sheets", "Templates", "Calendriers", "Infographies", "Extras"];
 

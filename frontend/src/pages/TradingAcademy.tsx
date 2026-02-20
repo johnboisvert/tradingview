@@ -3,6 +3,7 @@ import Sidebar from "../components/Sidebar";
 import { ChevronDown, ChevronRight, CheckCircle2, Circle, Clock, BookOpen, Award, Shield, Brain, Zap, BarChart3, Globe, Layers, Target, Flame } from "lucide-react";
 import { MODULES, LEVEL_STYLES } from "../data/academyData";
 import type { Lesson } from "../data/academyData";
+import PageHeader from "@/components/PageHeader";
 
 export { BookOpen, Shield, Brain, Zap, BarChart3, Globe, Target, Flame };
 

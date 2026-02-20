@@ -1,8 +1,8 @@
 import Footer from "../components/Footer";
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, AlertCircle, LogIn } from "lucide-react";
-import { loginUser, setUserSession } from "@/lib/store";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { Eye, EyeOff, AlertCircle, LogIn, ShieldAlert } from "lucide-react";
+import { loginUser, setUserSession, registerUserSession, removeUserSessionToken } from "@/lib/store";
 import { setUserPlan } from "@/lib/subscription";
 
 export function isUserLoggedIn(): boolean {
@@ -10,12 +10,24 @@ export function isUserLoggedIn(): boolean {
 }
 
 export function userLogout(): void {
+  const session = sessionStorage.getItem("cryptoia_user_session");
+  if (session) {
+    try {
+      const parsed = JSON.parse(session);
+      if (parsed.username) {
+        removeUserSessionToken(parsed.username);
+      }
+    } catch { /* ignore */ }
+  }
   sessionStorage.removeItem("cryptoia_user_session");
+  sessionStorage.removeItem("cryptoia_session_token");
   localStorage.removeItem("cryptoia_user_plan");
 }
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const sessionError = (location.state as { sessionError?: string } | null)?.sessionError;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -30,6 +42,8 @@ export default function Login() {
     setTimeout(() => {
       const user = loginUser(username.trim(), password);
       if (user) {
+        // Register session token for double-connection protection
+        registerUserSession(user.username);
         setUserSession(user.username, user.plan);
         setUserPlan(user.plan as Parameters<typeof setUserPlan>[0]);
         navigate("/");
@@ -59,6 +73,17 @@ export default function Login() {
             Connectez-vous à votre compte membre
           </p>
         </div>
+
+        {/* Session Error Banner */}
+        {sessionError && (
+          <div className="mb-4 flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <ShieldAlert className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-amber-400">Session expirée</p>
+              <p className="text-xs text-gray-400 mt-0.5">{sessionError}</p>
+            </div>
+          </div>
+        )}
 
         {/* Card */}
         <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-8 shadow-2xl backdrop-blur-sm">

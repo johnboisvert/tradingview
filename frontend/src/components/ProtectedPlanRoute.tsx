@@ -7,6 +7,7 @@ import {
   getPlanDisplayInfo,
 } from "@/lib/subscription";
 import { Lock, ArrowRight, Crown } from "lucide-react";
+import { useSessionGuard } from "@/hooks/useSessionGuard";
 
 interface ProtectedPlanRouteProps {
   children: React.ReactNode;
@@ -16,6 +17,9 @@ interface ProtectedPlanRouteProps {
 export default function ProtectedPlanRoute({ children, routePath }: ProtectedPlanRouteProps) {
   const navigate = useNavigate();
   const currentPlan = getUserPlan();
+
+  // Check session validity every 15 seconds
+  useSessionGuard(15000);
 
   if (isRouteAccessible(routePath, currentPlan)) {
     return <>{children}</>;

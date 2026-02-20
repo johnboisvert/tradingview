@@ -14,6 +14,7 @@ import {
   LogOut,
   ChevronRight,
   ArrowLeft,
+  Eye,
 } from "lucide-react";
 import { adminLogout } from "@/pages/AdminLogin";
 import { getAdminSession } from "@/lib/store";
@@ -21,6 +22,7 @@ import { getAdminSession } from "@/lib/store";
 const NAV_ITEMS = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { path: "/admin/users", label: "Utilisateurs", icon: Users },
+  { path: "/admin/visitors", label: "Visiteurs & Sessions", icon: Eye },
   { path: "/admin/pricing", label: "Prix & Forfaits", icon: CreditCard },
   { path: "/admin/promos", label: "Codes Promo", icon: Tag },
   { path: "/admin/messages", label: "Messages & Ebooks", icon: MessageSquare },

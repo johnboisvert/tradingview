@@ -620,6 +620,286 @@ export function addAdminLog(email: string, action: string): void {
   setItem(KEYS.ADMIN_LOG, log);
 }
 
+// ============================================================
+// Session Protection (Anti-sharing / Double Connection)
+// ============================================================
+const SESSION_TOKENS_KEY = "cryptoia_session_tokens";
+
+interface SessionToken {
+  username: string;
+  token: string;
+  fingerprint: string;
+  created_at: string;
+  last_active: string;
+}
+
+/** Generate a unique browser fingerprint */
+function generateFingerprint(): string {
+  const nav = window.navigator;
+  const screen = window.screen;
+  const raw = [
+    nav.userAgent,
+    nav.language,
+    screen.width,
+    screen.height,
+    screen.colorDepth,
+    new Date().getTimezoneOffset(),
+    nav.hardwareConcurrency || "unknown",
+  ].join("|");
+  // Simple hash
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    const char = raw.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return "fp_" + Math.abs(hash).toString(36);
+}
+
+/** Generate a random session token */
+function generateSessionToken(): string {
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Get all active session tokens */
+function getSessionTokens(): SessionToken[] {
+  return getItem<SessionToken[]>(SESSION_TOKENS_KEY, []);
+}
+
+/** Save session tokens */
+function saveSessionTokens(tokens: SessionToken[]): void {
+  setItem(SESSION_TOKENS_KEY, tokens);
+}
+
+/**
+ * Register a new session for a user. Invalidates any previous session.
+ * Returns the new session token.
+ */
+export function registerUserSession(username: string): string {
+  const tokens = getSessionTokens();
+  // Remove any existing session for this user
+  const filtered = tokens.filter((t) => t.username.toLowerCase() !== username.toLowerCase());
+  const now = new Date().toISOString();
+  const newToken: SessionToken = {
+    username: username.toLowerCase(),
+    token: generateSessionToken(),
+    fingerprint: generateFingerprint(),
+    created_at: now,
+    last_active: now,
+  };
+  filtered.push(newToken);
+  saveSessionTokens(filtered);
+  // Store the token in sessionStorage for this browser tab
+  sessionStorage.setItem("cryptoia_session_token", newToken.token);
+  return newToken.token;
+}
+
+/**
+ * Validate the current session. Returns true if the session is still valid
+ * (i.e., no one else has logged in with the same account).
+ */
+export function validateUserSession(username: string): { valid: boolean; message: string } {
+  const currentToken = sessionStorage.getItem("cryptoia_session_token");
+  if (!currentToken) {
+    return { valid: false, message: "Session expirée. Veuillez vous reconnecter." };
+  }
+
+  const tokens = getSessionTokens();
+  const userSession = tokens.find((t) => t.username.toLowerCase() === username.toLowerCase());
+
+  if (!userSession) {
+    return { valid: false, message: "Session introuvable. Veuillez vous reconnecter." };
+  }
+
+  if (userSession.token !== currentToken) {
+    // Someone else logged in with this account — force disconnect
+    sessionStorage.removeItem("cryptoia_user_session");
+    sessionStorage.removeItem("cryptoia_session_token");
+    localStorage.removeItem("cryptoia_user_plan");
+    return {
+      valid: false,
+      message: "Votre compte est connecté sur un autre appareil. Vous avez été déconnecté pour des raisons de sécurité.",
+    };
+  }
+
+  // Update last_active
+  userSession.last_active = new Date().toISOString();
+  saveSessionTokens(tokens);
+  return { valid: true, message: "" };
+}
+
+/**
+ * Remove a user's session token (on logout).
+ */
+export function removeUserSessionToken(username: string): void {
+  const tokens = getSessionTokens();
+  const filtered = tokens.filter((t) => t.username.toLowerCase() !== username.toLowerCase());
+  saveSessionTokens(filtered);
+  sessionStorage.removeItem("cryptoia_session_token");
+}
+
+/**
+ * Get all active sessions (for admin dashboard).
+ */
+export function getActiveSessions(): SessionToken[] {
+  const tokens = getSessionTokens();
+  // Clean up sessions older than 24 hours
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const active = tokens.filter((t) => t.last_active > cutoff);
+  if (active.length !== tokens.length) {
+    saveSessionTokens(active);
+  }
+  return active;
+}
+
+/**
+ * Force disconnect a user (admin action).
+ */
+export function forceDisconnectUser(username: string): boolean {
+  const tokens = getSessionTokens();
+  const filtered = tokens.filter((t) => t.username.toLowerCase() !== username.toLowerCase());
+  if (filtered.length === tokens.length) return false;
+  saveSessionTokens(filtered);
+  return true;
+}
+
+// ============================================================
+// Visitor Tracking (lightweight, localStorage-based)
+// ============================================================
+const VISITOR_LOG_KEY = "cryptoia_visitor_log";
+
+interface VisitorEntry {
+  timestamp: string;
+  page: string;
+  referrer: string;
+  userAgent: string;
+  language: string;
+  screenSize: string;
+  isNewVisitor: boolean;
+}
+
+function getVisitorLog(): VisitorEntry[] {
+  return getItem<VisitorEntry[]>(VISITOR_LOG_KEY, []);
+}
+
+function saveVisitorLog(log: VisitorEntry[]): void {
+  setItem(VISITOR_LOG_KEY, log);
+}
+
+/** Track a page visit */
+export function trackPageVisit(page: string): void {
+  const log = getVisitorLog();
+  const hasVisitedBefore = localStorage.getItem("cryptoia_returning_visitor") === "true";
+
+  const entry: VisitorEntry = {
+    timestamp: new Date().toISOString(),
+    page,
+    referrer: document.referrer || "direct",
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    screenSize: `${screen.width}x${screen.height}`,
+    isNewVisitor: !hasVisitedBefore,
+  };
+
+  if (!hasVisitedBefore) {
+    localStorage.setItem("cryptoia_returning_visitor", "true");
+  }
+
+  log.unshift(entry);
+  // Keep last 1000 entries
+  if (log.length > 1000) log.length = 1000;
+  saveVisitorLog(log);
+}
+
+/** Get visitor statistics for admin dashboard */
+export function getVisitorStats() {
+  const log = getVisitorLog();
+  const now = new Date();
+
+  // Today's visits
+  const todayStr = now.toISOString().split("T")[0];
+  const todayVisits = log.filter((v) => v.timestamp.startsWith(todayStr));
+
+  // Last 7 days
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const weekVisits = log.filter((v) => new Date(v.timestamp) >= weekAgo);
+
+  // Last 30 days
+  const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const monthVisits = log.filter((v) => new Date(v.timestamp) >= monthAgo);
+
+  // Unique visitors (by day, approximate)
+  const uniqueDays = new Set(log.map((v) => v.timestamp.split("T")[0]));
+
+  // Top pages
+  const pageCounts: Record<string, number> = {};
+  weekVisits.forEach((v) => {
+    pageCounts[v.page] = (pageCounts[v.page] || 0) + 1;
+  });
+  const topPages = Object.entries(pageCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10)
+    .map(([page, count]) => ({ page, count }));
+
+  // Referrer sources
+  const refCounts: Record<string, number> = {};
+  weekVisits.forEach((v) => {
+    let source = "Direct";
+    if (v.referrer && v.referrer !== "direct") {
+      try {
+        const url = new URL(v.referrer);
+        source = url.hostname;
+      } catch {
+        source = v.referrer;
+      }
+    }
+    refCounts[source] = (refCounts[source] || 0) + 1;
+  });
+  const topReferrers = Object.entries(refCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8)
+    .map(([source, count]) => ({ source, count }));
+
+  // Languages
+  const langCounts: Record<string, number> = {};
+  weekVisits.forEach((v) => {
+    const lang = v.language.split("-")[0].toUpperCase();
+    langCounts[lang] = (langCounts[lang] || 0) + 1;
+  });
+  const topLanguages = Object.entries(langCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([lang, count]) => ({ lang, count }));
+
+  // Daily visits for chart (last 7 days)
+  const dailyVisits: { date: string; count: number; newVisitors: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const dateStr = d.toISOString().split("T")[0];
+    const dayVisits = log.filter((v) => v.timestamp.startsWith(dateStr));
+    dailyVisits.push({
+      date: dateStr,
+      count: dayVisits.length,
+      newVisitors: dayVisits.filter((v) => v.isNewVisitor).length,
+    });
+  }
+
+  return {
+    today: todayVisits.length,
+    thisWeek: weekVisits.length,
+    thisMonth: monthVisits.length,
+    totalTracked: log.length,
+    uniqueDays: uniqueDays.size,
+    newVisitorsToday: todayVisits.filter((v) => v.isNewVisitor).length,
+    topPages,
+    topReferrers,
+    topLanguages,
+    dailyVisits,
+  };
+}
+
 // --- Dashboard Stats (computed from real data) ---
 export function getDashboardStats() {
   const users = getUsers();

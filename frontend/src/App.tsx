@@ -54,6 +54,7 @@ import AISetupBuilder from "./pages/AISetupBuilder";
 import PepitesCrypto from "./pages/PepitesCrypto";
 import TradingAcademy from "./pages/TradingAcademy";
 import Telechargement from "./pages/Telechargement";
+import Visitors from "./pages/Visitors";
 import AdminLogin from "./pages/AdminLogin";
 import Login from "./pages/Login";
 import MyCryptoIA from "./pages/MyCryptoIA";
@@ -65,6 +66,7 @@ import Gamification from "./pages/Gamification";
 import BacktestingVisuel from "./pages/BacktestingVisuel";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ProtectedPlanRoute from "./components/ProtectedPlanRoute";
+import PageTracker from "./components/PageTracker";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import NotFound from "./pages/NotFound";
 
@@ -76,6 +78,7 @@ function PlanProtected({ path, children }: { path: string; children: React.React
 function App() {
   return (
     <Router>
+      <PageTracker />
       <Routes>
         {/* Main Pages - Marché */}
         <Route path="/" element={<Index />} />
@@ -159,6 +162,7 @@ function App() {
         <Route path="/admin/promos" element={<ProtectedAdminRoute><Promos /></ProtectedAdminRoute>} />
         <Route path="/admin/messages" element={<ProtectedAdminRoute><Messages /></ProtectedAdminRoute>} />
         <Route path="/admin/users" element={<ProtectedAdminRoute><Users /></ProtectedAdminRoute>} />
+        <Route path="/admin/visitors" element={<ProtectedAdminRoute><Visitors /></ProtectedAdminRoute>} />
         <Route path="/admin/telegram" element={<ProtectedAdminRoute><TelegramSetup /></ProtectedAdminRoute>} />
 
         {/* Fallback */}

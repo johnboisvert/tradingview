@@ -55,6 +55,7 @@ import {
   BookOpen,
   SlidersHorizontal,
   Bell,
+  Target,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -64,6 +65,7 @@ const NAV_SECTIONS = [
       { path: "/my-cryptoia", label: "My CryptoIA", icon: LayoutDashboard },
       { path: "/alertes-ia", label: "Alertes IA", icon: Bell },
       { path: "/score-confiance-ia", label: "Score Confiance IA", icon: Shield },
+      { path: "/simulateur-strategie-ia", label: "Simulateur Stratégie IA", icon: Target },
     ],
   },
   {

@@ -345,6 +345,8 @@ export function savePlanAccess(plan: string, routes: string[]): void {
 // ============================================================
 // Admins
 // ============================================================
+const SUPER_ADMIN_KEY = "cryptoia_super_admin";
+
 export interface Admin {
   email: string;
   passwordHash: string;
@@ -359,7 +361,7 @@ export interface AdminLogEntry {
   timestamp: string;
 }
 
-// Simple SHA-256 hash using Web Crypto API (sync wrapper with cached results)
+// Simple SHA-256 hash using Web Crypto API
 const hashCache = new Map<string, string>();
 
 export async function hashPassword(password: string): Promise<string> {
@@ -373,13 +375,100 @@ export async function hashPassword(password: string): Promise<string> {
   return hashHex;
 }
 
-function getSuperAdminEmail(): string {
+// --- Super Admin (localStorage-based, no env vars dependency) ---
+
+interface StoredSuperAdmin {
+  email: string;
+  passwordHash: string;
+  name: string;
+  created_at: string;
+}
+
+function getEnvSuperAdminEmail(): string {
   return (typeof import.meta !== "undefined" && import.meta.env?.VITE_ADMIN_EMAIL) || "";
 }
 
-function getSuperAdminPassword(): string {
+function getEnvSuperAdminPassword(): string {
   return (typeof import.meta !== "undefined" && import.meta.env?.VITE_ADMIN_PASSWORD) || "";
 }
+
+function getStoredSuperAdmin(): StoredSuperAdmin | null {
+  try {
+    const raw = localStorage.getItem(SUPER_ADMIN_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return null;
+}
+
+function saveStoredSuperAdmin(admin: StoredSuperAdmin): void {
+  localStorage.setItem(SUPER_ADMIN_KEY, JSON.stringify(admin));
+}
+
+/** Check if a super-admin is configured (either env vars or localStorage) */
+export function isSuperAdminConfigured(): boolean {
+  const envEmail = getEnvSuperAdminEmail();
+  const envPassword = getEnvSuperAdminPassword();
+  if (envEmail && envPassword) return true;
+  return getStoredSuperAdmin() !== null;
+}
+
+/** Get the super-admin email (env vars take priority, then localStorage) */
+export function getSuperAdminEmail(): string {
+  const envEmail = getEnvSuperAdminEmail();
+  if (envEmail) return envEmail;
+  const stored = getStoredSuperAdmin();
+  return stored?.email || "";
+}
+
+/** Create the initial super-admin (stored in localStorage with hashed password) */
+export async function initSuperAdmin(
+  email: string,
+  name: string,
+  password: string
+): Promise<{ success: boolean; message: string }> {
+  // Don't allow if already configured
+  if (isSuperAdminConfigured()) {
+    return { success: false, message: "Un super-admin est déjà configuré." };
+  }
+
+  const passwordHash = await hashPassword(password);
+  saveStoredSuperAdmin({
+    email,
+    passwordHash,
+    name: name || "Super Admin",
+    created_at: new Date().toISOString(),
+  });
+
+  addAdminLog(email, "Création du compte super-admin (setup initial)");
+  return { success: true, message: "Super-admin créé avec succès." };
+}
+
+/** Update the super-admin password (localStorage-based super-admin only) */
+export async function updateSuperAdminPassword(newPassword: string): Promise<{ success: boolean; message: string }> {
+  const stored = getStoredSuperAdmin();
+  if (!stored) {
+    return { success: false, message: "Aucun super-admin localStorage trouvé. Le super-admin env ne peut pas être modifié ici." };
+  }
+  stored.passwordHash = await hashPassword(newPassword);
+  saveStoredSuperAdmin(stored);
+  addAdminLog(stored.email, "Mot de passe super-admin réinitialisé");
+  return { success: true, message: "Mot de passe super-admin mis à jour." };
+}
+
+/** Update the super-admin email (localStorage-based super-admin only) */
+export async function updateSuperAdminEmail(newEmail: string): Promise<{ success: boolean; message: string }> {
+  const stored = getStoredSuperAdmin();
+  if (!stored) {
+    return { success: false, message: "Aucun super-admin localStorage trouvé." };
+  }
+  const oldEmail = stored.email;
+  stored.email = newEmail;
+  saveStoredSuperAdmin(stored);
+  addAdminLog(newEmail, `Email super-admin changé de ${oldEmail} à ${newEmail}`);
+  return { success: true, message: "Email super-admin mis à jour." };
+}
+
+// --- Secondary Admins ---
 
 export function getAdmins(): Admin[] {
   return getItem<Admin[]>(KEYS.ADMINS, []);
@@ -393,7 +482,7 @@ export async function addAdmin(email: string, name: string, password: string): P
   const admins = getAdmins();
   const superEmail = getSuperAdminEmail();
 
-  if (email.toLowerCase() === superEmail.toLowerCase()) {
+  if (superEmail && email.toLowerCase() === superEmail.toLowerCase()) {
     return { success: false, message: "Cet email est réservé au super-admin." };
   }
   if (admins.find((a) => a.email.toLowerCase() === email.toLowerCase())) {
@@ -417,7 +506,7 @@ export function deleteAdmin(email: string): { success: boolean; message: string 
   const admins = getAdmins();
   const superEmail = getSuperAdminEmail();
 
-  if (email.toLowerCase() === superEmail.toLowerCase()) {
+  if (superEmail && email.toLowerCase() === superEmail.toLowerCase()) {
     return { success: false, message: "Impossible de supprimer le super-admin." };
   }
 
@@ -432,6 +521,12 @@ export function deleteAdmin(email: string): { success: boolean; message: string 
 }
 
 export async function updateAdminPassword(email: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+  // Check if it's the localStorage super-admin
+  const stored = getStoredSuperAdmin();
+  if (stored && email.toLowerCase() === stored.email.toLowerCase()) {
+    return updateSuperAdminPassword(newPassword);
+  }
+
   const admins = getAdmins();
   const admin = admins.find((a) => a.email.toLowerCase() === email.toLowerCase());
   if (!admin) return { success: false, message: "Admin introuvable." };
@@ -443,17 +538,27 @@ export async function updateAdminPassword(email: string, newPassword: string): P
 }
 
 export async function loginAdmin(email: string, password: string): Promise<{ success: boolean; role: "super-admin" | "admin" | null; name: string }> {
-  const superEmail = getSuperAdminEmail();
-  const superPassword = getSuperAdminPassword();
-
-  // Check super-admin (env vars) first
-  if (superEmail && superPassword && email === superEmail && password === superPassword) {
+  // 1. Check env vars super-admin first
+  const envEmail = getEnvSuperAdminEmail();
+  const envPassword = getEnvSuperAdminPassword();
+  if (envEmail && envPassword && email === envEmail && password === envPassword) {
     setAdminSession(email, "super-admin", "Super Admin");
-    addAdminLog(email, "Connexion (super-admin)");
+    addAdminLog(email, "Connexion (super-admin env)");
     return { success: true, role: "super-admin", name: "Super Admin" };
   }
 
-  // Check stored admins
+  // 2. Check localStorage super-admin
+  const storedSuperAdmin = getStoredSuperAdmin();
+  if (storedSuperAdmin && email.toLowerCase() === storedSuperAdmin.email.toLowerCase()) {
+    const passwordHash = await hashPassword(password);
+    if (passwordHash === storedSuperAdmin.passwordHash) {
+      setAdminSession(storedSuperAdmin.email, "super-admin", storedSuperAdmin.name);
+      addAdminLog(storedSuperAdmin.email, "Connexion (super-admin)");
+      return { success: true, role: "super-admin", name: storedSuperAdmin.name };
+    }
+  }
+
+  // 3. Check secondary admins
   const admins = getAdmins();
   const admin = admins.find((a) => a.email.toLowerCase() === email.toLowerCase());
   if (admin) {

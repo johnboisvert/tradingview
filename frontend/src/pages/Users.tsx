@@ -3,6 +3,7 @@ import AdminLayout from "@/components/AdminLayout";
 import { getUsers, addUser, updateUserPlan, deleteUser, resetPassword, type User } from "@/lib/api";
 import {
   getAdmins, addAdmin, deleteAdmin, updateAdminPassword, getAdminSession, getAdminLog,
+  getSuperAdminEmail,
   type Admin, type AdminLogEntry,
 } from "@/lib/store";
 import { toast } from "sonner";
@@ -109,7 +110,7 @@ export default function UsersPage() {
 
   const currentSession = getAdminSession();
   const isSuperAdmin = currentSession?.role === "super-admin";
-  const superAdminEmail = import.meta.env.VITE_ADMIN_EMAIL || "";
+  const superAdminEmail = getSuperAdminEmail();
 
   const loadUsers = () => {
     setLoading(true);

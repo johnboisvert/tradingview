@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import {
@@ -121,6 +121,7 @@ export default function CryptoJournal() {
   const [showForm, setShowForm] = useState(false);
   const [filterResult, setFilterResult] = useState<"all" | "win" | "loss" | "breakeven">("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -133,6 +134,15 @@ export default function CryptoJournal() {
   useEffect(() => {
     localStorage.setItem("crypto_journal_trades", JSON.stringify(trades));
   }, [trades]);
+
+  // Scroll to form when it opens
+  useEffect(() => {
+    if (showForm && formRef.current) {
+      setTimeout(() => {
+        formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [showForm]);
 
   const filteredTrades = trades.filter(t => filterResult === "all" || t.result === filterResult);
 
@@ -191,10 +201,14 @@ export default function CryptoJournal() {
 
   const monthlyEntries = Object.entries(monthlyPnl).sort().slice(-6);
 
+  const handleNewTrade = () => {
+    setShowForm(!showForm);
+  };
+
   return (
     <div className="min-h-screen bg-[#070B14] text-white">
       <Sidebar />
-      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0d1117]">
+      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0d1117] overflow-y-auto" style={{ maxHeight: "100vh", padding: "0 16px 16px 16px" }}>
       <PageHeader
           icon={<BookOpen className="w-6 h-6" />}
           title="Crypto Journal"
@@ -220,7 +234,7 @@ export default function CryptoJournal() {
             <p className="text-sm text-gray-500 mt-1 ml-13">Suivez vos trades, analysez vos émotions, progressez</p>
           </div>
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={handleNewTrade}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-sm transition-all shadow-lg shadow-indigo-500/20"
           >
             <Plus className="w-4 h-4" />
@@ -293,7 +307,7 @@ export default function CryptoJournal() {
 
         {/* Add Trade Form */}
         {showForm && (
-          <div className="bg-[#0d1117] border border-violet-500/20 rounded-2xl p-6 mb-6">
+          <div ref={formRef} className="bg-[#0d1117] border border-violet-500/20 rounded-2xl p-6 mb-6">
             <h2 className="text-base font-bold mb-4 flex items-center gap-2">
               <Plus className="w-4 h-4 text-violet-400" />
               Ajouter un Trade
@@ -402,7 +416,7 @@ export default function CryptoJournal() {
         </div>
 
         {/* Trades List */}
-        <div className="space-y-3">
+        <div className="space-y-3 pb-6">
           {filteredTrades.length === 0 && (
             <div className="text-center py-16 text-gray-600">
               <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />

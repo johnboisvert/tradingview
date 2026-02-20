@@ -90,16 +90,24 @@ function MiniSparkline({ data, positive }: { data: number[]; positive: boolean }
 }
 
 function FearGreedGauge({ value }: { value: number }) {
-  const angle = (value / 100) * 180 - 90;
+  // Le demi-cercle va de gauche (-180°) à droite (0°) dans le repère trigonométrique SVG
+  // value=0 → aiguille pointe à gauche (angle=-180°), value=100 → aiguille pointe à droite (angle=0°)
+  const angleDeg = (value / 100) * 180 - 180;
+  const angleRad = (angleDeg * Math.PI) / 180;
   const label =
     value <= 25 ? "Peur Extrême" : value <= 45 ? "Peur" : value <= 55 ? "Neutre" : value <= 75 ? "Avidité" : "Avidité Extrême";
   const color =
     value <= 25 ? "#EF4444" : value <= 45 ? "#F59E0B" : value <= 55 ? "#94A3B8" : value <= 75 ? "#10B981" : "#22C55E";
 
+  const needleX = 70 + 45 * Math.cos(angleRad);
+  const needleY = 75 + 45 * Math.sin(angleRad);
+
   return (
     <div className="flex flex-col items-center">
       <svg width="140" height="80" viewBox="0 0 140 80">
+        {/* Arc de fond */}
         <path d="M 10 75 A 60 60 0 0 1 130 75" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" strokeLinecap="round" />
+        {/* Arc coloré selon la valeur */}
         <path
           d="M 10 75 A 60 60 0 0 1 130 75"
           fill="none"
@@ -109,13 +117,14 @@ function FearGreedGauge({ value }: { value: number }) {
           strokeDasharray={`${(value / 100) * 188} 188`}
           className="transition-all duration-1000"
         />
+        {/* Aiguille */}
         <line
           x1="70"
           y1="75"
-          x2={70 + 45 * Math.cos((angle * Math.PI) / 180)}
-          y2={75 + 45 * Math.sin((angle * Math.PI) / 180)}
+          x2={needleX}
+          y2={needleY}
           stroke="white"
-          strokeWidth="2"
+          strokeWidth="2.5"
           strokeLinecap="round"
           className="transition-all duration-1000"
         />

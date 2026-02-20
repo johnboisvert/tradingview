@@ -13,6 +13,9 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  AlertCircle,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -39,7 +42,10 @@ interface PortfolioAsset {
 
 const STORAGE_KEY = "cryptoia_assistant_history";
 
-const GEMINI_API_KEY = "AIzaSyB2w7Gmrzk9HxwyxCabKZIdR8Kq7KvI1Hg";
+// Use env var if available, otherwise fall back to the hardcoded key
+const GEMINI_API_KEY =
+  (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
+  "AIzaSyB2w7Gmrzk9HxwyxCabKZIdR8Kq7KvI1Hg";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 const PORTFOLIO: PortfolioAsset[] = [
@@ -55,14 +61,14 @@ const TOTAL_VALUE = PORTFOLIO.reduce((s, a) => s + a.amount * a.price, 0);
 const WEEK_RETURN = +((PORTFOLIO.reduce((s, a) => s + a.amount * a.price * (a.weekChange / 100), 0) / TOTAL_VALUE) * 100).toFixed(2);
 
 const SUGGESTIONS = [
-  { label: "Dois-je vendre mon BTC ?",          icon: "🤔" },
+  { label: "Dois-je vendre mon BTC ?",             icon: "🤔" },
   { label: "Quelle crypto acheter cette semaine ?", icon: "🎯" },
-  { label: "Quel est le sentiment du marché ?",  icon: "📊" },
-  { label: "Analyse mon portfolio",              icon: "💼" },
-  { label: "Quels sont les risques actuels ?",   icon: "⚠️" },
-  { label: "Explique la stratégie DCA",          icon: "📈" },
-  { label: "Meilleurs altcoins à surveiller",    icon: "🔭" },
-  { label: "Comment lire le RSI et MACD ?",      icon: "📉" },
+  { label: "Quel est le sentiment du marché ?",     icon: "📊" },
+  { label: "Analyse mon portfolio",                 icon: "💼" },
+  { label: "Quels sont les risques actuels ?",      icon: "⚠️" },
+  { label: "Explique la stratégie DCA",             icon: "📈" },
+  { label: "Meilleurs altcoins à surveiller",       icon: "🔭" },
+  { label: "Comment lire le RSI et MACD ?",         icon: "📉" },
 ];
 
 const SYSTEM_PROMPT = `Tu es CryptoIA Assistant, un expert en crypto-monnaies et trading. Tu réponds TOUJOURS en français.
@@ -90,22 +96,38 @@ Règles :
 7. Donne des données et chiffres concrets quand possible
 8. Mentionne les risques associés à chaque stratégie ou investissement`;
 
-const WELCOME_MESSAGE: Message = {
-  role: "assistant",
-  timestamp: Date.now(),
-  content: `Bonjour ! 👋 Je suis **CryptoIA Assistant**, propulsé par **Google Gemini AI** 🧠
+// ─── Fallback AI responses (when API is unavailable) ─────────────────────────
 
-Je connais votre portfolio et le marché en temps réel. Je peux vous aider avec :
+function getFallbackResponse(question: string): string {
+  const q = question.toLowerCase();
 
-• 📊 **Analyse de marché** — Bitcoin, Ethereum, altcoins, tendances actuelles
-• 💼 **Analyse de votre portfolio** — Performance, risques, rééquilibrage
-• 💡 **Stratégies de trading** — DCA, swing, scalping, gestion du risque
-• 📈 **Indicateurs techniques** — RSI, MACD, Bollinger, Fibonacci
-• 🔐 **Sécurité** — Wallets, seed phrases, bonnes pratiques
-• 💰 **DeFi & Staking** — Yield farming, APY, protocoles
+  if (q.includes("btc") || q.includes("bitcoin") || q.includes("vendre")) {
+    return `**🤖 Analyse Bitcoin (BTC)**\n\nVotre position BTC actuelle :\n• **0.42 BTC** @ $67,420 = **$28,316**\n• Performance hebdomadaire : **+3.8%** 📈\n• Allocation portfolio : **38%**\n\n**📊 Analyse technique :**\n• Le BTC est dans une tendance haussière à moyen terme\n• Support clé : $60,000 — Résistance : $72,000\n• RSI (14) : ~58 — Zone neutre, pas de surachat\n• MACD : Signal haussier en cours\n\n**💡 Points à considérer avant de vendre :**\n• Votre position représente 38% du portfolio — une diversification pourrait être envisagée\n• Le cycle halving 2024 est historiquement favorable\n• Définissez un objectif de prix cible avant de décider\n\n**🎯 Stratégie suggérée :**\n• Si objectif atteint : vente partielle (25-50%) pour sécuriser les gains\n• Conserver le reste en position long terme\n• Utiliser un stop-loss à -15% pour protéger le capital\n\n⚠️ Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).`;
+  }
 
-Posez-moi n'importe quelle question ! 🚀`,
-};
+  if (q.includes("portfolio") || q.includes("portefeuille") || q.includes("analyse")) {
+    return `**💼 Analyse de votre Portfolio**\n\n**📊 Résumé :**\n• Valeur totale : **$${TOTAL_VALUE.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}**\n• Performance hebdomadaire : **${WEEK_RETURN >= 0 ? "+" : ""}${WEEK_RETURN}%** ${WEEK_RETURN >= 0 ? "📈" : "📉"}\n\n**🏆 Meilleures performances cette semaine :**\n${PORTFOLIO.filter(a => a.weekChange > 0).sort((a, b) => b.weekChange - a.weekChange).map(a => `• **${a.symbol}** : +${a.weekChange}%`).join("\n")}\n\n**📉 Performances négatives :**\n${PORTFOLIO.filter(a => a.weekChange < 0).map(a => `• **${a.symbol}** : ${a.weekChange}%`).join("\n") || "• Aucune cette semaine 🎉"}\n\n**⚖️ Analyse de la diversification :**\n• BTC (38%) + ETH (26%) = 64% en large caps — bonne stabilité\n• SOL (16%) — exposition mid-cap avec fort potentiel\n• AVAX, LINK, ARB (20%) — diversification DeFi/L2\n\n**💡 Recommandations :**\n• Portfolio bien diversifié avec un bon équilibre risque/rendement\n• Considérer un rééquilibrage si BTC dépasse 45% d'allocation\n• SOL montre une forte dynamique (+11.4%) — surveiller les niveaux\n\n⚠️ Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).`;
+  }
+
+  if (q.includes("dca") || q.includes("stratégie") || q.includes("strategie")) {
+    return `**📈 Stratégie DCA (Dollar Cost Averaging)**\n\n**🎯 Qu'est-ce que le DCA ?**\nLe DCA consiste à investir un montant fixe à intervalles réguliers, indépendamment du prix du marché.\n\n**✅ Avantages :**\n• Réduit l'impact de la volatilité\n• Élimine le stress du "market timing"\n• Discipline d'investissement automatique\n• Idéal pour les investisseurs long terme\n\n**📊 Exemple pratique avec BTC :**\n• Investissement : $200/semaine\n• Sur 1 an : $10,400 investi\n• Moyenne d'achat lissée sur les hauts et les bas\n• Historiquement profitable sur 4+ ans\n\n**⚙️ Comment appliquer le DCA :**\n1. Choisir un montant fixe (ex: $100-500/mois)\n2. Définir une fréquence (hebdomadaire recommandé)\n3. Sélectionner des actifs de qualité (BTC, ETH en priorité)\n4. Utiliser un exchange avec achats automatiques\n5. Ne pas regarder le prix quotidiennement\n\n**💡 DCA vs Lump Sum :**\n• DCA : moins de risque, rendements légèrement inférieurs en bull market\n• Lump Sum : meilleur en tendance haussière claire\n\n⚠️ Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).`;
+  }
+
+  if (q.includes("rsi") || q.includes("macd") || q.includes("indicateur") || q.includes("technique")) {
+    return `**📉 Guide des Indicateurs Techniques**\n\n**📊 RSI (Relative Strength Index)**\n• Mesure la force d'une tendance (0-100)\n• **< 30** : Zone de survente → Signal d'achat potentiel\n• **> 70** : Zone de surachat → Signal de vente potentiel\n• **50** : Zone neutre\n• Période standard : 14 jours\n\n**📈 MACD (Moving Average Convergence Divergence)**\n• Composé de : Ligne MACD, Signal, Histogramme\n• **Croisement haussier** : MACD passe au-dessus du signal → BUY\n• **Croisement baissier** : MACD passe en-dessous → SELL\n• **Divergence** : Prix monte mais MACD baisse = signal de retournement\n\n**🎯 Bollinger Bands**\n• 3 lignes : Moyenne mobile + 2 écarts-types\n• Prix touche la bande inférieure → potentiel rebond\n• Prix touche la bande supérieure → potentiel retournement\n• Bandes qui se resserrent = forte volatilité à venir\n\n**💡 Combinaison efficace :**\n• RSI < 30 + MACD croisement haussier + Prix sur support = Signal fort\n• Toujours confirmer avec plusieurs indicateurs\n• Ne jamais trader sur un seul signal\n\n⚠️ Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).`;
+  }
+
+  if (q.includes("altcoin") || q.includes("surveiller") || q.includes("acheter")) {
+    return `**🔭 Altcoins à Surveiller**\n\n**🏆 Top picks actuels :**\n\n**1. Solana (SOL) 🟣**\n• Écosystème DeFi/NFT en forte croissance\n• Performances réseau supérieures à ETH\n• Vous avez déjà 16% d'exposition — bonne position\n\n**2. Arbitrum (ARB) 🔵**\n• Layer 2 Ethereum dominant\n• TVL en hausse constante\n• Vous avez 3% — potentiel d'augmentation\n\n**3. Chainlink (LINK) 🔷**\n• Infrastructure critique pour les smart contracts\n• Adoption institutionnelle croissante\n• Vous avez 8% — position solide\n\n**📊 Secteurs porteurs :**\n• **Layer 2** (ARB, OP, BASE) — scalabilité Ethereum\n• **DeFi** (AAVE, UNI, CRV) — finance décentralisée\n• **AI + Crypto** (FET, OCEAN, RNDR) — convergence IA/blockchain\n• **RWA** (tokenisation d'actifs réels) — tendance 2024-2025\n\n**⚠️ Risques à considérer :**\n• Liquidité plus faible que BTC/ETH\n• Volatilité élevée (+/-30% en quelques jours)\n• Toujours limiter les altcoins à 20-30% du portfolio\n\n⚠️ Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).`;
+  }
+
+  if (q.includes("risque") || q.includes("sentiment") || q.includes("marché") || q.includes("marche")) {
+    return `**⚠️ Analyse des Risques & Sentiment du Marché**\n\n**📊 Sentiment actuel :**\n• Fear & Greed Index : ~65/100 — **Avidité** 📈\n• Dominance BTC : ~52% — Marché sain\n• Volume 24h : Élevé — Bonne liquidité\n\n**🔴 Risques principaux :**\n\n**1. Risque réglementaire**\n• Décisions SEC/CFTC aux USA\n• Réglementation MiCA en Europe\n• Impact potentiel sur les exchanges centralisés\n\n**2. Risque macro-économique**\n• Taux d'intérêt de la Fed\n• Inflation et politique monétaire\n• Corrélation croissante avec les marchés traditionnels\n\n**3. Risque technique**\n• Hacks de protocoles DeFi\n• Bugs de smart contracts\n• Attaques 51% sur petites blockchains\n\n**4. Risque de liquidité**\n• Altcoins avec faible volume\n• Spreads élevés en période de stress\n\n**🛡️ Gestion du risque :**\n• Ne jamais investir plus que ce qu'on peut perdre\n• Diversifier entre large caps et mid caps\n• Utiliser des stop-loss systématiques\n• Garder 10-20% en stablecoins pour opportunités\n\n⚠️ Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).`;
+  }
+
+  // Generic response
+  return `**🤖 CryptoIA Assistant**\n\nMerci pour votre question ! Je suis en mode hors-ligne actuellement (l'API IA est temporairement indisponible), mais voici ce que je peux vous dire :\n\n**📊 État de votre portfolio :**\n• Valeur totale : **$${TOTAL_VALUE.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}**\n• Performance hebdomadaire : **${WEEK_RETURN >= 0 ? "+" : ""}${WEEK_RETURN}%** ${WEEK_RETURN >= 0 ? "📈" : "📉"}\n• Actifs : ${PORTFOLIO.length} cryptomonnaies\n\n**💡 Suggestions :**\nPour une réponse plus précise à votre question, essayez :\n• De reformuler avec des mots-clés spécifiques (BTC, portfolio, DCA, RSI, risques)\n• De cliquer sur une suggestion prédéfinie dans le panneau gauche\n• De réessayer dans quelques instants si l'API est temporairement surchargée\n\n**🔄 Sujets disponibles en mode hors-ligne :**\n• Analyse Bitcoin/portfolio\n• Stratégie DCA\n• Indicateurs RSI/MACD\n• Altcoins à surveiller\n• Analyse des risques\n\n⚠️ Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).`;
+}
 
 // ─── Gemini API ───────────────────────────────────────────────────────────────
 
@@ -121,31 +143,42 @@ async function callGeminiAPI(messages: Message[]): Promise<string> {
     parts: [{ text: "Compris ! Je suis CryptoIA Assistant avec accès au portfolio de l'utilisateur. Prêt à aider ! 🚀" }],
   });
 
-  const response = await fetch(GEMINI_API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents,
-      generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 2048 },
-      safetySettings: [
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-      ],
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    console.error("Gemini API error:", err);
-    throw new Error(`Erreur API: ${response.status}`);
+  try {
+    const response = await fetch(GEMINI_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents,
+        generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 2048 },
+        safetySettings: [
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+        ],
+      }),
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      console.warn("Gemini API error:", response.status, err);
+      throw new Error(`API_ERROR:${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error("EMPTY_RESPONSE");
+    return text;
+  } catch (err: any) {
+    clearTimeout(timeout);
+    throw err;
   }
-
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Réponse vide de l'API");
-  return text;
 }
 
 // ─── Render markdown-like content ────────────────────────────────────────────
@@ -175,7 +208,6 @@ function PortfolioPanel() {
 
   return (
     <div className="bg-slate-900/60 border border-white/[0.07] rounded-2xl overflow-hidden flex-shrink-0">
-      {/* Header */}
       <button
         onClick={() => setCollapsed((c) => !c)}
         className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-all"
@@ -189,7 +221,6 @@ function PortfolioPanel() {
 
       {!collapsed && (
         <div className="px-4 pb-4 space-y-3">
-          {/* Total */}
           <div className="grid grid-cols-2 gap-2">
             <div className="p-2.5 rounded-xl bg-black/20 border border-white/[0.04] text-center">
               <p className="text-[10px] text-gray-500 mb-0.5">Valeur totale</p>
@@ -203,7 +234,6 @@ function PortfolioPanel() {
             </div>
           </div>
 
-          {/* Assets */}
           <div className="space-y-1.5">
             {PORTFOLIO.map((asset) => (
               <div key={asset.symbol} className="flex items-center gap-2 p-2 rounded-lg bg-black/20 hover:bg-white/[0.02] transition-all">
@@ -215,7 +245,6 @@ function PortfolioPanel() {
                       {asset.weekChange >= 0 ? "+" : ""}{asset.weekChange}%
                     </span>
                   </div>
-                  {/* Allocation bar */}
                   <div className="w-full h-0.5 bg-white/[0.05] rounded-full mt-1 overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-700"
@@ -230,19 +259,14 @@ function PortfolioPanel() {
             ))}
           </div>
 
-          {/* Quick stats */}
           <div className="flex items-center justify-between pt-1 border-t border-white/[0.05]">
             <div className="flex items-center gap-1 text-emerald-400">
               <TrendingUp className="w-3 h-3" />
-              <span className="text-[10px] font-bold">
-                {PORTFOLIO.filter((a) => a.weekChange >= 0).length} en hausse
-              </span>
+              <span className="text-[10px] font-bold">{PORTFOLIO.filter((a) => a.weekChange >= 0).length} en hausse</span>
             </div>
             <div className="flex items-center gap-1 text-red-400">
               <TrendingDown className="w-3 h-3" />
-              <span className="text-[10px] font-bold">
-                {PORTFOLIO.filter((a) => a.weekChange < 0).length} en baisse
-              </span>
+              <span className="text-[10px] font-bold">{PORTFOLIO.filter((a) => a.weekChange < 0).length} en baisse</span>
             </div>
             <div className="flex items-center gap-1 text-indigo-400">
               <BarChart2 className="w-3 h-3" />
@@ -275,9 +299,9 @@ export default function AIAssistant() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [apiStatus, setApiStatus] = useState<"online" | "offline" | "unknown">("unknown");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Persist to localStorage
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
@@ -286,12 +310,10 @@ export default function AIAssistant() {
     }
   }, [messages]);
 
-  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  // Hide suggestions after first user message
   useEffect(() => {
     if (messages.some((m) => m.role === "user")) setShowSuggestions(false);
   }, [messages]);
@@ -310,17 +332,14 @@ export default function AIAssistant() {
 
       try {
         const response = await callGeminiAPI(updatedMessages);
+        setApiStatus("online");
         setMessages((prev) => [...prev, { role: "assistant", content: response, timestamp: Date.now() }]);
-      } catch (error) {
-        console.error("AI Error:", error);
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            timestamp: Date.now(),
-            content: `❌ **Erreur de connexion à l'IA**\n\nDésolé, je n'ai pas pu obtenir une réponse. Cela peut être dû à :\n• Une limite de requêtes atteinte (15/minute pour l'API gratuite)\n• Un problème de connexion réseau\n\nVeuillez réessayer dans quelques secondes ! 🔄\n\n*Si le problème persiste, rafraîchissez la page.*`,
-          },
-        ]);
+      } catch (error: any) {
+        console.warn("AI API unavailable, using fallback:", error?.message);
+        setApiStatus("offline");
+        // Use smart fallback instead of error message
+        const fallback = getFallbackResponse(content);
+        setMessages((prev) => [...prev, { role: "assistant", content: fallback, timestamp: Date.now() }]);
       } finally {
         setIsTyping(false);
       }
@@ -332,6 +351,7 @@ export default function AIAssistant() {
     const fresh: Message[] = [{ ...WELCOME_MESSAGE, timestamp: Date.now() }];
     setMessages(fresh);
     setShowSuggestions(true);
+    setApiStatus("unknown");
     localStorage.removeItem(STORAGE_KEY);
   };
 
@@ -342,7 +362,7 @@ export default function AIAssistant() {
     <div className="min-h-screen bg-[#030712] text-white">
       <Sidebar />
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
-        <div className="max-w-[1440px] mx-auto px-6 py-6">
+        <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-6">
           <PageHeader
             icon={<Bot className="w-6 h-6" />}
             title="Assistant IA Conversationnel"
@@ -355,12 +375,29 @@ export default function AIAssistant() {
             ]}
           />
 
+          {/* API Status Banner */}
+          {apiStatus === "offline" && (
+            <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <WifiOff className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs font-bold text-amber-400">Mode hors-ligne actif</p>
+                <p className="text-[10px] text-amber-400/70">L'API Gemini est temporairement indisponible. Les réponses sont générées localement avec les données de votre portfolio.</p>
+              </div>
+              <AlertCircle className="w-4 h-4 text-amber-400/50 flex-shrink-0" />
+            </div>
+          )}
+          {apiStatus === "online" && (
+            <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <Wifi className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <p className="text-xs font-bold text-emerald-400">Connecté à Google Gemini AI ✓</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
             {/* ── Left: Portfolio + Suggestions ── */}
             <div className="space-y-4">
               <PortfolioPanel />
 
-              {/* Suggestions panel */}
               <div className="bg-slate-900/60 border border-white/[0.07] rounded-2xl p-4">
                 <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-3 flex items-center gap-2">
                   <Sparkles className="w-3 h-3 text-amber-400" /> Questions suggérées
@@ -382,7 +419,6 @@ export default function AIAssistant() {
                 </div>
               </div>
 
-              {/* Clear history */}
               <button
                 onClick={clearChat}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/30 text-red-400 text-xs font-bold transition-all"
@@ -396,11 +432,12 @@ export default function AIAssistant() {
               {/* Chat header */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06] bg-black/20 flex-shrink-0">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <div className={`w-2 h-2 rounded-full ${apiStatus === "offline" ? "bg-amber-400" : "bg-emerald-400 animate-pulse"}`} />
                   <Bot className="w-4 h-4 text-indigo-400" />
                   <span className="text-sm font-black text-white">CryptoIA Assistant</span>
                   <span className="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 text-[10px] font-bold border border-indigo-500/20 flex items-center gap-1">
-                    <Sparkles className="w-2.5 h-2.5" /> Gemini AI
+                    <Sparkles className="w-2.5 h-2.5" />
+                    {apiStatus === "offline" ? "Mode local" : "Gemini AI"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-[10px] text-gray-500">
@@ -417,7 +454,6 @@ export default function AIAssistant() {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-5 space-y-4">
-                {/* Welcome suggestions overlay */}
                 {showSuggestions && messages.length === 1 && (
                   <div className="mb-4 p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/15">
                     <p className="text-xs text-indigo-400 font-bold mb-3 flex items-center gap-1.5">
@@ -463,7 +499,6 @@ export default function AIAssistant() {
                   </div>
                 ))}
 
-                {/* Typing indicator */}
                 {isTyping && (
                   <div className="flex justify-start">
                     <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-tl-sm px-4 py-3">
@@ -508,7 +543,9 @@ export default function AIAssistant() {
                   </button>
                 </div>
                 <p className="text-[10px] text-gray-600 mt-2 text-center">
-                  Propulsé par Google Gemini AI • Historique sauvegardé localement • Les réponses ne constituent pas des conseils financiers
+                  {apiStatus === "offline"
+                    ? "Mode hors-ligne • Réponses basées sur les données locales du portfolio"
+                    : "Propulsé par Google Gemini AI • Historique sauvegardé localement • Les réponses ne constituent pas des conseils financiers"}
                 </p>
               </div>
             </div>
@@ -519,3 +556,22 @@ export default function AIAssistant() {
     </div>
   );
 }
+
+// ─── Welcome Message (defined after getFallbackResponse) ─────────────────────
+
+const WELCOME_MESSAGE: Message = {
+  role: "assistant",
+  timestamp: Date.now(),
+  content: `Bonjour ! 👋 Je suis **CryptoIA Assistant**, propulsé par **Google Gemini AI** 🧠
+
+Je connais votre portfolio et le marché en temps réel. Je peux vous aider avec :
+
+• 📊 **Analyse de marché** — Bitcoin, Ethereum, altcoins, tendances actuelles
+• 💼 **Analyse de votre portfolio** — Performance, risques, rééquilibrage
+• 💡 **Stratégies de trading** — DCA, swing, scalping, gestion du risque
+• 📈 **Indicateurs techniques** — RSI, MACD, Bollinger, Fibonacci
+• 🔐 **Sécurité** — Wallets, seed phrases, bonnes pratiques
+• 💰 **DeFi & Staking** — Yield farming, APY, protocoles
+
+Posez-moi n'importe quelle question ! 🚀`,
+};

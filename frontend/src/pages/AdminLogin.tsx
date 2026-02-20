@@ -33,9 +33,19 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
 
+  const [lockoutUntil, setLockoutUntil] = useState(0);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Brute force protection: lockout after 5 failed attempts
+    if (Date.now() < lockoutUntil) {
+      const secondsLeft = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      setError(`Trop de tentatives. Réessayez dans ${secondsLeft} secondes.`);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -44,8 +54,15 @@ export default function AdminLogin() {
         setFailedAttempts(0);
         navigate("/admin");
       } else {
-        setFailedAttempts((prev) => prev + 1);
-        setError("Email ou mot de passe incorrect.");
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+        if (newAttempts >= 5) {
+          // Lock out for 60 seconds after 5 failed attempts
+          setLockoutUntil(Date.now() + 60_000);
+          setError("Trop de tentatives. Compte verrouillé pendant 60 secondes.");
+        } else {
+          setError(`Email ou mot de passe incorrect. (${newAttempts}/5 tentatives)`);
+        }
       }
     } catch {
       setError("Erreur lors de la connexion.");
@@ -152,22 +169,11 @@ export default function AdminLogin() {
             </button>
           </div>
 
-          {failedAttempts >= 2 && (
+          {failedAttempts >= 3 && (
             <div className="pt-2 border-t border-white/[0.06]">
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm("Cela va réinitialiser les sessions admin locales et vous permettre de réessayer. Continuer ?")) {
-                    localStorage.removeItem("cryptoia_admins");
-                    localStorage.removeItem("cryptoia_admin_log");
-                    sessionStorage.clear();
-                    window.location.reload();
-                  }
-                }}
-                className="w-full text-center text-[11px] text-red-400/60 hover:text-red-400 transition-colors py-1"
-              >
-                Problème de connexion ? Réinitialiser les sessions admin
-              </button>
+              <p className="text-center text-[11px] text-red-400/60 py-1">
+                Trop de tentatives échouées. Veuillez contacter le super-administrateur.
+              </p>
             </div>
           )}
         </form>

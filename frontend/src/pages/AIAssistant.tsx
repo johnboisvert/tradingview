@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import DOMPurify from "dompurify";
 import Sidebar from "@/components/Sidebar";
 import {
   Bot,
@@ -188,6 +189,14 @@ async function callGeminiAPI(messages: Message[]): Promise<string> {
 
 // ─── Render markdown-like content ────────────────────────────────────────────
 
+// Sanitize HTML to prevent XSS attacks from AI-generated content
+function sanitizeHTML(html: string): string {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ["strong", "em", "code", "br", "span"],
+    ALLOWED_ATTR: ["class"],
+  });
+}
+
 function renderContent(content: string) {
   return content.split("\n").map((line, i) => {
     let processed = line;
@@ -195,14 +204,17 @@ function renderContent(content: string) {
     processed = processed.replace(/\*(.*?)\*/g, '<em class="text-gray-400 italic">$1</em>');
     processed = processed.replace(/`(.*?)`/g, '<code class="bg-white/10 px-1 rounded text-cyan-300 text-xs">$1</code>');
 
+    // Sanitize all HTML before rendering
+    const sanitized = sanitizeHTML(processed);
+
     if (line.startsWith("• ") || line.startsWith("- ") || line.startsWith("* ")) {
-      return <p key={i} className="ml-2 my-0.5 text-sm" dangerouslySetInnerHTML={{ __html: processed }} />;
+      return <p key={i} className="ml-2 my-0.5 text-sm" dangerouslySetInnerHTML={{ __html: sanitized }} />;
     }
     if (/^\d+\./.test(line.trim())) {
-      return <p key={i} className="ml-2 my-0.5 text-sm" dangerouslySetInnerHTML={{ __html: processed }} />;
+      return <p key={i} className="ml-2 my-0.5 text-sm" dangerouslySetInnerHTML={{ __html: sanitized }} />;
     }
     if (line.trim() === "") return <br key={i} />;
-    return <p key={i} className="my-0.5 text-sm" dangerouslySetInnerHTML={{ __html: processed }} />;
+    return <p key={i} className="my-0.5 text-sm" dangerouslySetInnerHTML={{ __html: sanitized }} />;
   });
 }
 

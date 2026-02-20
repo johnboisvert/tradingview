@@ -361,17 +361,14 @@ export interface AdminLogEntry {
   timestamp: string;
 }
 
-// Simple SHA-256 hash using Web Crypto API
-const hashCache = new Map<string, string>();
-
+// SHA-256 hash using Web Crypto API
+// NOTE: No caching of password hashes in memory for security
 export async function hashPassword(password: string): Promise<string> {
-  if (hashCache.has(password)) return hashCache.get(password)!;
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  hashCache.set(password, hashHex);
   return hashHex;
 }
 

@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import ErrorBoundary from './components/ErrorBoundary.tsx';
 import './index.css';
 import { loadRuntimeConfig } from './lib/config.ts';
 import { registerServiceWorker } from './registerSW.ts';
@@ -8,16 +9,16 @@ import { registerServiceWorker } from './registerSW.ts';
 async function initializeApp() {
   try {
     await loadRuntimeConfig();
-    console.log('Runtime configuration loaded successfully');
-  } catch (error) {
-    console.warn(
-      'Failed to load runtime configuration, using defaults:',
-      error
-    );
+  } catch {
+    // Runtime config not available, using defaults
   }
 
-  // Render the app
-  createRoot(document.getElementById('root')!).render(<App />);
+  // Render the app with Error Boundary
+  createRoot(document.getElementById('root')!).render(
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
 
   // Register PWA Service Worker
   registerServiceWorker();

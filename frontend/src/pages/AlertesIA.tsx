@@ -111,15 +111,10 @@ const PATTERNS = [
   "Death Cross",
 ];
 
-const MOCK_HISTORY: HistoryEntry[] = [
-  { id: "h1", coinSymbol: "BTC", coinImage: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png", type: "price_above", condition: "Prix > 68 000 $", triggeredAt: "2026-02-19 14:32", price: 68420, channel: "in-app" },
-  { id: "h2", coinSymbol: "ETH", coinImage: "https://assets.coingecko.com/coins/images/279/small/ethereum.png", type: "signal_buy", condition: "Signal IA STRONG BUY détecté", triggeredAt: "2026-02-19 11:15", channel: "email" },
-  { id: "h3", coinSymbol: "SOL", coinImage: "https://assets.coingecko.com/coins/images/4128/small/solana.png", type: "price_below", condition: "Prix < 150 $", triggeredAt: "2026-02-18 22:47", price: 148.3, channel: "in-app" },
-  { id: "h4", coinSymbol: "BNB", coinImage: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", type: "pattern", condition: "Pattern Golden Cross détecté", triggeredAt: "2026-02-18 09:05", channel: "in-app" },
-  { id: "h5", coinSymbol: "XRP", coinImage: "https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png", type: "whale", condition: "Mouvement Whale > 10M$ détecté", triggeredAt: "2026-02-17 18:22", channel: "in-app" },
-];
+// Alert history is loaded from localStorage — no hardcoded mock data
 
 const STORAGE_KEY = "cryptoia_alertes_ia";
+const HISTORY_STORAGE_KEY = "cryptoia_alertes_history";
 const NOTIF_SETTINGS_KEY = "cryptoia_notif_settings";
 
 const CHANNEL_OPTIONS: { value: NotifChannel; label: string; icon: React.ReactNode; color: string }[] = [
@@ -140,6 +135,19 @@ function loadAlerts(): AlertRule[] {
 
 function saveAlerts(alerts: AlertRule[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
+}
+
+function loadHistory(): HistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(history: HistoryEntry[]) {
+  localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
 }
 
 function loadNotifSettings(): NotifSettings {
@@ -485,7 +493,7 @@ function NotifSettingsPanel({ settings, onChange, onTest, testingEmail }: {
 
 export default function AlertesIA() {
   const [alerts, setAlerts] = useState<AlertRule[]>(loadAlerts);
-  const [history, setHistory] = useState<HistoryEntry[]>(MOCK_HISTORY);
+  const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
   const [allCoins, setAllCoins] = useState<CoinMarketData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -549,7 +557,11 @@ export default function AlertesIA() {
           price,
           channel: alert.channel,
         };
-        setHistory((prev) => [newEntry, ...prev]);
+        setHistory((prev) => {
+          const updated = [newEntry, ...prev].slice(0, 100); // Keep last 100 entries
+          saveHistory(updated);
+          return updated;
+        });
         dispatchNotification(notifSettings, alert.channel, alert, price);
         return { ...alert, status: "triggered" as AlertStatus, triggeredAt: new Date().toLocaleString("fr-FR"), currentPrice: price };
       }

@@ -35,6 +35,7 @@ const LogoutCallbackPage: React.FC = () => {
         </p>
         <p className="text-sm text-gray-500">Redirecting to home page...</p>
       </div>
+    <Footer />
     </div>
   );
 };

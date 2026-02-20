@@ -17,7 +17,6 @@ import {
   Rocket,
   User as UserIcon,
 } from "lucide-react";
-import Footer from "@/components/Footer";
 
 const PLAN_COLORS: Record<string, string> = {
   free: "bg-gray-500/10 text-gray-400 border-gray-500/20",

@@ -81,6 +81,7 @@ export default function AuthErrorPage() {
           </Button>
         </div>
       </div>
+    <Footer />
     </div>
   );
 }

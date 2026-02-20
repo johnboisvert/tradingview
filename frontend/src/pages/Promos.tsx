@@ -7,7 +7,6 @@ import {
   Tag, Plus, Trash2, X, Percent, Hash, Calendar, Users,
   CheckCircle2, XCircle, ToggleLeft, ToggleRight, UserCheck, Copy, CheckCheck
 } from "lucide-react";
-import Footer from "@/components/Footer";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Lock, Mail, Eye, EyeOff, AlertCircle } from "lucide-react";
-import Footer from "@/components/Footer";
 
 // SECURITY: Admin credentials read from environment variables at build time.
 // Set VITE_ADMIN_EMAIL and VITE_ADMIN_PASSWORD in your .env file or Railway environment.

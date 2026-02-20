@@ -2,12 +2,6 @@ export default function Footer() {
   return (
     <footer className="mt-12 border-t border-white/[0.06] bg-[#0a0a0f]/80 backdrop-blur-sm">
       <div className="px-6 py-8">
-        {/* Copyright */}
-        <div className="mb-4">
-          <p className="text-sm font-semibold text-gray-300">
-            Tous droits réservés © 2026 CryptoIA
-          </p>
-        </div>
 
         {/* AI Powered Banner */}
         <div className="mb-6 flex items-center gap-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 px-4 py-3">
@@ -19,7 +13,7 @@ export default function Footer() {
         </div>
 
         {/* Legal Disclaimer */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6 mb-6">
           <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
             <span className="inline-block w-4 h-[2px] bg-indigo-400 rounded-full"></span>
             Avertissement Juridique &amp; Politique de Confidentialité
@@ -58,6 +52,14 @@ export default function Footer() {
             </p>
           </div>
         </div>
+
+        {/* Copyright */}
+        <div className="flex items-center justify-center pt-2 border-t border-white/[0.04]">
+          <p className="text-xs text-gray-600 font-medium tracking-wide">
+            Tous droits réservés © 2026 CryptoIA
+          </p>
+        </div>
+
       </div>
     </footer>
   );

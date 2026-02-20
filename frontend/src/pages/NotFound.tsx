@@ -30,6 +30,7 @@ export default function NotFound() {
           </button>
         </div>
       </div>
+    <Footer />
     </div>
   );
 }

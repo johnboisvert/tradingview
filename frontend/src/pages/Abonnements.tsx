@@ -616,6 +616,7 @@ export default function Abonnements() {
       {selectedPlan && (
         <PaymentModal plan={selectedPlan} onClose={() => setSelectedPlan(null)} />
       )}
+    <Footer />
     </div>
   );
 }

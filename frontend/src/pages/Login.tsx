@@ -1,3 +1,4 @@
+import Footer from "../components/Footer";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle, LogIn } from "lucide-react";
@@ -144,6 +145,7 @@ export default function Login() {
           </div>
         </div>
       </div>
+    <Footer />
     </div>
   );
 }

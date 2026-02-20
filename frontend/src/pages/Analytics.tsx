@@ -21,7 +21,6 @@ import {
   RefreshCw,
   ArrowDown,
 } from "lucide-react";
-import Footer from "@/components/Footer";
 
 const ANALYTICS_IMG = "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-17/d46e7b8e-f499-4be8-89df-34475265fd9a.png";
 

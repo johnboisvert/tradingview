@@ -90,6 +90,7 @@ const ROUTE_TO_SLUG: Record<string, string> = {
   "/alertes-ia": "dashboard",
   "/score-confiance-ia": "dashboard",
   "/simulateur-strategie-ia": "dashboard",
+  "/assistant-ia": "dashboard",
   "/rapport-hebdomadaire-ia": "dashboard",
   "/success-stories": "dashboard",
   "/onchain-metrics": "onchain",

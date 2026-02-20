@@ -98,6 +98,7 @@ function App() {
 
         {/* Intelligence IA */}
         <Route path="/ai-assistant" element={<PlanProtected path="/ai-assistant"><AIAssistant /></PlanProtected>} />
+        <Route path="/assistant-ia" element={<PlanProtected path="/assistant-ia"><AIAssistant /></PlanProtected>} />
         <Route path="/prediction-ia" element={<PlanProtected path="/prediction-ia"><PredictionIA /></PlanProtected>} />
         <Route path="/crypto-ia" element={<PlanProtected path="/crypto-ia"><CryptoIA /></PlanProtected>} />
         <Route path="/crypto-journal" element={<PlanProtected path="/crypto-journal"><CryptoJournal /></PlanProtected>} />

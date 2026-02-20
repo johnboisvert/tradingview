@@ -43,9 +43,11 @@ interface PortfolioAsset {
 
 const STORAGE_KEY = "cryptoia_assistant_history";
 
-// SECURITY: API key must be set via environment variable VITE_GEMINI_API_KEY
-// Never hardcode API keys in source code
+// SECURITY: API key is now kept server-side only.
+// Frontend calls /api/ai-chat which proxies to Gemini on the backend.
+// Falls back to direct Gemini call only if VITE_GEMINI_API_KEY is set (dev mode).
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
+const USE_BACKEND_PROXY = !GEMINI_API_KEY; // prefer backend proxy when no key in frontend
 const GEMINI_API_URL = GEMINI_API_KEY
   ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
   : "";
@@ -134,10 +136,6 @@ function getFallbackResponse(question: string): string {
 // ─── Gemini API ───────────────────────────────────────────────────────────────
 
 async function callGeminiAPI(messages: Message[]): Promise<string> {
-  if (!GEMINI_API_KEY || !GEMINI_API_URL) {
-    throw new Error("API_KEY_MISSING");
-  }
-
   const contents = messages.map((msg) => ({
     role: msg.role === "assistant" ? "model" : "user",
     parts: [{ text: msg.content }],
@@ -153,6 +151,27 @@ async function callGeminiAPI(messages: Message[]): Promise<string> {
   const timeout = setTimeout(() => controller.abort(), 15000);
 
   try {
+    // Try backend proxy first (API key stays server-side)
+    if (USE_BACKEND_PROXY) {
+      const proxyRes = await fetch("/api/ai-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({ contents }),
+      });
+      clearTimeout(timeout);
+      if (proxyRes.ok) {
+        const data = await proxyRes.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || data?.text;
+        if (text) return text;
+      }
+      // If proxy fails, fall through to fallback
+      throw new Error("PROXY_UNAVAILABLE");
+    }
+
+    // Direct Gemini call (dev mode with VITE_GEMINI_API_KEY)
+    if (!GEMINI_API_URL) throw new Error("API_KEY_MISSING");
+
     const response = await fetch(GEMINI_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -181,7 +200,7 @@ async function callGeminiAPI(messages: Message[]): Promise<string> {
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) throw new Error("EMPTY_RESPONSE");
     return text;
-  } catch (err: any) {
+  } catch (err: unknown) {
     clearTimeout(timeout);
     throw err;
   }

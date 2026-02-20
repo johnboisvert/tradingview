@@ -381,14 +381,15 @@ interface StoredSuperAdmin {
   created_at: string;
 }
 
+// SECURITY: Admin credentials are NO LONGER read from VITE_ env vars
+// (those would be exposed in the frontend bundle).
+// All admin accounts are stored in localStorage with hashed passwords.
 function getEnvSuperAdminEmail(): string {
-  const val = (typeof import.meta !== "undefined" && import.meta.env?.VITE_ADMIN_EMAIL) || "";
-  return val.trim();
+  return "";
 }
 
 function getEnvSuperAdminPassword(): string {
-  const val = (typeof import.meta !== "undefined" && import.meta.env?.VITE_ADMIN_PASSWORD) || "";
-  return val.trim();
+  return "";
 }
 
 function getStoredSuperAdmin(): StoredSuperAdmin | null {
@@ -540,16 +541,7 @@ export async function loginAdmin(email: string, password: string): Promise<{ suc
   const trimmedEmail = email.trim().toLowerCase();
   const trimmedPassword = password.trim();
 
-  // 1. Check env vars super-admin first
-  const envEmail = getEnvSuperAdminEmail();
-  const envPassword = getEnvSuperAdminPassword();
-  if (envEmail && envPassword && trimmedEmail === envEmail.trim().toLowerCase() && trimmedPassword === envPassword.trim()) {
-    setAdminSession(envEmail, "super-admin", "Super Admin");
-    addAdminLog(envEmail, "Connexion (super-admin env)");
-    return { success: true, role: "super-admin", name: "Super Admin" };
-  }
-
-  // 2. Check localStorage super-admin
+  // 1. Check localStorage super-admin
   const storedSuperAdmin = getStoredSuperAdmin();
   if (storedSuperAdmin && trimmedEmail === storedSuperAdmin.email.trim().toLowerCase()) {
     const passwordHash = await hashPassword(trimmedPassword);
@@ -560,7 +552,7 @@ export async function loginAdmin(email: string, password: string): Promise<{ suc
     }
   }
 
-  // 3. Check secondary admins
+  // 2. Check secondary admins
   const admins = getAdmins();
   const admin = admins.find((a) => a.email.trim().toLowerCase() === trimmedEmail);
   if (admin) {

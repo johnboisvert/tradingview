@@ -1,38 +1,116 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
-import { Smartphone, Bell, Shield, Zap, CheckCircle, AlertTriangle, Copy, ExternalLink, Settings } from "lucide-react";
+import { Smartphone, Bell, Shield, Zap, CheckCircle, AlertTriangle, ExternalLink, Settings, Wifi, WifiOff } from "lucide-react";
 import Footer from "@/components/Footer";
 
 const TELE_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/ed81f7f8-96b1-4d85-b286-6e3ee422e749.png";
 
+const LS_TOKEN_KEY = "telegram_bot_token";
+const LS_CHAT_KEY = "telegram_chat_id";
+const LS_ALERTS_KEY = "telegram_alerts";
+
+interface AlertSettings {
+  priceAlerts: boolean;
+  tradeSignals: boolean;
+  whaleMovements: boolean;
+  fearGreed: boolean;
+  dailySummary: boolean;
+  portfolioAlerts: boolean;
+}
+
+const DEFAULT_ALERTS: AlertSettings = {
+  priceAlerts: true,
+  tradeSignals: true,
+  whaleMovements: false,
+  fearGreed: true,
+  dailySummary: true,
+  portfolioAlerts: false,
+};
+
 export default function TelegramSetup() {
-  const [botToken, setBotToken] = useState("");
-  const [chatId, setChatId] = useState("");
+  const [botToken, setBotToken] = useState(() => localStorage.getItem(LS_TOKEN_KEY) || "");
+  const [chatId, setChatId] = useState(() => localStorage.getItem(LS_CHAT_KEY) || "");
   const [testStatus, setTestStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
-  const [alerts, setAlerts] = useState({
-    priceAlerts: true,
-    tradeSignals: true,
-    whaleMovements: false,
-    fearGreed: true,
-    dailySummary: true,
-    portfolioAlerts: false,
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isConnected, setIsConnected] = useState(() => {
+    const token = localStorage.getItem(LS_TOKEN_KEY);
+    const chat = localStorage.getItem(LS_CHAT_KEY);
+    return !!(token && chat);
+  });
+  const [alerts, setAlerts] = useState<AlertSettings>(() => {
+    try {
+      const saved = localStorage.getItem(LS_ALERTS_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return DEFAULT_ALERTS;
   });
 
-  const handleTest = () => {
+  // Persist alerts to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(LS_ALERTS_KEY, JSON.stringify(alerts));
+  }, [alerts]);
+
+  const handleTest = async () => {
     if (!botToken.trim() || !chatId.trim()) {
       setTestStatus("error");
+      setErrorMessage("Veuillez remplir le Bot Token et le Chat ID.");
+      setTimeout(() => setTestStatus("idle"), 4000);
       return;
     }
     setTestStatus("sending");
-    setTimeout(() => {
-      setTestStatus("success");
-      setTimeout(() => setTestStatus("idle"), 3000);
-    }, 1500);
+    setErrorMessage("");
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${botToken.trim()}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId.trim(),
+          text: "🚀 *CryptoIA* — Test réussi \\!\n\nVotre bot Telegram est correctement configuré\\. Vous recevrez désormais vos alertes crypto ici\\. 🎉\n\n_Envoyé depuis votre plateforme CryptoIA_",
+          parse_mode: "MarkdownV2",
+        }),
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        setTestStatus("success");
+        // Save credentials to localStorage on success
+        localStorage.setItem(LS_TOKEN_KEY, botToken.trim());
+        localStorage.setItem(LS_CHAT_KEY, chatId.trim());
+        setIsConnected(true);
+      } else {
+        setTestStatus("error");
+        // Extract Telegram error description for user feedback
+        const desc = data.description || "Erreur inconnue";
+        if (desc.includes("Unauthorized")) {
+          setErrorMessage("Token invalide — vérifiez votre Bot Token auprès de @BotFather.");
+        } else if (desc.includes("chat not found")) {
+          setErrorMessage("Chat ID introuvable — envoyez d'abord un message à votre bot, puis réessayez.");
+        } else if (desc.includes("bot was blocked")) {
+          setErrorMessage("Le bot a été bloqué par l'utilisateur. Débloquez-le dans Telegram.");
+        } else {
+          setErrorMessage(`Erreur Telegram : ${desc}`);
+        }
+      }
+    } catch {
+      setTestStatus("error");
+      setErrorMessage("Impossible de contacter l'API Telegram. Vérifiez votre connexion internet.");
+    }
+
+    setTimeout(() => setTestStatus("idle"), 4000);
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const handleDisconnect = () => {
+    localStorage.removeItem(LS_TOKEN_KEY);
+    localStorage.removeItem(LS_CHAT_KEY);
+    setBotToken("");
+    setChatId("");
+    setIsConnected(false);
+    setTestStatus("idle");
+    setErrorMessage("");
   };
 
   const steps = [
@@ -83,7 +161,7 @@ export default function TelegramSetup() {
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
           <img src={TELE_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/80 to-transparent" />
-          <div className="relative z-10 h-full flex items-center px-8">
+          <div className="relative z-10 h-full flex items-center justify-between px-8">
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <Smartphone className="w-7 h-7 text-blue-400" />
@@ -93,6 +171,18 @@ export default function TelegramSetup() {
               </div>
               <p className="text-sm text-gray-400">Recevez vos alertes crypto directement sur Telegram</p>
             </div>
+            {/* Connection Status Badge */}
+            {isConnected ? (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30">
+                <Wifi className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm font-bold text-emerald-400">✅ Connecté</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-500/15 border border-gray-500/30">
+                <WifiOff className="w-4 h-4 text-gray-400" />
+                <span className="text-sm font-bold text-gray-400">Non connecté</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -141,6 +231,8 @@ export default function TelegramSetup() {
                     placeholder="123456789"
                     className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50" />
                 </div>
+
+                {/* Test Button */}
                 <button onClick={handleTest}
                   disabled={testStatus === "sending"}
                   className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
@@ -153,8 +245,26 @@ export default function TelegramSetup() {
                   {testStatus === "sending" && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                   {testStatus === "success" && <CheckCircle className="w-4 h-4" />}
                   {testStatus === "error" && <AlertTriangle className="w-4 h-4" />}
-                  {testStatus === "idle" ? "🔔 Envoyer un Test" : testStatus === "sending" ? "Envoi..." : testStatus === "success" ? "Message envoyé !" : "Erreur — vérifiez vos identifiants"}
+                  {testStatus === "idle" ? "🔔 Envoyer un Test" : testStatus === "sending" ? "Envoi en cours..." : testStatus === "success" ? "✅ Message envoyé sur Telegram !" : "❌ Échec de l'envoi"}
                 </button>
+
+                {/* Error Message Detail */}
+                {testStatus === "error" && errorMessage && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mt-2">
+                    <p className="text-xs text-red-400 flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      {errorMessage}
+                    </p>
+                  </div>
+                )}
+
+                {/* Disconnect button if connected */}
+                {isConnected && (
+                  <button onClick={handleDisconnect}
+                    className="w-full py-2.5 rounded-xl font-bold text-xs transition-all bg-white/[0.04] border border-white/[0.08] text-gray-400 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400 mt-2">
+                    🔌 Déconnecter le bot Telegram
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -162,7 +272,7 @@ export default function TelegramSetup() {
           {/* Right: Alert Configuration */}
           <div className="space-y-4">
             <h2 className="text-lg font-bold flex items-center gap-2">
-              <Bell className="w-5 h-5 text-cyan-400" /> Types d'Alertes
+              <Bell className="w-5 h-5 text-cyan-400" /> Types d&apos;Alertes
             </h2>
 
             {alertTypes.map((alert) => (

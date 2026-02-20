@@ -22,19 +22,17 @@ import {
   Activity,
   Search,
   Mail,
-  MessageSquare,
   Settings,
-  Send,
-  Smartphone,
   HelpCircle,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type AlertType = "price_above" | "price_below" | "signal_buy" | "signal_sell" | "pattern" | "whale";
 type AlertStatus = "active" | "inactive" | "triggered";
-type NotifChannel = "in-app" | "email" | "sms" | "all";
+type NotifChannel = "in-app" | "email";
 
 interface AlertRule {
   id: string;
@@ -69,11 +67,6 @@ interface NotifSettings {
   emailjsServiceId: string;
   emailjsTemplateId: string;
   emailjsPublicKey: string;
-  smsEnabled: boolean;
-  smsPhone: string;
-  twilioSid: string;
-  twilioToken: string;
-  twilioFrom: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -121,7 +114,7 @@ const PATTERNS = [
 const MOCK_HISTORY: HistoryEntry[] = [
   { id: "h1", coinSymbol: "BTC", coinImage: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png", type: "price_above", condition: "Prix > 68 000 $", triggeredAt: "2026-02-19 14:32", price: 68420, channel: "in-app" },
   { id: "h2", coinSymbol: "ETH", coinImage: "https://assets.coingecko.com/coins/images/279/small/ethereum.png", type: "signal_buy", condition: "Signal IA STRONG BUY détecté", triggeredAt: "2026-02-19 11:15", channel: "email" },
-  { id: "h3", coinSymbol: "SOL", coinImage: "https://assets.coingecko.com/coins/images/4128/small/solana.png", type: "price_below", condition: "Prix < 150 $", triggeredAt: "2026-02-18 22:47", price: 148.3, channel: "sms" },
+  { id: "h3", coinSymbol: "SOL", coinImage: "https://assets.coingecko.com/coins/images/4128/small/solana.png", type: "price_below", condition: "Prix < 150 $", triggeredAt: "2026-02-18 22:47", price: 148.3, channel: "in-app" },
   { id: "h4", coinSymbol: "BNB", coinImage: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", type: "pattern", condition: "Pattern Golden Cross détecté", triggeredAt: "2026-02-18 09:05", channel: "in-app" },
   { id: "h5", coinSymbol: "XRP", coinImage: "https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png", type: "whale", condition: "Mouvement Whale > 10M$ détecté", triggeredAt: "2026-02-17 18:22", channel: "in-app" },
 ];
@@ -132,8 +125,6 @@ const NOTIF_SETTINGS_KEY = "cryptoia_notif_settings";
 const CHANNEL_OPTIONS: { value: NotifChannel; label: string; icon: React.ReactNode; color: string }[] = [
   { value: "in-app", label: "In-App seulement", icon: <Bell className="w-3.5 h-3.5" />, color: "text-indigo-400" },
   { value: "email", label: "Email", icon: <Mail className="w-3.5 h-3.5" />, color: "text-blue-400" },
-  { value: "sms", label: "SMS", icon: <MessageSquare className="w-3.5 h-3.5" />, color: "text-emerald-400" },
-  { value: "all", label: "Tous les canaux", icon: <Send className="w-3.5 h-3.5" />, color: "text-amber-400" },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -156,32 +147,22 @@ function loadNotifSettings(): NotifSettings {
     const raw = localStorage.getItem(NOTIF_SETTINGS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      // Migrate from old SendGrid format if needed
       return {
         emailEnabled: parsed.emailEnabled ?? false,
         emailAddress: parsed.emailAddress ?? "",
         emailjsServiceId: parsed.emailjsServiceId ?? "",
         emailjsTemplateId: parsed.emailjsTemplateId ?? "",
         emailjsPublicKey: parsed.emailjsPublicKey ?? "",
-        smsEnabled: parsed.smsEnabled ?? false,
-        smsPhone: parsed.smsPhone ?? "",
-        twilioSid: parsed.twilioSid ?? "",
-        twilioToken: parsed.twilioToken ?? "",
-        twilioFrom: parsed.twilioFrom ?? "",
       };
     }
     return {
       emailEnabled: false, emailAddress: "",
       emailjsServiceId: "", emailjsTemplateId: "", emailjsPublicKey: "",
-      smsEnabled: false, smsPhone: "",
-      twilioSid: "", twilioToken: "", twilioFrom: "",
     };
   } catch {
     return {
       emailEnabled: false, emailAddress: "",
       emailjsServiceId: "", emailjsTemplateId: "", emailjsPublicKey: "",
-      smsEnabled: false, smsPhone: "",
-      twilioSid: "", twilioToken: "", twilioFrom: "",
     };
   }
 }
@@ -214,40 +195,28 @@ async function sendEmailNotification(
     return { ok: false, error: "Adresse email non configurée" };
   }
   try {
+    console.log("[CryptoIA] Envoi email via EmailJS...", {
+      serviceId: settings.emailjsServiceId,
+      templateId: settings.emailjsTemplateId,
+      to: settings.emailAddress,
+    });
     const templateParams = {
       to_email: settings.emailAddress,
       subject: subject,
       message: body,
     };
-    await emailjs.send(
+    const result = await emailjs.send(
       settings.emailjsServiceId,
       settings.emailjsTemplateId,
       templateParams,
       settings.emailjsPublicKey
     );
+    console.log("[CryptoIA] EmailJS réponse:", result);
     return { ok: true };
   } catch (e: unknown) {
-    const errMsg = e instanceof Error ? e.message : String(e);
-    return { ok: false, error: `EmailJS erreur: ${errMsg.slice(0, 100)}` };
-  }
-}
-
-async function sendSmsNotification(settings: NotifSettings, message: string): Promise<{ ok: boolean; error?: string }> {
-  if (!settings.twilioSid || !settings.twilioToken || !settings.twilioFrom) return { ok: false, error: "Configuration Twilio manquante" };
-  if (!settings.smsPhone) return { ok: false, error: "Numéro de téléphone non configuré" };
-  try {
-    const credentials = btoa(`${settings.twilioSid}:${settings.twilioToken}`);
-    const body = new URLSearchParams({ To: settings.smsPhone, From: settings.twilioFrom, Body: message });
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${settings.twilioSid}/Messages.json`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: `Basic ${credentials}` },
-      body: body.toString(),
-    });
-    if (res.ok) return { ok: true };
-    const json = await res.json();
-    return { ok: false, error: `Twilio erreur: ${json.message || res.status}` };
-  } catch (e) {
-    return { ok: false, error: `Erreur réseau: ${String(e).slice(0, 80)}` };
+    console.error("[CryptoIA] EmailJS erreur:", e);
+    const errMsg = e instanceof Error ? e.message : typeof e === "object" && e !== null && "text" in e ? String((e as { text: string }).text) : String(e);
+    return { ok: false, error: `EmailJS erreur: ${errMsg.slice(0, 150)}` };
   }
 }
 
@@ -259,13 +228,9 @@ async function dispatchNotification(
 ): Promise<void> {
   const subject = `🚨 CryptoIA — Alerte ${alert.coinSymbol} déclenchée`;
   const body = `Votre alerte sur ${alert.coinSymbol} (${alert.coinName}) a été déclenchée.\n\nCondition : ${alert.condition}${price ? `\nPrix actuel : $${formatPrice(price)}` : ""}\n\nDéclenché le : ${new Date().toLocaleString("fr-FR")}\n\n— CryptoIA Platform`;
-  const smsMsg = `🚨 CryptoIA: Alerte ${alert.coinSymbol} — ${alert.condition}${price ? ` @ $${formatPrice(price)}` : ""}`;
 
-  if ((channel === "email" || channel === "all") && settings.emailEnabled) {
+  if (channel === "email" && settings.emailEnabled) {
     await sendEmailNotification(settings, subject, body);
-  }
-  if ((channel === "sms" || channel === "all") && settings.smsEnabled) {
-    await sendSmsNotification(settings, smsMsg);
   }
 }
 
@@ -383,10 +348,11 @@ function EmailJSGuide() {
 
 // ─── Notification Settings Panel ─────────────────────────────────────────────
 
-function NotifSettingsPanel({ settings, onChange, onTest }: {
+function NotifSettingsPanel({ settings, onChange, onTest, testingEmail }: {
   settings: NotifSettings;
   onChange: (s: NotifSettings) => void;
-  onTest: (channel: "email" | "sms") => void;
+  onTest: () => void;
+  testingEmail: boolean;
 }) {
   const [showKeys, setShowKeys] = useState(false);
 
@@ -398,172 +364,106 @@ function NotifSettingsPanel({ settings, onChange, onTest }: {
         <div className="w-7 h-7 rounded-lg bg-indigo-500/20 flex items-center justify-center">
           <Settings className="w-4 h-4 text-indigo-400" />
         </div>
-        <h3 className="text-sm font-bold text-white">Configuration des notifications</h3>
+        <h3 className="text-sm font-bold text-white">Configuration des notifications email</h3>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Email section — EmailJS */}
-        <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-blue-400" />
-              <span className="text-sm font-bold text-white">Email via EmailJS</span>
-              {emailConfigured && settings.emailEnabled && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400" title="Configuré" />
-              )}
-            </div>
-            <button
-              onClick={() => onChange({ ...settings, emailEnabled: !settings.emailEnabled })}
-              className={`w-10 h-5 rounded-full transition-all relative ${settings.emailEnabled ? "bg-blue-500" : "bg-gray-700"}`}
-            >
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${settings.emailEnabled ? "left-5" : "left-0.5"}`} />
-            </button>
+      {/* Email section — EmailJS — full width */}
+      <div className="p-5 rounded-xl bg-blue-500/5 border border-blue-500/20">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-blue-400" />
+            <span className="text-sm font-bold text-white">Email via EmailJS</span>
+            {emailConfigured && settings.emailEnabled && (
+              <span className="w-2 h-2 rounded-full bg-emerald-400" title="Configuré" />
+            )}
           </div>
+          <button
+            onClick={() => onChange({ ...settings, emailEnabled: !settings.emailEnabled })}
+            className={`w-10 h-5 rounded-full transition-all relative ${settings.emailEnabled ? "bg-blue-500" : "bg-gray-700"}`}
+          >
+            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${settings.emailEnabled ? "left-5" : "left-0.5"}`} />
+          </button>
+        </div>
 
-          {/* Guide */}
-          <EmailJSGuide />
+        {/* Guide */}
+        <EmailJSGuide />
 
-          <div className="space-y-2">
-            <div>
-              <label className="block text-[11px] font-bold text-gray-400 mb-1">Adresse email de destination</label>
-              <input
-                type="email"
-                value={settings.emailAddress}
-                onChange={(e) => onChange({ ...settings, emailAddress: e.target.value })}
-                placeholder="votre@email.com"
-                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-400 mb-1">
-                Service ID
-              </label>
-              <input
-                type="text"
-                value={settings.emailjsServiceId}
-                onChange={(e) => onChange({ ...settings, emailjsServiceId: e.target.value })}
-                placeholder="service_xxxxxxx"
-                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-400 mb-1">
-                Template ID
-              </label>
-              <input
-                type="text"
-                value={settings.emailjsTemplateId}
-                onChange={(e) => onChange({ ...settings, emailjsTemplateId: e.target.value })}
-                placeholder="template_xxxxxxx"
-                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-400 mb-1">
-                Public Key
-              </label>
-              <input
-                type={showKeys ? "text" : "password"}
-                value={settings.emailjsPublicKey}
-                onChange={(e) => onChange({ ...settings, emailjsPublicKey: e.target.value })}
-                placeholder="aBcDeFgHiJkLmN"
-                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 font-mono"
-              />
-            </div>
-            {!emailConfigured && (
-              <p className="text-[10px] text-amber-400 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" />
-                Configuration EmailJS incomplète — les emails ne seront pas envoyés
-              </p>
-            )}
-            {emailConfigured && (
-              <p className="text-[10px] text-emerald-400 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" />
-                EmailJS configuré correctement
-              </p>
-            )}
-            <button
-              onClick={() => onTest("email")}
-              disabled={!emailConfigured || !settings.emailAddress}
-              className="w-full py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              📧 Envoyer un email de test
-            </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="md:col-span-2">
+            <label className="block text-[11px] font-bold text-gray-400 mb-1">Adresse email de destination</label>
+            <input
+              type="email"
+              value={settings.emailAddress}
+              onChange={(e) => onChange({ ...settings, emailAddress: e.target.value })}
+              placeholder="votre@email.com"
+              className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-400 mb-1">
+              Service ID
+            </label>
+            <input
+              type="text"
+              value={settings.emailjsServiceId}
+              onChange={(e) => onChange({ ...settings, emailjsServiceId: e.target.value })}
+              placeholder="service_xxxxxxx"
+              className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-400 mb-1">
+              Template ID
+            </label>
+            <input
+              type="text"
+              value={settings.emailjsTemplateId}
+              onChange={(e) => onChange({ ...settings, emailjsTemplateId: e.target.value })}
+              placeholder="template_xxxxxxx"
+              className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 font-mono"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-[11px] font-bold text-gray-400 mb-1">
+              Public Key
+            </label>
+            <input
+              type={showKeys ? "text" : "password"}
+              value={settings.emailjsPublicKey}
+              onChange={(e) => onChange({ ...settings, emailjsPublicKey: e.target.value })}
+              placeholder="aBcDeFgHiJkLmN"
+              className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 font-mono"
+            />
           </div>
         </div>
 
-        {/* SMS section — Twilio (unchanged) */}
-        <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Smartphone className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm font-bold text-white">SMS via Twilio</span>
-            </div>
-            <button
-              onClick={() => onChange({ ...settings, smsEnabled: !settings.smsEnabled })}
-              className={`w-10 h-5 rounded-full transition-all relative ${settings.smsEnabled ? "bg-emerald-500" : "bg-gray-700"}`}
-            >
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${settings.smsEnabled ? "left-5" : "left-0.5"}`} />
-            </button>
-          </div>
-          <div className="space-y-2">
-            <div>
-              <label className="block text-[11px] font-bold text-gray-400 mb-1">Numéro de téléphone (format +33...)</label>
-              <input
-                type="tel"
-                value={settings.smsPhone}
-                onChange={(e) => onChange({ ...settings, smsPhone: e.target.value })}
-                placeholder="+33612345678"
-                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-400 mb-1">
-                Account SID Twilio
-                <a href="https://console.twilio.com" target="_blank" rel="noopener noreferrer" className="ml-2 text-emerald-400 hover:underline">→ Console Twilio</a>
-              </label>
-              <input
-                type={showKeys ? "text" : "password"}
-                value={settings.twilioSid}
-                onChange={(e) => onChange({ ...settings, twilioSid: e.target.value })}
-                placeholder="ACxxxxxxxxxxxxxxxx"
-                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-400 mb-1">Auth Token Twilio</label>
-              <input
-                type={showKeys ? "text" : "password"}
-                value={settings.twilioToken}
-                onChange={(e) => onChange({ ...settings, twilioToken: e.target.value })}
-                placeholder="xxxxxxxxxxxxxxxx"
-                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-400 mb-1">Numéro Twilio expéditeur</label>
-              <input
-                type="text"
-                value={settings.twilioFrom}
-                onChange={(e) => onChange({ ...settings, twilioFrom: e.target.value })}
-                placeholder="+15017122661"
-                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
-              />
-            </div>
-            {(!settings.twilioSid || !settings.twilioToken || !settings.twilioFrom) && (
-              <p className="text-[10px] text-amber-400 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" />
-                Configuration Twilio manquante — les SMS ne seront pas envoyés
-              </p>
+        <div className="mt-3 space-y-2">
+          {!emailConfigured && (
+            <p className="text-[10px] text-amber-400 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" />
+              Configuration EmailJS incomplète — les emails ne seront pas envoyés
+            </p>
+          )}
+          {emailConfigured && (
+            <p className="text-[10px] text-emerald-400 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" />
+              EmailJS configuré correctement
+            </p>
+          )}
+          <button
+            onClick={onTest}
+            disabled={!emailConfigured || !settings.emailAddress || testingEmail}
+            className="w-full py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {testingEmail ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Envoi en cours...
+              </>
+            ) : (
+              "📧 Envoyer un email de test"
             )}
-            <button
-              onClick={() => onTest("sms")}
-              disabled={!settings.twilioSid || !settings.twilioToken || !settings.twilioFrom || !settings.smsPhone}
-              className="w-full py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              📱 Envoyer un SMS de test
-            </button>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -595,6 +495,7 @@ export default function AlertesIA() {
   const [showCoinDropdown, setShowCoinDropdown] = useState(false);
   const [notifSettings, setNotifSettings] = useState<NotifSettings>(loadNotifSettings);
   const [toastMsg, setToastMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [testingEmail, setTestingEmail] = useState(false);
 
   // Form state
   const [formCoin, setFormCoin] = useState<CoinMarketData | null>(null);
@@ -606,7 +507,7 @@ export default function AlertesIA() {
 
   const showToast = (text: string, ok: boolean) => {
     setToastMsg({ text, ok });
-    setTimeout(() => setToastMsg(null), 4000);
+    setTimeout(() => setToastMsg(null), 5000);
   };
 
   // Fetch coins
@@ -649,7 +550,6 @@ export default function AlertesIA() {
           channel: alert.channel,
         };
         setHistory((prev) => [newEntry, ...prev]);
-        // Fire notification
         dispatchNotification(notifSettings, alert.channel, alert, price);
         return { ...alert, status: "triggered" as AlertStatus, triggeredAt: new Date().toLocaleString("fr-FR"), currentPrice: price };
       }
@@ -673,17 +573,27 @@ export default function AlertesIA() {
     saveNotifSettings(s);
   };
 
-  const handleTestNotif = async (channel: "email" | "sms") => {
-    if (channel === "email") {
+  const handleTestEmail = async () => {
+    console.log("[CryptoIA] Test email déclenché avec settings:", {
+      serviceId: notifSettings.emailjsServiceId,
+      templateId: notifSettings.emailjsTemplateId,
+      publicKey: notifSettings.emailjsPublicKey ? "***" + notifSettings.emailjsPublicKey.slice(-4) : "(vide)",
+      emailAddress: notifSettings.emailAddress,
+    });
+    setTestingEmail(true);
+    try {
       const res = await sendEmailNotification(
         notifSettings,
         "🧪 Test CryptoIA — Notification Email",
-        "Ceci est un email de test envoyé depuis CryptoIA Platform.\n\nSi vous recevez cet email, vos notifications email sont correctement configurées !"
+        "Ceci est un email de test envoyé depuis CryptoIA Platform.\n\nSi vous recevez cet email, vos notifications email sont correctement configurées !\n\n— CryptoIA Platform"
       );
-      showToast(res.ok ? "✅ Email de test envoyé !" : `❌ ${res.error}`, res.ok);
-    } else {
-      const res = await sendSmsNotification(notifSettings, "🧪 CryptoIA Test: Vos notifications SMS sont actives !");
-      showToast(res.ok ? "✅ SMS de test envoyé !" : `❌ ${res.error}`, res.ok);
+      console.log("[CryptoIA] Résultat test email:", res);
+      showToast(res.ok ? "✅ Email de test envoyé avec succès ! Vérifiez votre boîte de réception." : `❌ ${res.error}`, res.ok);
+    } catch (err) {
+      console.error("[CryptoIA] Erreur inattendue test email:", err);
+      showToast(`❌ Erreur inattendue: ${String(err).slice(0, 100)}`, false);
+    } finally {
+      setTestingEmail(false);
     }
   };
 
@@ -699,12 +609,8 @@ export default function AlertesIA() {
     }
 
     // Validate notification channel config
-    if ((formChannel === "email" || formChannel === "all") && (!notifSettings.emailjsServiceId || !notifSettings.emailjsTemplateId || !notifSettings.emailjsPublicKey)) {
+    if (formChannel === "email" && (!notifSettings.emailjsServiceId || !notifSettings.emailjsTemplateId || !notifSettings.emailjsPublicKey)) {
       setFormError("Configuration EmailJS manquante. Configurez les notifications email d'abord.");
-      return;
-    }
-    if ((formChannel === "sms" || formChannel === "all") && (!notifSettings.twilioSid || !notifSettings.twilioToken)) {
-      setFormError("Configuration Twilio manquante. Configurez les notifications SMS d'abord.");
       return;
     }
 
@@ -777,12 +683,12 @@ export default function AlertesIA() {
           <PageHeader
             icon={<Bell className="w-6 h-6" />}
             title="Alertes Intelligentes IA"
-            subtitle="Configurez des alertes personnalisées sur vos cryptos favorites. Recevez des notifications en temps réel via l'application, email (EmailJS) ou SMS (Twilio)."
+            subtitle="Configurez des alertes personnalisées sur vos cryptos favorites. Recevez des notifications en temps réel via l'application ou par email (EmailJS)."
             accentColor="indigo"
             steps={[
-              { n: "1", title: "Configurer les notifications", desc: "Cliquez sur '⚙️ Notifications' pour configurer EmailJS (email) et Twilio (SMS). Un guide étape par étape est inclus." },
+              { n: "1", title: "Configurer les notifications", desc: "Cliquez sur '⚙️ Notifications' pour configurer EmailJS. Un guide étape par étape est inclus pour vous aider." },
               { n: "2", title: "Créer une alerte", desc: "Cliquez sur '+ Nouvelle alerte', sélectionnez votre crypto, le type d'alerte et le canal de notification souhaité." },
-              { n: "3", title: "Recevoir les notifications", desc: "Dès qu'une condition est remplie, vous êtes notifié via le canal choisi : in-app, email, SMS ou tous les canaux." },
+              { n: "3", title: "Recevoir les notifications", desc: "Dès qu'une condition est remplie, vous êtes notifié via le canal choisi : in-app ou email." },
             ]}
           />
 
@@ -840,7 +746,7 @@ export default function AlertesIA() {
               >
                 <Settings className="w-4 h-4" />
                 Notifications
-                {(notifSettings.emailEnabled || notifSettings.smsEnabled) && (
+                {notifSettings.emailEnabled && (
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 )}
               </button>
@@ -859,7 +765,8 @@ export default function AlertesIA() {
             <NotifSettingsPanel
               settings={notifSettings}
               onChange={handleNotifSettingsChange}
-              onTest={handleTestNotif}
+              onTest={handleTestEmail}
+              testingEmail={testingEmail}
             />
           )}
 
@@ -997,7 +904,7 @@ export default function AlertesIA() {
                 {/* Canal de notification */}
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-gray-400 mb-1.5">Canal de notification</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {CHANNEL_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
@@ -1009,10 +916,10 @@ export default function AlertesIA() {
                       </button>
                     ))}
                   </div>
-                  {formChannel !== "in-app" && (
+                  {formChannel === "email" && (
                     <p className="mt-2 text-[11px] text-gray-500 flex items-center gap-1">
                       <Settings className="w-3 h-3" />
-                      Assurez-vous d'avoir configuré les clés dans "⚙️ Notifications" ci-dessus
+                      Assurez-vous d'avoir configuré EmailJS dans "⚙️ Notifications" ci-dessus
                     </p>
                   )}
                 </div>
@@ -1053,7 +960,6 @@ export default function AlertesIA() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* Active */}
                   {activeAlerts.length > 0 && (
                     <div>
                       <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 px-1">
@@ -1062,7 +968,6 @@ export default function AlertesIA() {
                       {activeAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} onToggle={handleToggle} onDelete={handleDelete} channelLabel={channelLabel} />)}
                     </div>
                   )}
-                  {/* Triggered */}
                   {triggeredAlerts.length > 0 && (
                     <div>
                       <p className="text-xs font-bold text-amber-500/70 uppercase tracking-widest mb-2 px-1 mt-4">
@@ -1071,7 +976,6 @@ export default function AlertesIA() {
                       {triggeredAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} onToggle={handleToggle} onDelete={handleDelete} channelLabel={channelLabel} />)}
                     </div>
                   )}
-                  {/* Inactive */}
                   {inactiveAlerts.length > 0 && (
                     <div>
                       <p className="text-xs font-bold text-gray-600 uppercase tracking-widest mb-2 px-1 mt-4">

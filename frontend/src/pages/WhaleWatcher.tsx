@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Fish, RefreshCw, ArrowUpRight, ArrowDownRight, ExternalLink, Filter } from "lucide-react";
+import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import Footer from "@/components/Footer";
 
 const WHALE_BG =
@@ -74,7 +75,7 @@ export default function WhaleWatcher() {
       let btcPrice = 97000;
       let ethPrice = 2700;
 
-      const res = await fetch(
+      const res = await fetchWithCorsProxy(
         "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
       );
       if (res.ok) {

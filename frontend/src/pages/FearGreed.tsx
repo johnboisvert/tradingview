@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { RefreshCw, TrendingUp, TrendingDown, Activity } from "lucide-react";
+import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -95,7 +96,7 @@ export default function FearGreed() {
     try {
       const { fetchTop200 } = await import("@/lib/cryptoApi");
       const [fgRes, top200Data] = await Promise.all([
-        fetch("https://api.alternative.me/fng/?limit=30").then(r => ({ status: "fulfilled" as const, value: r })).catch(() => ({ status: "rejected" as const, value: null as any })),
+        fetchWithCorsProxy("https://api.alternative.me/fng/?limit=30").then(r => ({ status: "fulfilled" as const, value: r })).catch(() => ({ status: "rejected" as const, value: null as any })),
         fetchTop200(false),
       ]);
 

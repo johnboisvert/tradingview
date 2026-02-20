@@ -11,6 +11,7 @@ import {
   ArrowDownRight,
   RefreshCw,
 } from "lucide-react";
+import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import Footer from "@/components/Footer";
 
 const HERO_IMG =
@@ -149,8 +150,8 @@ export default function DashboardPage() {
       const { fetchTop200 } = await import("@/lib/cryptoApi");
       const [coinsData, globalRes, fgRes] = await Promise.allSettled([
         fetchTop200(true),
-        fetch("https://api.coingecko.com/api/v3/global"),
-        fetch("https://api.alternative.me/fng/?limit=1"),
+        fetchWithCorsProxy("https://api.coingecko.com/api/v3/global"),
+        fetchWithCorsProxy("https://api.alternative.me/fng/?limit=1"),
       ]);
 
       if (coinsData.status === "fulfilled" && coinsData.value.length > 0) {

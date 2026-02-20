@@ -6,6 +6,7 @@ import {
   Activity, AlertCircle, Brain, BarChart2, Zap, Info, Clock, Timer,
   Shield, Target, ArrowDownRight, ArrowUpRight
 } from "lucide-react";
+import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import Footer from "@/components/Footer";
 
 const API_URL = "https://crypto-prediction-api-5763.onrender.com";
@@ -322,7 +323,7 @@ export default function CryptoIA() {
 
   async function checkStatus() {
     try {
-      const res = await fetch(`${API_URL}/api/health`);
+      const res = await fetchWithCorsProxy(`${API_URL}/api/health`);
       const data = await res.json();
       setApiStatus(data.status === "online" ? "online" : "offline");
     } catch {
@@ -334,7 +335,7 @@ export default function CryptoIA() {
   async function fetchCoinGeckoPage(page: number, retries = 2): Promise<CryptoItem[]> {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const res = await fetch(
+        const res = await fetchWithCorsProxy(
           `${COINGECKO_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=${page}&sparkline=false&price_change_percentage=24h`
         );
         if (res.status === 429) {
@@ -374,7 +375,7 @@ export default function CryptoIA() {
     setLoadingList(true);
     try {
       // Start both sources in parallel
-      const apiPromise = fetch(`${API_URL}/api/crypto-list`)
+      const apiPromise = fetchWithCorsProxy(`${API_URL}/api/crypto-list`)
         .then((r) => r.json())
         .then((data) =>
           ((data.cryptos || []) as CryptoItem[]).map((c) => ({
@@ -433,7 +434,7 @@ export default function CryptoIA() {
     setError("");
     setPrediction(null);
     try {
-      const res = await fetch(`${API_URL}/api/predict/${selectedId}`);
+      const res = await fetchWithCorsProxy(`${API_URL}/api/predict/${selectedId}`);
       const data = await res.json();
       if (data.error) throw new Error(data.message || data.error);
       const crypto = cryptos.find((c) => c.id === selectedId) || selectedCrypto;

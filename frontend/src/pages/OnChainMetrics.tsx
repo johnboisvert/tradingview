@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
+import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -21,7 +22,7 @@ export default function OnChainMetrics() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&community_data=true&developer_data=true");
+        const res = await fetchWithCorsProxy("https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&community_data=true&developer_data=true");
         const data = await res.json();
         const price = data.market_data?.current_price?.usd || 97000;
         const mcap = data.market_data?.market_cap?.usd || 1900000000000;

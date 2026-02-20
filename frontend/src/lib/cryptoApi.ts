@@ -1,5 +1,5 @@
 // Shared utility for fetching top 200 crypto data from CoinGecko
-// Uses CORS proxy for cross-origin requests from custom domains
+// Uses multiple CORS proxies for cross-origin requests from custom domains
 
 export interface CoinMarketData {
   id: string;
@@ -23,17 +23,41 @@ let cachedCoins: CoinMarketData[] = [];
 let lastFetchTime = 0;
 const CACHE_DURATION = 120_000; // 120 seconds — reduces CoinGecko API calls (30 req/min free tier)
 
-async function fetchWithCorsProxy(url: string): Promise<Response> {
-  // Try direct first
+// Multiple CORS proxy options for reliability
+const CORS_PROXIES = [
+  (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+
+/**
+ * Fetch a URL with CORS proxy fallback.
+ * 1. Try direct fetch first (works in dev / same-origin)
+ * 2. Try each CORS proxy in order until one succeeds
+ */
+export async function fetchWithCorsProxy(url: string): Promise<Response> {
+  // Try direct first (works in dev mode and when CORS is allowed)
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (res.ok) return res;
   } catch {
-    // Direct failed, try proxy
+    // Direct failed, try proxies
   }
-  // Use allorigins proxy
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-  return fetch(proxyUrl);
+
+  // Try each CORS proxy in order
+  for (const proxyFn of CORS_PROXIES) {
+    try {
+      const proxyUrl = proxyFn(url);
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+      if (res.ok) return res;
+    } catch {
+      // This proxy failed, try next
+      continue;
+    }
+  }
+
+  // All proxies failed — throw error
+  throw new Error(`All CORS proxies failed for: ${url}`);
 }
 
 export async function fetchTop200(withSparkline = false): Promise<CoinMarketData[]> {
@@ -124,8 +148,7 @@ async function fetchBlockchainCenterIndex(): Promise<{
 }> {
   // Try scraping first
   try {
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent("https://www.blockchaincenter.net/en/altcoin-season-index/")}`;
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+    const res = await fetchWithCorsProxy("https://www.blockchaincenter.net/en/altcoin-season-index/");
     if (res.ok) {
       const html = await res.text();
       const seasonMatch = html.match(/Altcoin Season\s*\((\d+)\)/i);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
+import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -32,7 +33,7 @@ export default function PortfolioTracker() {
     const ids = symbols.map((s) => COIN_MAP[s]).filter(Boolean).join(",");
     if (!ids) return;
     try {
-      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+      const res = await fetchWithCorsProxy(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
       const data = await res.json();
       const priceMap: Record<string, number> = {};
       for (const [key, val] of Object.entries(data)) {

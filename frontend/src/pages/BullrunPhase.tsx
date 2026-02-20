@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { RefreshCw } from "lucide-react";
+import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -131,7 +132,7 @@ export default function BullrunPhase() {
       }
 
       // 2. Fetch global market data
-      const globalRes = await fetch("https://api.coingecko.com/api/v3/global");
+      const globalRes = await fetchWithCorsProxy("https://api.coingecko.com/api/v3/global");
       let btcDominance = 50;
       let totalMarketCap = 0;
       let totalVolume = 0;
@@ -146,7 +147,7 @@ export default function BullrunPhase() {
       let fearGreed = 50;
       let fgClassification = "Neutral";
       try {
-        const fgRes = await fetch("https://api.alternative.me/fng/?limit=1");
+        const fgRes = await fetchWithCorsProxy("https://api.alternative.me/fng/?limit=1");
         if (fgRes.ok) {
           const fgData = await fgRes.json();
           fearGreed = parseInt(fgData?.data?.[0]?.value || "50");

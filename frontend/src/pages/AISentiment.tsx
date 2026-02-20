@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
 import { RefreshCw, Search } from "lucide-react";
-import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
+import { fetchTop200, fetchWithCorsProxy, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -88,7 +88,7 @@ export default function AISentiment() {
 
       let fgValue = 55;
       try {
-        const fgRes = await fetch("https://api.alternative.me/fng/?limit=1");
+        const fgRes = await fetchWithCorsProxy("https://api.alternative.me/fng/?limit=1");
         const fgData = await fgRes.json();
         fgValue = parseInt(fgData.data?.[0]?.value || "55");
       } catch { /* fallback */ }

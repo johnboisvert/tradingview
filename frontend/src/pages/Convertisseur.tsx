@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { ArrowLeftRight, RefreshCw, DollarSign } from "lucide-react";
+import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -65,7 +66,7 @@ export default function Convertisseur() {
 
       // Fetch fiat rates from a free API
       try {
-        const fiatRes = await fetch(
+        const fiatRes = await fetchWithCorsProxy(
           "https://api.coingecko.com/api/v3/exchange_rates"
         );
         if (fiatRes.ok) {

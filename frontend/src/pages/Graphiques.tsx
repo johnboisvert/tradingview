@@ -4,8 +4,158 @@ import { RefreshCw, TrendingUp, TrendingDown, Search, Maximize2, Minimize2, Aler
 import PageHeader from "@/components/PageHeader";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 import Footer from "@/components/Footer";
-import { createChart, ColorType, LineSeries } from "lightweight-charts";
+import { createChart, ColorType, LineSeries, HistogramSeries } from "lightweight-charts";
 
+/* ── Technical Indicator Calculations ── */
+
+function computeRSI(data: number[], period = 14): number[] {
+  const rsi: number[] = [];
+  if (data.length < period + 1) return data.map(() => 50);
+  let avgGain = 0, avgLoss = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = data[i] - data[i - 1];
+    if (diff > 0) avgGain += diff; else avgLoss += Math.abs(diff);
+  }
+  avgGain /= period;
+  avgLoss /= period;
+  for (let i = 0; i < period; i++) rsi.push(50);
+  rsi.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
+  for (let i = period + 1; i < data.length; i++) {
+    const diff = data[i] - data[i - 1];
+    avgGain = (avgGain * (period - 1) + (diff > 0 ? diff : 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + (diff < 0 ? Math.abs(diff) : 0)) / period;
+    rsi.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
+  }
+  return rsi;
+}
+
+function computeEMA(data: number[], period: number): number[] {
+  const ema: number[] = [];
+  if (!data.length) return ema;
+  const k = 2 / (period + 1);
+  ema.push(data[0]);
+  for (let i = 1; i < data.length; i++) ema.push(data[i] * k + ema[i - 1] * (1 - k));
+  return ema;
+}
+
+function computeMACD(data: number[]): { macd: number[]; signal: number[]; histogram: number[] } {
+  const ema12 = computeEMA(data, 12);
+  const ema26 = computeEMA(data, 26);
+  const macdLine = ema12.map((v, i) => v - ema26[i]);
+  const signalLine = computeEMA(macdLine, 9);
+  const histogram = macdLine.map((v, i) => v - signalLine[i]);
+  return { macd: macdLine, signal: signalLine, histogram };
+}
+
+function computeStochastic(data: number[], period = 14, smoothK = 3): { k: number[]; d: number[] } {
+  const kValues: number[] = [];
+  for (let i = 0; i < data.length; i++) {
+    if (i < period - 1) { kValues.push(50); continue; }
+    const slice = data.slice(i - period + 1, i + 1);
+    const high = Math.max(...slice);
+    const low = Math.min(...slice);
+    kValues.push(high === low ? 50 : ((data[i] - low) / (high - low)) * 100);
+  }
+  const dValues: number[] = [];
+  for (let i = 0; i < kValues.length; i++) {
+    if (i < smoothK - 1) { dValues.push(kValues[i]); continue; }
+    const avg = kValues.slice(i - smoothK + 1, i + 1).reduce((a, b) => a + b, 0) / smoothK;
+    dValues.push(avg);
+  }
+  return { k: kValues, d: dValues };
+}
+
+/* ── Helper: build time array from sparkline ── */
+function buildTimeArray(pricesLength: number): number[] {
+  const now = Math.floor(Date.now() / 1000);
+  const interval = Math.floor((7 * 24 * 3600) / pricesLength);
+  const startTime = now - pricesLength * interval;
+  return Array.from({ length: pricesLength }, (_, i) => startTime + i * interval);
+}
+
+/* ── Chart theme config ── */
+const CHART_THEME = {
+  layout: { background: { type: ColorType.Solid as const, color: "#111827" }, textColor: "#6B7280" },
+  grid: { vertLines: { color: "rgba(255,255,255,0.03)" }, horzLines: { color: "rgba(255,255,255,0.03)" } },
+  timeScale: { borderColor: "rgba(255,255,255,0.08)", timeVisible: true, secondsVisible: false },
+  rightPriceScale: { borderColor: "rgba(255,255,255,0.08)" },
+  crosshair: { mode: 0 as const },
+};
+
+/* ── Indicator Sub-Chart Component ── */
+function IndicatorChart({
+  label,
+  height,
+  prices,
+  times,
+  renderSeries,
+}: {
+  label: string;
+  height: number;
+  prices: number[];
+  times: number[];
+  renderSeries: (chart: ReturnType<typeof createChart>, times: number[]) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartInstanceRef = useRef<ReturnType<typeof createChart> | null>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !prices.length || !times.length) return;
+
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.remove();
+      chartInstanceRef.current = null;
+    }
+
+    const timer = setTimeout(() => {
+      if (!container || container.clientWidth === 0) return;
+
+      const chart = createChart(container, {
+        width: container.clientWidth,
+        height,
+        ...CHART_THEME,
+        rightPriceScale: { ...CHART_THEME.rightPriceScale, scaleMargins: { top: 0.1, bottom: 0.1 } },
+      });
+
+      chartInstanceRef.current = chart;
+      renderSeries(chart, times);
+      chart.timeScale().fitContent();
+
+      const ro = new ResizeObserver(() => {
+        if (container.clientWidth > 0) {
+          chart.applyOptions({ width: container.clientWidth });
+        }
+      });
+      ro.observe(container);
+      (chart as any).__ro = ro;
+    }, 60);
+
+    return () => {
+      clearTimeout(timer);
+      if (chartInstanceRef.current) {
+        const ro = (chartInstanceRef.current as any).__ro;
+        if (ro) ro.disconnect();
+        chartInstanceRef.current.remove();
+        chartInstanceRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prices, times, height]);
+
+  return (
+    <div className="bg-[#111827] border border-white/[0.06] rounded-xl overflow-hidden relative mt-2">
+      <div className="absolute top-2 left-3 z-10 flex items-center gap-2">
+        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-[#111827]/80 px-2 py-0.5 rounded">
+          {label}
+        </span>
+      </div>
+      <div ref={containerRef} style={{ width: "100%", height: `${height}px` }} />
+    </div>
+  );
+}
+
+/* ── Main Component ── */
 export default function Graphiques() {
   const [coins, setCoins] = useState<CoinMarketData[]>([]);
   const [selected, setSelected] = useState("bitcoin");
@@ -28,7 +178,6 @@ export default function Graphiques() {
       }
       setCoins(data);
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
-      console.log(`[Graphiques] Loaded ${data.length} coins. Sparkline available: ${data.filter(c => c.sparkline_in_7d?.price?.length).length}`);
     } catch (err) {
       console.error("[Graphiques] Fetch error:", err);
       setError("Erreur lors du chargement des données de marché.");
@@ -43,64 +192,33 @@ export default function Graphiques() {
     return () => clearInterval(i);
   }, [fetchData]);
 
-  // Chart rendering effect
+  /* ── Main Price Chart ── */
   useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
 
-    // Clean up previous chart
     if (chartRef.current) {
       chartRef.current.remove();
       chartRef.current = null;
     }
 
     const selectedCoin = coins.find((c) => c.id === selected);
-    if (!selectedCoin || !selectedCoin.sparkline_in_7d?.price?.length) {
-      console.log(`[Graphiques] No sparkline data for ${selected}`);
-      return;
-    }
+    if (!selectedCoin || !selectedCoin.sparkline_in_7d?.price?.length) return;
 
-    console.log(`[Graphiques] Rendering chart for ${selected} with ${selectedCoin.sparkline_in_7d.price.length} data points`);
-
-    // Small delay to ensure container has dimensions
     const timer = setTimeout(() => {
-      if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
-        console.warn("[Graphiques] Container has no dimensions:", container.clientWidth, container.clientHeight);
-        return;
-      }
+      if (!container || container.clientWidth === 0 || container.clientHeight === 0) return;
 
       const chart = createChart(container, {
         width: container.clientWidth,
         height: container.clientHeight,
-        layout: {
-          background: { type: ColorType.Solid, color: "#111827" },
-          textColor: "#9CA3AF",
-        },
-        grid: {
-          vertLines: { color: "rgba(255,255,255,0.04)" },
-          horzLines: { color: "rgba(255,255,255,0.04)" },
-        },
-        timeScale: {
-          borderColor: "rgba(255,255,255,0.1)",
-          timeVisible: true,
-        },
-        rightPriceScale: {
-          borderColor: "rgba(255,255,255,0.1)",
-        },
-        crosshair: {
-          mode: 0,
-        },
+        ...CHART_THEME,
       });
 
       chartRef.current = chart;
 
-      const prices = selectedCoin.sparkline_in_7d.price;
-      const now = Math.floor(Date.now() / 1000);
-      const interval = Math.floor((7 * 24 * 3600) / prices.length);
-      const startTime = now - prices.length * interval;
-
-      const lineColor =
-        selectedCoin.price_change_percentage_24h >= 0 ? "#10B981" : "#EF4444";
+      const prices = selectedCoin.sparkline_in_7d!.price;
+      const times = buildTimeArray(prices.length);
+      const lineColor = selectedCoin.price_change_percentage_24h >= 0 ? "#10B981" : "#EF4444";
 
       const lineSeries = chart.addSeries(LineSeries, {
         color: lineColor,
@@ -113,33 +231,24 @@ export default function Graphiques() {
         },
       });
 
-      const lineData = prices.map((p: number, i: number) => ({
-        time: (startTime + i * interval) as unknown as number,
-        value: p,
-      }));
-
-      lineSeries.setData(lineData);
+      lineSeries.setData(
+        prices.map((p: number, i: number) => ({ time: times[i] as unknown as number, value: p }))
+      );
       chart.timeScale().fitContent();
 
-      // Handle resize
-      const resizeObserver = new ResizeObserver(() => {
+      const ro = new ResizeObserver(() => {
         if (container.clientWidth > 0 && container.clientHeight > 0) {
-          chart.applyOptions({
-            width: container.clientWidth,
-            height: container.clientHeight,
-          });
+          chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
         }
       });
-      resizeObserver.observe(container);
-
-      // Store cleanup for resize observer
-      (chart as any).__resizeObserver = resizeObserver;
+      ro.observe(container);
+      (chart as any).__ro = ro;
     }, 50);
 
     return () => {
       clearTimeout(timer);
       if (chartRef.current) {
-        const ro = (chartRef.current as any).__resizeObserver;
+        const ro = (chartRef.current as any).__ro;
         if (ro) ro.disconnect();
         chartRef.current.remove();
         chartRef.current = null;
@@ -148,6 +257,9 @@ export default function Graphiques() {
   }, [selected, coins]);
 
   const selectedCoin = coins.find((c) => c.id === selected);
+  const sparkPrices = selectedCoin?.sparkline_in_7d?.price || [];
+  const hasSparkline = sparkPrices.length > 0;
+  const times = hasSparkline ? buildTimeArray(sparkPrices.length) : [];
 
   const filteredCoins = searchQuery
     ? coins.filter(
@@ -157,9 +269,124 @@ export default function Graphiques() {
       )
     : coins;
 
-  const hasSparkline = selectedCoin?.sparkline_in_7d?.price?.length;
+  /* ── RSI render function ── */
+  const renderRSI = useCallback(
+    (chart: ReturnType<typeof createChart>, t: number[]) => {
+      const rsiData = computeRSI(sparkPrices);
+      const rsiSeries = chart.addSeries(LineSeries, {
+        color: "#8B5CF6",
+        lineWidth: 2,
+        priceFormat: { type: "price", precision: 1, minMove: 0.1 },
+      });
+      rsiSeries.setData(
+        rsiData.map((v, i) => ({ time: t[i] as unknown as number, value: v }))
+      );
 
-  // Fullscreen mode
+      // Overbought / oversold lines
+      const overBought = chart.addSeries(LineSeries, {
+        color: "rgba(239,68,68,0.3)",
+        lineWidth: 1,
+        lineStyle: 2,
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      overBought.setData(t.map((tm) => ({ time: tm as unknown as number, value: 70 })));
+
+      const overSold = chart.addSeries(LineSeries, {
+        color: "rgba(16,185,129,0.3)",
+        lineWidth: 1,
+        lineStyle: 2,
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      overSold.setData(t.map((tm) => ({ time: tm as unknown as number, value: 30 })));
+    },
+    [sparkPrices]
+  );
+
+  /* ── MACD render function ── */
+  const renderMACD = useCallback(
+    (chart: ReturnType<typeof createChart>, t: number[]) => {
+      const { macd, signal, histogram } = computeMACD(sparkPrices);
+
+      const histSeries = chart.addSeries(HistogramSeries, {
+        priceFormat: { type: "price", precision: 6, minMove: 0.000001 },
+      });
+      histSeries.setData(
+        histogram.map((v, i) => ({
+          time: t[i] as unknown as number,
+          value: v,
+          color: v >= 0 ? "rgba(16,185,129,0.5)" : "rgba(239,68,68,0.5)",
+        }))
+      );
+
+      const macdSeries = chart.addSeries(LineSeries, {
+        color: "#3B82F6",
+        lineWidth: 2,
+        priceFormat: { type: "price", precision: 6, minMove: 0.000001 },
+      });
+      macdSeries.setData(
+        macd.map((v, i) => ({ time: t[i] as unknown as number, value: v }))
+      );
+
+      const signalSeries = chart.addSeries(LineSeries, {
+        color: "#F59E0B",
+        lineWidth: 1,
+        priceFormat: { type: "price", precision: 6, minMove: 0.000001 },
+      });
+      signalSeries.setData(
+        signal.map((v, i) => ({ time: t[i] as unknown as number, value: v }))
+      );
+    },
+    [sparkPrices]
+  );
+
+  /* ── Stochastic render function ── */
+  const renderStochastic = useCallback(
+    (chart: ReturnType<typeof createChart>, t: number[]) => {
+      const { k, d } = computeStochastic(sparkPrices);
+
+      const kSeries = chart.addSeries(LineSeries, {
+        color: "#06B6D4",
+        lineWidth: 2,
+        priceFormat: { type: "price", precision: 1, minMove: 0.1 },
+      });
+      kSeries.setData(k.map((v, i) => ({ time: t[i] as unknown as number, value: v })));
+
+      const dSeries = chart.addSeries(LineSeries, {
+        color: "#F59E0B",
+        lineWidth: 1,
+        priceFormat: { type: "price", precision: 1, minMove: 0.1 },
+      });
+      dSeries.setData(d.map((v, i) => ({ time: t[i] as unknown as number, value: v })));
+
+      // Overbought / oversold
+      const ob = chart.addSeries(LineSeries, {
+        color: "rgba(239,68,68,0.3)",
+        lineWidth: 1,
+        lineStyle: 2,
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      ob.setData(t.map((tm) => ({ time: tm as unknown as number, value: 80 })));
+
+      const os = chart.addSeries(LineSeries, {
+        color: "rgba(16,185,129,0.3)",
+        lineWidth: 1,
+        lineStyle: 2,
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      os.setData(t.map((tm) => ({ time: tm as unknown as number, value: 20 })));
+    },
+    [sparkPrices]
+  );
+
+  /* ── Fullscreen Mode ── */
   if (isFullscreen) {
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "#0A0E1A" }}>
@@ -171,10 +398,7 @@ export default function Graphiques() {
             <Minimize2 className="w-4 h-4" /> Quitter plein écran
           </button>
         </div>
-        <div
-          ref={chartContainerRef}
-          style={{ position: "absolute", inset: 0 }}
-        />
+        <div ref={chartContainerRef} style={{ position: "absolute", inset: 0 }} />
         {!hasSparkline && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
@@ -194,12 +418,12 @@ export default function Graphiques() {
         <PageHeader
           icon={<span className="text-lg">📈</span>}
           title="Graphiques"
-          subtitle="Analysez les graphiques de prix en temps réel. Accédez à tous les outils d'analyse technique directement depuis la plateforme."
+          subtitle="Analysez les graphiques de prix en temps réel avec indicateurs techniques RSI, MACD et Stochastic."
           accentColor="blue"
           steps={[
-            { n: "1", title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto dans la liste pour afficher son graphique avec les données de marché." },
-            { n: "2", title: "Analysez le graphique", desc: "Survolez le graphique pour voir les prix, utilisez le crosshair pour analyser les niveaux de prix sur 7 jours." },
-            { n: "3", title: "Mode plein écran", desc: "Cliquez sur le bouton plein écran pour une vue étendue du graphique." },
+            { n: "1", title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto dans la liste pour afficher son graphique." },
+            { n: "2", title: "Analysez les indicateurs", desc: "RSI, MACD et Stochastic sont affichés sous le graphique principal." },
+            { n: "3", title: "Mode plein écran", desc: "Cliquez sur le bouton plein écran pour une vue étendue." },
           ]}
         />
 
@@ -276,18 +500,18 @@ export default function Graphiques() {
           </div>
         )}
 
-        {/* Chart Container - FIXED HEIGHT instead of flex-1 */}
+        {/* Main Price Chart */}
         <div
           className="bg-[#111827] border border-white/[0.06] rounded-xl overflow-hidden relative"
-          style={{ height: "500px", minHeight: "400px" }}
+          style={{ height: "400px" }}
         >
-          {/* Chart canvas */}
-          <div
-            ref={chartContainerRef}
-            style={{ width: "100%", height: "100%" }}
-          />
+          <div className="absolute top-2 left-3 z-10">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-[#111827]/80 px-2 py-0.5 rounded">
+              Prix — 7 jours
+            </span>
+          </div>
+          <div ref={chartContainerRef} style={{ width: "100%", height: "100%" }} />
 
-          {/* Loading overlay */}
           {loading && coins.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#111827]">
               <div className="text-center">
@@ -297,19 +521,16 @@ export default function Graphiques() {
             </div>
           )}
 
-          {/* No sparkline data overlay */}
           {!loading && coins.length > 0 && !hasSparkline && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#111827]/90">
               <div className="text-center">
                 <AlertCircle className="w-10 h-10 text-amber-400/60 mx-auto mb-3" />
                 <p className="text-sm text-gray-400 font-bold mb-1">Données sparkline indisponibles pour {selectedCoin?.name || selected}</p>
-                <p className="text-xs text-gray-600">Les données de graphique 7 jours ne sont pas disponibles pour cette crypto.</p>
-                <p className="text-xs text-gray-600 mt-1">Essayez de sélectionner BTC, ETH ou SOL.</p>
+                <p className="text-xs text-gray-600">Essayez BTC, ETH ou SOL.</p>
               </div>
             </div>
           )}
 
-          {/* No data at all */}
           {!loading && coins.length === 0 && !error && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#111827]">
               <div className="text-center">
@@ -323,7 +544,60 @@ export default function Graphiques() {
           )}
         </div>
 
-        <Footer />
+        {/* Technical Indicators */}
+        {hasSparkline && (
+          <>
+            {/* Indicator Legend */}
+            <div className="flex items-center gap-4 mt-3 mb-1 px-1">
+              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Indicateurs Techniques</span>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1 text-[10px] text-violet-400 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-violet-500" /> RSI (14)
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-blue-400 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" /> MACD
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-amber-400 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" /> Signal
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-cyan-400 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-cyan-500" /> Stochastic
+                </span>
+              </div>
+            </div>
+
+            {/* RSI Chart */}
+            <IndicatorChart
+              label="RSI (14) — Survente: 30 | Surachat: 70"
+              height={120}
+              prices={sparkPrices}
+              times={times}
+              renderSeries={renderRSI}
+            />
+
+            {/* MACD Chart */}
+            <IndicatorChart
+              label="MACD (12, 26, 9)"
+              height={120}
+              prices={sparkPrices}
+              times={times}
+              renderSeries={renderMACD}
+            />
+
+            {/* Stochastic Chart */}
+            <IndicatorChart
+              label="Stochastic (14, 3) — Survente: 20 | Surachat: 80"
+              height={120}
+              prices={sparkPrices}
+              times={times}
+              renderSeries={renderStochastic}
+            />
+          </>
+        )}
+
+        <div className="mt-4">
+          <Footer />
+        </div>
       </main>
     </div>
   );

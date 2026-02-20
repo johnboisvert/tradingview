@@ -1,0 +1,46 @@
+{
+  "name": "CryptoIA",
+  "short_name": "CryptoIA",
+  "description": "Plateforme d'analyse crypto propulsée par l'IA",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#4f46e5",
+  "background_color": "#0f0f1a",
+  "categories": ["finance", "utilities"],
+  "lang": "fr",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/images/FinanceUtilitiesIcon.jpg",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/photo1771557242.jpg",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/Icon.jpg",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/",
+      "description": "Accéder au tableau de bord"
+    },
+    {
+      "name": "Assistant IA",
+      "url": "/assistant-ia",
+      "description": "Ouvrir l'assistant IA"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getUserPlan, isRouteAccessible, getMinimumPlanForRoute, getPlanDisplayInfo } from "@/lib/subscription";
 import { getUserSession, clearUserSession } from "@/lib/store";
@@ -58,6 +58,7 @@ import {
   Target,
   FileText,
   Trophy,
+  Smartphone,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -153,6 +154,31 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const currentPlan = getUserPlan();
   const userSession = getUserSession();
+
+  // PWA install prompt
+  const [installPrompt, setInstallPrompt] = useState<Event | null>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setIsInstallable(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    const prompt = installPrompt as BeforeInstallPromptEvent;
+    prompt.prompt();
+    const { outcome } = await prompt.userChoice;
+    if (outcome === "accepted") {
+      setIsInstallable(false);
+      setInstallPrompt(null);
+    }
+  };
 
   const handleLogout = () => {
     clearUserSession();

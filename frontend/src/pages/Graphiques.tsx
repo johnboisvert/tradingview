@@ -91,9 +91,10 @@ export default function Graphiques() {
       locale: "fr",
       enable_publishing: "false",
       allow_symbol_change: "true",
-      studies: "RSI@tv-basicstudies,MACD@tv-basicstudies",
     });
-    iframe.src = `https://s.tradingview.com/widgetembed/?frameElementId=tv_chart_${selected}&${params.toString()}`;
+    // Studies must use %1E separator (record separator) and @ must not be double-encoded
+    const studiesParam = "studies=RSI%40tv-basicstudies%1EMACD%40tv-basicstudies";
+    iframe.src = `https://s.tradingview.com/widgetembed/?frameElementId=tv_chart_${selected}&${params.toString()}&${studiesParam}`;
     iframe.style.width = "100%";
     iframe.style.height = "100%";
     iframe.style.border = "none";

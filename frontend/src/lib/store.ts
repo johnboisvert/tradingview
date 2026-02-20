@@ -132,6 +132,31 @@ export function deletePromo(code: string): boolean {
   savePromos(filtered);
   return true;
 }
+export function togglePromo(code: string): boolean {
+  const promos = getPromos();
+  const promo = promos.find((p) => p.code === code);
+  if (!promo) return false;
+  promo.active = !promo.active;
+  savePromos(promos);
+  return true;
+}
+export function validatePromo(code: string): { valid: boolean; discount: number; type: string; message: string } {
+  const promos = getPromos();
+  const promo = promos.find((p) => p.code.toUpperCase() === code.toUpperCase());
+  if (!promo) return { valid: false, discount: 0, type: "percent", message: "Code promo invalide" };
+  if (!promo.active) return { valid: false, discount: 0, type: "percent", message: "Ce code promo est inactif" };
+  if (promo.expires_at && new Date(promo.expires_at) < new Date()) return { valid: false, discount: 0, type: "percent", message: "Ce code promo a expiré" };
+  if (promo.current_uses >= promo.max_uses) return { valid: false, discount: 0, type: "percent", message: "Ce code promo a atteint sa limite d'utilisation" };
+  return { valid: true, discount: promo.discount, type: promo.type, message: `Code valide — ${promo.discount}% de réduction appliquée !` };
+}
+export function usePromoCode(code: string): boolean {
+  const promos = getPromos();
+  const promo = promos.find((p) => p.code.toUpperCase() === code.toUpperCase());
+  if (!promo) return false;
+  promo.current_uses += 1;
+  savePromos(promos);
+  return true;
+}
 
 // --- Messages ---
 export function getMessages(): ContactMessage[] {

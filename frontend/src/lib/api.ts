@@ -196,6 +196,7 @@ export const createPromo = async (data: {
   discount: number;
   type: string;
   max_uses: number;
+  expires_at?: string;
 }): Promise<{ success: boolean }> => {
   store.addPromo({
     ...data,
@@ -204,6 +205,20 @@ export const createPromo = async (data: {
     created_at: new Date().toISOString().split("T")[0],
   });
   return { success: true };
+};
+
+export const togglePromo = async (code: string): Promise<{ success: boolean }> => {
+  const ok = store.togglePromo(code);
+  return { success: ok };
+};
+
+export const validatePromo = async (code: string): Promise<{ valid: boolean; discount: number; type: string; message: string }> => {
+  return store.validatePromo(code);
+};
+
+export const usePromoCode = async (code: string): Promise<{ success: boolean }> => {
+  const ok = store.usePromoCode(code);
+  return { success: ok };
 };
 
 // ============================================================

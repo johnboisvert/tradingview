@@ -49,6 +49,8 @@ import {
   Download,
   Crosshair,
   Lock,
+  BookOpen,
+  SlidersHorizontal,
 } from "lucide-react";
 
 const NAV_SECTIONS = [

@@ -19,6 +19,8 @@ import Watchlist from "./pages/Watchlist";
 import AIAssistant from "./pages/AIAssistant";
 import PredictionIA from "./pages/PredictionIA";
 import CryptoIA from "./pages/CryptoIA";
+import CryptoJournal from "./pages/CryptoJournal";
+import ScreenerTechnique from "./pages/ScreenerTechnique";
 import MarketRegime from "./pages/MarketRegime";
 import StatsAvancees from "./pages/StatsAvancees";
 import Simulation from "./pages/Simulation";
@@ -92,6 +94,8 @@ function App() {
         <Route path="/ai-assistant" element={<PlanProtected path="/ai-assistant"><AIAssistant /></PlanProtected>} />
         <Route path="/prediction-ia" element={<PlanProtected path="/prediction-ia"><PredictionIA /></PlanProtected>} />
         <Route path="/crypto-ia" element={<PlanProtected path="/crypto-ia"><CryptoIA /></PlanProtected>} />
+        <Route path="/crypto-journal" element={<PlanProtected path="/crypto-journal"><CryptoJournal /></PlanProtected>} />
+        <Route path="/screener-technique" element={<PlanProtected path="/screener-technique"><ScreenerTechnique /></PlanProtected>} />
         <Route path="/token-scanner" element={<PlanProtected path="/token-scanner"><TokenScanner /></PlanProtected>} />
         <Route path="/opportunity-scanner" element={<PlanProtected path="/opportunity-scanner"><OpportunityScanner /></PlanProtected>} />
         <Route path="/whale-watcher" element={<PlanProtected path="/whale-watcher"><WhaleWatcher /></PlanProtected>} />

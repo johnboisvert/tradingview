@@ -3,6 +3,7 @@ import Sidebar from "../components/Sidebar";
 import { RefreshCw, Search } from "lucide-react";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface TFData {
   id: string;
@@ -213,6 +214,7 @@ export default function TimeframeAnalysis() {
             ))}
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

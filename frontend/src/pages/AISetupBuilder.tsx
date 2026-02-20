@@ -2,6 +2,7 @@ import { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface Setup {
   name: string;
@@ -589,6 +590,7 @@ export default function AISetupBuilder() {
 
           {selectedSetup && renderSetup(selectedSetup)}
         </div>
+        <Footer />
       </main>
     </div>
   );

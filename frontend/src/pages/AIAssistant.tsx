@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Bot, Send, Trash2, Sparkles, Loader2 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface Message {
   role: "user" | "assistant";
@@ -313,6 +314,7 @@ Veuillez réessayer dans quelques secondes ! 🔄
             </p>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

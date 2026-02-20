@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, CheckCircle2, Circle, Clock, BookOpen, Award
 import { MODULES, LEVEL_STYLES } from "../data/academyData";
 import type { Lesson } from "../data/academyData";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 export { BookOpen, Shield, Brain, Zap, BarChart3, Globe, Target, Flame };
 
@@ -364,6 +365,7 @@ export default function TradingAcademy() {
             </div>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Flame, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface HeatCoin {
   id: string;
@@ -457,6 +458,7 @@ export default function Heatmap() {
             </div>
           </div>
         )}
+        <Footer />
       </main>
     </div>
   );

@@ -3,6 +3,7 @@ import Sidebar from "../components/Sidebar";
 import { RefreshCw, Search } from "lucide-react";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface Signal {
   id: string;
@@ -228,6 +229,7 @@ export default function AISignals() {
             </div>
           )}
         </div>
+        <Footer />
       </main>
     </div>
   );

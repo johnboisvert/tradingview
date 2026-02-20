@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface Pool {
   chain: string;
@@ -171,6 +172,7 @@ export default function DefiYield() {
             ))}
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

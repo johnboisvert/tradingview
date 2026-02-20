@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Footer from "@/components/Footer";
 
 const LogoutCallbackPage: React.FC = () => {
   useEffect(() => {

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Calendar, ChevronLeft, ChevronRight, Globe, Landmark, TrendingUp, AlertTriangle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface CalendarEvent {
   id: string;
@@ -429,6 +430,7 @@ export default function Calendrier() {
             </div>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

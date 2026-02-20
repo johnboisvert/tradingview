@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Fish, RefreshCw, ArrowUpRight, ArrowDownRight, ExternalLink, Filter } from "lucide-react";
+import Footer from "@/components/Footer";
 
 const WHALE_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/ed81f7f8-96b1-4d85-b286-6e3ee422e749.png";
@@ -285,6 +286,7 @@ export default function WhaleWatcher() {
             </div>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

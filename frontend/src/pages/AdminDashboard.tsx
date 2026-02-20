@@ -7,6 +7,7 @@ import {
   Activity, Eye, DollarSign, Zap, ArrowUpRight, ArrowDownRight, BookOpen,
   Download, Mail, FileText
 } from "lucide-react";
+import Footer from "@/components/Footer";
 
 function StatCard({ icon: Icon, label, value, change, color, trend }: {
   icon: React.ElementType; label: string; value: string; change?: string; color: string; trend?: "up" | "down";

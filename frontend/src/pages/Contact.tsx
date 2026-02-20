@@ -2,6 +2,7 @@ import { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { sendContactMessage } from "@/lib/api";
 import { toast } from "sonner";
+import Footer from "@/components/Footer";
 
 export default function Contact() {
   const [form, setForm] = useState({ name: "", email: "", subject: "general", message: "" });
@@ -152,6 +153,7 @@ export default function Contact() {
             ))}
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

@@ -7,6 +7,7 @@ import {
   ChevronUp, Smile, Meh, Frown, CheckCircle, XCircle, Clock,
   Zap, Filter, Download
 } from "lucide-react";
+import Footer from "@/components/Footer";
 
 interface Trade {
   id: string;
@@ -488,6 +489,7 @@ export default function CryptoJournal() {
             );
           })}
         </div>
+        <Footer />
       </main>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface MetricData {
   label: string;
@@ -156,6 +157,7 @@ export default function OnChainMetrics() {
             </>
           )}
         </div>
+        <Footer />
       </main>
     </div>
   );

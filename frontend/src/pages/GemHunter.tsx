@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Gem, RefreshCw, TrendingUp, TrendingDown, Droplets, Search, ArrowUpDown } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 const GEM_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/4b6e1138-5e13-42c7-9e5d-95ba3808c41a.png";
@@ -297,6 +298,7 @@ export default function GemHunter() {
             </table>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

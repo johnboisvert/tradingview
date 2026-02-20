@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { RefreshCw } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface PhaseData {
   id: string;
@@ -623,6 +624,7 @@ export default function BullrunPhase() {
             {lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}
           </button>
         </div>
+        <Footer />
       </main>
     </div>
   );

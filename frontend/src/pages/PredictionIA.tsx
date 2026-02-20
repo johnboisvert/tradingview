@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import { Brain, RefreshCw, TrendingUp, TrendingDown, Search } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
+import Footer from "@/components/Footer";
 
 interface PredCoin {
   id: string; symbol: string; name: string; price: number; change24h: number;
@@ -215,6 +216,7 @@ export default function PredictionIA() {
             </table>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

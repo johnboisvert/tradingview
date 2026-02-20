@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import { RefreshCw, TrendingUp, TrendingDown, Search, Maximize2, Minimize2 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
+import Footer from "@/components/Footer";
 
 const TV_SYMBOLS: Record<string, string> = {
   bitcoin: "BINANCE:BTCUSDT",
@@ -213,6 +214,7 @@ export default function Graphiques() {
             style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
           />
         </div>
+        <Footer />
       </main>
     </div>
   );

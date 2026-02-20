@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import { getUserPlan, getPlanDisplayInfo, type PlanType } from "@/lib/subscription";
 import { isAdminAuthenticated } from "@/pages/AdminLogin";
 import { User, Shield, Bell, Key, LogOut, Calendar, CreditCard, Settings, Eye, EyeOff, Save, CheckCircle, Crown, ShieldCheck } from "lucide-react";
+import Footer from "@/components/Footer";
 
 export default function MonCompte() {
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications" | "subscription">("profile");
@@ -266,6 +267,7 @@ export default function MonCompte() {
             </button>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

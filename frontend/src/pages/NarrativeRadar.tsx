@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface Narrative {
   name: string;
@@ -149,6 +150,7 @@ export default function NarrativeRadar() {
             </>
           )}
         </div>
+        <Footer />
       </main>
     </div>
   );

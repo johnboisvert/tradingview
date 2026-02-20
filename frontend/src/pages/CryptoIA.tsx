@@ -5,6 +5,7 @@ import {
   Bot, RefreshCw, TrendingUp, TrendingDown, Search,
   Activity, AlertCircle, Brain, BarChart2, Zap, Info
 } from "lucide-react";
+import Footer from "@/components/Footer";
 
 const API_URL = "https://crypto-prediction-api-5763.onrender.com";
 const COINGECKO_URL = "https://api.coingecko.com/api/v3";
@@ -692,6 +693,7 @@ export default function CryptoIA() {
             </div>
           </div>
         )}
+        <Footer />
       </main>
     </div>
   );

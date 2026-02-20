@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 const TA_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/b3c0b3a0-ae42-46d0-9f3a-9f12780c9e10.png";
@@ -387,6 +388,7 @@ export default function TechnicalAnalysis() {
             </div>
           </>
         )}
+        <Footer />
       </main>
     </div>
   );

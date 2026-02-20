@@ -7,6 +7,7 @@ import {
   CreditCard, Check, Star, Zap, Crown, Rocket, ArrowRight,
   X, Bitcoin, Banknote, Loader2, Copy, CheckCheck, ExternalLink,
 } from "lucide-react";
+import Footer from "@/components/Footer";
 
 // ─── FAQ ────────────────────────────────────────────────────────────────────
 const FAQ = [

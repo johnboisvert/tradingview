@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Gamepad2, Play, RotateCcw, TrendingUp, TrendingDown, DollarSign, BarChart3, Target, AlertTriangle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface SimResult {
   finalBalance: number;
@@ -360,6 +361,7 @@ export default function Simulation() {
             )}
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

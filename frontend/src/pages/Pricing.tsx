@@ -3,6 +3,7 @@ import AdminLayout from "@/components/AdminLayout";
 import { getPlanPrices, savePlanPrices, getPlanAccess, savePlanAccess, type PlanPrices } from "@/lib/api";
 import { toast } from "sonner";
 import { DollarSign, Save, CheckSquare, Square, CheckCheck, XSquare, Gem, Rocket, Star, Crown } from "lucide-react";
+import Footer from "@/components/Footer";
 
 const PLANS = [
   { key: "free", label: "Gratuit", icon: "🆓", color: "from-gray-500 to-gray-600" },

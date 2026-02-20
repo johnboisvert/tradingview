@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface Opportunity {
   symbol: string;
@@ -255,6 +256,7 @@ export default function OpportunityScanner() {
             </>
           ) : null}
         </div>
+        <Footer />
       </main>
     </div>
   );

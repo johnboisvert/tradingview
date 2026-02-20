@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { ArrowLeftRight, RefreshCw, DollarSign } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface CoinPrice {
   id: string;
@@ -378,6 +379,7 @@ export default function Convertisseur() {
             ))}
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

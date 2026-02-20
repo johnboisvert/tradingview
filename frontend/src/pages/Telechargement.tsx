@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { getEbooks, incrementEbookDownloads, type Ebook } from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 const CATEGORIES = ["Tous", "Guides", "Cheat Sheets", "Templates", "Calendriers", "Infographies", "Extras"];
 
@@ -193,6 +194,7 @@ export default function Telechargement() {
             </>
           )}
         </div>
+        <Footer />
       </main>
     </div>
   );

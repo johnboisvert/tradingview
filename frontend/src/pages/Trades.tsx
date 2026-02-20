@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { TrendingUp, TrendingDown, RefreshCw, Plus, Trash2, Filter, BarChart3 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 const TRADES_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/6e7996e5-3fd7-4958-9f83-5d5f09ef989f.png";
@@ -318,6 +319,7 @@ export default function Trades() {
             ))}
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

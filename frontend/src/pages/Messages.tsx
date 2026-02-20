@@ -32,6 +32,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+import Footer from "@/components/Footer";
 
 const PLAN_OPTIONS = ["free", "premium", "advanced", "pro", "elite"];
 const CATEGORY_OPTIONS = ["Guides", "Cheat Sheets", "Templates", "Calendriers", "Infographies", "Extras"];

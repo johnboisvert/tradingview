@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import { BarChart3, RefreshCw, TrendingUp, TrendingDown, Search } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { fetchTop200, formatPrice, formatMarketCap, type CoinMarketData } from "@/lib/cryptoApi";
+import Footer from "@/components/Footer";
 
 interface StatCoin {
   id: string; symbol: string; name: string; price: number; change24h: number;
@@ -165,6 +166,7 @@ export default function StatsAvancees() {
             </table>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

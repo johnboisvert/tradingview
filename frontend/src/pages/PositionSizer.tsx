@@ -2,6 +2,7 @@ import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Calculator, Shield, Target, AlertTriangle, DollarSign, TrendingUp } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface SizerResult {
   riskAmount: number;
@@ -312,6 +313,7 @@ export default function PositionSizer() {
             </div>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

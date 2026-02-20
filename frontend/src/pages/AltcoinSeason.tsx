@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import { RefreshCw, TrendingUp, TrendingDown, ExternalLink, Info } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { fetchAltcoinSeasonData, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
+import Footer from "@/components/Footer";
 
 interface StatsData {
   days_since_last_altcoin_season: number;
@@ -398,6 +399,7 @@ export default function AltcoinSeason() {
             </p>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

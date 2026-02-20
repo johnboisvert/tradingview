@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface Holding {
   id: number;
@@ -198,6 +199,7 @@ export default function PortfolioTracker() {
             )}
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

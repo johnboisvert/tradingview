@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
+import Footer from "@/components/Footer";
 
 export default function AuthErrorPage() {
   const [searchParams] = useSearchParams();

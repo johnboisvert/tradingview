@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Smartphone, Bell, Shield, Zap, CheckCircle, AlertTriangle, Copy, ExternalLink, Settings } from "lucide-react";
+import Footer from "@/components/Footer";
 
 const TELE_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/ed81f7f8-96b1-4d85-b286-6e3ee422e749.png";
@@ -203,6 +204,7 @@ export default function TelegramSetup() {
             </div>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

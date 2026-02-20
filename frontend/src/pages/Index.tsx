@@ -11,6 +11,7 @@ import {
   ArrowDownRight,
   RefreshCw,
 } from "lucide-react";
+import Footer from "@/components/Footer";
 
 const HERO_IMG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/6e7996e5-3fd7-4958-9f83-5d5f09ef989f.png";
@@ -404,6 +405,7 @@ export default function DashboardPage() {
             </table>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

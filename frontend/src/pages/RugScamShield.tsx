@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface TokenSecurityData {
   is_open_source: string;
@@ -440,6 +441,7 @@ export default function RugScamShield() {
             ))}
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

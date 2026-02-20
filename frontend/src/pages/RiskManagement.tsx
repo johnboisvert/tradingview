@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import { Shield, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Search } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { fetchTop200, formatPrice, formatMarketCap, type CoinMarketData } from "@/lib/cryptoApi";
+import Footer from "@/components/Footer";
 
 interface RiskCoin extends CoinMarketData {
   volatility: number; riskScore: number; riskLevel: string; riskColor: string;
@@ -202,6 +203,7 @@ export default function RiskManagement() {
             </table>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

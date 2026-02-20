@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Eye, RefreshCw, TrendingUp, TrendingDown, Plus, X, Search, Star } from "lucide-react";
+import Footer from "@/components/Footer";
 
 interface WatchCoin {
   id: string;
@@ -456,6 +457,7 @@ export default function Watchlist() {
             </div>
           )}
         </div>
+        <Footer />
       </main>
     </div>
   );

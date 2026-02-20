@@ -3,6 +3,7 @@ import Sidebar from "../components/Sidebar";
 import { RefreshCw, Search } from "lucide-react";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface Pattern {
   id: string;
@@ -202,6 +203,7 @@ export default function AIPatterns() {
             </div>
           )}
         </div>
+        <Footer />
       </main>
     </div>
   );

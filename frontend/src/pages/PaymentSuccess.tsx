@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { CheckCircle, XCircle, Loader2, ArrowRight, Home } from "lucide-react";
+import Footer from "@/components/Footer";
 
 const PLAN_LABELS: Record<string, string> = {
   premium: "Premium",

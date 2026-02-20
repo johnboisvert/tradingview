@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Award, Star, TrendingUp, Quote, ChevronLeft, ChevronRight, Users, Target, Zap } from "lucide-react";
+import Footer from "@/components/Footer";
 
 const STORIES = [
   {
@@ -205,6 +206,7 @@ export default function SuccessStories() {
             Investissez uniquement ce que vous pouvez vous permettre de perdre.
           </p>
         </div>
+        <Footer />
       </main>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface Pepite {
   symbol: string;
@@ -193,6 +194,7 @@ export default function PepitesCrypto() {
             </p>
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

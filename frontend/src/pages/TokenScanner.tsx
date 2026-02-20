@@ -2,6 +2,7 @@ import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Search, AlertTriangle, TrendingUp, Shield, Droplets, BarChart3, ExternalLink } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import Footer from "@/components/Footer";
 
 interface TokenResult {
   name: string;
@@ -272,6 +273,7 @@ export default function TokenScanner() {
             ))}
           </div>
         )}
+        <Footer />
       </main>
     </div>
   );

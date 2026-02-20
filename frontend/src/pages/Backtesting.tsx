@@ -2,6 +2,7 @@ import { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import { BarChart3 } from "lucide-react";
+import Footer from "@/components/Footer";
 
 interface BacktestResult {
   totalReturn: number;
@@ -215,6 +216,7 @@ export default function Backtesting() {
             ))}
           </div>
         </div>
+        <Footer />
       </main>
     </div>
   );

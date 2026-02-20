@@ -6,6 +6,7 @@ import {
   RefreshCw, ChevronUp, ChevronDown, Target, Activity,
   BarChart3, AlertTriangle, CheckCircle, XCircle, Filter
 } from "lucide-react";
+import Footer from "@/components/Footer";
 
 interface CoinScreener {
   id: string;
@@ -455,6 +456,7 @@ export default function ScreenerTechnique() {
             </div>
           )}
         </div>
+        <Footer />
       </main>
     </div>
   );

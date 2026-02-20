@@ -42,11 +42,12 @@ interface PortfolioAsset {
 
 const STORAGE_KEY = "cryptoia_assistant_history";
 
-// Use env var if available, otherwise fall back to the hardcoded key
-const GEMINI_API_KEY =
-  (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
-  "AIzaSyB2w7Gmrzk9HxwyxCabKZIdR8Kq7KvI1Hg";
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+// SECURITY: API key must be set via environment variable VITE_GEMINI_API_KEY
+// Never hardcode API keys in source code
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
+const GEMINI_API_URL = GEMINI_API_KEY
+  ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+  : "";
 
 const PORTFOLIO: PortfolioAsset[] = [
   { symbol: "BTC",  name: "Bitcoin",   color: "#F7931A", amount: 0.42,  price: 67420, weekChange: +3.8,  allocation: 38 },
@@ -132,6 +133,10 @@ function getFallbackResponse(question: string): string {
 // ─── Gemini API ───────────────────────────────────────────────────────────────
 
 async function callGeminiAPI(messages: Message[]): Promise<string> {
+  if (!GEMINI_API_KEY || !GEMINI_API_URL) {
+    throw new Error("API_KEY_MISSING");
+  }
+
   const contents = messages.map((msg) => ({
     role: msg.role === "assistant" ? "model" : "user",
     parts: [{ text: msg.content }],

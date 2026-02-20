@@ -317,33 +317,38 @@ export const incrementEbookDownloads = async (
 // Analytics (mock - kept as computed/static)
 // ============================================================
 export const getRetention = async (): Promise<RetentionData> => {
-  return {
-    success: true,
-    red_zone: [
-      { username: "user1@mail.com", plan: "premium", subscription_end: "2026-02-19", created_at: "2025-06-01" } as User & { days_until_expiry?: number; expiry_date?: string },
-      { username: "user2@mail.com", plan: "advanced", subscription_end: "2026-02-22", created_at: "2025-07-01" } as User & { days_until_expiry?: number; expiry_date?: string },
-    ] as unknown as User[],
-    orange_zone: [
-      { username: "user3@mail.com", plan: "pro", subscription_end: "2026-03-01", created_at: "2025-08-01" } as User & { days_until_expiry?: number; expiry_date?: string },
-    ] as unknown as User[],
-    yellow_zone: [
-      { username: "user6@mail.com", plan: "elite", subscription_end: "2026-03-24", created_at: "2025-09-01" } as User & { days_until_expiry?: number; expiry_date?: string },
-    ] as unknown as User[],
-  };
+  // Computed from real user data in localStorage
+  const users = store.getUsers().filter((u) => u.plan !== "free" && u.subscription_end);
+  const now = new Date();
+  const red: User[] = [];
+  const orange: User[] = [];
+  const yellow: User[] = [];
+
+  for (const user of users) {
+    if (!user.subscription_end) continue;
+    const end = new Date(user.subscription_end);
+    const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysLeft <= 3) red.push(user);
+    else if (daysLeft <= 14) orange.push(user);
+    else if (daysLeft <= 30) yellow.push(user);
+  }
+
+  return { success: true, red_zone: red, orange_zone: orange, yellow_zone: yellow };
 };
 
 export const getConversionFunnel = async (): Promise<ConversionFunnel> => {
+  // Computed from real user data — visitor estimates are approximations
   const users = store.getUsers();
   const total = users.length;
   const paid = users.filter((u) => u.plan !== "free").length;
+  const estimatedVisitors = Math.max(total * 10, 1); // Estimation: ~10x registered users
   return {
     success: true,
     steps: [
-      { name: "Visiteurs", count: total * 12, rate: 100 },
-      { name: "Inscrits", count: total, rate: Math.round((total / (total * 12)) * 1000) / 10 },
-      { name: "Essai gratuit", count: Math.round(total * 0.7), rate: 70 },
-      { name: "Abonnés payants", count: paid, rate: Math.round((paid / total) * 1000) / 10 },
-      { name: "Renouvellements", count: Math.round(paid * 0.7), rate: 70 },
+      { name: "Visiteurs (estimé)", count: estimatedVisitors, rate: 100 },
+      { name: "Inscrits", count: total, rate: total > 0 ? Math.round((total / estimatedVisitors) * 1000) / 10 : 0 },
+      { name: "Essai gratuit", count: Math.max(total - paid, 0), rate: total > 0 ? Math.round(((total - paid) / total) * 1000) / 10 : 0 },
+      { name: "Abonnés payants", count: paid, rate: total > 0 ? Math.round((paid / total) * 1000) / 10 : 0 },
     ],
   };
 };
@@ -357,20 +362,10 @@ export const getRevenueIntelligence = async (): Promise<RevenueIntelligence> => 
 
   return {
     success: true,
-    stats: { total_referrals: 342, paid_referrals: 89, revenue_generated: `$${totalRevenue.toFixed(2)} CAD` },
-    leaderboard: [
-      { username: "influencer1@yt.com", referrals: 45, paid: 12, revenue: 2400 },
-      { username: "blogger@crypto.fr", referrals: 32, paid: 9, revenue: 1800 },
-      { username: "trader@pro.ca", referrals: 28, paid: 8, revenue: 1600 },
-      { username: "coach@btc.net", referrals: 21, paid: 6, revenue: 1200 },
-    ],
-    sources: [
-      { name: "Google", count: 4520 },
-      { name: "Twitter/X", count: 3200 },
-      { name: "YouTube", count: 2800 },
-      { name: "Referral", count: 1900 },
-      { name: "Direct", count: 3000 },
-    ],
+    stats: { total_referrals: 0, paid_referrals: 0, revenue_generated: `$${totalRevenue.toFixed(2)} CAD` },
+    // No mock data — real referral tracking not yet implemented
+    leaderboard: [],
+    sources: [],
   };
 };
 

@@ -21,7 +21,7 @@ export interface CoinMarketData {
 
 let cachedCoins: CoinMarketData[] = [];
 let lastFetchTime = 0;
-const CACHE_DURATION = 90_000; // 90 seconds
+const CACHE_DURATION = 120_000; // 120 seconds — reduces CoinGecko API calls (30 req/min free tier)
 
 async function fetchWithCorsProxy(url: string): Promise<Response> {
   // Try direct first
@@ -111,7 +111,7 @@ const OFFICIAL_BLOCKCHAIN_CENTER_DATA = {
     total_days_altcoin_season: 416,
     total_days_bitcoin_season: 953,
   },
-  lastVerified: "2026-02-18",
+  lastVerified: "2026-02-20",
 };
 
 // Try to fetch the REAL Altcoin Season Index from blockchaincenter.net

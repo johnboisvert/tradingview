@@ -23,6 +23,28 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    // SECURITY: Never expose source maps in production
+    sourcemap: false,
+    // Use terser for advanced minification and code protection
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        // Remove console.log/warn/info in production (keep console.error)
+        drop_console: mode === 'production',
+        drop_debugger: true,
+        // Remove dead code
+        dead_code: true,
+        passes: 2,
+      },
+      mangle: {
+        // Mangle variable names for obfuscation
+        toplevel: true,
+      },
+      format: {
+        // Remove all comments in production
+        comments: false,
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks: {

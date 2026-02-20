@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Lock, Mail, Eye, EyeOff, AlertCircle } from "lucide-react";
 
-// SECURITY: Admin credentials read from environment variables at build time.
-// Set VITE_ADMIN_EMAIL and VITE_ADMIN_PASSWORD in your .env file or Railway environment.
-// Fallback values are used only if env vars are not set (development only).
+// SECURITY: Admin credentials MUST be set via environment variables at build time.
+// Set VITE_ADMIN_EMAIL and VITE_ADMIN_PASSWORD in your .env file or hosting environment.
+// No fallback values — login is disabled if env vars are not configured.
 const ADMIN_CREDENTIALS = {
-  email: import.meta.env.VITE_ADMIN_EMAIL || "admin@cryptoia.com",
-  password: import.meta.env.VITE_ADMIN_PASSWORD || "CryptoIA2024!",
+  email: import.meta.env.VITE_ADMIN_EMAIL || "",
+  password: import.meta.env.VITE_ADMIN_PASSWORD || "",
 };
+const ADMIN_CONFIGURED = !!(ADMIN_CREDENTIALS.email && ADMIN_CREDENTIALS.password);
 
 export function isAdminAuthenticated(): boolean {
   return sessionStorage.getItem("cryptoia_admin_auth") === "true";
@@ -29,6 +30,12 @@ export default function AdminLogin() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!ADMIN_CONFIGURED) {
+      setError("Configuration admin manquante. Contactez l'administrateur système.");
+      return;
+    }
+
     setLoading(true);
 
     setTimeout(() => {

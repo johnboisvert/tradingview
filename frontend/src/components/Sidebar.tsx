@@ -63,10 +63,27 @@ import {
 
 const NAV_SECTIONS = [
   {
+    title: "Accueil",
+    items: [
+      { path: "/", label: "Dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
     title: "Mon Espace",
     items: [
-      { path: "/my-cryptoia", label: "My CryptoIA", icon: LayoutDashboard },
+      { path: "/my-cryptoia", label: "My CryptoIA", icon: User },
       { path: "/gamification", label: "Gamification & Badges", icon: Trophy },
+    ],
+  },
+  {
+    title: "Marché",
+    items: [
+      { path: "/fear-greed", label: "Fear & Greed", icon: Frown },
+      { path: "/dominance", label: "Dominance", icon: Crown },
+      { path: "/altcoin-season", label: "Altcoin Season", icon: Star },
+      { path: "/heatmap", label: "Heatmap", icon: Flame },
+      { path: "/bullrun-phase", label: "Bullrun Phase", icon: Rocket },
+      { path: "/market-regime", label: "Market Regime", icon: Activity },
     ],
   },
   {
@@ -77,24 +94,21 @@ const NAV_SECTIONS = [
       { path: "/simulateur-strategie-ia", label: "Simulateur Stratégie IA", icon: Target },
       { path: "/rapport-hebdomadaire-ia", label: "Rapport Hebdomadaire IA", icon: FileText },
       { path: "/backtesting-visuel", label: "Backtesting Visuel IA", icon: Activity },
-    ],
-  },
-  {
-    title: "Assistant",
-    items: [
-      { path: "/assistant-ia", label: "Assistant IA Conversationnel", icon: Bot },
-    ],
-  },
-  {
-    title: "Marché",
-    items: [
-      { path: "/", label: "Dashboard", icon: LayoutDashboard },
-      { path: "/fear-greed", label: "Fear & Greed", icon: Frown },
-      { path: "/dominance", label: "Dominance", icon: Crown },
-      { path: "/altcoin-season", label: "Altcoin Season", icon: Star },
-      { path: "/heatmap", label: "Heatmap", icon: Flame },
-      { path: "/bullrun-phase", label: "Bullrun Phase", icon: Rocket },
-      { path: "/market-regime", label: "Market Regime", icon: Activity },
+      { path: "/prediction-ia", label: "Prédiction IA", icon: Sparkles },
+      { path: "/crypto-ia", label: "Crypto IA", icon: Bot },
+      { path: "/token-scanner", label: "AI Token Scanner", icon: Search },
+      { path: "/opportunity-scanner", label: "Scanner Opportunités", icon: Scan },
+      { path: "/whale-watcher", label: "Whale Watcher", icon: Fish },
+      { path: "/technical-analysis", label: "Analyse Technique", icon: PieChart },
+      { path: "/gem-hunter", label: "Gem Hunter", icon: Gem },
+      { path: "/ai-signals", label: "AI Signals", icon: Radio },
+      { path: "/ai-patterns", label: "Patterns IA", icon: Brain },
+      { path: "/ai-sentiment", label: "Sentiment IA", icon: MessageCircle },
+      { path: "/position-sizer", label: "Position Sizer", icon: Crosshair },
+      { path: "/ai-setup-builder", label: "AI Setup Builder", icon: Wrench },
+      { path: "/narrative-radar", label: "Narrative Radar", icon: Target },
+      { path: "/pepites-crypto", label: "Pépites Crypto", icon: Diamond },
+      { path: "/rug-scam-shield", label: "Rug Shield", icon: ShieldAlert },
     ],
   },
   {
@@ -115,23 +129,9 @@ const NAV_SECTIONS = [
     ],
   },
   {
-    title: "Intelligence IA",
+    title: "Assistant",
     items: [
-      { path: "/prediction-ia", label: "Prédiction IA", icon: Sparkles },
-      { path: "/crypto-ia", label: "Crypto IA", icon: Bot },
-      { path: "/token-scanner", label: "AI Token Scanner", icon: Search },
-      { path: "/opportunity-scanner", label: "Scanner Opportunités", icon: Scan },
-      { path: "/whale-watcher", label: "Whale Watcher", icon: Fish },
-      { path: "/technical-analysis", label: "Analyse Technique", icon: PieChart },
-      { path: "/gem-hunter", label: "Gem Hunter", icon: Gem },
-      { path: "/ai-signals", label: "AI Signals", icon: Radio },
-      { path: "/ai-patterns", label: "Patterns IA", icon: Brain },
-      { path: "/ai-sentiment", label: "Sentiment IA", icon: MessageCircle },
-      { path: "/position-sizer", label: "Position Sizer", icon: Crosshair },
-      { path: "/ai-setup-builder", label: "AI Setup Builder", icon: Wrench },
-      { path: "/narrative-radar", label: "Narrative Radar", icon: Target },
-      { path: "/pepites-crypto", label: "Pépites Crypto", icon: Diamond },
-      { path: "/rug-scam-shield", label: "Rug Shield", icon: ShieldAlert },
+      { path: "/assistant-ia", label: "Assistant IA Conversationnel", icon: Bot },
     ],
   },
   {

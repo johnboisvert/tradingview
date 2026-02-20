@@ -2,7 +2,7 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy frontend files
+# Copy frontend package files first for better caching
 COPY frontend/package*.json ./frontend/
 
 # Install frontend dependencies
@@ -26,7 +26,7 @@ RUN npm install -g serve
 COPY --from=builder /app/frontend/dist ./dist
 
 # Expose port
-EXPOSE $PORT
+EXPOSE 3000
 
-# Start serve directly (no npm wrapper = proper SIGTERM handling)
-CMD ["sh", "-c", "serve dist --single --listen $PORT"]
+# Start serve directly as PID 1 (proper SIGTERM handling)
+CMD ["sh", "-c", "serve dist --single --listen ${PORT:-3000}"]

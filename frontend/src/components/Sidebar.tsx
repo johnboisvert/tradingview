@@ -63,6 +63,7 @@ const NAV_SECTIONS = [
     items: [
       { path: "/my-cryptoia", label: "My CryptoIA", icon: LayoutDashboard },
       { path: "/alertes-ia", label: "Alertes IA", icon: Bell },
+      { path: "/score-confiance-ia", label: "Score Confiance IA", icon: Shield },
     ],
   },
   {

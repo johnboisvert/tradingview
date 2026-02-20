@@ -58,6 +58,7 @@ import AdminLogin from "./pages/AdminLogin";
 import Login from "./pages/Login";
 import MyCryptoIA from "./pages/MyCryptoIA";
 import AlertesIA from "./pages/AlertesIA";
+import ScoreConfianceIA from "./pages/ScoreConfianceIA";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ProtectedPlanRoute from "./components/ProtectedPlanRoute";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -129,6 +130,7 @@ function App() {
         {/* Mon Espace */}
         <Route path="/my-cryptoia" element={<PlanProtected path="/my-cryptoia"><MyCryptoIA /></PlanProtected>} />
         <Route path="/alertes-ia" element={<PlanProtected path="/alertes-ia"><AlertesIA /></PlanProtected>} />
+        <Route path="/score-confiance-ia" element={<PlanProtected path="/score-confiance-ia"><ScoreConfianceIA /></PlanProtected>} />
 
         {/* Compte - always accessible */}
         <Route path="/abonnements" element={<Abonnements />} />

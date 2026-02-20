@@ -703,24 +703,25 @@ export function registerUserSession(username: string): string {
 export function validateUserSession(username: string): { valid: boolean; message: string } {
   const currentToken = sessionStorage.getItem("cryptoia_session_token");
   if (!currentToken) {
-    return { valid: false, message: "Session expirée. Veuillez vous reconnecter." };
+    // No token means user hasn't gone through the new login flow yet.
+    // Don't invalidate — just skip validation silently.
+    return { valid: true, message: "" };
   }
 
   const tokens = getSessionTokens();
   const userSession = tokens.find((t) => t.username.toLowerCase() === username.toLowerCase());
 
   if (!userSession) {
-    return { valid: false, message: "Session introuvable. Veuillez vous reconnecter." };
+    // Token was cleaned up (e.g., admin force-disconnect). Session is invalid.
+    return { valid: false, message: "Session expirée. Veuillez vous reconnecter." };
   }
 
   if (userSession.token !== currentToken) {
-    // Someone else logged in with this account — force disconnect
-    sessionStorage.removeItem("cryptoia_user_session");
-    sessionStorage.removeItem("cryptoia_session_token");
-    localStorage.removeItem("cryptoia_user_plan");
+    // Another login happened with the same account (same browser, different tab).
+    // Note: localStorage is per-browser, so this only detects same-browser conflicts.
     return {
       valid: false,
-      message: "Votre compte est connecté sur un autre appareil. Vous avez été déconnecté pour des raisons de sécurité.",
+      message: "Votre compte a été connecté dans un autre onglet. Veuillez vous reconnecter.",
     };
   }
 

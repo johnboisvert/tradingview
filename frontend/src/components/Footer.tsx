@@ -3,9 +3,18 @@ export default function Footer() {
     <footer className="mt-12 border-t border-white/[0.06] bg-[#0a0a0f]/80 backdrop-blur-sm">
       <div className="px-6 py-8">
         {/* Copyright */}
-        <div className="mb-6">
+        <div className="mb-4">
           <p className="text-sm font-semibold text-gray-300">
             Tous droits réservés © 2026 CryptoIA
+          </p>
+        </div>
+
+        {/* AI Powered Banner */}
+        <div className="mb-6 flex items-center gap-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 px-4 py-3">
+          <span className="text-lg">🤖</span>
+          <p className="text-xs text-indigo-300 leading-relaxed">
+            <span className="font-bold text-indigo-200">Plateforme 100% propulsée par l'Intelligence Artificielle —</span>{" "}
+            Toutes les analyses, prédictions, signaux de trading, résumés de marché et recommandations affichés sur cette plateforme sont intégralement générés par des modèles d'intelligence artificielle (IA). Aucune intervention humaine directe n'est impliquée dans la production de ces contenus.
           </p>
         </div>
 

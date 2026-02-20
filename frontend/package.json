@@ -9,6 +9,7 @@
     "postinstall": "echo 'Dependencies installed successfully'"
   },
   "dependencies": {
+    "serve": "^14.2.0",
     "@hookform/resolvers": "^3.9.0",
     "@metagptx/web-sdk": "^0.0.58",
     "@radix-ui/react-accordion": "^1.2.0",

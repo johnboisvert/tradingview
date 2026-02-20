@@ -1,1 +1,1 @@
-web: npx serve frontend/dist -s -l tcp://0.0.0.0:$PORT
+web: cd frontend && node_modules/.bin/serve dist --single --listen $PORT

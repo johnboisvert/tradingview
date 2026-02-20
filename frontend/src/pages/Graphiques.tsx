@@ -4,39 +4,7 @@ import { RefreshCw, TrendingUp, TrendingDown, Search, Maximize2, Minimize2 } fro
 import PageHeader from "@/components/PageHeader";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 import Footer from "@/components/Footer";
-
-const TV_SYMBOLS: Record<string, string> = {
-  bitcoin: "BINANCE:BTCUSDT",
-  ethereum: "BINANCE:ETHUSDT",
-  tether: "BINANCE:USDTUSD",
-  ripple: "BINANCE:XRPUSDT",
-  binancecoin: "BINANCE:BNBUSDT",
-  solana: "BINANCE:SOLUSDT",
-  dogecoin: "BINANCE:DOGEUSDT",
-  cardano: "BINANCE:ADAUSDT",
-  tron: "BINANCE:TRXUSDT",
-  chainlink: "BINANCE:LINKUSDT",
-  avalanche: "BINANCE:AVAXUSDT",
-  "shiba-inu": "BINANCE:SHIBUSDT",
-  polkadot: "BINANCE:DOTUSDT",
-  "bitcoin-cash": "BINANCE:BCHUSDT",
-  uniswap: "BINANCE:UNIUSDT",
-  litecoin: "BINANCE:LTCUSDT",
-  near: "BINANCE:NEARUSDT",
-  stellar: "BINANCE:XLMUSDT",
-  aptos: "BINANCE:APTUSDT",
-  cosmos: "BINANCE:ATOMUSDT",
-  arbitrum: "BINANCE:ARBUSDT",
-  sui: "BINANCE:SUIUSDT",
-  pepe: "BINANCE:PEPEUSDT",
-  filecoin: "BINANCE:FILUSDT",
-  render: "BINANCE:RENDERUSDT",
-};
-
-function getTVSymbol(coinId: string, symbol: string): string {
-  if (TV_SYMBOLS[coinId]) return TV_SYMBOLS[coinId];
-  return `BINANCE:${symbol.toUpperCase()}USDT`;
-}
+import { createChart, ColorType, LineSeries } from "lightweight-charts";
 
 export default function Graphiques() {
   const [coins, setCoins] = useState<CoinMarketData[]>([]);
@@ -50,7 +18,7 @@ export default function Graphiques() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchTop200(false);
+      const data = await fetchTop200(true);
       setCoins(data);
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
     } catch {
@@ -69,49 +37,61 @@ export default function Graphiques() {
   useEffect(() => {
     if (!tvContainerRef.current) return;
     const container = tvContainerRef.current;
-    container.innerHTML = "";
 
     const selectedCoin = coins.find((c) => c.id === selected);
-    if (!selectedCoin) return;
+    if (!selectedCoin || !selectedCoin.sparkline_in_7d?.price?.length) return;
 
-    const tvSymbol = getTVSymbol(selected, selectedCoin.symbol);
-
-    // Create the widget container div (official TradingView Advanced Chart Widget structure)
-    const widgetDiv = document.createElement("div");
-    widgetDiv.className = "tradingview-widget-container";
-    widgetDiv.style.width = "100%";
-    widgetDiv.style.height = "100%";
-
-    const innerDiv = document.createElement("div");
-    innerDiv.className = "tradingview-widget-container__widget";
-    innerDiv.style.width = "100%";
-    innerDiv.style.height = "100%";
-    widgetDiv.appendChild(innerDiv);
-
-    const script = document.createElement("script");
-    script.type = "text/javascript";
-    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-    script.async = true;
-    script.innerHTML = JSON.stringify({
-      autosize: true,
-      symbol: tvSymbol,
-      interval: "60",
-      timezone: "America/Toronto",
-      theme: "dark",
-      style: "1",
-      locale: "fr",
-      allow_symbol_change: true,
-      save_image: true,
-      hide_side_toolbar: false,
-      calendar: false,
-      studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies"],
-      support_host: "https://www.tradingview.com"
+    const chart = createChart(container, {
+      layout: {
+        background: { type: ColorType.Solid, color: "#111827" },
+        textColor: "#9CA3AF",
+      },
+      grid: {
+        vertLines: { color: "rgba(255,255,255,0.04)" },
+        horzLines: { color: "rgba(255,255,255,0.04)" },
+      },
+      autoSize: true,
+      timeScale: {
+        borderColor: "rgba(255,255,255,0.1)",
+        timeVisible: true,
+      },
+      rightPriceScale: {
+        borderColor: "rgba(255,255,255,0.1)",
+      },
+      crosshair: {
+        mode: 0,
+      },
     });
-    widgetDiv.appendChild(script);
-    container.appendChild(widgetDiv);
+
+    const prices = selectedCoin.sparkline_in_7d.price;
+    const now = Math.floor(Date.now() / 1000);
+    const interval = Math.floor((7 * 24 * 3600) / prices.length);
+    const startTime = now - prices.length * interval;
+
+    const lineColor =
+      selectedCoin.price_change_percentage_24h >= 0 ? "#10B981" : "#EF4444";
+
+    const lineSeries = chart.addSeries(LineSeries, {
+      color: lineColor,
+      lineWidth: 2,
+      crosshairMarkerVisible: true,
+      priceFormat: {
+        type: "price",
+        precision: selectedCoin.current_price >= 1 ? 2 : 6,
+        minMove: selectedCoin.current_price >= 1 ? 0.01 : 0.000001,
+      },
+    });
+
+    const lineData = prices.map((p: number, i: number) => ({
+      time: (startTime + i * interval) as unknown as number,
+      value: p,
+    }));
+
+    lineSeries.setData(lineData);
+    chart.timeScale().fitContent();
 
     return () => {
-      container.innerHTML = "";
+      chart.remove();
     };
   }, [selected, coins]);
 

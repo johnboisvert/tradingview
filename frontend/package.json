@@ -6,7 +6,7 @@
     "build": "vite build",
     "lint": "eslint --quiet ./src",
     "preview": "vite preview",
-    "start": "node_modules/.bin/serve dist --single --listen $PORT",
+    "start": "exec node_modules/.bin/serve dist --single --listen $PORT",
     "postinstall": "echo 'Dependencies installed successfully'"
   },
   "dependencies": {

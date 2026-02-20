@@ -1,1 +1,1 @@
-fix: correct all start scripts to use exec+serve with dynamic PORT for proper SIGTERM handling
+chore: force Railway cache invalidation + ensure correct start command v2

@@ -21,13 +21,60 @@ const PLAN_PRICE_ICONS: Record<string, React.ElementType> = {
 
 // Common routes that can be toggled per plan
 const ALL_ROUTES = [
-  "dashboard", "ai-market-regime", "ai-signals", "ai-whale-tracker", "ai-news-analyzer",
-  "fear-greed", "heatmap", "altcoin-season", "dominance", "crypto-pepites",
-  "defi-yield", "onchain", "portfolio", "convertisseur", "calendrier",
-  "market-simulation", "strategie", "academy", "downloads", "support",
-  "bullrun", "nouvelles", "technical-analyzer", "ai-coach", "ai-swarm",
-  "narrative-radar", "scam-shield", "altseason-copilot", "setup-builder", "token-scanner",
+  // ── Basique ──────────────────────────────────────────────
+  "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance",
+  "convertisseur", "calculatrice", "calendrier", "nouvelles", "support",
+  // ── Trading & Stratégie ──────────────────────────────────
+  "strategie", "portfolio", "market-simulation", "bullrun",
+  "technical-analyzer", "crypto-journal", "screener-technique",
+  // ── IA & Signaux ─────────────────────────────────────────
+  "ai-market-regime", "ai-signals", "ai-whale-tracker", "ai-news-analyzer",
+  "ai-coach", "ai-swarm", "setup-builder",
+  // ── Découverte & Recherche ───────────────────────────────
+  "crypto-pepites", "token-scanner", "narrative-radar",
+  "scam-shield", "altseason-copilot",
+  // ── On-Chain & DeFi ──────────────────────────────────────
+  "onchain", "defi-yield",
+  // ── Contenu & Formation ──────────────────────────────────
+  "academy", "downloads",
 ];
+
+// Route labels for better readability in the admin UI
+const ROUTE_LABELS: Record<string, string> = {
+  "dashboard": "🏠 Dashboard",
+  "fear-greed": "😨 Fear & Greed Index",
+  "heatmap": "🗺️ Heatmap Crypto",
+  "altcoin-season": "🌊 Altcoin Season Index",
+  "dominance": "₿ Dominance Bitcoin",
+  "convertisseur": "🔄 Convertisseur de devises",
+  "calculatrice": "🧮 Calculatrice de trading",
+  "calendrier": "📅 Calendrier économique",
+  "nouvelles": "📰 Actualités crypto",
+  "support": "🎧 Support prioritaire",
+  "strategie": "📊 Stratégies de trading",
+  "portfolio": "💼 Portfolio Tracker",
+  "market-simulation": "🎮 Simulation de marché",
+  "bullrun": "🚀 Bullrun Phase",
+  "technical-analyzer": "📈 Analyse Technique (Timeframe)",
+  "crypto-journal": "📓 Journal de Trading",
+  "screener-technique": "🔍 Screener Technique",
+  "ai-market-regime": "🤖 AI Market Regime",
+  "ai-signals": "⚡ AI Signals & Patterns",
+  "ai-whale-tracker": "🐋 Whale Tracker",
+  "ai-news-analyzer": "🗞️ AI News Analyzer",
+  "ai-coach": "🧠 AI Coach Personnel",
+  "ai-swarm": "🐝 AI Swarm",
+  "setup-builder": "🏗️ AI Setup Builder",
+  "crypto-pepites": "💎 Crypto Pépites",
+  "token-scanner": "🔭 Token Scanner",
+  "narrative-radar": "📡 Narrative Radar",
+  "scam-shield": "🛡️ Rug & Scam Shield",
+  "altseason-copilot": "🌙 Altseason Copilot",
+  "onchain": "⛓️ On-Chain Metrics",
+  "defi-yield": "🌾 DeFi Yield",
+  "academy": "🎓 Trading Academy",
+  "downloads": "📥 Téléchargements",
+};
 
 export default function PricingPage() {
   const [prices, setPrices] = useState<PlanPrices>({ premium: 0, advanced: 0, pro: 0, elite: 0 });
@@ -171,6 +218,7 @@ export default function PricingPage() {
             ) : (
               ALL_ROUTES.map((route) => {
                 const checked = allowedRoutes.has(route);
+                const label = ROUTE_LABELS[route] || `/${route}`;
                 return (
                   <button
                     key={route}
@@ -185,7 +233,7 @@ export default function PricingPage() {
                       <Square className="w-4 h-4 text-gray-600 flex-shrink-0" />
                     )}
                     <span className={`text-sm font-medium ${checked ? "text-white" : "text-gray-400"}`}>
-                      /{route}
+                      {label}
                     </span>
                   </button>
                 );

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import { getPlanPrices, type PlanPrices } from "@/lib/api";
+import { getPlanAccess } from "@/lib/store";
 import { getUserPlan } from "@/lib/subscription";
 import {
   CreditCard, Check, Star, Zap, Crown, Rocket, ArrowRight,
@@ -34,6 +35,59 @@ interface Plan {
   disabled: boolean;
 }
 
+// ─── Slug → Label lisible ────────────────────────────────────────────────────
+const SLUG_LABELS: Record<string, string> = {
+  "dashboard": "Dashboard de base",
+  "fear-greed": "Fear & Greed Index",
+  "heatmap": "Heatmap crypto",
+  "altcoin-season": "Altcoin Season Index",
+  "dominance": "Dominance Bitcoin",
+  "convertisseur": "Convertisseur de devises",
+  "calculatrice": "Calculatrice de trading",
+  "calendrier": "Calendrier économique",
+  "nouvelles": "Actualités crypto",
+  "support": "Support prioritaire",
+  "strategie": "Stratégies de trading",
+  "portfolio": "Portfolio Tracker",
+  "market-simulation": "Simulation de marché",
+  "bullrun": "Bullrun Phase",
+  "technical-analyzer": "Analyse Technique (Timeframe)",
+  "crypto-journal": "Journal de Trading",
+  "screener-technique": "Screener Technique",
+  "ai-market-regime": "AI Market Regime",
+  "ai-signals": "AI Signals & Patterns",
+  "ai-whale-tracker": "Whale Tracker",
+  "ai-news-analyzer": "AI News Analyzer",
+  "ai-coach": "AI Coach Personnel",
+  "ai-swarm": "AI Swarm",
+  "setup-builder": "AI Setup Builder",
+  "crypto-pepites": "Crypto Pépites",
+  "token-scanner": "Token Scanner",
+  "narrative-radar": "Narrative Radar",
+  "scam-shield": "Rug & Scam Shield",
+  "altseason-copilot": "Altseason Copilot",
+  "onchain": "On-Chain Metrics",
+  "defi-yield": "DeFi Yield",
+  "academy": "Trading Academy",
+  "downloads": "Téléchargements",
+};
+
+// Slugs exclus de l'affichage (trop basiques ou internes)
+const HIDDEN_SLUGS = new Set(["dashboard"]);
+
+function getFeatureLabel(slug: string): string {
+  return SLUG_LABELS[slug] || slug;
+}
+
+// Génère les features d'un plan en excluant celles du plan précédent
+function getPlanFeatures(planKey: string, prevPlanKey: string | null): string[] {
+  const current = new Set(getPlanAccess(planKey));
+  const prev = prevPlanKey ? new Set(getPlanAccess(prevPlanKey)) : new Set<string>();
+
+  const newSlugs = [...current].filter((s) => !prev.has(s) && !HIDDEN_SLUGS.has(s));
+  return newSlugs.map(getFeatureLabel);
+}
+
 // ─── Copy helper ─────────────────────────────────────────────────────────────
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -63,7 +117,6 @@ function PaymentModal({
 
   const priceNum = parseFloat(plan.price);
 
-  // ── Stripe checkout ──────────────────────────────────────────────────────
   const handleStripe = async () => {
     setLoading(true);
     setError("");
@@ -83,7 +136,6 @@ function PaymentModal({
     }
   };
 
-  // ── NOWPayments crypto checkout ──────────────────────────────────────────
   const handleNowPayments = async () => {
     setLoading(true);
     setError("");
@@ -222,8 +274,6 @@ function PaymentModal({
                     </span>
                   </li>
                 </ol>
-
-                {/* Security question box */}
                 <div className="bg-black/30 border border-emerald-500/20 rounded-xl p-3 space-y-2">
                   <div className="space-y-1">
                     <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Question de sécurité</p>
@@ -240,7 +290,6 @@ function PaymentModal({
                     </div>
                   </div>
                 </div>
-
                 <ol className="space-y-2 text-xs text-gray-300 list-none">
                   <li className="flex gap-2">
                     <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 font-bold text-xs">5</span>
@@ -331,6 +380,31 @@ export default function Abonnements() {
     getPlanPrices().then(setPrices);
   }, []);
 
+  // ── Génération dynamique des features depuis store.ts ──────────────────────
+  const freeFeatures = getPlanAccess("free")
+    .filter((s) => !HIDDEN_SLUGS.has(s))
+    .map(getFeatureLabel);
+
+  const premiumFeatures = [
+    "Tout du plan Gratuit",
+    ...getPlanFeatures("premium", "free"),
+  ];
+
+  const advancedFeatures = [
+    "Tout du plan Premium",
+    ...getPlanFeatures("advanced", "premium"),
+  ];
+
+  const proFeatures = [
+    "Tout du plan Advanced",
+    ...getPlanFeatures("pro", "advanced"),
+  ];
+
+  const eliteFeatures = [
+    "Tout du plan Pro",
+    ...getPlanFeatures("elite", "pro"),
+  ];
+
   const PLANS: Plan[] = [
     {
       name: "Gratuit",
@@ -340,14 +414,7 @@ export default function Abonnements() {
       icon: Star,
       color: "from-gray-500 to-gray-600",
       borderColor: "border-gray-500/20",
-      features: [
-        "Dashboard de base",
-        "Fear & Greed Index",
-        "Heatmap crypto",
-        "Convertisseur de devises",
-        "Calculatrice de trading",
-        "5 alertes par jour",
-      ],
+      features: freeFeatures,
       cta: "Plan Actuel",
       popular: false,
       disabled: true,
@@ -360,18 +427,7 @@ export default function Abonnements() {
       icon: Zap,
       color: "from-blue-500 to-indigo-600",
       borderColor: "border-blue-500/30",
-      features: [
-        "Tout du plan Gratuit",
-        "Altcoin Season Index",
-        "Dominance Bitcoin",
-        "Stratégies de trading",
-        "Analyse Technique (Timeframe)",
-        "Journal de Trading",
-        "Calendrier économique",
-        "Actualités crypto",
-        "Trading Academy",
-        "Téléchargements",
-      ],
+      features: premiumFeatures,
       cta: "Commencer l'essai gratuit",
       popular: false,
       disabled: false,
@@ -384,17 +440,7 @@ export default function Abonnements() {
       icon: Rocket,
       color: "from-purple-500 to-purple-600",
       borderColor: "border-purple-500/30",
-      features: [
-        "Tout du plan Premium",
-        "AI Market Regime",
-        "AI Signals & Patterns",
-        "Prédiction IA / Crypto IA",
-        "Screener Technique",
-        "Bullrun Phase",
-        "Portfolio Tracker",
-        "Simulation de marché",
-        "Scanner Opportunités",
-      ],
+      features: advancedFeatures,
       cta: "S'abonner",
       popular: false,
       disabled: false,
@@ -407,16 +453,7 @@ export default function Abonnements() {
       icon: Crown,
       color: "from-amber-500 to-orange-600",
       borderColor: "border-amber-500/30",
-      features: [
-        "Tout du plan Advanced",
-        "Whale Tracker",
-        "AI Sentiment & News Analyzer",
-        "Crypto Pépites",
-        "DeFi Yield",
-        "On-Chain Metrics",
-        "Token Scanner",
-        "Support prioritaire",
-      ],
+      features: proFeatures,
       cta: "S'abonner",
       popular: true,
       disabled: false,
@@ -429,17 +466,7 @@ export default function Abonnements() {
       icon: Crown,
       color: "from-emerald-500 to-emerald-600",
       borderColor: "border-emerald-500/30",
-      features: [
-        "Tout du plan Pro",
-        "AI Coach personnel",
-        "Narrative Radar",
-        "Rug & Scam Shield",
-        "AI Setup Builder",
-        "Position Sizer avancé",
-        "Gem Hunter",
-        "Support dédié 24/7",
-        "Accès bêta nouvelles fonctionnalités",
-      ],
+      features: eliteFeatures,
       cta: "Contacter l'équipe",
       popular: false,
       disabled: false,

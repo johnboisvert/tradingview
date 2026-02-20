@@ -76,41 +76,33 @@ export default function Graphiques() {
 
     const tvSymbol = getTVSymbol(selected, selectedCoin.symbol);
 
-    const widgetDiv = document.createElement("div");
-    widgetDiv.className = "tradingview-widget-container";
-    widgetDiv.style.height = "100%";
-    widgetDiv.style.width = "100%";
-
-    const innerDiv = document.createElement("div");
-    innerDiv.className = "tradingview-widget-container__widget";
-    innerDiv.style.height = "calc(100% - 32px)";
-    innerDiv.style.width = "100%";
-    widgetDiv.appendChild(innerDiv);
-
-    const script = document.createElement("script");
-    script.type = "text/javascript";
-    script.src = "https://s.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-    script.async = true;
-    script.innerHTML = JSON.stringify({
-      autosize: true,
+    // Direct iframe embed — most reliable method
+    const iframe = document.createElement("iframe");
+    const params = new URLSearchParams({
       symbol: tvSymbol,
       interval: "60",
-      timezone: "America/Toronto",
+      hidesidetoolbar: "0",
+      symboledit: "1",
+      saveimage: "1",
+      toolbarbg: "111827",
       theme: "dark",
       style: "1",
+      timezone: "America/Toronto",
       locale: "fr",
-      backgroundColor: "rgba(17, 24, 39, 1)",
-      gridColor: "rgba(255, 255, 255, 0.04)",
-      allow_symbol_change: true,
-      calendar: false,
-      support_host: "https://www.tradingview.com",
-      studies: ["STD;RSI", "STD;MACD"],
-      hide_side_toolbar: false,
-      save_image: true,
+      enable_publishing: "false",
+      allow_symbol_change: "true",
+      studies: "RSI@tv-basicstudies,MACD@tv-basicstudies",
     });
+    iframe.src = `https://s.tradingview.com/widgetembed/?frameElementId=tv_chart_${selected}&${params.toString()}`;
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.style.border = "none";
+    iframe.style.display = "block";
+    iframe.allowFullscreen = true;
+    iframe.setAttribute("frameborder", "0");
+    iframe.setAttribute("allow", "autoplay; encrypted-media");
 
-    widgetDiv.appendChild(script);
-    container.appendChild(widgetDiv);
+    container.appendChild(iframe);
 
     return () => {
       container.innerHTML = "";

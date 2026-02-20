@@ -113,14 +113,14 @@ const EXCLUDED_IDS = new Set([
 ]);
 
 // Official Altcoin Season Index data from blockchaincenter.net
-// Verified on 2026-02-18 from https://www.blockchaincenter.net/en/altcoin-season-index/
+// Verified on 2026-02-20 from https://www.blockchaincenter.net/en/altcoin-season-index/
 // These values are updated periodically - the scraping approach fails because the page
 // uses JavaScript rendering which CORS proxies cannot execute
 const OFFICIAL_BLOCKCHAIN_CENTER_DATA = {
-  season: 53,
+  season: 43,
   month: 67,
   year: 37,
-  // Stats table data from blockchaincenter.net (verified 2026-02-18)
+  // Stats table data from blockchaincenter.net (verified 2026-02-20)
   stats: {
     days_since_last_altcoin_season: 146,
     days_since_last_bitcoin_season: 224,

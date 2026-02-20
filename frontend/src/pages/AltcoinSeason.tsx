@@ -194,7 +194,13 @@ export default function AltcoinSeason() {
           {/* Main Gauge */}
           <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6">
             <div className="text-center mb-6">
-              <p className="text-sm text-gray-400 mb-2 font-semibold">It is not Altcoin Season!</p>
+              <p className="text-sm text-gray-400 mb-2 font-semibold">
+                {data && data.altseason_score >= 75
+                  ? "It is Altcoin Season! 🚀"
+                  : data && data.altseason_score < 25
+                    ? "It is Bitcoin Season! ₿"
+                    : "It is not Altcoin Season!"}
+              </p>
               <GaugeChart score={data?.altseason_score || 0} />
               <div className="mt-4">
                 <span className="text-3xl mr-2">{season.emoji}</span>
@@ -379,7 +385,9 @@ export default function AltcoinSeason() {
               <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">
                 <h4 className="text-[15px] font-extrabold mb-3 text-[#eab308]">⚖️ Zone Neutre (25-75)</h4>
                 <p className="text-[#94a3b8] text-sm leading-relaxed">
-                  Pas de tendance claire. Le marché est partagé entre BTC et altcoins. Le score actuel de <span className="text-white font-bold">53</span> indique une légère tendance altcoins.
+                  Pas de tendance claire. Le marché est partagé entre BTC et altcoins.{data?.altseason_score !== undefined && (
+                    <> Le score actuel de <span className="text-white font-bold">{data.altseason_score}</span> indique {data.altseason_score >= 50 ? "une légère tendance altcoins" : "une légère tendance Bitcoin"}.</>
+                  )}
                 </p>
               </div>
               <div className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6">

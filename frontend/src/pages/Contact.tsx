@@ -64,7 +64,7 @@ export default function Contact() {
           {/* Info Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             {[
-              { icon: "📧", title: "Email", value: "cryptoia2026@proton.me" },
+              { icon: "📧", title: "Email", value: "cryptoia2026@gmail.com" },
               { icon: "💬", title: "Discord", value: "discord.gg/cryptoia" },
               { icon: "⏰", title: "Réponse", value: "< 24 heures" },
             ].map((info) => (

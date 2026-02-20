@@ -159,6 +159,28 @@ export const savePlanPrices = async (
   return { success: true };
 };
 
+export const getAnnualPlanPrices = async (): Promise<PlanPrices> => {
+  return store.getAnnualPlanPrices();
+};
+
+export const saveAnnualPlanPrices = async (
+  prices: PlanPrices
+): Promise<{ success: boolean }> => {
+  store.saveAnnualPlanPrices(prices);
+  return { success: true };
+};
+
+export const getAnnualDiscount = async (): Promise<number> => {
+  return store.getAnnualDiscount();
+};
+
+export const saveAnnualDiscount = async (
+  discount: number
+): Promise<{ success: boolean }> => {
+  store.saveAnnualDiscount(discount);
+  return { success: true };
+};
+
 export const getPlanAccess = async (
   plan: string
 ): Promise<{ allowed: string[] }> => {

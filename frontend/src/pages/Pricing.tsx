@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/AdminLayout";
-import { getPlanPrices, savePlanPrices, getPlanAccess, savePlanAccess, type PlanPrices } from "@/lib/api";
+import {
+  getPlanPrices, savePlanPrices,
+  getAnnualPlanPrices, saveAnnualPlanPrices,
+  getAnnualDiscount, saveAnnualDiscount,
+  getPlanAccess, savePlanAccess,
+  type PlanPrices,
+} from "@/lib/api";
 import { toast } from "sonner";
-import { DollarSign, Save, CheckSquare, Square, CheckCheck, XSquare, Gem, Rocket, Star, Crown } from "lucide-react";
+import {
+  DollarSign, Save, CheckSquare, Square, CheckCheck, XSquare,
+  Gem, Rocket, Star, Crown, Calendar, Percent, RefreshCw,
+} from "lucide-react";
 
 const PLANS = [
   { key: "free", label: "Gratuit", icon: "🆓", color: "from-gray-500 to-gray-600" },
@@ -78,7 +87,10 @@ const ROUTE_LABELS: Record<string, string> = {
 
 export default function PricingPage() {
   const [prices, setPrices] = useState<PlanPrices>({ premium: 0, advanced: 0, pro: 0, elite: 0 });
+  const [annualPrices, setAnnualPrices] = useState<PlanPrices>({ premium: 0, advanced: 0, pro: 0, elite: 0 });
+  const [discount, setDiscount] = useState(20);
   const [savingPrices, setSavingPrices] = useState(false);
+  const [savingAnnual, setSavingAnnual] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("free");
   const [allowedRoutes, setAllowedRoutes] = useState<Set<string>>(new Set());
   const [savingAccess, setSavingAccess] = useState(false);
@@ -86,6 +98,8 @@ export default function PricingPage() {
 
   useEffect(() => {
     getPlanPrices().then(setPrices);
+    getAnnualPlanPrices().then(setAnnualPrices);
+    getAnnualDiscount().then(setDiscount);
   }, []);
 
   useEffect(() => {
@@ -102,11 +116,35 @@ export default function PricingPage() {
     setSavingPrices(true);
     try {
       await savePlanPrices(prices);
-      toast.success("Prix enregistrés avec succès");
+      toast.success("Prix mensuels enregistrés avec succès");
     } catch {
       toast.error("Erreur lors de la sauvegarde");
     }
     setSavingPrices(false);
+  };
+
+  const handleSaveAnnual = async () => {
+    setSavingAnnual(true);
+    try {
+      await saveAnnualPlanPrices(annualPrices);
+      await saveAnnualDiscount(discount);
+      toast.success("Prix annuels et réduction enregistrés avec succès");
+    } catch {
+      toast.error("Erreur lors de la sauvegarde");
+    }
+    setSavingAnnual(false);
+  };
+
+  // Auto-calculate annual prices from monthly prices with discount
+  const handleAutoCalculate = () => {
+    const factor = 1 - discount / 100;
+    setAnnualPrices({
+      premium: parseFloat((prices.premium * factor).toFixed(2)),
+      advanced: parseFloat((prices.advanced * factor).toFixed(2)),
+      pro: parseFloat((prices.pro * factor).toFixed(2)),
+      elite: parseFloat((prices.elite * factor).toFixed(2)),
+    });
+    toast.info(`Prix annuels recalculés avec ${discount}% de réduction`);
   };
 
   const toggleRoute = (route: string) => {
@@ -132,62 +170,161 @@ export default function PricingPage() {
   return (
     <AdminLayout>
       <h1 className="text-2xl font-extrabold tracking-tight mb-1">Prix & Forfaits</h1>
-      <p className="text-sm text-gray-400 mb-6">Gérez les prix des abonnements et les accès par forfait.</p>
+      <p className="text-sm text-gray-400 mb-6">Gérez les prix des abonnements (mensuel & annuel) et les accès par forfait.</p>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Pricing Card */}
-        <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-white" />
+        {/* ── LEFT COLUMN: Pricing ── */}
+        <div className="space-y-6">
+          {/* Monthly Pricing Card */}
+          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Prix Mensuels</h2>
+                <p className="text-xs text-gray-400">Prix de base par mois (CAD)</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-white">Gestion des Prix</h2>
-              <p className="text-xs text-gray-400">Modifiez les prix (CAD) puis sauvegardez</p>
+
+            <div className="space-y-4">
+              {(["premium", "advanced", "pro", "elite"] as const).map((plan) => {
+                const Icon = PLAN_PRICE_ICONS[plan];
+                const planInfo = PLANS.find((p) => p.key === plan)!;
+                return (
+                  <div key={plan} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors">
+                    <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${planInfo.color} flex items-center justify-center flex-shrink-0`}>
+                      <Icon className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-sm font-bold text-gray-200">{planInfo.label}</label>
+                      <p className="text-[10px] text-gray-500">Mensuel</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={prices[plan]}
+                        onChange={(e) => setPrices((prev) => ({ ...prev, [plan]: parseFloat(e.target.value) || 0 }))}
+                        className="w-28 px-3 py-2 rounded-lg bg-[#0A0E1A] border border-white/[0.08] text-white text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                      />
+                      <span className="text-xs font-bold text-gray-500">$/mois</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+
+            <button
+              onClick={handleSavePrices}
+              disabled={savingPrices}
+              className="mt-5 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-bold hover:shadow-lg hover:shadow-amber-500/20 transition-all disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {savingPrices ? "Sauvegarde..." : "Sauvegarder les prix mensuels"}
+            </button>
           </div>
 
-          <div className="space-y-4">
-            {(["premium", "advanced", "pro", "elite"] as const).map((plan) => {
-              const Icon = PLAN_PRICE_ICONS[plan];
-              const planInfo = PLANS.find((p) => p.key === plan)!;
-              return (
-                <div key={plan} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors">
-                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${planInfo.color} flex items-center justify-center flex-shrink-0`}>
-                    <Icon className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-sm font-bold text-gray-200">{planInfo.label}</label>
-                    <p className="text-[10px] text-gray-500">
-                      {plan === "premium" ? "1 mois" : plan === "advanced" ? "3 mois" : plan === "pro" ? "6 mois" : "1 an"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={prices[plan]}
-                      onChange={(e) => setPrices((prev) => ({ ...prev, [plan]: parseFloat(e.target.value) || 0 }))}
-                      className="w-28 px-3 py-2 rounded-lg bg-[#0A0E1A] border border-white/[0.08] text-white text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-                    />
-                    <span className="text-xs font-bold text-gray-500">CAD</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {/* Annual Pricing Card */}
+          <div className="bg-[#111827] border border-emerald-500/20 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Prix Annuels</h2>
+                <p className="text-xs text-gray-400">Prix mensuel équivalent pour l'abonnement annuel (CAD)</p>
+              </div>
+            </div>
 
-          <button
-            onClick={handleSavePrices}
-            disabled={savingPrices}
-            className="mt-5 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-bold hover:shadow-lg hover:shadow-amber-500/20 transition-all disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            {savingPrices ? "Sauvegarde..." : "Sauvegarder les prix"}
-          </button>
+            {/* Discount percentage */}
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/20 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+                <Percent className="w-4 h-4 text-white" />
+              </div>
+              <div className="flex-1">
+                <label className="text-sm font-bold text-emerald-300">Réduction annuelle</label>
+                <p className="text-[10px] text-gray-500">Pourcentage affiché sur la page abonnements</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="50"
+                  value={discount}
+                  onChange={(e) => setDiscount(Math.min(50, Math.max(0, parseInt(e.target.value) || 0)))}
+                  className="w-20 px-3 py-2 rounded-lg bg-[#0A0E1A] border border-emerald-500/30 text-emerald-300 text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                />
+                <span className="text-xs font-bold text-emerald-400">%</span>
+              </div>
+            </div>
+
+            {/* Auto-calculate button */}
+            <button
+              onClick={handleAutoCalculate}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-gray-300 text-xs font-bold hover:bg-white/[0.08] transition-all mb-4"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Recalculer automatiquement depuis les prix mensuels (-{discount}%)
+            </button>
+
+            <div className="space-y-4">
+              {(["premium", "advanced", "pro", "elite"] as const).map((plan) => {
+                const Icon = PLAN_PRICE_ICONS[plan];
+                const planInfo = PLANS.find((p) => p.key === plan)!;
+                const annualTotal = parseFloat((annualPrices[plan] * 12).toFixed(2));
+                const monthlySavings = parseFloat((prices[plan] - annualPrices[plan]).toFixed(2));
+                const yearlySavings = parseFloat((monthlySavings * 12).toFixed(2));
+                return (
+                  <div key={plan} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-emerald-500/20 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${planInfo.color} flex items-center justify-center flex-shrink-0`}>
+                        <Icon className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-sm font-bold text-gray-200">{planInfo.label}</label>
+                        <p className="text-[10px] text-gray-500">Annuel</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={annualPrices[plan]}
+                          onChange={(e) => setAnnualPrices((prev) => ({ ...prev, [plan]: parseFloat(e.target.value) || 0 }))}
+                          className="w-28 px-3 py-2 rounded-lg bg-[#0A0E1A] border border-emerald-500/20 text-emerald-300 text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                        />
+                        <span className="text-xs font-bold text-gray-500">$/mois</span>
+                      </div>
+                    </div>
+                    {/* Summary line */}
+                    <div className="flex items-center justify-between mt-2 ml-12 text-[10px]">
+                      <span className="text-gray-500">
+                        Facturé <span className="text-white font-bold">${annualTotal}/an</span>
+                      </span>
+                      {yearlySavings > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 font-bold">
+                          💰 Économie {yearlySavings.toFixed(2)}$/an
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={handleSaveAnnual}
+              disabled={savingAnnual}
+              className="mt-5 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-bold hover:shadow-lg hover:shadow-emerald-500/20 transition-all disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {savingAnnual ? "Sauvegarde..." : "Sauvegarder les prix annuels"}
+            </button>
+          </div>
         </div>
 
-        {/* Access Management Card */}
+        {/* ── RIGHT COLUMN: Access Management ── */}
         <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6">
           <h2 className="text-lg font-bold text-white mb-1">Gestion des Accès par Forfait</h2>
           <p className="text-xs text-gray-400 mb-4">Sélectionnez un plan, cochez les pages accessibles, puis enregistrez.</p>

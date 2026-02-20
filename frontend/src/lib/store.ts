@@ -12,6 +12,8 @@ const KEYS = {
   MESSAGES: "cryptoia_messages",
   EBOOKS: "cryptoia_ebooks",
   PLAN_PRICES: "cryptoia_plan_prices",
+  PLAN_PRICES_ANNUAL: "cryptoia_plan_prices_annual",
+  ANNUAL_DISCOUNT: "cryptoia_annual_discount",
   PLAN_ACCESS: "cryptoia_plan_access",
 } as const;
 
@@ -301,6 +303,30 @@ export function getPlanPrices(): PlanPrices {
 }
 export function savePlanPrices(prices: PlanPrices): void {
   setItem(KEYS.PLAN_PRICES, prices);
+}
+
+// --- Annual Plan Prices ---
+export function getAnnualPlanPrices(): PlanPrices {
+  const monthlyPrices = getPlanPrices();
+  const discount = getAnnualDiscount();
+  const defaultAnnual: PlanPrices = {
+    premium: parseFloat((monthlyPrices.premium * (1 - discount / 100)).toFixed(2)),
+    advanced: parseFloat((monthlyPrices.advanced * (1 - discount / 100)).toFixed(2)),
+    pro: parseFloat((monthlyPrices.pro * (1 - discount / 100)).toFixed(2)),
+    elite: parseFloat((monthlyPrices.elite * (1 - discount / 100)).toFixed(2)),
+  };
+  return getItem(KEYS.PLAN_PRICES_ANNUAL, defaultAnnual);
+}
+export function saveAnnualPlanPrices(prices: PlanPrices): void {
+  setItem(KEYS.PLAN_PRICES_ANNUAL, prices);
+}
+
+// --- Annual Discount ---
+export function getAnnualDiscount(): number {
+  return getItem(KEYS.ANNUAL_DISCOUNT, 20);
+}
+export function saveAnnualDiscount(discount: number): void {
+  setItem(KEYS.ANNUAL_DISCOUNT, discount);
 }
 
 // --- Plan Access ---

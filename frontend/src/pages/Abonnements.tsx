@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
-import { getPlanPrices, type PlanPrices } from "@/lib/api";
+import { getPlanPrices, getAnnualPlanPrices, getAnnualDiscount, type PlanPrices } from "@/lib/api";
 import { getPlanAccess } from "@/lib/store";
 import { getUserPlan } from "@/lib/subscription";
 import {
@@ -18,7 +18,7 @@ const FAQ = [
   { q: "Comment fonctionne le paiement Interac ?", a: "Envoyez le montant exact à cryptoia2026@proton.me avec votre nom d'utilisateur en message. Votre plan sera activé sous 24h ouvrables." },
   { q: "Comment payer en crypto ?", a: "Cliquez sur 'Crypto (NOWPayments)', vous serez redirigé vers une page de paiement sécurisée supportant 300+ cryptos (BTC, ETH, USDT, SOL, BNB, etc.). Activation automatique après confirmation blockchain." },
   { q: "Combien de temps pour l'activation crypto ?", a: "L'activation est automatique après confirmation blockchain, généralement entre 1 et 30 minutes selon la crypto choisie." },
-  { q: "Comment fonctionne l'abonnement annuel ?", a: "L'abonnement annuel vous offre une réduction de 20% par rapport au prix mensuel. Vous payez une fois par an et économisez significativement sur le long terme." },
+  { q: "Comment fonctionne l'abonnement annuel ?", a: "L'abonnement annuel vous offre une réduction significative par rapport au prix mensuel. Vous payez une fois par an et économisez sur le long terme. Le pourcentage de réduction est configurable par l'administrateur." },
 ];
 
 type PaymentMethod = "stripe" | "interac" | "crypto";
@@ -116,9 +116,11 @@ function CopyButton({ text }: { text: string }) {
 function BillingToggle({
   billing,
   onChange,
+  discount = 20,
 }: {
   billing: BillingPeriod;
   onChange: (b: BillingPeriod) => void;
+  discount?: number;
 }) {
   return (
     <div className="flex items-center justify-center gap-3 mt-6 mb-2">
@@ -155,7 +157,7 @@ function BillingToggle({
                 : "bg-emerald-500/10 text-emerald-400/70 border border-emerald-500/20"
             }`}
           >
-            -20%
+            -{discount}%
           </span>
         </button>
       </div>
@@ -465,12 +467,16 @@ function PaymentModal({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Abonnements() {
   const [prices, setPrices] = useState<PlanPrices | null>(null);
+  const [annualPrices, setAnnualPrices] = useState<PlanPrices | null>(null);
+  const [annualDiscount, setAnnualDiscount] = useState(20);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const currentPlan = getUserPlan();
 
   useEffect(() => {
     getPlanPrices().then(setPrices);
+    getAnnualPlanPrices().then(setAnnualPrices);
+    getAnnualDiscount().then(setAnnualDiscount);
   }, []);
 
   const isAnnual = billing === "annual";
@@ -500,9 +506,9 @@ export default function Abonnements() {
     ...getPlanFeatures("elite", "pro"),
   ];
 
-  // Helper to compute annual pricing
-  const computePricing = (monthlyPrice: number) => {
-    const annualMonthlyPrice = parseFloat((monthlyPrice * 0.80).toFixed(2));
+  // Helper to compute pricing using admin-configured annual prices
+  const computePricing = (planKey: string, monthlyPrice: number) => {
+    const annualMonthlyPrice = annualPrices ? (annualPrices as Record<string, number>)[planKey] || parseFloat((monthlyPrice * (1 - annualDiscount / 100)).toFixed(2)) : parseFloat((monthlyPrice * 0.80).toFixed(2));
     const annualTotalPrice = parseFloat((annualMonthlyPrice * 12).toFixed(2));
     const annualSavings = parseFloat((monthlyPrice * 12 - annualTotalPrice).toFixed(2));
     return { monthlyPrice, annualMonthlyPrice, annualTotalPrice, annualSavings };
@@ -513,7 +519,7 @@ export default function Abonnements() {
       name: "Gratuit",
       key: "free",
       price: "0",
-      ...computePricing(0),
+      ...computePricing("free", 0),
       period: "pour toujours",
       icon: Star,
       color: "from-gray-500 to-gray-600",
@@ -527,7 +533,7 @@ export default function Abonnements() {
       name: "Premium",
       key: "premium",
       price: prices ? prices.premium.toFixed(2) : "...",
-      ...computePricing(prices ? prices.premium : 0),
+      ...computePricing("premium", prices ? prices.premium : 0),
       period: "/mois",
       icon: Zap,
       color: "from-blue-500 to-indigo-600",
@@ -541,7 +547,7 @@ export default function Abonnements() {
       name: "Advanced",
       key: "advanced",
       price: prices ? prices.advanced.toFixed(2) : "...",
-      ...computePricing(prices ? prices.advanced : 0),
+      ...computePricing("advanced", prices ? prices.advanced : 0),
       period: "/mois",
       icon: Rocket,
       color: "from-purple-500 to-purple-600",
@@ -555,7 +561,7 @@ export default function Abonnements() {
       name: "Pro",
       key: "pro",
       price: prices ? prices.pro.toFixed(2) : "...",
-      ...computePricing(prices ? prices.pro : 0),
+      ...computePricing("pro", prices ? prices.pro : 0),
       period: "/mois",
       icon: Crown,
       color: "from-amber-500 to-orange-600",
@@ -569,7 +575,7 @@ export default function Abonnements() {
       name: "Elite",
       key: "elite",
       price: prices ? prices.elite.toFixed(2) : "...",
-      ...computePricing(prices ? prices.elite : 0),
+      ...computePricing("elite", prices ? prices.elite : 0),
       period: "/mois",
       icon: Crown,
       color: "from-emerald-500 to-emerald-600",
@@ -633,12 +639,12 @@ export default function Abonnements() {
           </div>
 
           {/* Billing Toggle */}
-          <BillingToggle billing={billing} onChange={setBilling} />
+          <BillingToggle billing={billing} onChange={setBilling} discount={annualDiscount} />
 
           {/* Annual savings hint */}
           {isAnnual && (
             <p className="text-xs text-emerald-400 mt-1 animate-pulse">
-              ✨ Économisez 20% avec l'abonnement annuel !
+              ✨ Économisez {annualDiscount}% avec l'abonnement annuel !
             </p>
           )}
         </div>

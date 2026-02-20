@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import emailjs from "@emailjs/browser";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -25,6 +26,8 @@ import {
   Settings,
   Send,
   Smartphone,
+  HelpCircle,
+  ChevronRight,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -63,9 +66,11 @@ interface HistoryEntry {
 interface NotifSettings {
   emailEnabled: boolean;
   emailAddress: string;
+  emailjsServiceId: string;
+  emailjsTemplateId: string;
+  emailjsPublicKey: string;
   smsEnabled: boolean;
   smsPhone: string;
-  sendgridKey: string;
   twilioSid: string;
   twilioToken: string;
   twilioFrom: string;
@@ -149,13 +154,35 @@ function saveAlerts(alerts: AlertRule[]) {
 function loadNotifSettings(): NotifSettings {
   try {
     const raw = localStorage.getItem(NOTIF_SETTINGS_KEY);
-    return raw ? JSON.parse(raw) : {
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migrate from old SendGrid format if needed
+      return {
+        emailEnabled: parsed.emailEnabled ?? false,
+        emailAddress: parsed.emailAddress ?? "",
+        emailjsServiceId: parsed.emailjsServiceId ?? "",
+        emailjsTemplateId: parsed.emailjsTemplateId ?? "",
+        emailjsPublicKey: parsed.emailjsPublicKey ?? "",
+        smsEnabled: parsed.smsEnabled ?? false,
+        smsPhone: parsed.smsPhone ?? "",
+        twilioSid: parsed.twilioSid ?? "",
+        twilioToken: parsed.twilioToken ?? "",
+        twilioFrom: parsed.twilioFrom ?? "",
+      };
+    }
+    return {
       emailEnabled: false, emailAddress: "",
+      emailjsServiceId: "", emailjsTemplateId: "", emailjsPublicKey: "",
       smsEnabled: false, smsPhone: "",
-      sendgridKey: "", twilioSid: "", twilioToken: "", twilioFrom: "",
+      twilioSid: "", twilioToken: "", twilioFrom: "",
     };
   } catch {
-    return { emailEnabled: false, emailAddress: "", smsEnabled: false, smsPhone: "", sendgridKey: "", twilioSid: "", twilioToken: "", twilioFrom: "" };
+    return {
+      emailEnabled: false, emailAddress: "",
+      emailjsServiceId: "", emailjsTemplateId: "", emailjsPublicKey: "",
+      smsEnabled: false, smsPhone: "",
+      twilioSid: "", twilioToken: "", twilioFrom: "",
+    };
   }
 }
 
@@ -175,28 +202,33 @@ function buildConditionLabel(type: AlertType, targetPrice?: number, pattern?: st
 
 // ─── Send notification helpers ────────────────────────────────────────────────
 
-async function sendEmailNotification(settings: NotifSettings, subject: string, body: string): Promise<{ ok: boolean; error?: string }> {
-  if (!settings.sendgridKey) return { ok: false, error: "Clé SendGrid manquante" };
-  if (!settings.emailAddress) return { ok: false, error: "Adresse email non configurée" };
+async function sendEmailNotification(
+  settings: NotifSettings,
+  subject: string,
+  body: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!settings.emailjsServiceId || !settings.emailjsTemplateId || !settings.emailjsPublicKey) {
+    return { ok: false, error: "Configuration EmailJS manquante (Service ID, Template ID ou Public Key)" };
+  }
+  if (!settings.emailAddress) {
+    return { ok: false, error: "Adresse email non configurée" };
+  }
   try {
-    const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${settings.sendgridKey}`,
-      },
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email: settings.emailAddress }] }],
-        from: { email: "alerts@cryptoia.app", name: "CryptoIA Alertes" },
-        subject,
-        content: [{ type: "text/plain", value: body }],
-      }),
-    });
-    if (res.status === 202) return { ok: true };
-    const text = await res.text();
-    return { ok: false, error: `SendGrid erreur ${res.status}: ${text.slice(0, 100)}` };
-  } catch (e) {
-    return { ok: false, error: `Erreur réseau: ${String(e).slice(0, 80)}` };
+    const templateParams = {
+      to_email: settings.emailAddress,
+      subject: subject,
+      message: body,
+    };
+    await emailjs.send(
+      settings.emailjsServiceId,
+      settings.emailjsTemplateId,
+      templateParams,
+      settings.emailjsPublicKey
+    );
+    return { ok: true };
+  } catch (e: unknown) {
+    const errMsg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: `EmailJS erreur: ${errMsg.slice(0, 100)}` };
   }
 }
 
@@ -264,6 +296,91 @@ function SelectField({ label, value, onChange, options }: {
   );
 }
 
+// ─── EmailJS Setup Guide ──────────────────────────────────────────────────────
+
+function EmailJSGuide() {
+  const [open, setOpen] = useState(false);
+
+  const steps = [
+    {
+      num: "1",
+      title: "Créer un compte gratuit",
+      desc: (
+        <>
+          Rendez-vous sur{" "}
+          <a href="https://www.emailjs.com/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline font-bold">
+            emailjs.com
+          </a>{" "}
+          et créez un compte gratuit (200 emails/mois inclus).
+        </>
+      ),
+    },
+    {
+      num: "2",
+      title: "Ajouter un service email",
+      desc: (
+        <>
+          Dans le menu <span className="text-white font-bold">Email Services</span>, cliquez sur{" "}
+          <span className="text-white font-bold">Add New Service</span>. Choisissez votre fournisseur (Gmail, Outlook, Yahoo…) et connectez-le.
+          Copiez le <span className="text-blue-400 font-bold">Service ID</span> (ex: <code className="bg-black/40 px-1.5 py-0.5 rounded text-blue-300 text-[11px]">service_abc123</code>).
+        </>
+      ),
+    },
+    {
+      num: "3",
+      title: "Créer un template d'email",
+      desc: (
+        <>
+          Dans <span className="text-white font-bold">Email Templates</span>, cliquez sur{" "}
+          <span className="text-white font-bold">Create New Template</span>. Utilisez ces variables dans votre template :<br />
+          <code className="bg-black/40 px-1.5 py-0.5 rounded text-blue-300 text-[11px]">{"{{to_email}}"}</code> — email du destinataire<br />
+          <code className="bg-black/40 px-1.5 py-0.5 rounded text-blue-300 text-[11px]">{"{{subject}}"}</code> — sujet de l'alerte<br />
+          <code className="bg-black/40 px-1.5 py-0.5 rounded text-blue-300 text-[11px]">{"{{message}}"}</code> — contenu de l'alerte<br />
+          Copiez le <span className="text-blue-400 font-bold">Template ID</span> (ex: <code className="bg-black/40 px-1.5 py-0.5 rounded text-blue-300 text-[11px]">template_xyz789</code>).
+        </>
+      ),
+    },
+    {
+      num: "4",
+      title: "Copier votre Public Key",
+      desc: (
+        <>
+          Allez dans <span className="text-white font-bold">Account → API Keys</span>.
+          Copiez votre <span className="text-blue-400 font-bold">Public Key</span> (ex: <code className="bg-black/40 px-1.5 py-0.5 rounded text-blue-300 text-[11px]">aBcDeFgHiJkLmN</code>).
+        </>
+      ),
+    },
+  ];
+
+  return (
+    <div className="mb-4">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300 transition-colors font-bold"
+      >
+        <HelpCircle className="w-3.5 h-3.5" />
+        {open ? "Masquer le guide de configuration" : "Comment configurer EmailJS ? (Guide étape par étape)"}
+        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3">
+          {steps.map((step) => (
+            <div key={step.num} className="flex gap-3 p-3 rounded-xl bg-blue-500/5 border border-blue-500/10">
+              <div className="w-6 h-6 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                <span className="text-[11px] font-black text-blue-400">{step.num}</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white mb-0.5">{step.title}</p>
+                <p className="text-[11px] text-gray-400 leading-relaxed">{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Notification Settings Panel ─────────────────────────────────────────────
 
 function NotifSettingsPanel({ settings, onChange, onTest }: {
@@ -272,6 +389,8 @@ function NotifSettingsPanel({ settings, onChange, onTest }: {
   onTest: (channel: "email" | "sms") => void;
 }) {
   const [showKeys, setShowKeys] = useState(false);
+
+  const emailConfigured = !!(settings.emailjsServiceId && settings.emailjsTemplateId && settings.emailjsPublicKey);
 
   return (
     <div className="mb-6 bg-slate-900/80 border border-white/[0.08] rounded-2xl p-6">
@@ -283,12 +402,15 @@ function NotifSettingsPanel({ settings, onChange, onTest }: {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Email section */}
+        {/* Email section — EmailJS */}
         <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-blue-400" />
-              <span className="text-sm font-bold text-white">Email via SendGrid</span>
+              <span className="text-sm font-bold text-white">Email via EmailJS</span>
+              {emailConfigured && settings.emailEnabled && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400" title="Configuré" />
+              )}
             </div>
             <button
               onClick={() => onChange({ ...settings, emailEnabled: !settings.emailEnabled })}
@@ -297,6 +419,10 @@ function NotifSettingsPanel({ settings, onChange, onTest }: {
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${settings.emailEnabled ? "left-5" : "left-0.5"}`} />
             </button>
           </div>
+
+          {/* Guide */}
+          <EmailJSGuide />
+
           <div className="space-y-2">
             <div>
               <label className="block text-[11px] font-bold text-gray-400 mb-1">Adresse email de destination</label>
@@ -310,34 +436,63 @@ function NotifSettingsPanel({ settings, onChange, onTest }: {
             </div>
             <div>
               <label className="block text-[11px] font-bold text-gray-400 mb-1">
-                Clé API SendGrid
-                <a href="https://app.sendgrid.com/settings/api_keys" target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-400 hover:underline">→ Obtenir une clé</a>
+                Service ID
               </label>
               <input
-                type={showKeys ? "text" : "password"}
-                value={settings.sendgridKey}
-                onChange={(e) => onChange({ ...settings, sendgridKey: e.target.value })}
-                placeholder="SG.xxxxxxxxxxxxxxxx"
+                type="text"
+                value={settings.emailjsServiceId}
+                onChange={(e) => onChange({ ...settings, emailjsServiceId: e.target.value })}
+                placeholder="service_xxxxxxx"
                 className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 font-mono"
               />
             </div>
-            {!settings.sendgridKey && (
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 mb-1">
+                Template ID
+              </label>
+              <input
+                type="text"
+                value={settings.emailjsTemplateId}
+                onChange={(e) => onChange({ ...settings, emailjsTemplateId: e.target.value })}
+                placeholder="template_xxxxxxx"
+                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 mb-1">
+                Public Key
+              </label>
+              <input
+                type={showKeys ? "text" : "password"}
+                value={settings.emailjsPublicKey}
+                onChange={(e) => onChange({ ...settings, emailjsPublicKey: e.target.value })}
+                placeholder="aBcDeFgHiJkLmN"
+                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 font-mono"
+              />
+            </div>
+            {!emailConfigured && (
               <p className="text-[10px] text-amber-400 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
-                Clé SendGrid manquante — les emails ne seront pas envoyés
+                Configuration EmailJS incomplète — les emails ne seront pas envoyés
+              </p>
+            )}
+            {emailConfigured && (
+              <p className="text-[10px] text-emerald-400 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                EmailJS configuré correctement
               </p>
             )}
             <button
               onClick={() => onTest("email")}
-              disabled={!settings.sendgridKey || !settings.emailAddress}
+              disabled={!emailConfigured || !settings.emailAddress}
               className="w-full py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Envoyer un email de test
+              📧 Envoyer un email de test
             </button>
           </div>
         </div>
 
-        {/* SMS section */}
+        {/* SMS section — Twilio (unchanged) */}
         <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -406,7 +561,7 @@ function NotifSettingsPanel({ settings, onChange, onTest }: {
               disabled={!settings.twilioSid || !settings.twilioToken || !settings.twilioFrom || !settings.smsPhone}
               className="w-full py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Envoyer un SMS de test
+              📱 Envoyer un SMS de test
             </button>
           </div>
         </div>
@@ -519,21 +674,12 @@ export default function AlertesIA() {
   };
 
   const handleTestNotif = async (channel: "email" | "sms") => {
-    const testAlert: AlertRule = {
-      id: "test",
-      coinId: "bitcoin",
-      coinSymbol: "BTC",
-      coinName: "Bitcoin",
-      coinImage: "",
-      type: "price_above",
-      targetPrice: 70000,
-      condition: "Test de notification CryptoIA",
-      channel,
-      status: "active",
-      createdAt: new Date().toLocaleString("fr-FR"),
-    };
     if (channel === "email") {
-      const res = await sendEmailNotification(notifSettings, "🧪 Test CryptoIA — Notification Email", "Ceci est un email de test envoyé depuis CryptoIA Platform.\n\nSi vous recevez cet email, vos notifications email sont correctement configurées !");
+      const res = await sendEmailNotification(
+        notifSettings,
+        "🧪 Test CryptoIA — Notification Email",
+        "Ceci est un email de test envoyé depuis CryptoIA Platform.\n\nSi vous recevez cet email, vos notifications email sont correctement configurées !"
+      );
       showToast(res.ok ? "✅ Email de test envoyé !" : `❌ ${res.error}`, res.ok);
     } else {
       const res = await sendSmsNotification(notifSettings, "🧪 CryptoIA Test: Vos notifications SMS sont actives !");
@@ -553,8 +699,8 @@ export default function AlertesIA() {
     }
 
     // Validate notification channel config
-    if ((formChannel === "email" || formChannel === "all") && !notifSettings.sendgridKey) {
-      setFormError("Clé SendGrid manquante. Configurez les notifications email d'abord.");
+    if ((formChannel === "email" || formChannel === "all") && (!notifSettings.emailjsServiceId || !notifSettings.emailjsTemplateId || !notifSettings.emailjsPublicKey)) {
+      setFormError("Configuration EmailJS manquante. Configurez les notifications email d'abord.");
       return;
     }
     if ((formChannel === "sms" || formChannel === "all") && (!notifSettings.twilioSid || !notifSettings.twilioToken)) {
@@ -631,10 +777,10 @@ export default function AlertesIA() {
           <PageHeader
             icon={<Bell className="w-6 h-6" />}
             title="Alertes Intelligentes IA"
-            subtitle="Configurez des alertes personnalisées sur vos cryptos favorites. Recevez des notifications en temps réel via l'application, email (SendGrid) ou SMS (Twilio)."
+            subtitle="Configurez des alertes personnalisées sur vos cryptos favorites. Recevez des notifications en temps réel via l'application, email (EmailJS) ou SMS (Twilio)."
             accentColor="indigo"
             steps={[
-              { n: "1", title: "Configurer les notifications", desc: "Cliquez sur '⚙️ Notifications' pour configurer vos clés SendGrid (email) et Twilio (SMS). Vos clés sont stockées localement." },
+              { n: "1", title: "Configurer les notifications", desc: "Cliquez sur '⚙️ Notifications' pour configurer EmailJS (email) et Twilio (SMS). Un guide étape par étape est inclus." },
               { n: "2", title: "Créer une alerte", desc: "Cliquez sur '+ Nouvelle alerte', sélectionnez votre crypto, le type d'alerte et le canal de notification souhaité." },
               { n: "3", title: "Recevoir les notifications", desc: "Dès qu'une condition est remplie, vous êtes notifié via le canal choisi : in-app, email, SMS ou tous les canaux." },
             ]}

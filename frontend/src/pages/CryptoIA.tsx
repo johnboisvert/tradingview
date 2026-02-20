@@ -3,7 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import {
   Bot, RefreshCw, TrendingUp, TrendingDown, Search,
-  Activity, AlertCircle, Brain, BarChart2, Zap, Info
+  Activity, AlertCircle, Brain, BarChart2, Zap, Info, Clock, Timer
 } from "lucide-react";
 import Footer from "@/components/Footer";
 
@@ -118,6 +118,118 @@ function enrichPrediction(pred: PredictionResult, crypto: CryptoItem): EnrichedP
       "7j": signalFor(3),
     },
   };
+}
+
+/**
+ * Estimate the time range for the price to potentially reach the predicted target.
+ * Based on volatility, price change magnitude, confidence level, and R² score.
+ */
+function estimateTimeToTarget(pred: EnrichedPrediction): {
+  rangeLabel: string;
+  minHours: number;
+  maxHours: number;
+  confidence: string;
+  color: string;
+  bgColor: string;
+  icon: "fast" | "medium" | "slow";
+  explanation: string;
+} {
+  const absChange = Math.abs(pred.price_change || 0);
+  const volatility = pred.volatility || 3;
+  const r2 = pred.model_metrics?.r2_score || 0.5;
+  const confidenceLevel = pred.confidence_level || "Modérée";
+
+  // Base time estimation: how many "volatility cycles" needed to cover the predicted change
+  // If volatility is 5% per 24h and predicted change is 5%, it could happen within ~24h
+  // If predicted change is 2% and volatility is 8%, it could happen much faster
+  const volatilityRatio = volatility > 0 ? absChange / volatility : 2;
+
+  let minHours: number;
+  let maxHours: number;
+
+  if (volatilityRatio <= 0.3) {
+    // Very small change relative to volatility — could happen very fast
+    minHours = 1;
+    maxHours = 4;
+  } else if (volatilityRatio <= 0.6) {
+    minHours = 2;
+    maxHours = 8;
+  } else if (volatilityRatio <= 1.0) {
+    minHours = 4;
+    maxHours = 14;
+  } else if (volatilityRatio <= 1.5) {
+    minHours = 8;
+    maxHours = 20;
+  } else if (volatilityRatio <= 2.5) {
+    minHours = 12;
+    maxHours = 36;
+  } else {
+    minHours = 24;
+    maxHours = 72;
+  }
+
+  // Adjust based on R² — lower R² means wider range (less certainty)
+  if (r2 < 0.5) {
+    minHours = Math.max(1, minHours * 0.7);
+    maxHours = maxHours * 1.5;
+  } else if (r2 >= 0.85) {
+    // High R² tightens the range
+    const mid = (minHours + maxHours) / 2;
+    minHours = Math.max(1, mid * 0.7);
+    maxHours = mid * 1.3;
+  }
+
+  // Round to nice numbers
+  minHours = Math.round(minHours);
+  maxHours = Math.round(maxHours);
+  if (minHours === maxHours) maxHours = minHours + 2;
+
+  // Format the label
+  let rangeLabel: string;
+  if (maxHours <= 6) {
+    rangeLabel = `~${minHours}-${maxHours}h`;
+  } else if (maxHours <= 24) {
+    rangeLabel = `~${minHours}-${maxHours}h`;
+  } else if (maxHours <= 48) {
+    rangeLabel = `~${minHours}h - ${Math.round(maxHours / 24)}j`;
+  } else {
+    rangeLabel = `~${Math.round(minHours / 24)}-${Math.round(maxHours / 24)} jours`;
+  }
+
+  // Color coding based on speed
+  let color: string;
+  let bgColor: string;
+  let icon: "fast" | "medium" | "slow";
+  if (maxHours <= 8) {
+    color = "text-emerald-400";
+    bgColor = "bg-emerald-500/10 border-emerald-500/20";
+    icon = "fast";
+  } else if (maxHours <= 24) {
+    color = "text-blue-400";
+    bgColor = "bg-blue-500/10 border-blue-500/20";
+    icon = "medium";
+  } else {
+    color = "text-amber-400";
+    bgColor = "bg-amber-500/10 border-amber-500/20";
+    icon = "slow";
+  }
+
+  // Confidence text
+  let confidence: string;
+  if (r2 >= 0.85 && confidenceLevel === "Très élevée") {
+    confidence = "Estimation fiable";
+  } else if (r2 >= 0.7) {
+    confidence = "Estimation modérée";
+  } else {
+    confidence = "Estimation approximative";
+  }
+
+  // Explanation
+  const volDesc = volatility > 10 ? "très élevée" : volatility > 5 ? "modérée" : "faible";
+  const changeDesc = absChange > 5 ? "important" : absChange > 2 ? "modéré" : "faible";
+  const explanation = `Basé sur une volatilité ${volDesc} (${volatility.toFixed(1)}%) et un écart de prix ${changeDesc} (${absChange.toFixed(2)}%). Score R² : ${(r2 * 100).toFixed(0)}%.`;
+
+  return { rangeLabel, minHours, maxHours, confidence, color, bgColor, icon, explanation };
 }
 
 export default function CryptoIA() {
@@ -524,6 +636,66 @@ export default function CryptoIA() {
                 </div>
               </div>
             </div>
+
+            {/* Estimated Time to Target */}
+            {(() => {
+              const est = estimateTimeToTarget(prediction);
+              return (
+                <div className={`${est.bgColor} border rounded-2xl p-5`}>
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-14 h-14 rounded-2xl bg-white/[0.06] flex items-center justify-center`}>
+                        {est.icon === "fast" ? (
+                          <Timer className={`w-7 h-7 ${est.color}`} />
+                        ) : (
+                          <Clock className={`w-7 h-7 ${est.color}`} />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-1">
+                          ⏱️ Temps estimé pour atteindre le prix prédit
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-3xl font-extrabold ${est.color}`}>
+                            {est.rangeLabel}
+                          </span>
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full bg-white/[0.06] ${est.color}`}>
+                            {est.confidence}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500 mb-1">Objectif</p>
+                      <p className="text-lg font-extrabold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        ${formatPrice(prediction.predicted_price)}
+                      </p>
+                      <p className={`text-xs font-bold ${(prediction.price_change || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {(prediction.price_change || 0) >= 0 ? "+" : ""}{(prediction.price_change || 0).toFixed(2)}%
+                      </p>
+                    </div>
+                  </div>
+                  {/* Progress bar showing where we are in the estimated window */}
+                  <div className="mt-4 flex items-center gap-3">
+                    <span className="text-xs text-gray-500 flex-shrink-0">Maintenant</span>
+                    <div className="flex-1 h-2 bg-white/[0.06] rounded-full overflow-hidden relative">
+                      <div
+                        className={`h-full rounded-full ${
+                          est.icon === "fast" ? "bg-gradient-to-r from-emerald-500 to-emerald-300" :
+                          est.icon === "medium" ? "bg-gradient-to-r from-blue-500 to-blue-300" :
+                          "bg-gradient-to-r from-amber-500 to-amber-300"
+                        } animate-pulse`}
+                        style={{ width: "8%" }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500 flex-shrink-0">{est.rangeLabel}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-3">
+                    💡 {est.explanation}
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Technical Indicators */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

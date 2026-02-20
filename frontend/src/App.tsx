@@ -62,6 +62,7 @@ import ScoreConfianceIA from "./pages/ScoreConfianceIA";
 import SimulateurStrategieIA from "./pages/SimulateurStrategieIA";
 import RapportHebdomadaireIA from "./pages/RapportHebdomadaireIA";
 import Gamification from "./pages/Gamification";
+import BacktestingVisuel from "./pages/BacktestingVisuel";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ProtectedPlanRoute from "./components/ProtectedPlanRoute";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -101,6 +102,7 @@ function App() {
         <Route path="/ai-assistant" element={<PlanProtected path="/ai-assistant"><AIAssistant /></PlanProtected>} />
         <Route path="/assistant-ia" element={<PlanProtected path="/assistant-ia"><AIAssistant /></PlanProtected>} />
         <Route path="/gamification" element={<PlanProtected path="/gamification"><Gamification /></PlanProtected>} />
+        <Route path="/backtesting-visuel" element={<PlanProtected path="/backtesting-visuel"><BacktestingVisuel /></PlanProtected>} />
         <Route path="/prediction-ia" element={<PlanProtected path="/prediction-ia"><PredictionIA /></PlanProtected>} />
         <Route path="/crypto-ia" element={<PlanProtected path="/crypto-ia"><CryptoIA /></PlanProtected>} />
         <Route path="/crypto-journal" element={<PlanProtected path="/crypto-journal"><CryptoJournal /></PlanProtected>} />

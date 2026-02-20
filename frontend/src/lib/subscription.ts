@@ -92,6 +92,7 @@ const ROUTE_TO_SLUG: Record<string, string> = {
   "/simulateur-strategie-ia": "dashboard",
   "/assistant-ia": "dashboard",
   "/gamification": "dashboard",
+  "/backtesting-visuel": "dashboard",
   "/rapport-hebdomadaire-ia": "dashboard",
   "/success-stories": "dashboard",
   "/onchain-metrics": "onchain",

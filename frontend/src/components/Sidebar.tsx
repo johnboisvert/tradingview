@@ -57,6 +57,7 @@ import {
   Bell,
   Target,
   FileText,
+  Trophy,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -68,6 +69,7 @@ const NAV_SECTIONS = [
       { path: "/score-confiance-ia", label: "Score Confiance IA", icon: Shield },
       { path: "/simulateur-strategie-ia", label: "Simulateur Stratégie IA", icon: Target },
       { path: "/rapport-hebdomadaire-ia", label: "Rapport Hebdomadaire IA", icon: FileText },
+      { path: "/gamification", label: "Gamification & Badges", icon: Trophy },
     ],
   },
   {

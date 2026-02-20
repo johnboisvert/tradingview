@@ -20,13 +20,18 @@ import {
   AlertTriangle,
   Activity,
   Search,
+  Mail,
+  MessageSquare,
+  Settings,
+  Send,
+  Smartphone,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type AlertType = "price_above" | "price_below" | "signal_buy" | "signal_sell" | "pattern" | "whale";
-
 type AlertStatus = "active" | "inactive" | "triggered";
+type NotifChannel = "in-app" | "email" | "sms" | "all";
 
 interface AlertRule {
   id: string;
@@ -38,7 +43,7 @@ interface AlertRule {
   targetPrice?: number;
   currentPrice?: number;
   condition: string;
-  channel: "in-app";
+  channel: NotifChannel;
   status: AlertStatus;
   createdAt: string;
   triggeredAt?: string;
@@ -52,6 +57,18 @@ interface HistoryEntry {
   condition: string;
   triggeredAt: string;
   price?: number;
+  channel: NotifChannel;
+}
+
+interface NotifSettings {
+  emailEnabled: boolean;
+  emailAddress: string;
+  smsEnabled: boolean;
+  smsPhone: string;
+  sendgridKey: string;
+  twilioSid: string;
+  twilioToken: string;
+  twilioFrom: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -97,14 +114,22 @@ const PATTERNS = [
 ];
 
 const MOCK_HISTORY: HistoryEntry[] = [
-  { id: "h1", coinSymbol: "BTC", coinImage: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png", type: "price_above", condition: "Prix > 68 000 $", triggeredAt: "2026-02-19 14:32", price: 68420 },
-  { id: "h2", coinSymbol: "ETH", coinImage: "https://assets.coingecko.com/coins/images/279/small/ethereum.png", type: "signal_buy", condition: "Signal IA STRONG BUY détecté", triggeredAt: "2026-02-19 11:15" },
-  { id: "h3", coinSymbol: "SOL", coinImage: "https://assets.coingecko.com/coins/images/4128/small/solana.png", type: "price_below", condition: "Prix < 150 $", triggeredAt: "2026-02-18 22:47", price: 148.3 },
-  { id: "h4", coinSymbol: "BNB", coinImage: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", type: "pattern", condition: "Pattern Golden Cross détecté", triggeredAt: "2026-02-18 09:05" },
-  { id: "h5", coinSymbol: "XRP", coinImage: "https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png", type: "whale", condition: "Mouvement Whale > 10M$ détecté", triggeredAt: "2026-02-17 18:22" },
+  { id: "h1", coinSymbol: "BTC", coinImage: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png", type: "price_above", condition: "Prix > 68 000 $", triggeredAt: "2026-02-19 14:32", price: 68420, channel: "in-app" },
+  { id: "h2", coinSymbol: "ETH", coinImage: "https://assets.coingecko.com/coins/images/279/small/ethereum.png", type: "signal_buy", condition: "Signal IA STRONG BUY détecté", triggeredAt: "2026-02-19 11:15", channel: "email" },
+  { id: "h3", coinSymbol: "SOL", coinImage: "https://assets.coingecko.com/coins/images/4128/small/solana.png", type: "price_below", condition: "Prix < 150 $", triggeredAt: "2026-02-18 22:47", price: 148.3, channel: "sms" },
+  { id: "h4", coinSymbol: "BNB", coinImage: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", type: "pattern", condition: "Pattern Golden Cross détecté", triggeredAt: "2026-02-18 09:05", channel: "in-app" },
+  { id: "h5", coinSymbol: "XRP", coinImage: "https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png", type: "whale", condition: "Mouvement Whale > 10M$ détecté", triggeredAt: "2026-02-17 18:22", channel: "in-app" },
 ];
 
 const STORAGE_KEY = "cryptoia_alertes_ia";
+const NOTIF_SETTINGS_KEY = "cryptoia_notif_settings";
+
+const CHANNEL_OPTIONS: { value: NotifChannel; label: string; icon: React.ReactNode; color: string }[] = [
+  { value: "in-app", label: "In-App seulement", icon: <Bell className="w-3.5 h-3.5" />, color: "text-indigo-400" },
+  { value: "email", label: "Email", icon: <Mail className="w-3.5 h-3.5" />, color: "text-blue-400" },
+  { value: "sms", label: "SMS", icon: <MessageSquare className="w-3.5 h-3.5" />, color: "text-emerald-400" },
+  { value: "all", label: "Tous les canaux", icon: <Send className="w-3.5 h-3.5" />, color: "text-amber-400" },
+];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -121,6 +146,23 @@ function saveAlerts(alerts: AlertRule[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
 }
 
+function loadNotifSettings(): NotifSettings {
+  try {
+    const raw = localStorage.getItem(NOTIF_SETTINGS_KEY);
+    return raw ? JSON.parse(raw) : {
+      emailEnabled: false, emailAddress: "",
+      smsEnabled: false, smsPhone: "",
+      sendgridKey: "", twilioSid: "", twilioToken: "", twilioFrom: "",
+    };
+  } catch {
+    return { emailEnabled: false, emailAddress: "", smsEnabled: false, smsPhone: "", sendgridKey: "", twilioSid: "", twilioToken: "", twilioFrom: "" };
+  }
+}
+
+function saveNotifSettings(s: NotifSettings) {
+  localStorage.setItem(NOTIF_SETTINGS_KEY, JSON.stringify(s));
+}
+
 function buildConditionLabel(type: AlertType, targetPrice?: number, pattern?: string): string {
   if (type === "price_above") return `Prix > ${targetPrice ? "$" + targetPrice.toLocaleString() : "?"}`;
   if (type === "price_below") return `Prix < ${targetPrice ? "$" + targetPrice.toLocaleString() : "?"}`;
@@ -129,6 +171,70 @@ function buildConditionLabel(type: AlertType, targetPrice?: number, pattern?: st
   if (type === "pattern") return `Pattern ${pattern || "technique"} détecté`;
   if (type === "whale") return "Mouvement Whale > 10M$ détecté";
   return "";
+}
+
+// ─── Send notification helpers ────────────────────────────────────────────────
+
+async function sendEmailNotification(settings: NotifSettings, subject: string, body: string): Promise<{ ok: boolean; error?: string }> {
+  if (!settings.sendgridKey) return { ok: false, error: "Clé SendGrid manquante" };
+  if (!settings.emailAddress) return { ok: false, error: "Adresse email non configurée" };
+  try {
+    const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${settings.sendgridKey}`,
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: settings.emailAddress }] }],
+        from: { email: "alerts@cryptoia.app", name: "CryptoIA Alertes" },
+        subject,
+        content: [{ type: "text/plain", value: body }],
+      }),
+    });
+    if (res.status === 202) return { ok: true };
+    const text = await res.text();
+    return { ok: false, error: `SendGrid erreur ${res.status}: ${text.slice(0, 100)}` };
+  } catch (e) {
+    return { ok: false, error: `Erreur réseau: ${String(e).slice(0, 80)}` };
+  }
+}
+
+async function sendSmsNotification(settings: NotifSettings, message: string): Promise<{ ok: boolean; error?: string }> {
+  if (!settings.twilioSid || !settings.twilioToken || !settings.twilioFrom) return { ok: false, error: "Configuration Twilio manquante" };
+  if (!settings.smsPhone) return { ok: false, error: "Numéro de téléphone non configuré" };
+  try {
+    const credentials = btoa(`${settings.twilioSid}:${settings.twilioToken}`);
+    const body = new URLSearchParams({ To: settings.smsPhone, From: settings.twilioFrom, Body: message });
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${settings.twilioSid}/Messages.json`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: `Basic ${credentials}` },
+      body: body.toString(),
+    });
+    if (res.ok) return { ok: true };
+    const json = await res.json();
+    return { ok: false, error: `Twilio erreur: ${json.message || res.status}` };
+  } catch (e) {
+    return { ok: false, error: `Erreur réseau: ${String(e).slice(0, 80)}` };
+  }
+}
+
+async function dispatchNotification(
+  settings: NotifSettings,
+  channel: NotifChannel,
+  alert: AlertRule,
+  price?: number
+): Promise<void> {
+  const subject = `🚨 CryptoIA — Alerte ${alert.coinSymbol} déclenchée`;
+  const body = `Votre alerte sur ${alert.coinSymbol} (${alert.coinName}) a été déclenchée.\n\nCondition : ${alert.condition}${price ? `\nPrix actuel : $${formatPrice(price)}` : ""}\n\nDéclenché le : ${new Date().toLocaleString("fr-FR")}\n\n— CryptoIA Platform`;
+  const smsMsg = `🚨 CryptoIA: Alerte ${alert.coinSymbol} — ${alert.condition}${price ? ` @ $${formatPrice(price)}` : ""}`;
+
+  if ((channel === "email" || channel === "all") && settings.emailEnabled) {
+    await sendEmailNotification(settings, subject, body);
+  }
+  if ((channel === "sms" || channel === "all") && settings.smsEnabled) {
+    await sendSmsNotification(settings, smsMsg);
+  }
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -158,6 +264,168 @@ function SelectField({ label, value, onChange, options }: {
   );
 }
 
+// ─── Notification Settings Panel ─────────────────────────────────────────────
+
+function NotifSettingsPanel({ settings, onChange, onTest }: {
+  settings: NotifSettings;
+  onChange: (s: NotifSettings) => void;
+  onTest: (channel: "email" | "sms") => void;
+}) {
+  const [showKeys, setShowKeys] = useState(false);
+
+  return (
+    <div className="mb-6 bg-slate-900/80 border border-white/[0.08] rounded-2xl p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <div className="w-7 h-7 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+          <Settings className="w-4 h-4 text-indigo-400" />
+        </div>
+        <h3 className="text-sm font-bold text-white">Configuration des notifications</h3>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Email section */}
+        <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-blue-400" />
+              <span className="text-sm font-bold text-white">Email via SendGrid</span>
+            </div>
+            <button
+              onClick={() => onChange({ ...settings, emailEnabled: !settings.emailEnabled })}
+              className={`w-10 h-5 rounded-full transition-all relative ${settings.emailEnabled ? "bg-blue-500" : "bg-gray-700"}`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${settings.emailEnabled ? "left-5" : "left-0.5"}`} />
+            </button>
+          </div>
+          <div className="space-y-2">
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 mb-1">Adresse email de destination</label>
+              <input
+                type="email"
+                value={settings.emailAddress}
+                onChange={(e) => onChange({ ...settings, emailAddress: e.target.value })}
+                placeholder="votre@email.com"
+                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 mb-1">
+                Clé API SendGrid
+                <a href="https://app.sendgrid.com/settings/api_keys" target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-400 hover:underline">→ Obtenir une clé</a>
+              </label>
+              <input
+                type={showKeys ? "text" : "password"}
+                value={settings.sendgridKey}
+                onChange={(e) => onChange({ ...settings, sendgridKey: e.target.value })}
+                placeholder="SG.xxxxxxxxxxxxxxxx"
+                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 font-mono"
+              />
+            </div>
+            {!settings.sendgridKey && (
+              <p className="text-[10px] text-amber-400 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Clé SendGrid manquante — les emails ne seront pas envoyés
+              </p>
+            )}
+            <button
+              onClick={() => onTest("email")}
+              disabled={!settings.sendgridKey || !settings.emailAddress}
+              className="w-full py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Envoyer un email de test
+            </button>
+          </div>
+        </div>
+
+        {/* SMS section */}
+        <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-emerald-400" />
+              <span className="text-sm font-bold text-white">SMS via Twilio</span>
+            </div>
+            <button
+              onClick={() => onChange({ ...settings, smsEnabled: !settings.smsEnabled })}
+              className={`w-10 h-5 rounded-full transition-all relative ${settings.smsEnabled ? "bg-emerald-500" : "bg-gray-700"}`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${settings.smsEnabled ? "left-5" : "left-0.5"}`} />
+            </button>
+          </div>
+          <div className="space-y-2">
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 mb-1">Numéro de téléphone (format +33...)</label>
+              <input
+                type="tel"
+                value={settings.smsPhone}
+                onChange={(e) => onChange({ ...settings, smsPhone: e.target.value })}
+                placeholder="+33612345678"
+                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 mb-1">
+                Account SID Twilio
+                <a href="https://console.twilio.com" target="_blank" rel="noopener noreferrer" className="ml-2 text-emerald-400 hover:underline">→ Console Twilio</a>
+              </label>
+              <input
+                type={showKeys ? "text" : "password"}
+                value={settings.twilioSid}
+                onChange={(e) => onChange({ ...settings, twilioSid: e.target.value })}
+                placeholder="ACxxxxxxxxxxxxxxxx"
+                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 mb-1">Auth Token Twilio</label>
+              <input
+                type={showKeys ? "text" : "password"}
+                value={settings.twilioToken}
+                onChange={(e) => onChange({ ...settings, twilioToken: e.target.value })}
+                placeholder="xxxxxxxxxxxxxxxx"
+                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 mb-1">Numéro Twilio expéditeur</label>
+              <input
+                type="text"
+                value={settings.twilioFrom}
+                onChange={(e) => onChange({ ...settings, twilioFrom: e.target.value })}
+                placeholder="+15017122661"
+                className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+              />
+            </div>
+            {(!settings.twilioSid || !settings.twilioToken || !settings.twilioFrom) && (
+              <p className="text-[10px] text-amber-400 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Configuration Twilio manquante — les SMS ne seront pas envoyés
+              </p>
+            )}
+            <button
+              onClick={() => onTest("sms")}
+              disabled={!settings.twilioSid || !settings.twilioToken || !settings.twilioFrom || !settings.smsPhone}
+              className="w-full py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Envoyer un SMS de test
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between">
+        <button
+          onClick={() => setShowKeys(!showKeys)}
+          className="text-xs text-gray-500 hover:text-gray-300 transition-colors flex items-center gap-1"
+        >
+          <Eye className="w-3 h-3" />
+          {showKeys ? "Masquer les clés" : "Afficher les clés"}
+        </button>
+        <p className="text-[10px] text-gray-600">Les clés sont stockées localement dans votre navigateur</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function AlertesIA() {
@@ -166,16 +434,25 @@ export default function AlertesIA() {
   const [allCoins, setAllCoins] = useState<CoinMarketData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<"active" | "history">("active");
   const [searchCoin, setSearchCoin] = useState("");
   const [showCoinDropdown, setShowCoinDropdown] = useState(false);
+  const [notifSettings, setNotifSettings] = useState<NotifSettings>(loadNotifSettings);
+  const [toastMsg, setToastMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   // Form state
   const [formCoin, setFormCoin] = useState<CoinMarketData | null>(null);
   const [formType, setFormType] = useState<AlertType>("price_above");
   const [formTargetPrice, setFormTargetPrice] = useState("");
   const [formPattern, setFormPattern] = useState(PATTERNS[0]);
+  const [formChannel, setFormChannel] = useState<NotifChannel>("in-app");
   const [formError, setFormError] = useState("");
+
+  const showToast = (text: string, ok: boolean) => {
+    setToastMsg({ text, ok });
+    setTimeout(() => setToastMsg(null), 4000);
+  };
 
   // Fetch coins
   const fetchCoins = useCallback(async () => {
@@ -214,8 +491,11 @@ export default function AlertesIA() {
           condition: alert.condition,
           triggeredAt: new Date().toLocaleString("fr-FR"),
           price,
+          channel: alert.channel,
         };
         setHistory((prev) => [newEntry, ...prev]);
+        // Fire notification
+        dispatchNotification(notifSettings, alert.channel, alert, price);
         return { ...alert, status: "triggered" as AlertStatus, triggeredAt: new Date().toLocaleString("fr-FR"), currentPrice: price };
       }
       return { ...alert, currentPrice: price };
@@ -233,6 +513,34 @@ export default function AlertesIA() {
     )
     .slice(0, 8);
 
+  const handleNotifSettingsChange = (s: NotifSettings) => {
+    setNotifSettings(s);
+    saveNotifSettings(s);
+  };
+
+  const handleTestNotif = async (channel: "email" | "sms") => {
+    const testAlert: AlertRule = {
+      id: "test",
+      coinId: "bitcoin",
+      coinSymbol: "BTC",
+      coinName: "Bitcoin",
+      coinImage: "",
+      type: "price_above",
+      targetPrice: 70000,
+      condition: "Test de notification CryptoIA",
+      channel,
+      status: "active",
+      createdAt: new Date().toLocaleString("fr-FR"),
+    };
+    if (channel === "email") {
+      const res = await sendEmailNotification(notifSettings, "🧪 Test CryptoIA — Notification Email", "Ceci est un email de test envoyé depuis CryptoIA Platform.\n\nSi vous recevez cet email, vos notifications email sont correctement configurées !");
+      showToast(res.ok ? "✅ Email de test envoyé !" : `❌ ${res.error}`, res.ok);
+    } else {
+      const res = await sendSmsNotification(notifSettings, "🧪 CryptoIA Test: Vos notifications SMS sont actives !");
+      showToast(res.ok ? "✅ SMS de test envoyé !" : `❌ ${res.error}`, res.ok);
+    }
+  };
+
   const handleCreateAlert = () => {
     setFormError("");
     if (!formCoin) { setFormError("Veuillez sélectionner une crypto."); return; }
@@ -242,6 +550,16 @@ export default function AlertesIA() {
     const targetPrice = formTargetPrice ? parseFloat(formTargetPrice) : undefined;
     if (targetPrice !== undefined && isNaN(targetPrice)) {
       setFormError("Prix cible invalide."); return;
+    }
+
+    // Validate notification channel config
+    if ((formChannel === "email" || formChannel === "all") && !notifSettings.sendgridKey) {
+      setFormError("Clé SendGrid manquante. Configurez les notifications email d'abord.");
+      return;
+    }
+    if ((formChannel === "sms" || formChannel === "all") && (!notifSettings.twilioSid || !notifSettings.twilioToken)) {
+      setFormError("Configuration Twilio manquante. Configurez les notifications SMS d'abord.");
+      return;
     }
 
     const newAlert: AlertRule = {
@@ -254,7 +572,7 @@ export default function AlertesIA() {
       targetPrice,
       currentPrice: formCoin.current_price,
       condition: buildConditionLabel(formType, targetPrice, formPattern),
-      channel: "in-app",
+      channel: formChannel,
       status: "active",
       createdAt: new Date().toLocaleString("fr-FR"),
     };
@@ -268,7 +586,9 @@ export default function AlertesIA() {
     setFormType("price_above");
     setFormTargetPrice("");
     setFormPattern(PATTERNS[0]);
+    setFormChannel("in-app");
     setShowForm(false);
+    showToast("✅ Alerte créée avec succès !", true);
   };
 
   const handleToggle = (id: string) => {
@@ -291,21 +611,32 @@ export default function AlertesIA() {
   const inactiveAlerts = alerts.filter((a) => a.status === "inactive");
   const triggeredAlerts = alerts.filter((a) => a.status === "triggered");
 
+  const channelLabel = (ch: NotifChannel) => {
+    const opt = CHANNEL_OPTIONS.find((o) => o.value === ch);
+    return opt ? opt : CHANNEL_OPTIONS[0];
+  };
+
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
+      {/* Toast */}
+      {toastMsg && (
+        <div className={`fixed top-4 right-4 z-[9999] flex items-center gap-2 px-4 py-3 rounded-xl border shadow-2xl text-sm font-bold transition-all ${toastMsg.ok ? "bg-emerald-900/90 border-emerald-500/30 text-emerald-300" : "bg-red-900/90 border-red-500/30 text-red-300"}`}>
+          {toastMsg.text}
+        </div>
+      )}
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-6">
           {/* Page Header */}
           <PageHeader
             icon={<Bell className="w-6 h-6" />}
             title="Alertes Intelligentes IA"
-            subtitle="Configurez des alertes personnalisées sur vos cryptos favorites. Soyez notifié en temps réel dès qu'un signal IA, un mouvement de prix ou un pattern technique est détecté."
+            subtitle="Configurez des alertes personnalisées sur vos cryptos favorites. Recevez des notifications en temps réel via l'application, email (SendGrid) ou SMS (Twilio)."
             accentColor="indigo"
             steps={[
-              { n: "1", title: "Créer une alerte", desc: "Cliquez sur '+ Nouvelle alerte', sélectionnez votre crypto et le type d'alerte souhaité (prix, signal IA, pattern, whale)." },
-              { n: "2", title: "Définir les conditions", desc: "Précisez vos conditions : prix cible, direction (au-dessus/en-dessous), type de signal IA ou pattern technique à surveiller." },
-              { n: "3", title: "Recevoir les notifications", desc: "Vos alertes sont surveillées en continu. Dès qu'une condition est remplie, elle apparaît dans l'historique et dans votre dashboard." },
+              { n: "1", title: "Configurer les notifications", desc: "Cliquez sur '⚙️ Notifications' pour configurer vos clés SendGrid (email) et Twilio (SMS). Vos clés sont stockées localement." },
+              { n: "2", title: "Créer une alerte", desc: "Cliquez sur '+ Nouvelle alerte', sélectionnez votre crypto, le type d'alerte et le canal de notification souhaité." },
+              { n: "3", title: "Recevoir les notifications", desc: "Dès qu'une condition est remplie, vous êtes notifié via le canal choisi : in-app, email, SMS ou tous les canaux." },
             ]}
           />
 
@@ -341,7 +672,7 @@ export default function AlertesIA() {
           </div>
 
           {/* Top bar */}
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
             <div className="flex gap-1 bg-black/30 border border-white/[0.06] rounded-xl p-1">
               <button
                 onClick={() => setActiveTab("active")}
@@ -356,14 +687,35 @@ export default function AlertesIA() {
                 Historique ({history.length})
               </button>
             </div>
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${showForm ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30" : "bg-indigo-600 hover:bg-indigo-500 text-white"}`}
-            >
-              <Plus className="w-4 h-4" />
-              Nouvelle alerte
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setShowNotifSettings(!showNotifSettings); setShowForm(false); }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border ${showNotifSettings ? "bg-indigo-500/20 text-indigo-400 border-indigo-500/30" : "bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.06] text-gray-400 hover:text-white"}`}
+              >
+                <Settings className="w-4 h-4" />
+                Notifications
+                {(notifSettings.emailEnabled || notifSettings.smsEnabled) && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                )}
+              </button>
+              <button
+                onClick={() => { setShowForm(!showForm); setShowNotifSettings(false); }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${showForm ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30" : "bg-indigo-600 hover:bg-indigo-500 text-white"}`}
+              >
+                <Plus className="w-4 h-4" />
+                Nouvelle alerte
+              </button>
+            </div>
           </div>
+
+          {/* Notification Settings Panel */}
+          {showNotifSettings && (
+            <NotifSettingsPanel
+              settings={notifSettings}
+              onChange={handleNotifSettingsChange}
+              onTest={handleTestNotif}
+            />
+          )}
 
           {/* Create Form */}
           {showForm && (
@@ -496,14 +848,27 @@ export default function AlertesIA() {
                   </div>
                 )}
 
-                {/* Canal */}
-                <div>
+                {/* Canal de notification */}
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-gray-400 mb-1.5">Canal de notification</label>
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                    <Bell className="w-4 h-4 text-indigo-400" />
-                    <span className="text-sm text-indigo-300 font-semibold">In-App (Dashboard)</span>
-                    <CheckCircle2 className="w-4 h-4 text-indigo-400 ml-auto" />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {CHANNEL_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setFormChannel(opt.value)}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all text-xs font-bold ${formChannel === opt.value ? "bg-indigo-500/20 border-indigo-500/30 text-white" : "bg-black/20 border-white/[0.06] text-gray-500 hover:text-gray-300 hover:border-white/10"}`}
+                      >
+                        <span className={opt.color}>{opt.icon}</span>
+                        {opt.label}
+                      </button>
+                    ))}
                   </div>
+                  {formChannel !== "in-app" && (
+                    <p className="mt-2 text-[11px] text-gray-500 flex items-center gap-1">
+                      <Settings className="w-3 h-3" />
+                      Assurez-vous d'avoir configuré les clés dans "⚙️ Notifications" ci-dessus
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -548,7 +913,7 @@ export default function AlertesIA() {
                       <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 px-1">
                         Actives ({activeAlerts.length})
                       </p>
-                      {activeAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} onToggle={handleToggle} onDelete={handleDelete} />)}
+                      {activeAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} onToggle={handleToggle} onDelete={handleDelete} channelLabel={channelLabel} />)}
                     </div>
                   )}
                   {/* Triggered */}
@@ -557,7 +922,7 @@ export default function AlertesIA() {
                       <p className="text-xs font-bold text-amber-500/70 uppercase tracking-widest mb-2 px-1 mt-4">
                         Déclenchées ({triggeredAlerts.length})
                       </p>
-                      {triggeredAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} onToggle={handleToggle} onDelete={handleDelete} />)}
+                      {triggeredAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} onToggle={handleToggle} onDelete={handleDelete} channelLabel={channelLabel} />)}
                     </div>
                   )}
                   {/* Inactive */}
@@ -566,7 +931,7 @@ export default function AlertesIA() {
                       <p className="text-xs font-bold text-gray-600 uppercase tracking-widest mb-2 px-1 mt-4">
                         Désactivées ({inactiveAlerts.length})
                       </p>
-                      {inactiveAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} onToggle={handleToggle} onDelete={handleDelete} />)}
+                      {inactiveAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} onToggle={handleToggle} onDelete={handleDelete} channelLabel={channelLabel} />)}
                     </div>
                   )}
                 </div>
@@ -587,15 +952,20 @@ export default function AlertesIA() {
                 <div className="space-y-2">
                   {history.map((entry) => {
                     const colors = ALERT_TYPE_COLORS[entry.type];
+                    const chOpt = CHANNEL_OPTIONS.find((o) => o.value === entry.channel) || CHANNEL_OPTIONS[0];
                     return (
                       <div key={entry.id} className="flex items-center gap-4 p-4 bg-slate-900/60 border border-white/[0.05] rounded-xl hover:border-white/10 transition-all">
                         <img src={entry.coinImage} alt={entry.coinSymbol} className="w-8 h-8 rounded-full flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                             <span className="text-sm font-bold text-white">{entry.coinSymbol}</span>
                             <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${colors.bg} ${colors.text} border ${colors.border}`}>
                               {ALERT_TYPE_ICONS[entry.type]}
                               {ALERT_TYPE_LABELS[entry.type]}
+                            </span>
+                            <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/5 border border-white/10 ${chOpt.color}`}>
+                              {chOpt.icon}
+                              {chOpt.label}
                             </span>
                           </div>
                           <p className="text-xs text-gray-400">{entry.condition}</p>
@@ -626,24 +996,30 @@ export default function AlertesIA() {
 
 // ─── Alert Card ───────────────────────────────────────────────────────────────
 
-function AlertCard({ alert, onToggle, onDelete }: {
+function AlertCard({ alert, onToggle, onDelete, channelLabel }: {
   alert: AlertRule;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  channelLabel: (ch: NotifChannel) => typeof CHANNEL_OPTIONS[0];
 }) {
   const colors = ALERT_TYPE_COLORS[alert.type];
   const isActive = alert.status === "active";
   const isTriggered = alert.status === "triggered";
+  const chOpt = channelLabel(alert.channel);
 
   return (
     <div className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${isTriggered ? "bg-amber-500/5 border-amber-500/20" : isActive ? "bg-slate-900/60 border-white/[0.06] hover:border-white/10" : "bg-black/20 border-white/[0.03] opacity-60"}`}>
       <img src={alert.coinImage} alt={alert.coinSymbol} className="w-9 h-9 rounded-full flex-shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           <span className="text-sm font-bold text-white">{alert.coinSymbol}</span>
           <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${colors.bg} ${colors.text} border ${colors.border}`}>
             {ALERT_TYPE_ICONS[alert.type]}
             {ALERT_TYPE_LABELS[alert.type]}
+          </span>
+          <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/5 border border-white/10 ${chOpt.color}`}>
+            {chOpt.icon}
+            {chOpt.label}
           </span>
           {isTriggered && (
             <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">

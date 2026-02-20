@@ -76,39 +76,52 @@ export default function Graphiques() {
 
     const tvSymbol = getTVSymbol(selected, selectedCoin.symbol);
 
-    // Direct iframe embed — most reliable method
-    const iframe = document.createElement("iframe");
-    const params = new URLSearchParams({
-      symbol: tvSymbol,
-      interval: "60",
-      hidesidetoolbar: "0",
-      symboledit: "1",
-      saveimage: "1",
-      toolbarbg: "111827",
-      theme: "dark",
-      style: "1",
-      timezone: "America/Toronto",
-      locale: "fr",
-      enable_publishing: "false",
-      allow_symbol_change: "true",
-    });
-    // Studies must use %1E separator (record separator) and @ must not be double-encoded
-    const studiesParam = "studies=RSI%40tv-basicstudies%1EMACD%40tv-basicstudies";
-    iframe.src = `https://s.tradingview.com/widgetembed/?frameElementId=tv_chart_${selected}&${params.toString()}&${studiesParam}`;
-    iframe.style.width = "100%";
-    iframe.style.height = "100%";
-    iframe.style.border = "none";
-    iframe.style.display = "block";
-    iframe.allowFullscreen = true;
-    iframe.setAttribute("frameborder", "0");
-    iframe.setAttribute("allow", "autoplay; encrypted-media");
+    // Create a unique div for the widget
+    const widgetDiv = document.createElement("div");
+    widgetDiv.id = `tv_widget_${selected}_${Date.now()}`;
+    widgetDiv.style.width = "100%";
+    widgetDiv.style.height = "100%";
+    container.appendChild(widgetDiv);
 
-    container.appendChild(iframe);
+    const createWidget = () => {
+      if ((window as any).TradingView && widgetDiv.isConnected) {
+        new (window as any).TradingView.widget({
+          container_id: widgetDiv.id,
+          autosize: true,
+          symbol: tvSymbol,
+          interval: "60",
+          timezone: "America/Toronto",
+          theme: "dark",
+          style: "1",
+          locale: "fr",
+          toolbar_bg: "#111827",
+          enable_publishing: false,
+          allow_symbol_change: true,
+          save_image: true,
+          hide_side_toolbar: false,
+          studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies"],
+          show_popup_button: true,
+          popup_width: "1000",
+          popup_height: "650",
+        });
+      }
+    };
+
+    // Check if TradingView script is already loaded
+    if ((window as any).TradingView) {
+      createWidget();
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://s3.tradingview.com/tv.js";
+      script.async = true;
+      script.onload = createWidget;
+      document.head.appendChild(script);
+    }
 
     return () => {
       container.innerHTML = "";
     };
-  }, [selected, coins]);
+  }, [selected, coins, isFullscreen]);
 
   const selectedCoin = coins.find((c) => c.id === selected);
 

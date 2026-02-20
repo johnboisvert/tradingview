@@ -1,1 +1,1 @@
-# Ebooks\n\nThis folder contains ebooks resources.
+# Ebooks\n\nDossier pour les ebooks de CryptoIA Trading Platform.

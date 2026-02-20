@@ -69,6 +69,46 @@ function drawLine(x1, y1, x2, y2, color = colors.lightGray, width = 1) {
   doc.restore();
 }
 
+// Helper: draw a simple table
+function drawTable(headers, rows, colWidths, options = {}) {
+  const { headerBg = colors.darkBg, headerColor = colors.white, rowHeight = 26 } = options;
+  const colStarts = [50];
+  for (let i = 1; i < colWidths.length; i++) colStarts.push(colStarts[i - 1] + colWidths[i - 1]);
+
+  // Header
+  checkPageBreak(rowHeight + rows.length * rowHeight + 10);
+  drawRect(50, currentY, pageWidth, rowHeight + 2, headerBg, 4);
+  headers.forEach((h, i) => {
+    doc.fontSize(8).fillColor(headerColor).font('Helvetica-Bold');
+    doc.text(h, colStarts[i] + 8, currentY + 8, { width: colWidths[i] - 16 });
+  });
+  currentY += rowHeight + 2;
+
+  // Rows
+  rows.forEach((row, idx) => {
+    checkPageBreak(rowHeight + 5);
+    drawRect(50, currentY, pageWidth, rowHeight, row.bg || (idx % 2 === 0 ? '#F8FAFC' : '#FFFFFF'));
+    if (row.barColor) {
+      drawRect(50, currentY, 4, rowHeight, row.barColor);
+    }
+    row.values.forEach((v, i) => {
+      const isFirst = i === 0;
+      doc.fontSize(8.5).fillColor(isFirst ? colors.darkText : colors.mediumText).font(isFirst ? 'Helvetica-Bold' : 'Helvetica');
+      doc.text(v, colStarts[i] + 8, currentY + 7, { width: colWidths[i] - 16 });
+    });
+    if (idx < rows.length - 1) {
+      drawLine(50, currentY + rowHeight, 50 + pageWidth, currentY + rowHeight, colors.lightGray, 0.5);
+    }
+    currentY += rowHeight;
+  });
+
+  // Border
+  doc.save();
+  doc.strokeColor(colors.lightGray).lineWidth(0.5).roundedRect(50, currentY - rowHeight * rows.length, pageWidth, rowHeight * rows.length, 4).stroke();
+  doc.restore();
+  currentY += 15;
+}
+
 // ============================================================
 // HEADER
 // ============================================================
@@ -86,7 +126,7 @@ doc.text('Document confidentiel — 20 février 2026', 50, 78);
 // Version badge
 drawRect(400, 30, 80, 24, colors.primary, 12);
 doc.fontSize(9).fillColor(colors.white).font('Helvetica-Bold');
-doc.text('v2.0', 400, 37, { width: 80, align: 'center' });
+doc.text('v3.0', 400, 37, { width: 80, align: 'center' });
 
 currentY = 115;
 
@@ -334,7 +374,7 @@ plans.forEach((plan) => {
 });
 
 // ============================================================
-// SECTION 4: TABLEAU RÉCAPITULATIF
+// SECTION 4: TABLEAU RÉCAPITULATIF (original)
 // ============================================================
 checkPageBreak(200);
 
@@ -445,6 +485,355 @@ strategies.forEach((s) => {
 
   currentY += 62;
 });
+
+// ============================================================
+// NEW SECTION 6: ANALYSE COMPARATIVE DU MARCHÉ CRYPTO SaaS
+// ============================================================
+checkPageBreak(200);
+currentY += 10;
+
+// Section divider
+drawRect(50, currentY, pageWidth, 4, colors.primary, 2);
+currentY += 20;
+
+doc.fontSize(18).fillColor(colors.darkText).font('Helvetica-Bold');
+doc.text('📈  Analyse comparative du marché crypto SaaS', 50, currentY);
+currentY += 30;
+
+// Intro text
+drawRect(50, currentY, pageWidth, 50, '#F0F9FF', 6);
+doc.fontSize(9.5).fillColor(colors.mediumText).font('Helvetica');
+doc.text(
+  'Les plateformes similaires (TradingView, CoinGecko Premium, Glassnode, LunarCrush) ' +
+  'se positionnent dans les fourchettes de prix suivantes. Notre stratégie de prix doit ' +
+  's\'aligner sur ces références tout en offrant un avantage compétitif.',
+  60, currentY + 10, { width: pageWidth - 20, lineGap: 3 }
+);
+currentY += 60;
+
+// Market comparison cards
+const marketSegments = [
+  { tier: 'Basique', range: '15 - 30$/mois', icon: '🟢', color: colors.green, examples: 'CoinGecko Pro, LunarCrush Free+' },
+  { tier: 'Intermédiaire', range: '40 - 70$/mois', icon: '🔵', color: colors.primary, examples: 'TradingView Plus/Premium, Santiment Pro' },
+  { tier: 'Pro', range: '80 - 130$/mois', icon: '🟣', color: colors.purple, examples: 'TradingView Premium+, Glassnode Advanced' },
+  { tier: 'Enterprise', range: '150 - 300$/mois', icon: '🔴', color: colors.red, examples: 'Glassnode Professional, Nansen Pro' },
+];
+
+marketSegments.forEach((seg) => {
+  checkPageBreak(50);
+  drawRect(50, currentY, pageWidth, 40, '#FFFFFF', 6);
+  doc.save();
+  doc.strokeColor(seg.color).lineWidth(1).roundedRect(50, currentY, pageWidth, 40, 6).stroke();
+  doc.restore();
+
+  // Left color accent
+  drawRect(50, currentY, 6, 40, seg.color, 3);
+
+  doc.fontSize(11).fillColor(colors.darkText).font('Helvetica-Bold');
+  doc.text(`${seg.icon}  ${seg.tier}`, 66, currentY + 6);
+
+  doc.fontSize(13).fillColor(seg.color).font('Helvetica-Bold');
+  doc.text(seg.range, 250, currentY + 5, { width: 200 });
+
+  doc.fontSize(7.5).fillColor(colors.gray).font('Helvetica');
+  doc.text(`Ex: ${seg.examples}`, 66, currentY + 24, { width: pageWidth - 30 });
+
+  currentY += 48;
+});
+
+currentY += 10;
+
+// ============================================================
+// NEW SECTION 7: RECOMMANDATIONS DE PRIX
+// ============================================================
+checkPageBreak(250);
+
+doc.fontSize(18).fillColor(colors.darkText).font('Helvetica-Bold');
+doc.text('💡  Recommandations de prix', 50, currentY);
+currentY += 28;
+
+// Highlight box
+drawRect(50, currentY, pageWidth, 35, '#FEF3C7', 6);
+doc.save();
+doc.strokeColor(colors.accent).lineWidth(1).roundedRect(50, currentY, pageWidth, 35, 6).stroke();
+doc.restore();
+doc.fontSize(9).fillColor(colors.darkText).font('Helvetica-Bold');
+doc.text('⚡ Objectif : Maximiser les conversions en positionnant chaque forfait sous les seuils psychologiques clés (20$, 50$, 100$).', 62, currentY + 10, { width: pageWidth - 24, lineGap: 2 });
+currentY += 45;
+
+// Price recommendations table
+drawTable(
+  ['Forfait', 'Prix actuel', 'Prix recommandé', 'Raison'],
+  [
+    {
+      values: ['🆓 Gratuit', '0$', '0$', 'Pas de changement, essentiel pour l\'acquisition'],
+      barColor: colors.free,
+      bg: '#F9FAFB',
+    },
+    {
+      values: ['⭐ Premium', '29.99$/mois', '19.99$/mois', 'Sous la barre des 20$ = plus accessible, conversion ~2x'],
+      barColor: colors.premium,
+      bg: '#EFF6FF',
+    },
+    {
+      values: ['🚀 Advanced', '69.99$/mois', '49.99$/mois', 'Sous 50$ = beaucoup plus attractif. Plan cible!'],
+      barColor: colors.advanced,
+      bg: '#F5F3FF',
+    },
+    {
+      values: ['👑 Pro', '119.99$/mois', '89.99$/mois', 'Sous 100$ = perception "accessible" pour traders sérieux'],
+      barColor: colors.pro,
+      bg: '#FFFBEB',
+    },
+    {
+      values: ['💎 Elite', '199.99$/mois', '149.99$ ou 199.99$', 'Deux options selon la stratégie (voir ci-dessous)'],
+      barColor: colors.elite,
+      bg: '#FEF2F2',
+    },
+  ],
+  [110, 100, 110, 175]
+);
+
+currentY += 5;
+
+// ============================================================
+// NEW SECTION 8: JUSTIFICATION DES PRIX
+// ============================================================
+checkPageBreak(300);
+
+doc.fontSize(16).fillColor(colors.darkText).font('Helvetica-Bold');
+doc.text('🧠  Justification des prix', 50, currentY);
+currentY += 25;
+
+const justifications = [
+  {
+    plan: 'Premium à 19.99$',
+    color: colors.premium,
+    icon: '⭐',
+    points: [
+      'Psychologie : "Moins de 20$/mois" — un seuil psychologique majeur',
+      'Conversion estimée ~2x plus élevée qu\'à 29.99$',
+      'C\'est la porte d\'entrée, pas la source de revenus principale',
+      'Objectif : convertir un maximum d\'utilisateurs gratuits',
+    ],
+  },
+  {
+    plan: 'Advanced à 49.99$',
+    color: colors.advanced,
+    icon: '🚀',
+    points: [
+      'Plan le plus important — c\'est votre "cash cow"',
+      'Ancrage Premium → Advanced = +30$ pour beaucoup plus de valeur',
+      'Excellent rapport qualité/prix perçu par les utilisateurs',
+      'Sous la barre des 50$ = décision d\'achat plus facile',
+    ],
+  },
+  {
+    plan: 'Pro à 89.99$',
+    color: colors.pro,
+    icon: '👑',
+    points: [
+      'Sous 100$ = "je peux me le permettre" pour les traders actifs',
+      'Upsell justifié par whale tracking + on-chain metrics',
+      'Support prioritaire = valeur perçue élevée',
+      'Cible les traders qui génèrent déjà des revenus',
+    ],
+  },
+  {
+    plan: 'Elite : deux options stratégiques',
+    color: colors.elite,
+    icon: '💎',
+    points: [
+      'Option A — 149.99$/mois : Plus de volume, sous la barre des 150$',
+      'Option B — 199.99$/mois : Plus exclusif, effet "club VIP"',
+      'Option A recommandée si vous visez la croissance rapide',
+      'Option B recommandée si vous visez le positionnement premium',
+    ],
+  },
+];
+
+justifications.forEach((j) => {
+  const cardHeight = 20 + j.points.length * 15 + 15;
+  checkPageBreak(cardHeight + 10);
+
+  // Card background
+  drawRect(50, currentY, pageWidth, cardHeight, '#FFFFFF', 6);
+  doc.save();
+  doc.strokeColor(j.color).lineWidth(1).roundedRect(50, currentY, pageWidth, cardHeight, 6).stroke();
+  doc.restore();
+
+  // Left accent bar
+  drawRect(50, currentY, 6, cardHeight, j.color, 3);
+
+  // Plan name header
+  doc.fontSize(11).fillColor(j.color).font('Helvetica-Bold');
+  doc.text(`${j.icon}  ${j.plan}`, 66, currentY + 8);
+
+  // Points
+  let pointY = currentY + 26;
+  j.points.forEach((point) => {
+    doc.fontSize(8.5).fillColor(colors.mediumText).font('Helvetica');
+    doc.text(`  •  ${point}`, 66, pointY, { width: pageWidth - 40 });
+    pointY += 15;
+  });
+
+  currentY += cardHeight + 8;
+});
+
+currentY += 5;
+
+// ============================================================
+// NEW SECTION 9: OFFRES ANNUELLES RECOMMANDÉES
+// ============================================================
+checkPageBreak(220);
+
+doc.fontSize(16).fillColor(colors.darkText).font('Helvetica-Bold');
+doc.text('📅  Offres annuelles recommandées (-20%)', 50, currentY);
+currentY += 25;
+
+// Info box
+drawRect(50, currentY, pageWidth, 30, '#ECFDF5', 6);
+doc.save();
+doc.strokeColor(colors.green).lineWidth(1).roundedRect(50, currentY, pageWidth, 30, 6).stroke();
+doc.restore();
+doc.fontSize(9).fillColor(colors.green).font('Helvetica-Bold');
+doc.text('💰 Les abonnements annuels réduisent le churn de 40-60% et augmentent le LTV (Lifetime Value) de chaque client.', 62, currentY + 8, { width: pageWidth - 24 });
+currentY += 40;
+
+// Annual pricing table
+drawTable(
+  ['Forfait', 'Mensuel', 'Annuel (-20%)', 'Prix/mois (annuel)', 'Économie/an'],
+  [
+    {
+      values: ['⭐ Premium', '19.99$', '191.90$/an', '15.99$/mois', '47.98$'],
+      barColor: colors.premium,
+      bg: '#EFF6FF',
+    },
+    {
+      values: ['🚀 Advanced', '49.99$', '479.90$/an', '39.99$/mois', '119.98$'],
+      barColor: colors.advanced,
+      bg: '#F5F3FF',
+    },
+    {
+      values: ['👑 Pro', '89.99$', '863.90$/an', '71.99$/mois', '215.98$'],
+      barColor: colors.pro,
+      bg: '#FFFBEB',
+    },
+    {
+      values: ['💎 Elite', '199.99$', '1,919.90$/an', '159.99$/mois', '479.98$'],
+      barColor: colors.elite,
+      bg: '#FEF2F2',
+    },
+  ],
+  [100, 85, 105, 105, 100]
+);
+
+currentY += 5;
+
+// ============================================================
+// NEW SECTION 10: STRATÉGIE DE LANCEMENT RECOMMANDÉE
+// ============================================================
+checkPageBreak(250);
+
+doc.fontSize(16).fillColor(colors.darkText).font('Helvetica-Bold');
+doc.text('🚀  Stratégie de lancement recommandée', 50, currentY);
+currentY += 28;
+
+const launchPhases = [
+  {
+    phase: 'Phase 1 — Mois 1 à 3',
+    icon: '🎉',
+    color: colors.green,
+    title: 'Prix de lancement -30%',
+    details: [
+      'Code promo : LAUNCH30 (valide 90 jours)',
+      'Premium : 13.99$/mois au lieu de 19.99$',
+      'Advanced : 34.99$/mois au lieu de 49.99$',
+      'Pro : 62.99$/mois au lieu de 89.99$',
+      'Objectif : Acquérir une base d\'utilisateurs payants rapidement',
+      'Communiquer massivement sur les réseaux sociaux et forums crypto',
+    ],
+  },
+  {
+    phase: 'Phase 2 — Mois 4+',
+    icon: '📈',
+    color: colors.primary,
+    title: 'Prix normaux + essai gratuit',
+    details: [
+      'Retour aux prix normaux recommandés',
+      'Essai gratuit 7 jours sur le plan Premium',
+      'Email de bienvenue automatique avec onboarding',
+      'Notification push avant fin de l\'essai (J5 et J7)',
+      'Objectif : Conversion organique via la qualité du produit',
+    ],
+  },
+  {
+    phase: 'Phase 3 — Promos saisonnières',
+    icon: '🎁',
+    color: colors.accent,
+    title: 'Événements marketing récurrents',
+    details: [
+      'Black Friday / Cyber Monday : -50% sur tous les plans annuels',
+      'Nouvel An crypto (janvier) : -25% avec code NEWYEAR25',
+      'Bitcoin Halving (événement spécial) : -30% pendant 1 semaine',
+      'Anniversaire CryptoIA : -20% + fonctionnalité bonus exclusive',
+      'Objectif : Pics de conversion planifiés tout au long de l\'année',
+    ],
+  },
+];
+
+launchPhases.forEach((phase) => {
+  const cardHeight = 30 + phase.details.length * 14 + 20;
+  checkPageBreak(cardHeight + 15);
+
+  // Card
+  drawRect(50, currentY, pageWidth, cardHeight, '#FFFFFF', 8);
+  doc.save();
+  doc.strokeColor(phase.color).lineWidth(1.5).roundedRect(50, currentY, pageWidth, cardHeight, 8).stroke();
+  doc.restore();
+
+  // Top color bar
+  drawRect(50, currentY, pageWidth, 30, phase.color, 8);
+  // Fix bottom corners of top bar
+  drawRect(50, currentY + 20, pageWidth, 10, phase.color);
+
+  doc.fontSize(11).fillColor(colors.white).font('Helvetica-Bold');
+  doc.text(`${phase.icon}  ${phase.phase} : ${phase.title}`, 62, currentY + 8);
+
+  let detailY = currentY + 38;
+  phase.details.forEach((detail) => {
+    doc.fontSize(8.5).fillColor(colors.mediumText).font('Helvetica');
+    doc.text(`  •  ${detail}`, 66, detailY, { width: pageWidth - 40 });
+    detailY += 14;
+  });
+
+  currentY += cardHeight + 12;
+});
+
+// ============================================================
+// FINAL SUMMARY BOX
+// ============================================================
+checkPageBreak(100);
+currentY += 5;
+
+drawRect(50, currentY, pageWidth, 70, colors.darkBg, 8);
+doc.fontSize(12).fillColor(colors.white).font('Helvetica-Bold');
+doc.text('📌  Résumé des actions prioritaires', 62, currentY + 10);
+
+doc.fontSize(8.5).fillColor(colors.lightGray).font('Helvetica');
+const summaryItems = [
+  '1. Ajuster les prix : Premium 19.99$ | Advanced 49.99$ | Pro 89.99$ | Elite 149.99$ ou 199.99$',
+  '2. Lancer avec le code promo LAUNCH30 (-30%) pendant les 3 premiers mois',
+  '3. Activer l\'essai gratuit 7 jours sur Premium dès le mois 4',
+  '4. Planifier les promos saisonnières (Black Friday -50%, Nouvel An -25%)',
+];
+let sumY = currentY + 26;
+summaryItems.forEach((item) => {
+  doc.text(item, 62, sumY, { width: pageWidth - 24 });
+  sumY += 12;
+});
+
+currentY += 80;
 
 // ============================================================
 // FOOTER

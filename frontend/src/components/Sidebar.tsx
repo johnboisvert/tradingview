@@ -54,9 +54,17 @@ import {
   Lock,
   BookOpen,
   SlidersHorizontal,
+  Bell,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
+  {
+    title: "Mon Espace",
+    items: [
+      { path: "/my-cryptoia", label: "My CryptoIA", icon: LayoutDashboard },
+      { path: "/alertes-ia", label: "Alertes IA", icon: Bell },
+    ],
+  },
   {
     title: "Marché",
     items: [

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Brain, RefreshCw, TrendingUp, TrendingDown, Search } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 
 interface PredCoin {
@@ -88,7 +89,18 @@ export default function PredictionIA() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Brain className="w-6 h-6" />}
+          title="Prédictions IA"
+          subtitle="L’intelligence artificielle analyse les patterns techniques, le sentiment et les données on-chain pour générer des prédictions de prix à court et moyen terme."
+          accentColor="purple"
+          steps={[
+            { n: "1", title: "Consultez les prédictions", desc: "Chaque crypto affiche une prédiction haussière ou baissière avec un niveau de confiance. Plus la confiance est élevée, plus le signal est fiable." },
+            { n: "2", title: "Filtrez par signal", desc: "Utilisez les filtres pour afficher uniquement les signaux BULL (haussiers) ou BEAR (baissiers) selon votre stratégie." },
+            { n: "3", title: "Croisez avec l'analyse technique", desc: "Les prédictions IA sont un complément, pas un oracle. Confirmez toujours avec vos propres indicateurs techniques." },
+          ]}
+        />
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[120px] bg-gradient-to-r from-purple-900/40 to-pink-900/40">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/90 via-[#0A0E1A]/60 to-transparent" />
           <div className="relative z-10 h-full flex items-center justify-between px-8">

@@ -252,7 +252,18 @@ export default function RugScamShield() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">🛡️</span>}
+          title="Rug & Scam Shield"
+          subtitle="Protégez-vous contre les arnaques crypto. Analysez n’importe quel token pour détecter les red flags : honeypot, ownership non renoncé, liquidité verrouillée, etc."
+          accentColor="red"
+          steps={[
+            { n: "1", title: "Entrez l’adresse du token", desc: "Copiez-collez l’adresse du contrat du token que vous souhaitez analyser. Compatible avec Ethereum, BSC et autres EVM." },
+            { n: "2", title: "Lisez le score de sécurité", desc: "Score > 80 = token relativement sûr. Score < 40 = risque élevé, évitez. Vérifiez chaque critère individuellement." },
+            { n: "3", title: "Vérifiez les red flags", desc: "Honeypot, taxes élevées, ownership non renoncé, liquidité non verrouillée = signaux d’alarme majeurs. Ne jamais ignorer." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-red-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-amber-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

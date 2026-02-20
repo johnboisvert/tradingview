@@ -84,7 +84,18 @@ export default function PortfolioTracker() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">💼</span>}
+          title="Portfolio Tracker"
+          subtitle="Suivez la performance de votre portefeuille crypto en temps réel. Ajoutez vos positions, visualisez vos gains/pertes et analysez la répartition de vos actifs."
+          accentColor="indigo"
+          steps={[
+            { n: "1", title: "Ajoutez vos actifs", desc: "Cliquez sur Ajouter un Actif, entrez le symbole, la quantité et le prix d’achat pour commencer à tracker votre portfolio." },
+            { n: "2", title: "Suivez vos performances", desc: "Le tableau de bord affiche votre P&L total, la valeur actuelle et la variation de chaque position en temps réel." },
+            { n: "3", title: "Analysez la répartition", desc: "Le graphique de répartition vous montre votre exposition par actif pour identifier les concentrations de risque." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-indigo-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-emerald-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

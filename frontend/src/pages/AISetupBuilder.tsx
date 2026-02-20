@@ -347,7 +347,18 @@ export default function AISetupBuilder() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">🏗️</span>}
+          title="AI Setup Builder"
+          subtitle="Construisez des setups de trading complets avec l’aide de l’IA. Définissez votre entrée, stop loss, take profit et obtenez une analyse de la qualité de votre setup."
+          accentColor="blue"
+          steps={[
+            { n: "1", title: "Choisissez votre setup", desc: "Sélectionnez parmi les templates de setups pré-construits par l’IA ou créez le vôtre en définissant les paramètres clés." },
+            { n: "2", title: "Configurez les niveaux", desc: "Entrez votre prix d’entrée, stop loss et take profit. L’IA calcule automatiquement le ratio risque/récompense et la taille de position optimale." },
+            { n: "3", title: "Validez et exécutez", desc: "L’IA évalue la qualité de votre setup (A, B, C). Ne prenez que les setups A et B pour maximiser votre edge sur le marché." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-violet-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

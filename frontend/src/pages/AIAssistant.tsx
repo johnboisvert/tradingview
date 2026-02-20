@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Bot, Send, Trash2, Sparkles, Loader2 } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 interface Message {
   role: "user" | "assistant";
@@ -194,7 +195,18 @@ Veuillez réessayer dans quelques secondes ! 🔄
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 flex flex-col" style={{ height: "100vh" }}>
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Bot className="w-6 h-6" />}
+          title="Assistant IA Crypto"
+          subtitle="Posez toutes vos questions sur les cryptomonnaies à votre assistant IA spécialisé. Analyse de marché, explications, conseils de stratégie — disponible 24h/24."
+          accentColor="purple"
+          steps={[
+            { n: "1", title: "Posez votre question", desc: "Tapez n'importe quelle question crypto : Qu'est-ce que le DeFi ?, Analyse BTC, Quelle stratégie pour un marché baissier ?" },
+            { n: "2", title: "Obtenez une réponse IA", desc: "L'assistant analyse votre question et fournit une réponse détaillée basée sur les données de marché actuelles." },
+            { n: "3", title: "Approfondissez", desc: "Posez des questions de suivi pour approfondir un sujet. L'IA garde le contexte de la conversation." },
+          ]}
+        />
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-4 flex-shrink-0 bg-gradient-to-r from-indigo-900/40 to-purple-900/40" style={{ height: "80px" }}>
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/90 via-[#0A0E1A]/60 to-transparent" />

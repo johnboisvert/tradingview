@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { BarChart3, RefreshCw, TrendingUp, TrendingDown, Search } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { fetchTop200, formatPrice, formatMarketCap, type CoinMarketData } from "@/lib/cryptoApi";
 
 interface StatCoin {
@@ -61,7 +62,18 @@ export default function StatsAvancees() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<BarChart3 className="w-6 h-6" />}
+          title="Statistiques Avancées"
+          subtitle="Plongez dans les statistiques détaillées du marché crypto : corrélations, volatilité historique, distribution des rendements et métriques de risque avancées."
+          accentColor="cyan"
+          steps={[
+            { n: "1", title: "Explorez les statistiques", desc: "Consultez les métriques avancées de chaque crypto : volatilité, Sharpe ratio, drawdown maximum et distribution des rendements." },
+            { n: "2", title: "Analysez les corrélations", desc: "La matrice de corrélation montre quels actifs bougent ensemble. Utile pour diversifier votre portefeuille efficacement." },
+            { n: "3", title: "Comparez les actifs", desc: "Utilisez les statistiques pour comparer objectivement les cryptos et identifier celles avec le meilleur ratio rendement/risque." },
+          ]}
+        />
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[120px] bg-gradient-to-r from-cyan-900/40 to-blue-900/40">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/90 via-[#0A0E1A]/60 to-transparent" />
           <div className="relative z-10 h-full flex items-center justify-between px-8">

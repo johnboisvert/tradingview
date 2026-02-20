@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { BarChart3, RefreshCw, TrendingUp, TrendingDown, Target, Shield, Zap, Clock, AlertTriangle, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 const STRAT_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/b3c0b3a0-ae42-46d0-9f3a-9f12780c9e10.png";
@@ -244,7 +245,18 @@ export default function Strategy() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<BarChart3 className="w-6 h-6" />}
+          title="Stratégies de Trading"
+          subtitle="Découvrez et appliquez des stratégies de trading éprouvées. Chaque stratégie inclut les conditions d’entrée, de sortie, le risk management et les performances historiques."
+          accentColor="blue"
+          steps={[
+            { n: "1", title: "Choisissez une stratégie", desc: "Parcourez les stratégies disponibles (Trend Following, Mean Reversion, Breakout...) et sélectionnez celle qui correspond à votre profil." },
+            { n: "2", title: "Vérifiez les conditions", desc: "Chaque stratégie indique les conditions de marché optimales, les indicateurs à surveiller et les niveaux d'entrée/sortie." },
+            { n: "3", title: "Gérez votre risque", desc: "Respectez toujours le stop loss recommandé. Ne risquez jamais plus de 1-2% de votre capital par trade." },
+          ]}
+        />
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
           <img src={STRAT_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />

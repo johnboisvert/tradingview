@@ -76,7 +76,18 @@ export default function Telechargement() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">📥</span>}
+          title="Téléchargements"
+          subtitle="Accédez à notre bibliothèque de ressources premium : guides PDF, cheat sheets, templates de trading, calendriers et infographies pour améliorer votre trading."
+          accentColor="purple"
+          steps={[
+            { n: "1", title: "Parcourez la bibliothèque", desc: "Filtrez par catégorie (Guides, Cheat Sheets, Templates...) pour trouver rapidement les ressources dont vous avez besoin." },
+            { n: "2", title: "Téléchargez vos ressources", desc: "Cliquez sur Télécharger pour obtenir le fichier. Les ressources premium sont disponibles avec votre abonnement actif." },
+            { n: "3", title: "Appliquez les connaissances", desc: "Utilisez les cheat sheets comme référence rapide pendant vos sessions de trading et les templates pour structurer vos analyses." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-blue-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

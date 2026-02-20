@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 import {
   Bot, RefreshCw, TrendingUp, TrendingDown, Search,
   Activity, AlertCircle, Brain, BarChart2, Zap, Info
@@ -278,7 +279,18 @@ export default function CryptoIA() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Brain className="w-6 h-6" />}
+          title="Crypto IA — Analyse Intelligente"
+          subtitle="Analyse complète propulsée par l’IA : score de force, signaux d’achat/vente, niveaux clés de support/résistance et recommandations personnalisées pour chaque crypto."
+          accentColor="blue"
+          steps={[
+            { n: "1", title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto dans la liste. L'IA génère instantanément une analyse complète avec score de force et signaux." },
+            { n: "2", title: "Lisez le score IA", desc: "Score > 70 = signal fort haussier. Score < 30 = signal fort baissier. Entre 40-60 = zone neutre, attendez confirmation." },
+            { n: "3", title: "Utilisez les niveaux clés", desc: "Les supports et résistances calculés par l'IA vous donnent des zones précises pour placer vos entrées, stops et targets." },
+          ]}
+        />
         {/* Header */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[120px] bg-gradient-to-r from-blue-900/40 to-purple-900/40">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/90 via-[#0A0E1A]/60 to-transparent" />

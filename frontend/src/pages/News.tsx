@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Newspaper, RefreshCw, ExternalLink, Clock } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 const NEWS_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/6e7996e5-3fd7-4958-9f83-5d5f09ef989f.png";
@@ -91,7 +92,18 @@ export default function News() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Newspaper className="w-6 h-6" />}
+          title="Actualités Crypto"
+          subtitle="Restez informé des dernières nouvelles du marché crypto en temps réel. Articles analysés par IA pour identifier l’impact potentiel sur les prix."
+          accentColor="blue"
+          steps={[
+            { n: "1", title: "Lisez les dernières news", desc: "Les actualités sont triées par date et analysées par l'IA pour évaluer leur sentiment (positif/négatif) et leur impact potentiel." },
+            { n: "2", title: "Filtrez par source", desc: "Sélectionnez vos sources préférées pour ne voir que les news des médias que vous faites confiance." },
+            { n: "3", title: "Réagissez rapidement", desc: "Les grandes news peuvent créer des opportunités de trading. Croisez toujours l'info avec l'analyse technique avant d'agir." },
+          ]}
+        />
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
           <img src={NEWS_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />

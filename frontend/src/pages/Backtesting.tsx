@@ -1,5 +1,7 @@
 import { useState } from "react";
 import Sidebar from "../components/Sidebar";
+import PageHeader from "@/components/PageHeader";
+import { BarChart3 } from "lucide-react";
 
 interface BacktestResult {
   totalReturn: number;
@@ -73,6 +75,17 @@ export default function Backtesting() {
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
       <main className="flex-1 ml-[260px] p-7">
+      <PageHeader
+          icon={<BarChart3 className="w-6 h-6" />}
+          title="Backtesting de Stratégies"
+          subtitle="Testez vos stratégies sur des données historiques avant de risquer du capital réel. Simulez différentes conditions de marché et optimisez vos paramètres."
+          accentColor="indigo"
+          steps={[
+            { n: "1", title: "Configurez votre stratégie", desc: "Choisissez la paire, la période, le capital de départ et les paramètres de votre stratégie (indicateurs, seuils d'entrée/sortie)." },
+            { n: "2", title: "Lancez le backtest", desc: "Cliquez sur Lancer pour simuler la stratégie sur l'historique. L'IA calcule les performances réelles passées." },
+            { n: "3", title: "Analysez les résultats", desc: "Étudiez le win rate, le drawdown maximum, le ratio risque/récompense et la courbe de capital pour valider votre stratégie." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-indigo-500/5 blur-[80px] top-[-200px] left-[100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

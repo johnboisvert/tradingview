@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Calculator } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 const CALC_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/b3c0b3a0-ae42-46d0-9f3a-9f12780c9e10.png";
@@ -71,7 +72,18 @@ export default function Calculatrice() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Calculator className="w-6 h-6" />}
+          title="Calculatrice Trading"
+          subtitle="Calculez instantanément vos profits/pertes potentiels, la taille de vos positions et vos niveaux de liquidation. Un outil indispensable avant chaque trade."
+          accentColor="cyan"
+          steps={[
+            { n: "1", title: "Entrez les paramètres", desc: "Renseignez le prix d'entrée, le prix cible, le stop loss et le montant investi pour calculer votre P&L potentiel." },
+            { n: "2", title: "Vérifiez le ratio R/R", desc: "Un bon trade a un ratio risque/récompense d'au moins 1:2. Si votre ratio est inférieur, reconsidérez votre setup." },
+            { n: "3", title: "Calculez le levier", desc: "Pour le trading avec levier, entrez le multiplicateur pour voir l'impact sur vos gains et pertes potentiels et votre prix de liquidation." },
+          ]}
+        />
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
           <img src={CALC_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/75 to-transparent" />

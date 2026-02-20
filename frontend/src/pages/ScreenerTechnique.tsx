@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 import {
   Search, SlidersHorizontal, TrendingUp, TrendingDown, Zap,
   RefreshCw, ChevronUp, ChevronDown, Target, Activity,
@@ -206,7 +207,18 @@ export default function ScreenerTechnique() {
   return (
     <div className="min-h-screen bg-[#070B14] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Target className="w-6 h-6" />}
+          title="Screener Technique"
+          subtitle="Filtrez et triez des centaines de cryptos selon des critères techniques précis : RSI, MACD, Bollinger Bands, volume et tendance. Trouvez les setups les plus prometteurs."
+          accentColor="cyan"
+          steps={[
+            { n: "1", title: "Appliquez vos filtres", desc: "Sélectionnez les indicateurs techniques qui vous intéressent (RSI survendu < 30, MACD haussier, etc.) pour filtrer les cryptos." },
+            { n: "2", title: "Triez les résultats", desc: "Cliquez sur les en-têtes de colonnes pour trier par score technique, variation, volume ou market cap." },
+            { n: "3", title: "Analysez les setups", desc: "Chaque crypto affiche un score technique global. Cliquez sur une ligne pour voir l'analyse détaillée des indicateurs." },
+          ]}
+        />
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Crown, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 const DOM_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/6e7996e5-3fd7-4958-9f83-5d5f09ef989f.png";
@@ -90,6 +91,17 @@ export default function Dominance() {
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
       <main className="ml-[260px] p-6 min-h-screen">
+        <PageHeader
+          icon={<Crown className="w-6 h-6" />}
+          title="Dominance du Marché"
+          subtitle="Analysez la répartition de la capitalisation boursière entre Bitcoin, Ethereum et les altcoins. La dominance BTC est un indicateur clé du cycle de marché."
+          accentColor="amber"
+          steps={[
+            { n: "1", title: "Lisez la barre visuelle", desc: "La barre colorée en haut montre la répartition des Top 15 cryptos. Survolez chaque segment pour voir le pourcentage exact." },
+            { n: "2", title: "Suivez la dominance BTC", desc: "BTC dom > 55% = marché dominé par Bitcoin (phase accumulation). BTC dom < 45% = altseason potentielle." },
+            { n: "3", title: "Comparez les actifs", desc: "Le tableau détaillé vous permet de comparer market cap, volume et dominance de chaque crypto du Top 50." },
+          ]}
+        />
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
           <img src={DOM_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />

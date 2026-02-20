@@ -51,7 +51,18 @@ export default function TradingAcademy() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">🎓</span>}
+          title="Trading Academy"
+          subtitle="Formez-vous au trading crypto avec notre académie structurée. Des bases de l’analyse technique aux stratégies avancées, progressez à votre rythme."
+          accentColor="blue"
+          steps={[
+            { n: "1", title: "Choisissez votre niveau", desc: "Filtrez les modules par niveau : Débutant, Intermédiaire ou Avancé. Commencez par les bases si vous débutez." },
+            { n: "2", title: "Suivez les leçons", desc: "Chaque module contient plusieurs leçons structurées. Cochez les leçons terminées pour suivre votre progression." },
+            { n: "3", title: "Pratiquez", desc: "Après chaque module, mettez en pratique les concepts appris sur le simulateur de trading avant de risquer du capital réel." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-blue-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

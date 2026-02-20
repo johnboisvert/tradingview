@@ -93,7 +93,18 @@ export default function TimeframeAnalysis() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">⏱️</span>}
+          title="Timeframe Analysis"
+          subtitle="Analysez les cryptos sur plusieurs timeframes simultanément. La confluence de signaux sur plusieurs unités de temps renforce considérablement la fiabilité d’un setup."
+          accentColor="cyan"
+          steps={[
+            { n: "1", title: "Sélectionnez un timeframe", desc: "Choisissez le timeframe principal (1H, 4H, 1D, 1W) pour filtrer les cryptos selon leur tendance sur cette période." },
+            { n: "2", title: "Cherchez la confluence", desc: "Un signal haussier sur 1H, 4H ET 1D est bien plus fiable qu’un signal sur un seul timeframe. Recherchez cette confluence." },
+            { n: "3", title: "Adaptez votre stratégie", desc: "Utilisez les grands timeframes (1D, 1W) pour la direction, les petits (1H, 4H) pour les points d’entrée précis." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-cyan-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-indigo-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

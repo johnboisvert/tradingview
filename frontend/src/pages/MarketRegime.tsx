@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Activity, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 const MR_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/b3c0b3a0-ae42-46d0-9f3a-9f12780c9e10.png";
@@ -73,7 +74,18 @@ export default function MarketRegime() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Activity className="w-6 h-6" />}
+          title="Market Regime"
+          subtitle="Identifiez le régime de marché actuel : tendance haussière, baissière, range ou volatilité extrême. Adaptez votre stratégie au contexte de marché pour maximiser vos performances."
+          accentColor="blue"
+          steps={[
+            { n: "1", title: "Identifiez le régime", desc: "Le régime actuel (Bull, Bear, Range, Volatile) détermine quelle stratégie est la plus efficace. Adaptez votre approche en conséquence." },
+            { n: "2", title: "Analysez les indicateurs", desc: "Chaque crypto affiche son régime individuel. Cherchez les cryptos en tendance forte pour les stratégies de suivi de tendance." },
+            { n: "3", title: "Changez de stratégie", desc: "Trend Following en tendance, Mean Reversion en range, réduction d'exposition en volatilité extrême. Le régime dicte la stratégie." },
+          ]}
+        />
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
           <img src={MR_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/75 to-transparent" />

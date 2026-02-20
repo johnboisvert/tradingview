@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { RefreshCw } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 interface PhaseData {
   id: string;
@@ -394,7 +395,18 @@ export default function BullrunPhase() {
   return (
     <div className="min-h-screen bg-[#030712] text-white">
       <Sidebar />
-      <main className="ml-[260px] min-h-screen relative">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">🚀</span>}
+          title="Bullrun Phase Tracker"
+          subtitle="Identifiez la phase actuelle du cycle de marché crypto. Du fond du bear market au pic du bull run, sachez exactement où nous en sommes pour optimiser votre stratégie."
+          accentColor="amber"
+          steps={[
+            { n: "1", title: "Lisez la phase actuelle", desc: "Le tracker indique la phase du cycle : Accumulation, Early Bull, Mid Bull, Late Bull, Distribution ou Bear. Chaque phase a ses caractéristiques." },
+            { n: "2", title: "Analysez les indicateurs", desc: "Les métriques on-chain, le sentiment et les données techniques sont combinés pour déterminer la phase avec précision." },
+            { n: "3", title: "Adaptez votre exposition", desc: "Augmentez l’exposition en Early Bull, prenez des profits en Late Bull, accumulez en Bear. Le cycle se répète, profitez-en." },
+          ]}
+        />
         <div className="fixed top-0 left-[260px] right-0 bottom-0 pointer-events-none z-0 overflow-hidden">
           <div
             className="absolute w-[600px] h-[600px] rounded-full top-[-200px] left-[-100px] opacity-[0.12] blur-[80px] animate-pulse"

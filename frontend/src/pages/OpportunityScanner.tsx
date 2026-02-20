@@ -99,7 +99,18 @@ export default function OpportunityScanner() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">🎯</span>}
+          title="Opportunity Scanner"
+          subtitle="L’IA scanne en permanence le marché pour détecter les opportunités de trading : oversold, breakouts, divergences et setups à fort potentiel avant qu’ils ne deviennent évidents."
+          accentColor="green"
+          steps={[
+            { n: "1", title: "Consultez les opportunités", desc: "Chaque carte représente une opportunité détectée par l’IA avec le type de signal, le potentiel estimé et le niveau de risque." },
+            { n: "2", title: "Filtrez par type", desc: "Utilisez les filtres pour afficher uniquement les opportunités qui correspondent à votre style de trading (swing, scalp, position)." },
+            { n: "3", title: "Agissez rapidement", desc: "Les opportunités sont éphémères. Vérifiez le signal sur votre chart avant d’entrer en position et respectez votre risk management." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-emerald-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-amber-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Gem, RefreshCw, TrendingUp, TrendingDown, ArrowUpDown, Search, BookOpen, Shield, Target, AlertTriangle, Clock } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 const SPOT_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/b3c0b3a0-ae42-46d0-9f3a-9f12780c9e10.png";
@@ -56,7 +57,18 @@ export default function SpotTrading() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Shield className="w-6 h-6" />}
+          title="Spot Trading — Investissement Long Terme"
+          subtitle="Analysez et sélectionnez les meilleures cryptos pour un investissement spot à long terme. Métriques fondamentales, score de qualité et recommandations IA pour construire un portefeuille solide."
+          accentColor="green"
+          steps={[
+            { n: "1", title: "Évaluez les fondamentaux", desc: "Consultez la market cap, le volume et l'ATH de chaque crypto. Privilégiez les projets avec une liquidité élevée pour le spot." },
+            { n: "2", title: "Utilisez le score qualité", desc: "Le score IA évalue la qualité globale du projet : technologie, adoption, équipe et tokenomics. Visez les scores > 70." },
+            { n: "3", title: "Construisez votre DCA", desc: "Pour l'investissement long terme, utilisez la stratégie DCA (Dollar Cost Averaging) : achetez régulièrement quelle que soit la volatilité." },
+          ]}
+        />
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
           <img src={SPOT_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />

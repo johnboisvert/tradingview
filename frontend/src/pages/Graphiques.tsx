@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
 import { RefreshCw, TrendingUp, TrendingDown, Search, Maximize2, Minimize2 } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 
 const TV_SYMBOLS: Record<string, string> = {
@@ -127,6 +128,17 @@ export default function Graphiques() {
         className="ml-[260px] flex flex-col"
         style={{ height: "100vh", padding: "12px" }}
       >
+        <PageHeader
+          icon={<span className="text-lg">📈</span>}
+          title="Graphiques"
+          subtitle="Analysez les graphiques de prix en temps réel avec TradingView intégré. Accédez à tous les outils d’analyse technique directement depuis la plateforme."
+          accentColor="blue"
+          steps={[
+            { n: "1", title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto dans la liste pour afficher son graphique en temps réel avec les données de marché." },
+            { n: "2", title: "Utilisez les outils", desc: "Dessinez des lignes de tendance, ajoutez des indicateurs (MA, RSI, MACD) et utilisez les outils de mesure directement sur le chart." },
+            { n: "3", title: "Changez de timeframe", desc: "Analysez sur différentes unités de temps (1m, 5m, 1H, 4H, 1D) pour avoir une vision complète de la structure de prix." },
+          ]}
+        />
         {/* Compact Header - 40px */}
         <div className="flex items-center justify-between mb-2 flex-shrink-0" style={{ height: "36px" }}>
           <div className="flex items-center gap-3">

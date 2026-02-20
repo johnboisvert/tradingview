@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Gem, RefreshCw, TrendingUp, TrendingDown, Droplets, Search, ArrowUpDown } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 const GEM_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/4b6e1138-5e13-42c7-9e5d-95ba3808c41a.png";
@@ -130,7 +131,18 @@ export default function GemHunter() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Gem className="w-6 h-6" />}
+          title="Crypto Pépites — Gem Hunter"
+          subtitle="Découvrez les cryptos à fort potentiel avant qu’elles n’explosent. Notre algorithme IA analyse des centaines de tokens pour identifier les gemmes sous-évaluées du marché."
+          accentColor="amber"
+          steps={[
+            { n: "1", title: "Parcourez les pépites", desc: "Chaque token affiché a été sélectionné par l'IA pour son potentiel. Consultez le score de gemme et les métriques clés." },
+            { n: "2", title: "Filtrez et triez", desc: "Triez par score de gemme, variation 24h ou volume pour trouver les opportunités les plus prometteuses du moment." },
+            { n: "3", title: "Faites votre DYOR", desc: "Cliquez sur un token pour voir l'analyse complète. Vérifiez toujours la liquidité et le projet avant d'investir." },
+          ]}
+        />
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
           <img src={GEM_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Shield, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Search } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { fetchTop200, formatPrice, formatMarketCap, type CoinMarketData } from "@/lib/cryptoApi";
 
 interface RiskCoin extends CoinMarketData {
@@ -53,7 +54,18 @@ export default function RiskManagement() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Shield className="w-6 h-6" />}
+          title="Gestion des Risques"
+          subtitle="Maîtrisez votre exposition au risque. Calculez vos stop loss optimaux, gérez votre capital et protégez votre portefeuille contre les mouvements adverses du marché."
+          accentColor="red"
+          steps={[
+            { n: "1", title: "Définissez votre risque", desc: "Entrez votre capital total et le pourcentage maximum que vous acceptez de risquer par trade (règle d'or : max 1-2%)." },
+            { n: "2", title: "Calculez vos stops", desc: "L'outil calcule automatiquement le stop loss optimal basé sur la volatilité de l'actif et votre tolérance au risque." },
+            { n: "3", title: "Surveillez l'exposition", desc: "Vérifiez régulièrement votre exposition totale. Ne jamais avoir plus de 10-15% de votre capital en risque simultanément." },
+          ]}
+        />
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[120px] bg-gradient-to-r from-emerald-900/40 to-teal-900/40">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/90 via-[#0A0E1A]/60 to-transparent" />
           <div className="relative z-10 h-full flex items-center justify-between px-8">

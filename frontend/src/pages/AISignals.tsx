@@ -100,7 +100,18 @@ export default function AISignals() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">📶</span>}
+          title="AI Signals"
+          subtitle="Signaux de trading générés par intelligence artificielle en temps réel. BUY, SELL et HOLD basés sur l’analyse technique, le sentiment et les données on-chain combinés."
+          accentColor="blue"
+          steps={[
+            { n: "1", title: "Consultez les signaux", desc: "Chaque signal indique la direction (BUY/SELL/HOLD), la force du signal et le niveau de confiance de l’IA. Filtrez par type." },
+            { n: "2", title: "Vérifiez la confiance", desc: "Confiance > 80% = signal fort. Entre 60-80% = signal modéré. En dessous de 60% = signal faible, attendez confirmation." },
+            { n: "3", title: "Gérez votre risque", desc: "Même les meilleurs signaux IA ne sont pas infaillibles. Utilisez toujours un stop loss et ne risquez pas plus de 1-2% par trade." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-blue-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

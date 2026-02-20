@@ -58,7 +58,18 @@ export default function OnChainMetrics() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">⛓️</span>}
+          title="On-Chain Metrics"
+          subtitle="Analysez les données directement issues de la blockchain : transactions, adresses actives, flux d’échanges et indicateurs de détention pour anticiper les mouvements de marché."
+          accentColor="cyan"
+          steps={[
+            { n: "1", title: "Lisez les indicateurs clés", desc: "Chaque métrique on-chain révèle le comportement réel des investisseurs : accumulation, distribution, pression de vente." },
+            { n: "2", title: "Identifiez les signaux", desc: "Hausse des adresses actives = adoption croissante. Sorties des exchanges = accumulation. Entrées exchanges = pression vendeuse." },
+            { n: "3", title: "Croisez les données", desc: "Combinez plusieurs métriques on-chain pour obtenir une image complète de la santé du réseau et du sentiment des holders." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-cyan-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-emerald-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

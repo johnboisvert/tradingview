@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { TrendingUp, TrendingDown, RefreshCw, Plus, Trash2, Filter, BarChart3 } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 const TRADES_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/6e7996e5-3fd7-4958-9f83-5d5f09ef989f.png";
@@ -137,7 +138,18 @@ export default function Trades() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<BarChart3 className="w-6 h-6" />}
+          title="Mes Trades"
+          subtitle="Suivez et analysez tous vos trades en temps réel. Visualisez vos positions ouvertes, l’historique de vos trades fermés et vos statistiques de performance globales."
+          accentColor="blue"
+          steps={[
+            { n: "1", title: "Suivez vos trades", desc: "Visualisez tous vos trades ouverts et fermés avec les prix d'entrée, stop loss et take profit en temps réel." },
+            { n: "2", title: "Analysez la performance", desc: "Win rate, P&L total, confiance IA moyenne — tous les KPIs pour évaluer votre stratégie de trading." },
+            { n: "3", title: "Filtrez et recherchez", desc: "Utilisez les filtres par statut (ouvert/fermé), type (LONG/SHORT) et recherche par symbole." },
+          ]}
+        />
         {/* Header */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
           <img src={TRADES_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />

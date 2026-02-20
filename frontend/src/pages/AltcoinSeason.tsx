@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { RefreshCw, TrendingUp, TrendingDown, ExternalLink, Info } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { fetchAltcoinSeasonData, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 
 interface StatsData {
@@ -127,7 +128,18 @@ export default function AltcoinSeason() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-[#030712] text-white">
+    <div className="min-h-screen">
+      <PageHeader
+          icon={<TrendingUp className="w-6 h-6" />}
+          title="Altcoin Season Index"
+          subtitle="Détectez les phases d’Altseason : quand les altcoins surperforment Bitcoin, des opportunités explosives émergent. Suivez le score en temps réel pour adapter votre stratégie."
+          accentColor="green"
+          steps={[
+            { n: "1", title: "Lisez le score global", desc: "Score > 75 = Altseason (les altcoins dominent). Score < 25 = Bitcoin Season. Entre les deux = marché mixte." },
+            { n: "2", title: "Analysez les performances", desc: "Le tableau montre quelles cryptos surperforment BTC sur 90 jours. Plus il y en a, plus l'altseason est forte." },
+            { n: "3", title: "Agissez au bon moment", desc: "Entrez en altcoins quand le score monte vers 75+. Réduisez l'exposition quand il redescend sous 50." },
+          ]}
+        />
       <Sidebar />
       <main className="ml-[260px] min-h-screen relative">
         <div className="relative z-10 max-w-[1440px] mx-auto p-7 pb-20">

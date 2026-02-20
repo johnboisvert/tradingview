@@ -115,7 +115,18 @@ export default function AISentiment() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">🌡️</span>}
+          title="AI Sentiment Analysis"
+          subtitle="Analyse du sentiment de marché par IA : agrégation des réseaux sociaux, news, données on-chain et comportement des traders pour mesurer l’humeur globale du marché."
+          accentColor="orange"
+          steps={[
+            { n: "1", title: "Lisez le sentiment global", desc: "Le score global indique si le marché est dans une phase d’optimisme (bull) ou de pessimisme (bear). Utile pour le market timing." },
+            { n: "2", title: "Analysez par crypto", desc: "Chaque crypto a son propre score de sentiment. Un sentiment très positif peut indiquer un sommet local (FOMO), très négatif un creux (FUD)." },
+            { n: "3", title: "Tradez à contre-courant", desc: "Le sentiment extrême est souvent un signal contrarian : sentiment extrêmement positif = potentiel de correction, négatif = opportunité d’achat." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-orange-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-emerald-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

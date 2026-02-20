@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Calculator, Shield, Target, AlertTriangle, DollarSign, TrendingUp } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 interface SizerResult {
   riskAmount: number;
@@ -75,7 +76,18 @@ export default function PositionSizer() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Calculator className="w-6 h-6" />}
+          title="AI Position Sizer"
+          subtitle="Calculez la taille optimale de vos positions selon votre capital, votre tolérance au risque et votre stop loss. Ne risquez jamais plus que ce que vous pouvez vous permettre de perdre."
+          accentColor="blue"
+          steps={[
+            { n: "1", title: "Entrez votre capital", desc: "Indiquez votre capital total disponible pour le trading. L'IA calculera la taille de position basée sur un pourcentage de ce capital." },
+            { n: "2", title: "Définissez votre risque", desc: "Entrez votre pourcentage de risque par trade (recommandé : 1-2%) et votre stop loss en pourcentage ou en prix." },
+            { n: "3", title: "Obtenez la taille optimale", desc: "L'IA calcule le nombre de tokens à acheter, le montant en dollars et le ratio risque/récompense pour votre setup." },
+          ]}
+        />
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">

@@ -91,7 +91,18 @@ export default function AIPatterns() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">🔮</span>}
+          title="AI Patterns"
+          subtitle="Détection automatique des patterns chartistes par intelligence artificielle : Head & Shoulders, Double Top/Bottom, Triangles, Wedges et bien plus encore."
+          accentColor="indigo"
+          steps={[
+            { n: "1", title: "Parcourez les patterns", desc: "L’IA scanne les graphiques de toutes les cryptos pour détecter les formations chartistes en cours de formation ou complétées." },
+            { n: "2", title: "Filtrez par direction", desc: "Sélectionnez BULLISH pour les patterns haussiers, BEARISH pour les baissiers, ou ALL pour voir toutes les formations détectées." },
+            { n: "3", title: "Validez le pattern", desc: "Vérifiez toujours le pattern sur votre propre chart. L’IA donne une probabilité de réussite basée sur l’historique de ce pattern." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-indigo-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-pink-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

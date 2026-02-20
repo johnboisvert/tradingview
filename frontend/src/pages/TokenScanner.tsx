@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Search, AlertTriangle, TrendingUp, Shield, Droplets, BarChart3, ExternalLink } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 interface TokenResult {
   name: string;
@@ -92,7 +93,18 @@ export default function TokenScanner() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Search className="w-6 h-6" />}
+          title="AI Token Scanner"
+          subtitle="Analysez n’importe quel token en profondeur : score de liquidité, niveau de risque, momentum et signaux IA. Évitez les pièges et trouvez les opportunités cachées."
+          accentColor="blue"
+          steps={[
+            { n: "1", title: "Recherchez un token", desc: "Tapez le nom ou symbole d'un token dans la barre de recherche. L'IA analyse instantanément ses métriques clés." },
+            { n: "2", title: "Évaluez les scores", desc: "Score de liquidité > 70 = bonne liquidité. Score de risque < 30 = risque faible. Momentum = direction de la tendance." },
+            { n: "3", title: "Prenez une décision", desc: "Croisez le score IA avec votre analyse personnelle. Ne basez jamais une décision sur un seul indicateur." },
+          ]}
+        />
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">

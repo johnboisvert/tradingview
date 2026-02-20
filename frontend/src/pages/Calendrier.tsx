@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Calendar, ChevronLeft, ChevronRight, Globe, Landmark, TrendingUp, AlertTriangle } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 interface CalendarEvent {
   id: string;
@@ -160,7 +161,18 @@ export default function Calendrier() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Calendar className="w-6 h-6" />}
+          title="Calendrier Crypto"
+          subtitle="Ne manquez aucun événement important du marché crypto : halvings, listings, mises à jour de protocoles, expirations d’options et événements macroéconomiques."
+          accentColor="cyan"
+          steps={[
+            { n: "1", title: "Naviguez dans le calendrier", desc: "Utilisez les flèches pour naviguer entre les mois. Les jours avec des événements sont mis en évidence." },
+            { n: "2", title: "Consultez les événements", desc: "Cliquez sur un jour pour voir tous les événements prévus : leur type, importance et impact potentiel sur le marché." },
+            { n: "3", title: "Anticipez les mouvements", desc: "Les grands événements (halvings, expirations d'options, décisions Fed) créent souvent de la volatilité. Préparez-vous à l'avance." },
+          ]}
+        />
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-1">

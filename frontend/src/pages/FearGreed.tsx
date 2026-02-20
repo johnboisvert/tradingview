@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { RefreshCw, TrendingUp, TrendingDown, Activity } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 const FG_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/6e7996e5-3fd7-4958-9f83-5d5f09ef989f.png";
@@ -164,6 +165,17 @@ export default function FearGreed() {
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
       <main className="ml-[260px] p-6 min-h-screen">
+        <PageHeader
+          icon={<Activity className="w-6 h-6" />}
+          title="Fear & Greed Index"
+          subtitle="Mesurez le sentiment global du marché crypto en temps réel. Un indice bas (peur) peut signaler une opportunité d’achat, un indice élevé (avidité) peut indiquer un marché surchauffé."
+          accentColor="amber"
+          steps={[
+            { n: "1", title: "Lisez l'indice principal", desc: "La jauge centrale affiche le sentiment actuel de 0 (peur extrême) à 100 (avidité extrême). Vert = optimisme, Rouge = pessimisme." },
+            { n: "2", title: "Analysez l'historique", desc: "Consultez l'évolution sur 30 jours pour identifier les tendances de sentiment et anticiper les retournements de marché." },
+            { n: "3", title: "Croisez avec les facteurs", desc: "Les 6 facteurs (volatilité, volume, momentum…) vous donnent le détail du calcul pour affiner votre analyse." },
+          ]}
+        />
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
           <img src={FG_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />

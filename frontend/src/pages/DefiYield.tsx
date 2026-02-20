@@ -66,7 +66,18 @@ export default function DefiYield() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">🌾</span>}
+          title="DeFi Yield Farming"
+          subtitle="Trouvez les meilleures opportunités de rendement dans la DeFi. Comparez les APY, évaluez les risques et optimisez votre stratégie de yield farming."
+          accentColor="green"
+          steps={[
+            { n: "1", title: "Comparez les APY", desc: "Triez les pools par APY pour trouver les meilleurs rendements. Attention : un APY très élevé implique souvent un risque plus élevé." },
+            { n: "2", title: "Évaluez le risque", desc: "Vérifiez la TVL (Total Value Locked) : plus elle est élevée, plus le protocole est établi et généralement plus sûr." },
+            { n: "3", title: "Diversifiez", desc: "Ne concentrez pas tout votre capital dans un seul pool. Répartissez sur plusieurs protocoles et blockchains pour limiter les risques." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[500px] h-[500px] rounded-full bg-emerald-500/5 blur-[80px] top-[-150px] right-[-100px]" />
           <div className="absolute w-[400px] h-[400px] rounded-full bg-indigo-500/5 blur-[80px] bottom-[-150px] left-[-50px]" />

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 const TA_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/b3c0b3a0-ae42-46d0-9f3a-9f12780c9e10.png";
@@ -224,7 +225,18 @@ export default function TechnicalAnalysis() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<BarChart3 className="w-6 h-6" />}
+          title="Analyse Technique"
+          subtitle="Analyse technique complète pour chaque crypto : tendance, RSI, MACD, Bollinger Bands, moyennes mobiles et score global. Tout ce dont vous avez besoin pour trader."
+          accentColor="blue"
+          steps={[
+            { n: "1", title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto pour afficher son analyse technique complète avec tous les indicateurs calculés en temps réel." },
+            { n: "2", title: "Lisez le score global", desc: "Le score technique agrège tous les indicateurs en un seul chiffre. > 70 = tendance haussière forte. < 30 = tendance baissière forte." },
+            { n: "3", title: "Analysez les indicateurs", desc: "RSI > 70 = surachat, < 30 = survente. MACD croisement haussier = signal d'achat. Bollinger squeeze = breakout imminent." },
+          ]}
+        />
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
           <img src={TA_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />

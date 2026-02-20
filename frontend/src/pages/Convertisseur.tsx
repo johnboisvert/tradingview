@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { ArrowLeftRight, RefreshCw, DollarSign } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 interface CoinPrice {
   id: string;
@@ -195,7 +196,18 @@ export default function Convertisseur() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<ArrowLeftRight className="w-6 h-6" />}
+          title="Convertisseur Crypto"
+          subtitle="Convertissez instantanément n’importe quelle crypto en fiat ou entre cryptos. Prix en temps réel avec support de toutes les principales devises mondiales."
+          accentColor="cyan"
+          steps={[
+            { n: "1", title: "Sélectionnez les devises", desc: "Choisissez la crypto source et la devise cible (USD, EUR, BTC, ETH...). Les taux sont mis à jour en temps réel." },
+            { n: "2", title: "Entrez le montant", desc: "Tapez le montant à convertir. La conversion s'effectue instantanément dans les deux sens." },
+            { n: "3", title: "Utilisez pour vos calculs", desc: "Idéal pour calculer la valeur de vos positions, comparer des prix sur différentes plateformes ou planifier vos achats." },
+          ]}
+        />
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px] bg-gradient-to-r from-cyan-900/40 to-blue-900/40">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/90 via-[#0A0E1A]/60 to-transparent" />

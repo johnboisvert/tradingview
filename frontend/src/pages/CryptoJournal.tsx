@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 import {
   BookOpen, Plus, TrendingUp, TrendingDown, Target, Award,
   Trash2, BarChart3, Calendar, DollarSign, Brain, ChevronDown,
@@ -192,7 +193,18 @@ export default function CryptoJournal() {
   return (
     <div className="min-h-screen bg-[#070B14] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<BookOpen className="w-6 h-6" />}
+          title="Crypto Journal"
+          subtitle="Tenez un journal de trading structuré pour analyser vos performances, identifier vos biais psychologiques et améliorer continuellement votre discipline de trading."
+          accentColor="indigo"
+          steps={[
+            { n: "1", title: "Enregistrez vos trades", desc: "Après chaque trade, notez l'entrée, la sortie, la raison du trade et votre état émotionnel. La discipline du journal est clé." },
+            { n: "2", title: "Analysez vos patterns", desc: "L'IA analyse vos entrées pour identifier vos biais récurrents : FOMO, revenge trading, sortie prématurée, etc." },
+            { n: "3", title: "Améliorez-vous", desc: "Consultez vos statistiques hebdomadaires et mensuelles pour mesurer votre progression et ajuster votre approche." },
+          ]}
+        />
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>

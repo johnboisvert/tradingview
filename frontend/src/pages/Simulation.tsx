@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Gamepad2, Play, RotateCcw, TrendingUp, TrendingDown, DollarSign, BarChart3, Target, AlertTriangle } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 interface SimResult {
   finalBalance: number;
@@ -130,7 +131,18 @@ export default function Simulation() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="ml-[260px]">
+      <PageHeader
+          icon={<Gamepad2 className="w-6 h-6" />}
+          title="Simulateur de Trading"
+          subtitle="Entraînez-vous au trading sans risquer de capital réel. Simulez des trades sur des données historiques ou en temps réel pour développer vos compétences et tester vos stratégies."
+          accentColor="purple"
+          steps={[
+            { n: "1", title: "Configurez la simulation", desc: "Choisissez le capital de départ, la paire à trader et la période historique pour commencer votre simulation." },
+            { n: "2", title: "Tradez virtuellement", desc: "Ouvrez des positions LONG ou SHORT, placez vos stops et targets comme en trading réel, sans risquer d'argent réel." },
+            { n: "3", title: "Analysez vos résultats", desc: "Après la simulation, étudiez votre win rate, drawdown et P&L pour identifier vos points forts et axes d'amélioration." },
+          ]}
+        />
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-1">

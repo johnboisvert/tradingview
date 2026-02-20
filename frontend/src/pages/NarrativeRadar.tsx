@@ -45,7 +45,18 @@ export default function NarrativeRadar() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7">
+      <main className="flex-1 ml-[260px]">
+      <PageHeader
+          icon={<span className="text-lg">📡</span>}
+          title="Narrative Radar"
+          subtitle="Identifiez les narratives dominantes du marché crypto : quels secteurs (AI, DeFi, GameFi, L2...) captent l’attention et le capital des investisseurs en ce moment."
+          accentColor="pink"
+          steps={[
+            { n: "1", title: "Repérez les tendances", desc: "Les narratives avec le score le plus élevé sont celles qui dominent le marché actuellement. Elles attirent le plus de capital." },
+            { n: "2", title: "Évaluez la force", desc: "Un score en hausse indique une narrative émergente. Un score en baisse peut signaler une rotation vers d’autres secteurs." },
+            { n: "3", title: "Positionnez-vous", desc: "Investissez dans les cryptos liées aux narratives dominantes pour bénéficier de l’effet de momentum sectoriel." },
+          ]}
+        />
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />

@@ -385,11 +385,13 @@ interface StoredSuperAdmin {
 }
 
 function getEnvSuperAdminEmail(): string {
-  return (typeof import.meta !== "undefined" && import.meta.env?.VITE_ADMIN_EMAIL) || "";
+  const val = (typeof import.meta !== "undefined" && import.meta.env?.VITE_ADMIN_EMAIL) || "";
+  return val.trim();
 }
 
 function getEnvSuperAdminPassword(): string {
-  return (typeof import.meta !== "undefined" && import.meta.env?.VITE_ADMIN_PASSWORD) || "";
+  const val = (typeof import.meta !== "undefined" && import.meta.env?.VITE_ADMIN_PASSWORD) || "";
+  return val.trim();
 }
 
 function getStoredSuperAdmin(): StoredSuperAdmin | null {
@@ -538,19 +540,22 @@ export async function updateAdminPassword(email: string, newPassword: string): P
 }
 
 export async function loginAdmin(email: string, password: string): Promise<{ success: boolean; role: "super-admin" | "admin" | null; name: string }> {
+  const trimmedEmail = email.trim().toLowerCase();
+  const trimmedPassword = password.trim();
+
   // 1. Check env vars super-admin first
   const envEmail = getEnvSuperAdminEmail();
   const envPassword = getEnvSuperAdminPassword();
-  if (envEmail && envPassword && email === envEmail && password === envPassword) {
-    setAdminSession(email, "super-admin", "Super Admin");
-    addAdminLog(email, "Connexion (super-admin env)");
+  if (envEmail && envPassword && trimmedEmail === envEmail.trim().toLowerCase() && trimmedPassword === envPassword.trim()) {
+    setAdminSession(envEmail, "super-admin", "Super Admin");
+    addAdminLog(envEmail, "Connexion (super-admin env)");
     return { success: true, role: "super-admin", name: "Super Admin" };
   }
 
   // 2. Check localStorage super-admin
   const storedSuperAdmin = getStoredSuperAdmin();
-  if (storedSuperAdmin && email.toLowerCase() === storedSuperAdmin.email.toLowerCase()) {
-    const passwordHash = await hashPassword(password);
+  if (storedSuperAdmin && trimmedEmail === storedSuperAdmin.email.trim().toLowerCase()) {
+    const passwordHash = await hashPassword(trimmedPassword);
     if (passwordHash === storedSuperAdmin.passwordHash) {
       setAdminSession(storedSuperAdmin.email, "super-admin", storedSuperAdmin.name);
       addAdminLog(storedSuperAdmin.email, "Connexion (super-admin)");
@@ -560,9 +565,9 @@ export async function loginAdmin(email: string, password: string): Promise<{ suc
 
   // 3. Check secondary admins
   const admins = getAdmins();
-  const admin = admins.find((a) => a.email.toLowerCase() === email.toLowerCase());
+  const admin = admins.find((a) => a.email.trim().toLowerCase() === trimmedEmail);
   if (admin) {
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await hashPassword(trimmedPassword);
     if (passwordHash === admin.passwordHash) {
       setAdminSession(admin.email, admin.role, admin.name);
       addAdminLog(admin.email, `Connexion (${admin.role})`);

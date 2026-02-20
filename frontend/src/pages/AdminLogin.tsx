@@ -37,6 +37,7 @@ export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
 
   // Setup state
   const [setupEmail, setSetupEmail] = useState("");
@@ -54,8 +55,10 @@ export default function AdminLogin() {
     try {
       const result = await loginAdmin(email, password);
       if (result.success) {
+        setFailedAttempts(0);
         navigate("/admin");
       } else {
+        setFailedAttempts((prev) => prev + 1);
         setError("Email ou mot de passe incorrect.");
       }
     } catch {
@@ -372,6 +375,26 @@ export default function AdminLogin() {
               ← Retour au site
             </button>
           </div>
+
+          {failedAttempts >= 2 && (
+            <div className="pt-2 border-t border-white/[0.06]">
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm("Cela va supprimer la configuration admin locale et vous permettre de recréer un compte super-admin. Continuer ?")) {
+                    localStorage.removeItem("cryptoia_super_admin");
+                    localStorage.removeItem("cryptoia_admins");
+                    localStorage.removeItem("cryptoia_admin_log");
+                    sessionStorage.clear();
+                    window.location.reload();
+                  }
+                }}
+                className="w-full text-center text-[11px] text-red-400/60 hover:text-red-400 transition-colors py-1"
+              >
+                Problème de connexion ? Réinitialiser la configuration admin
+              </button>
+            </div>
+          )}
         </form>
 
         <p className="text-center text-[10px] text-gray-600 mt-6">

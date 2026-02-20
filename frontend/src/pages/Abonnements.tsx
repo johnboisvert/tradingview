@@ -18,14 +18,20 @@ const FAQ = [
   { q: "Comment fonctionne le paiement Interac ?", a: "Envoyez le montant exact à cryptoia2026@proton.me avec votre nom d'utilisateur en message. Votre plan sera activé sous 24h ouvrables." },
   { q: "Comment payer en crypto ?", a: "Cliquez sur 'Crypto (NOWPayments)', vous serez redirigé vers une page de paiement sécurisée supportant 300+ cryptos (BTC, ETH, USDT, SOL, BNB, etc.). Activation automatique après confirmation blockchain." },
   { q: "Combien de temps pour l'activation crypto ?", a: "L'activation est automatique après confirmation blockchain, généralement entre 1 et 30 minutes selon la crypto choisie." },
+  { q: "Comment fonctionne l'abonnement annuel ?", a: "L'abonnement annuel vous offre une réduction de 20% par rapport au prix mensuel. Vous payez une fois par an et économisez significativement sur le long terme." },
 ];
 
 type PaymentMethod = "stripe" | "interac" | "crypto";
+type BillingPeriod = "monthly" | "annual";
 
 interface Plan {
   name: string;
   key: string;
   price: string;
+  monthlyPrice: number;
+  annualMonthlyPrice: number;
+  annualTotalPrice: number;
+  annualSavings: number;
   period: string;
   icon: React.ElementType;
   color: string;
@@ -106,19 +112,75 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+// ─── Billing Toggle ───────────────────────────────────────────────────────────
+function BillingToggle({
+  billing,
+  onChange,
+}: {
+  billing: BillingPeriod;
+  onChange: (b: BillingPeriod) => void;
+}) {
+  return (
+    <div className="flex items-center justify-center gap-3 mt-6 mb-2">
+      <div className="relative flex items-center bg-white/[0.04] border border-white/[0.08] rounded-2xl p-1.5 backdrop-blur-sm">
+        {/* Sliding background */}
+        <div
+          className={`absolute top-1.5 bottom-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-300 ease-in-out ${
+            billing === "monthly"
+              ? "left-1.5 w-[calc(50%-6px)]"
+              : "left-[calc(50%+2px)] w-[calc(50%-6px)]"
+          }`}
+        />
+
+        <button
+          onClick={() => onChange("monthly")}
+          className={`relative z-10 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-300 ${
+            billing === "monthly" ? "text-white" : "text-gray-400 hover:text-gray-300"
+          }`}
+        >
+          Mensuel
+        </button>
+
+        <button
+          onClick={() => onChange("annual")}
+          className={`relative z-10 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-300 flex items-center gap-2 ${
+            billing === "annual" ? "text-white" : "text-gray-400 hover:text-gray-300"
+          }`}
+        >
+          Annuel
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all duration-300 ${
+              billing === "annual"
+                ? "bg-emerald-400/20 text-emerald-300 border border-emerald-400/30"
+                : "bg-emerald-500/10 text-emerald-400/70 border border-emerald-500/20"
+            }`}
+          >
+            -20%
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Payment Modal ────────────────────────────────────────────────────────────
 function PaymentModal({
   plan,
+  billing,
   onClose,
 }: {
   plan: Plan;
+  billing: BillingPeriod;
   onClose: () => void;
 }) {
   const [method, setMethod] = useState<PaymentMethod>("stripe");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const priceNum = parseFloat(plan.price);
+  const isAnnual = billing === "annual";
+  const displayPrice = isAnnual ? plan.annualMonthlyPrice : plan.monthlyPrice;
+  const totalPrice = isAnnual ? plan.annualTotalPrice : plan.monthlyPrice;
+  const periodLabel = isAnnual ? "/mois (facturé annuellement)" : "/mois";
 
   const handleStripe = async () => {
     setLoading(true);
@@ -127,7 +189,11 @@ function PaymentModal({
       const res = await fetch("/api/v1/payment/create_payment_session", {
         method: "POST",
         headers: { "Content-Type": "application/json", "App-Host": window.location.origin },
-        body: JSON.stringify({ plan: plan.key, amount_cad: priceNum }),
+        body: JSON.stringify({
+          plan: plan.key,
+          amount_cad: totalPrice,
+          billing_period: billing,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Erreur Stripe");
@@ -146,7 +212,11 @@ function PaymentModal({
       const res = await fetch("/api/v1/nowpayments/create_payment", {
         method: "POST",
         headers: { "Content-Type": "application/json", "App-Host": window.location.origin },
-        body: JSON.stringify({ plan: plan.key, amount_cad: priceNum }),
+        body: JSON.stringify({
+          plan: plan.key,
+          amount_cad: totalPrice,
+          billing_period: billing,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Erreur NOWPayments");
@@ -172,10 +242,23 @@ function PaymentModal({
         <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
           <div>
             <h2 className="text-lg font-bold">S'abonner — Plan {plan.name}</h2>
-            <p className="text-sm text-gray-400 mt-0.5">
-              <span className="text-white font-bold text-xl">${plan.price} CAD</span>
-              <span className="text-gray-500 text-xs"> /mois</span>
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-white font-bold text-xl">${displayPrice.toFixed(2)} CAD</span>
+              <span className="text-gray-500 text-xs">{periodLabel}</span>
+            </div>
+            {isAnnual && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs text-gray-500 line-through">${plan.monthlyPrice.toFixed(2)}/mois</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-[10px] font-bold text-emerald-400">
+                  Économisez {plan.annualSavings.toFixed(2)}$/an
+                </span>
+              </div>
+            )}
+            {isAnnual && (
+              <p className="text-xs text-gray-500 mt-1">
+                Total facturé : <span className="text-white font-semibold">${plan.annualTotalPrice.toFixed(2)} CAD/an</span>
+              </p>
+            )}
           </div>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors">
             <X className="w-5 h-5 text-gray-400" />
@@ -215,7 +298,9 @@ function PaymentModal({
                 <p className="font-semibold text-indigo-300 mb-1">💳 Paiement sécurisé par Stripe</p>
                 <p className="text-xs text-gray-400">
                   Vous serez redirigé vers la page de paiement Stripe. Visa, Mastercard et Amex acceptés.
-                  Renouvellement automatique mensuel — annulable à tout moment.
+                  {isAnnual
+                    ? " Facturation annuelle unique — annulable à tout moment."
+                    : " Renouvellement automatique mensuel — annulable à tout moment."}
                 </p>
               </div>
               {error && (
@@ -231,7 +316,7 @@ function PaymentModal({
                 {loading ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Redirection…</>
                 ) : (
-                  <>Payer ${plan.price} CAD <ExternalLink className="w-4 h-4" /></>
+                  <>Payer ${isAnnual ? plan.annualTotalPrice.toFixed(2) : displayPrice.toFixed(2)} CAD {isAnnual ? "(annuel)" : ""} <ExternalLink className="w-4 h-4" /></>
                 )}
               </button>
               <p className="text-center text-xs text-gray-500">
@@ -254,7 +339,10 @@ function PaymentModal({
                     <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 font-bold text-xs">2</span>
                     <span>
                       Envoyez exactement{" "}
-                      <strong className="text-white">${plan.price} CAD</strong> à :
+                      <strong className="text-white">
+                        ${isAnnual ? plan.annualTotalPrice.toFixed(2) : displayPrice.toFixed(2)} CAD
+                      </strong>
+                      {isAnnual ? " (abonnement annuel)" : ""} à :
                     </span>
                   </li>
                 </ol>
@@ -267,7 +355,7 @@ function PaymentModal({
                     <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 font-bold text-xs">3</span>
                     <span>
                       Dans le champ <strong>message/note</strong>, indiquez :{" "}
-                      <span className="text-white font-mono">Plan {plan.name} + votre email</span>
+                      <span className="text-white font-mono">Plan {plan.name} {isAnnual ? "(Annuel)" : "(Mensuel)"} + votre email</span>
                     </span>
                   </li>
                   <li className="flex gap-2">
@@ -301,7 +389,7 @@ function PaymentModal({
                 </ol>
               </div>
               <div className="bg-amber-500/[0.06] border border-amber-500/20 rounded-xl p-3 text-xs text-amber-300">
-                ⚠️ Envoyez le montant <strong>exact</strong> (${plan.price} CAD) pour éviter tout délai de traitement.
+                ⚠️ Envoyez le montant <strong>exact</strong> (${isAnnual ? plan.annualTotalPrice.toFixed(2) : displayPrice.toFixed(2)} CAD) pour éviter tout délai de traitement.
               </div>
               <a
                 href="mailto:cryptoia2026@proton.me"
@@ -327,7 +415,8 @@ function PaymentModal({
                 <p className="text-xs text-gray-400 leading-relaxed">
                   Vous serez redirigé vers la page de paiement sécurisée NOWPayments.
                   Choisissez votre crypto parmi <strong className="text-white">300+ options</strong>.
-                  Activation automatique après confirmation blockchain.
+                  {isAnnual && <> Montant total : <strong className="text-white">${plan.annualTotalPrice.toFixed(2)} CAD</strong> (abonnement annuel).</>}
+                  {" "}Activation automatique après confirmation blockchain.
                 </p>
                 <div className="space-y-1.5 text-xs text-gray-400">
                   <div className="flex items-center gap-2">
@@ -359,7 +448,7 @@ function PaymentModal({
                 {loading ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Création du paiement…</>
                 ) : (
-                  <><Bitcoin className="w-4 h-4" /> Payer ${plan.price} CAD en Crypto <ExternalLink className="w-4 h-4" /></>
+                  <><Bitcoin className="w-4 h-4" /> Payer ${isAnnual ? plan.annualTotalPrice.toFixed(2) : displayPrice.toFixed(2)} CAD en Crypto <ExternalLink className="w-4 h-4" /></>
                 )}
               </button>
               <p className="text-center text-xs text-gray-500">
@@ -377,11 +466,14 @@ function PaymentModal({
 export default function Abonnements() {
   const [prices, setPrices] = useState<PlanPrices | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const currentPlan = getUserPlan();
 
   useEffect(() => {
     getPlanPrices().then(setPrices);
   }, []);
+
+  const isAnnual = billing === "annual";
 
   // ── Génération dynamique des features depuis store.ts ──────────────────────
   const freeFeatures = getPlanAccess("free")
@@ -408,11 +500,20 @@ export default function Abonnements() {
     ...getPlanFeatures("elite", "pro"),
   ];
 
+  // Helper to compute annual pricing
+  const computePricing = (monthlyPrice: number) => {
+    const annualMonthlyPrice = parseFloat((monthlyPrice * 0.80).toFixed(2));
+    const annualTotalPrice = parseFloat((annualMonthlyPrice * 12).toFixed(2));
+    const annualSavings = parseFloat((monthlyPrice * 12 - annualTotalPrice).toFixed(2));
+    return { monthlyPrice, annualMonthlyPrice, annualTotalPrice, annualSavings };
+  };
+
   const PLANS: Plan[] = [
     {
       name: "Gratuit",
       key: "free",
       price: "0",
+      ...computePricing(0),
       period: "pour toujours",
       icon: Star,
       color: "from-gray-500 to-gray-600",
@@ -426,6 +527,7 @@ export default function Abonnements() {
       name: "Premium",
       key: "premium",
       price: prices ? prices.premium.toFixed(2) : "...",
+      ...computePricing(prices ? prices.premium : 0),
       period: "/mois",
       icon: Zap,
       color: "from-blue-500 to-indigo-600",
@@ -439,6 +541,7 @@ export default function Abonnements() {
       name: "Advanced",
       key: "advanced",
       price: prices ? prices.advanced.toFixed(2) : "...",
+      ...computePricing(prices ? prices.advanced : 0),
       period: "/mois",
       icon: Rocket,
       color: "from-purple-500 to-purple-600",
@@ -452,6 +555,7 @@ export default function Abonnements() {
       name: "Pro",
       key: "pro",
       price: prices ? prices.pro.toFixed(2) : "...",
+      ...computePricing(prices ? prices.pro : 0),
       period: "/mois",
       icon: Crown,
       color: "from-amber-500 to-orange-600",
@@ -465,6 +569,7 @@ export default function Abonnements() {
       name: "Elite",
       key: "elite",
       price: prices ? prices.elite.toFixed(2) : "...",
+      ...computePricing(prices ? prices.elite : 0),
       period: "/mois",
       icon: Crown,
       color: "from-emerald-500 to-emerald-600",
@@ -488,12 +593,23 @@ export default function Abonnements() {
     setSelectedPlan(plan);
   };
 
+  const getDisplayPrice = (plan: Plan) => {
+    if (plan.key === "free") return "0";
+    if (!prices) return "...";
+    return isAnnual ? plan.annualMonthlyPrice.toFixed(2) : plan.monthlyPrice.toFixed(2);
+  };
+
+  const getPeriodLabel = (plan: Plan) => {
+    if (plan.key === "free") return "pour toujours";
+    return isAnnual ? "/mois" : "/mois";
+  };
+
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
       <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
         {/* Header */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-3 mb-3">
             <CreditCard className="w-8 h-8 text-indigo-400" />
             <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -515,12 +631,25 @@ export default function Abonnements() {
               <Bitcoin className="w-3.5 h-3.5" /> Crypto via NOWPayments (300+)
             </span>
           </div>
+
+          {/* Billing Toggle */}
+          <BillingToggle billing={billing} onChange={setBilling} />
+
+          {/* Annual savings hint */}
+          {isAnnual && (
+            <p className="text-xs text-emerald-400 mt-1 animate-pulse">
+              ✨ Économisez 20% avec l'abonnement annuel !
+            </p>
+          )}
         </div>
 
         {/* Plans Grid */}
         <div className="grid lg:grid-cols-5 md:grid-cols-3 sm:grid-cols-2 gap-4 max-w-7xl mx-auto mb-12">
           {PLANS.map((plan) => {
             const Icon = plan.icon;
+            const displayPrice = getDisplayPrice(plan);
+            const periodLabel = getPeriodLabel(plan);
+
             return (
               <div
                 key={plan.name}
@@ -534,15 +663,42 @@ export default function Abonnements() {
                   </div>
                 )}
 
+                {/* Annual savings badge */}
+                {isAnnual && plan.key !== "free" && plan.annualSavings > 0 && (
+                  <div className="absolute -top-2.5 right-3 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-bold text-emerald-400 whitespace-nowrap">
+                    💰 -{plan.annualSavings.toFixed(2)}$/an
+                  </div>
+                )}
+
                 <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${plan.color} flex items-center justify-center mb-3`}>
                   <Icon className="w-5 h-5 text-white" />
                 </div>
 
                 <h3 className="text-lg font-bold mb-1">{plan.name}</h3>
-                <div className="flex items-baseline gap-1 mb-3">
-                  <span className="text-3xl font-black">${plan.price}</span>
-                  <span className="text-xs text-gray-500">{plan.period}</span>
+
+                {/* Price with animation */}
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span
+                    className="text-3xl font-black transition-all duration-500 ease-in-out"
+                    key={`${plan.key}-${billing}`}
+                  >
+                    ${displayPrice}
+                  </span>
+                  <span className="text-xs text-gray-500">{periodLabel}</span>
                 </div>
+
+                {/* Annual billing detail */}
+                {isAnnual && plan.key !== "free" && plan.monthlyPrice > 0 && (
+                  <div className="mb-3 space-y-0.5">
+                    <p className="text-[10px] text-gray-500 line-through">
+                      ${plan.monthlyPrice.toFixed(2)}/mois
+                    </p>
+                    <p className="text-[10px] text-emerald-400/80">
+                      Facturé {plan.annualTotalPrice.toFixed(2)}$/an
+                    </p>
+                  </div>
+                )}
+                {!isAnnual && <div className="mb-3" />}
 
                 <ul className="space-y-2 mb-5">
                   {plan.features.map((f, i) => (
@@ -616,7 +772,7 @@ export default function Abonnements() {
 
       {/* Payment Modal */}
       {selectedPlan && (
-        <PaymentModal plan={selectedPlan} onClose={() => setSelectedPlan(null)} />
+        <PaymentModal plan={selectedPlan} billing={billing} onClose={() => setSelectedPlan(null)} />
       )}
     <Footer />
     </div>

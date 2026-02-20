@@ -1,7 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import {
   FileText,
   RefreshCw,
@@ -20,6 +22,7 @@ import {
   Activity,
   Shield,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -527,7 +530,9 @@ function PortfolioSection({ perf }: { perf: PortfolioPerf }) {
 export default function RapportHebdomadaireIA() {
   const [selectedWeek, setSelectedWeek] = useState(0);
   const [generating, setGenerating] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [report, setReport] = useState<WeekReport>(ALL_REPORTS[0]);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const handleGenerate = useCallback(() => {
     setGenerating(true);
@@ -536,6 +541,39 @@ export default function RapportHebdomadaireIA() {
       setGenerating(false);
     }, 1800);
   }, [selectedWeek]);
+
+  const handleDownloadPDF = useCallback(async () => {
+    if (!reportRef.current || generating) return;
+    setDownloading(true);
+    try {
+      const canvas = await html2canvas(reportRef.current, {
+        backgroundColor: "#030712",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pdf = new jsPDF("p", "mm", "a4");
+      let heightLeft = imgHeight;
+      let position = 0;
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= 297; // A4 height
+      while (heightLeft > 0) {
+        position -= 297;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= 297;
+      }
+      const dateStr = new Date().toISOString().slice(0, 10);
+      pdf.save(`CryptoIA_Rapport_Hebdo_${dateStr}.pdf`);
+    } catch {
+      // PDF generation failed silently
+    } finally {
+      setDownloading(false);
+    }
+  }, [generating]);
 
   const handleSelectWeek = (idx: number) => {
     setSelectedWeek(idx);
@@ -668,17 +706,38 @@ export default function RapportHebdomadaireIA() {
                     <p className="text-xs text-gray-400">{report.dateRange}</p>
                   </div>
                 </div>
-                {generating ? (
-                  <div className="flex items-center gap-2 text-indigo-400">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span className="text-xs font-bold">Analyse IA en cours...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-emerald-400">
-                    <CheckCircle className="w-4 h-4" />
-                    <span className="text-xs font-bold">Rapport généré</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-3">
+                  {!generating && (
+                    <button
+                      onClick={handleDownloadPDF}
+                      disabled={downloading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/25 text-indigo-300 text-xs font-bold transition-all disabled:opacity-50"
+                    >
+                      {downloading ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          Génération PDF...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-3.5 h-3.5" />
+                          Télécharger PDF
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {generating ? (
+                    <div className="flex items-center gap-2 text-indigo-400">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span className="text-xs font-bold">Analyse IA en cours...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-emerald-400">
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="text-xs font-bold">Rapport généré</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {generating ? (
@@ -690,7 +749,7 @@ export default function RapportHebdomadaireIA() {
                   </div>
                 </div>
               ) : (
-                <>
+                <div ref={reportRef} className="space-y-5">
                   <MarketSummarySection data={report.summary} />
                   <OpportunitiesSection opps={report.opportunities} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -706,7 +765,7 @@ export default function RapportHebdomadaireIA() {
                       Ce rapport est généré automatiquement par l'IA à titre informatif uniquement. Il ne constitue pas un conseil financier. Les performances passées ne garantissent pas les résultats futurs. Investissez uniquement ce que vous êtes prêt à perdre.
                     </p>
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>

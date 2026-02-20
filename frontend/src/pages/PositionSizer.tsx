@@ -78,29 +78,18 @@ export default function PositionSizer() {
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
-      <PageHeader
-          icon={<Calculator className="w-6 h-6" />}
-          title="AI Position Sizer"
-          subtitle="Calculez la taille optimale de vos positions selon votre capital, votre tolérance au risque et votre stop loss. Ne risquez jamais plus que ce que vous pouvez vous permettre de perdre."
-          accentColor="blue"
-          steps={[
-            { n: "1", title: "Entrez votre capital", desc: "Indiquez votre capital total disponible pour le trading. L'IA calculera la taille de position basée sur un pourcentage de ce capital." },
-            { n: "2", title: "Définissez votre risque", desc: "Entrez votre pourcentage de risque par trade (recommandé : 1-2%) et votre stop loss en pourcentage ou en prix." },
-            { n: "3", title: "Obtenez la taille optimale", desc: "L'IA calcule le nombre de tokens à acheter, le montant en dollars et le ratio risque/récompense pour votre setup." },
-          ]}
-        />
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center">
-              <Calculator className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-extrabold">AI Position Sizer</h1>
-              <p className="text-sm text-gray-400">Calculez la taille optimale de vos positions (Spot & Futures)</p>
-            </div>
-          </div>
-        </div>
+        <div className="max-w-[1440px] mx-auto px-6 py-6">
+          <PageHeader
+            icon={<Calculator className="w-6 h-6" />}
+            title="AI Position Sizer"
+            subtitle="Calculez la taille optimale de vos positions selon votre capital, votre tolérance au risque et votre stop loss. Ne risquez jamais plus que ce que vous pouvez vous permettre de perdre."
+            accentColor="blue"
+            steps={[
+              { n: "1", title: "Entrez votre capital", desc: "Indiquez votre capital total disponible pour le trading. L'IA calculera la taille de position basée sur un pourcentage de ce capital." },
+              { n: "2", title: "Définissez votre risque", desc: "Entrez votre pourcentage de risque par trade (recommandé : 1-2%) et votre stop loss en pourcentage ou en prix." },
+              { n: "3", title: "Obtenez la taille optimale", desc: "L'IA calcule le nombre de tokens à acheter, le montant en dollars et le ratio risque/récompense pour votre setup." },
+            ]}
+          />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Form */}
@@ -312,6 +301,7 @@ export default function PositionSizer() {
               </ul>
             </div>
           </div>
+        </div>
         </div>
         <Footer />
       </main>

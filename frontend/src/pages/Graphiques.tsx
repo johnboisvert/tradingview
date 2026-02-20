@@ -75,21 +75,39 @@ export default function Graphiques() {
     if (!selectedCoin) return;
 
     const tvSymbol = getTVSymbol(selected, selectedCoin.symbol);
+    const containerId = "tradingview_chart_container";
+    container.id = containerId;
 
-    const iframe = document.createElement("iframe");
-    iframe.style.width = "100%";
-    iframe.style.height = "100%";
-    iframe.style.border = "none";
-    iframe.style.display = "block";
-    iframe.style.position = "absolute";
-    iframe.style.top = "0";
-    iframe.style.left = "0";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.setAttribute("allowfullscreen", "true");
-    iframe.src = `https://s.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=${encodeURIComponent(tvSymbol)}&interval=60&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=111827&studies=RSI%40tv-basicstudies&studies=MACD%40tv-basicstudies&theme=dark&style=1&timezone=Europe%2FParis&withdateranges=1&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=fr&utm_source=cryptoia.ca&utm_medium=widget_new&utm_campaign=chart`;
+    const script = document.createElement("script");
+    script.src = "https://s.tradingview.com/tv.js";
+    script.async = true;
+    script.onload = () => {
+      if ((window as Record<string, unknown>).TradingView && container.id === containerId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        new ((window as any).TradingView.widget)({
+          container_id: containerId,
+          symbol: tvSymbol,
+          interval: "60",
+          timezone: "America/Toronto",
+          theme: "dark",
+          style: "1",
+          locale: "fr",
+          toolbar_bg: "#111827",
+          enable_publishing: false,
+          allow_symbol_change: true,
+          studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies"],
+          width: "100%",
+          height: "100%",
+          save_image: true,
+          hide_side_toolbar: false,
+        });
+      }
+    };
+    document.head.appendChild(script);
 
-    container.appendChild(iframe);
+    return () => {
+      try { document.head.removeChild(script); } catch { /* already removed */ }
+    };
   }, [selected, coins]);
 
   const selectedCoin = coins.find((c) => c.id === selected);

@@ -76,20 +76,43 @@ export default function Graphiques() {
 
     const tvSymbol = getTVSymbol(selected, selectedCoin.symbol);
 
-    const iframe = document.createElement("iframe");
-    iframe.style.width = "100%";
-    iframe.style.height = "100%";
-    iframe.style.border = "none";
-    iframe.style.display = "block";
-    iframe.style.position = "absolute";
-    iframe.style.top = "0";
-    iframe.style.left = "0";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.setAttribute("allowfullscreen", "true");
-    iframe.src = `https://s.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=${encodeURIComponent(tvSymbol)}&interval=60&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=111827&studies=RSI%40tv-basicstudies&studies=MACD%40tv-basicstudies&theme=dark&style=1&timezone=Europe%2FParis&withdateranges=1&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=fr&utm_source=cryptoia.ca&utm_medium=widget_new&utm_campaign=chart`;
+    // Create the widget container div (official TradingView Advanced Chart Widget structure)
+    const widgetDiv = document.createElement("div");
+    widgetDiv.className = "tradingview-widget-container";
+    widgetDiv.style.width = "100%";
+    widgetDiv.style.height = "100%";
 
-    container.appendChild(iframe);
+    const innerDiv = document.createElement("div");
+    innerDiv.className = "tradingview-widget-container__widget";
+    innerDiv.style.width = "100%";
+    innerDiv.style.height = "100%";
+    widgetDiv.appendChild(innerDiv);
+
+    const script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      autosize: true,
+      symbol: tvSymbol,
+      interval: "60",
+      timezone: "America/Toronto",
+      theme: "dark",
+      style: "1",
+      locale: "fr",
+      allow_symbol_change: true,
+      save_image: true,
+      hide_side_toolbar: false,
+      calendar: false,
+      studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies"],
+      support_host: "https://www.tradingview.com"
+    });
+    widgetDiv.appendChild(script);
+    container.appendChild(widgetDiv);
+
+    return () => {
+      container.innerHTML = "";
+    };
   }, [selected, coins]);
 
   const selectedCoin = coins.find((c) => c.id === selected);

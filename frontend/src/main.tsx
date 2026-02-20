@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 import './index.css';
@@ -77,9 +78,11 @@ async function initializeApp() {
 
   // Render the app with Error Boundary
   createRoot(document.getElementById('root')!).render(
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <HelmetProvider>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </HelmetProvider>
   );
 
   // Register PWA Service Worker

@@ -1,2 +1,8 @@
 User-agent: *
 Allow: /
+
+# Block admin pages from indexing
+Disallow: /admin/
+Disallow: /login
+
+Sitemap: https://www.cryptoia.ca/sitemap.xml

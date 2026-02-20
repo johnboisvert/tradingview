@@ -28,15 +28,15 @@ export default function ProtectedPlanRoute({ children, routePath }: ProtectedPla
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen flex items-center justify-center">
+      <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen flex items-center justify-center">
         <div className="max-w-lg w-full text-center">
           {/* Lock Icon */}
           <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/20 flex items-center justify-center mx-auto mb-6">
             <Lock className="w-10 h-10 text-red-400" />
           </div>
 
-          <h1 className="text-3xl font-extrabold mb-3">Accès Restreint</h1>
-          <p className="text-gray-400 mb-6">
+          <h1 className="text-2xl md:text-3xl font-extrabold mb-3">Accès Restreint</h1>
+          <p className="text-gray-400 mb-6 text-sm md:text-base">
             Cette fonctionnalité nécessite un abonnement{" "}
             <span className={`font-bold ${planInfo.color}`}>{planInfo.label}</span>{" "}
             ou supérieur.

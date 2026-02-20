@@ -126,7 +126,7 @@ export default function Graphiques() {
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
       <main
-        className="ml-[260px] flex flex-col"
+        className="md:ml-[260px] pt-14 md:pt-0 flex flex-col"
         style={{ height: "100vh", padding: "12px" }}
       >
         <PageHeader

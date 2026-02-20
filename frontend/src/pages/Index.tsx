@@ -91,8 +91,6 @@ function MiniSparkline({ data, positive }: { data: number[]; positive: boolean }
 }
 
 function FearGreedGauge({ value }: { value: number }) {
-  // Le demi-cercle va de gauche (-180°) à droite (0°) dans le repère trigonométrique SVG
-  // value=0 → aiguille pointe à gauche (angle=-180°), value=100 → aiguille pointe à droite (angle=0°)
   const angleDeg = (value / 100) * 180 - 180;
   const angleRad = (angleDeg * Math.PI) / 180;
   const label =
@@ -106,9 +104,7 @@ function FearGreedGauge({ value }: { value: number }) {
   return (
     <div className="flex flex-col items-center">
       <svg width="140" height="80" viewBox="0 0 140 80">
-        {/* Arc de fond */}
         <path d="M 10 75 A 60 60 0 0 1 130 75" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" strokeLinecap="round" />
-        {/* Arc coloré selon la valeur */}
         <path
           d="M 10 75 A 60 60 0 0 1 130 75"
           fill="none"
@@ -118,7 +114,6 @@ function FearGreedGauge({ value }: { value: number }) {
           strokeDasharray={`${(value / 100) * 188} 188`}
           className="transition-all duration-1000"
         />
-        {/* Aiguille */}
         <line
           x1="70"
           y1="75"
@@ -201,137 +196,139 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      {/* pt-14 on mobile for the fixed top bar, md:pt-0 on desktop */}
+      <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
+
         {/* Hero */}
-        <div className="relative rounded-2xl overflow-hidden mb-6 h-[160px]">
+        <div className="relative rounded-2xl overflow-hidden mb-6 h-[120px] md:h-[160px]">
           <img src={HERO_IMG} alt="" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/70 to-transparent" />
-          <div className="relative z-10 h-full flex items-center justify-between px-8">
+          <div className="relative z-10 h-full flex items-center justify-between px-4 md:px-8">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight mb-1">
+              <h1 className="text-xl md:text-3xl font-extrabold tracking-tight mb-1">
                 <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
                   CryptoIA
                 </span>{" "}
-                Trading Platform
+                <span className="hidden sm:inline">Trading Platform</span>
               </h1>
-              <p className="text-sm text-gray-400">
+              <p className="text-xs md:text-sm text-gray-400 hidden sm:block">
                 Données en temps réel • Analyse IA • Outils professionnels
               </p>
             </div>
             <button
               onClick={fetchData}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-sm font-semibold transition-all"
+              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-xs md:text-sm font-semibold transition-all"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              {lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}
+              <RefreshCw className={`w-3.5 h-3.5 md:w-4 md:h-4 ${loading ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}</span>
             </button>
           </div>
         </div>
 
         {/* Global Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5 hover:border-white/[0.12] transition-all">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4 mb-6">
+          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5 hover:border-white/[0.12] transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Market Cap Total</p>
-                <p className="text-xl font-extrabold">{formatNumber(global.total_market_cap)}</p>
+                <p className="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Market Cap</p>
+                <p className="text-base md:text-xl font-extrabold">{formatNumber(global.total_market_cap)}</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-white" />
               </div>
             </div>
             <div className={`flex items-center gap-1 mt-2 text-xs font-bold ${global.market_cap_change_24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
               {global.market_cap_change_24h >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-              <span>{global.market_cap_change_24h.toFixed(1)}% (24h)</span>
+              <span>{global.market_cap_change_24h.toFixed(1)}%</span>
             </div>
           </div>
 
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5 hover:border-white/[0.12] transition-all">
+          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5 hover:border-white/[0.12] transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Volume 24h</p>
-                <p className="text-xl font-extrabold">{formatNumber(global.total_volume)}</p>
+                <p className="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Volume 24h</p>
+                <p className="text-base md:text-xl font-extrabold">{formatNumber(global.total_volume)}</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center">
-                <Activity className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center flex-shrink-0">
+                <Activity className="w-4 h-4 md:w-5 md:h-5 text-white" />
               </div>
             </div>
           </div>
 
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5 hover:border-white/[0.12] transition-all">
+          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5 hover:border-white/[0.12] transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">BTC Dominance</p>
-                <p className="text-xl font-extrabold">{global.btc_dominance.toFixed(1)}%</p>
+                <p className="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">BTC Dom.</p>
+                <p className="text-base md:text-xl font-extrabold">{global.btc_dominance.toFixed(1)}%</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0">
+                <BarChart3 className="w-4 h-4 md:w-5 md:h-5 text-white" />
               </div>
             </div>
           </div>
 
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5 hover:border-white/[0.12] transition-all">
+          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5 hover:border-white/[0.12] transition-all col-span-2 xl:col-span-1">
             <FearGreedGauge value={fearGreed} />
           </div>
         </div>
 
         {/* Top Gainers / Losers */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
+          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="w-5 h-5 text-emerald-400" />
-              <h2 className="text-base font-bold">Top Gainers (24h)</h2>
+              <h2 className="text-sm md:text-base font-bold">Top Gainers (24h)</h2>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               {topGainers.map((c) => (
                 <div key={c.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-white/[0.03] transition-colors">
                   <div className="flex items-center gap-3">
                     {c.image ? (
-                      <img src={c.image} alt={c.symbol} className="w-8 h-8 rounded-full" />
+                      <img src={c.image} alt={c.symbol} className="w-7 h-7 md:w-8 md:h-8 rounded-full" />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-xs font-bold">
+                      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
                         {c.symbol.slice(0, 2).toUpperCase()}
                       </div>
                     )}
                     <div>
-                      <p className="text-sm font-bold">{c.name}</p>
-                      <p className="text-xs text-gray-500 uppercase">{c.symbol}</p>
+                      <p className="text-xs md:text-sm font-bold">{c.name}</p>
+                      <p className="text-[10px] md:text-xs text-gray-500 uppercase">{c.symbol}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold">{formatPrice(c.current_price)}</p>
-                    <p className="text-xs font-bold text-emerald-400">+{c.price_change_percentage_24h.toFixed(1)}%</p>
+                    <p className="text-xs md:text-sm font-bold">{formatPrice(c.current_price)}</p>
+                    <p className="text-[10px] md:text-xs font-bold text-emerald-400">+{c.price_change_percentage_24h.toFixed(1)}%</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
+          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5">
             <div className="flex items-center gap-2 mb-4">
               <TrendingDown className="w-5 h-5 text-red-400" />
-              <h2 className="text-base font-bold">Top Losers (24h)</h2>
+              <h2 className="text-sm md:text-base font-bold">Top Losers (24h)</h2>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               {topLosers.map((c) => (
                 <div key={c.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-white/[0.03] transition-colors">
                   <div className="flex items-center gap-3">
                     {c.image ? (
-                      <img src={c.image} alt={c.symbol} className="w-8 h-8 rounded-full" />
+                      <img src={c.image} alt={c.symbol} className="w-7 h-7 md:w-8 md:h-8 rounded-full" />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-xs font-bold">
+                      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
                         {c.symbol.slice(0, 2).toUpperCase()}
                       </div>
                     )}
                     <div>
-                      <p className="text-sm font-bold">{c.name}</p>
-                      <p className="text-xs text-gray-500 uppercase">{c.symbol}</p>
+                      <p className="text-xs md:text-sm font-bold">{c.name}</p>
+                      <p className="text-[10px] md:text-xs text-gray-500 uppercase">{c.symbol}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold">{formatPrice(c.current_price)}</p>
-                    <p className="text-xs font-bold text-red-400">{c.price_change_percentage_24h.toFixed(1)}%</p>
+                    <p className="text-xs md:text-sm font-bold">{formatPrice(c.current_price)}</p>
+                    <p className="text-[10px] md:text-xs font-bold text-red-400">{c.price_change_percentage_24h.toFixed(1)}%</p>
                   </div>
                 </div>
               ))}
@@ -340,16 +337,48 @@ export default function DashboardPage() {
         </div>
 
         {/* Coins Table */}
-        <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
+        <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-indigo-400" />
-              <h2 className="text-base font-bold">Marché Crypto</h2>
+              <h2 className="text-sm md:text-base font-bold">Marché Crypto</h2>
             </div>
             <span className="text-xs text-gray-500">{coins.length} actifs</span>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Mobile card list */}
+          <div className="md:hidden space-y-2">
+            {coins.slice(0, 10).map((c, i) => {
+              const positive = c.price_change_percentage_24h >= 0;
+              return (
+                <div key={c.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-600 font-bold w-4">{i + 1}</span>
+                    {c.image ? (
+                      <img src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full" />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                        {c.symbol.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-bold">{c.name}</p>
+                      <p className="text-[10px] text-gray-500 uppercase">{c.symbol}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-bold">{formatPrice(c.current_price)}</p>
+                    <p className={`text-[10px] font-bold ${positive ? "text-emerald-400" : "text-red-400"}`}>
+                      {positive ? "+" : ""}{c.price_change_percentage_24h?.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[700px]">
               <thead>
                 <tr className="border-b border-white/[0.06]">

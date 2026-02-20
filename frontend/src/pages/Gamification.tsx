@@ -208,7 +208,7 @@ export default function Gamification() {
   return (
     <div className="min-h-screen bg-[#030712] text-white">
       <Sidebar />
-      <main className="ml-[260px] bg-[#030712]">
+      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
         <div className="max-w-[1440px] mx-auto px-6 py-6">
           <PageHeader
             icon={<Trophy className="w-6 h-6" />}

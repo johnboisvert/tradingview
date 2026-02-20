@@ -191,7 +191,7 @@ export default function Watchlist() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px] bg-gradient-to-r from-purple-900/40 to-indigo-900/40">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/90 via-[#0A0E1A]/60 to-transparent" />

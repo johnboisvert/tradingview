@@ -37,7 +37,7 @@ export default function Contact() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7 max-w-6xl mx-auto">
+      <main className="flex-1 md:ml-[260px] p-4 md:p-7 pt-[72px] md:pt-7 max-w-6xl mx-auto">
         {/* Background */}
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[80px] top-[-150px] left-[200px]" />

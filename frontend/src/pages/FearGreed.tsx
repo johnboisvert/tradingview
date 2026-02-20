@@ -165,7 +165,7 @@ export default function FearGreed() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen bg-[#0A0E1A]">
+      <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen bg-[#0A0E1A]">
         <PageHeader
           icon={<Activity className="w-6 h-6" />}
           title="Fear & Greed Index"

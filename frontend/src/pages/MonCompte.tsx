@@ -35,7 +35,7 @@ export default function MonCompte() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] p-6 min-h-screen">
+      <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-1">

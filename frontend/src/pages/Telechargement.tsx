@@ -78,7 +78,7 @@ export default function Telechargement() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] bg-[#030712]">
+      <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">📥</span>}
           title="Téléchargements"

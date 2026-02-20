@@ -75,7 +75,7 @@ export default function Backtesting() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] p-7 bg-[#030712]">
+      <main className="flex-1 md:ml-[260px] p-4 md:p-7 pt-[72px] md:pt-7 bg-[#030712]">
       <PageHeader
           icon={<BarChart3 className="w-6 h-6" />}
           title="Backtesting de Stratégies"

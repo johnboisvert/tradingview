@@ -139,7 +139,7 @@ export default function Trades() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px] bg-[#0A0E1A]">
+      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<BarChart3 className="w-6 h-6" />}
           title="Mes Trades"

@@ -131,7 +131,7 @@ export default function AltcoinSeason() {
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
       <Sidebar />
-      <main className="ml-[260px] min-h-screen relative bg-[#0a0a0f]">
+      <main className="md:ml-[260px] pt-14 md:pt-0 min-h-screen relative bg-[#0a0a0f]">
         <PageHeader
           icon={<TrendingUp className="w-6 h-6" />}
           title="Altcoin Season Index"

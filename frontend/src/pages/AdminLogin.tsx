@@ -1,22 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Lock, Mail, Eye, EyeOff, AlertCircle } from "lucide-react";
-
-// SECURITY: Admin credentials MUST be set via environment variables at build time.
-// Set VITE_ADMIN_EMAIL and VITE_ADMIN_PASSWORD in your .env file or hosting environment.
-// No fallback values — login is disabled if env vars are not configured.
-const ADMIN_CREDENTIALS = {
-  email: import.meta.env.VITE_ADMIN_EMAIL || "",
-  password: import.meta.env.VITE_ADMIN_PASSWORD || "",
-};
-const ADMIN_CONFIGURED = !!(ADMIN_CREDENTIALS.email && ADMIN_CREDENTIALS.password);
+import { loginAdmin, clearAdminSession, isAdminSessionActive } from "@/lib/store";
 
 export function isAdminAuthenticated(): boolean {
-  return sessionStorage.getItem("cryptoia_admin_auth") === "true";
+  return isAdminSessionActive();
 }
 
 export function adminLogout(): void {
-  sessionStorage.removeItem("cryptoia_admin_auth");
+  clearAdminSession();
 }
 
 export default function AdminLogin() {
@@ -27,29 +19,23 @@ export default function AdminLogin() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    if (!ADMIN_CONFIGURED) {
-      setError("Configuration admin manquante. Contactez l'administrateur système.");
-      return;
-    }
-
     setLoading(true);
 
-    setTimeout(() => {
-      if (
-        email === ADMIN_CREDENTIALS.email &&
-        password === ADMIN_CREDENTIALS.password
-      ) {
-        sessionStorage.setItem("cryptoia_admin_auth", "true");
+    try {
+      const result = await loginAdmin(email, password);
+      if (result.success) {
         navigate("/admin");
       } else {
         setError("Email ou mot de passe incorrect.");
       }
+    } catch {
+      setError("Erreur lors de la connexion.");
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
@@ -64,7 +50,7 @@ export default function AdminLogin() {
             CryptoIA Admin
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            Connectez-vous pour accéder au panneau d'administration
+            Connectez-vous pour accéder au panneau d&apos;administration
           </p>
         </div>
 

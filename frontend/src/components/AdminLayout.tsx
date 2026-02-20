@@ -16,6 +16,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { adminLogout } from "@/pages/AdminLogin";
+import { getAdminSession } from "@/lib/store";
 
 const NAV_ITEMS = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -33,6 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const currentPage = NAV_ITEMS.find((item) => item.path === location.pathname)?.label || "Dashboard";
+  const adminSession = getAdminSession();
 
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white flex">
@@ -150,8 +152,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs font-semibold text-emerald-400">En ligne</span>
             </div>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold shadow-lg shadow-indigo-500/20">
-              A
+            <div className="hidden sm:flex flex-col items-end mr-1">
+              <span className="text-xs font-bold text-white">{adminSession?.name || "Admin"}</span>
+              <span className="text-[10px] text-gray-500">{adminSession?.role === "super-admin" ? "Super Admin" : "Admin"}</span>
+            </div>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-lg ${
+              adminSession?.role === "super-admin"
+                ? "bg-gradient-to-br from-red-500 to-orange-600 shadow-red-500/20"
+                : "bg-gradient-to-br from-indigo-500 to-purple-600 shadow-indigo-500/20"
+            }`}>
+              {adminSession?.name?.charAt(0)?.toUpperCase() || "A"}
             </div>
           </div>
         </header>

@@ -15,6 +15,8 @@ const KEYS = {
   PLAN_PRICES_ANNUAL: "cryptoia_plan_prices_annual",
   ANNUAL_DISCOUNT: "cryptoia_annual_discount",
   PLAN_ACCESS: "cryptoia_plan_access",
+  ADMINS: "cryptoia_admins",
+  ADMIN_LOG: "cryptoia_admin_log",
 } as const;
 
 // ============================================================
@@ -338,6 +340,174 @@ export function savePlanAccess(plan: string, routes: string[]): void {
   const all = getItem(KEYS.PLAN_ACCESS, DEFAULT_PLAN_ACCESS);
   all[plan] = routes;
   setItem(KEYS.PLAN_ACCESS, all);
+}
+
+// ============================================================
+// Admins
+// ============================================================
+export interface Admin {
+  email: string;
+  passwordHash: string;
+  name: string;
+  role: "super-admin" | "admin";
+  created_at: string;
+}
+
+export interface AdminLogEntry {
+  email: string;
+  action: string;
+  timestamp: string;
+}
+
+// Simple SHA-256 hash using Web Crypto API (sync wrapper with cached results)
+const hashCache = new Map<string, string>();
+
+export async function hashPassword(password: string): Promise<string> {
+  if (hashCache.has(password)) return hashCache.get(password)!;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  hashCache.set(password, hashHex);
+  return hashHex;
+}
+
+function getSuperAdminEmail(): string {
+  return (typeof import.meta !== "undefined" && import.meta.env?.VITE_ADMIN_EMAIL) || "";
+}
+
+function getSuperAdminPassword(): string {
+  return (typeof import.meta !== "undefined" && import.meta.env?.VITE_ADMIN_PASSWORD) || "";
+}
+
+export function getAdmins(): Admin[] {
+  return getItem<Admin[]>(KEYS.ADMINS, []);
+}
+
+export function saveAdmins(admins: Admin[]): void {
+  setItem(KEYS.ADMINS, admins);
+}
+
+export async function addAdmin(email: string, name: string, password: string): Promise<{ success: boolean; message: string }> {
+  const admins = getAdmins();
+  const superEmail = getSuperAdminEmail();
+
+  if (email.toLowerCase() === superEmail.toLowerCase()) {
+    return { success: false, message: "Cet email est réservé au super-admin." };
+  }
+  if (admins.find((a) => a.email.toLowerCase() === email.toLowerCase())) {
+    return { success: false, message: "Un admin avec cet email existe déjà." };
+  }
+
+  const passwordHash = await hashPassword(password);
+  admins.push({
+    email,
+    passwordHash,
+    name,
+    role: "admin",
+    created_at: new Date().toISOString(),
+  });
+  saveAdmins(admins);
+  addAdminLog(superEmail || "system", `Ajout admin: ${email}`);
+  return { success: true, message: "Admin ajouté avec succès." };
+}
+
+export function deleteAdmin(email: string): { success: boolean; message: string } {
+  const admins = getAdmins();
+  const superEmail = getSuperAdminEmail();
+
+  if (email.toLowerCase() === superEmail.toLowerCase()) {
+    return { success: false, message: "Impossible de supprimer le super-admin." };
+  }
+
+  const filtered = admins.filter((a) => a.email.toLowerCase() !== email.toLowerCase());
+  if (filtered.length === admins.length) {
+    return { success: false, message: "Admin introuvable." };
+  }
+
+  saveAdmins(filtered);
+  addAdminLog(superEmail || "system", `Suppression admin: ${email}`);
+  return { success: true, message: "Admin supprimé." };
+}
+
+export async function updateAdminPassword(email: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+  const admins = getAdmins();
+  const admin = admins.find((a) => a.email.toLowerCase() === email.toLowerCase());
+  if (!admin) return { success: false, message: "Admin introuvable." };
+
+  admin.passwordHash = await hashPassword(newPassword);
+  saveAdmins(admins);
+  addAdminLog(email, "Mot de passe réinitialisé");
+  return { success: true, message: "Mot de passe mis à jour." };
+}
+
+export async function loginAdmin(email: string, password: string): Promise<{ success: boolean; role: "super-admin" | "admin" | null; name: string }> {
+  const superEmail = getSuperAdminEmail();
+  const superPassword = getSuperAdminPassword();
+
+  // Check super-admin (env vars) first
+  if (superEmail && superPassword && email === superEmail && password === superPassword) {
+    setAdminSession(email, "super-admin", "Super Admin");
+    addAdminLog(email, "Connexion (super-admin)");
+    return { success: true, role: "super-admin", name: "Super Admin" };
+  }
+
+  // Check stored admins
+  const admins = getAdmins();
+  const admin = admins.find((a) => a.email.toLowerCase() === email.toLowerCase());
+  if (admin) {
+    const passwordHash = await hashPassword(password);
+    if (passwordHash === admin.passwordHash) {
+      setAdminSession(admin.email, admin.role, admin.name);
+      addAdminLog(admin.email, `Connexion (${admin.role})`);
+      return { success: true, role: admin.role, name: admin.name };
+    }
+  }
+
+  return { success: false, role: null, name: "" };
+}
+
+// --- Admin Session ---
+export interface AdminSession {
+  email: string;
+  role: "super-admin" | "admin";
+  name: string;
+}
+
+export function getAdminSession(): AdminSession | null {
+  try {
+    const raw = sessionStorage.getItem("cryptoia_admin_session");
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return null;
+}
+
+export function setAdminSession(email: string, role: "super-admin" | "admin", name: string): void {
+  sessionStorage.setItem("cryptoia_admin_auth", "true");
+  sessionStorage.setItem("cryptoia_admin_session", JSON.stringify({ email, role, name }));
+}
+
+export function clearAdminSession(): void {
+  sessionStorage.removeItem("cryptoia_admin_auth");
+  sessionStorage.removeItem("cryptoia_admin_session");
+}
+
+export function isAdminSessionActive(): boolean {
+  return sessionStorage.getItem("cryptoia_admin_auth") === "true";
+}
+
+// --- Admin Activity Log ---
+export function getAdminLog(): AdminLogEntry[] {
+  return getItem<AdminLogEntry[]>(KEYS.ADMIN_LOG, []);
+}
+
+export function addAdminLog(email: string, action: string): void {
+  const log = getAdminLog();
+  log.unshift({ email, action, timestamp: new Date().toISOString() });
+  // Keep last 100 entries
+  if (log.length > 100) log.length = 100;
+  setItem(KEYS.ADMIN_LOG, log);
 }
 
 // --- Dashboard Stats (computed from real data) ---

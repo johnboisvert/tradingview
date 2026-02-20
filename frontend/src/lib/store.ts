@@ -89,6 +89,30 @@ export function addUser(user: User): void {
   users.push(user);
   saveUsers(users);
 }
+
+export function loginUser(username: string, password: string): User | null {
+  const users = getUsers();
+  const user = users.find(
+    (u) => u.username.toLowerCase() === username.toLowerCase() && u.password === password
+  );
+  return user || null;
+}
+
+export function getUserSession(): { username: string; plan: string } | null {
+  try {
+    const raw = sessionStorage.getItem("cryptoia_user_session");
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return null;
+}
+
+export function setUserSession(username: string, plan: string): void {
+  sessionStorage.setItem("cryptoia_user_session", JSON.stringify({ username, plan }));
+}
+
+export function clearUserSession(): void {
+  sessionStorage.removeItem("cryptoia_user_session");
+}
 export function deleteUser(username: string): boolean {
   const users = getUsers();
   const filtered = users.filter((u) => u.username !== username);

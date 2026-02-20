@@ -55,6 +55,7 @@ import PepitesCrypto from "./pages/PepitesCrypto";
 import TradingAcademy from "./pages/TradingAcademy";
 import Telechargement from "./pages/Telechargement";
 import AdminLogin from "./pages/AdminLogin";
+import Login from "./pages/Login";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ProtectedPlanRoute from "./components/ProtectedPlanRoute";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -69,7 +70,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Main Pages - Marché (always accessible: dashboard, fear-greed, heatmap) */}
+        {/* Main Pages - Marché */}
         <Route path="/" element={<Index />} />
         <Route path="/fear-greed" element={<PlanProtected path="/fear-greed"><FearGreed /></PlanProtected>} />
         <Route path="/dominance" element={<PlanProtected path="/dominance"><Dominance /></PlanProtected>} />
@@ -127,6 +128,9 @@ function App() {
         <Route path="/abonnements" element={<Abonnements />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/mon-compte" element={<MonCompte />} />
+
+        {/* User Login */}
+        <Route path="/login" element={<Login />} />
 
         {/* Admin Login */}
         <Route path="/admin/login" element={<AdminLogin />} />

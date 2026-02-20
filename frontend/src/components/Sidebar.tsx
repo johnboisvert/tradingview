@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getUserPlan, isRouteAccessible, getMinimumPlanForRoute, getPlanDisplayInfo } from "@/lib/subscription";
+import { getUserSession, clearUserSession } from "@/lib/store";
 import {
   LayoutDashboard,
   Frown,
@@ -47,6 +48,8 @@ import {
   Diamond,
   GraduationCap,
   Download,
+  LogIn,
+  LogOut,
   Crosshair,
   Lock,
   BookOpen,
@@ -130,8 +133,15 @@ const BOTTOM_ITEMS = [
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const currentPlan = getUserPlan();
+  const userSession = getUserSession();
+
+  const handleLogout = () => {
+    clearUserSession();
+    navigate("/login");
+  };
 
   const isActive = (path: string) =>
     location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
@@ -305,6 +315,29 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Login / Logout Button */}
+      <div className="px-3 pb-2 flex-shrink-0">
+        {userSession ? (
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all text-xs font-semibold border border-red-500/10"
+            title="Se déconnecter"
+          >
+            <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
+            {!collapsed && <span>Déconnexion ({userSession.username})</span>}
+          </button>
+        ) : (
+          <Link
+            to="/login"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 transition-all text-xs font-semibold border border-indigo-500/10"
+            title="Se connecter"
+          >
+            <LogIn className="w-3.5 h-3.5 flex-shrink-0" />
+            {!collapsed && <span>Se connecter</span>}
+          </Link>
+        )}
+      </div>
 
       {/* Collapse Button */}
       <div className="px-3 pb-4 flex-shrink-0">

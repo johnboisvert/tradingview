@@ -9,6 +9,7 @@ import * as store from "./store";
 export interface User {
   username: string;
   email?: string;
+  password?: string;
   role: string;
   plan: string;
   subscription_end?: string;

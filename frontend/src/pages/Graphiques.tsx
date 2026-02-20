@@ -75,38 +75,45 @@ export default function Graphiques() {
     if (!selectedCoin) return;
 
     const tvSymbol = getTVSymbol(selected, selectedCoin.symbol);
-    const containerId = "tradingview_chart_container";
-    container.id = containerId;
+
+    const widgetDiv = document.createElement("div");
+    widgetDiv.className = "tradingview-widget-container";
+    widgetDiv.style.height = "100%";
+    widgetDiv.style.width = "100%";
+
+    const innerDiv = document.createElement("div");
+    innerDiv.className = "tradingview-widget-container__widget";
+    innerDiv.style.height = "calc(100% - 32px)";
+    innerDiv.style.width = "100%";
+    widgetDiv.appendChild(innerDiv);
 
     const script = document.createElement("script");
-    script.src = "https://s.tradingview.com/tv.js";
+    script.type = "text/javascript";
+    script.src = "https://s.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
     script.async = true;
-    script.onload = () => {
-      if ((window as Record<string, unknown>).TradingView && container.id === containerId) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        new ((window as any).TradingView.widget)({
-          container_id: containerId,
-          symbol: tvSymbol,
-          interval: "60",
-          timezone: "America/Toronto",
-          theme: "dark",
-          style: "1",
-          locale: "fr",
-          toolbar_bg: "#111827",
-          enable_publishing: false,
-          allow_symbol_change: true,
-          studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies"],
-          width: "100%",
-          height: "100%",
-          save_image: true,
-          hide_side_toolbar: false,
-        });
-      }
-    };
-    document.head.appendChild(script);
+    script.innerHTML = JSON.stringify({
+      autosize: true,
+      symbol: tvSymbol,
+      interval: "60",
+      timezone: "America/Toronto",
+      theme: "dark",
+      style: "1",
+      locale: "fr",
+      backgroundColor: "rgba(17, 24, 39, 1)",
+      gridColor: "rgba(255, 255, 255, 0.04)",
+      allow_symbol_change: true,
+      calendar: false,
+      support_host: "https://www.tradingview.com",
+      studies: ["STD;RSI", "STD;MACD"],
+      hide_side_toolbar: false,
+      save_image: true,
+    });
+
+    widgetDiv.appendChild(script);
+    container.appendChild(widgetDiv);
 
     return () => {
-      try { document.head.removeChild(script); } catch { /* already removed */ }
+      container.innerHTML = "";
     };
   }, [selected, coins]);
 

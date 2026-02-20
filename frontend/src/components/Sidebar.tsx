@@ -79,6 +79,8 @@ const NAV_SECTIONS = [
       { path: "/backtesting", label: "Backtesting", icon: History },
       { path: "/portfolio-tracker", label: "Portfolio", icon: Briefcase },
       { path: "/timeframe-analysis", label: "Timeframe Analysis", icon: Clock },
+      { path: "/crypto-journal", label: "Journal de Trading", icon: BookOpen },
+      { path: "/screener-technique", label: "Screener Technique", icon: SlidersHorizontal },
     ],
   },
   {

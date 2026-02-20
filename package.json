@@ -6,7 +6,7 @@
   "scripts": {
     "postinstall": "cd frontend && npm install",
     "build": "cd frontend && npm install && npm run build",
-    "start": "cd frontend && node_modules/.bin/serve dist --single --listen $PORT"
+    "start": "exec node_modules/.bin/serve frontend/dist --single --listen ${PORT:-3000}"
   },
   "engines": {
     "node": ">=18"

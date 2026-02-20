@@ -28,5 +28,5 @@ COPY --from=builder /app/frontend/dist ./dist
 # Expose port
 EXPOSE 3000
 
-# Start serve directly as PID 1 (proper SIGTERM handling)
-CMD ["sh", "-c", "serve dist --single --listen ${PORT:-3000}"]
+# Use shell form so $PORT env var is expanded, serve becomes PID 1 via exec
+CMD ["sh", "-c", "exec serve dist --single --listen ${PORT:-3000}"]

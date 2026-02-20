@@ -1,1 +1,1 @@
-fix: replace nixpacks with custom Dockerfile for Railway - fix SIGTERM and cache issues
+fix: correct all start scripts to use exec+serve with dynamic PORT for proper SIGTERM handling

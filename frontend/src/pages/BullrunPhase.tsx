@@ -396,7 +396,7 @@ export default function BullrunPhase() {
   return (
     <div className="min-h-screen bg-[#030712] text-white">
       <Sidebar />
-      <main className="ml-[260px]">
+      <main className="ml-[260px] bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">🚀</span>}
           title="Bullrun Phase Tracker"

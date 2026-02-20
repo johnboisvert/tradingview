@@ -129,11 +129,13 @@ export default function AltcoinSeason() {
     : 0;
 
   return (
-    <div className="min-h-screen">
-      <PageHeader
+    <div className="min-h-screen bg-[#0a0a0f]">
+      <Sidebar />
+      <main className="ml-[260px] min-h-screen relative bg-[#0a0a0f]">
+        <PageHeader
           icon={<TrendingUp className="w-6 h-6" />}
           title="Altcoin Season Index"
-          subtitle="Détectez les phases d’Altseason : quand les altcoins surperforment Bitcoin, des opportunités explosives émergent. Suivez le score en temps réel pour adapter votre stratégie."
+          subtitle="Détectez les phases d'Altseason : quand les altcoins surperforment Bitcoin, des opportunités explosives émergent. Suivez le score en temps réel pour adapter votre stratégie."
           accentColor="green"
           steps={[
             { n: "1", title: "Lisez le score global", desc: "Score > 75 = Altseason (les altcoins dominent). Score < 25 = Bitcoin Season. Entre les deux = marché mixte." },
@@ -141,8 +143,6 @@ export default function AltcoinSeason() {
             { n: "3", title: "Agissez au bon moment", desc: "Entrez en altcoins quand le score monte vers 75+. Réduisez l'exposition quand il redescend sous 50." },
           ]}
         />
-      <Sidebar />
-      <main className="ml-[260px] min-h-screen relative">
         <div className="relative z-10 max-w-[1440px] mx-auto p-7 pb-20">
           {/* Header */}
           <div className="flex items-center justify-between mb-8 pt-4">
@@ -192,7 +192,7 @@ export default function AltcoinSeason() {
           )}
 
           {/* Main Gauge */}
-          <div className={`bg-gradient-to-br ${season.bg} border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6`}>
+          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6">
             <div className="text-center mb-6">
               <p className="text-sm text-gray-400 mb-2 font-semibold">It is not Altcoin Season!</p>
               <GaugeChart score={data?.altseason_score || 0} />

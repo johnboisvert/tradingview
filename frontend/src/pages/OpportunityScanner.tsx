@@ -101,7 +101,7 @@ export default function OpportunityScanner() {
   return (
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
-      <main className="flex-1 ml-[260px]">
+      <main className="flex-1 ml-[260px] bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">🎯</span>}
           title="Opportunity Scanner"

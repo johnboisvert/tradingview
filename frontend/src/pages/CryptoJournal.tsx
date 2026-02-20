@@ -194,7 +194,7 @@ export default function CryptoJournal() {
   return (
     <div className="min-h-screen bg-[#070B14] text-white">
       <Sidebar />
-      <main className="ml-[260px]">
+      <main className="ml-[260px] bg-[#0d1117]">
       <PageHeader
           icon={<BookOpen className="w-6 h-6" />}
           title="Crypto Journal"

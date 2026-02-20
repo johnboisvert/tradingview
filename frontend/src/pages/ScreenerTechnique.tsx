@@ -208,7 +208,7 @@ export default function ScreenerTechnique() {
   return (
     <div className="min-h-screen bg-[#070B14] text-white">
       <Sidebar />
-      <main className="ml-[260px]">
+      <main className="ml-[260px] bg-[#070B14]">
       <PageHeader
           icon={<Target className="w-6 h-6" />}
           title="Screener Technique"

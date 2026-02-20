@@ -280,7 +280,7 @@ export default function CryptoIA() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
-      <main className="ml-[260px]">
+      <main className="ml-[260px] bg-[#0A0E1A]">
       <PageHeader
           icon={<Brain className="w-6 h-6" />}
           title="Crypto IA — Analyse Intelligente"

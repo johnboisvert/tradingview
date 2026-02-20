@@ -56,6 +56,7 @@ import {
   SlidersHorizontal,
   Bell,
   Target,
+  FileText,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -66,6 +67,7 @@ const NAV_SECTIONS = [
       { path: "/alertes-ia", label: "Alertes IA", icon: Bell },
       { path: "/score-confiance-ia", label: "Score Confiance IA", icon: Shield },
       { path: "/simulateur-strategie-ia", label: "Simulateur Stratégie IA", icon: Target },
+      { path: "/rapport-hebdomadaire-ia", label: "Rapport Hebdomadaire IA", icon: FileText },
     ],
   },
   {

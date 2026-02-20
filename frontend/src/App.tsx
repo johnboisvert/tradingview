@@ -60,6 +60,7 @@ import MyCryptoIA from "./pages/MyCryptoIA";
 import AlertesIA from "./pages/AlertesIA";
 import ScoreConfianceIA from "./pages/ScoreConfianceIA";
 import SimulateurStrategieIA from "./pages/SimulateurStrategieIA";
+import RapportHebdomadaireIA from "./pages/RapportHebdomadaireIA";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ProtectedPlanRoute from "./components/ProtectedPlanRoute";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -133,6 +134,7 @@ function App() {
         <Route path="/alertes-ia" element={<PlanProtected path="/alertes-ia"><AlertesIA /></PlanProtected>} />
         <Route path="/score-confiance-ia" element={<PlanProtected path="/score-confiance-ia"><ScoreConfianceIA /></PlanProtected>} />
         <Route path="/simulateur-strategie-ia" element={<PlanProtected path="/simulateur-strategie-ia"><SimulateurStrategieIA /></PlanProtected>} />
+        <Route path="/rapport-hebdomadaire-ia" element={<PlanProtected path="/rapport-hebdomadaire-ia"><RapportHebdomadaireIA /></PlanProtected>} />
 
         {/* Compte - always accessible */}
         <Route path="/abonnements" element={<Abonnements />} />

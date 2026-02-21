@@ -153,8 +153,8 @@ export function loginUser(username: string, password: string): User | null {
   return user || null;
 }
 
-/** Server-side login — calls the Express API */
-export async function loginUserServer(username: string, password: string): Promise<User | null> {
+/** Server-side login — calls the Express API. NO localStorage fallback. */
+export async function loginUserServer(username: string, password: string): Promise<{ user: User | null; serverError: boolean }> {
   try {
     const res = await fetch("/api/users/login", {
       method: "POST",
@@ -164,14 +164,17 @@ export async function loginUserServer(username: string, password: string): Promi
     if (res.ok) {
       const data = await res.json();
       if (data.success && data.user) {
-        return data.user as User;
+        return { user: data.user as User, serverError: false };
       }
+      // Server responded but credentials are wrong
+      return { user: null, serverError: false };
     }
+    console.error("[loginUserServer] Server responded with status:", res.status);
+    return { user: null, serverError: true };
   } catch (err) {
-    console.error("Server login failed, falling back to localStorage:", err);
+    console.error("[loginUserServer] Server unreachable:", err);
+    return { user: null, serverError: true };
   }
-  // Fallback to localStorage login (for dev mode)
-  return loginUser(username, password);
 }
 
 export function getUserSession(): { username: string; plan: string } | null {

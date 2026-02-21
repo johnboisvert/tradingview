@@ -90,7 +90,7 @@ export interface RevenueIntelligence {
 }
 
 // ============================================================
-// Users — Server-side API calls
+// Users — Server-side API calls (NO localStorage fallbacks)
 // ============================================================
 export const getUsers = async (): Promise<{ users: User[] }> => {
   try {
@@ -98,11 +98,12 @@ export const getUsers = async (): Promise<{ users: User[] }> => {
     if (res.ok) {
       return await res.json();
     }
+    console.error("[getUsers] Server responded with status:", res.status, await res.text());
+    return { users: [] };
   } catch (err) {
-    console.error("Failed to fetch users from server:", err);
+    console.error("[getUsers] Server unreachable:", err);
+    return { users: [] };
   }
-  // Fallback to localStorage if server is unavailable (dev mode)
-  return { users: store.getUsers() };
 };
 
 export const addUser = async (data: {
@@ -120,24 +121,12 @@ export const addUser = async (data: {
     if (res.ok) {
       return await res.json();
     }
+    console.error("[addUser] Server responded with status:", res.status, await res.text());
+    return { success: false, message: `Erreur serveur (${res.status}). Veuillez réessayer.` };
   } catch (err) {
-    console.error("Failed to create user on server:", err);
+    console.error("[addUser] Server unreachable:", err);
+    return { success: false, message: "Erreur serveur. Impossible de créer l'utilisateur. Veuillez réessayer." };
   }
-  // Fallback to localStorage
-  const existing = store.getUsers();
-  if (existing.find((u) => u.username === data.username)) {
-    return { success: false, message: "Utilisateur déjà existant" };
-  }
-  const tempPwd = data.password || Math.random().toString(36).slice(-8);
-  store.addUser({
-    username: data.username,
-    password: tempPwd,
-    role: data.role,
-    plan: data.plan,
-    created_at: new Date().toISOString().split("T")[0],
-    subscription_end: data.plan !== "free" ? (() => { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().split("T")[0]; })() : undefined,
-  });
-  return { success: true, temp_password: tempPwd };
 };
 
 export const updateUserPlan = async (
@@ -153,14 +142,12 @@ export const updateUserPlan = async (
     if (res.ok) {
       return await res.json();
     }
+    console.error("[updateUserPlan] Server responded with status:", res.status, await res.text());
+    return { success: false, message: `Erreur serveur (${res.status}). Veuillez réessayer.` };
   } catch (err) {
-    console.error("Failed to update user plan on server:", err);
+    console.error("[updateUserPlan] Server unreachable:", err);
+    return { success: false, message: "Erreur serveur. Impossible de mettre à jour le plan. Veuillez réessayer." };
   }
-  // Fallback
-  const ok = store.updateUserPlan(username, plan);
-  if (!ok) return { success: false, message: "Utilisateur introuvable" };
-  const user = store.getUsers().find((u) => u.username === username);
-  return { success: true, subscription_end: user?.subscription_end };
 };
 
 export const deleteUser = async (
@@ -173,12 +160,12 @@ export const deleteUser = async (
     if (res.ok) {
       return await res.json();
     }
+    console.error("[deleteUser] Server responded with status:", res.status, await res.text());
+    return { success: false, message: `Erreur serveur (${res.status}). Veuillez réessayer.` };
   } catch (err) {
-    console.error("Failed to delete user on server:", err);
+    console.error("[deleteUser] Server unreachable:", err);
+    return { success: false, message: "Erreur serveur. Impossible de supprimer l'utilisateur. Veuillez réessayer." };
   }
-  // Fallback
-  const ok = store.deleteUser(username);
-  return ok ? { success: true } : { success: false, message: "Utilisateur introuvable" };
 };
 
 export const resetPassword = async (
@@ -194,17 +181,12 @@ export const resetPassword = async (
     if (res.ok) {
       return await res.json();
     }
+    console.error("[resetPassword] Server responded with status:", res.status, await res.text());
+    return { success: false, message: `Erreur serveur (${res.status}). Veuillez réessayer.` };
   } catch (err) {
-    console.error("Failed to reset password on server:", err);
+    console.error("[resetPassword] Server unreachable:", err);
+    return { success: false, message: "Erreur serveur. Impossible de réinitialiser le mot de passe. Veuillez réessayer." };
   }
-  // Fallback
-  const users = store.getUsers();
-  const user = users.find((u) => u.username === username);
-  if (!user) return { success: false, message: "Utilisateur introuvable" };
-  const tempPwd = newPassword || Math.random().toString(36).slice(-8);
-  user.password = tempPwd;
-  store.saveUsers(users);
-  return { success: true, temp_password: tempPwd };
 };
 
 // ============================================================

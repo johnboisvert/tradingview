@@ -19,6 +19,26 @@ const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
 // Parse JSON bodies
 app.use(express.json({ limit: '1mb' }));
 
+// CORS middleware — allow all origins (needed for Railway deployment)
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
+// Request logging for /api/* routes
+app.use('/api', (req, res, next) => {
+  console.log(`[API] ${req.method} ${req.url}`);
+  next();
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // ============================================================
 // User Management — JSON file persistence
 // ============================================================

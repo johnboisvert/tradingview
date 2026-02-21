@@ -40,13 +40,15 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const user = await loginUserServer(username.trim(), password);
-      if (user) {
+      const result = await loginUserServer(username.trim(), password);
+      if (result.user) {
         // Register session token for double-connection protection
-        registerUserSession(user.username);
-        setUserSession(user.username, user.plan);
-        setUserPlan(user.plan as Parameters<typeof setUserPlan>[0]);
+        registerUserSession(result.user.username);
+        setUserSession(result.user.username, result.user.plan);
+        setUserPlan(result.user.plan as Parameters<typeof setUserPlan>[0]);
         navigate("/");
+      } else if (result.serverError) {
+        setError("Serveur inaccessible. Veuillez réessayer dans quelques instants.");
       } else {
         setError("Nom d'utilisateur ou mot de passe incorrect.");
       }

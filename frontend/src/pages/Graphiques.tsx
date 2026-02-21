@@ -165,13 +165,30 @@ export default function Graphiques() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [ohlcData, setOhlcData] = useState<Array<{ time: number; open: number; high: number; low: number; close: number }>>([]);
+  const [timeframe, setTimeframe] = useState("30");
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
 
+  const TIMEFRAMES = [
+    { label: "1J", value: "1" },
+    { label: "7J", value: "7" },
+    { label: "30J", value: "30" },
+    { label: "90J", value: "90" },
+    { label: "1A", value: "365" },
+  ];
+
+  const timeframeLabel: Record<string, string> = {
+    "1": "1 jour",
+    "7": "7 jours",
+    "30": "30 jours",
+    "90": "90 jours",
+    "365": "1 an",
+  };
+
   /* ── Fetch OHLC candlestick data ── */
-  const fetchOHLC = useCallback(async (coinId: string) => {
+  const fetchOHLC = useCallback(async (coinId: string, days: string) => {
     try {
-      const res = await fetch(`/api/coingecko/coins/${coinId}/ohlc?vs_currency=usd&days=7`, {
+      const res = await fetch(`/api/coingecko/coins/${coinId}/ohlc?vs_currency=usd&days=${days}`, {
         signal: AbortSignal.timeout(15000),
       });
       if (res.ok) {
@@ -196,9 +213,9 @@ export default function Graphiques() {
 
   useEffect(() => {
     if (selected) {
-      fetchOHLC(selected);
+      fetchOHLC(selected, timeframe);
     }
-  }, [selected, fetchOHLC]);
+  }, [selected, timeframe, fetchOHLC]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -324,7 +341,7 @@ export default function Graphiques() {
         chartRef.current = null;
       }
     };
-  }, [selected, coins, ohlcData]);
+  }, [selected, coins, ohlcData, timeframe]);
 
   const selectedCoin = coins.find((c) => c.id === selected);
   const sparkPrices = selectedCoin?.sparkline_in_7d?.price || [];
@@ -575,10 +592,25 @@ export default function Graphiques() {
           className="bg-[#111827] border border-white/[0.06] rounded-xl overflow-hidden relative"
           style={{ height: "400px" }}
         >
-          <div className="absolute top-2 left-3 z-10">
+          <div className="absolute top-2 left-3 z-10 flex items-center gap-2">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-[#111827]/80 px-2 py-0.5 rounded">
-              Bougies — 7 jours
+              Bougies — {timeframeLabel[timeframe] || timeframe}
             </span>
+            <div className="flex items-center gap-0.5 bg-[#111827]/90 rounded-md px-1 py-0.5">
+              {TIMEFRAMES.map((tf) => (
+                <button
+                  key={tf.value}
+                  onClick={() => setTimeframe(tf.value)}
+                  className={`px-2 py-0.5 rounded text-[9px] font-bold transition-all ${
+                    timeframe === tf.value
+                      ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                      : "text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] border border-transparent"
+                  }`}
+                >
+                  {tf.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div ref={chartContainerRef} style={{ width: "100%", height: "100%" }} />
 

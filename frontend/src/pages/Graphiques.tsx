@@ -65,14 +65,6 @@ function computeStochastic(data: number[], period = 14, smoothK = 3): { k: numbe
   return { k: kValues, d: dValues };
 }
 
-/* ── Helper: build time array from sparkline ── */
-function buildTimeArray(pricesLength: number): number[] {
-  const now = Math.floor(Date.now() / 1000);
-  const interval = Math.floor((7 * 24 * 3600) / pricesLength);
-  const startTime = now - pricesLength * interval;
-  return Array.from({ length: pricesLength }, (_, i) => startTime + i * interval);
-}
-
 /* ── Chart theme config ── */
 const CHART_THEME = {
   layout: { background: { type: ColorType.Solid as const, color: "#111827" }, textColor: "#6B7280" },
@@ -82,17 +74,104 @@ const CHART_THEME = {
   crosshair: { mode: 0 as const },
 };
 
+/* ── Binance symbol mapping (top 100+ coins) ── */
+const BINANCE_SYMBOLS: Record<string, string> = {
+  bitcoin: "BTCUSDT", ethereum: "ETHUSDT", binancecoin: "BNBUSDT", solana: "SOLUSDT",
+  ripple: "XRPUSDT", cardano: "ADAUSDT", dogecoin: "DOGEUSDT", polkadot: "DOTUSDT",
+  avalanche: "AVAXUSDT", chainlink: "LINKUSDT", "matic-network": "MATICUSDT", polygon: "MATICUSDT",
+  litecoin: "LTCUSDT", uniswap: "UNIUSDT", "shiba-inu": "SHIBUSDT", tron: "TRXUSDT",
+  "wrapped-bitcoin": "WBTCUSDT", cosmos: "ATOMUSDT", near: "NEARUSDT", stellar: "XLMUSDT",
+  algorand: "ALGOUSDT", "internet-computer": "ICPUSDT", filecoin: "FILUSDT", aptos: "APTUSDT",
+  arbitrum: "ARBUSDT", optimism: "OPUSDT", sui: "SUIUSDT", pepe: "PEPEUSDT",
+  "render-token": "RENDERUSDT", injective: "INJUSDT", sei: "SEIUSDT", celestia: "TIAUSDT",
+  // Additional top coins
+  "the-open-network": "TONUSDT", kaspa: "KASUSDT", "fetch-ai": "FETUSDT",
+  "artificial-superintelligence-alliance": "FETUSDT",
+  hedera: "HBARUSDT", "hedera-hashgraph": "HBARUSDT", vechain: "VETUSDT",
+  aave: "AAVEUSDT", "the-graph": "GRTUSDT", maker: "MKRUSDT",
+  "theta-token": "THETAUSDT", fantom: "FTMUSDT", "axie-infinity": "AXSUSDT",
+  "the-sandbox": "SANDUSDT", decentraland: "MANAUSDT", eos: "EOSUSDT",
+  "flow-token": "FLOWUSDT", flow: "FLOWUSDT", iota: "IOTAUSDT",
+  neo: "NEOUSDT", kava: "KAVAUSDT", "curve-dao-token": "CRVUSDT",
+  "1inch": "1INCHUSDT", enjin: "ENJUSDT", "enjincoin": "ENJUSDT",
+  "gala": "GALAUSDT", "gala-games": "GALAUSDT", chiliz: "CHZUSDT",
+  "lido-dao": "LDOUSDT", "rocket-pool": "RPLUSDT",
+  "immutable-x": "IMXUSDT", worldcoin: "WLDUSDT",
+  "starknet": "STRKUSDT", "blur-token": "BLURUSDT", blur: "BLURUSDT",
+  "bonk": "BONKUSDT", "floki": "FLOKIUSDT",
+  "jupiter-exchange-solana": "JUPUSDT", jupiter: "JUPUSDT",
+  "ondo-finance": "ONDOUSDT", ondo: "ONDOUSDT",
+  "ethena": "ENAUSDT", pendle: "PENDLEUSDT",
+  "wormhole": "WUSDT", "pyth-network": "PYTHUSDT",
+  "jito-governance-token": "JTOUSDT",
+  "eigen-layer": "EIGENUSDT", eigenlayer: "EIGENUSDT",
+  "dydx-chain": "DYDXUSDT", dydx: "DYDXUSDT",
+  "thorchain": "RUNEUSDT", "compound-governance-token": "COMPUSDT",
+  "synthetix-network-token": "SNXUSDT", synthetix: "SNXUSDT",
+  "pancakeswap-token": "CAKEUSDT", pancakeswap: "CAKEUSDT",
+  "sushiswap": "SUSHIUSDT", sushi: "SUSHIUSDT",
+  "yearn-finance": "YFIUSDT",
+  "zilliqa": "ZILUSDT", "qtum": "QTUMUSDT",
+  "ravencoin": "RVNUSDT", "ontology": "ONTUSDT",
+  "harmony": "ONEUSDT", "celo": "CELOUSDT",
+  "ankr": "ANKRUSDT", "storj": "STORJUSDT",
+  "skale": "SKLUSDT", "mask-network": "MASKUSDT",
+  "api3": "API3USDT", "band-protocol": "BANDUSDT",
+  "ocean-protocol": "OCEANUSDT",
+  "iotex": "IOTXUSDT", "nervos-network": "CKBUSDT",
+  "arweave": "ARUSDT", "livepeer": "LPTUSDT",
+  "ssv-network": "SSVUSDT",
+  "oasis-network": "ROSEUSDT",
+  "mina-protocol": "MINAUSDT",
+  "xdc-network": "XDCUSDT",
+  "tezos": "XTZUSDT", "elrond-erd-2": "EGLDUSDT", "multiversx": "EGLDUSDT",
+  "monero": "XMRUSDT", "ethereum-classic": "ETCUSDT",
+  "bitcoin-cash": "BCHUSDT", "bitcoin-cash-sv": "BCHUSDT",
+  "okb": "OKBUSDT", "cronos": "CROUSDT",
+  "mantle": "MNTLUSDT", "beam-2": "BEAMUSDT",
+  "ronin": "RONUSDT", "notcoin": "NOTUSDT",
+  "dogs-2": "DOGSUSDT", "hamster-kombat": "HMSTRUSDT",
+  "neiro-on-eth": "NEIROUSDT",
+  "bittensor": "TAOUSDT",
+  "astar": "ASTRUSDT", "conflux-token": "CFXUSDT",
+};
+
+/* ── Timeframe config for Binance ── */
+interface TimeframeConfig {
+  label: string;
+  value: string;
+  binanceInterval: string;
+  binanceLimit: number;
+  coingeckoDays: string; // fallback
+}
+
+const TIMEFRAMES: TimeframeConfig[] = [
+  { label: "1H", value: "1h", binanceInterval: "1m", binanceLimit: 60, coingeckoDays: "1" },
+  { label: "1J", value: "1", binanceInterval: "5m", binanceLimit: 288, coingeckoDays: "1" },
+  { label: "7J", value: "7", binanceInterval: "1h", binanceLimit: 168, coingeckoDays: "7" },
+  { label: "30J", value: "30", binanceInterval: "4h", binanceLimit: 180, coingeckoDays: "30" },
+  { label: "90J", value: "90", binanceInterval: "1d", binanceLimit: 90, coingeckoDays: "90" },
+  { label: "1A", value: "365", binanceInterval: "1d", binanceLimit: 365, coingeckoDays: "365" },
+];
+
+const timeframeLabel: Record<string, string> = {
+  "1h": "1 heure",
+  "1": "1 jour",
+  "7": "7 jours",
+  "30": "30 jours",
+  "90": "90 jours",
+  "365": "1 an",
+};
+
 /* ── Indicator Sub-Chart Component ── */
 function IndicatorChart({
   label,
   height,
-  prices,
   times,
   renderSeries,
 }: {
   label: string;
   height: number;
-  prices: number[];
   times: number[];
   renderSeries: (chart: ReturnType<typeof createChart>, times: number[]) => void;
 }) {
@@ -101,7 +180,7 @@ function IndicatorChart({
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !prices.length || !times.length) return;
+    if (!container || !times.length) return;
 
     if (chartInstanceRef.current) {
       chartInstanceRef.current.remove();
@@ -141,7 +220,7 @@ function IndicatorChart({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prices, times, height]);
+  }, [times, height]);
 
   return (
     <div className="bg-[#111827] border border-white/[0.06] rounded-xl overflow-hidden relative mt-2">
@@ -169,81 +248,37 @@ export default function Graphiques() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
 
-  const BINANCE_SYMBOLS: Record<string, string> = {
-    bitcoin: "BTCUSDT", ethereum: "ETHUSDT", binancecoin: "BNBUSDT", solana: "SOLUSDT",
-    ripple: "XRPUSDT", cardano: "ADAUSDT", dogecoin: "DOGEUSDT", polkadot: "DOTUSDT",
-    avalanche: "AVAXUSDT", chainlink: "LINKUSDT", "matic-network": "MATICUSDT", polygon: "MATICUSDT",
-    litecoin: "LTCUSDT", uniswap: "UNIUSDT", "shiba-inu": "SHIBUSDT", tron: "TRXUSDT",
-    "wrapped-bitcoin": "WBTCUSDT", cosmos: "ATOMUSDT", near: "NEARUSDT", stellar: "XLMUSDT",
-    algorand: "ALGOUSDT", "internet-computer": "ICPUSDT", filecoin: "FILUSDT", aptos: "APTUSDT",
-    arbitrum: "ARBUSDT", optimism: "OPUSDT", sui: "SUIUSDT", pepe: "PEPEUSDT",
-    "render-token": "RENDERUSDT", injective: "INJUSDT", sei: "SEIUSDT", celestia: "TIAUSDT",
-  };
-
-  const TIMEFRAMES = [
-    { label: "1H", value: "1h" },
-    { label: "1J", value: "1" },
-    { label: "7J", value: "7" },
-    { label: "30J", value: "30" },
-    { label: "90J", value: "90" },
-    { label: "1A", value: "365" },
-  ];
-
-  const timeframeLabel: Record<string, string> = {
-    "1h": "1 heure",
-    "1": "1 jour",
-    "7": "7 jours",
-    "30": "30 jours",
-    "90": "90 jours",
-    "365": "1 an",
-  };
-
-  /* ── Fetch OHLC candlestick data ── */
+  /* ── Fetch OHLC candlestick data — Binance first, CoinGecko fallback ── */
   const fetchOHLC = useCallback(async (coinId: string, tf: string) => {
+    const tfConfig = TIMEFRAMES.find((t) => t.value === tf);
+    if (!tfConfig) { setOhlcData([]); return; }
+
     try {
-      // Use Binance API for 1h timeframe
-      if (tf === "1h") {
-        const binanceSymbol = BINANCE_SYMBOLS[coinId];
-        if (binanceSymbol) {
-          const res = await fetch(`/api/binance/klines?symbol=${binanceSymbol}&interval=1h&limit=168`, {
-            signal: AbortSignal.timeout(15000),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data) && data.length > 0) {
-              const mapped = data.map((item: (string | number)[]) => ({
-                time: Math.floor(Number(item[0]) / 1000),
-                open: parseFloat(String(item[1])),
-                high: parseFloat(String(item[2])),
-                low: parseFloat(String(item[3])),
-                close: parseFloat(String(item[4])),
-              }));
-              setOhlcData(mapped);
-              return;
-            }
-          }
-        }
-        // Fallback to CoinGecko days=1 (30min candles) if Binance unavailable
-        const res = await fetch(`/api/coingecko/coins/${coinId}/ohlc?vs_currency=usd&days=1`, {
-          signal: AbortSignal.timeout(15000),
-        });
+      // Try Binance first (high-resolution data)
+      const binanceSymbol = BINANCE_SYMBOLS[coinId];
+      if (binanceSymbol) {
+        const res = await fetch(
+          `/api/binance/klines?symbol=${binanceSymbol}&interval=${tfConfig.binanceInterval}&limit=${tfConfig.binanceLimit}`,
+          { signal: AbortSignal.timeout(15000) }
+        );
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            const mapped = data.map((item: number[]) => ({
-              time: Math.floor(item[0] / 1000),
-              open: item[1], high: item[2], low: item[3], close: item[4],
+            const mapped = data.map((item: (string | number)[]) => ({
+              time: Math.floor(Number(item[0]) / 1000),
+              open: parseFloat(String(item[1])),
+              high: parseFloat(String(item[2])),
+              low: parseFloat(String(item[3])),
+              close: parseFloat(String(item[4])),
             }));
             setOhlcData(mapped);
             return;
           }
         }
-        setOhlcData([]);
-        return;
       }
 
-      // Use CoinGecko for other timeframes
-      const res = await fetch(`/api/coingecko/coins/${coinId}/ohlc?vs_currency=usd&days=${tf}`, {
+      // Fallback to CoinGecko OHLC
+      const res = await fetch(`/api/coingecko/coins/${coinId}/ohlc?vs_currency=usd&days=${tfConfig.coingeckoDays}`, {
         signal: AbortSignal.timeout(15000),
       });
       if (res.ok) {
@@ -251,17 +286,14 @@ export default function Graphiques() {
         if (Array.isArray(data) && data.length > 0) {
           const mapped = data.map((item: number[]) => ({
             time: Math.floor(item[0] / 1000),
-            open: item[1],
-            high: item[2],
-            low: item[3],
-            close: item[4],
+            open: item[1], high: item[2], low: item[3], close: item[4],
           }));
           setOhlcData(mapped);
           return;
         }
       }
     } catch {
-      // OHLC fetch failed, will fallback to line chart
+      // OHLC fetch failed
     }
     setOhlcData([]);
   }, []);
@@ -297,6 +329,11 @@ export default function Graphiques() {
     return () => clearInterval(i);
   }, [fetchData]);
 
+  /* ── Derived data from OHLC for indicators ── */
+  const ohlcClosePrices = ohlcData.map((d) => d.close);
+  const ohlcTimes = ohlcData.map((d) => d.time);
+  const hasOhlc = ohlcData.length > 0;
+
   /* ── Main Price Chart ── */
   useEffect(() => {
     const container = chartContainerRef.current;
@@ -308,12 +345,8 @@ export default function Graphiques() {
     }
 
     const selectedCoin = coins.find((c) => c.id === selected);
-    if (!selectedCoin) return;
-
-    // Need either OHLC data or sparkline data to render
-    const hasOhlc = ohlcData.length > 0;
-    const hasSparklineData = selectedCoin.sparkline_in_7d?.price?.length > 0;
-    if (!hasOhlc && !hasSparklineData) return;
+    if (!selectedCoin && !hasOhlc) return;
+    if (!hasOhlc) return;
 
     const timer = setTimeout(() => {
       if (!container || container.clientWidth === 0 || container.clientHeight === 0) return;
@@ -326,55 +359,33 @@ export default function Graphiques() {
 
       chartRef.current = chart;
 
-      const pricePrecision = selectedCoin.current_price >= 1 ? 2 : 6;
-      const priceMinMove = selectedCoin.current_price >= 1 ? 0.01 : 0.000001;
+      const currentPrice = selectedCoin?.current_price ?? ohlcData[ohlcData.length - 1]?.close ?? 1;
+      const pricePrecision = currentPrice >= 1 ? 2 : 6;
+      const priceMinMove = currentPrice >= 1 ? 0.01 : 0.000001;
 
-      if (hasOhlc) {
-        // Use real candlestick chart with OHLC data
-        const candleSeries = chart.addSeries(CandlestickSeries, {
-          upColor: "#10B981",
-          downColor: "#EF4444",
-          borderDownColor: "#EF4444",
-          borderUpColor: "#10B981",
-          wickDownColor: "#EF4444",
-          wickUpColor: "#10B981",
-          priceFormat: {
-            type: "price",
-            precision: pricePrecision,
-            minMove: priceMinMove,
-          },
-        });
+      const candleSeries = chart.addSeries(CandlestickSeries, {
+        upColor: "#10B981",
+        downColor: "#EF4444",
+        borderDownColor: "#EF4444",
+        borderUpColor: "#10B981",
+        wickDownColor: "#EF4444",
+        wickUpColor: "#10B981",
+        priceFormat: {
+          type: "price",
+          precision: pricePrecision,
+          minMove: priceMinMove,
+        },
+      });
 
-        candleSeries.setData(
-          ohlcData.map((d) => ({
-            time: d.time as unknown as number,
-            open: d.open,
-            high: d.high,
-            low: d.low,
-            close: d.close,
-          }))
-        );
-      } else if (hasSparklineData) {
-        // Fallback to line chart if OHLC unavailable
-        const prices = selectedCoin.sparkline_in_7d!.price;
-        const times = buildTimeArray(prices.length);
-        const lineColor = selectedCoin.price_change_percentage_24h >= 0 ? "#10B981" : "#EF4444";
-
-        const lineSeries = chart.addSeries(LineSeries, {
-          color: lineColor,
-          lineWidth: 2,
-          crosshairMarkerVisible: true,
-          priceFormat: {
-            type: "price",
-            precision: pricePrecision,
-            minMove: priceMinMove,
-          },
-        });
-
-        lineSeries.setData(
-          prices.map((p: number, i: number) => ({ time: times[i] as unknown as number, value: p }))
-        );
-      }
+      candleSeries.setData(
+        ohlcData.map((d) => ({
+          time: d.time as unknown as number,
+          open: d.open,
+          high: d.high,
+          low: d.low,
+          close: d.close,
+        }))
+      );
 
       chart.timeScale().fitContent();
 
@@ -396,12 +407,9 @@ export default function Graphiques() {
         chartRef.current = null;
       }
     };
-  }, [selected, coins, ohlcData, timeframe]);
+  }, [selected, coins, ohlcData, timeframe, hasOhlc]);
 
   const selectedCoin = coins.find((c) => c.id === selected);
-  const sparkPrices = selectedCoin?.sparkline_in_7d?.price || [];
-  const hasSparkline = sparkPrices.length > 0;
-  const times = hasSparkline ? buildTimeArray(sparkPrices.length) : [];
 
   const filteredCoins = searchQuery
     ? coins.filter(
@@ -411,10 +419,10 @@ export default function Graphiques() {
       )
     : coins;
 
-  /* ── RSI render function ── */
+  /* ── RSI render function (uses OHLC close prices) ── */
   const renderRSI = useCallback(
     (chart: ReturnType<typeof createChart>, t: number[]) => {
-      const rsiData = computeRSI(sparkPrices);
+      const rsiData = computeRSI(ohlcClosePrices);
       const rsiSeries = chart.addSeries(LineSeries, {
         color: "#8B5CF6",
         lineWidth: 2,
@@ -424,7 +432,6 @@ export default function Graphiques() {
         rsiData.map((v, i) => ({ time: t[i] as unknown as number, value: v }))
       );
 
-      // Overbought / oversold lines
       const overBought = chart.addSeries(LineSeries, {
         color: "rgba(239,68,68,0.3)",
         lineWidth: 1,
@@ -445,13 +452,13 @@ export default function Graphiques() {
       });
       overSold.setData(t.map((tm) => ({ time: tm as unknown as number, value: 30 })));
     },
-    [sparkPrices]
+    [ohlcClosePrices]
   );
 
-  /* ── MACD render function ── */
+  /* ── MACD render function (uses OHLC close prices) ── */
   const renderMACD = useCallback(
     (chart: ReturnType<typeof createChart>, t: number[]) => {
-      const { macd, signal, histogram } = computeMACD(sparkPrices);
+      const { macd, signal, histogram } = computeMACD(ohlcClosePrices);
 
       const histSeries = chart.addSeries(HistogramSeries, {
         priceFormat: { type: "price", precision: 6, minMove: 0.000001 },
@@ -482,13 +489,13 @@ export default function Graphiques() {
         signal.map((v, i) => ({ time: t[i] as unknown as number, value: v }))
       );
     },
-    [sparkPrices]
+    [ohlcClosePrices]
   );
 
-  /* ── Stochastic render function ── */
+  /* ── Stochastic render function (uses OHLC close prices) ── */
   const renderStochastic = useCallback(
     (chart: ReturnType<typeof createChart>, t: number[]) => {
-      const { k, d } = computeStochastic(sparkPrices);
+      const { k, d } = computeStochastic(ohlcClosePrices);
 
       const kSeries = chart.addSeries(LineSeries, {
         color: "#06B6D4",
@@ -504,7 +511,6 @@ export default function Graphiques() {
       });
       dSeries.setData(d.map((v, i) => ({ time: t[i] as unknown as number, value: v })));
 
-      // Overbought / oversold
       const ob = chart.addSeries(LineSeries, {
         color: "rgba(239,68,68,0.3)",
         lineWidth: 1,
@@ -525,7 +531,7 @@ export default function Graphiques() {
       });
       os.setData(t.map((tm) => ({ time: tm as unknown as number, value: 20 })));
     },
-    [sparkPrices]
+    [ohlcClosePrices]
   );
 
   /* ── Fullscreen Mode ── */
@@ -541,11 +547,11 @@ export default function Graphiques() {
           </button>
         </div>
         <div ref={chartContainerRef} style={{ position: "absolute", inset: 0 }} />
-        {!hasSparkline && (
+        {!hasOhlc && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
               <AlertCircle className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400 font-bold">Données sparkline indisponibles</p>
+              <p className="text-gray-400 font-bold">Données indisponibles</p>
             </div>
           </div>
         )}
@@ -650,6 +656,7 @@ export default function Graphiques() {
           <div className="absolute top-2 left-3 z-10 flex items-center gap-2">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-[#111827]/80 px-2 py-0.5 rounded">
               Bougies — {timeframeLabel[timeframe] || timeframe}
+              {BINANCE_SYMBOLS[selected] ? " (Binance)" : " (CoinGecko)"}
             </span>
             <div className="flex items-center gap-0.5 bg-[#111827]/90 rounded-md px-1 py-0.5">
               {TIMEFRAMES.map((tf) => (
@@ -678,11 +685,11 @@ export default function Graphiques() {
             </div>
           )}
 
-          {!loading && coins.length > 0 && !hasSparkline && (
+          {!loading && !hasOhlc && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#111827]/90">
               <div className="text-center">
                 <AlertCircle className="w-10 h-10 text-amber-400/60 mx-auto mb-3" />
-                <p className="text-sm text-gray-400 font-bold mb-1">Données sparkline indisponibles pour {selectedCoin?.name || selected}</p>
+                <p className="text-sm text-gray-400 font-bold mb-1">Données indisponibles pour {selectedCoin?.name || selected}</p>
                 <p className="text-xs text-gray-600">Essayez BTC, ETH ou SOL.</p>
               </div>
             </div>
@@ -701,8 +708,8 @@ export default function Graphiques() {
           )}
         </div>
 
-        {/* Technical Indicators */}
-        {hasSparkline && (
+        {/* Technical Indicators — now based on OHLC close prices */}
+        {hasOhlc && ohlcClosePrices.length > 20 && (
           <>
             {/* Indicator Legend */}
             <div className="flex items-center gap-4 mt-3 mb-1 px-1">
@@ -727,8 +734,7 @@ export default function Graphiques() {
             <IndicatorChart
               label="RSI (14) — Survente: 30 | Surachat: 70"
               height={120}
-              prices={sparkPrices}
-              times={times}
+              times={ohlcTimes}
               renderSeries={renderRSI}
             />
 
@@ -736,8 +742,7 @@ export default function Graphiques() {
             <IndicatorChart
               label="MACD (12, 26, 9)"
               height={120}
-              prices={sparkPrices}
-              times={times}
+              times={ohlcTimes}
               renderSeries={renderMACD}
             />
 
@@ -745,8 +750,7 @@ export default function Graphiques() {
             <IndicatorChart
               label="Stochastic (14, 3) — Survente: 20 | Surachat: 80"
               height={120}
-              prices={sparkPrices}
-              times={times}
+              times={ohlcTimes}
               renderSeries={renderStochastic}
             />
           </>

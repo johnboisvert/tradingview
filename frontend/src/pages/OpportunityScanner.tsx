@@ -25,17 +25,72 @@ const TYPE_STYLES: Record<string, { bg: string; text: string; label: string }> =
   reversal: { bg: "bg-cyan-500/10", text: "text-cyan-400", label: "🔄 Reversal" },
 };
 
-function classifyOpportunity(change24h: number, change7d: number): { type: Opportunity["type"]; reason: string; score: number } {
+/**
+ * Classify opportunity PURELY from real data — NO Math.random()
+ * Score is deterministic based on change24h, change7d, and volume/mcap ratio
+ */
+function classifyOpportunity(change24h: number, change7d: number, volMcapRatio: number): { type: Opportunity["type"]; reason: string; score: number } {
   if (change24h > 8) {
-    return { type: "breakout", reason: "Cassure haussière avec volume élevé — momentum fort sur 24h", score: 85 + Math.round(Math.random() * 10) };
+    // Breakout: strong 24h move
+    let score = 75;
+    if (change24h > 15) score += 15;
+    else if (change24h > 10) score += 10;
+    if (volMcapRatio > 0.3) score += 10;
+    else if (volMcapRatio > 0.15) score += 5;
+    return {
+      type: "breakout",
+      reason: `Cassure haussière de +${change24h.toFixed(1)}% sur 24h avec un ratio Vol/MCap de ${(volMcapRatio * 100).toFixed(1)}%`,
+      score: Math.min(98, score),
+    };
   } else if (change24h < -10 && change7d < -15) {
-    return { type: "oversold", reason: "Survendu — potentiel rebond technique après forte correction", score: 70 + Math.round(Math.random() * 15) };
+    // Oversold: deep correction
+    let score = 65;
+    if (change7d < -25) score += 15;
+    else if (change7d < -20) score += 10;
+    if (change24h < -15) score += 10;
+    if (volMcapRatio > 0.2) score += 5;
+    return {
+      type: "oversold",
+      reason: `Survendu : ${change24h.toFixed(1)}% (24h), ${change7d.toFixed(1)}% (7j) — potentiel rebond technique`,
+      score: Math.min(98, score),
+    };
   } else if (change24h > 3 && change24h <= 8) {
-    return { type: "momentum", reason: "Momentum haussier confirmé — tendance positive soutenue", score: 65 + Math.round(Math.random() * 15) };
+    // Momentum: moderate positive move
+    let score = 60;
+    if (change24h > 5) score += 10;
+    if (change7d > 10) score += 10;
+    else if (change7d > 5) score += 5;
+    if (volMcapRatio > 0.15) score += 5;
+    return {
+      type: "momentum",
+      reason: `Momentum haussier : +${change24h.toFixed(1)}% (24h), ${change7d > 0 ? "+" : ""}${change7d.toFixed(1)}% (7j)`,
+      score: Math.min(98, score),
+    };
   } else if (change24h < -5 && change7d > 5) {
-    return { type: "reversal", reason: "Correction dans une tendance haussière — opportunité d'achat", score: 60 + Math.round(Math.random() * 20) };
+    // Reversal: dip in uptrend
+    let score = 55;
+    if (change7d > 15) score += 15;
+    else if (change7d > 10) score += 10;
+    if (Math.abs(change24h) > 8) score += 5;
+    if (volMcapRatio > 0.15) score += 5;
+    return {
+      type: "reversal",
+      reason: `Correction de ${change24h.toFixed(1)}% dans une tendance haussière (+${change7d.toFixed(1)}% sur 7j) — opportunité d'achat`,
+      score: Math.min(98, score),
+    };
   } else {
-    return { type: "accumulation", reason: "Phase d'accumulation — faible volatilité, consolidation", score: 50 + Math.round(Math.random() * 20) };
+    // Accumulation: low volatility / consolidation
+    let score = 45;
+    if (volMcapRatio > 0.25) score += 15;
+    else if (volMcapRatio > 0.15) score += 10;
+    else if (volMcapRatio > 0.08) score += 5;
+    if (Math.abs(change24h) < 1) score += 5; // tight range = accumulation
+    if (change7d > 0 && change7d < 5) score += 5;
+    return {
+      type: "accumulation",
+      reason: `Phase d'accumulation — Vol/MCap: ${(volMcapRatio * 100).toFixed(1)}%, variation 24h: ${change24h > 0 ? "+" : ""}${change24h.toFixed(1)}%`,
+      score: Math.min(98, score),
+    };
   }
 }
 
@@ -50,7 +105,6 @@ export default function OpportunityScanner() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch top 200 coins via shared cache
       const { fetchTop200 } = await import("@/lib/cryptoApi");
       const allCoins = await fetchTop200(false) as any[];
 
@@ -59,11 +113,12 @@ export default function OpportunityScanner() {
       }
 
       const opps: Opportunity[] = allCoins
-        .filter((c: any) => c && c.symbol && c.current_price)
+        .filter((c: any) => c && c.symbol && c.current_price && c.market_cap > 0)
         .map((c: any) => {
           const change24h = c.price_change_percentage_24h || 0;
           const change7d = c.price_change_percentage_7d_in_currency || 0;
-          const { type, reason, score } = classifyOpportunity(change24h, change7d);
+          const volMcapRatio = (c.total_volume || 0) / (c.market_cap || 1);
+          const { type, reason, score } = classifyOpportunity(change24h, change7d, volMcapRatio);
 
           return {
             symbol: c.symbol?.toUpperCase() || "N/A",
@@ -92,7 +147,7 @@ export default function OpportunityScanner() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 120000); // refresh every 2 min
+    const interval = setInterval(fetchData, 120000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -105,12 +160,12 @@ export default function OpportunityScanner() {
       <PageHeader
           icon={<span className="text-lg">🎯</span>}
           title="Opportunity Scanner"
-          subtitle="L’IA scanne en permanence le marché pour détecter les opportunités de trading : oversold, breakouts, divergences et setups à fort potentiel avant qu’ils ne deviennent évidents."
+          subtitle="L'IA scanne en permanence le marché pour détecter les opportunités de trading : oversold, breakouts, divergences et setups à fort potentiel avant qu'ils ne deviennent évidents."
           accentColor="green"
           steps={[
-            { n: "1", title: "Consultez les opportunités", desc: "Chaque carte représente une opportunité détectée par l’IA avec le type de signal, le potentiel estimé et le niveau de risque." },
+            { n: "1", title: "Consultez les opportunités", desc: "Chaque carte représente une opportunité détectée par l'IA avec le type de signal, le potentiel estimé et le niveau de risque." },
             { n: "2", title: "Filtrez par type", desc: "Utilisez les filtres pour afficher uniquement les opportunités qui correspondent à votre style de trading (swing, scalp, position)." },
-            { n: "3", title: "Agissez rapidement", desc: "Les opportunités sont éphémères. Vérifiez le signal sur votre chart avant d’entrer en position et respectez votre risk management." },
+            { n: "3", title: "Agissez rapidement", desc: "Les opportunités sont éphémères. Vérifiez le signal sur votre chart avant d'entrer en position et respectez votre risk management." },
           ]}
         />
         <div className="fixed inset-0 pointer-events-none z-0">
@@ -126,7 +181,7 @@ export default function OpportunityScanner() {
             <div className="flex items-center justify-center gap-4 mt-4">
               <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-5 py-1.5 text-xs text-emerald-400 font-bold uppercase tracking-widest">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#22c55e] animate-pulse" />
-                LIVE — Top 100 Cryptos
+                LIVE — Données CoinGecko
               </div>
               {lastUpdate && (
                 <span className="text-[10px] text-gray-600">MAJ: {lastUpdate}</span>
@@ -250,7 +305,7 @@ export default function OpportunityScanner() {
               <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4 mt-6 text-center">
                 <p className="text-[10px] text-gray-600">
                   📊 Données en temps réel via CoinGecko API — Mise à jour automatique toutes les 2 minutes.
-                  Les scores sont calculés algorithmiquement et ne constituent pas un conseil financier.
+                  Les scores sont calculés à partir des variations 24h/7j et du ratio Volume/Market Cap. Aucune composante aléatoire. Ceci ne constitue pas un conseil financier.
                 </p>
               </div>
             </>

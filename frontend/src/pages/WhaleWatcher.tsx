@@ -1,94 +1,125 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
-import { Fish, RefreshCw, ArrowUpRight, ArrowDownRight, ExternalLink, Filter } from "lucide-react";
-import { fetchWithCorsProxy } from "@/lib/cryptoApi";
+import { Fish, RefreshCw, ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown } from "lucide-react";
 import Footer from "@/components/Footer";
 
 const WHALE_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/ed81f7f8-96b1-4d85-b286-6e3ee422e749.png";
 
-interface WhaleTransaction {
+interface WhaleActivity {
   id: string;
-  time: string;
-  asset: "BTC" | "ETH";
-  amount: number;
-  usdValue: number;
-  from: string;
-  to: string;
-  type: "exchange_in" | "exchange_out" | "wallet";
-  txHash: string;
-}
-
-function shortAddr(addr: string): string {
-  if (addr.length <= 14) return addr;
-  return addr.slice(0, 6) + "…" + addr.slice(-6);
+  symbol: string;
+  name: string;
+  image: string;
+  price: number;
+  change24h: number;
+  volume24h: number;
+  marketCap: number;
+  volMcapRatio: number;
+  whaleScore: number;
+  signal: "accumulation" | "distribution" | "neutral";
+  reason: string;
 }
 
 function formatUsd(v: number): string {
+  if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
   if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
-  if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
   if (v >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
   return `$${v.toFixed(0)}`;
 }
 
-function generateMockWhales(btcPrice: number, ethPrice: number): WhaleTransaction[] {
-  const txs: WhaleTransaction[] = [];
-  const types: WhaleTransaction["type"][] = ["exchange_in", "exchange_out", "wallet"];
-  const now = Date.now();
+function analyzeWhaleActivity(coins: any[]): WhaleActivity[] {
+  return coins
+    .filter((c: any) => c && c.symbol && c.current_price && c.market_cap > 0)
+    .map((c: any) => {
+      const volume = c.total_volume || 0;
+      const mcap = c.market_cap || 1;
+      const change24h = c.price_change_percentage_24h || 0;
+      const volMcapRatio = volume / mcap;
 
-  for (let i = 0; i < 25; i++) {
-    const isBtc = Math.random() > 0.4;
-    const asset = isBtc ? "BTC" : "ETH";
-    const amount = isBtc
-      ? Math.round((Math.random() * 500 + 10) * 100) / 100
-      : Math.round((Math.random() * 5000 + 50) * 100) / 100;
-    const price = isBtc ? btcPrice : ethPrice;
-    const type = types[Math.floor(Math.random() * types.length)];
-    const time = new Date(now - Math.random() * 3600000 * 2);
+      // Whale score: based on volume/mcap ratio and price movement
+      // High volume relative to mcap = whale activity
+      let whaleScore = 0;
+      if (volMcapRatio > 0.5) whaleScore += 40;
+      else if (volMcapRatio > 0.3) whaleScore += 30;
+      else if (volMcapRatio > 0.15) whaleScore += 20;
+      else if (volMcapRatio > 0.08) whaleScore += 10;
 
-    txs.push({
-      id: `tx-${i}`,
-      time: time.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
-      asset,
-      amount,
-      usdValue: amount * price,
-      from: `0x${Math.random().toString(16).slice(2, 14)}...${Math.random().toString(16).slice(2, 8)}`,
-      to: `0x${Math.random().toString(16).slice(2, 14)}...${Math.random().toString(16).slice(2, 8)}`,
-      type,
-      txHash: `0x${Math.random().toString(16).slice(2, 66)}`,
-    });
-  }
+      // Large price movements indicate whale activity
+      const absChange = Math.abs(change24h);
+      if (absChange > 10) whaleScore += 30;
+      else if (absChange > 5) whaleScore += 20;
+      else if (absChange > 3) whaleScore += 15;
+      else if (absChange > 1) whaleScore += 5;
 
-  return txs.sort((a, b) => b.usdValue - a.usdValue);
+      // High absolute volume
+      if (volume > 5e9) whaleScore += 20;
+      else if (volume > 1e9) whaleScore += 15;
+      else if (volume > 500e6) whaleScore += 10;
+      else if (volume > 100e6) whaleScore += 5;
+
+      // Determine signal based on real data patterns
+      let signal: WhaleActivity["signal"];
+      let reason: string;
+
+      if (change24h > 3 && volMcapRatio > 0.15) {
+        signal = "accumulation";
+        reason = `Hausse de ${change24h.toFixed(1)}% avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap) — accumulation probable`;
+      } else if (change24h < -3 && volMcapRatio > 0.15) {
+        signal = "distribution";
+        reason = `Baisse de ${change24h.toFixed(1)}% avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap) — distribution probable`;
+      } else if (volMcapRatio > 0.25 && Math.abs(change24h) < 2) {
+        signal = "accumulation";
+        reason = `Volume très élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap) avec faible variation — accumulation silencieuse`;
+      } else if (change24h < -5) {
+        signal = "distribution";
+        reason = `Forte baisse de ${change24h.toFixed(1)}% — pression vendeuse significative`;
+      } else if (change24h > 5) {
+        signal = "accumulation";
+        reason = `Forte hausse de ${change24h.toFixed(1)}% — achat massif détecté`;
+      } else {
+        signal = "neutral";
+        reason = `Activité normale — Vol/MCap: ${(volMcapRatio * 100).toFixed(1)}%, Variation: ${change24h > 0 ? "+" : ""}${change24h.toFixed(1)}%`;
+      }
+
+      whaleScore = Math.min(100, Math.max(0, whaleScore));
+
+      return {
+        id: c.id,
+        symbol: (c.symbol || "").toUpperCase(),
+        name: c.name || "Unknown",
+        image: c.image || "",
+        price: c.current_price,
+        change24h,
+        volume24h: volume,
+        marketCap: mcap,
+        volMcapRatio,
+        whaleScore,
+        signal,
+        reason,
+      };
+    })
+    .sort((a: WhaleActivity, b: WhaleActivity) => b.whaleScore - a.whaleScore);
 }
 
 export default function WhaleWatcher() {
-  const [transactions, setTransactions] = useState<WhaleTransaction[]>([]);
+  const [activities, setActivities] = useState<WhaleActivity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"ALL" | "BTC" | "ETH">("ALL");
-  const [minAmount, setMinAmount] = useState(10);
+  const [filter, setFilter] = useState<"ALL" | "accumulation" | "distribution" | "neutral">("ALL");
   const [lastUpdate, setLastUpdate] = useState("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      let btcPrice = 97000;
-      let ethPrice = 2700;
-
-      const res = await fetchWithCorsProxy(
-        "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
-      );
-      if (res.ok) {
-        const data = await res.json();
-        btcPrice = data?.bitcoin?.usd || btcPrice;
-        ethPrice = data?.ethereum?.usd || ethPrice;
+      const { fetchTop200 } = await import("@/lib/cryptoApi");
+      const data = await fetchTop200(false);
+      if (data.length > 0) {
+        setActivities(analyzeWhaleActivity(data));
       }
-
-      setTransactions(generateMockWhales(btcPrice, ethPrice));
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
-    } catch {
-      setTransactions(generateMockWhales(97000, 2700));
-      setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
+    } catch (err) {
+      console.error("Fetch error:", err);
     } finally {
       setLoading(false);
     }
@@ -96,24 +127,24 @@ export default function WhaleWatcher() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  const filtered = transactions.filter((tx) => {
-    if (filter !== "ALL" && tx.asset !== filter) return false;
-    if (tx.amount < minAmount) return false;
+  const filtered = activities.filter((a) => {
+    if (filter !== "ALL" && a.signal !== filter) return false;
     return true;
   });
 
-  const totalVolume = filtered.reduce((s, t) => s + t.usdValue, 0);
-  const exchangeIn = filtered.filter((t) => t.type === "exchange_in").length;
-  const exchangeOut = filtered.filter((t) => t.type === "exchange_out").length;
+  const accumulationCount = activities.filter((a) => a.signal === "accumulation").length;
+  const distributionCount = activities.filter((a) => a.signal === "distribution").length;
+  const totalVolume = activities.reduce((s, a) => s + a.volume24h, 0);
+  const avgWhaleScore = activities.length > 0 ? Math.round(activities.reduce((s, a) => s + a.whaleScore, 0) / activities.length) : 0;
 
-  const typeLabel = (t: WhaleTransaction["type"]) => {
-    if (t === "exchange_in") return { label: "→ Exchange", color: "text-red-400 bg-red-500/10", desc: "Pression vendeuse" };
-    if (t === "exchange_out") return { label: "← Exchange", color: "text-emerald-400 bg-emerald-500/10", desc: "Accumulation" };
-    return { label: "Wallet → Wallet", color: "text-gray-400 bg-white/[0.06]", desc: "Transfert" };
+  const signalStyle = (s: WhaleActivity["signal"]) => {
+    if (s === "accumulation") return { label: "🟢 Accumulation", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
+    if (s === "distribution") return { label: "🔴 Distribution", color: "text-red-400 bg-red-500/10 border-red-500/20" };
+    return { label: "⚪ Neutre", color: "text-gray-400 bg-white/[0.06] border-white/[0.08]" };
   };
 
   return (
@@ -130,7 +161,7 @@ export default function WhaleWatcher() {
                 <Fish className="w-7 h-7 text-cyan-400" />
                 <h1 className="text-2xl font-extrabold">AI Whale Watcher</h1>
               </div>
-              <p className="text-sm text-gray-400">Surveillance des grosses transactions BTC & ETH en temps réel</p>
+              <p className="text-sm text-gray-400">Détection d&apos;activité whale basée sur les volumes réels CoinGecko</p>
             </div>
             <button
               onClick={fetchData}
@@ -146,25 +177,25 @@ export default function WhaleWatcher() {
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Transactions</p>
-            <p className="text-2xl font-extrabold">{filtered.length}</p>
+            <p className="text-xs text-gray-500 font-semibold mb-1">Cryptos Analysées</p>
+            <p className="text-2xl font-extrabold">{activities.length}</p>
           </div>
           <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Volume Total</p>
+            <p className="text-xs text-gray-500 font-semibold mb-1">Volume Total 24h</p>
             <p className="text-2xl font-extrabold">{formatUsd(totalVolume)}</p>
           </div>
           <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Vers Exchange</p>
+            <p className="text-xs text-gray-500 font-semibold mb-1">Accumulation</p>
             <div className="flex items-center gap-2">
-              <ArrowUpRight className="w-5 h-5 text-red-400" />
-              <p className="text-2xl font-extrabold text-red-400">{exchangeIn}</p>
+              <ArrowDownRight className="w-5 h-5 text-emerald-400" />
+              <p className="text-2xl font-extrabold text-emerald-400">{accumulationCount}</p>
             </div>
           </div>
           <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Depuis Exchange</p>
+            <p className="text-xs text-gray-500 font-semibold mb-1">Distribution</p>
             <div className="flex items-center gap-2">
-              <ArrowDownRight className="w-5 h-5 text-emerald-400" />
-              <p className="text-2xl font-extrabold text-emerald-400">{exchangeOut}</p>
+              <ArrowUpRight className="w-5 h-5 text-red-400" />
+              <p className="text-2xl font-extrabold text-red-400">{distributionCount}</p>
             </div>
           </div>
         </div>
@@ -172,98 +203,114 @@ export default function WhaleWatcher() {
         {/* Filters */}
         <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 mb-6">
           <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-gray-500" />
-              <span className="text-xs font-semibold text-gray-400">Filtres:</span>
-            </div>
+            <span className="text-xs font-semibold text-gray-400">Filtres:</span>
             <div className="flex gap-2">
-              {(["ALL", "BTC", "ETH"] as const).map((f) => (
+              {([
+                { key: "ALL", label: "Tous" },
+                { key: "accumulation", label: "🟢 Accumulation" },
+                { key: "distribution", label: "🔴 Distribution" },
+                { key: "neutral", label: "⚪ Neutre" },
+              ] as const).map((f) => (
                 <button
-                  key={f}
-                  onClick={() => setFilter(f)}
+                  key={f.key}
+                  onClick={() => setFilter(f.key)}
                   className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                    filter === f
+                    filter === f.key
                       ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"
                       : "bg-white/[0.04] text-gray-400 border border-white/[0.06] hover:bg-white/[0.08]"
                   }`}
                 >
-                  {f === "ALL" ? "Tous" : f}
+                  {f.label}
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">Seuil min:</span>
-              <input
-                type="number"
-                value={minAmount}
-                onChange={(e) => setMinAmount(Number(e.target.value))}
-                className="w-20 px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-sm text-white focus:outline-none focus:border-indigo-500/50"
-              />
-            </div>
+            <span className="text-xs text-gray-500 ml-auto">Score whale moyen: {avgWhaleScore}/100</span>
           </div>
         </div>
 
         {/* Table */}
         <div className="bg-[#111827] border border-white/[0.06] rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px]">
+            <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="border-b border-white/[0.06]">
-                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Heure</th>
-                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Actif</th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Montant</th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Valeur USD</th>
-                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Type</th>
-                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Adresses</th>
-                  <th className="text-center py-3 px-4 text-xs font-bold text-gray-500 uppercase">TX</th>
+                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">#</th>
+                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Crypto</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Prix</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">24h</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Volume 24h</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Vol/MCap</th>
+                  <th className="text-center py-3 px-4 text-xs font-bold text-gray-500 uppercase">Score Whale</th>
+                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Signal</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((tx) => {
-                  const tl = typeLabel(tx.type);
-                  return (
-                    <tr key={tx.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
-                      <td className="py-3 px-4 text-sm text-gray-400">{tx.time}</td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
-                            tx.asset === "BTC"
-                              ? "bg-amber-500/10 text-amber-400"
-                              : "bg-blue-500/10 text-blue-400"
-                          }`}
-                        >
-                          {tx.asset}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right text-sm font-bold">
-                        {tx.amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} {tx.asset}
-                      </td>
-                      <td className="py-3 px-4 text-right text-sm font-bold">{formatUsd(tx.usdValue)}</td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${tl.color}`}>
-                          {tl.label}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-xs text-gray-400 font-mono">
-                        {shortAddr(tx.from)} → {shortAddr(tx.to)}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <a
-                          href={
-                            tx.asset === "BTC"
-                              ? `https://www.blockchain.com/btc/tx/${tx.txHash}`
-                              : `https://etherscan.io/tx/${tx.txHash}`
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-indigo-400 hover:text-indigo-300"
-                        >
-                          <ExternalLink className="w-4 h-4 inline" />
-                        </a>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {loading && activities.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-16">
+                      <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-3" />
+                      <p className="text-sm text-gray-400">Chargement des données CoinGecko...</p>
+                    </td>
+                  </tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-16 text-gray-500">Aucune activité trouvée</td>
+                  </tr>
+                ) : (
+                  filtered.slice(0, 50).map((a, i) => {
+                    const ss = signalStyle(a.signal);
+                    return (
+                      <tr key={a.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3 px-4 text-sm text-gray-500 font-semibold">{i + 1}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2.5">
+                            {a.image && <img src={a.image} alt={a.symbol} className="w-7 h-7 rounded-full" loading="lazy" />}
+                            <div>
+                              <span className="text-sm font-bold text-white">{a.symbol}</span>
+                              <span className="text-xs text-gray-500 ml-2">{a.name}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right text-sm font-bold text-white">
+                          ${a.price >= 1 ? a.price.toLocaleString("en-US", { maximumFractionDigits: 2 }) : a.price.toFixed(6)}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className={`flex items-center justify-end gap-1 text-sm font-bold ${a.change24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                            {a.change24h >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                            {a.change24h >= 0 ? "+" : ""}{a.change24h.toFixed(2)}%
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right text-sm font-bold text-gray-300">{formatUsd(a.volume24h)}</td>
+                        <td className="py-3 px-4 text-right">
+                          <span className={`text-sm font-bold ${a.volMcapRatio > 0.2 ? "text-amber-400" : a.volMcapRatio > 0.1 ? "text-gray-200" : "text-gray-500"}`}>
+                            {(a.volMcapRatio * 100).toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-12 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{
+                                  width: `${a.whaleScore}%`,
+                                  background: a.whaleScore > 60 ? "#22c55e" : a.whaleScore > 30 ? "#f59e0b" : "#6b7280",
+                                }}
+                              />
+                            </div>
+                            <span className={`text-sm font-black ${a.whaleScore > 60 ? "text-emerald-400" : a.whaleScore > 30 ? "text-amber-400" : "text-gray-500"}`}>
+                              {a.whaleScore}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border ${ss.color}`}>
+                            {ss.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -271,21 +318,24 @@ export default function WhaleWatcher() {
 
         {/* Legend */}
         <div className="mt-4 bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-          <h3 className="text-sm font-bold mb-3">📖 Lecture rapide</h3>
+          <h3 className="text-sm font-bold mb-3">📖 Méthodologie</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-gray-400">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-400" />
-              <span><b className="text-red-400">Vers exchange</b> = pression de vente potentielle</span>
+            <div className="flex items-start gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
+              <span><b className="text-emerald-400">Accumulation</b> = Volume élevé + hausse de prix ou volume très élevé avec faible variation (achat silencieux)</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span><b className="text-emerald-400">Depuis exchange</b> = accumulation possible</span>
+            <div className="flex items-start gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-400 mt-1.5 flex-shrink-0" />
+              <span><b className="text-red-400">Distribution</b> = Volume élevé + baisse de prix significative (vente massive)</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-gray-400" />
-              <span><b className="text-gray-300">Wallet → Wallet</b> = transfert on-chain</span>
+            <div className="flex items-start gap-2">
+              <span className="w-2 h-2 rounded-full bg-gray-400 mt-1.5 flex-shrink-0" />
+              <span><b className="text-gray-300">Neutre</b> = Activité normale, pas de signal whale détecté</span>
             </div>
           </div>
+          <p className="text-[10px] text-gray-600 mt-3">
+            📊 Données en temps réel via CoinGecko API. Le score whale est calculé à partir du ratio Volume/Market Cap, de la variation 24h et du volume absolu. Aucune donnée simulée.
+          </p>
         </div>
         <Footer />
       </main>

@@ -17,6 +17,49 @@ interface Pepite {
   reason: string;
 }
 
+/**
+ * Determine category based on the coin's market cap rank and name/symbol patterns.
+ * This is a best-effort classification from CoinGecko data.
+ */
+function classifyCategory(name: string, symbol: string, mcap: number): string {
+  const n = (name + " " + symbol).toLowerCase();
+  if (n.includes("doge") || n.includes("shib") || n.includes("pepe") || n.includes("floki") || n.includes("bonk") || n.includes("wif") || n.includes("meme")) return "Meme";
+  if (n.includes("matic") || n.includes("arb") || n.includes("op") || n.includes("zk") || n.includes("base") || n.includes("mantle") || n.includes("scroll")) return "L2";
+  if (n.includes("render") || n.includes("fetch") || n.includes("ocean") || n.includes("agix") || n.includes("ai") || n.includes("bittensor")) return "AI";
+  if (n.includes("sand") || n.includes("mana") || n.includes("axs") || n.includes("gala") || n.includes("imx") || n.includes("game")) return "Gaming";
+  if (n.includes("aave") || n.includes("uni") || n.includes("crv") || n.includes("mkr") || n.includes("comp") || n.includes("sushi") || n.includes("ldo") || n.includes("defi")) return "DeFi";
+  if (n.includes("fil") || n.includes("ar") || n.includes("theta") || n.includes("hnt") || n.includes("rndr") || n.includes("depin")) return "DePIN";
+  if (n.includes("ondo") || n.includes("rwa") || n.includes("real")) return "RWA";
+  if (mcap < 200e6) return "Micro-Cap";
+  return "Infrastructure";
+}
+
+/**
+ * Estimate growth potential based on market cap tier
+ */
+function estimatePotential(mcap: number): string {
+  if (mcap < 50e6) return "x10-x50";
+  if (mcap < 200e6) return "x5-x20";
+  if (mcap < 500e6) return "x3-x10";
+  if (mcap < 1e9) return "x2-x5";
+  return "x2-x3";
+}
+
+/**
+ * Generate a reason based on REAL metrics
+ */
+function generateReason(volMcapRatio: number, change24h: number, mcap: number): string {
+  const parts: string[] = [];
+  if (volMcapRatio > 0.3) parts.push(`Volume/MCap très élevé (${(volMcapRatio * 100).toFixed(1)}%)`);
+  else if (volMcapRatio > 0.15) parts.push(`Volume/MCap élevé (${(volMcapRatio * 100).toFixed(1)}%)`);
+  if (change24h > 5) parts.push(`Momentum haussier (+${change24h.toFixed(1)}%)`);
+  else if (change24h < -5) parts.push(`Correction récente (${change24h.toFixed(1)}%) — potentiel rebond`);
+  if (mcap < 100e6) parts.push("Micro-cap à fort potentiel");
+  else if (mcap < 500e6) parts.push("Small-cap sous-évaluée");
+  if (parts.length === 0) parts.push(`MCap: $${(mcap / 1e6).toFixed(0)}M, Vol/MCap: ${(volMcapRatio * 100).toFixed(1)}%`);
+  return parts.join(" — ");
+}
+
 export default function PepitesCrypto() {
   const [pepites, setPepites] = useState<Pepite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,29 +78,24 @@ export default function PepitesCrypto() {
             const change = c.price_change_percentage_24h || 0;
             const volMcapRatio = vol / mcap;
 
-            let score = 50;
-            if (volMcapRatio > 0.3) score += 15;
-            if (change > 5) score += 10;
-            if (mcap < 500e6) score += 10;
-            if (mcap < 100e6) score += 5;
-            score += Math.round(Math.random() * 15);
+            // Deterministic score based on real metrics
+            let score = 40;
+            if (volMcapRatio > 0.3) score += 20;
+            else if (volMcapRatio > 0.15) score += 12;
+            else if (volMcapRatio > 0.08) score += 5;
+            if (change > 5) score += 12;
+            else if (change > 2) score += 6;
+            if (mcap < 100e6) score += 12;
+            else if (mcap < 500e6) score += 8;
+            else if (mcap < 1e9) score += 4;
+            // Bonus for very high volume activity
+            if (vol > 100e6 && mcap < 500e6) score += 8;
             score = Math.min(score, 98);
-
-            const categories = ["DeFi", "Gaming", "AI", "L2", "Infrastructure", "Meme", "RWA", "DePIN"];
-            const potentials = ["x5-x10", "x3-x5", "x10-x50", "x2-x5", "x5-x20"];
 
             let risk: Pepite["risk"];
             if (mcap > 1e9) risk = "Low";
             else if (mcap > 200e6) risk = "Medium";
             else risk = "High";
-
-            const reasons = [
-              "Volume/MCap ratio élevé — forte activité relative",
-              "Momentum haussier avec accumulation whale",
-              "Narratif porteur + faible capitalisation",
-              "Développement actif + partenariats récents",
-              "Sous-évalué par rapport aux fondamentaux",
-            ];
 
             return {
               symbol: c.symbol?.toUpperCase() || "N/A",
@@ -67,10 +105,10 @@ export default function PepitesCrypto() {
               mcap,
               volume: vol,
               score,
-              category: categories[Math.floor(Math.random() * categories.length)],
-              potential: potentials[Math.floor(Math.random() * potentials.length)],
+              category: classifyCategory(c.name || "", c.symbol || "", mcap),
+              potential: estimatePotential(mcap),
               risk,
-              reason: reasons[Math.floor(Math.random() * reasons.length)],
+              reason: generateReason(volMcapRatio, change, mcap),
             };
           })
           .sort((a: Pepite, b: Pepite) => b.score - a.score)
@@ -96,9 +134,9 @@ export default function PepitesCrypto() {
           subtitle="Découvrez les gemmes cachées du marché crypto : projets sous-évalués avec un fort potentiel de croissance, sélectionnés et scorés par notre algorithme IA."
           accentColor="amber"
           steps={[
-            { n: "1", title: "Explorez les pépites", desc: "Chaque carte représente un projet avec un score de potentiel, un niveau de risque et les raisons pour lesquelles l’IA le considère comme une pépite." },
+            { n: "1", title: "Explorez les pépites", desc: "Chaque carte représente un projet avec un score de potentiel, un niveau de risque et les raisons pour lesquelles l'IA le considère comme une pépite." },
             { n: "2", title: "Filtrez par risque", desc: "Sélectionnez votre tolérance au risque : Faible (projets établis), Moyen (croissance), Élevé (early stage à fort potentiel)." },
-            { n: "3", title: "Faites votre DYOR", desc: "Ces sélections sont des pistes de recherche, pas des conseils financiers. Faites toujours votre propre recherche avant d’investir." },
+            { n: "3", title: "Faites votre DYOR", desc: "Ces sélections sont des pistes de recherche, pas des conseils financiers. Faites toujours votre propre recherche avant d'investir." },
           ]}
         />
         <div className="fixed inset-0 pointer-events-none z-0">
@@ -113,7 +151,7 @@ export default function PepitesCrypto() {
             <p className="text-gray-500 mt-3 text-lg">Découvrez les gems à fort potentiel avant le marché</p>
             <div className="inline-flex items-center gap-2 mt-4 bg-amber-500/10 border border-amber-500/25 rounded-full px-5 py-1.5 text-xs text-amber-400 font-bold uppercase tracking-widest">
               <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-pulse" />
-              AI Gem Detection
+              Données CoinGecko — Scores déterministes
             </div>
           </div>
 
@@ -190,7 +228,7 @@ export default function PepitesCrypto() {
           {/* Disclaimer */}
           <div className="mt-6 bg-red-500/5 border border-red-500/15 rounded-2xl p-6 text-center">
             <p className="text-sm text-red-400/80">
-              ⚠️ <strong>Avertissement :</strong> Les pépites crypto sont des investissements à haut risque. Ne jamais investir plus que ce que vous pouvez vous permettre de perdre. DYOR (Do Your Own Research).
+              ⚠️ <strong>Avertissement :</strong> Les pépites crypto sont des investissements à haut risque. Scores calculés à partir des données CoinGecko réelles (Volume/MCap, variation 24h, capitalisation). Ne jamais investir plus que ce que vous pouvez vous permettre de perdre. DYOR.
             </p>
           </div>
         </div>

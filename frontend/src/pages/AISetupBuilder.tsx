@@ -213,7 +213,7 @@ export default function AISetupBuilder() {
           timeframe: customSetup.timeframe,
           indicators: ["EMA 20", "EMA 50", "ATR", "Volume"],
           riskReward: "1:2.5",
-          confidence: 70 + Math.round(Math.random() * 15),
+          confidence: 76,
           description: `${customSetup.direction} — Setup de suivi de tendance ${isLong ? "haussière" : "baissière"} optimisé pour ${customSetup.pair} en ${customSetup.timeframe}. Capital: $${customSetup.capital}, Risque: ${customSetup.riskPct}%.`,
         },
         scalp: {
@@ -229,7 +229,7 @@ export default function AISetupBuilder() {
           timeframe: customSetup.timeframe,
           indicators: ["RSI 14", "Volume", "VWAP"],
           riskReward: "1:1.5",
-          confidence: 65 + Math.round(Math.random() * 15),
+          confidence: 68,
           description: `${customSetup.direction} — Setup de scalping sur ${customSetup.pair}. Entrées rapides sur ${isLong ? "survente" : "surachat"} RSI.`,
         },
         breakout: {
@@ -247,7 +247,7 @@ export default function AISetupBuilder() {
           timeframe: customSetup.timeframe,
           indicators: ["Volume", "Bollinger Bands", "ATR"],
           riskReward: "1:3",
-          confidence: 72 + Math.round(Math.random() * 13),
+          confidence: 74,
           description: `${customSetup.direction} — Setup de breakout ${isLong ? "haussier" : "baissier"} pour ${customSetup.pair}. Capture les explosions de volatilité.`,
         },
       };

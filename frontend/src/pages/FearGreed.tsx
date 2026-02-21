@@ -156,7 +156,7 @@ export default function FearGreed() {
     { name: "Volume", val: Math.round(Math.max(0, Math.min(100, 40 + (coins.length ? Math.log10(coins.reduce((s, c) => s + c.volume, 0) / 1e9) * 15 : 0)))), icon: "📊" },
     { name: "Momentum", val: Math.round(Math.max(0, Math.min(100, 50 + avgChange * 5))), icon: "🚀" },
     { name: "Dominance BTC", val: Math.round(Math.max(0, Math.min(100, coins.length && coins[0]?.symbol === "BTC" ? 50 + (coins[0].change24h > 0 ? 10 : -10) : 52))), icon: "👑" },
-    { name: "Social Media", val: Math.round(Math.max(0, Math.min(100, val * 0.9 + Math.random() * 10))), icon: "🐦" },
+    { name: "Social Media", val: Math.round(Math.max(0, Math.min(100, val * 0.95 + (avgChange > 0 ? 3 : -3)))), icon: "🐦" },
     { name: "Tendances", val: Math.round(Math.max(0, Math.min(100, (bullishCoins / (coins.length || 1)) * 100))), icon: "🔍" },
   ];
 

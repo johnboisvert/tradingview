@@ -138,6 +138,27 @@ app.get('/api/news', async (req, res) => {
   }
 });
 
+// ─── CryptoCompare News API proxy ───
+app.get('/api/news-crypto', async (req, res) => {
+  const targetUrl = `https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest`;
+
+  try {
+    const upstreamRes = await fetch(targetUrl, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const data = await upstreamRes.text();
+    res.status(upstreamRes.status)
+      .set('Content-Type', 'application/json')
+      .send(data);
+  } catch (err) {
+    console.error('CryptoCompare news proxy error:', err);
+    res.status(502).json({ error: 'News proxy failed', message: err?.message });
+  }
+});
+
 // Serve static files from dist
 app.use(express.static(path.join(__dirname, 'dist')));
 

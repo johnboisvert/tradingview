@@ -151,6 +151,30 @@ function geminiProxyPlugin(): Plugin {
           res.end(JSON.stringify({ error: 'News proxy failed', message: err?.message }));
         }
       });
+
+      // CryptoCompare News API proxy — proxies /api/news-crypto to CryptoCompare
+      server.middlewares.use('/api/news-crypto', async (req, res) => {
+        const targetUrl = `https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest`;
+
+        try {
+          const upstreamRes = await fetch(targetUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(15000),
+          });
+
+          const data = await upstreamRes.text();
+          res.statusCode = upstreamRes.status;
+          res.setHeader('Content-Type', 'application/json');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.end(data);
+        } catch (err: any) {
+          console.error('CryptoCompare news proxy error:', err);
+          res.statusCode = 502;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'News proxy failed', message: err?.message }));
+        }
+      });
     },
   };
 }

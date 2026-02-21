@@ -24,28 +24,42 @@ export default function News() {
   const [dataSource, setDataSource] = useState<"live" | "fallback" | "none">("none");
   const [errorMsg, setErrorMsg] = useState("");
 
+  const KNOWN_CRYPTO_SYMBOLS = new Set([
+    "BTC", "ETH", "XRP", "SOL", "DOGE", "ADA", "SHIB", "AVAX", "DOT", "LINK",
+    "MATIC", "UNI", "ATOM", "LTC", "BCH", "NEAR", "APT", "ARB", "OP", "FIL",
+    "ICP", "HBAR", "VET", "ALGO", "SAND", "MANA", "AXS", "FTM", "AAVE", "GRT",
+    "CRO", "EOS", "XLM", "TRX", "BNB", "TON", "SUI", "SEI", "TIA", "JUP",
+    "WIF", "PEPE", "BONK", "FLOKI", "INJ", "RENDER", "FET", "ONDO", "PENDLE",
+  ]);
+
   const fetchNews = useCallback(async () => {
     setLoading(true);
     setErrorMsg("");
 
-    // Strategy 1: Try our local proxy (avoids CORS)
+    // Strategy 1: Try CryptoCompare News API (primary — reliable, free, real news)
     try {
-      const res = await fetch("/api/news", { signal: AbortSignal.timeout(15000) });
+      const res = await fetch("/api/news-crypto", { signal: AbortSignal.timeout(15000) });
       if (res.ok) {
         const contentType = res.headers.get("content-type") || "";
         if (contentType.includes("application/json")) {
           const data = await res.json();
-          if (data?.results && Array.isArray(data.results) && data.results.length > 0) {
+          if (data?.Data && Array.isArray(data.Data) && data.Data.length > 0) {
             setNews(
-              data.results.slice(0, 50).map((item: Record<string, unknown>, i: number) => ({
-                id: String(item.id || i),
-                title: (item.title as string) || "",
-                url: (item.url as string) || "#",
-                source: ((item.source as Record<string, unknown>)?.title as string) || "Crypto News",
-                publishedAt: (item.published_at as string) || new Date().toISOString(),
-                currencies: ((item.currencies as Array<Record<string, unknown>>) || []).map((c) => (c.code as string) || ""),
-                kind: (item.kind as string) || "news",
-              }))
+              data.Data.slice(0, 50).map((item: Record<string, unknown>, i: number) => {
+                // Extract crypto symbols from categories (e.g. "BTC|ETH|Trading")
+                const categories = ((item.categories as string) || "").split("|").map((c: string) => c.trim().toUpperCase());
+                const currencies = categories.filter((c: string) => KNOWN_CRYPTO_SYMBOLS.has(c));
+
+                return {
+                  id: String(item.id || i),
+                  title: (item.title as string) || "",
+                  url: (item.url as string) || "#",
+                  source: ((item.source_info as Record<string, unknown>)?.name as string) || "Crypto News",
+                  publishedAt: new Date(((item.published_on as number) || 0) * 1000).toISOString(),
+                  currencies,
+                  kind: "news",
+                };
+              })
             );
             setDataSource("live");
             setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
@@ -53,13 +67,12 @@ export default function News() {
             return;
           }
         }
-        // If content-type is not JSON (e.g. Cloudflare HTML), skip to fallback
       }
     } catch {
-      // Proxy failed, try alternative
+      // CryptoCompare failed, try fallback
     }
 
-    // Strategy 2: Try CoinGecko status updates as alternative real news source
+    // Strategy 2: Try CoinGecko trending as fallback
     try {
       const res = await fetch(
         "/api/coingecko/search/trending",
@@ -69,7 +82,6 @@ export default function News() {
         const data = await res.json();
         const trendingCoins = data?.coins || [];
         if (trendingCoins.length > 0) {
-          // Build news items from trending coins data
           const trendingNews: NewsItem[] = trendingCoins.slice(0, 15).map(
             (item: { item: { id: string; name: string; symbol: string; market_cap_rank: number; score: number } }, i: number) => ({
               id: `trending-${i}`,
@@ -95,7 +107,7 @@ export default function News() {
     // Strategy 3: All sources failed
     setDataSource("none");
     setErrorMsg(
-      "Impossible de charger les actualités en temps réel. Les sources d'actualités (CryptoPanic, CoinGecko) sont temporairement indisponibles. Veuillez réessayer dans quelques instants."
+      "Impossible de charger les actualités en temps réel. Les sources d'actualités sont temporairement indisponibles. Veuillez réessayer dans quelques instants."
     );
     setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
     setLoading(false);
@@ -126,7 +138,7 @@ export default function News() {
           subtitle="Restez informé des dernières nouvelles du marché crypto en temps réel. Articles provenant de sources vérifiées et fiables."
           accentColor="blue"
           steps={[
-            { n: "1", title: "Lisez les dernières news", desc: "Les actualités sont récupérées en temps réel depuis CryptoPanic et CoinGecko, des sources fiables du marché crypto." },
+            { n: "1", title: "Lisez les dernières news", desc: "Les actualités sont récupérées en temps réel depuis CryptoCompare (CoinTelegraph, CoinDesk, Bitcoin.com, etc.), des sources fiables du marché crypto." },
             { n: "2", title: "Vérifiez la source", desc: "Chaque article indique sa source d'origine. Cliquez pour lire l'article complet sur le site source." },
             { n: "3", title: "Réagissez rapidement", desc: "Les grandes news peuvent créer des opportunités de trading. Croisez toujours l'info avec l'analyse technique avant d'agir." },
           ]}
@@ -155,7 +167,7 @@ export default function News() {
               </div>
               <p className="text-sm text-gray-400">
                 {dataSource === "live"
-                  ? "Dernières nouvelles du marché crypto • Source: CryptoPanic"
+                  ? "Dernières nouvelles du marché crypto • Source: CryptoCompare"
                   : dataSource === "fallback"
                   ? "Cryptos en tendance • Source: CoinGecko Trending"
                   : "Chargement des actualités..."}

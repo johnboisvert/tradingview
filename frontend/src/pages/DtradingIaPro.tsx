@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import { fetchTop200, type CoinMarketData, formatPrice, formatVolume, fetchWithCorsProxy } from "@/lib/cryptoApi";
@@ -16,18 +16,20 @@ type SortKey = "rank" | "score" | "price" | "change24h" | "volume" | "rsi" | "si
 interface IndicatorSet {
   ema9: number;
   ema20: number;
-  ema50: number;
+  ema200: number;
   macdLine: number;
   macdSignal: number;
   macdHist: number;
   rsi: number;
   vwapAbove: boolean;
+  vwapValue: number;
   bbUpper: number;
   bbMiddle: number;
   bbLower: number;
   bbSqueeze: boolean;
   atr: number;
   light: Light;
+  lastClose: number;
 }
 
 interface CryptoAnalysis {
@@ -44,6 +46,7 @@ interface CryptoAnalysis {
 
 // ── Technical Indicator Calculations ─────────────────────────────────────────
 function calcEMA(data: number[], period: number): number[] {
+  if (data.length === 0) return [];
   const k = 2 / (period + 1);
   const ema: number[] = [data[0]];
   for (let i = 1; i < data.length; i++) {
@@ -88,7 +91,7 @@ function calcMACD(data: number[]): { line: number; signal: number; hist: number 
   };
 }
 
-function calcBollingerBands(data: number[], period = 20, mult = 2): { upper: number; middle: number; lower: number; squeeze: boolean } {
+function calcBollingerBands(data: number[], period = 20, mult = 2) {
   if (data.length < period) {
     const avg = data.reduce((a, b) => a + b, 0) / data.length;
     return { upper: avg, middle: avg, lower: avg, squeeze: false };
@@ -98,28 +101,17 @@ function calcBollingerBands(data: number[], period = 20, mult = 2): { upper: num
   const variance = slice.reduce((sum, v) => sum + (v - mean) ** 2, 0) / period;
   const std = Math.sqrt(variance);
   const bandwidth = (2 * mult * std) / mean;
-  return {
-    upper: mean + mult * std,
-    middle: mean,
-    lower: mean - mult * std,
-    squeeze: bandwidth < 0.04,
-  };
+  return { upper: mean + mult * std, middle: mean, lower: mean - mult * std, squeeze: bandwidth < 0.04 };
 }
 
 function calcATR(highs: number[], lows: number[], closes: number[], period = 14): number {
   if (highs.length < 2) return 0;
   const trs: number[] = [];
   for (let i = 1; i < highs.length; i++) {
-    const tr = Math.max(
-      highs[i] - lows[i],
-      Math.abs(highs[i] - closes[i - 1]),
-      Math.abs(lows[i] - closes[i - 1])
-    );
+    const tr = Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1]));
     trs.push(tr);
   }
-  if (trs.length < period) {
-    return trs.reduce((a, b) => a + b, 0) / trs.length;
-  }
+  if (trs.length < period) return trs.reduce((a, b) => a + b, 0) / trs.length;
   let atr = trs.slice(0, period).reduce((a, b) => a + b, 0) / period;
   for (let i = period; i < trs.length; i++) {
     atr = (atr * (period - 1) + trs[i]) / period;
@@ -127,123 +119,185 @@ function calcATR(highs: number[], lows: number[], closes: number[], period = 14)
   return atr;
 }
 
-function computeLight(ind: Omit<IndicatorSet, "light">): Light {
-  let bullish = 0, bearish = 0;
-  if (ind.ema9 > ind.ema20 && ind.ema20 > ind.ema50) bullish += 2;
-  else if (ind.ema9 < ind.ema20 && ind.ema20 < ind.ema50) bearish += 2;
-  if (ind.macdHist > 0) bullish++; else if (ind.macdHist < 0) bearish++;
-  if (ind.rsi < 30) bullish++; else if (ind.rsi > 70) bearish++;
-  else if (ind.rsi > 50) bullish += 0.5; else bearish += 0.5;
-  if (ind.vwapAbove) bullish++; else bearish++;
+// Intraday VWAP: only use recent candles (approx current day)
+function calcVWAP(highs: number[], lows: number[], closes: number[], volumes: number[], intradayCount?: number) {
+  const count = intradayCount || closes.length;
+  const start = Math.max(0, closes.length - count);
+  let vwapNum = 0, vwapDen = 0;
+  for (let i = start; i < closes.length; i++) {
+    const typical = (highs[i] + lows[i] + closes[i]) / 3;
+    const vol = volumes[i] || 1;
+    vwapNum += typical * vol;
+    vwapDen += vol;
+  }
+  const vwapValue = vwapDen > 0 ? vwapNum / vwapDen : closes[closes.length - 1];
+  const lastClose = closes[closes.length - 1];
+  return { vwapValue, vwapAbove: lastClose > vwapValue };
+}
 
-  if (bullish >= 3.5) return "green";
-  if (bearish >= 3.5) return "red";
+// Strict traffic light for day trading
+function computeLight(ind: Omit<IndicatorSet, "light">): Light {
+  let bullPoints = 0, bearPoints = 0;
+  const total = 10; // 3+2+2+3
+
+  // EMA alignment (weight 3)
+  if (ind.ema9 > ind.ema20 && ind.lastClose > ind.ema200) bullPoints += 3;
+  else if (ind.ema9 < ind.ema20 && ind.lastClose < ind.ema200) bearPoints += 3;
+  else if (ind.ema9 > ind.ema20) bullPoints += 1;
+  else bearPoints += 1;
+
+  // MACD histogram (weight 2)
+  if (ind.macdHist > 0 && ind.macdLine > ind.macdSignal) bullPoints += 2;
+  else if (ind.macdHist < 0 && ind.macdLine < ind.macdSignal) bearPoints += 2;
+
+  // RSI (weight 2)
+  if (ind.rsi > 50 && ind.rsi < 70) bullPoints += 2;
+  else if (ind.rsi < 50 && ind.rsi > 30) bearPoints += 2;
+  else if (ind.rsi >= 70) bearPoints += 1;
+  else if (ind.rsi <= 30) bullPoints += 1;
+
+  // VWAP (weight 3 — king of 5min)
+  if (ind.vwapAbove) bullPoints += 3;
+  else bearPoints += 3;
+
+  const ratio = bullPoints / total;
+  if (ratio >= 0.7) return "green";
+  if (ratio <= 0.3) return "red";
   return "orange";
 }
 
-function computeIndicatorsFromPrices(closes: number[], highs: number[], lows: number[], volumes: number[]): IndicatorSet {
+function computeIndicatorsFromPrices(
+  closes: number[], highs: number[], lows: number[], volumes: number[],
+  intradayCandles?: number
+): IndicatorSet {
+  const last = closes.length - 1;
+  const lastClose = closes[last];
   const ema9Arr = calcEMA(closes, 9);
   const ema20Arr = calcEMA(closes, 20);
-  const ema50Arr = calcEMA(closes, 50);
-  const last = closes.length - 1;
+  const ema200Arr = calcEMA(closes, Math.min(200, closes.length));
   const ema9 = ema9Arr[last];
   const ema20 = ema20Arr[last];
-  const ema50 = ema50Arr[last];
+  const ema200 = ema200Arr[last];
   const macd = calcMACD(closes);
   const rsi = calcRSI(closes, 9);
-  let vwapNum = 0, vwapDen = 0;
-  for (let i = 0; i < closes.length; i++) {
-    const typical = (highs[i] + lows[i] + closes[i]) / 3;
-    vwapNum += typical * (volumes[i] || 1);
-    vwapDen += volumes[i] || 1;
-  }
-  const vwap = vwapDen > 0 ? vwapNum / vwapDen : closes[last];
-  const vwapAbove = closes[last] > vwap;
+  const { vwapValue, vwapAbove } = calcVWAP(highs, lows, closes, volumes, intradayCandles);
   const bb = calcBollingerBands(closes);
   const atr = calcATR(highs, lows, closes);
 
-  const partial = { ema9, ema20, ema50, macdLine: macd.line, macdSignal: macd.signal, macdHist: macd.hist, rsi, vwapAbove, bbUpper: bb.upper, bbMiddle: bb.middle, bbLower: bb.lower, bbSqueeze: bb.squeeze, atr };
+  const partial = {
+    ema9, ema20, ema200,
+    macdLine: macd.line, macdSignal: macd.signal, macdHist: macd.hist,
+    rsi, vwapAbove, vwapValue,
+    bbUpper: bb.upper, bbMiddle: bb.middle, bbLower: bb.lower, bbSqueeze: bb.squeeze,
+    atr, lastClose,
+  };
   return { ...partial, light: computeLight(partial) };
 }
 
+// Compute from CoinGecko sparkline (7d, ~168 hourly points) — fallback only
 function computeFromSparkline(coin: CoinMarketData): Record<Timeframe, IndicatorSet> {
   const prices = coin.sparkline_in_7d?.price || [];
-  if (prices.length < 50) {
-    const change = coin.price_change_percentage_24h || 0;
+  const defaultInd = (price: number, change: number): IndicatorSet => {
+    const rsi = change > 5 ? 72 : change > 2 ? 60 : change > 0 ? 55 : change > -2 ? 45 : change > -5 ? 35 : 25;
     const vol = coin.total_volume || 0;
     const mcap = coin.market_cap || 1;
     const volRatio = vol / mcap;
-    const rsi = change > 5 ? 72 : change > 2 ? 60 : change > 0 ? 55 : change > -2 ? 45 : change > -5 ? 35 : 25;
     const light: Light = change > 3 && volRatio > 0.1 ? "green" : change < -3 ? "red" : "orange";
-    const ind: IndicatorSet = {
-      ema9: coin.current_price, ema20: coin.current_price, ema50: coin.current_price,
+    return {
+      ema9: price, ema20: price, ema200: price * (1 - change * 0.001),
       macdLine: change > 0 ? 0.01 : -0.01, macdSignal: 0, macdHist: change > 0 ? 0.01 : -0.01,
-      rsi, vwapAbove: change > 0, bbUpper: coin.current_price * 1.02, bbMiddle: coin.current_price,
-      bbLower: coin.current_price * 0.98, bbSqueeze: false, atr: coin.current_price * 0.015, light,
+      rsi, vwapAbove: change > 0, vwapValue: price * (1 - change * 0.0005),
+      bbUpper: price * 1.02, bbMiddle: price, bbLower: price * 0.98, bbSqueeze: false,
+      atr: price * 0.015, light, lastClose: price,
     };
+  };
+
+  if (prices.length < 50) {
+    const change = coin.price_change_percentage_24h || 0;
+    const ind = defaultInd(coin.current_price, change);
     return { "1m": { ...ind }, "5m": { ...ind }, "15m": { ...ind }, "1h": { ...ind } };
   }
 
   const highs = prices.map((p, i) => Math.max(p, prices[Math.max(0, i - 1)]));
   const lows = prices.map((p, i) => Math.min(p, prices[Math.max(0, i - 1)]));
   const volumes = prices.map(() => coin.total_volume / 168);
-  const ind1h = computeIndicatorsFromPrices(prices, highs, lows, volumes);
 
-  const recent48 = prices.slice(-48);
-  const h48 = recent48.map((p, i) => Math.max(p, recent48[Math.max(0, i - 1)]));
-  const l48 = recent48.map((p, i) => Math.min(p, recent48[Math.max(0, i - 1)]));
-  const v48 = recent48.map(() => coin.total_volume / 168);
-  const ind15m = recent48.length >= 20 ? computeIndicatorsFromPrices(recent48, h48, l48, v48) : { ...ind1h };
-
-  const recent24 = prices.slice(-24);
-  const h24 = recent24.map((p, i) => Math.max(p, recent24[Math.max(0, i - 1)]));
-  const l24 = recent24.map((p, i) => Math.min(p, recent24[Math.max(0, i - 1)]));
-  const v24 = recent24.map(() => coin.total_volume / 168);
-  const ind5m = recent24.length >= 20 ? computeIndicatorsFromPrices(recent24, h24, l24, v24) : { ...ind15m };
-
-  const recent12 = prices.slice(-12);
-  const h12 = recent12.map((p, i) => Math.max(p, recent12[Math.max(0, i - 1)]));
-  const l12 = recent12.map((p, i) => Math.min(p, recent12[Math.max(0, i - 1)]));
-  const v12 = recent12.map(() => coin.total_volume / 168);
-  const ind1m = recent12.length >= 10 ? computeIndicatorsFromPrices(recent12, h12, l12, v12) : { ...ind5m };
+  // 1h: use all 168 points (7 days hourly)
+  const ind1h = computeIndicatorsFromPrices(prices, highs, lows, volumes, 24);
+  // 15m: last 48h
+  const r48 = prices.slice(-48);
+  const h48 = r48.map((p, i) => Math.max(p, r48[Math.max(0, i - 1)]));
+  const l48 = r48.map((p, i) => Math.min(p, r48[Math.max(0, i - 1)]));
+  const v48 = r48.map(() => coin.total_volume / 168);
+  const ind15m = r48.length >= 20 ? computeIndicatorsFromPrices(r48, h48, l48, v48, 24) : { ...ind1h };
+  // 5m: last 24h
+  const r24 = prices.slice(-24);
+  const h24 = r24.map((p, i) => Math.max(p, r24[Math.max(0, i - 1)]));
+  const l24 = r24.map((p, i) => Math.min(p, r24[Math.max(0, i - 1)]));
+  const v24 = r24.map(() => coin.total_volume / 168);
+  const ind5m = r24.length >= 20 ? computeIndicatorsFromPrices(r24, h24, l24, v24, 24) : { ...ind15m };
+  // 1m: last 12h
+  const r12 = prices.slice(-12);
+  const h12 = r12.map((p, i) => Math.max(p, r12[Math.max(0, i - 1)]));
+  const l12 = r12.map((p, i) => Math.min(p, r12[Math.max(0, i - 1)]));
+  const v12 = r12.map(() => coin.total_volume / 168);
+  const ind1m = r12.length >= 10 ? computeIndicatorsFromPrices(r12, h12, l12, v12, 12) : { ...ind5m };
 
   return { "1m": ind1m, "5m": ind5m, "15m": ind15m, "1h": ind1h };
 }
 
 function computeScore(indicators: Record<Timeframe, IndicatorSet>, coin: CoinMarketData): number {
   let score = 50;
+
+  // 1) Traffic light alignment 5m+15m+1h (25%)
   const lights = (["5m", "15m", "1h"] as Timeframe[]).map(tf => indicators[tf].light);
   const greenCount = lights.filter(l => l === "green").length;
   const redCount = lights.filter(l => l === "red").length;
-  score += (greenCount - redCount) * 10;
+  score += (greenCount - redCount) * 8; // max ±24
 
+  // 2) VWAP position — king of 5min (20%)
+  const vwap5m = indicators["5m"].vwapAbove;
+  const vwap1h = indicators["1h"].vwapAbove;
+  if (vwap5m && vwap1h) score += 20;
+  else if (!vwap5m && !vwap1h) score -= 15;
+  else if (vwap5m) score += 5;
+
+  // 3) RSI (15%)
   const rsi = indicators["5m"].rsi;
-  if (rsi < 30) score += 15;
-  else if (rsi < 40) score += 10;
-  else if (rsi > 70) score -= 15;
-  else if (rsi > 60) score -= 5;
+  if (rsi > 50 && rsi < 70) score += 10;
+  else if (rsi < 30) score += 15; // oversold = buy opportunity
+  else if (rsi > 70) score -= 15; // overbought
+  else if (rsi < 50) score -= 5;
 
+  // 4) MACD momentum (15%)
   const macdH = indicators["5m"].macdHist;
-  if (macdH > 0) score += Math.min(15, macdH * 1000);
-  else score += Math.max(-15, macdH * 1000);
+  const macdLine = indicators["5m"].macdLine;
+  const macdSig = indicators["5m"].macdSignal;
+  if (macdH > 0 && macdLine > macdSig) score += 15;
+  else if (macdH > 0) score += 8;
+  else if (macdH < 0 && macdLine < macdSig) score -= 12;
+  else score -= 5;
 
-  if (indicators["5m"].vwapAbove && indicators["1h"].vwapAbove) score += 15;
-  else if (!indicators["5m"].vwapAbove && !indicators["1h"].vwapAbove) score -= 10;
-
+  // 5) EMA 200 position (15%)
   const price = coin.current_price;
+  const ema200_5m = indicators["5m"].ema200;
+  const ema200_1h = indicators["1h"].ema200;
+  if (price > ema200_5m && price > ema200_1h) score += 15;
+  else if (price > ema200_1h) score += 5;
+  else if (price < ema200_5m && price < ema200_1h) score -= 10;
+
+  // 6) Bollinger + Volume (10%)
   const bb = indicators["5m"];
   if (bb.bbSqueeze) score += 5;
   const bbRange = bb.bbUpper - bb.bbLower;
   if (bbRange > 0) {
     const bbPos = (price - bb.bbLower) / bbRange;
-    if (bbPos < 0.2) score += 10;
-    else if (bbPos > 0.8) score -= 5;
+    if (bbPos < 0.2) score += 5;
+    else if (bbPos > 0.8) score -= 3;
   }
-
   const volRatio = coin.total_volume / (coin.market_cap || 1);
-  if (volRatio > 0.15) score += 10;
-  else if (volRatio > 0.08) score += 5;
-  else if (volRatio < 0.02) score -= 5;
+  if (volRatio > 0.15) score += 5;
+  else if (volRatio < 0.02) score -= 3;
 
   return Math.max(0, Math.min(100, Math.round(score)));
 }
@@ -300,44 +354,79 @@ function getScoreColor(score: number): string {
   return "text-red-300";
 }
 
-function formatMacdHist(val: number): string {
+function fmtNum(val: number, price: number): string {
   const abs = Math.abs(val);
-  if (abs >= 1) return abs.toFixed(2);
-  if (abs >= 0.01) return abs.toFixed(4);
+  if (price > 1000) return abs.toFixed(2);
+  if (price > 1) return abs.toFixed(4);
   if (abs >= 0.0001) return abs.toFixed(6);
-  return abs.toExponential(1);
+  return abs.toExponential(2);
+}
+
+function fmtPrice(val: number): string {
+  if (val >= 1000) return val.toFixed(2);
+  if (val >= 1) return val.toFixed(4);
+  if (val >= 0.01) return val.toFixed(6);
+  return val.toFixed(8);
 }
 
 // ── Binance Klines fetch ─────────────────────────────────────────────────────
-async function fetchBinanceKlines(symbol: string, interval: string, limit = 100): Promise<{ closes: number[]; highs: number[]; lows: number[]; volumes: number[] } | null> {
+async function fetchBinanceKlines(symbol: string, interval: string, limit = 250): Promise<{
+  closes: number[]; highs: number[]; lows: number[]; volumes: number[];
+  openTimes: number[];
+} | null> {
   try {
     const url = `https://api.binance.com/api/v3/klines?symbol=${symbol.toUpperCase()}USDT&interval=${interval}&limit=${limit}`;
     const res = await fetchWithCorsProxy(url);
     if (!res.ok) return null;
     const data = await res.json();
-    if (!Array.isArray(data)) return null;
+    if (!Array.isArray(data) || data.length === 0) return null;
     return {
       closes: data.map((k: number[]) => parseFloat(String(k[4]))),
       highs: data.map((k: number[]) => parseFloat(String(k[2]))),
       lows: data.map((k: number[]) => parseFloat(String(k[3]))),
       volumes: data.map((k: number[]) => parseFloat(String(k[5]))),
+      openTimes: data.map((k: number[]) => Number(k[0])),
     };
   } catch {
     return null;
   }
 }
 
+// Calculate intraday candle count (candles since midnight UTC)
+function getIntradayCount(openTimes: number[], intervalMinutes: number): number {
+  const now = new Date();
+  const midnightUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime();
+  let count = 0;
+  for (let i = openTimes.length - 1; i >= 0; i--) {
+    if (openTimes[i] >= midnightUTC) count++;
+    else break;
+  }
+  // Minimum candles for VWAP to be meaningful
+  return Math.max(count, Math.floor(60 / intervalMinutes));
+}
+
+const TF_MINUTES: Record<string, number> = { "1m": 1, "5m": 5, "15m": 15, "1h": 60 };
+
 async function loadBinanceForCrypto(analysis: CryptoAnalysis): Promise<CryptoAnalysis> {
   const symbol = analysis.coin.symbol.toUpperCase();
-  const tfMap: Record<Timeframe, string> = { "1m": "1m", "5m": "5m", "15m": "15m", "1h": "1h" };
-  const updated = { ...analysis, indicators: { ...analysis.indicators }, detailLoaded: true, isRealData: true };
+  const tfMap: [Timeframe, string][] = [["1m", "1m"], ["5m", "5m"], ["15m", "15m"], ["1h", "1h"]];
+  const updated: CryptoAnalysis = {
+    ...analysis,
+    indicators: { ...analysis.indicators },
+    detailLoaded: true,
+    isRealData: true,
+  };
 
-  for (const [tf, interval] of Object.entries(tfMap) as [Timeframe, string][]) {
-    const klines = await fetchBinanceKlines(symbol, interval, 100);
-    if (klines && klines.closes.length > 20) {
-      updated.indicators[tf] = computeIndicatorsFromPrices(klines.closes, klines.highs, klines.lows, klines.volumes);
+  for (const [tf, interval] of tfMap) {
+    const klines = await fetchBinanceKlines(symbol, interval, 250);
+    if (klines && klines.closes.length > 30) {
+      const intradayCount = getIntradayCount(klines.openTimes, TF_MINUTES[interval]);
+      updated.indicators[tf] = computeIndicatorsFromPrices(
+        klines.closes, klines.highs, klines.lows, klines.volumes, intradayCount
+      );
     }
   }
+
   updated.score = computeScore(updated.indicators, updated.coin);
   updated.signal = getSignal(updated.score);
   const atr5m = updated.indicators["5m"].atr || updated.coin.current_price * 0.015;
@@ -363,6 +452,14 @@ function TrafficLight({ light, label }: { light: Light; label: string }) {
 function DetailRow({ analysis }: { analysis: CryptoAnalysis }) {
   const { coin, indicators, score, signal, stopLoss, takeProfit, riskReward, isRealData } = analysis;
   const timeframes: Timeframe[] = ["1m", "5m", "15m", "1h"];
+  const price = coin.current_price;
+
+  // Multi-TF validation: strict rule
+  const is5mGreen = indicators["5m"].light === "green";
+  const is15mGreen = indicators["15m"].light === "green";
+  const is1hGreen = indicators["1h"].light === "green";
+  const aboveEma200_1h = price > indicators["1h"].ema200;
+  const isFullyValidated = is5mGreen && is15mGreen && is1hGreen && aboveEma200_1h;
 
   return (
     <tr>
@@ -372,11 +469,11 @@ function DetailRow({ analysis }: { analysis: CryptoAnalysis }) {
           <div className="flex items-center gap-2 mb-4">
             {isRealData ? (
               <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                <CheckCircle className="w-3.5 h-3.5" /> Données Binance temps réel
+                <CheckCircle className="w-3.5 h-3.5" /> Données Binance temps réel (250 bougies/TF)
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-                <BarChart3 className="w-3.5 h-3.5" /> Données estimées (CoinGecko)
+                <BarChart3 className="w-3.5 h-3.5" /> Données estimées — Cliquez pour charger Binance
               </span>
             )}
           </div>
@@ -396,19 +493,47 @@ function DetailRow({ analysis }: { analysis: CryptoAnalysis }) {
                       </div>
                       <div className="space-y-2 text-xs">
                         <div className="flex justify-between">
-                          <span className="text-gray-400">EMA 9/20/50</span>
-                          <span className={`font-bold ${ind.ema9 > ind.ema20 ? "text-emerald-300" : "text-red-300"}`}>
-                            {ind.ema9 > ind.ema20 && ind.ema20 > ind.ema50 ? "▲ Aligné" : ind.ema9 < ind.ema20 ? "▼ Inversé" : "— Mixte"}
+                          <span className="text-gray-400">EMA 9</span>
+                          <span className="text-gray-200 font-bold">${fmtPrice(ind.ema9)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">EMA 20</span>
+                          <span className="text-gray-200 font-bold">${fmtPrice(ind.ema20)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">EMA 200</span>
+                          <span className={`font-bold ${ind.lastClose > ind.ema200 ? "text-emerald-300" : "text-red-300"}`}>
+                            ${fmtPrice(ind.ema200)} {ind.lastClose > ind.ema200 ? "▲" : "▼"}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-400">MACD</span>
+                          <span className="text-gray-400">Alignement</span>
+                          <span className={`font-bold ${ind.ema9 > ind.ema20 && ind.lastClose > ind.ema200 ? "text-emerald-300" : ind.ema9 < ind.ema20 ? "text-red-300" : "text-amber-300"}`}>
+                            {ind.ema9 > ind.ema20 && ind.lastClose > ind.ema200 ? "▲ Haussier" : ind.ema9 < ind.ema20 && ind.lastClose < ind.ema200 ? "▼ Baissier" : "— Mixte"}
+                          </span>
+                        </div>
+                        <div className="border-t border-white/[0.06] my-1" />
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">MACD Ligne</span>
+                          <span className={`font-bold ${ind.macdLine > ind.macdSignal ? "text-emerald-300" : "text-red-300"}`}>
+                            {ind.macdLine > 0 ? "+" : ""}{fmtNum(ind.macdLine, price)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">MACD Signal</span>
+                          <span className="text-gray-200 font-bold">
+                            {ind.macdSignal > 0 ? "+" : ""}{fmtNum(ind.macdSignal, price)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">MACD Hist</span>
                           <span className={`font-bold ${ind.macdHist > 0 ? "text-emerald-300" : "text-red-300"}`}>
-                            {ind.macdHist > 0 ? "▲" : "▼"} {formatMacdHist(ind.macdHist)}
+                            {ind.macdHist > 0 ? "▲ +" : "▼ "}{fmtNum(ind.macdHist, price)}
                           </span>
                         </div>
+                        <div className="border-t border-white/[0.06] my-1" />
                         <div className="flex justify-between">
-                          <span className="text-gray-400">RSI</span>
+                          <span className="text-gray-400">RSI (9)</span>
                           <span className={`font-bold ${ind.rsi < 30 ? "text-emerald-300" : ind.rsi > 70 ? "text-red-300" : "text-gray-200"}`}>
                             {ind.rsi.toFixed(1)} {ind.rsi < 30 ? "Survente" : ind.rsi > 70 ? "Surachat" : ""}
                           </span>
@@ -416,7 +541,7 @@ function DetailRow({ analysis }: { analysis: CryptoAnalysis }) {
                         <div className="flex justify-between">
                           <span className="text-gray-400">VWAP</span>
                           <span className={`font-bold ${ind.vwapAbove ? "text-emerald-300" : "text-red-300"}`}>
-                            {ind.vwapAbove ? "▲ Au-dessus" : "▼ En-dessous"}
+                            ${fmtPrice(ind.vwapValue)} {ind.vwapAbove ? "▲" : "▼"}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -427,7 +552,7 @@ function DetailRow({ analysis }: { analysis: CryptoAnalysis }) {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">ATR</span>
-                          <span className="text-gray-200 font-bold">${ind.atr < 0.01 ? ind.atr.toFixed(6) : ind.atr.toFixed(2)}</span>
+                          <span className="text-gray-200 font-bold">${fmtPrice(ind.atr)}</span>
                         </div>
                       </div>
                     </div>
@@ -446,9 +571,22 @@ function DetailRow({ analysis }: { analysis: CryptoAnalysis }) {
                 </div>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Prix d&apos;entrée</span>
+                    <span className="text-gray-400">Prix actuel</span>
                     <span className="text-white font-bold">${formatPrice(coin.current_price)}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">EMA 200 (1h)</span>
+                    <span className={`font-bold ${price > indicators["1h"].ema200 ? "text-emerald-300" : "text-red-300"}`}>
+                      ${fmtPrice(indicators["1h"].ema200)} {price > indicators["1h"].ema200 ? "✓" : "✗"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">VWAP (5m)</span>
+                    <span className={`font-bold ${indicators["5m"].vwapAbove ? "text-emerald-300" : "text-red-300"}`}>
+                      ${fmtPrice(indicators["5m"].vwapValue)} {indicators["5m"].vwapAbove ? "✓" : "✗"}
+                    </span>
+                  </div>
+                  <div className="border-t border-white/[0.08] pt-3" />
                   <div className="flex justify-between">
                     <span className="text-red-300">Stop-Loss (ATR×1.5)</span>
                     <span className="text-red-200 font-bold">${formatPrice(stopLoss)}</span>
@@ -464,21 +602,33 @@ function DetailRow({ analysis }: { analysis: CryptoAnalysis }) {
                     </span>
                   </div>
                 </div>
-                {/* Validation rule */}
+
+                {/* Strict multi-TF validation */}
                 <div className="mt-4 pt-4 border-t border-white/[0.08]">
-                  <p className="text-xs text-gray-400 mb-2 font-bold">Validation Multi-TF :</p>
-                  <div className="flex items-center gap-3">
-                    {(["5m", "15m", "1h"] as Timeframe[]).map(tf => (
-                      <div key={tf} className="flex items-center gap-1.5">
-                        <div className={`w-3.5 h-3.5 rounded-full ${getLightColor(indicators[tf].light)} shadow-md ${getLightGlow(indicators[tf].light)}`} />
-                        <span className="text-xs text-gray-300 font-bold">{tf}</span>
-                      </div>
-                    ))}
-                    <span className="text-sm ml-auto font-black">
-                      {indicators["5m"].light === "green" && indicators["15m"].light === "green" && indicators["1h"].light === "green"
-                        ? <span className="text-emerald-300">✓ VALIDÉ</span>
-                        : <span className="text-amber-300">⚠ NON VALIDÉ</span>}
-                    </span>
+                  <p className="text-xs text-gray-400 mb-2 font-bold">Validation Stricte Multi-TF :</p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className={is5mGreen ? "text-emerald-300" : "text-red-300"}>{is5mGreen ? "✓" : "✗"}</span>
+                      <div className={`w-3 h-3 rounded-full ${getLightColor(indicators["5m"].light)}`} />
+                      <span className="text-gray-300">5m Entrée</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className={is15mGreen ? "text-emerald-300" : "text-red-300"}>{is15mGreen ? "✓" : "✗"}</span>
+                      <div className={`w-3 h-3 rounded-full ${getLightColor(indicators["15m"].light)}`} />
+                      <span className="text-gray-300">15m Confirmation</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className={is1hGreen ? "text-emerald-300" : "text-red-300"}>{is1hGreen ? "✓" : "✗"}</span>
+                      <div className={`w-3 h-3 rounded-full ${getLightColor(indicators["1h"].light)}`} />
+                      <span className="text-gray-300">1h Direction</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className={aboveEma200_1h ? "text-emerald-300" : "text-red-300"}>{aboveEma200_1h ? "✓" : "✗"}</span>
+                      <span className="text-gray-300">Prix &gt; EMA 200 (1h)</span>
+                    </div>
+                  </div>
+                  <div className={`mt-3 text-center py-2 rounded-lg font-black text-sm ${isFullyValidated ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20" : "bg-amber-500/10 text-amber-300 border border-amber-500/15"}`}>
+                    {isFullyValidated ? "✓ SIGNAL VALIDÉ — ENTRÉE AUTORISÉE" : "⚠ NON VALIDÉ — ATTENDRE CONFIRMATION"}
                   </div>
                 </div>
               </div>
@@ -494,7 +644,7 @@ function DetailRow({ analysis }: { analysis: CryptoAnalysis }) {
 export default function DtradingIaPro() {
   const [analyses, setAnalyses] = useState<CryptoAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingTop20, setLoadingTop20] = useState(false);
+  const [binanceProgress, setBinanceProgress] = useState({ loaded: 0, total: 0, active: false });
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -504,13 +654,13 @@ export default function DtradingIaPro() {
   const [minScore, setMinScore] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
-  const [top20Loaded, setTop20Loaded] = useState(false);
+  const binanceLoadedRef = useRef(false);
+  const abortRef = useRef(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchTop200(true);
-
       const results: CryptoAnalysis[] = data.map(coin => {
         const indicators = computeFromSparkline(coin);
         const score = computeScore(indicators, coin);
@@ -523,7 +673,6 @@ export default function DtradingIaPro() {
         const riskReward = risk > 0 ? reward / risk : 0;
         return { coin, indicators, score, signal, stopLoss, takeProfit, riskReward, detailLoaded: false, isRealData: false };
       });
-
       setAnalyses(results);
       setLastUpdate(new Date());
     } catch (err) {
@@ -533,16 +682,21 @@ export default function DtradingIaPro() {
     }
   }, []);
 
-  // Auto-load Binance data for top 20 after initial load
-  const loadTop20Binance = useCallback(async (currentAnalyses: CryptoAnalysis[]) => {
-    if (top20Loaded || currentAnalyses.length === 0) return;
-    setLoadingTop20(true);
-    setTop20Loaded(true);
+  // Progressive Binance loading for ALL cryptos
+  const loadAllBinance = useCallback(async (currentAnalyses: CryptoAnalysis[]) => {
+    if (binanceLoadedRef.current || currentAnalyses.length === 0) return;
+    binanceLoadedRef.current = true;
+    abortRef.current = false;
 
-    const top20 = currentAnalyses.slice(0, 20);
-    // Load in batches of 4 to avoid rate limiting
-    for (let i = 0; i < top20.length; i += 4) {
-      const batch = top20.slice(i, i + 4);
+    const total = currentAnalyses.length;
+    setBinanceProgress({ loaded: 0, total, active: true });
+
+    const BATCH_SIZE = 5;
+    const BATCH_DELAY = 600;
+
+    for (let i = 0; i < total; i += BATCH_SIZE) {
+      if (abortRef.current) break;
+      const batch = currentAnalyses.slice(i, i + BATCH_SIZE);
       const promises = batch.map(a => loadBinanceForCrypto(a).catch(() => a));
       const results = await Promise.all(promises);
 
@@ -555,57 +709,50 @@ export default function DtradingIaPro() {
         return updated;
       });
 
-      // Small delay between batches
-      if (i + 4 < top20.length) {
-        await new Promise(r => setTimeout(r, 500));
+      setBinanceProgress(p => ({ ...p, loaded: Math.min(i + BATCH_SIZE, total) }));
+
+      if (i + BATCH_SIZE < total) {
+        await new Promise(r => setTimeout(r, BATCH_DELAY));
       }
     }
-    setLoadingTop20(false);
-  }, [top20Loaded]);
+    setBinanceProgress(p => ({ ...p, active: false }));
+  }, []);
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 60_000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      abortRef.current = true;
+      binanceLoadedRef.current = false;
+      loadData();
+    }, 120_000); // refresh every 2 min
+    return () => { clearInterval(interval); abortRef.current = true; };
   }, [loadData]);
 
-  // Trigger top 20 loading after initial data
   useEffect(() => {
-    if (!loading && analyses.length > 0 && !top20Loaded) {
-      loadTop20Binance(analyses);
+    if (!loading && analyses.length > 0 && !binanceLoadedRef.current) {
+      loadAllBinance(analyses);
     }
-  }, [loading, analyses.length, top20Loaded, loadTop20Binance]);
+  }, [loading, analyses.length, loadAllBinance]);
 
-  // Load detailed Binance klines when expanding a row
   const handleExpand = useCallback(async (coinId: string) => {
-    if (expandedId === coinId) {
-      setExpandedId(null);
-      return;
-    }
+    if (expandedId === coinId) { setExpandedId(null); return; }
     setExpandedId(coinId);
-
     const analysis = analyses.find(a => a.coin.id === coinId);
     if (!analysis || analysis.detailLoaded) return;
-
     setLoadingDetail(coinId);
     const updated = await loadBinanceForCrypto(analysis);
     setAnalyses(prev => prev.map(a => a.coin.id === coinId ? updated : a));
     setLoadingDetail(null);
   }, [expandedId, analyses]);
 
-  // Filtered & sorted
   const filtered = useMemo(() => {
     let list = analyses;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter(a => a.coin.name.toLowerCase().includes(q) || a.coin.symbol.toLowerCase().includes(q));
     }
-    if (signalFilter !== "ALL") {
-      list = list.filter(a => a.signal === signalFilter);
-    }
-    if (minScore > 0) {
-      list = list.filter(a => a.score >= minScore);
-    }
+    if (signalFilter !== "ALL") list = list.filter(a => a.signal === signalFilter);
+    if (minScore > 0) list = list.filter(a => a.score >= minScore);
     list = [...list].sort((a, b) => {
       let va: number, vb: number;
       switch (sortKey) {
@@ -641,7 +788,6 @@ export default function DtradingIaPro() {
     </th>
   );
 
-  // Stats
   const buyCount = analyses.filter(a => a.signal === "ACHAT FORT" || a.signal === "ACHAT").length;
   const sellCount = analyses.filter(a => a.signal === "VENTE FORTE" || a.signal === "VENTE").length;
   const neutralCount = analyses.filter(a => a.signal === "NEUTRE").length;
@@ -665,25 +811,19 @@ export default function DtradingIaPro() {
                     Dtrading IA PRO
                   </h1>
                   <p className="text-sm text-gray-400">
-                    Analyse multi-timeframe en temps réel • 200 cryptos • Entrée 5m | Confirmation 15m &amp; 1h
+                    Day Trading 5min • EMA 9/20/200 • VWAP Intraday • RSI 9 • MACD 12/26/9 • ATR
                   </p>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {loadingTop20 && (
-                <span className="flex items-center gap-2 text-xs text-indigo-400 font-semibold">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  Chargement Binance top 20...
-                </span>
-              )}
               {lastUpdate && (
                 <span className="text-xs text-gray-500">
                   Mis à jour : {lastUpdate.toLocaleTimeString()}
                 </span>
               )}
               <button
-                onClick={() => { setTop20Loaded(false); loadData(); }}
+                onClick={() => { abortRef.current = true; binanceLoadedRef.current = false; loadData(); }}
                 disabled={loading}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.10] text-gray-200 hover:text-white transition-all text-sm font-semibold disabled:opacity-50"
               >
@@ -693,18 +833,39 @@ export default function DtradingIaPro() {
             </div>
           </div>
 
+          {/* Binance progress bar */}
+          {binanceProgress.active && (
+            <div className="mb-4 bg-white/[0.03] border border-indigo-500/20 rounded-xl p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-indigo-300 flex items-center gap-2">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  Chargement des données Binance temps réel...
+                </span>
+                <span className="text-xs font-bold text-gray-400">
+                  {binanceProgress.loaded}/{binanceProgress.total}
+                </span>
+              </div>
+              <div className="w-full bg-white/[0.06] rounded-full h-2">
+                <div
+                  className="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${binanceProgress.total > 0 ? (binanceProgress.loaded / binanceProgress.total) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
             <div className="bg-white/[0.04] rounded-xl p-4 border border-white/[0.06]">
-              <p className="text-xs text-gray-400 font-bold mb-1">Cryptos Analysées</p>
+              <p className="text-xs text-gray-400 font-bold mb-1">Cryptos</p>
               <p className="text-2xl font-black text-white">{analyses.length}</p>
             </div>
             <div className="bg-emerald-500/[0.08] rounded-xl p-4 border border-emerald-500/15">
-              <p className="text-xs text-emerald-300 font-bold mb-1">Signaux Achat</p>
+              <p className="text-xs text-emerald-300 font-bold mb-1">Achat</p>
               <p className="text-2xl font-black text-emerald-300">{buyCount}</p>
             </div>
             <div className="bg-red-500/[0.08] rounded-xl p-4 border border-red-500/15">
-              <p className="text-xs text-red-300 font-bold mb-1">Signaux Vente</p>
+              <p className="text-xs text-red-300 font-bold mb-1">Vente</p>
               <p className="text-2xl font-black text-red-300">{sellCount}</p>
             </div>
             <div className="bg-gray-500/[0.08] rounded-xl p-4 border border-gray-500/15">
@@ -712,11 +873,11 @@ export default function DtradingIaPro() {
               <p className="text-2xl font-black text-gray-200">{neutralCount}</p>
             </div>
             <div className="bg-indigo-500/[0.08] rounded-xl p-4 border border-indigo-500/15">
-              <p className="text-xs text-indigo-300 font-bold mb-1">Score Moyen</p>
+              <p className="text-xs text-indigo-300 font-bold mb-1">Score Moy.</p>
               <p className={`text-2xl font-black ${getScoreColor(avgScore)}`}>{avgScore}/100</p>
             </div>
             <div className="bg-cyan-500/[0.08] rounded-xl p-4 border border-cyan-500/15">
-              <p className="text-xs text-cyan-300 font-bold mb-1">Données Binance</p>
+              <p className="text-xs text-cyan-300 font-bold mb-1">Binance</p>
               <p className="text-2xl font-black text-cyan-300">{realDataCount}<span className="text-sm text-gray-500">/{analyses.length}</span></p>
             </div>
           </div>
@@ -729,7 +890,7 @@ export default function DtradingIaPro() {
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Rechercher une crypto (nom ou symbole)..."
+                placeholder="Rechercher une crypto..."
                 className="w-full bg-white/[0.05] border border-white/[0.10] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50"
               />
               {searchQuery && (
@@ -746,13 +907,10 @@ export default function DtradingIaPro() {
             >
               <Filter className="w-4 h-4" />
               Filtres
-              {(signalFilter !== "ALL" || minScore > 0) && (
-                <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
-              )}
+              {(signalFilter !== "ALL" || minScore > 0) && <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />}
             </button>
           </div>
 
-          {/* Filter Panel */}
           {showFilters && (
             <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-4 mb-4 flex flex-wrap gap-4 items-end">
               <div>
@@ -771,21 +929,10 @@ export default function DtradingIaPro() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-400 font-bold block mb-1.5">Score minimum : {minScore}</label>
-                <input
-                  type="range"
-                  min={0}
-                  max={90}
-                  step={5}
-                  value={minScore}
-                  onChange={e => setMinScore(Number(e.target.value))}
-                  className="w-40 accent-indigo-500"
-                />
+                <label className="text-xs text-gray-400 font-bold block mb-1.5">Score min : {minScore}</label>
+                <input type="range" min={0} max={90} step={5} value={minScore} onChange={e => setMinScore(Number(e.target.value))} className="w-40 accent-indigo-500" />
               </div>
-              <button
-                onClick={() => { setSignalFilter("ALL"); setMinScore(0); }}
-                className="text-sm text-gray-400 hover:text-white transition-colors underline"
-              >
+              <button onClick={() => { setSignalFilter("ALL"); setMinScore(0); }} className="text-sm text-gray-400 hover:text-white transition-colors underline">
                 Réinitialiser
               </button>
             </div>
@@ -794,26 +941,11 @@ export default function DtradingIaPro() {
           {/* Legend */}
           <div className="flex flex-wrap items-center gap-5 mb-4 px-1">
             <span className="text-xs text-gray-500 font-bold">Légende :</span>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-emerald-400" />
-              <span className="text-xs text-gray-400">Haussier</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-amber-400" />
-              <span className="text-xs text-gray-400">Neutre</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-400" />
-              <span className="text-xs text-gray-400">Baissier</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-xs text-gray-400">Binance temps réel</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <BarChart3 className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-xs text-gray-400">Estimé (cliquez pour charger)</span>
-            </div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-emerald-400" /><span className="text-xs text-gray-400">Haussier</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-amber-400" /><span className="text-xs text-gray-400">Neutre</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-red-400" /><span className="text-xs text-gray-400">Baissier</span></div>
+            <div className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-gray-400">Binance réel</span></div>
+            <div className="flex items-center gap-1.5"><BarChart3 className="w-3.5 h-3.5 text-amber-400" /><span className="text-xs text-gray-400">Estimé</span></div>
           </div>
 
           {/* Table */}
@@ -829,11 +961,11 @@ export default function DtradingIaPro() {
                     <th className="px-3 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">
                       Feux <span className="text-[10px] text-gray-500">(1m|5m|15m|1h)</span>
                     </th>
-                    <SortHeader label="Score IA" sKey="score" />
+                    <SortHeader label="Score" sKey="score" />
                     <SortHeader label="Signal" sKey="signal" />
                     <SortHeader label="RSI" sKey="rsi" />
                     <th className="px-3 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">MACD</th>
-                    <SortHeader label="Volume" sKey="volume" />
+                    <th className="px-3 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">EMA200</th>
                     <th className="px-3 py-4 w-10" />
                   </tr>
                 </thead>
@@ -858,6 +990,7 @@ export default function DtradingIaPro() {
                       const change24h = coin.price_change_percentage_24h || 0;
                       const rsi5m = indicators["5m"].rsi;
                       const macdH = indicators["5m"].macdHist;
+                      const aboveEma200 = coin.current_price > indicators["1h"].ema200;
 
                       return (
                         <Fragment key={coin.id}>
@@ -873,9 +1006,9 @@ export default function DtradingIaPro() {
                                   <span className="text-sm font-black text-white">{coin.symbol.toUpperCase()}</span>
                                   <span className="text-xs text-gray-500 hidden sm:inline">{coin.name}</span>
                                   {isRealData ? (
-                                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" title="Données Binance temps réel" />
+                                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                                   ) : (
-                                    <BarChart3 className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" title="Données estimées" />
+                                    <BarChart3 className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
                                   )}
                                 </div>
                               </div>
@@ -910,10 +1043,14 @@ export default function DtradingIaPro() {
                             </td>
                             <td className="px-3 py-3.5">
                               <span className={`text-sm font-bold ${macdH > 0 ? "text-emerald-300" : "text-red-300"}`}>
-                                {macdH > 0 ? "▲" : "▼"} {formatMacdHist(macdH)}
+                                {macdH > 0 ? "▲" : "▼"} {fmtNum(macdH, coin.current_price)}
                               </span>
                             </td>
-                            <td className="px-3 py-3.5 text-xs text-gray-300 font-semibold">{formatVolume(coin.total_volume)}</td>
+                            <td className="px-3 py-3.5">
+                              <span className={`text-sm font-bold ${aboveEma200 ? "text-emerald-300" : "text-red-300"}`}>
+                                {aboveEma200 ? "▲" : "▼"}
+                              </span>
+                            </td>
                             <td className="px-3 py-3.5">
                               {loadingDetail === coin.id ? (
                                 <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
@@ -937,10 +1074,11 @@ export default function DtradingIaPro() {
             <p className="text-xs text-amber-300/80 flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <span>
-                <strong>Avertissement :</strong> Les signaux sont générés par des algorithmes basés sur des indicateurs techniques (EMA 9/20/50, MACD 12/26/9, RSI 9, VWAP, Bandes de Bollinger, ATR).
-                Ils ne constituent pas des conseils financiers. Le trading de cryptomonnaies comporte des risques importants.
-                Les top 20 cryptos sont automatiquement chargées avec les données Binance en temps réel.
-                Pour les autres, cliquez sur une ligne pour charger les données réelles.
+                <strong>Avertissement :</strong> Indicateurs calculés : EMA 9/20/200, VWAP intraday, RSI 9, MACD (12,26,9), Bollinger (20,2), ATR.
+                Les feux tricolores sont pondérés : VWAP (30%), EMA (30%), MACD (20%), RSI (20%).
+                Règle d&apos;entrée : feu vert sur 5m + 15m + 1h ET prix &gt; EMA 200 (1h).
+                Les données Binance (250 bougies/TF) sont chargées progressivement.
+                Ceci ne constitue pas un conseil financier.
               </span>
             </p>
           </div>

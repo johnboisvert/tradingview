@@ -117,11 +117,18 @@ app.get('/api/news', async (req, res) => {
   try {
     const upstreamRes = await fetch(targetUrl, {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
+      headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
       signal: AbortSignal.timeout(15000),
     });
 
     const data = await upstreamRes.text();
+    const contentType = upstreamRes.headers.get('content-type') || '';
+
+    // If response is HTML (Cloudflare challenge) or non-JSON, return proper error
+    if (!contentType.includes('application/json') || data.trim().startsWith('<!') || data.trim().startsWith('<html')) {
+      return res.status(503).json({ error: 'CryptoPanic blocked by Cloudflare', results: null });
+    }
+
     res.status(upstreamRes.status)
       .set('Content-Type', 'application/json')
       .send(data);

@@ -124,11 +124,22 @@ function geminiProxyPlugin(): Plugin {
         try {
           const upstreamRes = await fetch(targetUrl, {
             method: 'GET',
-            headers: { 'Accept': 'application/json' },
+            headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
             signal: AbortSignal.timeout(15000),
           });
 
           const data = await upstreamRes.text();
+          const contentType = upstreamRes.headers.get('content-type') || '';
+
+          // If response is HTML (Cloudflare challenge) or non-JSON, return proper error
+          if (!contentType.includes('application/json') || data.trim().startsWith('<!') || data.trim().startsWith('<html')) {
+            res.statusCode = 503;
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.end(JSON.stringify({ error: 'CryptoPanic blocked by Cloudflare', results: null }));
+            return;
+          }
+
           res.statusCode = upstreamRes.status;
           res.setHeader('Content-Type', 'application/json');
           res.setHeader('Access-Control-Allow-Origin', '*');

@@ -32,24 +32,28 @@ export default function News() {
     try {
       const res = await fetch("/api/news", { signal: AbortSignal.timeout(15000) });
       if (res.ok) {
-        const data = await res.json();
-        if (data?.results && Array.isArray(data.results) && data.results.length > 0) {
-          setNews(
-            data.results.slice(0, 50).map((item: Record<string, unknown>, i: number) => ({
-              id: String(item.id || i),
-              title: (item.title as string) || "",
-              url: (item.url as string) || "#",
-              source: ((item.source as Record<string, unknown>)?.title as string) || "Crypto News",
-              publishedAt: (item.published_at as string) || new Date().toISOString(),
-              currencies: ((item.currencies as Array<Record<string, unknown>>) || []).map((c) => (c.code as string) || ""),
-              kind: (item.kind as string) || "news",
-            }))
-          );
-          setDataSource("live");
-          setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
-          setLoading(false);
-          return;
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          const data = await res.json();
+          if (data?.results && Array.isArray(data.results) && data.results.length > 0) {
+            setNews(
+              data.results.slice(0, 50).map((item: Record<string, unknown>, i: number) => ({
+                id: String(item.id || i),
+                title: (item.title as string) || "",
+                url: (item.url as string) || "#",
+                source: ((item.source as Record<string, unknown>)?.title as string) || "Crypto News",
+                publishedAt: (item.published_at as string) || new Date().toISOString(),
+                currencies: ((item.currencies as Array<Record<string, unknown>>) || []).map((c) => (c.code as string) || ""),
+                kind: (item.kind as string) || "news",
+              }))
+            );
+            setDataSource("live");
+            setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
+            setLoading(false);
+            return;
+          }
         }
+        // If content-type is not JSON (e.g. Cloudflare HTML), skip to fallback
       }
     } catch {
       // Proxy failed, try alternative

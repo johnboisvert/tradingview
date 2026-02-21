@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
-import { fetchTop200, type CoinMarketData, formatPrice, formatVolume, fetchWithCorsProxy } from "@/lib/cryptoApi";
+import { fetchTop200, type CoinMarketData, formatPrice, fetchWithCorsProxy } from "@/lib/cryptoApi";
 import {
   Crosshair, RefreshCw, Search, ChevronDown, ChevronUp, ArrowUpDown,
   TrendingUp, TrendingDown, Minus, AlertTriangle, Filter, X, CheckCircle, BarChart3,
@@ -247,57 +247,61 @@ function computeFromSparkline(coin: CoinMarketData): Record<Timeframe, Indicator
 }
 
 function computeScore(indicators: Record<Timeframe, IndicatorSet>, coin: CoinMarketData): number {
-  let score = 50;
+  let score = 0; // START FROM 0, not 50!
 
-  // 1) Traffic light alignment 5m+15m+1h (25%)
-  const lights = (["5m", "15m", "1h"] as Timeframe[]).map(tf => indicators[tf].light);
-  const greenCount = lights.filter(l => l === "green").length;
-  const redCount = lights.filter(l => l === "red").length;
-  score += (greenCount - redCount) * 8; // max ±24
+  // 1) Traffic light alignment 5m+15m+1h (max 30 points)
+  const tfs: Timeframe[] = ["5m", "15m", "1h"];
+  for (const tf of tfs) {
+    const l = indicators[tf].light;
+    if (l === "green") score += 10;
+    else if (l === "orange") score += 3;
+    // red = 0 points
+  }
 
-  // 2) VWAP position — king of 5min (20%)
+  // 2) VWAP position (max 20 points)
   const vwap5m = indicators["5m"].vwapAbove;
+  const vwap15m = indicators["15m"].vwapAbove;
   const vwap1h = indicators["1h"].vwapAbove;
-  if (vwap5m && vwap1h) score += 20;
-  else if (!vwap5m && !vwap1h) score -= 15;
+  if (vwap5m && vwap15m && vwap1h) score += 20;
+  else if (vwap5m && vwap1h) score += 12;
   else if (vwap5m) score += 5;
+  // else 0
 
-  // 3) RSI (15%)
+  // 3) RSI (max 15 points)
   const rsi = indicators["5m"].rsi;
-  if (rsi > 50 && rsi < 70) score += 10;
-  else if (rsi < 30) score += 15; // oversold = buy opportunity
-  else if (rsi > 70) score -= 15; // overbought
-  else if (rsi < 50) score -= 5;
+  if (rsi < 30) score += 15; // oversold = buy opportunity
+  else if (rsi >= 40 && rsi <= 60) score += 10; // healthy zone
+  else if (rsi < 40) score += 8;
+  else if (rsi > 60 && rsi <= 70) score += 5;
+  // rsi > 70 = overbought = 0 points
 
-  // 4) MACD momentum (15%)
+  // 4) MACD momentum (max 15 points)
   const macdH = indicators["5m"].macdHist;
   const macdLine = indicators["5m"].macdLine;
   const macdSig = indicators["5m"].macdSignal;
   if (macdH > 0 && macdLine > macdSig) score += 15;
   else if (macdH > 0) score += 8;
-  else if (macdH < 0 && macdLine < macdSig) score -= 12;
-  else score -= 5;
+  else if (macdH < 0 && macdLine < macdSig) score += 0;
+  else score += 3;
 
-  // 5) EMA 200 position (15%)
+  // 5) EMA 200 position (max 15 points)
   const price = coin.current_price;
   const ema200_5m = indicators["5m"].ema200;
   const ema200_1h = indicators["1h"].ema200;
   if (price > ema200_5m && price > ema200_1h) score += 15;
-  else if (price > ema200_1h) score += 5;
-  else if (price < ema200_5m && price < ema200_1h) score -= 10;
+  else if (price > ema200_1h) score += 7;
+  // below EMA 200 = 0 points
 
-  // 6) Bollinger + Volume (10%)
+  // 6) Bollinger + Volume (max 5 points)
   const bb = indicators["5m"];
-  if (bb.bbSqueeze) score += 5;
   const bbRange = bb.bbUpper - bb.bbLower;
   if (bbRange > 0) {
     const bbPos = (price - bb.bbLower) / bbRange;
-    if (bbPos < 0.2) score += 5;
-    else if (bbPos > 0.8) score -= 3;
+    if (bbPos >= 0.3 && bbPos <= 0.7) score += 3;
+    else if (bbPos < 0.2) score += 2;
   }
   const volRatio = coin.total_volume / (coin.market_cap || 1);
-  if (volRatio > 0.15) score += 5;
-  else if (volRatio < 0.02) score -= 3;
+  if (volRatio > 0.1) score += 2;
 
   return Math.max(0, Math.min(100, Math.round(score)));
 }
@@ -794,6 +798,24 @@ export default function DtradingIaPro() {
   const avgScore = analyses.length > 0 ? Math.round(analyses.reduce((s, a) => s + a.score, 0) / analyses.length) : 0;
   const realDataCount = analyses.filter(a => a.isRealData).length;
 
+  // Market sentiment based on BTC data
+  const btcData = analyses.find(a => a.coin.symbol === "btc");
+  const btcChange24h = btcData?.coin.price_change_percentage_24h ?? 0;
+  const marketSentiment = useMemo(() => {
+    // Use average 24h change of top 10 as market proxy
+    const top10 = analyses.slice(0, 10);
+    if (top10.length === 0) return { label: "CHARGEMENT", color: "text-gray-400", bg: "bg-gray-500/10 border-gray-500/20", icon: "⏳" };
+    const avgChange = top10.reduce((s, a) => s + (a.coin.price_change_percentage_24h || 0), 0) / top10.length;
+    const redLights = top10.reduce((s, a) => s + (["5m", "15m", "1h"] as Timeframe[]).filter(tf => a.indicators[tf].light === "red").length, 0);
+    const greenLights = top10.reduce((s, a) => s + (["5m", "15m", "1h"] as Timeframe[]).filter(tf => a.indicators[tf].light === "green").length, 0);
+
+    if (avgChange < -5 || redLights > greenLights * 2) return { label: "PEUR EXTRÊME", color: "text-red-300", bg: "bg-red-500/10 border-red-500/20", icon: "🔴" };
+    if (avgChange < -2 || redLights > greenLights) return { label: "PEUR", color: "text-orange-300", bg: "bg-orange-500/10 border-orange-500/20", icon: "🟠" };
+    if (avgChange > 5 && greenLights > redLights * 2) return { label: "EUPHORIE", color: "text-emerald-300", bg: "bg-emerald-500/10 border-emerald-500/20", icon: "🟢" };
+    if (avgChange > 2 && greenLights > redLights) return { label: "OPTIMISME", color: "text-green-300", bg: "bg-green-500/10 border-green-500/20", icon: "🟡" };
+    return { label: "NEUTRE", color: "text-gray-300", bg: "bg-gray-500/10 border-gray-500/20", icon: "⚪" };
+  }, [analyses]);
+
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white flex">
       <Sidebar />
@@ -851,6 +873,25 @@ export default function DtradingIaPro() {
                   style={{ width: `${binanceProgress.total > 0 ? (binanceProgress.loaded / binanceProgress.total) * 100 : 0}%` }}
                 />
               </div>
+            </div>
+          )}
+
+          {/* Market Sentiment Banner */}
+          {analyses.length > 0 && (
+            <div className={`mb-4 px-4 py-3 rounded-xl border flex flex-wrap items-center gap-3 ${marketSentiment.bg}`}>
+              <span className="text-lg">{marketSentiment.icon}</span>
+              <span className={`text-sm font-black ${marketSentiment.color}`}>
+                Sentiment Marché : {marketSentiment.label}
+              </span>
+              {btcData && (
+                <span className="text-xs text-gray-400">
+                  | BTC : {btcChange24h > 0 ? "+" : ""}{btcChange24h.toFixed(1)}% (24h)
+                  | ${formatPrice(btcData.coin.current_price)}
+                </span>
+              )}
+              {marketSentiment.label === "PEUR EXTRÊME" || marketSentiment.label === "PEUR" ? (
+                <span className="text-xs text-amber-300 ml-auto font-bold">⚠ Prudence recommandée pour le day trading</span>
+              ) : null}
             </div>
           )}
 
@@ -1032,9 +1073,19 @@ export default function DtradingIaPro() {
                               <span className={`text-lg font-black ${getScoreColor(score)}`}>{score}</span>
                             </td>
                             <td className="px-3 py-3.5">
-                              <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${getSignalBg(signal)} ${getSignalColor(signal)}`}>
-                                {signal}
-                              </span>
+                              <div className="flex flex-col items-start gap-1">
+                                <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${getSignalBg(signal)} ${getSignalColor(signal)}`}>
+                                  {signal}
+                                </span>
+                                {(signal === "ACHAT FORT" || signal === "ACHAT") && (
+                                  indicators["5m"].light !== "green" || indicators["15m"].light !== "green" || indicators["1h"].light !== "green"
+                                ) && (
+                                  <span className="text-[9px] text-amber-400 flex items-center gap-0.5">
+                                    <AlertTriangle className="w-2.5 h-2.5" />
+                                    {indicators["5m"].light === "red" ? "5m rouge" : indicators["15m"].light === "red" ? "15m rouge" : indicators["1h"].light === "red" ? "1h rouge" : indicators["5m"].light === "orange" ? "5m orange" : indicators["15m"].light === "orange" ? "15m orange" : "1h orange"}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-3 py-3.5">
                               <span className={`text-sm font-bold ${rsi5m < 30 ? "text-emerald-300" : rsi5m > 70 ? "text-red-300" : "text-gray-200"}`}>

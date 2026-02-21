@@ -4,7 +4,7 @@ import { RefreshCw, TrendingUp, TrendingDown, Search, Maximize2, Minimize2, Aler
 import PageHeader from "@/components/PageHeader";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
 import Footer from "@/components/Footer";
-import { createChart, ColorType, LineSeries, HistogramSeries } from "lightweight-charts";
+import { createChart, ColorType, LineSeries, CandlestickSeries, HistogramSeries } from "lightweight-charts";
 
 /* ── Technical Indicator Calculations ── */
 
@@ -164,8 +164,41 @@ export default function Graphiques() {
   const [lastUpdate, setLastUpdate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [ohlcData, setOhlcData] = useState<Array<{ time: number; open: number; high: number; low: number; close: number }>>([]);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
+
+  /* ── Fetch OHLC candlestick data ── */
+  const fetchOHLC = useCallback(async (coinId: string) => {
+    try {
+      const res = await fetch(`/api/coingecko/coins/${coinId}/ohlc?vs_currency=usd&days=7`, {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped = data.map((item: number[]) => ({
+            time: Math.floor(item[0] / 1000),
+            open: item[1],
+            high: item[2],
+            low: item[3],
+            close: item[4],
+          }));
+          setOhlcData(mapped);
+          return;
+        }
+      }
+    } catch {
+      // OHLC fetch failed, will fallback to line chart
+    }
+    setOhlcData([]);
+  }, []);
+
+  useEffect(() => {
+    if (selected) {
+      fetchOHLC(selected);
+    }
+  }, [selected, fetchOHLC]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -203,7 +236,12 @@ export default function Graphiques() {
     }
 
     const selectedCoin = coins.find((c) => c.id === selected);
-    if (!selectedCoin || !selectedCoin.sparkline_in_7d?.price?.length) return;
+    if (!selectedCoin) return;
+
+    // Need either OHLC data or sparkline data to render
+    const hasOhlc = ohlcData.length > 0;
+    const hasSparklineData = selectedCoin.sparkline_in_7d?.price?.length > 0;
+    if (!hasOhlc && !hasSparklineData) return;
 
     const timer = setTimeout(() => {
       if (!container || container.clientWidth === 0 || container.clientHeight === 0) return;
@@ -216,24 +254,56 @@ export default function Graphiques() {
 
       chartRef.current = chart;
 
-      const prices = selectedCoin.sparkline_in_7d!.price;
-      const times = buildTimeArray(prices.length);
-      const lineColor = selectedCoin.price_change_percentage_24h >= 0 ? "#10B981" : "#EF4444";
+      const pricePrecision = selectedCoin.current_price >= 1 ? 2 : 6;
+      const priceMinMove = selectedCoin.current_price >= 1 ? 0.01 : 0.000001;
 
-      const lineSeries = chart.addSeries(LineSeries, {
-        color: lineColor,
-        lineWidth: 2,
-        crosshairMarkerVisible: true,
-        priceFormat: {
-          type: "price",
-          precision: selectedCoin.current_price >= 1 ? 2 : 6,
-          minMove: selectedCoin.current_price >= 1 ? 0.01 : 0.000001,
-        },
-      });
+      if (hasOhlc) {
+        // Use real candlestick chart with OHLC data
+        const candleSeries = chart.addSeries(CandlestickSeries, {
+          upColor: "#10B981",
+          downColor: "#EF4444",
+          borderDownColor: "#EF4444",
+          borderUpColor: "#10B981",
+          wickDownColor: "#EF4444",
+          wickUpColor: "#10B981",
+          priceFormat: {
+            type: "price",
+            precision: pricePrecision,
+            minMove: priceMinMove,
+          },
+        });
 
-      lineSeries.setData(
-        prices.map((p: number, i: number) => ({ time: times[i] as unknown as number, value: p }))
-      );
+        candleSeries.setData(
+          ohlcData.map((d) => ({
+            time: d.time as unknown as number,
+            open: d.open,
+            high: d.high,
+            low: d.low,
+            close: d.close,
+          }))
+        );
+      } else if (hasSparklineData) {
+        // Fallback to line chart if OHLC unavailable
+        const prices = selectedCoin.sparkline_in_7d!.price;
+        const times = buildTimeArray(prices.length);
+        const lineColor = selectedCoin.price_change_percentage_24h >= 0 ? "#10B981" : "#EF4444";
+
+        const lineSeries = chart.addSeries(LineSeries, {
+          color: lineColor,
+          lineWidth: 2,
+          crosshairMarkerVisible: true,
+          priceFormat: {
+            type: "price",
+            precision: pricePrecision,
+            minMove: priceMinMove,
+          },
+        });
+
+        lineSeries.setData(
+          prices.map((p: number, i: number) => ({ time: times[i] as unknown as number, value: p }))
+        );
+      }
+
       chart.timeScale().fitContent();
 
       const ro = new ResizeObserver(() => {
@@ -254,7 +324,7 @@ export default function Graphiques() {
         chartRef.current = null;
       }
     };
-  }, [selected, coins]);
+  }, [selected, coins, ohlcData]);
 
   const selectedCoin = coins.find((c) => c.id === selected);
   const sparkPrices = selectedCoin?.sparkline_in_7d?.price || [];
@@ -507,7 +577,7 @@ export default function Graphiques() {
         >
           <div className="absolute top-2 left-3 z-10">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-[#111827]/80 px-2 py-0.5 rounded">
-              Prix — 7 jours
+              Bougies — 7 jours
             </span>
           </div>
           <div ref={chartContainerRef} style={{ width: "100%", height: "100%" }} />

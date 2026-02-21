@@ -43,14 +43,9 @@ interface PortfolioAsset {
 
 const STORAGE_KEY = "cryptoia_assistant_history";
 
-// SECURITY: API key is now kept server-side only.
-// Frontend calls /api/ai-chat which proxies to Gemini on the backend.
-// Falls back to direct Gemini call only if VITE_GEMINI_API_KEY is set (dev mode).
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
-const USE_BACKEND_PROXY = !GEMINI_API_KEY; // prefer backend proxy when no key in frontend
-const GEMINI_API_URL = GEMINI_API_KEY
-  ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
-  : "";
+// SECURITY: API key is kept server-side only.
+// Frontend ALWAYS calls /api/ai-chat which proxies to Gemini via Vite middleware (dev) or Express server (prod).
+// The API key is NEVER exposed to the browser.
 
 const PORTFOLIO: PortfolioAsset[] = [
   { symbol: "BTC",  name: "Bitcoin",   color: "#F7931A", amount: 0.42,  price: 67420, weekChange: +3.8,  allocation: 38 },
@@ -148,56 +143,26 @@ async function callGeminiAPI(messages: Message[]): Promise<string> {
   });
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), 30000);
 
   try {
-    // Try backend proxy first (API key stays server-side)
-    if (USE_BACKEND_PROXY) {
-      const proxyRes = await fetch("/api/ai-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({ contents }),
-      });
-      clearTimeout(timeout);
-      if (proxyRes.ok) {
-        const data = await proxyRes.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || data?.text;
-        if (text) return text;
-      }
-      // If proxy fails, fall through to fallback
-      throw new Error("PROXY_UNAVAILABLE");
-    }
-
-    // Direct Gemini call (dev mode with VITE_GEMINI_API_KEY)
-    if (!GEMINI_API_URL) throw new Error("API_KEY_MISSING");
-
-    const response = await fetch(GEMINI_API_URL, {
+    // Always use the backend proxy — API key stays server-side
+    const proxyRes = await fetch("/api/ai-chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,
-      body: JSON.stringify({
-        contents,
-        generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 2048 },
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        ],
-      }),
+      body: JSON.stringify({ contents }),
     });
-
     clearTimeout(timeout);
 
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      console.warn("Gemini API error:", response.status, err);
-      throw new Error(`API_ERROR:${response.status}`);
+    if (!proxyRes.ok) {
+      const errData = await proxyRes.json().catch(() => ({}));
+      console.warn("Gemini proxy error:", proxyRes.status, errData);
+      throw new Error(`PROXY_ERROR:${proxyRes.status}`);
     }
 
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const data = await proxyRes.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || data?.text;
     if (!text) throw new Error("EMPTY_RESPONSE");
     return text;
   } catch (err: unknown) {

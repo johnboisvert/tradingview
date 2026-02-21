@@ -1,11 +1,76 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
+
+// Vite plugin that proxies /api/ai-chat to Gemini API (keeps key server-side)
+function geminiProxyPlugin(): Plugin {
+  return {
+    name: 'gemini-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/ai-chat', async (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.end(JSON.stringify({ error: 'Method not allowed' }));
+          return;
+        }
+
+        const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
+        if (!GEMINI_API_KEY) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'VITE_GEMINI_API_KEY not set in .env' }));
+          return;
+        }
+
+        let body = '';
+        req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+        req.on('end', async () => {
+          try {
+            const parsed = JSON.parse(body);
+            const geminiRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: parsed.contents,
+                  generationConfig: {
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.95,
+                    maxOutputTokens: 2048,
+                  },
+                  safetySettings: [
+                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+                  ],
+                }),
+              }
+            );
+
+            const data = await geminiRes.json();
+            res.statusCode = geminiRes.status;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(data));
+          } catch (err: any) {
+            console.error('Gemini proxy error:', err);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Proxy failed', message: err?.message }));
+          }
+        });
+      });
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
+    geminiProxyPlugin(),
   ],
   resolve: {
     alias: {
@@ -15,12 +80,6 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: '0.0.0.0',
     port: parseInt(process.env.VITE_PORT || '3000'),
-    proxy: {
-      '/api': {
-        target: `http://localhost:8000`,
-        changeOrigin: true,
-      },
-    },
     headers: {
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',

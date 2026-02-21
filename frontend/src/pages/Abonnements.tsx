@@ -581,7 +581,7 @@ export default function Abonnements() {
       color: "from-emerald-500 to-emerald-600",
       borderColor: "border-emerald-500/30",
       features: eliteFeatures,
-      cta: "Contacter l'équipe",
+      cta: "S'abonner",
       popular: false,
       disabled: false,
     },
@@ -592,10 +592,7 @@ export default function Abonnements() {
   const handlePlanClick = (plan: Plan) => {
     if (isCurrentPlan(plan.key)) return;
     if (plan.key === "free") return;
-    if (plan.key === "elite") {
-      window.location.href = "mailto:cryptoia2026@proton.me?subject=Abonnement Elite CryptoIA";
-      return;
-    }
+
     setSelectedPlan(plan);
   };
 

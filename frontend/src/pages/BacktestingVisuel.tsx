@@ -16,437 +16,105 @@ import {
   ChevronDown,
   Search,
 } from "lucide-react";
+import {
+  fetchBinanceKlines,
+  runBacktest,
+  STRATEGY_MAP,
+  BINANCE_SYMBOLS,
+  TIMEFRAMES,
+  type BacktestResult,
+} from "@/lib/backtestEngine";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface TradeSignal {
-  id: number;
-  entryDate: string;
-  exitDate: string;
-  entryPrice: number;
-  exitPrice: number;
-  type: "BUY" | "SELL";
-  confidence: number;
-  gainUSD: number;
-  gainPct: number;
-  durationDays: number;
-  profitable: boolean;
-}
-
-interface BacktestStats {
-  winRate: number;
-  totalGainUSD: number;
-  totalGainPct: number;
-  avgGainPerTrade: number;
-  maxDrawdown: number;
-  riskReward: number;
-  winCount: number;
-  lossCount: number;
-  totalTrades: number;
-  buyHoldGainPct: number;
-  strategyFinalValue: number;
-  buyHoldFinalValue: number;
-}
-
-interface PricePoint {
-  date: string;
-  price: number;
-  strategyValue: number;
-  buyHoldValue: number;
-  signal?: "BUY" | "SELL";
-  signalProfit?: boolean;
-}
-
-// ─── Top 200 Cryptos ──────────────────────────────────────────────────────────
-
-const CRYPTOS = [
-  { symbol: "BTC",   name: "Bitcoin",            basePrice: 97000,   volatility: 0.04 },
-  { symbol: "ETH",   name: "Ethereum",            basePrice: 2700,    volatility: 0.05 },
-  { symbol: "USDT",  name: "Tether",              basePrice: 1.0,     volatility: 0.001 },
-  { symbol: "BNB",   name: "BNB",                 basePrice: 650,     volatility: 0.04 },
-  { symbol: "SOL",   name: "Solana",              basePrice: 195,     volatility: 0.07 },
-  { symbol: "XRP",   name: "XRP",                 basePrice: 2.45,    volatility: 0.06 },
-  { symbol: "USDC",  name: "USD Coin",            basePrice: 1.0,     volatility: 0.001 },
-  { symbol: "DOGE",  name: "Dogecoin",            basePrice: 0.25,    volatility: 0.09 },
-  { symbol: "ADA",   name: "Cardano",             basePrice: 0.78,    volatility: 0.07 },
-  { symbol: "AVAX",  name: "Avalanche",           basePrice: 38.5,    volatility: 0.08 },
-  { symbol: "TRX",   name: "TRON",                basePrice: 0.22,    volatility: 0.06 },
-  { symbol: "LINK",  name: "Chainlink",           basePrice: 14,      volatility: 0.06 },
-  { symbol: "TON",   name: "Toncoin",             basePrice: 5.5,     volatility: 0.07 },
-  { symbol: "SHIB",  name: "Shiba Inu",           basePrice: 0.000025, volatility: 0.10 },
-  { symbol: "DOT",   name: "Polkadot",            basePrice: 8.5,     volatility: 0.07 },
-  { symbol: "MATIC", name: "Polygon",             basePrice: 0.95,    volatility: 0.07 },
-  { symbol: "BCH",   name: "Bitcoin Cash",        basePrice: 480,     volatility: 0.06 },
-  { symbol: "DAI",   name: "Dai",                 basePrice: 1.0,     volatility: 0.001 },
-  { symbol: "LTC",   name: "Litecoin",            basePrice: 95,      volatility: 0.05 },
-  { symbol: "UNI",   name: "Uniswap",             basePrice: 8.5,     volatility: 0.07 },
-  { symbol: "NEAR",  name: "NEAR Protocol",       basePrice: 6.2,     volatility: 0.08 },
-  { symbol: "ICP",   name: "Internet Computer",   basePrice: 12,      volatility: 0.08 },
-  { symbol: "APT",   name: "Aptos",               basePrice: 9.5,     volatility: 0.09 },
-  { symbol: "ETC",   name: "Ethereum Classic",    basePrice: 28,      volatility: 0.06 },
-  { symbol: "XLM",   name: "Stellar",             basePrice: 0.38,    volatility: 0.07 },
-  { symbol: "STX",   name: "Stacks",              basePrice: 1.8,     volatility: 0.09 },
-  { symbol: "FIL",   name: "Filecoin",            basePrice: 5.5,     volatility: 0.08 },
-  { symbol: "OP",    name: "Optimism",            basePrice: 2.1,     volatility: 0.09 },
-  { symbol: "ARB",   name: "Arbitrum",            basePrice: 1.2,     volatility: 0.09 },
-  { symbol: "ATOM",  name: "Cosmos",              basePrice: 8.2,     volatility: 0.07 },
-  { symbol: "INJ",   name: "Injective",           basePrice: 22,      volatility: 0.10 },
-  { symbol: "IMX",   name: "Immutable",           basePrice: 1.9,     volatility: 0.09 },
-  { symbol: "HBAR",  name: "Hedera",              basePrice: 0.095,   volatility: 0.08 },
-  { symbol: "VET",   name: "VeChain",             basePrice: 0.038,   volatility: 0.07 },
-  { symbol: "MKR",   name: "Maker",               basePrice: 1800,    volatility: 0.06 },
-  { symbol: "AAVE",  name: "Aave",                basePrice: 185,     volatility: 0.07 },
-  { symbol: "GRT",   name: "The Graph",           basePrice: 0.22,    volatility: 0.08 },
-  { symbol: "ALGO",  name: "Algorand",            basePrice: 0.19,    volatility: 0.07 },
-  { symbol: "SAND",  name: "The Sandbox",         basePrice: 0.45,    volatility: 0.10 },
-  { symbol: "MANA",  name: "Decentraland",        basePrice: 0.42,    volatility: 0.10 },
-  { symbol: "AXS",   name: "Axie Infinity",       basePrice: 7.5,     volatility: 0.10 },
-  { symbol: "THETA", name: "Theta Network",       basePrice: 2.1,     volatility: 0.08 },
-  { symbol: "EOS",   name: "EOS",                 basePrice: 0.75,    volatility: 0.07 },
-  { symbol: "XTZ",   name: "Tezos",               basePrice: 0.95,    volatility: 0.07 },
-  { symbol: "FLOW",  name: "Flow",                basePrice: 0.78,    volatility: 0.08 },
-  { symbol: "CHZ",   name: "Chiliz",              basePrice: 0.085,   volatility: 0.09 },
-  { symbol: "CRV",   name: "Curve DAO",           basePrice: 0.55,    volatility: 0.09 },
-  { symbol: "SNX",   name: "Synthetix",           basePrice: 2.8,     volatility: 0.09 },
-  { symbol: "COMP",  name: "Compound",            basePrice: 65,      volatility: 0.08 },
-  { symbol: "1INCH", name: "1inch",               basePrice: 0.42,    volatility: 0.09 },
-  { symbol: "ZEC",   name: "Zcash",               basePrice: 35,      volatility: 0.07 },
-  { symbol: "DASH",  name: "Dash",                basePrice: 32,      volatility: 0.07 },
-  { symbol: "XMR",   name: "Monero",              basePrice: 165,     volatility: 0.06 },
-  { symbol: "KAVA",  name: "Kava",                basePrice: 0.65,    volatility: 0.08 },
-  { symbol: "ROSE",  name: "Oasis Network",       basePrice: 0.085,   volatility: 0.09 },
-  { symbol: "ONE",   name: "Harmony",             basePrice: 0.018,   volatility: 0.09 },
-  { symbol: "ZIL",   name: "Zilliqa",             basePrice: 0.022,   volatility: 0.09 },
-  { symbol: "BAT",   name: "Basic Attention",     basePrice: 0.22,    volatility: 0.08 },
-  { symbol: "ENJ",   name: "Enjin Coin",          basePrice: 0.28,    volatility: 0.09 },
-  { symbol: "GALA",  name: "Gala",                basePrice: 0.032,   volatility: 0.10 },
-  { symbol: "HOT",   name: "Holo",                basePrice: 0.0018,  volatility: 0.10 },
-  { symbol: "IOTA",  name: "IOTA",                basePrice: 0.22,    volatility: 0.08 },
-  { symbol: "NEO",   name: "Neo",                 basePrice: 12,      volatility: 0.07 },
-  { symbol: "WAVES", name: "Waves",               basePrice: 2.5,     volatility: 0.09 },
-  { symbol: "KSM",   name: "Kusama",              basePrice: 28,      volatility: 0.09 },
-  { symbol: "EGLD",  name: "MultiversX",          basePrice: 38,      volatility: 0.08 },
-  { symbol: "FTM",   name: "Fantom",              basePrice: 0.72,    volatility: 0.09 },
-  { symbol: "CELO",  name: "Celo",                basePrice: 0.82,    volatility: 0.09 },
-  { symbol: "ANKR",  name: "Ankr",                basePrice: 0.038,   volatility: 0.09 },
-  { symbol: "OCEAN", name: "Ocean Protocol",      basePrice: 0.62,    volatility: 0.09 },
-  { symbol: "REN",   name: "Ren",                 basePrice: 0.055,   volatility: 0.09 },
-  { symbol: "BAND",  name: "Band Protocol",       basePrice: 1.5,     volatility: 0.09 },
-  { symbol: "LRC",   name: "Loopring",            basePrice: 0.19,    volatility: 0.09 },
-  { symbol: "SKL",   name: "SKALE",               basePrice: 0.045,   volatility: 0.09 },
-  { symbol: "STORJ", name: "Storj",               basePrice: 0.48,    volatility: 0.09 },
-  { symbol: "NMR",   name: "Numeraire",           basePrice: 18,      volatility: 0.08 },
-  { symbol: "OGN",   name: "Origin Protocol",     basePrice: 0.12,    volatility: 0.10 },
-  { symbol: "PERP",  name: "Perpetual Protocol",  basePrice: 0.85,    volatility: 0.10 },
-  { symbol: "RLC",   name: "iExec RLC",           basePrice: 1.8,     volatility: 0.09 },
-  { symbol: "CTSI",  name: "Cartesi",             basePrice: 0.18,    volatility: 0.10 },
-  { symbol: "DYDX",  name: "dYdX",                basePrice: 1.2,     volatility: 0.10 },
-  { symbol: "MASK",  name: "Mask Network",        basePrice: 3.5,     volatility: 0.10 },
-  { symbol: "CFX",   name: "Conflux",             basePrice: 0.15,    volatility: 0.10 },
-  { symbol: "COTI",  name: "COTI",                basePrice: 0.085,   volatility: 0.10 },
-  { symbol: "AUDIO", name: "Audius",              basePrice: 0.18,    volatility: 0.10 },
-  { symbol: "SPELL", name: "Spell Token",         basePrice: 0.00085, volatility: 0.11 },
-  { symbol: "ALICE", name: "My Neighbor Alice",   basePrice: 1.2,     volatility: 0.10 },
-  { symbol: "BAKE",  name: "BakeryToken",         basePrice: 0.22,    volatility: 0.10 },
-  { symbol: "CAKE",  name: "PancakeSwap",         basePrice: 2.8,     volatility: 0.08 },
-  { symbol: "XVS",   name: "Venus",               basePrice: 7.5,     volatility: 0.09 },
-  { symbol: "ALPHA", name: "Alpaca Finance",      basePrice: 0.12,    volatility: 0.10 },
-  { symbol: "TWT",   name: "Trust Wallet",        basePrice: 1.1,     volatility: 0.09 },
-  { symbol: "BURGER",name: "BurgerSwap",          basePrice: 0.35,    volatility: 0.10 },
-  { symbol: "SXP",   name: "Solar",               basePrice: 0.28,    volatility: 0.10 },
-  { symbol: "DENT",  name: "Dent",                basePrice: 0.00085, volatility: 0.11 },
-  { symbol: "WIN",   name: "WINkLink",            basePrice: 0.000085, volatility: 0.11 },
-  { symbol: "BTT",   name: "BitTorrent",          basePrice: 0.0000012, volatility: 0.11 },
-  { symbol: "JST",   name: "JUST",                basePrice: 0.038,   volatility: 0.10 },
-  { symbol: "SUN",   name: "Sun Token",           basePrice: 0.018,   volatility: 0.10 },
-  { symbol: "NFT",   name: "APENFT",              basePrice: 0.00000055, volatility: 0.11 },
-  { symbol: "LUNC",  name: "Terra Classic",       basePrice: 0.000095, volatility: 0.12 },
-  { symbol: "LUNA",  name: "Terra",               basePrice: 0.48,    volatility: 0.12 },
-  { symbol: "USTC",  name: "TerraClassicUSD",     basePrice: 0.012,   volatility: 0.12 },
-  { symbol: "PEOPLE",name: "ConstitutionDAO",     basePrice: 0.042,   volatility: 0.11 },
-  { symbol: "HIGH",  name: "Highstreet",          basePrice: 1.8,     volatility: 0.10 },
-  { symbol: "LAZIO", name: "Lazio Fan Token",     basePrice: 2.5,     volatility: 0.10 },
-  { symbol: "PORTO", name: "Porto Fan Token",     basePrice: 2.8,     volatility: 0.10 },
-  { symbol: "SANTOS",name: "Santos FC Fan Token", basePrice: 5.5,     volatility: 0.10 },
-  { symbol: "CITY",  name: "Manchester City",     basePrice: 3.2,     volatility: 0.10 },
-  { symbol: "BAR",   name: "FC Barcelona",        basePrice: 2.1,     volatility: 0.10 },
-  { symbol: "JUV",   name: "Juventus Fan Token",  basePrice: 2.8,     volatility: 0.10 },
-  { symbol: "PSG",   name: "Paris Saint-Germain", basePrice: 3.5,     volatility: 0.10 },
-  { symbol: "ACM",   name: "AC Milan Fan Token",  basePrice: 2.2,     volatility: 0.10 },
-  { symbol: "INTER", name: "Inter Milan",         basePrice: 1.8,     volatility: 0.10 },
-  { symbol: "ATM",   name: "Atletico de Madrid",  basePrice: 3.8,     volatility: 0.10 },
-  { symbol: "ASR",   name: "AS Roma Fan Token",   basePrice: 2.5,     volatility: 0.10 },
-  { symbol: "OG",    name: "OG Fan Token",        basePrice: 1.5,     volatility: 0.10 },
-  { symbol: "NAVI",  name: "Natus Vincere",       basePrice: 1.2,     volatility: 0.10 },
-  { symbol: "ALPINE",name: "Alpine F1 Team",      basePrice: 1.8,     volatility: 0.10 },
-  { symbol: "CHESS", name: "Tranchess",           basePrice: 0.22,    volatility: 0.10 },
-  { symbol: "BETA",  name: "Beta Finance",        basePrice: 0.085,   volatility: 0.10 },
-  { symbol: "RARE",  name: "SuperRare",           basePrice: 0.12,    volatility: 0.10 },
-  { symbol: "FARM",  name: "Harvest Finance",     basePrice: 28,      volatility: 0.09 },
-  { symbol: "BOND",  name: "BarnBridge",          basePrice: 2.5,     volatility: 0.10 },
-  { symbol: "RAMP",  name: "RAMP",                basePrice: 0.028,   volatility: 0.10 },
-  { symbol: "POLS",  name: "Polkastarter",        basePrice: 0.38,    volatility: 0.10 },
-  { symbol: "DODO",  name: "DODO",                basePrice: 0.12,    volatility: 0.10 },
-  { symbol: "QUICK", name: "QuickSwap",           basePrice: 0.055,   volatility: 0.10 },
-  { symbol: "REEF",  name: "Reef",                basePrice: 0.0018,  volatility: 0.11 },
-  { symbol: "TLM",   name: "Alien Worlds",        basePrice: 0.018,   volatility: 0.11 },
-  { symbol: "MBOX",  name: "MOBOX",               basePrice: 0.22,    volatility: 0.10 },
-  { symbol: "PROM",  name: "Prometeus",           basePrice: 8.5,     volatility: 0.09 },
-  { symbol: "VITE",  name: "Vite",                basePrice: 0.018,   volatility: 0.10 },
-  { symbol: "FIRO",  name: "Firo",                basePrice: 1.8,     volatility: 0.09 },
-  { symbol: "STMX",  name: "StormX",              basePrice: 0.0055,  volatility: 0.11 },
-  { symbol: "ARPA",  name: "ARPA",                basePrice: 0.055,   volatility: 0.10 },
-  { symbol: "HARD",  name: "HARD Protocol",       basePrice: 0.12,    volatility: 0.10 },
-  { symbol: "UTK",   name: "Utrust",              basePrice: 0.055,   volatility: 0.10 },
-  { symbol: "IRIS",  name: "IRISnet",             basePrice: 0.022,   volatility: 0.10 },
-  { symbol: "IOTX",  name: "IoTeX",               basePrice: 0.042,   volatility: 0.10 },
-  { symbol: "OXT",   name: "Orchid",              basePrice: 0.085,   volatility: 0.10 },
-  { symbol: "MDT",   name: "Measurable Data",     basePrice: 0.055,   volatility: 0.10 },
-  { symbol: "POND",  name: "Marlin",              basePrice: 0.018,   volatility: 0.10 },
-  { symbol: "IDEX",  name: "IDEX",                basePrice: 0.055,   volatility: 0.10 },
-  { symbol: "ORN",   name: "Orion Protocol",      basePrice: 0.85,    volatility: 0.10 },
-  { symbol: "AKRO",  name: "Akropolis",           basePrice: 0.012,   volatility: 0.11 },
-  { symbol: "FRONT", name: "Frontier",            basePrice: 0.85,    volatility: 0.10 },
-  { symbol: "BURGER2",name:"BurgerCities",        basePrice: 0.18,    volatility: 0.10 },
-  { symbol: "FOR",   name: "ForTube",             basePrice: 0.018,   volatility: 0.11 },
-  { symbol: "PROS",  name: "Prosper",             basePrice: 0.38,    volatility: 0.10 },
-  { symbol: "LINA",  name: "Linear Finance",      basePrice: 0.0055,  volatility: 0.11 },
-  { symbol: "UNFI",  name: "Unifi Protocol",      basePrice: 3.5,     volatility: 0.10 },
-  { symbol: "BZRX",  name: "bZx Protocol",        basePrice: 0.028,   volatility: 0.11 },
-  { symbol: "WING",  name: "Wing Finance",        basePrice: 4.5,     volatility: 0.10 },
-  { symbol: "DEGO",  name: "Dego Finance",        basePrice: 1.8,     volatility: 0.10 },
-  { symbol: "HEGIC", name: "Hegic",               basePrice: 0.028,   volatility: 0.11 },
-  { symbol: "SUSHI", name: "SushiSwap",           basePrice: 1.2,     volatility: 0.09 },
-  { symbol: "YFI",   name: "yearn.finance",       basePrice: 6500,    volatility: 0.08 },
-  { symbol: "BAL",   name: "Balancer",            basePrice: 2.8,     volatility: 0.09 },
-  { symbol: "KNC",   name: "Kyber Network",       basePrice: 0.65,    volatility: 0.09 },
-  { symbol: "ZRX",   name: "0x Protocol",         basePrice: 0.38,    volatility: 0.09 },
-  { symbol: "MLN",   name: "Enzyme",              basePrice: 12,      volatility: 0.09 },
-  { symbol: "NKN",   name: "NKN",                 basePrice: 0.085,   volatility: 0.10 },
-  { symbol: "CELR",  name: "Celer Network",       basePrice: 0.018,   volatility: 0.10 },
-  { symbol: "BICO",  name: "Biconomy",            basePrice: 0.22,    volatility: 0.10 },
-  { symbol: "SLP",   name: "Smooth Love Potion",  basePrice: 0.0018,  volatility: 0.12 },
-  { symbol: "GHST",  name: "Aavegotchi",          basePrice: 0.85,    volatility: 0.10 },
-  { symbol: "SUPER", name: "SuperFarm",           basePrice: 0.12,    volatility: 0.10 },
-  { symbol: "PAXG",  name: "PAX Gold",            basePrice: 2650,    volatility: 0.02 },
-  { symbol: "WBTC",  name: "Wrapped Bitcoin",     basePrice: 97000,   volatility: 0.04 },
-  { symbol: "STETH", name: "Lido Staked ETH",     basePrice: 2700,    volatility: 0.05 },
-  { symbol: "CBETH", name: "Coinbase Wrapped ETH",basePrice: 2720,    volatility: 0.05 },
-  { symbol: "RETH",  name: "Rocket Pool ETH",     basePrice: 2980,    volatility: 0.05 },
-  { symbol: "FRAX",  name: "Frax",                basePrice: 1.0,     volatility: 0.002 },
-  { symbol: "TUSD",  name: "TrueUSD",             basePrice: 1.0,     volatility: 0.001 },
-  { symbol: "BUSD",  name: "Binance USD",         basePrice: 1.0,     volatility: 0.001 },
-  { symbol: "USDP",  name: "Pax Dollar",          basePrice: 1.0,     volatility: 0.001 },
-  { symbol: "GUSD",  name: "Gemini Dollar",       basePrice: 1.0,     volatility: 0.001 },
-  { symbol: "LUSD",  name: "Liquity USD",         basePrice: 1.0,     volatility: 0.003 },
-  { symbol: "MIM",   name: "Magic Internet Money",basePrice: 1.0,     volatility: 0.005 },
-  { symbol: "SPELL2",name: "SpellToken",          basePrice: 0.00085, volatility: 0.11 },
-  { symbol: "CVX",   name: "Convex Finance",      basePrice: 2.8,     volatility: 0.09 },
-  { symbol: "FXS",   name: "Frax Share",          basePrice: 2.5,     volatility: 0.09 },
-  { symbol: "LQTY",  name: "Liquity",             basePrice: 0.95,    volatility: 0.09 },
-  { symbol: "TRIBE", name: "Tribe",               basePrice: 0.12,    volatility: 0.10 },
-  { symbol: "FEI",   name: "Fei USD",             basePrice: 1.0,     volatility: 0.003 },
-  { symbol: "TOKE",  name: "Tokemak",             basePrice: 0.55,    volatility: 0.10 },
-  { symbol: "BTRFLY",name: "Redacted",            basePrice: 12,      volatility: 0.10 },
-  { symbol: "OHM",   name: "Olympus",             basePrice: 12,      volatility: 0.11 },
-  { symbol: "KLIMA", name: "KlimaDAO",            basePrice: 0.85,    volatility: 0.11 },
-  { symbol: "TIME",  name: "Wonderland",          basePrice: 18,      volatility: 0.11 },
-  { symbol: "MEMO",  name: "Wrapped MEMO",        basePrice: 22,      volatility: 0.11 },
-  { symbol: "JOE",   name: "Trader Joe",          basePrice: 0.38,    volatility: 0.10 },
-  { symbol: "PNG",   name: "Pangolin",            basePrice: 0.055,   volatility: 0.10 },
-  { symbol: "XJOE",  name: "Staked JOE",          basePrice: 0.38,    volatility: 0.10 },
-  { symbol: "BENQI", name: "BENQI",               basePrice: 0.012,   volatility: 0.11 },
-  { symbol: "QI",    name: "BENQI Governance",    basePrice: 0.012,   volatility: 0.11 },
-  { symbol: "WAVAX", name: "Wrapped AVAX",        basePrice: 38.5,    volatility: 0.08 },
-  { symbol: "GMX",   name: "GMX",                 basePrice: 22,      volatility: 0.09 },
-  { symbol: "GLP",   name: "GMX Liquidity",       basePrice: 1.05,    volatility: 0.03 },
-  { symbol: "MAGIC", name: "Magic",               basePrice: 0.55,    volatility: 0.10 },
-  { symbol: "JONES", name: "Jones DAO",           basePrice: 0.22,    volatility: 0.10 },
-  { symbol: "DPXETH",name: "Dopex",               basePrice: 0.85,    volatility: 0.10 },
-  { symbol: "SPA",   name: "Sperax",              basePrice: 0.018,   volatility: 0.11 },
-  { symbol: "VSTA",  name: "Vesta Finance",       basePrice: 0.028,   volatility: 0.11 },
-];
-
-const PERIODS = [
-  { label: "1 mois",  days: 30  },
-  { label: "3 mois",  days: 90  },
-  { label: "6 mois",  days: 180 },
-  { label: "1 an",    days: 365 },
-  { label: "2 ans",   days: 730 },
-];
-
-const CONFIDENCE_THRESHOLDS = [
-  { label: "50% minimum", value: 50 },
-  { label: "70% minimum", value: 70 },
-  { label: "90% minimum", value: 90 },
-];
-
-const SIGNAL_TYPES = [
-  { label: "Tous les signaux", value: "ALL" },
-  { label: "BUY uniquement",   value: "BUY" },
-  { label: "SELL uniquement",  value: "SELL" },
-];
+const STRATEGIES_LIST = Object.entries(STRATEGY_MAP).map(([id, s]) => ({
+  id,
+  name: s.name,
+  desc: s.desc,
+}));
 
 const INITIAL_CAPITAL = 10000;
 
-// ─── Seeded RNG ───────────────────────────────────────────────────────────────
-
-function seededRng(seed: number) {
-  let s = seed;
-  return () => {
-    s = (s * 1664525 + 1013904223) & 0xffffffff;
-    return (s >>> 0) / 0xffffffff;
-  };
-}
-
-// ─── Data Generation ──────────────────────────────────────────────────────────
-
-function generateBacktestData(
-  cryptoSymbol: string,
-  periodDays: number,
-  signalFilter: string,
-  confidenceMin: number
-): { pricePoints: PricePoint[]; trades: TradeSignal[]; stats: BacktestStats } {
-  const crypto = CRYPTOS.find((c) => c.symbol === cryptoSymbol) ?? CRYPTOS[0];
-  const seed = cryptoSymbol.split("").reduce((a, c) => a + c.charCodeAt(0), 0) * 1000 + periodDays;
-  const rng = seededRng(seed);
-
-  const prices: number[] = [crypto.basePrice];
-  for (let i = 1; i < periodDays; i++) {
-    const change = (rng() - 0.48) * crypto.volatility;
-    prices.push(Math.max(prices[i - 1] * (1 + change), crypto.basePrice * 0.3));
-  }
-
-  const rawTrades: TradeSignal[] = [];
-  let tradeId = 1;
-  let i = 5;
-  while (i < periodDays - 10) {
-    const gap = Math.floor(rng() * 12) + 8;
-    const entryIdx = i;
-    const exitIdx = Math.min(entryIdx + Math.floor(rng() * 8) + 3, periodDays - 1);
-    const type: "BUY" | "SELL" = rng() > 0.35 ? "BUY" : "SELL";
-    const confidence = Math.floor(rng() * 45) + 50;
-    const entryPrice = prices[entryIdx];
-    const exitPrice = prices[exitIdx];
-    const rawGainPct = type === "BUY"
-      ? ((exitPrice - entryPrice) / entryPrice) * 100
-      : ((entryPrice - exitPrice) / entryPrice) * 100;
-    const gainPct = parseFloat(rawGainPct.toFixed(2));
-    const gainUSD = parseFloat(((INITIAL_CAPITAL * 0.1) * (gainPct / 100)).toFixed(2));
-
-    const entryDate = new Date(Date.now() - (periodDays - entryIdx) * 86400000);
-    const exitDate = new Date(Date.now() - (periodDays - exitIdx) * 86400000);
-
-    rawTrades.push({
-      id: tradeId++,
-      entryDate: entryDate.toLocaleDateString("fr-FR"),
-      exitDate: exitDate.toLocaleDateString("fr-FR"),
-      entryPrice: parseFloat(entryPrice.toFixed(2)),
-      exitPrice: parseFloat(exitPrice.toFixed(2)),
-      type,
-      confidence,
-      gainUSD,
-      gainPct,
-      durationDays: exitIdx - entryIdx,
-      profitable: gainPct > 0,
-    });
-    i += gap;
-  }
-
-  const trades = rawTrades.filter((t) => {
-    if (signalFilter !== "ALL" && t.type !== signalFilter) return false;
-    if (t.confidence < confidenceMin) return false;
-    return true;
-  });
-
-  let strategyValue = INITIAL_CAPITAL;
-  const pricePoints: PricePoint[] = prices.map((price, idx) => {
-    const date = new Date(Date.now() - (periodDays - idx) * 86400000);
-    const trade = trades.find((t) => t.entryDate === date.toLocaleDateString("fr-FR"));
-    if (trade) strategyValue += trade.gainUSD;
-    return {
-      date: date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }),
-      price,
-      strategyValue: Math.max(strategyValue, 0),
-      buyHoldValue: INITIAL_CAPITAL * (price / prices[0]),
-      signal: trade?.type,
-      signalProfit: trade?.profitable,
-    };
-  });
-
-  const winCount = trades.filter((t) => t.profitable).length;
-  const lossCount = trades.length - winCount;
-  const totalGainUSD = parseFloat(trades.reduce((s, t) => s + t.gainUSD, 0).toFixed(2));
-  const totalGainPct = parseFloat(((totalGainUSD / INITIAL_CAPITAL) * 100).toFixed(2));
-  const avgGainPerTrade = trades.length > 0 ? parseFloat((totalGainUSD / trades.length).toFixed(2)) : 0;
-  const winRate = trades.length > 0 ? parseFloat(((winCount / trades.length) * 100).toFixed(1)) : 0;
-
-  let peak = INITIAL_CAPITAL;
-  let maxDrawdown = 0;
-  pricePoints.forEach((p) => {
-    if (p.strategyValue > peak) peak = p.strategyValue;
-    const dd = ((peak - p.strategyValue) / peak) * 100;
-    if (dd > maxDrawdown) maxDrawdown = dd;
-  });
-
-  const avgWin = trades.filter((t) => t.profitable).reduce((s, t) => s + t.gainPct, 0) / (winCount || 1);
-  const avgLoss = Math.abs(trades.filter((t) => !t.profitable).reduce((s, t) => s + t.gainPct, 0) / (lossCount || 1));
-  const riskReward = parseFloat((avgWin / (avgLoss || 1)).toFixed(2));
-
-  const buyHoldFinalValue = INITIAL_CAPITAL * (prices[prices.length - 1] / prices[0]);
-  const buyHoldGainPct = parseFloat((((buyHoldFinalValue - INITIAL_CAPITAL) / INITIAL_CAPITAL) * 100).toFixed(2));
-  const strategyFinalValue = pricePoints[pricePoints.length - 1]?.strategyValue ?? INITIAL_CAPITAL;
-
-  return {
-    pricePoints,
-    trades,
-    stats: {
-      winRate, totalGainUSD, totalGainPct, avgGainPerTrade,
-      maxDrawdown: parseFloat(maxDrawdown.toFixed(2)),
-      riskReward, winCount, lossCount, totalTrades: trades.length,
-      buyHoldGainPct,
-      strategyFinalValue: parseFloat(strategyFinalValue.toFixed(2)),
-      buyHoldFinalValue: parseFloat(buyHoldFinalValue.toFixed(2)),
-    },
-  };
-}
-
 // ─── SVG Chart ────────────────────────────────────────────────────────────────
 
-function PriceChart({ pricePoints, showComparison }: { pricePoints: PricePoint[]; showComparison: boolean }) {
+function PriceChart({
+  data,
+  trades,
+  showComparison,
+}: {
+  data: BacktestResult["equityCurve"];
+  trades: BacktestResult["trades"];
+  showComparison: boolean;
+}) {
   const W = 800;
   const H = 220;
   const PAD = { top: 16, right: 20, bottom: 28, left: 56 };
 
-  const prices = pricePoints.map((p) => p.price);
+  if (data.length === 0) return null;
+
+  const toX = (i: number) => PAD.left + (i / (data.length - 1)) * (W - PAD.left - PAD.right);
+
+  if (showComparison) {
+    const allVals = [...data.map((d) => d.equity), ...data.map((d) => d.buyHold)];
+    const minV = Math.min(...allVals) * 0.98;
+    const maxV = Math.max(...allVals) * 1.02;
+    const toY = (v: number) => PAD.top + ((maxV - v) / (maxV - minV)) * (H - PAD.top - PAD.bottom);
+
+    const stratPath = data.map((d, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(d.equity).toFixed(1)}`).join(" ");
+    const bhPath = data.map((d, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(d.buyHold).toFixed(1)}`).join(" ");
+
+    const yTicks = 4;
+    const yLabels = Array.from({ length: yTicks + 1 }, (_, i) => {
+      const val = minV + ((maxV - minV) * i) / yTicks;
+      return { val, y: toY(val) };
+    });
+
+    return (
+      <div className="w-full overflow-x-auto">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: "340px" }}>
+          {yLabels.map((l, i) => (
+            <g key={i}>
+              <line x1={PAD.left} y1={l.y} x2={W - PAD.right} y2={l.y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+              <text x={PAD.left - 6} y={l.y + 4} textAnchor="end" fontSize="9" fill="rgba(255,255,255,0.3)">${l.val.toFixed(0)}</text>
+            </g>
+          ))}
+          <path d={bhPath} fill="none" stroke="#22d3ee" strokeWidth="1.5" strokeDasharray="4,3" opacity="0.7" />
+          <path d={stratPath} fill="none" stroke="#a78bfa" strokeWidth="2" />
+          <g>
+            <line x1={PAD.left + 4} y1={PAD.top + 8} x2={PAD.left + 20} y2={PAD.top + 8} stroke="#a78bfa" strokeWidth="2" />
+            <text x={PAD.left + 24} y={PAD.top + 12} fontSize="9" fill="#a78bfa">Stratégie</text>
+            <line x1={PAD.left + 80} y1={PAD.top + 8} x2={PAD.left + 96} y2={PAD.top + 8} stroke="#22d3ee" strokeWidth="1.5" strokeDasharray="4,3" />
+            <text x={PAD.left + 100} y={PAD.top + 12} fontSize="9" fill="#22d3ee">Buy &amp; Hold</text>
+          </g>
+        </svg>
+      </div>
+    );
+  }
+
+  // Price chart with trade signals
+  const prices = data.map((d) => d.price);
   const minP = Math.min(...prices) * 0.97;
   const maxP = Math.max(...prices) * 1.03;
-
-  const toX = (i: number) => PAD.left + (i / (pricePoints.length - 1)) * (W - PAD.left - PAD.right);
   const toY = (v: number) => PAD.top + ((maxP - v) / (maxP - minP)) * (H - PAD.top - PAD.bottom);
 
-  const stratVals = pricePoints.map((p) => p.strategyValue);
-  const bhVals = pricePoints.map((p) => p.buyHoldValue);
-  const minC = Math.min(...stratVals, ...bhVals) * 0.97;
-  const maxC = Math.max(...stratVals, ...bhVals) * 1.03;
-  const toCY = (v: number) => PAD.top + ((maxC - v) / (maxC - minC)) * (H - PAD.top - PAD.bottom);
-
-  const pricePath = pricePoints.map((p, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(p.price).toFixed(1)}`).join(" ");
-  const stratPath = pricePoints.map((p, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toCY(p.strategyValue).toFixed(1)}`).join(" ");
-  const bhPath = pricePoints.map((p, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toCY(p.buyHoldValue).toFixed(1)}`).join(" ");
-  const areaPath = `${pricePath} L${toX(pricePoints.length - 1).toFixed(1)},${(H - PAD.bottom).toFixed(1)} L${PAD.left},${(H - PAD.bottom).toFixed(1)} Z`;
+  const pricePath = data.map((d, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(d.price).toFixed(1)}`).join(" ");
+  const areaPath = `${pricePath} L${toX(data.length - 1).toFixed(1)},${(H - PAD.bottom).toFixed(1)} L${PAD.left},${(H - PAD.bottom).toFixed(1)} Z`;
 
   const yTicks = 4;
   const yLabels = Array.from({ length: yTicks + 1 }, (_, i) => {
-    const val = showComparison
-      ? minC + ((maxC - minC) * i) / yTicks
-      : minP + ((maxP - minP) * i) / yTicks;
-    return { val, y: showComparison ? toCY(val) : toY(val) };
+    const val = minP + ((maxP - minP) * i) / yTicks;
+    return { val, y: toY(val) };
   });
 
-  const step = Math.max(1, Math.floor(pricePoints.length / 6));
-  const xLabels = pricePoints.filter((_, i) => i % step === 0 || i === pricePoints.length - 1);
-  const signals = pricePoints.filter((p) => p.signal);
+  const step = Math.max(1, Math.floor(data.length / 6));
+
+  // Map trade entry dates to chart indices
+  const entryDateMap = new Map<string, { type: string; price: number }>();
+  const exitDateMap = new Map<string, { type: string; price: number; profitable: boolean }>();
+  for (const t of trades) {
+    entryDateMap.set(t.entryDate, { type: t.type, price: t.entryPrice });
+    exitDateMap.set(t.exitDate, { type: t.type, price: t.exitPrice, profitable: t.profitable });
+  }
 
   return (
     <div className="w-full overflow-x-auto">
@@ -461,56 +129,50 @@ function PriceChart({ pricePoints, showComparison }: { pricePoints: PricePoint[]
           <g key={i}>
             <line x1={PAD.left} y1={l.y} x2={W - PAD.right} y2={l.y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
             <text x={PAD.left - 6} y={l.y + 4} textAnchor="end" fontSize="9" fill="rgba(255,255,255,0.3)">
-              {showComparison ? `$${l.val.toFixed(0)}` : l.val >= 1000 ? `$${(l.val / 1000).toFixed(1)}k` : `$${l.val.toFixed(4)}`}
+              {l.val >= 1000 ? `$${(l.val / 1000).toFixed(1)}k` : `$${l.val.toFixed(4)}`}
             </text>
           </g>
         ))}
-        {xLabels.map((p, i) => {
-          const idx = pricePoints.indexOf(p);
+        {data.filter((_, i) => i % step === 0 || i === data.length - 1).map((d, i) => {
+          const idx = data.indexOf(d);
           return (
             <text key={i} x={toX(idx)} y={H - 4} textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.25)">
-              {p.date}
+              {d.date}
             </text>
           );
         })}
-        {showComparison ? (
-          <>
-            <path d={bhPath} fill="none" stroke="#22d3ee" strokeWidth="1.5" strokeDasharray="4,3" opacity="0.7" />
-            <path d={stratPath} fill="none" stroke="#a78bfa" strokeWidth="2" />
-            <g>
-              <line x1={PAD.left + 4} y1={PAD.top + 8} x2={PAD.left + 20} y2={PAD.top + 8} stroke="#a78bfa" strokeWidth="2" />
-              <text x={PAD.left + 24} y={PAD.top + 12} fontSize="9" fill="#a78bfa">Stratégie IA</text>
-              <line x1={PAD.left + 90} y1={PAD.top + 8} x2={PAD.left + 106} y2={PAD.top + 8} stroke="#22d3ee" strokeWidth="1.5" strokeDasharray="4,3" />
-              <text x={PAD.left + 110} y={PAD.top + 12} fontSize="9" fill="#22d3ee">Buy &amp; Hold</text>
+        <path d={areaPath} fill="url(#priceGrad)" />
+        <path d={pricePath} fill="none" stroke="#6366f1" strokeWidth="1.8" />
+        {/* Trade entry signals */}
+        {data.map((d, i) => {
+          const entry = entryDateMap.get(d.date);
+          if (!entry) return null;
+          return (
+            <g key={`entry-${i}`}>
+              <polygon
+                points={`${toX(i)},${toY(d.price) - 18} ${toX(i) - 6},${toY(d.price) - 8} ${toX(i) + 6},${toY(d.price) - 8}`}
+                fill="#22c55e"
+                opacity="0.9"
+              />
+              <line x1={toX(i)} y1={PAD.top} x2={toX(i)} y2={H - PAD.bottom} stroke="#22c55e" strokeWidth="1" strokeDasharray="3,3" opacity="0.3" />
             </g>
-          </>
-        ) : (
-          <>
-            <path d={areaPath} fill="url(#priceGrad)" />
-            <path d={pricePath} fill="none" stroke="#6366f1" strokeWidth="1.8" />
-            {signals.map((p, i) => {
-              const idx = pricePoints.indexOf(p);
-              return (
-                <g key={i}>
-                  <polygon
-                    points={
-                      p.signal === "BUY"
-                        ? `${toX(idx)},${toY(p.price) - 18} ${toX(idx) - 6},${toY(p.price) - 8} ${toX(idx) + 6},${toY(p.price) - 8}`
-                        : `${toX(idx)},${toY(p.price) + 18} ${toX(idx) - 6},${toY(p.price) + 8} ${toX(idx) + 6},${toY(p.price) + 8}`
-                    }
-                    fill={p.signal === "BUY" ? "#22c55e" : "#ef4444"}
-                    opacity="0.9"
-                  />
-                  <line
-                    x1={toX(idx)} y1={PAD.top} x2={toX(idx)} y2={H - PAD.bottom}
-                    stroke={p.signal === "BUY" ? "#22c55e" : "#ef4444"}
-                    strokeWidth="1" strokeDasharray="3,3" opacity="0.3"
-                  />
-                </g>
-              );
-            })}
-          </>
-        )}
+          );
+        })}
+        {/* Trade exit signals */}
+        {data.map((d, i) => {
+          const exit = exitDateMap.get(d.date);
+          if (!exit) return null;
+          return (
+            <g key={`exit-${i}`}>
+              <polygon
+                points={`${toX(i)},${toY(d.price) + 18} ${toX(i) - 6},${toY(d.price) + 8} ${toX(i) + 6},${toY(d.price) + 8}`}
+                fill={exit.profitable ? "#22c55e" : "#ef4444"}
+                opacity="0.9"
+              />
+              <line x1={toX(i)} y1={PAD.top} x2={toX(i)} y2={H - PAD.bottom} stroke={exit.profitable ? "#22c55e" : "#ef4444"} strokeWidth="1" strokeDasharray="3,3" opacity="0.3" />
+            </g>
+          );
+        })}
       </svg>
     </div>
   );
@@ -539,21 +201,17 @@ function CryptoDropdown({ value, onChange }: { value: string; onChange: (v: stri
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return CRYPTOS.filter(
-      (c) => c.symbol.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
-    ).slice(0, 50);
+    return BINANCE_SYMBOLS.filter((s) => s.toLowerCase().includes(q)).slice(0, 50);
   }, [search]);
-
-  const current = CRYPTOS.find((c) => c.symbol === value);
 
   return (
     <div className="relative">
-      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1.5">Crypto</p>
+      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1.5">Paire (Binance)</p>
       <button
         onClick={() => { setOpen((o) => !o); setSearch(""); }}
         className="flex items-center justify-between gap-2 w-full px-3 py-2.5 rounded-xl bg-black/30 border border-white/[0.08] hover:border-indigo-500/30 text-sm font-semibold text-white transition-all min-w-[160px]"
       >
-        <span>{current ? `${current.symbol} — ${current.name}` : value}</span>
+        <span>{value}</span>
         <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
@@ -566,7 +224,7 @@ function CryptoDropdown({ value, onChange }: { value: string; onChange: (v: stri
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher une crypto..."
+                placeholder="Rechercher une paire..."
                 className="flex-1 bg-transparent text-xs text-white placeholder-gray-600 outline-none"
               />
             </div>
@@ -575,19 +233,18 @@ function CryptoDropdown({ value, onChange }: { value: string; onChange: (v: stri
             {filtered.length === 0 && (
               <p className="text-xs text-gray-500 text-center py-4">Aucun résultat</p>
             )}
-            {filtered.map((c) => (
+            {filtered.map((s) => (
               <button
-                key={c.symbol}
-                onClick={() => { onChange(c.symbol); setOpen(false); setSearch(""); }}
-                className={`w-full text-left px-3 py-2 text-xs font-semibold transition-all hover:bg-indigo-500/10 flex items-center justify-between ${c.symbol === value ? "text-indigo-400 bg-indigo-500/5" : "text-gray-300"}`}
+                key={s}
+                onClick={() => { onChange(s); setOpen(false); setSearch(""); }}
+                className={`w-full text-left px-3 py-2 text-xs font-semibold transition-all hover:bg-indigo-500/10 ${s === value ? "text-indigo-400 bg-indigo-500/5" : "text-gray-300"}`}
               >
-                <span className="font-bold">{c.symbol}</span>
-                <span className="text-gray-500 text-[10px] truncate ml-2">{c.name}</span>
+                {s}
               </button>
             ))}
           </div>
           <div className="px-3 py-1.5 border-t border-white/[0.06] text-[10px] text-gray-600 text-center">
-            {CRYPTOS.length} cryptos disponibles
+            {BINANCE_SYMBOLS.length} paires disponibles
           </div>
         </div>
       )}
@@ -637,27 +294,56 @@ function Dropdown<T extends string | number>({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function BacktestingVisuel() {
-  const [selectedCrypto, setSelectedCrypto] = useState("BTC");
-  const [selectedPeriod, setSelectedPeriod] = useState(90);
-  const [signalFilter, setSignalFilter] = useState("ALL");
-  const [confidenceMin, setConfidenceMin] = useState(50);
+  const [selectedSymbol, setSelectedSymbol] = useState("BTCUSDT");
+  const [selectedTimeframe, setSelectedTimeframe] = useState("4h");
+  const [selectedStrategy, setSelectedStrategy] = useState("ma_cross");
   const [isLoading, setIsLoading] = useState(false);
   const [hasRun, setHasRun] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
-  const [result, setResult] = useState<ReturnType<typeof generateBacktestData> | null>(null);
+  const [result, setResult] = useState<BacktestResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const crypto = CRYPTOS.find((c) => c.symbol === selectedCrypto) ?? CRYPTOS[0];
+  const tfLabel = useMemo(() => TIMEFRAMES.find((t) => t.value === selectedTimeframe)?.label ?? "", [selectedTimeframe]);
+  const stratLabel = useMemo(() => STRATEGIES_LIST.find((s) => s.id === selectedStrategy)?.name ?? "", [selectedStrategy]);
 
-  const runBacktest = useCallback(async () => {
+  const runTest = useCallback(async () => {
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1400));
-    const data = generateBacktestData(selectedCrypto, selectedPeriod, signalFilter, confidenceMin);
-    setResult(data);
-    setHasRun(true);
-    setIsLoading(false);
-  }, [selectedCrypto, selectedPeriod, signalFilter, confidenceMin]);
+    setError(null);
+    try {
+      const tf = TIMEFRAMES.find((t) => t.value === selectedTimeframe);
+      const candles = await fetchBinanceKlines(selectedSymbol, selectedTimeframe, tf?.limit || 500);
+      if (candles.length < 60) {
+        throw new Error("Pas assez de données historiques pour cette paire/timeframe");
+      }
+      const data = runBacktest(candles, selectedStrategy, INITIAL_CAPITAL);
+      setResult(data);
+      setHasRun(true);
+    } catch (err: any) {
+      console.error("Backtest error:", err);
+      setError(err.message || "Erreur lors du chargement des données Binance");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedSymbol, selectedTimeframe, selectedStrategy]);
 
-  const periodLabel = useMemo(() => PERIODS.find((p) => p.days === selectedPeriod)?.label ?? "", [selectedPeriod]);
+  const stats = result
+    ? {
+        winRate: result.winRate,
+        totalGainUSD: result.trades.reduce((s, t) => s + t.pnl, 0),
+        totalGainPct: result.totalReturn,
+        avgGainPerTrade: result.trades.length > 0 ? Math.round((result.trades.reduce((s, t) => s + t.pnl, 0) / result.trades.length) * 100) / 100 : 0,
+        maxDrawdown: result.maxDrawdown,
+        riskReward: result.profitFactor,
+        winCount: result.trades.filter((t) => t.profitable).length,
+        lossCount: result.trades.filter((t) => !t.profitable).length,
+        totalTrades: result.totalTrades,
+        buyHoldGainPct: result.equityCurve.length > 0
+          ? Math.round(((result.equityCurve[result.equityCurve.length - 1].buyHold - INITIAL_CAPITAL) / INITIAL_CAPITAL) * 10000) / 100
+          : 0,
+        strategyFinalValue: result.equityCurve.length > 0 ? result.equityCurve[result.equityCurve.length - 1].equity : INITIAL_CAPITAL,
+        buyHoldFinalValue: result.equityCurve.length > 0 ? result.equityCurve[result.equityCurve.length - 1].buyHold : INITIAL_CAPITAL,
+      }
+    : null;
 
   return (
     <div className="min-h-screen bg-[#030712] text-white">
@@ -666,13 +352,13 @@ export default function BacktestingVisuel() {
         <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-6">
           <PageHeader
             icon={<Activity className="w-6 h-6" />}
-            title="Backtesting Visuel des Signaux IA"
-            subtitle={`Simulez les performances historiques des signaux IA sur n'importe quelle crypto parmi les ${CRYPTOS.length} disponibles. Visualisez les entrées/sorties, analysez les statistiques et comparez avec une stratégie Buy & Hold.`}
+            title="Backtesting Visuel — Données Réelles Binance"
+            subtitle={`Simulez les performances historiques de 5 stratégies sur ${BINANCE_SYMBOLS.length} paires Binance. Toutes les données sont réelles — aucune simulation aléatoire.`}
             accentColor="purple"
             steps={[
-              { n: "1", title: "Sélectionnez une crypto et une période", desc: `Choisissez parmi ${CRYPTOS.length} cryptomonnaies (top 200) et une période allant de 1 mois à 2 ans. Utilisez la recherche pour trouver rapidement votre crypto.` },
-              { n: "2", title: "Lancez la simulation des signaux IA passés", desc: "L'IA rejoue tous les signaux générés sur la période choisie et calcule les performances réelles de chaque trade." },
-              { n: "3", title: "Analysez les performances et comparez vs Buy & Hold", desc: "Consultez le taux de réussite, le gain total, le drawdown maximum et comparez la stratégie IA face au simple Buy & Hold." },
+              { n: "1", title: "Sélectionnez une paire et un timeframe", desc: `Choisissez parmi ${BINANCE_SYMBOLS.length} paires Binance et 4 timeframes. Les données sont chargées en temps réel.` },
+              { n: "2", title: "Choisissez une stratégie et lancez", desc: "L'algorithme applique la stratégie sur les vrais prix historiques Binance et génère les trades réels." },
+              { n: "3", title: "Analysez les performances", desc: "Consultez le taux de réussite, le gain total, le drawdown et comparez la stratégie vs Buy & Hold." },
             ]}
           />
 
@@ -681,43 +367,48 @@ export default function BacktestingVisuel() {
             <div className="flex items-center gap-2 mb-4">
               <Filter className="w-4 h-4 text-indigo-400" />
               <span className="text-xs font-black text-white uppercase tracking-widest">Configuration du Backtesting</span>
-              <span className="ml-auto text-[10px] text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full font-bold">
-                {CRYPTOS.length} cryptos disponibles
+              <span className="ml-auto text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">
+                📡 Données réelles Binance
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
-              <CryptoDropdown value={selectedCrypto} onChange={setSelectedCrypto} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+              <CryptoDropdown value={selectedSymbol} onChange={setSelectedSymbol} />
               <Dropdown
-                label="Période"
-                value={selectedPeriod}
-                options={PERIODS.map((p) => ({ label: p.label, value: p.days }))}
-                onChange={setSelectedPeriod}
+                label="Timeframe"
+                value={selectedTimeframe}
+                options={TIMEFRAMES.map((t) => ({ label: t.label, value: t.value }))}
+                onChange={setSelectedTimeframe}
               />
               <Dropdown
-                label="Type de signal"
-                value={signalFilter}
-                options={SIGNAL_TYPES}
-                onChange={setSignalFilter}
-              />
-              <Dropdown
-                label="Confiance minimum"
-                value={confidenceMin}
-                options={CONFIDENCE_THRESHOLDS}
-                onChange={setConfidenceMin}
+                label="Stratégie"
+                value={selectedStrategy}
+                options={STRATEGIES_LIST.map((s) => ({ label: s.name, value: s.id }))}
+                onChange={setSelectedStrategy}
               />
               <button
-                onClick={runBacktest}
+                onClick={runTest}
                 disabled={isLoading}
                 className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed font-black text-sm shadow-lg shadow-indigo-500/20 h-[42px]"
               >
                 {isLoading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Simulation...</>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Chargement Binance...</>
                 ) : (
                   <><Play className="w-4 h-4" /> Lancer le Backtesting</>
                 )}
               </button>
             </div>
+            <p className="text-xs text-gray-500 mt-3">
+              📋 {STRATEGIES_LIST.find((s) => s.id === selectedStrategy)?.desc} — Position: 10% du capital ($1,000) par trade
+            </p>
           </div>
+
+          {/* Error */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center mb-5">
+              <p className="text-red-400 font-semibold mb-2">❌ {error}</p>
+              <p className="text-gray-500 text-sm">Vérifiez que la paire existe sur Binance ou essayez un autre timeframe.</p>
+            </div>
+          )}
 
           {/* ── Loading ── */}
           {isLoading && (
@@ -727,8 +418,8 @@ export default function BacktestingVisuel() {
                 <div className="absolute inset-0 rounded-full border-2 border-t-indigo-500 animate-spin" />
                 <Activity className="absolute inset-0 m-auto w-6 h-6 text-indigo-400" />
               </div>
-              <p className="text-sm text-gray-400 font-semibold">Simulation des signaux IA en cours...</p>
-              <p className="text-xs text-gray-600">Analyse de {selectedCrypto} sur {periodLabel}</p>
+              <p className="text-sm text-gray-400 font-semibold">Chargement des données Binance...</p>
+              <p className="text-xs text-gray-600">{selectedSymbol} • {tfLabel} • {stratLabel}</p>
             </div>
           )}
 
@@ -740,26 +431,26 @@ export default function BacktestingVisuel() {
               </div>
               <p className="text-base font-black text-white">Prêt pour le backtesting</p>
               <p className="text-sm text-gray-500 text-center max-w-md">
-                Configurez vos paramètres ci-dessus et cliquez sur <span className="text-indigo-400 font-bold">"Lancer le Backtesting"</span> pour simuler les signaux IA passés.
+                Configurez vos paramètres ci-dessus et cliquez sur <span className="text-indigo-400 font-bold">&quot;Lancer le Backtesting&quot;</span> pour tester une stratégie sur les vrais prix Binance.
               </p>
-              <p className="text-xs text-gray-600">{CRYPTOS.length} cryptomonnaies disponibles • Recherche instantanée</p>
+              <p className="text-xs text-gray-600">{BINANCE_SYMBOLS.length} paires Binance • 5 stratégies • Données 100% réelles</p>
             </div>
           )}
 
           {/* ── Results ── */}
-          {!isLoading && hasRun && result && (
+          {!isLoading && hasRun && result && stats && (
             <div className="space-y-5">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-                <StatCard label="Taux de réussite" value={`${result.stats.winRate}%`} positive={result.stats.winRate >= 50} icon={<Target className="w-3.5 h-3.5" />} />
-                <StatCard label="Gain total $" value={`${result.stats.totalGainUSD >= 0 ? "+" : ""}$${result.stats.totalGainUSD.toLocaleString("fr-FR")}`} positive={result.stats.totalGainUSD >= 0} icon={<TrendingUp className="w-3.5 h-3.5" />} />
-                <StatCard label="Gain total %" value={`${result.stats.totalGainPct >= 0 ? "+" : ""}${result.stats.totalGainPct}%`} positive={result.stats.totalGainPct >= 0} icon={<BarChart2 className="w-3.5 h-3.5" />} />
-                <StatCard label="Gain moyen/trade" value={`${result.stats.avgGainPerTrade >= 0 ? "+" : ""}$${result.stats.avgGainPerTrade}`} positive={result.stats.avgGainPerTrade >= 0} icon={<Activity className="w-3.5 h-3.5" />} />
-                <StatCard label="Drawdown max" value={`-${result.stats.maxDrawdown}%`} positive={result.stats.maxDrawdown < 15} icon={<TrendingDown className="w-3.5 h-3.5" />} />
-                <StatCard label="Risk/Reward" value={`${result.stats.riskReward}x`} positive={result.stats.riskReward >= 1} icon={<Filter className="w-3.5 h-3.5" />} />
+                <StatCard label="Taux de réussite" value={`${stats.winRate}%`} positive={stats.winRate >= 50} icon={<Target className="w-3.5 h-3.5" />} />
+                <StatCard label="Gain total $" value={`${stats.totalGainUSD >= 0 ? "+" : ""}$${stats.totalGainUSD.toFixed(2)}`} positive={stats.totalGainUSD >= 0} icon={<TrendingUp className="w-3.5 h-3.5" />} />
+                <StatCard label="Gain total %" value={`${stats.totalGainPct >= 0 ? "+" : ""}${stats.totalGainPct}%`} positive={stats.totalGainPct >= 0} icon={<BarChart2 className="w-3.5 h-3.5" />} />
+                <StatCard label="Gain moyen/trade" value={`${stats.avgGainPerTrade >= 0 ? "+" : ""}$${stats.avgGainPerTrade}`} positive={stats.avgGainPerTrade >= 0} icon={<Activity className="w-3.5 h-3.5" />} />
+                <StatCard label="Drawdown max" value={`-${stats.maxDrawdown}%`} positive={stats.maxDrawdown < 15} icon={<TrendingDown className="w-3.5 h-3.5" />} />
+                <StatCard label="Profit Factor" value={`${stats.riskReward}x`} positive={stats.riskReward >= 1} icon={<Filter className="w-3.5 h-3.5" />} />
                 <StatCard
                   label="Trades W/L"
-                  value={`${result.stats.winCount}W / ${result.stats.lossCount}L`}
-                  sub={`${result.stats.totalTrades} trades total`}
+                  value={`${stats.winCount}W / ${stats.lossCount}L`}
+                  sub={`${stats.totalTrades} trades total`}
                   icon={<ArrowUpRight className="w-3.5 h-3.5" />}
                 />
               </div>
@@ -768,10 +459,10 @@ export default function BacktestingVisuel() {
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                   <div>
                     <p className="text-xs font-black text-white uppercase tracking-widest">
-                      {showComparison ? "Comparaison : Stratégie IA vs Buy & Hold" : `Prix ${selectedCrypto} — Signaux IA`}
+                      {showComparison ? "Comparaison : Stratégie vs Buy & Hold" : `Prix ${selectedSymbol} — Signaux de Trading`}
                     </p>
                     <p className="text-[10px] text-gray-500 mt-0.5">
-                      {crypto.name} • {periodLabel} • Capital initial : $10,000
+                      {selectedSymbol} • {tfLabel} • {stratLabel} • Capital initial : $10,000
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -789,20 +480,20 @@ export default function BacktestingVisuel() {
                     </button>
                   </div>
                 </div>
-                <PriceChart pricePoints={result.pricePoints} showComparison={showComparison} />
+                <PriceChart data={result.equityCurve} trades={result.trades} showComparison={showComparison} />
 
                 {!showComparison && (
                   <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/[0.05]">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded-sm bg-emerald-500/80" />
-                      <span className="text-[10px] text-gray-400 font-semibold">Signal BUY</span>
+                      <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[8px] border-b-emerald-500" />
+                      <span className="text-[10px] text-gray-400 font-semibold">Entrée (BUY)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded-sm bg-red-500/80" />
-                      <span className="text-[10px] text-gray-400 font-semibold">Signal SELL</span>
+                      <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[8px] border-t-red-500" />
+                      <span className="text-[10px] text-gray-400 font-semibold">Sortie (SELL)</span>
                     </div>
                     <div className="flex items-center gap-1.5 ml-auto">
-                      <span className="text-[10px] text-gray-500">{result.trades.length} signaux affichés</span>
+                      <span className="text-[10px] text-gray-500">{result.trades.length} trades réels</span>
                     </div>
                   </div>
                 )}
@@ -810,23 +501,24 @@ export default function BacktestingVisuel() {
                 {showComparison && (
                   <div className="grid grid-cols-2 gap-3 mt-4">
                     <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-center">
-                      <p className="text-[10px] text-violet-400 font-bold mb-1">🤖 Stratégie IA</p>
-                      <p className={`text-lg font-black ${result.stats.totalGainPct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        {result.stats.totalGainPct >= 0 ? "+" : ""}{result.stats.totalGainPct}%
+                      <p className="text-[10px] text-violet-400 font-bold mb-1">🤖 Stratégie</p>
+                      <p className={`text-lg font-black ${stats.totalGainPct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {stats.totalGainPct >= 0 ? "+" : ""}{stats.totalGainPct}%
                       </p>
-                      <p className="text-[10px] text-gray-500">${result.stats.strategyFinalValue.toLocaleString("fr-FR")}</p>
+                      <p className="text-[10px] text-gray-500">${stats.strategyFinalValue.toLocaleString("fr-FR")}</p>
                     </div>
                     <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-center">
                       <p className="text-[10px] text-cyan-400 font-bold mb-1">📈 Buy &amp; Hold</p>
-                      <p className={`text-lg font-black ${result.stats.buyHoldGainPct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        {result.stats.buyHoldGainPct >= 0 ? "+" : ""}{result.stats.buyHoldGainPct}%
+                      <p className={`text-lg font-black ${stats.buyHoldGainPct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {stats.buyHoldGainPct >= 0 ? "+" : ""}{stats.buyHoldGainPct}%
                       </p>
-                      <p className="text-[10px] text-gray-500">${result.stats.buyHoldFinalValue.toFixed(0)}</p>
+                      <p className="text-[10px] text-gray-500">${stats.buyHoldFinalValue.toFixed(0)}</p>
                     </div>
                   </div>
                 )}
               </div>
 
+              {/* Trades Table */}
               <div className="bg-slate-900/40 border border-white/[0.07] rounded-2xl p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
@@ -839,7 +531,7 @@ export default function BacktestingVisuel() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-white/[0.06]">
-                        {["#", "Type", "Entrée", "Sortie", "Prix Entrée", "Prix Sortie", "Gain $", "Gain %", "Durée", "Confiance"].map((h) => (
+                        {["#", "Type", "Entrée", "Sortie", "Prix Entrée", "Prix Sortie", "P&L $", "P&L %", "Raison"].map((h) => (
                           <th key={h} className="text-left py-2 px-2 text-[10px] text-gray-500 font-bold uppercase tracking-wider whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -849,35 +541,27 @@ export default function BacktestingVisuel() {
                         <tr key={trade.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-all">
                           <td className="py-2 px-2 text-gray-500 font-bold">{trade.id}</td>
                           <td className="py-2 px-2">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${trade.type === "BUY" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${trade.type === "LONG" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
                               {trade.type}
                             </span>
                           </td>
                           <td className="py-2 px-2 text-gray-400 whitespace-nowrap">{trade.entryDate}</td>
                           <td className="py-2 px-2 text-gray-400 whitespace-nowrap">{trade.exitDate}</td>
-                          <td className="py-2 px-2 text-white font-semibold">${trade.entryPrice.toLocaleString("fr-FR")}</td>
-                          <td className="py-2 px-2 text-white font-semibold">${trade.exitPrice.toLocaleString("fr-FR")}</td>
+                          <td className="py-2 px-2 text-white font-semibold">${trade.entryPrice.toLocaleString()}</td>
+                          <td className="py-2 px-2 text-white font-semibold">${trade.exitPrice.toLocaleString()}</td>
                           <td className={`py-2 px-2 font-black ${trade.profitable ? "text-emerald-400" : "text-red-400"}`}>
-                            {trade.gainUSD >= 0 ? "+" : ""}${trade.gainUSD}
+                            {trade.pnl >= 0 ? "+" : ""}${trade.pnl}
                           </td>
                           <td className={`py-2 px-2 font-black ${trade.profitable ? "text-emerald-400" : "text-red-400"}`}>
-                            {trade.gainPct >= 0 ? "+" : ""}{trade.gainPct}%
+                            {trade.pnlPct >= 0 ? "+" : ""}{trade.pnlPct}%
                           </td>
-                          <td className="py-2 px-2 text-gray-400">{trade.durationDays}j</td>
-                          <td className="py-2 px-2">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-12 h-1.5 bg-black/30 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-violet-500" style={{ width: `${trade.confidence}%` }} />
-                              </div>
-                              <span className="text-[10px] text-gray-400">{trade.confidence}%</span>
-                            </div>
-                          </td>
+                          <td className="py-2 px-2 text-gray-500 max-w-[200px] truncate" title={trade.reason}>{trade.reason}</td>
                         </tr>
                       ))}
                       {result.trades.length === 0 && (
                         <tr>
-                          <td colSpan={10} className="py-8 text-center text-gray-500 text-xs">
-                            Aucun trade ne correspond aux filtres sélectionnés. Essayez d'abaisser le seuil de confiance.
+                          <td colSpan={9} className="py-8 text-center text-gray-500 text-xs">
+                            Aucun trade détecté pour cette stratégie sur cette période. Essayez un autre timeframe ou une autre paire.
                           </td>
                         </tr>
                       )}
@@ -886,15 +570,16 @@ export default function BacktestingVisuel() {
                 </div>
               </div>
 
+              {/* Win/Loss Summary */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/15">
                   <div className="flex items-center gap-2 mb-3">
                     <ArrowUpRight className="w-4 h-4 text-emerald-400" />
                     <span className="text-xs font-black text-emerald-400 uppercase tracking-wider">Trades Gagnants</span>
                   </div>
-                  <p className="text-3xl font-black text-emerald-400">{result.stats.winCount}</p>
+                  <p className="text-3xl font-black text-emerald-400">{stats.winCount}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {result.stats.totalTrades > 0 ? ((result.stats.winCount / result.stats.totalTrades) * 100).toFixed(1) : 0}% du total
+                    {stats.totalTrades > 0 ? ((stats.winCount / stats.totalTrades) * 100).toFixed(1) : 0}% du total
                   </p>
                 </div>
                 <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/15">
@@ -902,11 +587,21 @@ export default function BacktestingVisuel() {
                     <ArrowDownRight className="w-4 h-4 text-red-400" />
                     <span className="text-xs font-black text-red-400 uppercase tracking-wider">Trades Perdants</span>
                   </div>
-                  <p className="text-3xl font-black text-red-400">{result.stats.lossCount}</p>
+                  <p className="text-3xl font-black text-red-400">{stats.lossCount}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {result.stats.totalTrades > 0 ? ((result.stats.lossCount / result.stats.totalTrades) * 100).toFixed(1) : 0}% du total
+                    {stats.totalTrades > 0 ? ((stats.lossCount / stats.totalTrades) * 100).toFixed(1) : 0}% du total
                   </p>
                 </div>
+              </div>
+
+              {/* Disclaimer */}
+              <div className="bg-amber-500/[0.06] border border-amber-500/15 rounded-2xl p-6 text-center">
+                <p className="text-sm text-amber-300/80">
+                  ⚠️ <strong>Avertissement :</strong> Les performances passées ne garantissent pas les résultats futurs.
+                  Ce backtest utilise les données historiques réelles de Binance (klines API).
+                  Les frais de trading (~0.1%), le slippage et la liquidité ne sont pas pris en compte.
+                  Ceci ne constitue pas un conseil financier. Faites toujours votre propre analyse (DYOR).
+                </p>
               </div>
             </div>
           )}

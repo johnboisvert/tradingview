@@ -1,4 +1,4 @@
-# CryptoIA Platform - Railway Deployment v2 - Dockerfile build
+# CryptoIA Platform - Railway Deployment v3 - Express server with API proxies
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -13,10 +13,15 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-RUN npm install -g serve
-
+# Copy the built frontend assets
 COPY --from=builder /app/frontend/dist ./dist
+
+# Copy server.js
+COPY --from=builder /app/frontend/server.js ./server.js
+
+# Create a minimal package.json for the production server (ES modules + deps)
+RUN echo '{"type":"module","dependencies":{"express":"^4.21.0","dotenv":"^16.4.0"}}' > package.json && npm install --omit=dev
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "exec serve dist --single --listen ${PORT:-3000}"]
+CMD ["node", "server.js"]

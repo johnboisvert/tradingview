@@ -1,9 +1,11 @@
 import Footer from "../components/Footer";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { Eye, EyeOff, AlertCircle, LogIn, ShieldAlert } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, LogIn, ShieldAlert, ChevronDown, ChevronUp, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { loginUserServer, setUserSession, registerUserSession, removeUserSessionToken } from "@/lib/store";
 import { setUserPlan } from "@/lib/subscription";
+
+const APP_VERSION = "v2.1.0 - 2026-02-21";
 
 export function isUserLoggedIn(): boolean {
   return sessionStorage.getItem("cryptoia_user_session") !== null;
@@ -34,9 +36,43 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Diagnostics state
+  const [healthStatus, setHealthStatus] = useState<"checking" | "ok" | "error">("checking");
+  const [healthTimestamp, setHealthTimestamp] = useState<string>("");
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [diagnosticInfo, setDiagnosticInfo] = useState<{
+    serverUrl: string;
+    healthOk: boolean;
+    userAgent: string;
+    timestamp: string;
+    errorDetail: string;
+  } | null>(null);
+  const [cacheCleared, setCacheCleared] = useState(false);
+
+  // Health check on page load
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await fetch("/api/health", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          setHealthStatus("ok");
+          setHealthTimestamp(data.timestamp || new Date().toISOString());
+        } else {
+          setHealthStatus("error");
+        }
+      } catch {
+        setHealthStatus("error");
+      }
+    };
+    checkHealth();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setDiagnosticInfo(null);
+    setShowDiagnostics(false);
     setLoading(true);
 
     try {
@@ -49,14 +85,46 @@ export default function Login() {
         navigate("/");
       } else if (result.serverError) {
         setError("Serveur inaccessible. Veuillez réessayer dans quelques instants.");
+        setDiagnosticInfo({
+          serverUrl: window.location.origin,
+          healthOk: healthStatus === "ok",
+          userAgent: navigator.userAgent.substring(0, 100),
+          timestamp: new Date().toISOString(),
+          errorDetail: "Server returned non-OK status or was unreachable",
+        });
       } else {
         setError("Nom d'utilisateur ou mot de passe incorrect.");
+        setDiagnosticInfo({
+          serverUrl: window.location.origin,
+          healthOk: healthStatus === "ok",
+          userAgent: navigator.userAgent.substring(0, 100),
+          timestamp: new Date().toISOString(),
+          errorDetail: "Server responded OK but credentials did not match",
+        });
       }
     } catch (err) {
       console.error("Login error:", err);
       setError("Erreur de connexion. Veuillez réessayer.");
+      setDiagnosticInfo({
+        serverUrl: window.location.origin,
+        healthOk: healthStatus === "ok",
+        userAgent: navigator.userAgent.substring(0, 100),
+        timestamp: new Date().toISOString(),
+        errorDetail: String(err),
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClearCache = () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      setCacheCleared(true);
+      setTimeout(() => setCacheCleared(false), 3000);
+    } catch (err) {
+      console.error("Failed to clear cache:", err);
     }
   };
 
@@ -97,7 +165,7 @@ export default function Login() {
             {/* Username */}
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">
-                Nom d'utilisateur
+                Nom d&apos;utilisateur
               </label>
               <input
                 type="text"
@@ -136,9 +204,35 @@ export default function Login() {
 
             {/* Error */}
             {error && (
-              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
-                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                <p className="text-sm text-red-400">{error}</p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                  <p className="text-sm text-red-400">{error}</p>
+                </div>
+
+                {/* Expandable Diagnostics */}
+                {diagnosticInfo && (
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setShowDiagnostics(!showDiagnostics)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-gray-500 hover:text-gray-400 transition-colors"
+                    >
+                      <span>Détails techniques</span>
+                      {showDiagnostics ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </button>
+                    {showDiagnostics && (
+                      <div className="px-3 pb-3 space-y-1 text-[10px] font-mono text-gray-600 border-t border-white/[0.04]">
+                        <p>Server: {diagnosticInfo.serverUrl}</p>
+                        <p>Health: {diagnosticInfo.healthOk ? "✅ OK" : "❌ FAIL"}</p>
+                        <p>UA: {diagnosticInfo.userAgent}</p>
+                        <p>Time: {diagnosticInfo.timestamp}</p>
+                        <p>Detail: {diagnosticInfo.errorDetail}</p>
+                        <p>Version: {APP_VERSION}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -159,7 +253,7 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Footer */}
+          {/* Footer links */}
           <div className="mt-6 pt-5 border-t border-white/[0.06] text-center space-y-3">
             <p className="text-xs text-gray-500">
               Pas encore membre ?{" "}
@@ -173,10 +267,49 @@ export default function Login() {
                 support
               </Link>
             </p>
+
+            {/* Clear Cache Button */}
+            <button
+              type="button"
+              onClick={handleClearCache}
+              className="inline-flex items-center gap-1.5 text-[11px] text-gray-600 hover:text-gray-400 transition-colors mt-1"
+            >
+              <Trash2 className="w-3 h-3" />
+              Vider le cache
+            </button>
+            {cacheCleared && (
+              <p className="text-[10px] text-emerald-400 animate-pulse">✓ Cache vidé avec succès. Rechargez la page.</p>
+            )}
+          </div>
+
+          {/* Health Status Indicator */}
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                healthStatus === "ok"
+                  ? "bg-emerald-400"
+                  : healthStatus === "error"
+                  ? "bg-red-400"
+                  : "bg-yellow-400 animate-pulse"
+              }`}
+            />
+            <span className="text-[10px] text-gray-600">
+              {healthStatus === "ok"
+                ? `Serveur connecté`
+                : healthStatus === "error"
+                ? "Serveur déconnecté"
+                : "Vérification..."}
+              {healthTimestamp && healthStatus === "ok" && (
+                <span className="ml-1 text-gray-700">({new Date(healthTimestamp).toLocaleTimeString()})</span>
+              )}
+            </span>
           </div>
         </div>
+
+        {/* Version */}
+        <p className="text-center text-[10px] text-gray-700 mt-4">{APP_VERSION}</p>
       </div>
-    <Footer />
+      <Footer />
     </div>
   );
 }

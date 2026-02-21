@@ -374,11 +374,24 @@ app.get('/api/news-crypto', async (req, res) => {
   }
 });
 
+// Prevent browser caching of HTML (force fresh loads after deploy)
+app.use((req, res, next) => {
+  if (req.url.endsWith('.html') || req.url === '/') {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  next();
+});
+
 // Serve static files from dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// SPA fallback
+// SPA fallback — also with no-cache headers
 app.get('*', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 

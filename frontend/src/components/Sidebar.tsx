@@ -127,6 +127,7 @@ const NAV_SECTIONS = [
       { path: "/timeframe-analysis", label: "Timeframe Analysis", icon: Clock },
       { path: "/crypto-journal", label: "Journal de Trading", icon: BookOpen },
       { path: "/screener-technique", label: "Screener Technique", icon: SlidersHorizontal },
+      { path: "/dtrading-ia-pro", label: "Dtrading IA PRO", icon: Crosshair },
     ],
   },
   {

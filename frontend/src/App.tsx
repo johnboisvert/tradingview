@@ -69,6 +69,7 @@ const SimulateurStrategieIA = React.lazy(() => import("./pages/SimulateurStrateg
 const RapportHebdomadaireIA = React.lazy(() => import("./pages/RapportHebdomadaireIA"));
 const Gamification = React.lazy(() => import("./pages/Gamification"));
 const BacktestingVisuel = React.lazy(() => import("./pages/BacktestingVisuel"));
+const DtradingIaPro = React.lazy(() => import("./pages/DtradingIaPro"));
 const PaymentSuccess = React.lazy(() => import("./pages/PaymentSuccess"));
 const Predictions = React.lazy(() => import("./pages/Predictions"));
 const PredictionCrypto = React.lazy(() => import("./pages/PredictionCrypto"));
@@ -132,6 +133,7 @@ function App() {
           <Route path="/narrative-radar" element={<PlanProtected path="/narrative-radar"><NarrativeRadar /></PlanProtected>} />
           <Route path="/pepites-crypto" element={<PlanProtected path="/pepites-crypto"><PepitesCrypto /></PlanProtected>} />
           <Route path="/rug-scam-shield" element={<PlanProtected path="/rug-scam-shield"><RugScamShield /></PlanProtected>} />
+          <Route path="/dtrading-ia-pro" element={<PlanProtected path="/dtrading-ia-pro"><DtradingIaPro /></PlanProtected>} />
 
           {/* Outils */}
           <Route path="/stats-avancees" element={<PlanProtected path="/stats-avancees"><StatsAvancees /></PlanProtected>} />

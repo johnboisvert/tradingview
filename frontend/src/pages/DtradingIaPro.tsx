@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-type Signal = "ACHAT FORT" | "ACHAT" | "NEUTRE" | "VENTE" | "VENTE FORTE";
+type Signal = "ACHAT FORT" | "ACHAT" | "NEUTRE" | "VENTE" | "VENTE FORTE" | "EN ATTENTE";
 type Light = "green" | "orange" | "red";
 type Timeframe = "1m" | "5m" | "15m" | "1h";
 type SortKey = "rank" | "score" | "price" | "change24h" | "volume" | "rsi" | "signal";
@@ -195,115 +195,99 @@ function computeIndicatorsFromPrices(
 }
 
 // Compute from CoinGecko sparkline (7d, ~168 hourly points) — fallback only
+// IMPORTANT: Only 1h data is real. For 1m/5m/15m we COPY 1h (will be replaced by Binance)
 function computeFromSparkline(coin: CoinMarketData): Record<Timeframe, IndicatorSet> {
   const prices = coin.sparkline_in_7d?.price || [];
-  const defaultInd = (price: number, change: number): IndicatorSet => {
-    const rsi = change > 5 ? 72 : change > 2 ? 60 : change > 0 ? 55 : change > -2 ? 45 : change > -5 ? 35 : 25;
-    const vol = coin.total_volume || 0;
-    const mcap = coin.market_cap || 1;
-    const volRatio = vol / mcap;
-    const light: Light = change > 3 && volRatio > 0.1 ? "green" : change < -3 ? "red" : "orange";
-    return {
-      ema9: price, ema20: price, ema200: price * (1 - change * 0.001),
-      macdLine: change > 0 ? 0.01 : -0.01, macdSignal: 0, macdHist: change > 0 ? 0.01 : -0.01,
-      rsi, vwapAbove: change > 0, vwapValue: price * (1 - change * 0.0005),
-      bbUpper: price * 1.02, bbMiddle: price, bbLower: price * 0.98, bbSqueeze: false,
-      atr: price * 0.015, light, lastClose: price,
-    };
-  };
 
   if (prices.length < 50) {
-    const change = coin.price_change_percentage_24h || 0;
-    const ind = defaultInd(coin.current_price, change);
+    // Not enough data — return placeholder with "orange" lights (unknown state)
+    const price = coin.current_price;
+    const ind: IndicatorSet = {
+      ema9: 0, ema20: 0, ema200: 0,
+      macdLine: 0, macdSignal: 0, macdHist: 0,
+      rsi: 50, vwapAbove: false, vwapValue: price,
+      bbUpper: price, bbMiddle: price, bbLower: price, bbSqueeze: false,
+      atr: price * 0.015, light: "orange", lastClose: price,
+    };
     return { "1m": { ...ind }, "5m": { ...ind }, "15m": { ...ind }, "1h": { ...ind } };
   }
 
+  // Calculate REAL indicators from hourly data (1h timeframe only)
   const highs = prices.map((p, i) => Math.max(p, prices[Math.max(0, i - 1)]));
   const lows = prices.map((p, i) => Math.min(p, prices[Math.max(0, i - 1)]));
   const volumes = prices.map(() => coin.total_volume / 168);
-
-  // 1h: use all 168 points (7 days hourly)
   const ind1h = computeIndicatorsFromPrices(prices, highs, lows, volumes, 24);
-  // 15m: last 48h
-  const r48 = prices.slice(-48);
-  const h48 = r48.map((p, i) => Math.max(p, r48[Math.max(0, i - 1)]));
-  const l48 = r48.map((p, i) => Math.min(p, r48[Math.max(0, i - 1)]));
-  const v48 = r48.map(() => coin.total_volume / 168);
-  const ind15m = r48.length >= 20 ? computeIndicatorsFromPrices(r48, h48, l48, v48, 24) : { ...ind1h };
-  // 5m: last 24h
-  const r24 = prices.slice(-24);
-  const h24 = r24.map((p, i) => Math.max(p, r24[Math.max(0, i - 1)]));
-  const l24 = r24.map((p, i) => Math.min(p, r24[Math.max(0, i - 1)]));
-  const v24 = r24.map(() => coin.total_volume / 168);
-  const ind5m = r24.length >= 20 ? computeIndicatorsFromPrices(r24, h24, l24, v24, 24) : { ...ind15m };
-  // 1m: last 12h
-  const r12 = prices.slice(-12);
-  const h12 = r12.map((p, i) => Math.max(p, r12[Math.max(0, i - 1)]));
-  const l12 = r12.map((p, i) => Math.min(p, r12[Math.max(0, i - 1)]));
-  const v12 = r12.map(() => coin.total_volume / 168);
-  const ind1m = r12.length >= 10 ? computeIndicatorsFromPrices(r12, h12, l12, v12, 12) : { ...ind5m };
 
-  return { "1m": ind1m, "5m": ind5m, "15m": ind15m, "1h": ind1h };
+  // For shorter timeframes, COPY 1h data (don't pretend it's 5m data)
+  // These will be replaced by real Binance data when loaded
+  return { "1m": { ...ind1h }, "5m": { ...ind1h }, "15m": { ...ind1h }, "1h": ind1h };
 }
 
 function computeScore(indicators: Record<Timeframe, IndicatorSet>, coin: CoinMarketData): number {
-  let score = 0; // START FROM 0, not 50!
-
-  // 1) Traffic light alignment 5m+15m+1h (max 30 points)
+  // STEP 1: Count traffic lights (the PRIMARY driver)
   const tfs: Timeframe[] = ["5m", "15m", "1h"];
-  for (const tf of tfs) {
-    const l = indicators[tf].light;
-    if (l === "green") score += 10;
-    else if (l === "orange") score += 3;
-    // red = 0 points
-  }
+  const lights = tfs.map(tf => indicators[tf].light);
+  const greenCount = lights.filter(l => l === "green").length;
+  const orangeCount = lights.filter(l => l === "orange").length;
+  const redCount = lights.filter(l => l === "red").length;
 
-  // 2) VWAP position (max 20 points)
+  // HARD CAPS based on traffic lights:
+  // - Any red light → score CANNOT exceed 40 (NEUTRE max)
+  // - 2+ orange lights → score CANNOT exceed 55 (NEUTRE)
+  // - Need at least 2 green for ACHAT (>60)
+  // - Need all 3 green for ACHAT FORT (>75)
+  let maxScore = 100;
+  if (redCount >= 2) maxScore = 25; // max VENTE
+  else if (redCount === 1) maxScore = 40; // max NEUTRE
+  else if (orangeCount >= 2) maxScore = 55; // max NEUTRE
+  else if (orangeCount === 1 && greenCount === 2) maxScore = 65; // max ACHAT
+  else if (greenCount === 3) maxScore = 100; // can reach ACHAT FORT
+
+  // STEP 2: Calculate raw score from indicators
+  let raw = 0;
+
+  // Traffic lights base (max 30)
+  raw += greenCount * 10 + orangeCount * 3;
+
+  // VWAP (max 20)
+  const vwapAll = tfs.every(tf => indicators[tf].vwapAbove);
   const vwap5m = indicators["5m"].vwapAbove;
-  const vwap15m = indicators["15m"].vwapAbove;
-  const vwap1h = indicators["1h"].vwapAbove;
-  if (vwap5m && vwap15m && vwap1h) score += 20;
-  else if (vwap5m && vwap1h) score += 12;
-  else if (vwap5m) score += 5;
-  // else 0
+  if (vwapAll) raw += 20;
+  else if (vwap5m && indicators["1h"].vwapAbove) raw += 12;
+  else if (vwap5m) raw += 5;
 
-  // 3) RSI (max 15 points)
+  // RSI (max 15)
   const rsi = indicators["5m"].rsi;
-  if (rsi < 30) score += 15; // oversold = buy opportunity
-  else if (rsi >= 40 && rsi <= 60) score += 10; // healthy zone
-  else if (rsi < 40) score += 8;
-  else if (rsi > 60 && rsi <= 70) score += 5;
-  // rsi > 70 = overbought = 0 points
+  if (rsi < 30) raw += 15;
+  else if (rsi >= 40 && rsi <= 60) raw += 10;
+  else if (rsi < 40) raw += 8;
+  else if (rsi > 60 && rsi <= 70) raw += 5;
+  // rsi > 70 = 0
 
-  // 4) MACD momentum (max 15 points)
-  const macdH = indicators["5m"].macdHist;
-  const macdLine = indicators["5m"].macdLine;
-  const macdSig = indicators["5m"].macdSignal;
-  if (macdH > 0 && macdLine > macdSig) score += 15;
-  else if (macdH > 0) score += 8;
-  else if (macdH < 0 && macdLine < macdSig) score += 0;
-  else score += 3;
+  // MACD (max 15)
+  const { macdHist, macdLine, macdSignal } = indicators["5m"];
+  if (macdHist > 0 && macdLine > macdSignal) raw += 15;
+  else if (macdHist > 0) raw += 8;
+  else if (macdHist < 0 && macdLine >= macdSignal) raw += 3;
+  // full bearish = 0
 
-  // 5) EMA 200 position (max 15 points)
+  // EMA 200 (max 15)
   const price = coin.current_price;
-  const ema200_5m = indicators["5m"].ema200;
-  const ema200_1h = indicators["1h"].ema200;
-  if (price > ema200_5m && price > ema200_1h) score += 15;
-  else if (price > ema200_1h) score += 7;
-  // below EMA 200 = 0 points
+  if (price > indicators["5m"].ema200 && price > indicators["1h"].ema200) raw += 15;
+  else if (price > indicators["1h"].ema200) raw += 7;
 
-  // 6) Bollinger + Volume (max 5 points)
+  // BB + Volume (max 5)
   const bb = indicators["5m"];
   const bbRange = bb.bbUpper - bb.bbLower;
   if (bbRange > 0) {
     const bbPos = (price - bb.bbLower) / bbRange;
-    if (bbPos >= 0.3 && bbPos <= 0.7) score += 3;
-    else if (bbPos < 0.2) score += 2;
+    if (bbPos >= 0.3 && bbPos <= 0.7) raw += 3;
+    else if (bbPos < 0.2) raw += 2;
   }
-  const volRatio = coin.total_volume / (coin.market_cap || 1);
-  if (volRatio > 0.1) score += 2;
+  if (coin.total_volume / (coin.market_cap || 1) > 0.1) raw += 2;
 
-  return Math.max(0, Math.min(100, Math.round(score)));
+  // STEP 3: Apply hard cap from traffic lights
+  return Math.max(0, Math.min(maxScore, Math.round(raw)));
 }
 
 function getSignal(score: number): Signal {
@@ -321,6 +305,7 @@ function getSignalColor(signal: Signal): string {
     case "NEUTRE": return "text-gray-300";
     case "VENTE": return "text-orange-300";
     case "VENTE FORTE": return "text-red-300";
+    case "EN ATTENTE": return "text-gray-500";
   }
 }
 
@@ -331,6 +316,7 @@ function getSignalBg(signal: Signal): string {
     case "NEUTRE": return "bg-gray-500/15 border-gray-500/25";
     case "VENTE": return "bg-orange-500/15 border-orange-500/25";
     case "VENTE FORTE": return "bg-red-500/20 border-red-500/30";
+    case "EN ATTENTE": return "bg-gray-800/30 border-gray-600/20";
   }
 }
 
@@ -571,7 +557,10 @@ function DetailRow({ analysis }: { analysis: CryptoAnalysis }) {
               <div className={`rounded-xl p-5 border ${getSignalBg(signal)}`}>
                 <div className="text-center mb-4">
                   <span className={`text-xl font-black ${getSignalColor(signal)}`}>{signal}</span>
-                  <div className="text-3xl font-black text-white mt-1">{score}/100</div>
+                  <div className="text-3xl font-black text-white mt-1">{signal === "EN ATTENTE" ? "—" : `${score}/100`}</div>
+                  {signal === "EN ATTENTE" && (
+                    <p className="text-xs text-gray-500 mt-1">Chargement des données Binance...</p>
+                  )}
                 </div>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
@@ -654,7 +643,7 @@ export default function DtradingIaPro() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("score");
   const [sortAsc, setSortAsc] = useState(false);
-  const [signalFilter, setSignalFilter] = useState<Signal | "ALL">("ALL");
+  const [signalFilter, setSignalFilter] = useState<Signal | "ALL" | "EN ATTENTE">("ALL");
   const [minScore, setMinScore] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
@@ -667,15 +656,14 @@ export default function DtradingIaPro() {
       const data = await fetchTop200(true);
       const results: CryptoAnalysis[] = data.map(coin => {
         const indicators = computeFromSparkline(coin);
-        const score = computeScore(indicators, coin);
-        const signal = getSignal(score);
+        // Non-Binance data → force "EN ATTENTE" signal, no score
         const atr5m = indicators["5m"].atr || coin.current_price * 0.015;
         const stopLoss = coin.current_price - atr5m * 1.5;
         const takeProfit = coin.current_price + atr5m * 2;
         const risk = coin.current_price - stopLoss;
         const reward = takeProfit - coin.current_price;
         const riskReward = risk > 0 ? reward / risk : 0;
-        return { coin, indicators, score, signal, stopLoss, takeProfit, riskReward, detailLoaded: false, isRealData: false };
+        return { coin, indicators, score: 0, signal: "EN ATTENTE" as Signal, stopLoss, takeProfit, riskReward, detailLoaded: false, isRealData: false };
       });
       setAnalyses(results);
       setLastUpdate(new Date());
@@ -792,11 +780,13 @@ export default function DtradingIaPro() {
     </th>
   );
 
-  const buyCount = analyses.filter(a => a.signal === "ACHAT FORT" || a.signal === "ACHAT").length;
-  const sellCount = analyses.filter(a => a.signal === "VENTE FORTE" || a.signal === "VENTE").length;
-  const neutralCount = analyses.filter(a => a.signal === "NEUTRE").length;
-  const avgScore = analyses.length > 0 ? Math.round(analyses.reduce((s, a) => s + a.score, 0) / analyses.length) : 0;
-  const realDataCount = analyses.filter(a => a.isRealData).length;
+  const realAnalyses = analyses.filter(a => a.isRealData);
+  const buyCount = realAnalyses.filter(a => a.signal === "ACHAT FORT" || a.signal === "ACHAT").length;
+  const sellCount = realAnalyses.filter(a => a.signal === "VENTE FORTE" || a.signal === "VENTE").length;
+  const neutralCount = realAnalyses.filter(a => a.signal === "NEUTRE").length;
+  const waitingCount = analyses.filter(a => a.signal === "EN ATTENTE").length;
+  const avgScore = realAnalyses.length > 0 ? Math.round(realAnalyses.reduce((s, a) => s + a.score, 0) / realAnalyses.length) : 0;
+  const realDataCount = realAnalyses.length;
 
   // Market sentiment based on BTC data
   const btcData = analyses.find(a => a.coin.symbol === "btc");
@@ -896,7 +886,7 @@ export default function DtradingIaPro() {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-7 gap-3 mb-6">
             <div className="bg-white/[0.04] rounded-xl p-4 border border-white/[0.06]">
               <p className="text-xs text-gray-400 font-bold mb-1">Cryptos</p>
               <p className="text-2xl font-black text-white">{analyses.length}</p>
@@ -913,9 +903,13 @@ export default function DtradingIaPro() {
               <p className="text-xs text-gray-300 font-bold mb-1">Neutres</p>
               <p className="text-2xl font-black text-gray-200">{neutralCount}</p>
             </div>
+            <div className="bg-gray-800/[0.5] rounded-xl p-4 border border-gray-600/15">
+              <p className="text-xs text-gray-500 font-bold mb-1">En Attente</p>
+              <p className="text-2xl font-black text-gray-500">{waitingCount}</p>
+            </div>
             <div className="bg-indigo-500/[0.08] rounded-xl p-4 border border-indigo-500/15">
               <p className="text-xs text-indigo-300 font-bold mb-1">Score Moy.</p>
-              <p className={`text-2xl font-black ${getScoreColor(avgScore)}`}>{avgScore}/100</p>
+              <p className={`text-2xl font-black ${getScoreColor(avgScore)}`}>{realDataCount > 0 ? `${avgScore}/100` : "—"}</p>
             </div>
             <div className="bg-cyan-500/[0.08] rounded-xl p-4 border border-cyan-500/15">
               <p className="text-xs text-cyan-300 font-bold mb-1">Binance</p>
@@ -967,6 +961,7 @@ export default function DtradingIaPro() {
                   <option value="NEUTRE">Neutre</option>
                   <option value="VENTE">Vente</option>
                   <option value="VENTE FORTE">Vente Forte</option>
+                  <option value="EN ATTENTE">En Attente</option>
                 </select>
               </div>
               <div>
@@ -1070,13 +1065,23 @@ export default function DtradingIaPro() {
                               </div>
                             </td>
                             <td className="px-3 py-3.5">
-                              <span className={`text-lg font-black ${getScoreColor(score)}`}>{score}</span>
+                              {signal === "EN ATTENTE" ? (
+                                <span className="text-lg font-black text-gray-600">—</span>
+                              ) : (
+                                <span className={`text-lg font-black ${getScoreColor(score)}`}>{score}</span>
+                              )}
                             </td>
                             <td className="px-3 py-3.5">
                               <div className="flex flex-col items-start gap-1">
                                 <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${getSignalBg(signal)} ${getSignalColor(signal)}`}>
                                   {signal}
                                 </span>
+                                {signal === "EN ATTENTE" && (
+                                  <span className="text-[9px] text-gray-500 flex items-center gap-0.5">
+                                    <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                                    Binance...
+                                  </span>
+                                )}
                                 {(signal === "ACHAT FORT" || signal === "ACHAT") && (
                                   indicators["5m"].light !== "green" || indicators["15m"].light !== "green" || indicators["1h"].light !== "green"
                                 ) && (

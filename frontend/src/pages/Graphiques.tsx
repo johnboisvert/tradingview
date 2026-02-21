@@ -169,7 +169,19 @@ export default function Graphiques() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
 
+  const BINANCE_SYMBOLS: Record<string, string> = {
+    bitcoin: "BTCUSDT", ethereum: "ETHUSDT", binancecoin: "BNBUSDT", solana: "SOLUSDT",
+    ripple: "XRPUSDT", cardano: "ADAUSDT", dogecoin: "DOGEUSDT", polkadot: "DOTUSDT",
+    avalanche: "AVAXUSDT", chainlink: "LINKUSDT", "matic-network": "MATICUSDT", polygon: "MATICUSDT",
+    litecoin: "LTCUSDT", uniswap: "UNIUSDT", "shiba-inu": "SHIBUSDT", tron: "TRXUSDT",
+    "wrapped-bitcoin": "WBTCUSDT", cosmos: "ATOMUSDT", near: "NEARUSDT", stellar: "XLMUSDT",
+    algorand: "ALGOUSDT", "internet-computer": "ICPUSDT", filecoin: "FILUSDT", aptos: "APTUSDT",
+    arbitrum: "ARBUSDT", optimism: "OPUSDT", sui: "SUIUSDT", pepe: "PEPEUSDT",
+    "render-token": "RENDERUSDT", injective: "INJUSDT", sei: "SEIUSDT", celestia: "TIAUSDT",
+  };
+
   const TIMEFRAMES = [
+    { label: "1H", value: "1h" },
     { label: "1J", value: "1" },
     { label: "7J", value: "7" },
     { label: "30J", value: "30" },
@@ -178,6 +190,7 @@ export default function Graphiques() {
   ];
 
   const timeframeLabel: Record<string, string> = {
+    "1h": "1 heure",
     "1": "1 jour",
     "7": "7 jours",
     "30": "30 jours",
@@ -186,9 +199,51 @@ export default function Graphiques() {
   };
 
   /* ── Fetch OHLC candlestick data ── */
-  const fetchOHLC = useCallback(async (coinId: string, days: string) => {
+  const fetchOHLC = useCallback(async (coinId: string, tf: string) => {
     try {
-      const res = await fetch(`/api/coingecko/coins/${coinId}/ohlc?vs_currency=usd&days=${days}`, {
+      // Use Binance API for 1h timeframe
+      if (tf === "1h") {
+        const binanceSymbol = BINANCE_SYMBOLS[coinId];
+        if (binanceSymbol) {
+          const res = await fetch(`/api/binance/klines?symbol=${binanceSymbol}&interval=1h&limit=168`, {
+            signal: AbortSignal.timeout(15000),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+              const mapped = data.map((item: (string | number)[]) => ({
+                time: Math.floor(Number(item[0]) / 1000),
+                open: parseFloat(String(item[1])),
+                high: parseFloat(String(item[2])),
+                low: parseFloat(String(item[3])),
+                close: parseFloat(String(item[4])),
+              }));
+              setOhlcData(mapped);
+              return;
+            }
+          }
+        }
+        // Fallback to CoinGecko days=1 (30min candles) if Binance unavailable
+        const res = await fetch(`/api/coingecko/coins/${coinId}/ohlc?vs_currency=usd&days=1`, {
+          signal: AbortSignal.timeout(15000),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const mapped = data.map((item: number[]) => ({
+              time: Math.floor(item[0] / 1000),
+              open: item[1], high: item[2], low: item[3], close: item[4],
+            }));
+            setOhlcData(mapped);
+            return;
+          }
+        }
+        setOhlcData([]);
+        return;
+      }
+
+      // Use CoinGecko for other timeframes
+      const res = await fetch(`/api/coingecko/coins/${coinId}/ohlc?vs_currency=usd&days=${tf}`, {
         signal: AbortSignal.timeout(15000),
       });
       if (res.ok) {

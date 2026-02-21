@@ -117,6 +117,34 @@ function geminiProxyPlugin(): Plugin {
         }
       });
 
+      // Binance Klines API proxy — proxies /api/binance/klines to Binance
+      server.middlewares.use('/api/binance/klines', async (req, res) => {
+        const url = new URL(req.url || '', 'http://localhost');
+        const symbol = url.searchParams.get('symbol') || '';
+        const interval = url.searchParams.get('interval') || '1h';
+        const limit = url.searchParams.get('limit') || '168';
+        const targetUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+
+        try {
+          const upstreamRes = await fetch(targetUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json', 'User-Agent': 'CryptoIA/1.0' },
+            signal: AbortSignal.timeout(15000),
+          });
+
+          const data = await upstreamRes.text();
+          res.statusCode = upstreamRes.status;
+          res.setHeader('Content-Type', 'application/json');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.end(data);
+        } catch (err: any) {
+          console.error('Binance proxy error:', err);
+          res.statusCode = 502;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Binance proxy failed', message: err?.message }));
+        }
+      });
+
       // CryptoPanic News API proxy — proxies /api/news to CryptoPanic
       server.middlewares.use('/api/news', async (req, res) => {
         const targetUrl = `https://cryptopanic.com/api/free/v1/posts/?auth_token=free&public=true&kind=news`;

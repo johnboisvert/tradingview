@@ -110,6 +110,28 @@ app.get('/api/coingecko/*', async (req, res) => {
   }
 });
 
+// ─── Binance Klines API proxy ───
+app.get('/api/binance/klines', async (req, res) => {
+  const { symbol, interval, limit } = req.query;
+  const targetUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval || '1h'}&limit=${limit || '168'}`;
+
+  try {
+    const upstreamRes = await fetch(targetUrl, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json', 'User-Agent': 'CryptoIA/1.0' },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const data = await upstreamRes.text();
+    res.status(upstreamRes.status)
+      .set('Content-Type', 'application/json')
+      .send(data);
+  } catch (err) {
+    console.error('Binance proxy error:', err);
+    res.status(502).json({ error: 'Binance proxy failed', message: err?.message });
+  }
+});
+
 // ─── CryptoPanic News API proxy ───
 app.get('/api/news', async (req, res) => {
   const targetUrl = `https://cryptopanic.com/api/free/v1/posts/?auth_token=free&public=true&kind=news`;

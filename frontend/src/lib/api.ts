@@ -109,6 +109,7 @@ export const addUser = async (data: {
   const tempPwd = data.password || Math.random().toString(36).slice(-8);
   store.addUser({
     username: data.username,
+    password: tempPwd,
     role: data.role,
     plan: data.plan,
     created_at: new Date().toISOString().split("T")[0],
@@ -142,6 +143,8 @@ export const resetPassword = async (
   const user = users.find((u) => u.username === username);
   if (!user) return { success: false, message: "Utilisateur introuvable" };
   const tempPwd = newPassword || Math.random().toString(36).slice(-8);
+  user.password = tempPwd;
+  store.saveUsers(users);
   return { success: true, temp_password: tempPwd };
 };
 

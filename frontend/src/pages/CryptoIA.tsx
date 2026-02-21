@@ -6,11 +6,12 @@ import {
   Activity, AlertCircle, Brain, BarChart2, Zap, Info, Clock, Timer,
   Shield, Target, ArrowDownRight, ArrowUpRight
 } from "lucide-react";
-import { fetchWithCorsProxy } from "@/lib/cryptoApi";
+// No longer need CORS proxy — all API calls go through our local proxy
 import Footer from "@/components/Footer";
 
-const API_URL = "https://crypto-prediction-api-5763.onrender.com";
-const COINGECKO_URL = "https://api.coingecko.com/api/v3";
+// Use local proxy to avoid CORS issues — proxied via vite.config.ts (dev) and server.js (prod)
+const API_URL = "/api/crypto-predict";
+const COINGECKO_URL = "/api/coingecko";
 
 interface CryptoItem {
   id: string;
@@ -323,7 +324,7 @@ export default function CryptoIA() {
 
   async function checkStatus() {
     try {
-      const res = await fetchWithCorsProxy(`${API_URL}/api/health`);
+      const res = await fetch(`${API_URL}/api/health`, { signal: AbortSignal.timeout(10000) });
       const data = await res.json();
       setApiStatus(data.status === "online" ? "online" : "offline");
     } catch {
@@ -335,8 +336,9 @@ export default function CryptoIA() {
   async function fetchCoinGeckoPage(page: number, retries = 2): Promise<CryptoItem[]> {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const res = await fetchWithCorsProxy(
-          `${COINGECKO_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=${page}&sparkline=false&price_change_percentage=24h`
+        const res = await fetch(
+          `${COINGECKO_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=${page}&sparkline=false&price_change_percentage=24h`,
+          { signal: AbortSignal.timeout(15000) }
         );
         if (res.status === 429) {
           // Rate limited — wait and retry
@@ -375,7 +377,7 @@ export default function CryptoIA() {
     setLoadingList(true);
     try {
       // Start both sources in parallel
-      const apiPromise = fetchWithCorsProxy(`${API_URL}/api/crypto-list`)
+      const apiPromise = fetch(`${API_URL}/api/crypto-list`, { signal: AbortSignal.timeout(15000) })
         .then((r) => r.json())
         .then((data) =>
           ((data.cryptos || []) as CryptoItem[]).map((c) => ({
@@ -434,7 +436,7 @@ export default function CryptoIA() {
     setError("");
     setPrediction(null);
     try {
-      const res = await fetchWithCorsProxy(`${API_URL}/api/predict/${selectedId}`);
+      const res = await fetch(`${API_URL}/api/predict/${selectedId}`, { signal: AbortSignal.timeout(60000) });
       const data = await res.json();
       if (data.error) throw new Error(data.message || data.error);
       const crypto = cryptos.find((c) => c.id === selectedId) || selectedCrypto;

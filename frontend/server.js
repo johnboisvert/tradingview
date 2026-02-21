@@ -1,7 +1,6 @@
-// Simple Express server for production that proxies Gemini API calls
-// This keeps the API key server-side and avoids CORS issues
+// Simple Express server for production that proxies API calls
+// This keeps API keys server-side and avoids CORS issues
 import express from 'express';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -18,7 +17,7 @@ const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
 // Parse JSON bodies
 app.use(express.json({ limit: '1mb' }));
 
-// API endpoint to proxy Gemini calls
+// ─── Gemini AI Chat proxy ───
 app.post('/api/ai-chat', async (req, res) => {
   if (!GEMINI_API_KEY) {
     return res.status(500).json({ error: 'API key not configured' });
@@ -59,6 +58,76 @@ app.post('/api/ai-chat', async (req, res) => {
   } catch (error) {
     console.error('Proxy error:', error);
     res.status(500).json({ error: 'Failed to reach Gemini API' });
+  }
+});
+
+// ─── Crypto Prediction API proxy ───
+// Proxies /api/crypto-predict/* to https://crypto-prediction-api-5763.onrender.com/*
+app.all('/api/crypto-predict/*', async (req, res) => {
+  const targetPath = req.url.replace('/api/crypto-predict', '');
+  const targetUrl = `https://crypto-prediction-api-5763.onrender.com${targetPath}`;
+
+  try {
+    const upstreamRes = await fetch(targetUrl, {
+      method: req.method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      signal: AbortSignal.timeout(60000),
+    });
+
+    const data = await upstreamRes.text();
+    res.status(upstreamRes.status)
+      .set('Content-Type', 'application/json')
+      .send(data);
+  } catch (err) {
+    console.error('Crypto predict proxy error:', err);
+    res.status(502).json({ error: 'Proxy failed', message: err?.message });
+  }
+});
+
+// ─── CoinGecko API proxy ───
+// Proxies /api/coingecko/* to https://api.coingecko.com/api/v3/*
+app.get('/api/coingecko/*', async (req, res) => {
+  const targetPath = req.url.replace('/api/coingecko', '');
+  const targetUrl = `https://api.coingecko.com/api/v3${targetPath}`;
+
+  try {
+    const upstreamRes = await fetch(targetUrl, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const data = await upstreamRes.text();
+    res.status(upstreamRes.status)
+      .set('Content-Type', 'application/json')
+      .send(data);
+  } catch (err) {
+    console.error('CoinGecko proxy error:', err);
+    res.status(502).json({ error: 'CoinGecko proxy failed', message: err?.message });
+  }
+});
+
+// ─── CryptoPanic News API proxy ───
+app.get('/api/news', async (req, res) => {
+  const targetUrl = `https://cryptopanic.com/api/free/v1/posts/?auth_token=free&public=true&kind=news`;
+
+  try {
+    const upstreamRes = await fetch(targetUrl, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const data = await upstreamRes.text();
+    res.status(upstreamRes.status)
+      .set('Content-Type', 'application/json')
+      .send(data);
+  } catch (err) {
+    console.error('CryptoPanic proxy error:', err);
+    res.status(502).json({ error: 'News proxy failed', message: err?.message });
   }
 });
 

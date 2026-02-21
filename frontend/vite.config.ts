@@ -1,14 +1,156 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react-swc';
+import { createHash } from 'crypto';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
 
-// Vite plugin that proxies /api/ai-chat to Gemini API (keeps key server-side)
-function geminiProxyPlugin(): Plugin {
+// ── Dev-mode user storage helpers ──
+const DEV_DATA_DIR = path.resolve(__dirname, 'data');
+const DEV_USERS_FILE = path.join(DEV_DATA_DIR, 'users.json');
+
+function hashPwd(password: string): string {
+  return createHash('sha256').update(password).digest('hex');
+}
+
+function devLoadUsers(): any[] {
+  try {
+    if (existsSync(DEV_USERS_FILE)) {
+      return JSON.parse(readFileSync(DEV_USERS_FILE, 'utf-8'));
+    }
+  } catch { /* ignore */ }
+  const defaults = [
+    { username: "admin", passwordHash: hashPwd("admin123"), role: "admin", plan: "elite", subscription_end: "2027-02-17", created_at: "2024-01-15" },
+  ];
+  devSaveUsers(defaults);
+  return defaults;
+}
+
+function devSaveUsers(users: any[]): void {
+  if (!existsSync(DEV_DATA_DIR)) mkdirSync(DEV_DATA_DIR, { recursive: true });
+  writeFileSync(DEV_USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
+}
+
+function readBody(req: any): Promise<string> {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+    req.on('end', () => resolve(body));
+  });
+}
+
+// Vite plugin that proxies /api/* endpoints (keeps keys server-side)
+function apiProxyPlugin(): Plugin {
   return {
-    name: 'gemini-proxy',
+    name: 'api-proxy',
     configureServer(server) {
+      // ── User Management API (dev mode) ──
+      server.middlewares.use('/api/users/login', async (req: any, res: any) => {
+        if (req.method !== 'POST') { res.statusCode = 405; res.end('{}'); return; }
+        const body = JSON.parse(await readBody(req));
+        const users = devLoadUsers();
+        const hash = hashPwd((body.password || '').trim());
+        const user = users.find((u: any) => u.username.toLowerCase() === (body.username || '').trim().toLowerCase() && u.passwordHash === hash);
+        res.setHeader('Content-Type', 'application/json');
+        if (user) {
+          const { passwordHash, ...safe } = user;
+          res.end(JSON.stringify({ success: true, user: safe }));
+        } else {
+          res.end(JSON.stringify({ success: false, message: "Nom d'utilisateur ou mot de passe incorrect." }));
+        }
+      });
+
+      server.middlewares.use('/api/users/create', async (req: any, res: any) => {
+        if (req.method !== 'POST') { res.statusCode = 405; res.end('{}'); return; }
+        const body = JSON.parse(await readBody(req));
+        const users = devLoadUsers();
+        if (users.find((u: any) => u.username.toLowerCase() === (body.username || '').trim().toLowerCase())) {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, message: "Utilisateur déjà existant." }));
+          return;
+        }
+        const tempPwd = body.password || Math.random().toString(36).slice(-8);
+        const newUser: any = {
+          username: (body.username || '').trim(),
+          passwordHash: hashPwd(tempPwd),
+          role: body.role || 'user',
+          plan: body.plan || 'free',
+          created_at: new Date().toISOString().split('T')[0],
+        };
+        if (newUser.plan !== 'free') {
+          const end = new Date(); end.setFullYear(end.getFullYear() + 1);
+          newUser.subscription_end = end.toISOString().split('T')[0];
+        }
+        users.push(newUser);
+        devSaveUsers(users);
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ success: true, temp_password: tempPwd }));
+      });
+
+      server.middlewares.use('/api/users/reset-password', async (req: any, res: any) => {
+        if (req.method !== 'POST') { res.statusCode = 405; res.end('{}'); return; }
+        const body = JSON.parse(await readBody(req));
+        const users = devLoadUsers();
+        const user = users.find((u: any) => u.username.toLowerCase() === (body.username || '').trim().toLowerCase());
+        res.setHeader('Content-Type', 'application/json');
+        if (!user) { res.end(JSON.stringify({ success: false, message: "Utilisateur introuvable." })); return; }
+        const tempPwd = body.newPassword || Math.random().toString(36).slice(-8);
+        user.passwordHash = hashPwd(tempPwd);
+        devSaveUsers(users);
+        res.end(JSON.stringify({ success: true, temp_password: tempPwd }));
+      });
+
+      server.middlewares.use('/api/users', async (req: any, res: any, next: any) => {
+        // Handle DELETE /api/users/:username and PUT /api/users/:username/plan
+        const url = new URL(req.url || '', 'http://localhost');
+        const parts = url.pathname.split('/').filter(Boolean); // e.g. ["username", "plan"]
+
+        if (req.method === 'GET' && parts.length === 0) {
+          // GET /api/users
+          const users = devLoadUsers();
+          const safe = users.map(({ passwordHash, ...rest }: any) => rest);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ users: safe }));
+          return;
+        }
+
+        if (req.method === 'DELETE' && parts.length === 1) {
+          const username = decodeURIComponent(parts[0]);
+          const users = devLoadUsers();
+          const filtered = users.filter((u: any) => u.username.toLowerCase() !== username.toLowerCase());
+          res.setHeader('Content-Type', 'application/json');
+          if (filtered.length === users.length) {
+            res.end(JSON.stringify({ success: false, message: "Utilisateur introuvable." }));
+          } else {
+            devSaveUsers(filtered);
+            res.end(JSON.stringify({ success: true }));
+          }
+          return;
+        }
+
+        if (req.method === 'PUT' && parts.length === 2 && parts[1] === 'plan') {
+          const username = decodeURIComponent(parts[0]);
+          const body = JSON.parse(await readBody(req));
+          const users = devLoadUsers();
+          const user = users.find((u: any) => u.username.toLowerCase() === username.toLowerCase());
+          res.setHeader('Content-Type', 'application/json');
+          if (!user) { res.end(JSON.stringify({ success: false, message: "Utilisateur introuvable." })); return; }
+          user.plan = body.plan;
+          if (body.plan !== 'free') {
+            const end = new Date(); end.setFullYear(end.getFullYear() + 1);
+            user.subscription_end = end.toISOString().split('T')[0];
+          } else {
+            delete user.subscription_end;
+          }
+          devSaveUsers(users);
+          res.end(JSON.stringify({ success: true, subscription_end: user.subscription_end }));
+          return;
+        }
+
+        next();
+      });
+
       // Gemini AI Chat proxy
-      server.middlewares.use('/api/ai-chat', async (req, res) => {
+      server.middlewares.use('/api/ai-chat', async (req: any, res: any) => {
         if (req.method !== 'POST') {
           res.statusCode = 405;
           res.end(JSON.stringify({ error: 'Method not allowed' }));
@@ -211,7 +353,7 @@ function geminiProxyPlugin(): Plugin {
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
-    geminiProxyPlugin(),
+    apiProxyPlugin(),
   ],
   resolve: {
     alias: {

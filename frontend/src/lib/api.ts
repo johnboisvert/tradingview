@@ -90,9 +90,18 @@ export interface RevenueIntelligence {
 }
 
 // ============================================================
-// Users
+// Users — Server-side API calls
 // ============================================================
 export const getUsers = async (): Promise<{ users: User[] }> => {
+  try {
+    const res = await fetch("/api/users");
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.error("Failed to fetch users from server:", err);
+  }
+  // Fallback to localStorage if server is unavailable (dev mode)
   return { users: store.getUsers() };
 };
 
@@ -102,6 +111,19 @@ export const addUser = async (data: {
   role: string;
   plan: string;
 }): Promise<{ success: boolean; message?: string; temp_password?: string }> => {
+  try {
+    const res = await fetch("/api/users/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.error("Failed to create user on server:", err);
+  }
+  // Fallback to localStorage
   const existing = store.getUsers();
   if (existing.find((u) => u.username === data.username)) {
     return { success: false, message: "Utilisateur déjà existant" };
@@ -122,6 +144,19 @@ export const updateUserPlan = async (
   username: string,
   plan: string
 ): Promise<{ success: boolean; message?: string; subscription_end?: string }> => {
+  try {
+    const res = await fetch(`/api/users/${encodeURIComponent(username)}/plan`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan }),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.error("Failed to update user plan on server:", err);
+  }
+  // Fallback
   const ok = store.updateUserPlan(username, plan);
   if (!ok) return { success: false, message: "Utilisateur introuvable" };
   const user = store.getUsers().find((u) => u.username === username);
@@ -131,6 +166,17 @@ export const updateUserPlan = async (
 export const deleteUser = async (
   username: string
 ): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const res = await fetch(`/api/users/${encodeURIComponent(username)}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.error("Failed to delete user on server:", err);
+  }
+  // Fallback
   const ok = store.deleteUser(username);
   return ok ? { success: true } : { success: false, message: "Utilisateur introuvable" };
 };
@@ -139,6 +185,19 @@ export const resetPassword = async (
   username: string,
   newPassword?: string
 ): Promise<{ success: boolean; temp_password?: string; message?: string }> => {
+  try {
+    const res = await fetch("/api/users/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, newPassword }),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.error("Failed to reset password on server:", err);
+  }
+  // Fallback
   const users = store.getUsers();
   const user = users.find((u) => u.username === username);
   if (!user) return { success: false, message: "Utilisateur introuvable" };

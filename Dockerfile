@@ -1,4 +1,4 @@
-# CryptoIA Platform - Railway Deployment v3 - Express server with API proxies
+# CryptoIA Platform - Railway Deployment v4 - Express server with API proxies + server-side users
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -18,6 +18,9 @@ COPY --from=builder /app/frontend/dist ./dist
 
 # Copy server.js
 COPY --from=builder /app/frontend/server.js ./server.js
+
+# Create data directory for persistent user storage
+RUN mkdir -p /app/data
 
 # Create a minimal package.json for the production server (ES modules + deps)
 RUN echo '{"type":"module","dependencies":{"express":"^4.21.0","dotenv":"^16.4.0"}}' > package.json && npm install --omit=dev

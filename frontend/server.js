@@ -3,6 +3,8 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createHash } from 'crypto';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -16,6 +18,177 @@ const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
 
 // Parse JSON bodies
 app.use(express.json({ limit: '1mb' }));
+
+// ============================================================
+// User Management — JSON file persistence
+// ============================================================
+const DATA_DIR = path.join(__dirname, 'data');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+
+// Ensure data directory exists
+if (!existsSync(DATA_DIR)) {
+  mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const DEFAULT_USERS = [
+  {
+    username: "admin",
+    passwordHash: hashPwd("admin123"),
+    role: "admin",
+    plan: "elite",
+    subscription_end: "2027-02-17",
+    created_at: "2024-01-15",
+  },
+];
+
+function hashPwd(password) {
+  return createHash('sha256').update(password).digest('hex');
+}
+
+function loadUsers() {
+  try {
+    if (existsSync(USERS_FILE)) {
+      const raw = readFileSync(USERS_FILE, 'utf-8');
+      return JSON.parse(raw);
+    }
+  } catch (err) {
+    console.error('Error loading users:', err);
+  }
+  // Initialize with defaults
+  saveUsers(DEFAULT_USERS);
+  return DEFAULT_USERS;
+}
+
+function saveUsers(users) {
+  try {
+    writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving users:', err);
+  }
+}
+
+// ─── POST /api/users/login ───
+app.post('/api/users/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: 'Nom d\'utilisateur et mot de passe requis.' });
+  }
+
+  const users = loadUsers();
+  const hash = hashPwd(password.trim());
+  const user = users.find(
+    (u) => u.username.toLowerCase() === username.trim().toLowerCase() && u.passwordHash === hash
+  );
+
+  if (!user) {
+    return res.json({ success: false, message: 'Nom d\'utilisateur ou mot de passe incorrect.' });
+  }
+
+  // Return user info (without passwordHash)
+  const { passwordHash, ...safeUser } = user;
+  res.json({ success: true, user: safeUser });
+});
+
+// ─── POST /api/users/create ───
+app.post('/api/users/create', (req, res) => {
+  const { username, password, role, plan } = req.body;
+  if (!username) {
+    return res.status(400).json({ success: false, message: 'Nom d\'utilisateur requis.' });
+  }
+
+  const users = loadUsers();
+  if (users.find((u) => u.username.toLowerCase() === username.trim().toLowerCase())) {
+    return res.json({ success: false, message: 'Utilisateur déjà existant.' });
+  }
+
+  const tempPwd = password || Math.random().toString(36).slice(-8);
+  const now = new Date();
+  const newUser = {
+    username: username.trim(),
+    passwordHash: hashPwd(tempPwd),
+    role: role || 'user',
+    plan: plan || 'free',
+    created_at: now.toISOString().split('T')[0],
+  };
+
+  if (newUser.plan !== 'free') {
+    const end = new Date();
+    end.setFullYear(end.getFullYear() + 1);
+    newUser.subscription_end = end.toISOString().split('T')[0];
+  }
+
+  users.push(newUser);
+  saveUsers(users);
+
+  res.json({ success: true, temp_password: tempPwd });
+});
+
+// ─── POST /api/users/reset-password ───
+app.post('/api/users/reset-password', (req, res) => {
+  const { username, newPassword } = req.body;
+  if (!username) {
+    return res.status(400).json({ success: false, message: 'Nom d\'utilisateur requis.' });
+  }
+
+  const users = loadUsers();
+  const user = users.find((u) => u.username.toLowerCase() === username.trim().toLowerCase());
+  if (!user) {
+    return res.json({ success: false, message: 'Utilisateur introuvable.' });
+  }
+
+  const tempPwd = newPassword || Math.random().toString(36).slice(-8);
+  user.passwordHash = hashPwd(tempPwd);
+  saveUsers(users);
+
+  res.json({ success: true, temp_password: tempPwd });
+});
+
+// ─── GET /api/users ───
+app.get('/api/users', (req, res) => {
+  const users = loadUsers();
+  // Return users without passwordHash
+  const safeUsers = users.map(({ passwordHash, ...rest }) => rest);
+  res.json({ users: safeUsers });
+});
+
+// ─── DELETE /api/users/:username ───
+app.delete('/api/users/:username', (req, res) => {
+  const { username } = req.params;
+  const users = loadUsers();
+  const filtered = users.filter((u) => u.username.toLowerCase() !== username.toLowerCase());
+  if (filtered.length === users.length) {
+    return res.json({ success: false, message: 'Utilisateur introuvable.' });
+  }
+  saveUsers(filtered);
+  res.json({ success: true });
+});
+
+// ─── PUT /api/users/:username/plan ───
+app.put('/api/users/:username/plan', (req, res) => {
+  const { username } = req.params;
+  const { plan } = req.body;
+  if (!plan) {
+    return res.status(400).json({ success: false, message: 'Plan requis.' });
+  }
+
+  const users = loadUsers();
+  const user = users.find((u) => u.username.toLowerCase() === username.toLowerCase());
+  if (!user) {
+    return res.json({ success: false, message: 'Utilisateur introuvable.' });
+  }
+
+  user.plan = plan;
+  if (plan !== 'free') {
+    const end = new Date();
+    end.setFullYear(end.getFullYear() + 1);
+    user.subscription_end = end.toISOString().split('T')[0];
+  } else {
+    delete user.subscription_end;
+  }
+
+  saveUsers(users);
+  res.json({ success: true, subscription_end: user.subscription_end });
+});
 
 // ─── Gemini AI Chat proxy ───
 app.post('/api/ai-chat', async (req, res) => {

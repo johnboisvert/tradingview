@@ -2,7 +2,7 @@ import Footer from "../components/Footer";
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle, LogIn, ShieldAlert } from "lucide-react";
-import { loginUser, setUserSession, registerUserSession, removeUserSessionToken } from "@/lib/store";
+import { loginUserServer, setUserSession, registerUserSession, removeUserSessionToken } from "@/lib/store";
 import { setUserPlan } from "@/lib/subscription";
 
 export function isUserLoggedIn(): boolean {
@@ -34,13 +34,13 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    setTimeout(() => {
-      const user = loginUser(username.trim(), password);
+    try {
+      const user = await loginUserServer(username.trim(), password);
       if (user) {
         // Register session token for double-connection protection
         registerUserSession(user.username);
@@ -50,8 +50,12 @@ export default function Login() {
       } else {
         setError("Nom d'utilisateur ou mot de passe incorrect.");
       }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Erreur de connexion. Veuillez réessayer.");
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
   return (

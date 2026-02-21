@@ -15,7 +15,7 @@ const FAQ = [
   { q: "Y a-t-il un essai gratuit ?", a: "Oui ! Le plan Premium inclut un essai gratuit de 7 jours. Aucune carte bancaire requise pour commencer." },
   { q: "Quels moyens de paiement acceptez-vous ?", a: "Nous acceptons Visa, Mastercard, American Express via Stripe, les virements Interac e-Transfer, ainsi que les paiements en crypto via NOWPayments (300+ cryptos)." },
   { q: "Les données sont-elles en temps réel ?", a: "Oui, toutes nos données proviennent d'APIs en temps réel (CoinGecko, Binance, Alternative.me) avec des mises à jour automatiques." },
-  { q: "Comment fonctionne le paiement Interac ?", a: "Envoyez le montant exact à cryptoia2026@proton.me avec votre nom d'utilisateur en message. Votre plan sera activé sous 24h ouvrables." },
+  { q: "Comment fonctionne le paiement Interac ?", a: "Envoyez le montant exact à cryptoia2026@gmail.com avec votre nom d'utilisateur en message. Votre plan sera activé sous 24h ouvrables." },
   { q: "Comment payer en crypto ?", a: "Cliquez sur 'Crypto (NOWPayments)', vous serez redirigé vers une page de paiement sécurisée supportant 300+ cryptos (BTC, ETH, USDT, SOL, BNB, etc.). Activation automatique après confirmation blockchain." },
   { q: "Combien de temps pour l'activation crypto ?", a: "L'activation est automatique après confirmation blockchain, généralement entre 1 et 30 minutes selon la crypto choisie." },
   { q: "Comment fonctionne l'abonnement annuel ?", a: "L'abonnement annuel vous offre une réduction significative par rapport au prix mensuel. Vous payez une fois par an et économisez sur le long terme. Le pourcentage de réduction est configurable par l'administrateur." },
@@ -349,8 +349,8 @@ function PaymentModal({
                   </li>
                 </ol>
                 <div className="bg-black/30 rounded-lg p-3 flex items-center justify-between">
-                  <span className="text-emerald-300 font-mono text-sm">cryptoia2026@proton.me</span>
-                  <CopyButton text="cryptoia2026@proton.me" />
+                  <span className="text-emerald-300 font-mono text-sm">cryptoia2026@gmail.com</span>
+                  <CopyButton text="cryptoia2026@gmail.com" />
                 </div>
                 <ol className="space-y-2 text-xs text-gray-300 list-none">
                   <li className="flex gap-2">
@@ -394,7 +394,7 @@ function PaymentModal({
                 ⚠️ Envoyez le montant <strong>exact</strong> (${isAnnual ? plan.annualTotalPrice.toFixed(2) : displayPrice.toFixed(2)} CAD) pour éviter tout délai de traitement.
               </div>
               <a
-                href="mailto:cryptoia2026@proton.me"
+                href="mailto:cryptoia2026@gmail.com"
                 className="w-full py-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 font-bold text-sm text-emerald-300 hover:bg-emerald-500/30 transition-all flex items-center justify-center gap-2"
               >
                 Confirmer par email <ExternalLink className="w-4 h-4" />

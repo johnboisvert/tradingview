@@ -88,6 +88,7 @@ const ROUTE_TO_SLUG: Record<string, string> = {
   "/news": "nouvelles",
   "/my-cryptoia": "ai-coach",
   "/alertes-ia": "ai-signals",
+  "/alertes-telegram": "ai-signals",
   "/score-confiance-ia": "ai-signals",
   "/simulateur-strategie-ia": "setup-builder",
   "/assistant-ia": "ai-coach",

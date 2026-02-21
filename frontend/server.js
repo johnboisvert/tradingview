@@ -325,6 +325,345 @@ app.get('/api/binance/klines', async (req, res) => {
   }
 });
 
+// ============================================================
+// Telegram Bot API
+// ============================================================
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8478131465:AAEh7Z0rvIqSNvn1wKdtkMNb-O96h41LCns';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-1002940633257';
+
+// In-memory alert config (persisted to file)
+const TELEGRAM_ALERTS_FILE = path.join(DATA_DIR, 'telegram_alerts.json');
+
+function loadTelegramAlerts() {
+  try {
+    if (existsSync(TELEGRAM_ALERTS_FILE)) {
+      return JSON.parse(readFileSync(TELEGRAM_ALERTS_FILE, 'utf-8'));
+    }
+  } catch (err) {
+    console.error('Error loading telegram alerts:', err);
+  }
+  return {
+    enabled: false,
+    checkIntervalMs: 300000, // 5 minutes
+    alerts: {
+      priceChange: { enabled: true, threshold: 5, coins: ['bitcoin', 'ethereum', 'solana'] },
+      rsiExtreme: { enabled: true, overbought: 70, oversold: 30, coins: ['bitcoin', 'ethereum'] },
+      volumeSpike: { enabled: true, multiplier: 3, coins: ['bitcoin', 'ethereum', 'solana'] },
+    },
+    lastCheck: null,
+    lastAlerts: [],
+  };
+}
+
+function saveTelegramAlerts(config) {
+  try {
+    writeFileSync(TELEGRAM_ALERTS_FILE, JSON.stringify(config, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving telegram alerts:', err);
+  }
+}
+
+// Send message to Telegram
+async function sendTelegramMessage(text, parseMode = 'HTML') {
+  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text,
+        parse_mode: parseMode,
+        disable_web_page_preview: true,
+      }),
+    });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error('Telegram send error:', err);
+    return { ok: false, description: err.message };
+  }
+}
+
+// ─── POST /api/telegram/test — Send test message ───
+app.post('/api/telegram/test', async (req, res) => {
+  const now = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
+  const text = `🚀 <b>CryptoIA — Test de connexion</b>
+
+✅ Votre bot Telegram est correctement connecté !
+Vous recevrez désormais vos alertes crypto ici.
+
+⏰ ${now}
+⚠️ <i>Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).</i>`;
+
+  const result = await sendTelegramMessage(text);
+  if (result.ok) {
+    res.json({ success: true, message: 'Message test envoyé avec succès !' });
+  } else {
+    res.json({ success: false, message: result.description || 'Erreur Telegram' });
+  }
+});
+
+// ─── POST /api/telegram/send — Send custom message ───
+app.post('/api/telegram/send', async (req, res) => {
+  const { text } = req.body;
+  if (!text) {
+    return res.status(400).json({ success: false, message: 'Texte requis' });
+  }
+  const result = await sendTelegramMessage(text);
+  if (result.ok) {
+    res.json({ success: true, message: 'Message envoyé' });
+  } else {
+    res.json({ success: false, message: result.description || 'Erreur Telegram' });
+  }
+});
+
+// ─── GET /api/telegram/config — Get alert config ───
+app.get('/api/telegram/config', (req, res) => {
+  const config = loadTelegramAlerts();
+  res.json({ success: true, config });
+});
+
+// ─── POST /api/telegram/config — Update alert config ───
+app.post('/api/telegram/config', (req, res) => {
+  const { config } = req.body;
+  if (!config) {
+    return res.status(400).json({ success: false, message: 'Config requise' });
+  }
+  saveTelegramAlerts(config);
+  res.json({ success: true, message: 'Configuration sauvegardée' });
+});
+
+// ─── POST /api/telegram/check-now — Force check alerts now ───
+app.post('/api/telegram/check-now', async (req, res) => {
+  try {
+    const alerts = await checkAndSendAlerts();
+    res.json({ success: true, alertsSent: alerts.length, alerts });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ─── Alert checking logic — uses REAL data from Binance/CoinGecko ───
+async function checkAndSendAlerts() {
+  const config = loadTelegramAlerts();
+  if (!config.enabled) return [];
+
+  const sentAlerts = [];
+  const now = new Date();
+  const nowStr = now.toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
+
+  try {
+    // 1. Price change alerts — fetch from CoinGecko
+    if (config.alerts.priceChange?.enabled) {
+      const coins = config.alerts.priceChange.coins || ['bitcoin', 'ethereum', 'solana'];
+      const threshold = config.alerts.priceChange.threshold || 5;
+      const ids = coins.join(',');
+
+      const cgRes = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`,
+        { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(10000) }
+      );
+
+      if (cgRes.ok) {
+        const data = await cgRes.json();
+        for (const [coinId, info] of Object.entries(data)) {
+          const change24h = info.usd_24h_change;
+          const price = info.usd;
+          if (Math.abs(change24h) >= threshold) {
+            const direction = change24h > 0 ? '📈 HAUSSE' : '📉 BAISSE';
+            const emoji = change24h > 0 ? '🟢' : '🔴';
+            const text = `🚨 <b>ALERTE CRYPTO — Variation de Prix</b>
+
+${emoji} <b>${coinId.toUpperCase()}</b> : ${change24h > 0 ? '+' : ''}${change24h.toFixed(2)}% en 24h
+💰 Prix actuel : <b>$${price.toLocaleString('fr-FR')}</b>
+📊 Direction : ${direction}
+
+⏰ ${nowStr}
+⚠️ <i>Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).</i>`;
+
+            const result = await sendTelegramMessage(text);
+            if (result.ok) {
+              sentAlerts.push({ type: 'priceChange', coin: coinId, change: change24h, price });
+            }
+          }
+        }
+      }
+    }
+
+    // 2. RSI extreme alerts — calculate from Binance klines
+    if (config.alerts.rsiExtreme?.enabled) {
+      const coins = config.alerts.rsiExtreme.coins || ['bitcoin', 'ethereum'];
+      const overbought = config.alerts.rsiExtreme.overbought || 70;
+      const oversold = config.alerts.rsiExtreme.oversold || 30;
+
+      const symbolMap = {
+        bitcoin: 'BTCUSDT', ethereum: 'ETHUSDT', solana: 'SOLUSDT',
+        cardano: 'ADAUSDT', dogecoin: 'DOGEUSDT', xrp: 'XRPUSDT',
+        bnb: 'BNBUSDT', avalanche: 'AVAXUSDT', polkadot: 'DOTUSDT',
+      };
+
+      for (const coinId of coins) {
+        const symbol = symbolMap[coinId];
+        if (!symbol) continue;
+
+        try {
+          const kRes = await fetch(
+            `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=4h&limit=20`,
+            { signal: AbortSignal.timeout(10000) }
+          );
+          if (!kRes.ok) continue;
+
+          const klines = await kRes.json();
+          const closes = klines.map(k => parseFloat(k[4]));
+
+          // Calculate RSI 14
+          if (closes.length >= 15) {
+            const gains = [];
+            const losses = [];
+            for (let i = 1; i < closes.length; i++) {
+              const change = closes[i] - closes[i - 1];
+              gains.push(change > 0 ? change : 0);
+              losses.push(change < 0 ? Math.abs(change) : 0);
+            }
+            const period = 14;
+            if (gains.length >= period) {
+              const avgGain = gains.slice(-period).reduce((s, v) => s + v, 0) / period;
+              const avgLoss = losses.slice(-period).reduce((s, v) => s + v, 0) / period;
+              const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+              const rsiVal = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+              const currentPrice = closes[closes.length - 1];
+
+              if (rsiVal >= overbought || rsiVal <= oversold) {
+                const zone = rsiVal >= overbought ? '🔴 SURACHAT (Overbought)' : '🟢 SURVENTE (Oversold)';
+                const text = `🚨 <b>ALERTE CRYPTO — RSI Extrême</b>
+
+📊 <b>${coinId.toUpperCase()}</b> — RSI(14) = <b>${rsiVal.toFixed(1)}</b>
+${zone}
+💰 Prix actuel : <b>$${currentPrice.toLocaleString('fr-FR')}</b>
+📈 Timeframe : 4h
+
+⏰ ${nowStr}
+⚠️ <i>Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).</i>`;
+
+                const result = await sendTelegramMessage(text);
+                if (result.ok) {
+                  sentAlerts.push({ type: 'rsiExtreme', coin: coinId, rsi: rsiVal, price: currentPrice });
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error(`RSI check error for ${coinId}:`, e.message);
+        }
+      }
+    }
+
+    // 3. Volume spike alerts — from Binance
+    if (config.alerts.volumeSpike?.enabled) {
+      const coins = config.alerts.volumeSpike.coins || ['bitcoin', 'ethereum', 'solana'];
+      const multiplier = config.alerts.volumeSpike.multiplier || 3;
+
+      const symbolMap = {
+        bitcoin: 'BTCUSDT', ethereum: 'ETHUSDT', solana: 'SOLUSDT',
+        cardano: 'ADAUSDT', dogecoin: 'DOGEUSDT', xrp: 'XRPUSDT',
+        bnb: 'BNBUSDT', avalanche: 'AVAXUSDT', polkadot: 'DOTUSDT',
+      };
+
+      for (const coinId of coins) {
+        const symbol = symbolMap[coinId];
+        if (!symbol) continue;
+
+        try {
+          const kRes = await fetch(
+            `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=25`,
+            { signal: AbortSignal.timeout(10000) }
+          );
+          if (!kRes.ok) continue;
+
+          const klines = await kRes.json();
+          const volumes = klines.map(k => parseFloat(k[5]));
+          const currentVol = volumes[volumes.length - 1];
+          const avgVol = volumes.slice(0, -1).reduce((s, v) => s + v, 0) / (volumes.length - 1);
+          const currentPrice = parseFloat(klines[klines.length - 1][4]);
+
+          if (avgVol > 0 && currentVol >= avgVol * multiplier) {
+            const ratio = (currentVol / avgVol).toFixed(1);
+            const text = `🚨 <b>ALERTE CRYPTO — Pic de Volume</b>
+
+📊 <b>${coinId.toUpperCase()}</b> — Volume anormal détecté !
+📈 Volume actuel : <b>${ratio}x</b> la moyenne (24h)
+💰 Prix actuel : <b>$${currentPrice.toLocaleString('fr-FR')}</b>
+⚡ Cela peut indiquer un mouvement important imminent.
+
+⏰ ${nowStr}
+⚠️ <i>Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).</i>`;
+
+            const result = await sendTelegramMessage(text);
+            if (result.ok) {
+              sentAlerts.push({ type: 'volumeSpike', coin: coinId, ratio: parseFloat(ratio), price: currentPrice });
+            }
+          }
+        } catch (e) {
+          console.error(`Volume check error for ${coinId}:`, e.message);
+        }
+      }
+    }
+
+    // Update last check
+    config.lastCheck = now.toISOString();
+    config.lastAlerts = sentAlerts;
+    saveTelegramAlerts(config);
+
+  } catch (err) {
+    console.error('Alert check error:', err);
+  }
+
+  return sentAlerts;
+}
+
+// ─── Periodic alert checker (every 5 minutes) ───
+let alertInterval = null;
+
+function startAlertChecker() {
+  const config = loadTelegramAlerts();
+  if (alertInterval) clearInterval(alertInterval);
+  if (config.enabled) {
+    const interval = config.checkIntervalMs || 300000;
+    console.log(`[Telegram] Alert checker started — checking every ${interval / 1000}s`);
+    alertInterval = setInterval(async () => {
+      console.log('[Telegram] Running periodic alert check...');
+      const alerts = await checkAndSendAlerts();
+      if (alerts.length > 0) {
+        console.log(`[Telegram] Sent ${alerts.length} alerts`);
+      }
+    }, interval);
+    // Also run immediately on start
+    checkAndSendAlerts().then(alerts => {
+      if (alerts.length > 0) console.log(`[Telegram] Initial check sent ${alerts.length} alerts`);
+    });
+  }
+}
+
+// ─── POST /api/telegram/toggle — Enable/disable alert system ───
+app.post('/api/telegram/toggle', (req, res) => {
+  const { enabled } = req.body;
+  const config = loadTelegramAlerts();
+  config.enabled = !!enabled;
+  saveTelegramAlerts(config);
+  if (config.enabled) {
+    startAlertChecker();
+  } else if (alertInterval) {
+    clearInterval(alertInterval);
+    alertInterval = null;
+    console.log('[Telegram] Alert checker stopped');
+  }
+  res.json({ success: true, enabled: config.enabled });
+});
+
+// Start checker on boot if enabled
+startAlertChecker();
+
 // ─── CryptoPanic News API proxy ───
 app.get('/api/news', async (req, res) => {
   const targetUrl = `https://cryptopanic.com/api/free/v1/posts/?auth_token=free&public=true&kind=news`;

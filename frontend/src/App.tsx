@@ -70,6 +70,7 @@ const RapportHebdomadaireIA = React.lazy(() => import("./pages/RapportHebdomadai
 const Gamification = React.lazy(() => import("./pages/Gamification"));
 const BacktestingVisuel = React.lazy(() => import("./pages/BacktestingVisuel"));
 const DtradingIaPro = React.lazy(() => import("./pages/DtradingIaPro"));
+const AlertesTelegram = React.lazy(() => import("./pages/AlertesTelegram"));
 const PaymentSuccess = React.lazy(() => import("./pages/PaymentSuccess"));
 const Predictions = React.lazy(() => import("./pages/Predictions"));
 const PredictionCrypto = React.lazy(() => import("./pages/PredictionCrypto"));
@@ -154,6 +155,7 @@ function App() {
           <Route path="/score-confiance-ia" element={<PlanProtected path="/score-confiance-ia"><ScoreConfianceIA /></PlanProtected>} />
           <Route path="/simulateur-strategie-ia" element={<PlanProtected path="/simulateur-strategie-ia"><SimulateurStrategieIA /></PlanProtected>} />
           <Route path="/rapport-hebdomadaire-ia" element={<PlanProtected path="/rapport-hebdomadaire-ia"><RapportHebdomadaireIA /></PlanProtected>} />
+          <Route path="/alertes-telegram" element={<PlanProtected path="/alertes-telegram"><AlertesTelegram /></PlanProtected>} />
 
           {/* SEO Prediction Pages - publicly accessible for SEO */}
           <Route path="/predictions" element={<Predictions />} />

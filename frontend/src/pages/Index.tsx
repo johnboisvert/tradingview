@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import Footer from "@/components/Footer";
+import ShareButtons from "@/components/ShareButtons";
 
 const HERO_IMG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/6e7996e5-3fd7-4958-9f83-5d5f09ef989f.png";
@@ -436,6 +437,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <Footer />
+        <ShareButtons title="CryptoIA — Analyse Crypto IA & Signaux de Trading" />
       </main>
     </div>
   );

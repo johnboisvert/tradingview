@@ -70,6 +70,8 @@ const RapportHebdomadaireIA = React.lazy(() => import("./pages/RapportHebdomadai
 const Gamification = React.lazy(() => import("./pages/Gamification"));
 const BacktestingVisuel = React.lazy(() => import("./pages/BacktestingVisuel"));
 const PaymentSuccess = React.lazy(() => import("./pages/PaymentSuccess"));
+const Predictions = React.lazy(() => import("./pages/Predictions"));
+const PredictionCrypto = React.lazy(() => import("./pages/PredictionCrypto"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 // ── Non-lazy components (needed immediately for route protection) ─────────────
@@ -150,6 +152,10 @@ function App() {
           <Route path="/score-confiance-ia" element={<PlanProtected path="/score-confiance-ia"><ScoreConfianceIA /></PlanProtected>} />
           <Route path="/simulateur-strategie-ia" element={<PlanProtected path="/simulateur-strategie-ia"><SimulateurStrategieIA /></PlanProtected>} />
           <Route path="/rapport-hebdomadaire-ia" element={<PlanProtected path="/rapport-hebdomadaire-ia"><RapportHebdomadaireIA /></PlanProtected>} />
+
+          {/* SEO Prediction Pages - publicly accessible for SEO */}
+          <Route path="/predictions" element={<Predictions />} />
+          <Route path="/prediction/:cryptoId" element={<PredictionCrypto />} />
 
           {/* Compte - always accessible */}
           <Route path="/abonnements" element={<Abonnements />} />

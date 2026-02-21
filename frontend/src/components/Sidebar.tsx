@@ -94,6 +94,7 @@ const NAV_SECTIONS = [
       { path: "/simulateur-strategie-ia", label: "Simulateur Stratégie IA", icon: Target },
       { path: "/rapport-hebdomadaire-ia", label: "Rapport Hebdomadaire IA", icon: FileText },
       { path: "/backtesting-visuel", label: "Backtesting Visuel IA", icon: Activity },
+      { path: "/predictions", label: "Prédictions Crypto", icon: BarChart3 },
       { path: "/prediction-ia", label: "Prédiction IA", icon: Sparkles },
       { path: "/crypto-ia", label: "Crypto IA", icon: Bot },
       { path: "/token-scanner", label: "AI Token Scanner", icon: Search },

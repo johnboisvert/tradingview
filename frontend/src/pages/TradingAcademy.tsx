@@ -1,16 +1,22 @@
 import { useState, useMemo } from "react";
 import Sidebar from "../components/Sidebar";
-import { ChevronDown, ChevronRight, CheckCircle2, Circle, Clock, BookOpen, Award, Shield, Brain, Zap, BarChart3, Globe, Layers, Target, Flame } from "lucide-react";
-import { MODULES, LEVEL_STYLES } from "../data/academyData";
-import type { Lesson } from "../data/academyData";
+import { ChevronDown, ChevronRight, CheckCircle2, Circle, Clock, Award, Layers } from "lucide-react";
+import { modules, getTotalLessons, getTotalSubLessons, getTotalQuizQuestions, type Lesson } from "../data/academy";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
-export { BookOpen, Shield, Brain, Zap, BarChart3, Globe, Target, Flame };
+const DIFFICULTY_STYLES: Record<string, { bg: string; text: string }> = {
+  "Débutant": { bg: "bg-emerald-500/10", text: "text-emerald-400" },
+  "Débutant-Intermédiaire": { bg: "bg-teal-500/10", text: "text-teal-400" },
+  "Intermédiaire": { bg: "bg-blue-500/10", text: "text-blue-400" },
+  "Intermédiaire-Avancé": { bg: "bg-purple-500/10", text: "text-purple-400" },
+  "Avancé": { bg: "bg-orange-500/10", text: "text-orange-400" },
+  "Tous niveaux": { bg: "bg-gray-500/10", text: "text-gray-400" },
+};
 
 export default function TradingAcademy() {
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
-  const [expandedModule, setExpandedModule] = useState<string | null>("m1");
+  const [expandedModule, setExpandedModule] = useState<string | null>("module-1");
   const [selectedLesson, setSelectedLesson] = useState<{ moduleId: string; lesson: Lesson } | null>(null);
   const [expandedSubLesson, setExpandedSubLesson] = useState<number>(0);
   const [quizMode, setQuizMode] = useState(false);
@@ -18,12 +24,17 @@ export default function TradingAcademy() {
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [levelFilter, setLevelFilter] = useState("ALL");
 
-  const totalLessons = MODULES.reduce((sum, m) => sum + m.lessons.length, 0);
+  const totalLessons = getTotalLessons();
   const progress = Math.round((completedLessons.size / totalLessons) * 100);
 
+  const allDifficulties = useMemo(() => {
+    const set = new Set(modules.map((m) => m.difficulty));
+    return Array.from(set);
+  }, []);
+
   const filteredModules = useMemo(() => {
-    if (levelFilter === "ALL") return MODULES;
-    return MODULES.filter((m) => m.level === levelFilter);
+    if (levelFilter === "ALL") return modules;
+    return modules.filter((m) => m.difficulty === levelFilter);
   }, [levelFilter]);
 
   const toggleComplete = (lessonId: string) => {
@@ -54,10 +65,10 @@ export default function TradingAcademy() {
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
-      <PageHeader
+        <PageHeader
           icon={<span className="text-lg">🎓</span>}
           title="Trading Academy"
-          subtitle="Formez-vous au trading crypto avec notre académie structurée. Des bases de l’analyse technique aux stratégies avancées, progressez à votre rythme."
+          subtitle="Formez-vous au trading crypto avec notre académie structurée. Des bases de l'analyse technique aux stratégies avancées, progressez à votre rythme."
           accentColor="blue"
           steps={[
             { n: "1", title: "Choisissez votre niveau", desc: "Filtrez les modules par niveau : Débutant, Intermédiaire ou Avancé. Commencez par les bases si vous débutez." },
@@ -69,7 +80,7 @@ export default function TradingAcademy() {
           <div className="absolute w-[600px] h-[600px] rounded-full bg-blue-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />
         </div>
-        <div className="relative z-10 max-w-[1300px] mx-auto">
+        <div className="relative z-10 max-w-[1300px] mx-auto px-4">
           {/* Header */}
           <div className="text-center mb-8 pt-6">
             <h1 className="text-5xl font-black bg-gradient-to-r from-blue-400 via-purple-400 to-amber-400 bg-[length:300%_auto] bg-clip-text text-transparent animate-gradient">
@@ -77,13 +88,13 @@ export default function TradingAcademy() {
             </h1>
             <p className="text-gray-500 mt-3 text-lg">La formation trading crypto la plus complète au monde — Du débutant à l&apos;expert</p>
             <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
-              <span className="bg-blue-500/10 border border-blue-500/25 rounded-full px-4 py-1 text-xs text-blue-400 font-bold">{MODULES.length} Modules</span>
+              <span className="bg-blue-500/10 border border-blue-500/25 rounded-full px-4 py-1 text-xs text-blue-400 font-bold">{modules.length} Modules</span>
               <span className="bg-purple-500/10 border border-purple-500/25 rounded-full px-4 py-1 text-xs text-purple-400 font-bold">{totalLessons} Leçons</span>
               <span className="bg-amber-500/10 border border-amber-500/25 rounded-full px-4 py-1 text-xs text-amber-400 font-bold">
-                {MODULES.reduce((s, m) => s + m.lessons.reduce((s2, l) => s2 + l.subLessons.length, 0), 0)} Chapitres
+                {getTotalSubLessons()} Chapitres
               </span>
               <span className="bg-emerald-500/10 border border-emerald-500/25 rounded-full px-4 py-1 text-xs text-emerald-400 font-bold">
-                {MODULES.reduce((s, m) => s + m.lessons.reduce((s2, l) => s2 + l.quiz.length, 0), 0)} Questions Quiz
+                {getTotalQuizQuestions()} Questions Quiz
               </span>
             </div>
           </div>
@@ -110,10 +121,14 @@ export default function TradingAcademy() {
 
           {/* Level Filters */}
           <div className="flex flex-wrap gap-2 mb-6 justify-center">
-            {["ALL", "Débutant", "Intermédiaire", "Avancé", "Expert"].map((l) => (
-              <button key={l} onClick={() => setLevelFilter(l)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${levelFilter === l ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" : "bg-slate-800/50 text-gray-500 hover:text-white border border-white/5"}`}>
-                {l === "ALL" ? `Tous (${MODULES.length})` : `${l} (${MODULES.filter((m) => m.level === l).length})`}
+            <button onClick={() => setLevelFilter("ALL")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${levelFilter === "ALL" ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" : "bg-slate-800/50 text-gray-500 hover:text-white border border-white/5"}`}>
+              Tous ({modules.length})
+            </button>
+            {allDifficulties.map((d) => (
+              <button key={d} onClick={() => setLevelFilter(d)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${levelFilter === d ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" : "bg-slate-800/50 text-gray-500 hover:text-white border border-white/5"}`}>
+                {d} ({modules.filter((m) => m.difficulty === d).length})
               </button>
             ))}
           </div>
@@ -125,17 +140,18 @@ export default function TradingAcademy() {
                 const isExpanded = expandedModule === mod.id;
                 const moduleCompleted = mod.lessons.every((l) => completedLessons.has(l.id));
                 const done = mod.lessons.filter((l) => completedLessons.has(l.id)).length;
+                const diffStyle = DIFFICULTY_STYLES[mod.difficulty] || DIFFICULTY_STYLES["Tous niveaux"];
                 return (
                   <div key={mod.id} className="bg-slate-900/70 border border-white/5 rounded-2xl overflow-hidden">
                     <button onClick={() => setExpandedModule(isExpanded ? null : mod.id)}
                       className="w-full flex items-center gap-3 p-4 hover:bg-white/[0.02] transition-all text-left">
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${mod.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
+                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${mod.color} flex items-center justify-center flex-shrink-0 shadow-lg text-lg`}>
                         {moduleCompleted ? <CheckCircle2 className="w-5 h-5 text-white" /> : mod.icon}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-bold text-white truncate">{mod.title}</h3>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${LEVEL_STYLES[mod.level].bg} ${LEVEL_STYLES[mod.level].text}`}>{mod.level}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${diffStyle.bg} ${diffStyle.text}`}>{mod.difficulty}</span>
                           <span className="text-[10px] text-gray-500">{mod.lessons.length} leçons</span>
                           <span className="text-[10px] text-gray-600">{done}/{mod.lessons.length}</span>
                         </div>
@@ -145,6 +161,11 @@ export default function TradingAcademy() {
                     {isExpanded && (
                       <div className="px-4 pb-4 space-y-1.5">
                         <p className="text-[11px] text-gray-500 mb-2 px-1">{mod.description}</p>
+                        {mod.estimatedTime && (
+                          <p className="text-[10px] text-gray-600 px-1 mb-2 flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> Durée estimée : {mod.estimatedTime}
+                          </p>
+                        )}
                         {mod.lessons.map((lesson) => {
                           const isCompleted = completedLessons.has(lesson.id);
                           const isSel = selectedLesson?.lesson.id === lesson.id;

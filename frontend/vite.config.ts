@@ -287,6 +287,128 @@ function apiProxyPlugin(): Plugin {
         }
       });
 
+      // ── Referral / Parrainage API (dev mode) ──
+      const DEV_REFERRALS_FILE = path.join(DEV_DATA_DIR, 'referrals.json');
+
+      function devLoadReferrals(): any[] {
+        try {
+          if (existsSync(DEV_REFERRALS_FILE)) {
+            return JSON.parse(readFileSync(DEV_REFERRALS_FILE, 'utf-8'));
+          }
+        } catch { /* ignore */ }
+        return [];
+      }
+
+      function devSaveReferrals(referrals: any[]): void {
+        if (!existsSync(DEV_DATA_DIR)) mkdirSync(DEV_DATA_DIR, { recursive: true });
+        writeFileSync(DEV_REFERRALS_FILE, JSON.stringify(referrals, null, 2), 'utf-8');
+      }
+
+      // POST /api/referral/track — must be registered BEFORE the parameterized route
+      server.middlewares.use('/api/referral/track', async (req: any, res: any) => {
+        if (req.method !== 'POST') { res.statusCode = 405; res.end('{}'); return; }
+        const body = JSON.parse(await readBody(req));
+        const { referrer, referred } = body;
+        res.setHeader('Content-Type', 'application/json');
+
+        if (!referrer || !referred) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ success: false, message: 'referrer et referred requis.' }));
+          return;
+        }
+        if (referrer.toLowerCase() === referred.toLowerCase()) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ success: false, message: 'Impossible de se parrainer soi-même.' }));
+          return;
+        }
+
+        const referrals = devLoadReferrals();
+        const exists = referrals.find((r: any) => r.referred.toLowerCase() === referred.toLowerCase());
+        if (exists) {
+          res.end(JSON.stringify({ success: false, message: 'Cet utilisateur a déjà été parrainé.' }));
+          return;
+        }
+
+        referrals.push({
+          referrer: referrer.toLowerCase(),
+          referred: referred.toLowerCase(),
+          created_at: new Date().toISOString(),
+        });
+        devSaveReferrals(referrals);
+        res.end(JSON.stringify({ success: true, message: 'Parrainage enregistré avec succès.' }));
+      });
+
+      // GET /api/referral-leaderboard — global referral leaderboard (admin)
+      server.middlewares.use('/api/referral-leaderboard', async (_req: any, res: any) => {
+        const referrals = devLoadReferrals();
+        const users = devLoadUsers();
+
+        const grouped: Record<string, { total: number; paid: number; revenue: number }> = {};
+        for (const ref of referrals) {
+          const key = ref.referrer.toLowerCase();
+          if (!grouped[key]) grouped[key] = { total: 0, paid: 0, revenue: 0 };
+          grouped[key].total += 1;
+          const user = users.find((u: any) => u.username.toLowerCase() === ref.referred.toLowerCase());
+          if (user && user.plan !== 'free') {
+            grouped[key].paid += 1;
+          }
+        }
+
+        const leaderboard = Object.entries(grouped)
+          .map(([username, data]) => ({ username, referrals: data.total, paid: data.paid, revenue: data.revenue }))
+          .sort((a, b) => b.paid - a.paid || b.referrals - a.referrals);
+
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({
+          success: true,
+          total_referrals: referrals.length,
+          paid_referrals: leaderboard.reduce((s, l) => s + l.paid, 0),
+          leaderboard,
+        }));
+      });
+
+      // GET /api/referral/:username — get referral stats for a user
+      server.middlewares.use('/api/referral', async (req: any, res: any, next: any) => {
+        const url = new URL(req.url || '', 'http://localhost');
+        const parts = url.pathname.split('/').filter(Boolean); // e.g. ["someUsername"]
+
+        if (req.method === 'GET' && parts.length === 1) {
+          const username = decodeURIComponent(parts[0]);
+          const referrals = devLoadReferrals();
+          const users = devLoadUsers();
+          const userReferrals = referrals.filter(
+            (r: any) => r.referrer.toLowerCase() === username.toLowerCase()
+          );
+
+          const referralDetails = userReferrals.map((r: any) => {
+            const user = users.find((u: any) => u.username.toLowerCase() === r.referred.toLowerCase());
+            return {
+              username: r.referred,
+              plan: user?.plan || 'free',
+              created_at: r.created_at,
+              is_paid: !!user && user.plan !== 'free',
+            };
+          });
+
+          const paidCount = referralDetails.filter((r: any) => r.is_paid).length;
+
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            success: true,
+            stats: {
+              referral_code: username,
+              total_referrals: userReferrals.length,
+              paid_referrals: paidCount,
+              rewards_earned: paidCount,
+              referrals: referralDetails,
+            },
+          }));
+          return;
+        }
+
+        next();
+      });
+
       // CryptoPanic News API proxy — proxies /api/news to CryptoPanic
       server.middlewares.use('/api/news', async (req, res) => {
         const targetUrl = `https://cryptopanic.com/api/free/v1/posts/?auth_token=free&public=true&kind=news`;

@@ -444,7 +444,23 @@ app.post('/api/telegram/check-now', async (req, res) => {
   }
 });
 
-// ─── Alert checking logic — uses REAL data from Binance/CoinGecko ───
+// ─── Helper: format large numbers for display ───
+function formatNumber(num) {
+  if (num >= 1e12) return `${(num / 1e12).toFixed(2)}T`;
+  if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`;
+  if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
+  if (num >= 1e3) return `${(num / 1e3).toFixed(2)}K`;
+  return num.toFixed(2);
+}
+
+// ─── Helper: format price with appropriate decimals ───
+function formatPrice(price) {
+  if (price >= 1000) return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (price >= 1) return price.toFixed(4);
+  return price.toFixed(6);
+}
+
+// ─── Alert checking logic — uses REAL data from Binance & CoinGecko ───
 async function checkAndSendAlerts() {
   const config = loadTelegramAlerts();
   if (!config.enabled) return [];
@@ -453,15 +469,32 @@ async function checkAndSendAlerts() {
   const now = new Date();
   const nowStr = now.toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
 
+  // Track signals per coin for combined "SIGNAL FORT" detection
+  const coinSignals = {};
+
+  const symbolMap = {
+    bitcoin: 'BTCUSDT', ethereum: 'ETHUSDT', solana: 'SOLUSDT',
+    cardano: 'ADAUSDT', dogecoin: 'DOGEUSDT', xrp: 'XRPUSDT',
+    bnb: 'BNBUSDT', avalanche: 'AVAXUSDT', polkadot: 'DOTUSDT',
+  };
+
+  const coinNames = {
+    bitcoin: 'Bitcoin (BTC)', ethereum: 'Ethereum (ETH)', solana: 'Solana (SOL)',
+    cardano: 'Cardano (ADA)', dogecoin: 'Dogecoin (DOGE)', xrp: 'XRP',
+    bnb: 'BNB', avalanche: 'Avalanche (AVAX)', polkadot: 'Polkadot (DOT)',
+  };
+
   try {
-    // 1. Price change alerts — fetch from CoinGecko
+    // ═══════════════════════════════════════════════════════════════
+    // 1. PRICE CHANGE ALERTS — CoinGecko (données en temps réel)
+    // ═══════════════════════════════════════════════════════════════
     if (config.alerts.priceChange?.enabled) {
       const coins = config.alerts.priceChange.coins || ['bitcoin', 'ethereum', 'solana'];
       const threshold = config.alerts.priceChange.threshold || 5;
       const ids = coins.join(',');
 
       const cgRes = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`,
+        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true`,
         { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(10000) }
       );
 
@@ -470,52 +503,88 @@ async function checkAndSendAlerts() {
         for (const [coinId, info] of Object.entries(data)) {
           const change24h = info.usd_24h_change;
           const price = info.usd;
+          const volume24h = info.usd_24h_vol;
+          const marketCap = info.usd_market_cap;
+          const name = coinNames[coinId] || coinId.toUpperCase();
+
           if (Math.abs(change24h) >= threshold) {
-            const direction = change24h > 0 ? '📈 HAUSSE' : '📉 BAISSE';
-            const emoji = change24h > 0 ? '🟢' : '🔴';
+            const isBullish = change24h > 0;
+            const signalEmoji = isBullish ? '🟢' : '🔴';
+            const signalType = isBullish ? 'HAUSSIER (Bullish)' : 'BAISSIER (Bearish)';
+            const signalExplanation = isBullish
+              ? 'Forte pression acheteuse détectée. Le prix montre un momentum positif significatif sur les dernières 24h, indiquant un intérêt acheteur soutenu.'
+              : 'Forte pression vendeuse détectée. Le prix montre un momentum négatif significatif sur les dernières 24h, indiquant une prise de profits ou une panique vendeuse.';
+
+            const actionSummary = isBullish
+              ? '👉 Surveiller les niveaux de résistance. Un pullback pourrait offrir un point d\'entrée si la tendance se confirme.'
+              : '👉 Surveiller les niveaux de support. Attendre une stabilisation avant d\'envisager un achat.';
+
             const text = `🚨 <b>ALERTE CRYPTO — Variation de Prix</b>
+━━━━━━━━━━━━━━━━━━━━━
 
-${emoji} <b>${coinId.toUpperCase()}</b> : ${change24h > 0 ? '+' : ''}${change24h.toFixed(2)}% en 24h
-💰 Prix actuel : <b>$${price.toLocaleString('fr-FR')}</b>
-📊 Direction : ${direction}
+${signalEmoji} <b>Signal ${signalType}</b>
+🪙 <b>${name}</b>
 
+📊 <b>Données du marché :</b>
+├ Variation 24h : <b>${change24h > 0 ? '+' : ''}${change24h.toFixed(2)}%</b>
+├ Prix actuel : <b>$${formatPrice(price)}</b>
+├ Volume 24h : <b>$${formatNumber(volume24h)}</b>
+└ Market Cap : <b>$${formatNumber(marketCap)}</b>
+
+💡 <b>Analyse :</b>
+${signalExplanation}
+
+📋 <b>Résumé actionnable :</b>
+${actionSummary}
+
+📡 <i>Source : CoinGecko API (données en temps réel)</i>
 ⏰ ${nowStr}
-⚠️ <i>Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).</i>`;
+⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
 
             const result = await sendTelegramMessage(text);
             if (result.ok) {
               sentAlerts.push({ type: 'priceChange', coin: coinId, change: change24h, price });
+              if (!coinSignals[coinId]) coinSignals[coinId] = { signals: [], price, name };
+              coinSignals[coinId].signals.push({
+                type: 'price',
+                direction: isBullish ? 'bullish' : 'bearish',
+                detail: `Prix ${change24h > 0 ? '+' : ''}${change24h.toFixed(2)}% en 24h`,
+              });
             }
           }
         }
       }
     }
 
-    // 2. RSI extreme alerts — calculate from Binance klines
+    // Small delay between API calls to avoid rate limiting
+    await new Promise(r => setTimeout(r, 1000));
+
+    // ═══════════════════════════════════════════════════════════════
+    // 2. RSI EXTREME ALERTS — Binance Klines 1h (temps réel)
+    // ═══════════════════════════════════════════════════════════════
     if (config.alerts.rsiExtreme?.enabled) {
       const coins = config.alerts.rsiExtreme.coins || ['bitcoin', 'ethereum'];
       const overbought = config.alerts.rsiExtreme.overbought || 70;
       const oversold = config.alerts.rsiExtreme.oversold || 30;
 
-      const symbolMap = {
-        bitcoin: 'BTCUSDT', ethereum: 'ETHUSDT', solana: 'SOLUSDT',
-        cardano: 'ADAUSDT', dogecoin: 'DOGEUSDT', xrp: 'XRPUSDT',
-        bnb: 'BNBUSDT', avalanche: 'AVAXUSDT', polkadot: 'DOTUSDT',
-      };
-
       for (const coinId of coins) {
         const symbol = symbolMap[coinId];
         if (!symbol) continue;
+        const name = coinNames[coinId] || coinId.toUpperCase();
 
         try {
+          // Fetch 30 candles of 1h to have enough data for RSI(14)
           const kRes = await fetch(
-            `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=4h&limit=20`,
+            `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=30`,
             { signal: AbortSignal.timeout(10000) }
           );
           if (!kRes.ok) continue;
 
           const klines = await kRes.json();
           const closes = klines.map(k => parseFloat(k[4]));
+          const opens = klines.map(k => parseFloat(k[1]));
+          const highs = klines.map(k => parseFloat(k[2]));
+          const lows = klines.map(k => parseFloat(k[3]));
 
           // Calculate RSI 14
           if (closes.length >= 15) {
@@ -528,27 +597,75 @@ ${emoji} <b>${coinId.toUpperCase()}</b> : ${change24h > 0 ? '+' : ''}${change24h
             }
             const period = 14;
             if (gains.length >= period) {
-              const avgGain = gains.slice(-period).reduce((s, v) => s + v, 0) / period;
-              const avgLoss = losses.slice(-period).reduce((s, v) => s + v, 0) / period;
+              let avgGain = gains.slice(0, period).reduce((s, v) => s + v, 0) / period;
+              let avgLoss = losses.slice(0, period).reduce((s, v) => s + v, 0) / period;
+              // Wilder's smoothing for more accurate RSI
+              for (let i = period; i < gains.length; i++) {
+                avgGain = (avgGain * (period - 1) + gains[i]) / period;
+                avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
+              }
               const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
               const rsiVal = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
               const currentPrice = closes[closes.length - 1];
+              const prevPrice = closes[closes.length - 2];
+              const priceChange1h = ((currentPrice - prevPrice) / prevPrice * 100);
+              const high1h = highs[highs.length - 1];
+              const low1h = lows[lows.length - 1];
 
               if (rsiVal >= overbought || rsiVal <= oversold) {
-                const zone = rsiVal >= overbought ? '🔴 SURACHAT (Overbought)' : '🟢 SURVENTE (Oversold)';
-                const text = `🚨 <b>ALERTE CRYPTO — RSI Extrême</b>
+                const isOversold = rsiVal <= oversold;
+                const signalEmoji = isOversold ? '🟢' : '🔴';
+                const signalType = isOversold ? 'HAUSSIER (Bullish)' : 'BAISSIER (Bearish)';
+                const zone = isOversold ? 'SURVENTE (Oversold)' : 'SURACHAT (Overbought)';
 
-📊 <b>${coinId.toUpperCase()}</b> — RSI(14) = <b>${rsiVal.toFixed(1)}</b>
-${zone}
-💰 Prix actuel : <b>$${currentPrice.toLocaleString('fr-FR')}</b>
-📈 Timeframe : 4h
+                const explanation = isOversold
+                  ? `Le RSI est à ${rsiVal.toFixed(1)}, en dessous de ${oversold}. Cela signifie que l'actif est potentiellement <b>sous-évalué</b>. Historiquement, un RSI en zone de survente précède souvent un rebond haussier. Les vendeurs s'épuisent et les acheteurs pourraient reprendre le contrôle.`
+                  : `Le RSI est à ${rsiVal.toFixed(1)}, au dessus de ${overbought}. Cela signifie que l'actif est potentiellement <b>surévalué</b>. Historiquement, un RSI en zone de surachat précède souvent une correction baissière. Les acheteurs s'épuisent et les vendeurs pourraient prendre le relais.`;
 
+                const actionSummary = isOversold
+                  ? '👉 Zone d\'achat potentielle. Attendre une confirmation avec un retournement du RSI au-dessus de 30 avant d\'entrer en position.'
+                  : '👉 Zone de vente/prise de profits potentielle. Envisager de sécuriser les gains ou de placer un stop-loss serré.';
+
+                const rsiGauge = rsiVal <= 20 ? '⚡ EXTRÊME' : rsiVal <= 30 ? '🔥 FORT' : rsiVal >= 80 ? '⚡ EXTRÊME' : '🔥 FORT';
+
+                const text = `🚨 <b>ALERTE CRYPTO — RSI Extrême (1h)</b>
+━━━━━━━━━━━━━━━━━━━━━
+
+${signalEmoji} <b>Signal ${signalType}</b> — ${rsiGauge}
+🪙 <b>${name}</b>
+
+📊 <b>Indicateur RSI :</b>
+├ RSI(14) : <b>${rsiVal.toFixed(1)}</b> — Zone de ${zone}
+├ Timeframe : <b>1h (horaire)</b>
+├ Prix actuel : <b>$${formatPrice(currentPrice)}</b>
+├ Variation 1h : <b>${priceChange1h >= 0 ? '+' : ''}${priceChange1h.toFixed(2)}%</b>
+├ High 1h : <b>$${formatPrice(high1h)}</b>
+└ Low 1h : <b>$${formatPrice(low1h)}</b>
+
+📖 <b>Qu'est-ce que le RSI ?</b>
+Le RSI (Relative Strength Index) mesure la force et la vitesse des mouvements de prix sur une échelle de 0 à 100.
+• RSI &lt; ${oversold} = Survente (potentiel rebond)
+• RSI &gt; ${overbought} = Surachat (potentiel correction)
+
+💡 <b>Analyse :</b>
+${explanation}
+
+📋 <b>Résumé actionnable :</b>
+${actionSummary}
+
+📡 <i>Source : Binance API (klines 1h en temps réel)</i>
 ⏰ ${nowStr}
-⚠️ <i>Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).</i>`;
+⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
 
                 const result = await sendTelegramMessage(text);
                 if (result.ok) {
                   sentAlerts.push({ type: 'rsiExtreme', coin: coinId, rsi: rsiVal, price: currentPrice });
+                  if (!coinSignals[coinId]) coinSignals[coinId] = { signals: [], price: currentPrice, name };
+                  coinSignals[coinId].signals.push({
+                    type: 'rsi',
+                    direction: isOversold ? 'bullish' : 'bearish',
+                    detail: `RSI(14) 1h = ${rsiVal.toFixed(1)} (${zone})`,
+                  });
                 }
               }
             }
@@ -556,23 +673,26 @@ ${zone}
         } catch (e) {
           console.error(`RSI check error for ${coinId}:`, e.message);
         }
+
+        // Small delay between coins
+        await new Promise(r => setTimeout(r, 500));
       }
     }
 
-    // 3. Volume spike alerts — from Binance
+    // Small delay between API calls
+    await new Promise(r => setTimeout(r, 1000));
+
+    // ═══════════════════════════════════════════════════════════════
+    // 3. VOLUME SPIKE ALERTS — Binance (temps réel)
+    // ═══════════════════════════════════════════════════════════════
     if (config.alerts.volumeSpike?.enabled) {
       const coins = config.alerts.volumeSpike.coins || ['bitcoin', 'ethereum', 'solana'];
       const multiplier = config.alerts.volumeSpike.multiplier || 3;
 
-      const symbolMap = {
-        bitcoin: 'BTCUSDT', ethereum: 'ETHUSDT', solana: 'SOLUSDT',
-        cardano: 'ADAUSDT', dogecoin: 'DOGEUSDT', xrp: 'XRPUSDT',
-        bnb: 'BNBUSDT', avalanche: 'AVAXUSDT', polkadot: 'DOTUSDT',
-      };
-
       for (const coinId of coins) {
         const symbol = symbolMap[coinId];
         if (!symbol) continue;
+        const name = coinNames[coinId] || coinId.toUpperCase();
 
         try {
           const kRes = await fetch(
@@ -586,26 +706,129 @@ ${zone}
           const currentVol = volumes[volumes.length - 1];
           const avgVol = volumes.slice(0, -1).reduce((s, v) => s + v, 0) / (volumes.length - 1);
           const currentPrice = parseFloat(klines[klines.length - 1][4]);
+          const currentOpen = parseFloat(klines[klines.length - 1][1]);
+          const currentClose = parseFloat(klines[klines.length - 1][4]);
+          const currentHigh = parseFloat(klines[klines.length - 1][2]);
+          const currentLow = parseFloat(klines[klines.length - 1][3]);
 
           if (avgVol > 0 && currentVol >= avgVol * multiplier) {
             const ratio = (currentVol / avgVol).toFixed(1);
+            // Determine if bullish or bearish volume based on candle direction
+            const isBullishCandle = currentClose >= currentOpen;
+            const candleBodyPct = Math.abs(currentClose - currentOpen) / currentOpen * 100;
+            const signalEmoji = isBullishCandle ? '🟢' : '🔴';
+            const signalType = isBullishCandle ? 'HAUSSIER (Bullish)' : 'BAISSIER (Bearish)';
+            const candleType = isBullishCandle ? 'bougie verte (haussière)' : 'bougie rouge (baissière)';
+
+            const explanation = isBullishCandle
+              ? `Un pic de volume ${ratio}x accompagné d'une ${candleType} indique un fort intérêt acheteur. Les gros acteurs (whales/institutions) pourraient accumuler. C'est un signal de <b>pression acheteuse</b> significative.`
+              : `Un pic de volume ${ratio}x accompagné d'une ${candleType} indique une forte pression vendeuse. Les gros acteurs pourraient distribuer/vendre. C'est un signal de <b>pression vendeuse</b> significative.`;
+
+            const actionSummary = isBullishCandle
+              ? '👉 Volume haussier = potentiel mouvement à la hausse. Surveiller si le prix casse une résistance avec ce volume.'
+              : '👉 Volume baissier = potentiel mouvement à la baisse. Surveiller si le prix casse un support avec ce volume.';
+
             const text = `🚨 <b>ALERTE CRYPTO — Pic de Volume</b>
+━━━━━━━━━━━━━━━━━━━━━
 
-📊 <b>${coinId.toUpperCase()}</b> — Volume anormal détecté !
-📈 Volume actuel : <b>${ratio}x</b> la moyenne (24h)
-💰 Prix actuel : <b>$${currentPrice.toLocaleString('fr-FR')}</b>
-⚡ Cela peut indiquer un mouvement important imminent.
+${signalEmoji} <b>Signal ${signalType}</b>
+🪙 <b>${name}</b>
 
+📊 <b>Données de volume :</b>
+├ Volume actuel : <b>${ratio}x</b> la moyenne (24h)
+├ Type de bougie : <b>${candleType}</b>
+├ Variation bougie : <b>${candleBodyPct >= 0 ? '+' : ''}${candleBodyPct.toFixed(2)}%</b>
+├ Prix actuel : <b>$${formatPrice(currentPrice)}</b>
+├ High 1h : <b>$${formatPrice(currentHigh)}</b>
+└ Low 1h : <b>$${formatPrice(currentLow)}</b>
+
+📖 <b>Qu'est-ce qu'un pic de volume ?</b>
+Un volume anormalement élevé (${ratio}x la moyenne) signifie qu'un nombre inhabituel de transactions a eu lieu. Cela indique souvent l'entrée de gros acteurs (whales, institutions) et précède fréquemment un mouvement de prix important.
+
+💡 <b>Analyse :</b>
+${explanation}
+
+📋 <b>Résumé actionnable :</b>
+${actionSummary}
+
+📡 <i>Source : Binance API (volume 1h en temps réel)</i>
 ⏰ ${nowStr}
-⚠️ <i>Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).</i>`;
+⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
 
             const result = await sendTelegramMessage(text);
             if (result.ok) {
               sentAlerts.push({ type: 'volumeSpike', coin: coinId, ratio: parseFloat(ratio), price: currentPrice });
+              if (!coinSignals[coinId]) coinSignals[coinId] = { signals: [], price: currentPrice, name };
+              coinSignals[coinId].signals.push({
+                type: 'volume',
+                direction: isBullishCandle ? 'bullish' : 'bearish',
+                detail: `Volume ${ratio}x (${candleType})`,
+              });
             }
           }
         } catch (e) {
           console.error(`Volume check error for ${coinId}:`, e.message);
+        }
+
+        // Small delay between coins
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 4. SIGNAL FORT — Combined multi-indicator convergence
+    // ═══════════════════════════════════════════════════════════════
+    for (const [coinId, data] of Object.entries(coinSignals)) {
+      if (data.signals.length >= 2) {
+        const bullishSignals = data.signals.filter(s => s.direction === 'bullish');
+        const bearishSignals = data.signals.filter(s => s.direction === 'bearish');
+
+        // Only send if signals converge in the same direction
+        const dominant = bullishSignals.length >= bearishSignals.length ? 'bullish' : 'bearish';
+        const dominantSignals = dominant === 'bullish' ? bullishSignals : bearishSignals;
+        const convergenceCount = dominantSignals.length;
+
+        if (convergenceCount >= 2) {
+          const isBullish = dominant === 'bullish';
+          const signalEmoji = isBullish ? '🟢🟢🟢' : '🔴🔴🔴';
+          const signalType = isBullish ? 'HAUSSIER FORT' : 'BAISSIER FORT';
+          const strength = convergenceCount >= 3 ? '⚡⚡⚡ TRÈS FORT' : '⚡⚡ FORT';
+
+          const signalsList = data.signals.map((s, i) => {
+            const icon = s.direction === 'bullish' ? '🟢' : '🔴';
+            return `${i + 1}. ${icon} ${s.detail}`;
+          }).join('\n');
+
+          const explanation = isBullish
+            ? `${convergenceCount} indicateurs convergent vers un signal haussier. Cette convergence multi-indicateurs augmente significativement la probabilité d'un mouvement à la hausse. Plus les signaux sont alignés, plus le signal est fiable.`
+            : `${convergenceCount} indicateurs convergent vers un signal baissier. Cette convergence multi-indicateurs augmente significativement la probabilité d'un mouvement à la baisse. Plus les signaux sont alignés, plus le signal est fiable.`;
+
+          const actionSummary = isBullish
+            ? '👉 CONVERGENCE HAUSSIÈRE : Opportunité d\'achat potentielle. Définir un stop-loss et un objectif de prix avant d\'entrer.'
+            : '👉 CONVERGENCE BAISSIÈRE : Prudence recommandée. Envisager de réduire l\'exposition ou de placer des stop-loss serrés.';
+
+          const text = `🔥🔥🔥 <b>SIGNAL FORT — Convergence Multi-Indicateurs</b> 🔥🔥🔥
+━━━━━━━━━━━━━━━━━━━━━
+
+${signalEmoji} <b>Signal ${signalType}</b> — ${strength}
+🪙 <b>${data.name}</b>
+💰 Prix : <b>$${formatPrice(data.price)}</b>
+
+📊 <b>Signaux détectés (${data.signals.length}) :</b>
+${signalsList}
+
+💡 <b>Analyse de convergence :</b>
+${explanation}
+
+📋 <b>Résumé actionnable :</b>
+${actionSummary}
+
+📡 <i>Sources : CoinGecko + Binance API (données en temps réel)</i>
+⏰ ${nowStr}
+⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
+
+          await sendTelegramMessage(text);
+          sentAlerts.push({ type: 'signalFort', coin: coinId, convergence: convergenceCount, direction: dominant });
         }
       }
     }

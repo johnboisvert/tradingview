@@ -1,4 +1,4 @@
-export { type Module, type Lesson, type SubLesson, type QuizQuestion } from "./types";
+export { type Module, type Lesson, type SubLesson, type QuizQuestion, type LessonImage } from "./types";
 export { module1Lessons } from "./module1";
 export { module2Lessons } from "./module2";
 export { module3Lessons } from "./module3";

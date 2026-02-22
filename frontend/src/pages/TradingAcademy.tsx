@@ -255,6 +255,26 @@ export default function TradingAcademy() {
                               ))}
                             </div>
 
+                            {sub.images && sub.images.length > 0 && (
+                              <div className="space-y-4 mb-6">
+                                {sub.images.map((img, ii) => (
+                                  <div key={ii} className="bg-white/[0.02] border border-white/[0.08] rounded-xl overflow-hidden">
+                                    <img
+                                      src={img.src}
+                                      alt={img.alt}
+                                      className="w-full h-auto object-contain"
+                                      loading="lazy"
+                                    />
+                                    {img.caption && (
+                                      <div className="px-4 py-3 border-t border-white/[0.06]">
+                                        <p className="text-xs text-gray-400 italic text-center">{img.caption}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
                             {sub.example && (
                               <div className="bg-amber-500/[0.06] border border-amber-500/20 rounded-xl p-4 mb-4">
                                 <h4 className="text-xs font-bold text-amber-400 mb-2">💡 Exemple pratique</h4>

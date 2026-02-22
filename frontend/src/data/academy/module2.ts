@@ -23,6 +23,13 @@ const m2l1: Lesson = {
       ],
       proTips: ["Marquez vos S/R sur le weekly et daily en premier — ces niveaux sont les plus respectés par le marché"],
       commonMistakes: ["Tracer trop de lignes sur le graphique — gardez 3-5 niveaux clés maximum pour rester clair"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/1199d16a-eb69-4e1b-bc8f-c01c6209ab69.png",
+          alt: "Supports et Résistances sur un graphique de trading",
+          caption: "Illustration des niveaux de support (vert) et résistance (rouge) avec un breakout et retest. Le prix rebondit sur le support et se fait rejeter à la résistance.",
+        },
+      ],
     },
     {
       title: "Lignes de Tendance et Canaux",
@@ -90,6 +97,18 @@ const m2l2: Lesson = {
       ],
       proTips: ["Les patterns de retournement haussier aux niveaux de support weekly sont les plus fiables — c'est là que vous devez concentrer votre attention"],
       commonMistakes: ["Entrer immédiatement sur un hammer sans attendre la confirmation du chandelier suivant — la patience paie"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/2548fcd6-e96b-4f33-8276-7971b36afa91.png",
+          alt: "Anatomie d'un chandelier japonais",
+          caption: "Anatomie d'un chandelier japonais : corps (open/close), mèches supérieure et inférieure (high/low). Vert = haussier, Rouge = baissier.",
+        },
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/baf152ab-5df7-40d4-a6a2-1dadbae56331.png",
+          alt: "Patterns de chandeliers japonais courants",
+          caption: "Patterns de chandeliers courants : Hammer, Doji, Bullish Engulfing, Bearish Engulfing, Morning Star, Evening Star.",
+        },
+      ],
     },
     {
       title: "Patterns de Retournement Baissier",
@@ -159,6 +178,13 @@ const m2l3: Lesson = {
       proTips: ["Utilisez Fibonacci sur les timeframes élevés (weekly, daily) pour les niveaux les plus fiables — les petits TF génèrent trop de niveaux"],
       commonMistakes: ["Utiliser Fibonacci comme seul outil de décision — c'est un outil de confluence qui doit être combiné avec d'autres analyses"],
       example: "BTC monte de 80 000$ à 100 000$. Retracement 38.2% = 92 360$, 50% = 90 000$, 61.8% = 87 640$. Si le prix rebondit à 87 640$ (golden pocket), l'objectif est le retour vers 100 000$ puis l'extension 161.8% = 112 360$.",
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/0e90ea85-526e-4d6f-8263-629eec54df58.png",
+          alt: "Niveaux de retracement de Fibonacci",
+          caption: "Retracements de Fibonacci : 23.6%, 38.2%, 50%, 61.8% (golden ratio) et 78.6%. Le prix rebondit souvent au niveau 61.8% en tendance saine.",
+        },
+      ],
     },
     {
       title: "Extensions de Fibonacci",
@@ -226,6 +252,13 @@ const m2l4: Lesson = {
       ],
       proTips: ["La cassure dans les 2/3 du triangle est la plus fiable — après ce point, le pattern s'affaiblit considérablement"],
       commonMistakes: ["Entrer avant la cassure en anticipant la direction — attendez toujours la confirmation avec volume"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/927dbe01-af95-4fd5-9090-a32f7ca529ec.png",
+          alt: "Figures chartistes classiques",
+          caption: "Figures chartistes : Head & Shoulders, Double Top, Double Bottom, Triangle Ascendant, Triangle Descendant, Triangle Symétrique.",
+        },
+      ],
     },
     {
       title: "Tête-Épaules et Tête-Épaules Inversé",

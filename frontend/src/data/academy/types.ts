@@ -1,3 +1,9 @@
+export interface LessonImage {
+  src: string;
+  alt: string;
+  caption?: string;
+}
+
 export interface SubLesson {
   title: string;
   content: string[];
@@ -6,6 +12,7 @@ export interface SubLesson {
   commonMistakes?: string[];
   example?: string;
   exercise?: string;
+  images?: LessonImage[];
 }
 
 export interface QuizQuestion {

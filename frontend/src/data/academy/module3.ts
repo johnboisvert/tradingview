@@ -23,6 +23,13 @@ const m3l1: Lesson = {
       ],
       proTips: ["En bull market confirmé, achetez quand le RSI daily revient à 40-45 — c'est historiquement l'un des meilleurs points d'entrée"],
       commonMistakes: ["Vendre uniquement parce que le RSI > 70 en bull market — en tendance forte, le RSI peut rester en surachat pendant des semaines"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/006a12eb-ba19-4b48-8f77-3f99c43ce024.png",
+          alt: "Indicateur RSI (Relative Strength Index)",
+          caption: "RSI : zone de surachat (>70, rouge), zone de survente (<30, vert). L'oscillateur mesure la vitesse et l'amplitude des mouvements de prix.",
+        },
+      ],
     },
     {
       title: "Stochastique et StochRSI",
@@ -90,6 +97,13 @@ const m3l2: Lesson = {
       ],
       proTips: ["L'histogramme qui commence à rétrécir est un signal précoce de retournement — il précède le croisement des lignes de plusieurs périodes"],
       commonMistakes: ["Utiliser le MACD comme signal unique de trading — c'est un outil de confirmation qui doit être combiné avec l'analyse de prix et d'autres indicateurs"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/05ae90aa-ddac-4dca-adf1-9bfbb3730033.png",
+          alt: "Indicateur MACD avec Signal et Histogramme",
+          caption: "MACD : ligne MACD (bleu), ligne Signal (orange), Histogramme (vert/rouge). Le croisement haussier se produit quand la ligne MACD croise au-dessus du Signal.",
+        },
+      ],
     },
     {
       title: "Divergences MACD",
@@ -157,6 +171,13 @@ const m3l3: Lesson = {
       ],
       proTips: ["Le Bollinger Squeeze sur le daily est l'un des signaux les plus fiables — quand les bandes sont au plus serré, préparez-vous pour un mouvement majeur"],
       commonMistakes: ["Shorter quand le prix touche la bande supérieure en tendance haussière — en tendance forte, le prix surfe sur la bande et continue de monter"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/636bf6a2-975c-44a1-ad1d-2be293095afb.png",
+          alt: "Bollinger Bands et Moyennes Mobiles",
+          caption: "Bollinger Bands (bandes violettes autour de la SMA 20) et Moyennes Mobiles (EMA 50 jaune, EMA 200 cyan). Le squeeze et l'expansion des bandes indiquent les changements de volatilité.",
+        },
+      ],
     },
     {
       title: "Keltner Channels et TTM Squeeze",

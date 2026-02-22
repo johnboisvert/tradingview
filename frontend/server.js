@@ -16,6 +16,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
 
+// ─── CoinGecko response cache (in-memory, 60s TTL) ───
+const cgCache = new Map(); // key → { data, status, timestamp }
+const CG_CACHE_TTL = 60_000; // 60 seconds
+
 // Parse JSON bodies
 app.use(express.json({ limit: '1mb' }));
 
@@ -280,10 +284,19 @@ app.all('/api/crypto-predict/{*path}', async (req, res) => {
   }
 });
 
-// ─── CoinGecko API proxy ───
+// ─── CoinGecko API proxy (with in-memory cache to avoid 429 rate limits) ───
 // Proxies /api/coingecko/* to https://api.coingecko.com/api/v3/*
 app.get('/api/coingecko/{*path}', async (req, res) => {
   const targetPath = req.url.replace('/api/coingecko', '');
+  const cacheKey = targetPath;
+  const now = Date.now();
+
+  // Return cached response if still fresh
+  const cached = cgCache.get(cacheKey);
+  if (cached && (now - cached.timestamp) < CG_CACHE_TTL) {
+    return res.status(cached.status).set('Content-Type', 'application/json').send(cached.data);
+  }
+
   const targetUrl = `https://api.coingecko.com/api/v3${targetPath}`;
 
   try {
@@ -294,11 +307,23 @@ app.get('/api/coingecko/{*path}', async (req, res) => {
     });
 
     const data = await upstreamRes.text();
-    res.status(upstreamRes.status)
-      .set('Content-Type', 'application/json')
-      .send(data);
+    const status = upstreamRes.status;
+
+    // Cache successful responses
+    if (status === 200) {
+      cgCache.set(cacheKey, { data, status, timestamp: now });
+    } else if (status === 429 && cached) {
+      // On rate limit, serve stale cache if available
+      return res.status(200).set('Content-Type', 'application/json').send(cached.data);
+    }
+
+    res.status(status).set('Content-Type', 'application/json').send(data);
   } catch (err) {
     console.error('CoinGecko proxy error:', err);
+    // Serve stale cache on network error if available
+    if (cached) {
+      return res.status(200).set('Content-Type', 'application/json').send(cached.data);
+    }
     res.status(502).json({ error: 'CoinGecko proxy failed', message: err?.message });
   }
 });

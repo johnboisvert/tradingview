@@ -369,7 +369,7 @@ function loadTelegramAlerts() {
   }
   return {
     enabled: false,
-    checkIntervalMs: 300000, // 5 minutes
+    checkIntervalMs: 900000, // 15 minutes (was 5min — reduced to avoid duplicate floods)
     alerts: {
       priceChange: { enabled: true, threshold: 5, coins: [] },
       rsiExtreme: { enabled: true, overbought: 70, oversold: 30, coins: [] },
@@ -522,45 +522,153 @@ function formatPrice(price) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// COOLDOWN SYSTEM — 4 hours per crypto, tracks direction to avoid duplicates
+// COOLDOWN SYSTEM — In-memory primary + file backup, 4h per crypto+direction
 // ═══════════════════════════════════════════════════════════════════════════════
 const COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours in ms
 
+// PRIMARY: In-memory cooldown Map — survives as long as the process runs
+// key: `${coinId}_${direction}` → timestamp (ms)
+const inMemoryCooldowns = new Map();
+
+// DAILY ALERT LIMIT — max 20 alerts per 24h rolling window
+const MAX_DAILY_ALERTS = 20;
+let dailyAlertCount = 0;
+let dailyAlertResetTime = Date.now() + 24 * 60 * 60 * 1000;
+
+function checkAndResetDailyLimit() {
+  const now = Date.now();
+  if (now >= dailyAlertResetTime) {
+    dailyAlertCount = 0;
+    dailyAlertResetTime = now + 24 * 60 * 60 * 1000;
+    console.log('[Telegram] 🔄 Daily alert counter reset (new 24h window)');
+  }
+}
+
+function isDailyLimitReached() {
+  checkAndResetDailyLimit();
+  return dailyAlertCount >= MAX_DAILY_ALERTS;
+}
+
+function incrementDailyCount() {
+  checkAndResetDailyLimit();
+  dailyAlertCount++;
+}
+
+// Load file-based cooldowns into in-memory Map on startup
+function initCooldownsFromFile() {
+  try {
+    const config = loadTelegramAlerts();
+    const fileCooldowns = config.cooldowns || {};
+    let loaded = 0;
+    let expired = 0;
+    const now = Date.now();
+    for (const [key, entry] of Object.entries(fileCooldowns)) {
+      const elapsed = now - new Date(entry.timestamp).getTime();
+      if (elapsed < COOLDOWN_MS) {
+        // Parse key: old format is `${coinId}_signal`, extract coinId
+        const coinId = key.replace(/_signal$/, '');
+        const memKey = `${coinId}_${entry.direction}`;
+        inMemoryCooldowns.set(memKey, new Date(entry.timestamp).getTime());
+        loaded++;
+      } else {
+        expired++;
+      }
+    }
+    console.log(`[Telegram] 🔄 Loaded ${loaded} active cooldowns from file (${expired} expired, discarded)`);
+  } catch (err) {
+    console.error('[Telegram] Error loading cooldowns from file:', err);
+  }
+}
+
 function loadCooldowns() {
+  // Return a plain object for backward compatibility with file persistence
   const config = loadTelegramAlerts();
   return config.cooldowns || {};
 }
 
 function saveCooldowns(cooldowns) {
-  const config = loadTelegramAlerts();
-  config.cooldowns = cooldowns;
-  saveTelegramAlerts(config);
+  try {
+    const config = loadTelegramAlerts();
+    config.cooldowns = cooldowns;
+    saveTelegramAlerts(config);
+  } catch (err) {
+    console.error('[Telegram] Error saving cooldowns to file (non-critical):', err);
+  }
 }
 
 /**
- * Check if a cooldown is active for a coin.
+ * Check if a cooldown is active for a coin+direction.
+ * Checks IN-MEMORY first (reliable), then file as fallback.
  * Returns true if the same direction signal was sent within the cooldown period.
  */
 function isCooldownActive(cooldowns, coinId, direction) {
-  const key = `${coinId}_signal`;
-  const entry = cooldowns[key];
-  if (!entry) return false;
-  const elapsed = Date.now() - new Date(entry.timestamp).getTime();
-  // If cooldown expired, allow
-  if (elapsed >= COOLDOWN_MS) return false;
-  // If same direction, block (don't resend same signal)
-  if (entry.direction === direction) return true;
-  // Different direction = new signal, allow
+  const now = Date.now();
+  const memKey = `${coinId}_${direction}`;
+
+  // 1. Check in-memory (primary, always reliable)
+  const memTimestamp = inMemoryCooldowns.get(memKey);
+  if (memTimestamp && (now - memTimestamp) < COOLDOWN_MS) {
+    const remainingMin = Math.round((COOLDOWN_MS - (now - memTimestamp)) / 60000);
+    console.log(`[Telegram] 🛑 In-memory cooldown active for ${coinId} (${direction}), ${remainingMin}min remaining`);
+    return true;
+  }
+
+  // 2. Fallback: check file-based cooldowns (for persistence across restarts)
+  const fileKey = `${coinId}_signal`;
+  const entry = cooldowns[fileKey];
+  if (entry) {
+    const elapsed = now - new Date(entry.timestamp).getTime();
+    if (elapsed < COOLDOWN_MS && entry.direction === direction) {
+      const remainingMin = Math.round((COOLDOWN_MS - elapsed) / 60000);
+      console.log(`[Telegram] 🛑 File cooldown active for ${coinId} (${direction}), ${remainingMin}min remaining`);
+      // Sync to in-memory for future checks
+      inMemoryCooldowns.set(memKey, new Date(entry.timestamp).getTime());
+      return true;
+    }
+  }
+
   return false;
 }
 
+/**
+ * Set cooldown in BOTH in-memory Map AND file persistence.
+ */
 function setCooldown(cooldowns, coinId, direction) {
-  const key = `${coinId}_signal`;
-  cooldowns[key] = {
-    timestamp: new Date().toISOString(),
+  const now = Date.now();
+  const memKey = `${coinId}_${direction}`;
+
+  // 1. Set in-memory (instant, always works)
+  inMemoryCooldowns.set(memKey, now);
+
+  // 2. Set in file object (for persistence)
+  const fileKey = `${coinId}_signal`;
+  cooldowns[fileKey] = {
+    timestamp: new Date(now).toISOString(),
     direction,
   };
+
+  // Log active cooldowns count
+  let activeCooldowns = 0;
+  for (const [, ts] of inMemoryCooldowns) {
+    if ((now - ts) < COOLDOWN_MS) activeCooldowns++;
+  }
+  console.log(`[Telegram] 🔒 Cooldown set for ${coinId} (${direction}) — ${activeCooldowns} active cooldowns total`);
 }
+
+// Clean up expired in-memory cooldowns periodically (every 30 min)
+setInterval(() => {
+  const now = Date.now();
+  let cleaned = 0;
+  for (const [key, ts] of inMemoryCooldowns) {
+    if ((now - ts) >= COOLDOWN_MS) {
+      inMemoryCooldowns.delete(key);
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) {
+    console.log(`[Telegram] 🧹 Cleaned ${cleaned} expired cooldowns from memory (${inMemoryCooldowns.size} remaining)`);
+  }
+}, 30 * 60 * 1000);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // COINGECKO-BASED SIGNAL GENERATION (mirrors /trades page logic exactly)
@@ -885,13 +993,19 @@ async function checkAndSendAlerts() {
   const config = loadTelegramAlerts();
   if (!config.enabled) return [];
 
+  // Check daily limit before doing any work
+  if (isDailyLimitReached()) {
+    console.log(`[Telegram] ⛔ Daily alert limit reached (${MAX_DAILY_ALERTS}/${MAX_DAILY_ALERTS}). Skipping until reset.`);
+    return [];
+  }
+
   const sentAlerts = [];
   const now = new Date();
   const nowStr = now.toLocaleString('fr-CA', { timeZone: 'America/Montreal' });
   const cooldowns = loadCooldowns();
 
   try {
-    console.log('[Telegram] Fetching CoinGecko market data (top 200 with sparkline)...');
+    console.log(`[Telegram] 📡 Fetching CoinGecko market data... (daily alerts: ${dailyAlertCount}/${MAX_DAILY_ALERTS})`);
     const coins = await fetchCoinGeckoMarkets();
     console.log(`[Telegram] Received ${coins.length} coins from CoinGecko`);
 
@@ -920,11 +1034,16 @@ async function checkAndSendAlerts() {
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[Telegram] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 
-    // Send alerts for each qualified setup (respecting cooldowns)
+    // Send alerts for each qualified setup (respecting cooldowns + daily limit)
     for (const setup of qualifiedSetups) {
+      // Check daily limit before each send
+      if (isDailyLimitReached()) {
+        console.log(`[Telegram] ⛔ Daily limit reached (${MAX_DAILY_ALERTS}). Stopping sends for today.`);
+        break;
+      }
+
       // Check cooldown: skip if same direction was sent within 4 hours
       if (isCooldownActive(cooldowns, setup.id, setup.side)) {
-        console.log(`[Telegram] ⏳ Cooldown active for ${setup.name} (${setup.side}), skipping`);
         continue;
       }
 
@@ -986,9 +1105,12 @@ ${srSection}
         // Send branding image after the alert message
         await sendTelegramPhoto();
 
-        // Set cooldown IMMEDIATELY after successful send to prevent duplicates
+        // Set cooldown IMMEDIATELY in memory + file to prevent duplicates
         setCooldown(cooldowns, setup.id, setup.side);
         saveCooldowns(cooldowns);
+
+        // Increment daily counter
+        incrementDailyCount();
 
         sentAlerts.push({
           type: 'coingecko_signal',
@@ -1002,10 +1124,10 @@ ${srSection}
           sl: setup.stopLoss,
           confidence: setup.confidence,
         });
-        console.log(`[Telegram] ✅ Sent ${setup.side} signal for ${setup.name} (confidence: ${setup.confidence}%)`);
+        console.log(`[Telegram] ✅ Sent ${setup.side} signal for ${setup.name} (confidence: ${setup.confidence}%) — daily: ${dailyAlertCount}/${MAX_DAILY_ALERTS}`);
 
         // Small delay between messages to avoid Telegram rate limit
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 2000));
       }
     }
 
@@ -1059,6 +1181,9 @@ app.post('/api/telegram/toggle', (req, res) => {
   }
   res.json({ success: true, enabled: config.enabled });
 });
+
+// Initialize in-memory cooldowns from file on boot
+initCooldownsFromFile();
 
 // Start checker on boot if enabled
 startAlertChecker();

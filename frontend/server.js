@@ -515,8 +515,10 @@ function formatPrice(price) {
   return price.toFixed(6);
 }
 
-// ─── Cooldown system — 1 hour per coin per alert type ───
-const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour in ms
+// ═══════════════════════════════════════════════════════════════════════════════
+// COOLDOWN SYSTEM — 4 hours per crypto, tracks direction to avoid duplicates
+// ═══════════════════════════════════════════════════════════════════════════════
+const COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours in ms
 
 function loadCooldowns() {
   const config = loadTelegramAlerts();
@@ -529,240 +531,350 @@ function saveCooldowns(cooldowns) {
   saveTelegramAlerts(config);
 }
 
-function isCooldownActive(cooldowns, coinId, alertType) {
-  const key = `${coinId}_${alertType}`;
-  const lastSent = cooldowns[key];
-  if (!lastSent) return false;
-  const elapsed = Date.now() - new Date(lastSent).getTime();
-  return elapsed < COOLDOWN_MS;
-}
-
-function setCooldown(cooldowns, coinId, alertType) {
-  const key = `${coinId}_${alertType}`;
-  cooldowns[key] = new Date().toISOString();
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TECHNICAL INDICATOR HELPERS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/** Compute RSI(14) from an array of close prices. Returns NaN if not enough data. */
-function calcRSI(closes, period = 14) {
-  if (closes.length < period + 1) return NaN;
-  const gains = [];
-  const losses = [];
-  for (let i = 1; i < closes.length; i++) {
-    const change = closes[i] - closes[i - 1];
-    gains.push(change > 0 ? change : 0);
-    losses.push(change < 0 ? Math.abs(change) : 0);
-  }
-  if (gains.length < period) return NaN;
-  let avgGain = gains.slice(0, period).reduce((s, v) => s + v, 0) / period;
-  let avgLoss = losses.slice(0, period).reduce((s, v) => s + v, 0) / period;
-  for (let i = period; i < gains.length; i++) {
-    avgGain = (avgGain * (period - 1) + gains[i]) / period;
-    avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
-  }
-  if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
-  return 100 - (100 / (1 + rs));
-}
-
-/** Compute EMA for an array of values */
-function calcEMA(values, period) {
-  if (values.length < period) return [];
-  const k = 2 / (period + 1);
-  const ema = [values.slice(0, period).reduce((s, v) => s + v, 0) / period];
-  for (let i = period; i < values.length; i++) {
-    ema.push(values[i] * k + ema[ema.length - 1] * (1 - k));
-  }
-  return ema;
-}
-
-/** Compute SMA for an array of values */
-function calcSMA(values, period) {
-  if (values.length < period) return [];
-  const sma = [];
-  for (let i = period - 1; i < values.length; i++) {
-    sma.push(values.slice(i - period + 1, i + 1).reduce((s, v) => s + v, 0) / period);
-  }
-  return sma;
-}
-
 /**
- * Compute MACD(12, 26, 9).
- * Returns { macdLine, signalLine, histogram } — each is the latest value.
+ * Check if a cooldown is active for a coin.
+ * Returns true if the same direction signal was sent within the cooldown period.
  */
-function calcMACD(closes) {
-  if (closes.length < 35) return null; // need at least 26 + 9 data points
-  const ema12 = calcEMA(closes, 12);
-  const ema26 = calcEMA(closes, 26);
-  // Align: ema12 starts at index 12, ema26 starts at index 26 → offset = 14
-  const offset = 26 - 12; // 14
-  const macdLine = [];
-  for (let i = 0; i < ema26.length; i++) {
-    macdLine.push(ema12[i + offset] - ema26[i]);
-  }
-  if (macdLine.length < 9) return null;
-  const signalLine = calcEMA(macdLine, 9);
-  const macdLatest = macdLine[macdLine.length - 1];
-  const signalLatest = signalLine[signalLine.length - 1];
-  const histogram = macdLatest - signalLatest;
-  // Previous values for crossover detection
-  const macdPrev = macdLine.length >= 2 ? macdLine[macdLine.length - 2] : macdLatest;
-  const signalPrev = signalLine.length >= 2 ? signalLine[signalLine.length - 2] : signalLatest;
-  const bullishCross = macdPrev <= signalPrev && macdLatest > signalLatest;
-  const bearishCross = macdPrev >= signalPrev && macdLatest < signalLatest;
-  return { macdLine: macdLatest, signalLine: signalLatest, histogram, bullishCross, bearishCross };
+function isCooldownActive(cooldowns, coinId, direction) {
+  const key = `${coinId}_signal`;
+  const entry = cooldowns[key];
+  if (!entry) return false;
+  const elapsed = Date.now() - new Date(entry.timestamp).getTime();
+  // If cooldown expired, allow
+  if (elapsed >= COOLDOWN_MS) return false;
+  // If same direction, block (don't resend same signal)
+  if (entry.direction === direction) return true;
+  // Different direction = new signal, allow
+  return false;
 }
 
-/**
- * Compute Stochastic(14, 3, 3).
- * Returns { k, d } — the smoothed %K and %D latest values.
- */
-function calcStochastic(highs, lows, closes, kPeriod = 14, kSmooth = 3, dSmooth = 3) {
-  if (closes.length < kPeriod + kSmooth + dSmooth) return null;
-  // Raw %K values
-  const rawK = [];
-  for (let i = kPeriod - 1; i < closes.length; i++) {
-    const highSlice = highs.slice(i - kPeriod + 1, i + 1);
-    const lowSlice = lows.slice(i - kPeriod + 1, i + 1);
-    const highMax = Math.max(...highSlice);
-    const lowMin = Math.min(...lowSlice);
-    const range = highMax - lowMin;
-    rawK.push(range === 0 ? 50 : ((closes[i] - lowMin) / range) * 100);
-  }
-  // Smoothed %K = SMA(rawK, kSmooth)
-  const smoothedK = calcSMA(rawK, kSmooth);
-  // %D = SMA(smoothedK, dSmooth)
-  const dLine = calcSMA(smoothedK, dSmooth);
-  if (smoothedK.length === 0 || dLine.length === 0) return null;
-  return { k: smoothedK[smoothedK.length - 1], d: dLine[dLine.length - 1] };
-}
-
-/**
- * Fetch Binance klines for a given symbol and interval.
- * Returns { closes, highs, lows, volumes } arrays.
- */
-async function fetchBinanceKlines(symbol, interval, limit) {
-  const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-  if (!res.ok) throw new Error(`Binance ${res.status}`);
-  const klines = await res.json();
-  return {
-    closes: klines.map(k => parseFloat(k[4])),
-    highs: klines.map(k => parseFloat(k[2])),
-    lows: klines.map(k => parseFloat(k[3])),
-    opens: klines.map(k => parseFloat(k[1])),
-    volumes: klines.map(k => parseFloat(k[5])),
+function setCooldown(cooldowns, coinId, direction) {
+  const key = `${coinId}_signal`;
+  cooldowns[key] = {
+    timestamp: new Date().toISOString(),
+    direction,
   };
 }
 
-/**
- * Analyze one timeframe: compute RSI, MACD, Stochastic.
- * Returns { rsi, macd, stoch, bullish, bearish } where bullish/bearish
- * count how many of the 3 indicators agree on that direction.
- */
-function analyzeTimeframe(closes, highs, lows) {
-  const rsi = calcRSI(closes);
-  const macd = calcMACD(closes);
-  const stoch = calcStochastic(highs, lows, closes);
-
-  let bullishCount = 0;
-  let bearishCount = 0;
-
-  // RSI scoring
-  if (!isNaN(rsi)) {
-    if (rsi < 35) bullishCount++;
-    if (rsi > 65) bearishCount++;
-  }
-
-  // MACD scoring
-  if (macd) {
-    if (macd.histogram > 0 || macd.bullishCross) bullishCount++;
-    if (macd.histogram < 0 || macd.bearishCross) bearishCount++;
-  }
-
-  // Stochastic scoring
-  if (stoch) {
-    if (stoch.k > stoch.d && stoch.k < 30) bullishCount++;
-    if (stoch.k < stoch.d && stoch.k > 70) bearishCount++;
-  }
-
-  return { rsi, macd, stoch, bullishCount, bearishCount };
-}
+// ═══════════════════════════════════════════════════════════════════════════════
+// COINGECKO-BASED SIGNAL GENERATION (mirrors /trades page logic exactly)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Find swing highs and swing lows from klines (for support/resistance).
- * A swing high: high[i] > high of 3 candles before AND after.
- * A swing low: low[i] < low of 3 candles before AND after.
+ * Calculate Support & Resistance levels from sparkline data and 24h high/low.
+ * (Same algorithm as Trades.tsx calculateSRLevels)
  */
-function findSupportResistance(highs, lows, lookback = 3) {
-  const resistances = [];
+function calculateSRLevels(coin) {
+  const price = coin.current_price;
   const supports = [];
+  const resistances = [];
 
-  for (let i = lookback; i < highs.length - lookback; i++) {
-    let isSwingHigh = true;
-    let isSwingLow = true;
-    for (let j = 1; j <= lookback; j++) {
-      if (highs[i] <= highs[i - j] || highs[i] <= highs[i + j]) isSwingHigh = false;
-      if (lows[i] >= lows[i - j] || lows[i] >= lows[i + j]) isSwingLow = false;
-    }
-    if (isSwingHigh) resistances.push(highs[i]);
-    if (isSwingLow) supports.push(lows[i]);
+  // 1. Use high_24h and low_24h as immediate S/R
+  if (coin.low_24h && coin.low_24h < price) {
+    supports.push({ price: coin.low_24h, type: 'support', strength: 'major', source: 'Low 24h' });
+  }
+  if (coin.high_24h && coin.high_24h > price) {
+    resistances.push({ price: coin.high_24h, type: 'resistance', strength: 'major', source: 'High 24h' });
   }
 
-  // Deduplicate close levels (within 0.3% of each other)
-  const dedup = (arr) => {
-    const sorted = [...arr].sort((a, b) => a - b);
-    const result = [];
-    for (const val of sorted) {
-      if (result.length === 0 || Math.abs(val - result[result.length - 1]) / result[result.length - 1] > 0.003) {
-        result.push(val);
-      } else {
-        // Average with the existing level
-        result[result.length - 1] = (result[result.length - 1] + val) / 2;
+  // 2. ATH as major resistance
+  if (coin.ath && coin.ath > price * 1.02) {
+    resistances.push({ price: coin.ath, type: 'resistance', strength: 'major', source: 'ATH' });
+  }
+
+  // 3. Extract local min/max from sparkline (7-day hourly data)
+  const sparkline = coin.sparkline_in_7d?.price;
+  if (sparkline && sparkline.length > 10) {
+    const localMins = [];
+    const localMaxs = [];
+    const windowSize = 6;
+
+    for (let i = windowSize; i < sparkline.length - windowSize; i++) {
+      let isMin = true;
+      let isMax = true;
+      for (let j = i - windowSize; j <= i + windowSize; j++) {
+        if (j === i) continue;
+        if (sparkline[j] <= sparkline[i]) isMin = false;
+        if (sparkline[j] >= sparkline[i]) isMax = false;
       }
+      if (isMin) localMins.push(sparkline[i]);
+      if (isMax) localMaxs.push(sparkline[i]);
+    }
+
+    // Cluster nearby levels (within 1.5% of each other)
+    const clusterLevels = (levels) => {
+      if (levels.length === 0) return [];
+      const sorted = [...levels].sort((a, b) => a - b);
+      const clusters = [[sorted[0]]];
+      for (let i = 1; i < sorted.length; i++) {
+        const lastCluster = clusters[clusters.length - 1];
+        const clusterAvg = lastCluster.reduce((s, v) => s + v, 0) / lastCluster.length;
+        if (Math.abs(sorted[i] - clusterAvg) / clusterAvg < 0.015) {
+          lastCluster.push(sorted[i]);
+        } else {
+          clusters.push([sorted[i]]);
+        }
+      }
+      return clusters.map(c => c.reduce((s, v) => s + v, 0) / c.length);
+    };
+
+    const clusteredMins = clusterLevels(localMins);
+    const clusteredMaxs = clusterLevels(localMaxs);
+
+    for (const level of clusteredMins) {
+      if (level < price * 0.99) {
+        supports.push({
+          price: level,
+          type: 'support',
+          strength: Math.abs(level - price) / price < 0.03 ? 'major' : 'minor',
+          source: 'Sparkline 7j',
+        });
+      }
+    }
+
+    for (const level of clusteredMaxs) {
+      if (level > price * 1.01) {
+        resistances.push({
+          price: level,
+          type: 'resistance',
+          strength: Math.abs(level - price) / price < 0.03 ? 'major' : 'minor',
+          source: 'Sparkline 7j',
+        });
+      }
+    }
+  }
+
+  // Sort: supports descending (nearest first), resistances ascending (nearest first)
+  supports.sort((a, b) => b.price - a.price);
+  resistances.sort((a, b) => a.price - b.price);
+
+  // Deduplicate very close levels (within 0.5%)
+  const dedup = (levels) => {
+    const result = [];
+    for (const level of levels) {
+      const exists = result.some(r => Math.abs(r.price - level.price) / level.price < 0.005);
+      if (!exists) result.push(level);
     }
     return result;
   };
 
   return {
-    supports: dedup(supports),
-    resistances: dedup(resistances),
+    supports: dedup(supports).slice(0, 5),
+    resistances: dedup(resistances).slice(0, 5),
   };
 }
 
 /**
- * Calculate trade plan: entry, TP1-3, SL based on supports/resistances.
+ * Align TP levels with S/R for higher probability.
+ * (Same algorithm as Trades.tsx alignTPWithSR)
  */
-function calcTradePlan(currentPrice, supports, resistances, direction) {
-  if (direction === 'LONG') {
-    // SL = first support below entry
-    const supportsBelow = supports.filter(s => s < currentPrice).sort((a, b) => b - a);
-    const resistancesAbove = resistances.filter(r => r > currentPrice).sort((a, b) => a - b);
-    return {
-      entry: currentPrice,
-      sl: supportsBelow[0] || currentPrice * 0.97,
-      tp1: resistancesAbove[0] || currentPrice * 1.02,
-      tp2: resistancesAbove[1] || currentPrice * 1.04,
-      tp3: resistancesAbove[2] || currentPrice * 1.06,
-    };
+function alignTPWithSR(side, entry, slPercent, supports, resistances) {
+  const slDistance = entry * (slPercent / 100);
+
+  let tp1, tp2, tp3, sl;
+
+  if (side === 'LONG') {
+    sl = entry - slDistance;
+    tp1 = entry + slDistance * 1.5;
+    tp2 = entry + slDistance * 2.5;
+    tp3 = entry + slDistance * 4;
+
+    const nearestSupport = supports.find(s => s.price < entry * 0.995);
+    if (nearestSupport && nearestSupport.price > sl * 0.97 && nearestSupport.price < entry * 0.99) {
+      sl = nearestSupport.price * 0.998;
+    }
+
+    const resAbove = resistances.filter(r => r.price > entry * 1.005);
+    if (resAbove.length >= 1 && resAbove[0].price > tp1 * 0.95 && resAbove[0].price < tp1 * 1.15) {
+      tp1 = resAbove[0].price * 0.998;
+    }
+    if (resAbove.length >= 2 && resAbove[1].price > tp2 * 0.85 && resAbove[1].price < tp2 * 1.2) {
+      tp2 = resAbove[1].price * 0.998;
+    }
+    if (resAbove.length >= 3 && resAbove[2].price > tp3 * 0.8) {
+      tp3 = resAbove[2].price * 0.998;
+    }
   } else {
-    // SHORT
-    const resistancesAbove = resistances.filter(r => r > currentPrice).sort((a, b) => a - b);
-    const supportsBelow = supports.filter(s => s < currentPrice).sort((a, b) => b - a);
-    return {
-      entry: currentPrice,
-      sl: resistancesAbove[0] || currentPrice * 1.03,
-      tp1: supportsBelow[0] || currentPrice * 0.98,
-      tp2: supportsBelow[1] || currentPrice * 0.96,
-      tp3: supportsBelow[2] || currentPrice * 0.94,
-    };
+    sl = entry + slDistance;
+    tp1 = entry - slDistance * 1.5;
+    tp2 = entry - slDistance * 2.5;
+    tp3 = entry - slDistance * 4;
+
+    const nearestResistance = resistances.find(r => r.price > entry * 1.005);
+    if (nearestResistance && nearestResistance.price < sl * 1.03 && nearestResistance.price > entry * 1.01) {
+      sl = nearestResistance.price * 1.002;
+    }
+
+    const supBelow = supports.filter(s => s.price < entry * 0.995);
+    if (supBelow.length >= 1 && supBelow[0].price < tp1 * 1.05 && supBelow[0].price > tp1 * 0.85) {
+      tp1 = supBelow[0].price * 1.002;
+    }
+    if (supBelow.length >= 2 && supBelow[1].price < tp2 * 1.15 && supBelow[1].price > tp2 * 0.8) {
+      tp2 = supBelow[1].price * 1.002;
+    }
+    if (supBelow.length >= 3 && supBelow[2].price < tp3 * 1.2) {
+      tp3 = supBelow[2].price * 1.002;
+    }
   }
+
+  // Ensure TPs are in correct order
+  if (side === 'LONG') {
+    tp2 = Math.max(tp2, tp1 * 1.01);
+    tp3 = Math.max(tp3, tp2 * 1.01);
+  } else {
+    tp2 = Math.min(tp2, tp1 * 0.99);
+    tp3 = Math.min(tp3, tp2 * 0.99);
+  }
+
+  return { tp1, tp2, tp3, sl };
 }
 
-// ─── Alert checking logic — Multi-TF, Multi-Indicator convergence ───
+function roundPrice(value, reference) {
+  if (reference >= 1000) return Math.round(value * 100) / 100;
+  if (reference >= 1) return Math.round(value * 100) / 100;
+  if (reference >= 0.01) return Math.round(value * 10000) / 10000;
+  return Math.round(value * 1000000) / 1000000;
+}
+
+/**
+ * Generate trade setups from CoinGecko market data.
+ * (Same algorithm as Trades.tsx generateRealSetups)
+ */
+function generateRealSetups(coins) {
+  const setups = [];
+  const triggerTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  for (const c of coins) {
+    if (!c || !c.current_price || !c.market_cap) continue;
+
+    const price = c.current_price;
+    const change24h = c.price_change_percentage_24h || 0;
+    const volume = c.total_volume || 0;
+    const mcap = c.market_cap || 1;
+    const volMcapRatio = volume / mcap;
+
+    const { supports, resistances } = calculateSRLevels(c);
+
+    const volatility = Math.max(Math.abs(change24h) * 0.5, 1.5);
+    const slPercent = volatility * 0.8;
+
+    let side;
+    let confidence = 0;
+    let reason;
+
+    if (change24h > 2 && volMcapRatio > 0.08) {
+      side = 'LONG';
+      confidence = 50;
+      if (change24h > 5) confidence += 15; else confidence += 8;
+      if (volMcapRatio > 0.2) confidence += 15; else if (volMcapRatio > 0.1) confidence += 10;
+      if (change24h > 8) confidence += 10;
+      reason = `Momentum haussier (+${change24h.toFixed(1)}%) avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
+    } else if (change24h < -8) {
+      side = 'LONG';
+      confidence = 45;
+      if (change24h < -15) confidence += 15; else if (change24h < -10) confidence += 10;
+      if (volMcapRatio > 0.15) confidence += 10;
+      reason = `Survente potentielle (${change24h.toFixed(1)}%) — rebond technique possible`;
+    } else if (change24h < -3 && volMcapRatio > 0.1) {
+      side = 'SHORT';
+      confidence = 50;
+      if (change24h < -5) confidence += 10; else confidence += 5;
+      if (volMcapRatio > 0.2) confidence += 15; else confidence += 8;
+      reason = `Tendance baissière (${change24h.toFixed(1)}%) avec volume de distribution (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
+    } else {
+      continue;
+    }
+
+    const { tp1, tp2, tp3, sl } = alignTPWithSR(side, price, slPercent, supports, resistances);
+
+    const nearestSupport = supports[0];
+    const nearestResistance = resistances[0];
+
+    if (side === 'LONG') {
+      if (nearestSupport && Math.abs(price - nearestSupport.price) / price < 0.02) {
+        confidence += 10;
+        reason += ` | Proche du support $${formatPrice(nearestSupport.price)}`;
+      }
+      if (nearestResistance && Math.abs(tp1 - nearestResistance.price) / tp1 < 0.02) {
+        confidence += 5;
+      }
+    } else {
+      if (nearestResistance && Math.abs(price - nearestResistance.price) / price < 0.02) {
+        confidence += 10;
+        reason += ` | Proche de la résistance $${formatPrice(nearestResistance.price)}`;
+      }
+      if (nearestSupport && Math.abs(tp1 - nearestSupport.price) / tp1 < 0.02) {
+        confidence += 5;
+      }
+    }
+
+    if (Math.abs(sl - price) / price < 0.005) {
+      confidence -= 10;
+    }
+
+    if (supports.length >= 2) confidence += 3;
+    if (resistances.length >= 2) confidence += 3;
+
+    confidence = Math.min(95, Math.max(25, confidence));
+
+    const riskDistance = Math.abs(price - sl);
+    const rewardDistance = Math.abs(tp2 - price);
+    const rr = riskDistance > 0 ? Math.round((rewardDistance / riskDistance) * 10) / 10 : 2;
+
+    setups.push({
+      id: c.id,
+      symbol: ((c.symbol || '').toUpperCase()) + 'USDT',
+      name: c.name || 'Unknown',
+      side,
+      currentPrice: price,
+      entry: price,
+      stopLoss: roundPrice(sl, price),
+      tp1: roundPrice(tp1, price),
+      tp2: roundPrice(tp2, price),
+      tp3: roundPrice(tp3, price),
+      rr,
+      change24h,
+      volume,
+      marketCap: mcap,
+      confidence,
+      reason,
+      triggerTime,
+      supports: supports.slice(0, 3),
+      resistances: resistances.slice(0, 3),
+    });
+  }
+
+  return setups.sort((a, b) => b.confidence - a.confidence);
+}
+
+/**
+ * Fetch top 200 coins from CoinGecko via our own proxy (with sparkline for S/R).
+ */
+async function fetchCoinGeckoMarkets() {
+  const allCoins = [];
+  // Fetch 2 pages of 100 (top 200)
+  for (let page = 1; page <= 2; page++) {
+    const url = `http://localhost:${PORT}/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${page}&sparkline=true&price_change_percentage=24h`;
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          allCoins.push(...data);
+        }
+      } else {
+        console.error(`[Telegram] CoinGecko page ${page} returned ${res.status}`);
+      }
+    } catch (err) {
+      console.error(`[Telegram] CoinGecko fetch error page ${page}:`, err.message);
+    }
+    // Small delay between pages to avoid rate limit
+    if (page < 2) await new Promise(r => setTimeout(r, 1500));
+  }
+  return allCoins;
+}
+
+// ─── Alert checking logic — CoinGecko-based, same as /trades page ───
 async function checkAndSendAlerts() {
   const config = loadTelegramAlerts();
   if (!config.enabled) return [];
@@ -772,229 +884,100 @@ async function checkAndSendAlerts() {
   const nowStr = now.toLocaleString('fr-CA', { timeZone: 'America/Montreal' });
   const cooldowns = loadCooldowns();
 
-  const symbolMap = {
-    bitcoin: 'BTCUSDT', ethereum: 'ETHUSDT', solana: 'SOLUSDT',
-    cardano: 'ADAUSDT', dogecoin: 'DOGEUSDT', xrp: 'XRPUSDT',
-    bnb: 'BNBUSDT', avalanche: 'AVAXUSDT', polkadot: 'DOTUSDT',
-    matic: 'MATICUSDT', chainlink: 'LINKUSDT', uniswap: 'UNIUSDT',
-    aave: 'AAVEUSDT', litecoin: 'LTCUSDT', 'bitcoin-cash': 'BCHUSDT',
-    cosmos: 'ATOMUSDT', near: 'NEARUSDT', aptos: 'APTUSDT',
-    sui: 'SUIUSDT', arbitrum: 'ARBUSDT', optimism: 'OPUSDT',
-    filecoin: 'FILUSDT', 'internet-computer': 'ICPUSDT', vechain: 'VETUSDT',
-    algorand: 'ALGOUSDT', fantom: 'FTMUSDT', 'the-sandbox': 'SANDUSDT',
-    decentraland: 'MANAUSDT', 'axie-infinity': 'AXSUSDT', gala: 'GALAUSDT',
-    'immutable-x': 'IMXUSDT', 'render-token': 'RENDERUSDT', injective: 'INJUSDT',
-    'fetch-ai': 'FETUSDT', theta: 'THETAUSDT', hedera: 'HBARUSDT',
-    'elrond-erd-2': 'EGLDUSDT', flow: 'FLOWUSDT', tezos: 'XTZUSDT',
-    eos: 'EOSUSDT', neo: 'NEOUSDT', 'quant-network': 'QNTUSDT',
-    maker: 'MKRUSDT', synthetix: 'SNXUSDT', compound: 'COMPUSDT',
-    'curve-dao-token': 'CRVUSDT', 'lido-dao': 'LDOUSDT',
-    'shiba-inu': 'SHIBUSDT', pepe: 'PEPEUSDT', floki: 'FLOKIUSDT',
-    dogwifcoin: 'WIFUSDT', bonk: 'BONKUSDT', jupiter: 'JUPUSDT',
-    ethena: 'ENAUSDT', stacks: 'STXUSDT', sei: 'SEIUSDT',
-    celestia: 'TIAUSDT', pendle: 'PENDLEUSDT', wormhole: 'WUSDT',
-    ondo: 'ONDOUSDT', pyth: 'PYTHUSDT', jito: 'JTOUSDT',
-    tron: 'TRXUSDT', toncoin: 'TONUSDT', thorchain: 'RUNEUSDT',
-    kaspa: 'KASUSDT', ordi: 'ORDIUSDT', 'ethereum-classic': 'ETCUSDT',
-    stellar: 'XLMUSDT', 'worldcoin-wld': 'WLDUSDT', 'dydx-chain': 'DYDXUSDT',
-    'the-graph': 'GRTUSDT', 'ocean-protocol': 'OCEANUSDT',
-    'en-protocol': 'ENUSDT', 'chromia': 'CHRAUSDT',
-  };
-
-  const coinNames = {
-    bitcoin: 'Bitcoin (BTC)', ethereum: 'Ethereum (ETH)', solana: 'Solana (SOL)',
-    cardano: 'Cardano (ADA)', dogecoin: 'Dogecoin (DOGE)', xrp: 'XRP',
-    bnb: 'BNB', avalanche: 'Avalanche (AVAX)', polkadot: 'Polkadot (DOT)',
-    matic: 'Polygon (MATIC)', chainlink: 'Chainlink (LINK)', uniswap: 'Uniswap (UNI)',
-    aave: 'Aave (AAVE)', litecoin: 'Litecoin (LTC)', 'bitcoin-cash': 'Bitcoin Cash (BCH)',
-    cosmos: 'Cosmos (ATOM)', near: 'NEAR Protocol (NEAR)', aptos: 'Aptos (APT)',
-    sui: 'Sui (SUI)', arbitrum: 'Arbitrum (ARB)', optimism: 'Optimism (OP)',
-    filecoin: 'Filecoin (FIL)', 'internet-computer': 'Internet Computer (ICP)', vechain: 'VeChain (VET)',
-    algorand: 'Algorand (ALGO)', fantom: 'Fantom (FTM)', 'the-sandbox': 'The Sandbox (SAND)',
-    decentraland: 'Decentraland (MANA)', 'axie-infinity': 'Axie Infinity (AXS)', gala: 'GALA',
-    'immutable-x': 'Immutable X (IMX)', 'render-token': 'Render (RENDER)', injective: 'Injective (INJ)',
-    'fetch-ai': 'Fetch.ai (FET)', theta: 'Theta (THETA)', hedera: 'Hedera (HBAR)',
-    'elrond-erd-2': 'MultiversX (EGLD)', flow: 'Flow (FLOW)', tezos: 'Tezos (XTZ)',
-    eos: 'EOS', neo: 'NEO', 'quant-network': 'Quant (QNT)',
-    maker: 'Maker (MKR)', synthetix: 'Synthetix (SNX)', compound: 'Compound (COMP)',
-    'curve-dao-token': 'Curve (CRV)', 'lido-dao': 'Lido DAO (LDO)',
-    'shiba-inu': 'Shiba Inu (SHIB)', pepe: 'Pepe (PEPE)', floki: 'Floki (FLOKI)',
-    dogwifcoin: 'dogwifhat (WIF)', bonk: 'Bonk (BONK)', jupiter: 'Jupiter (JUP)',
-    ethena: 'Ethena (ENA)', stacks: 'Stacks (STX)', sei: 'Sei (SEI)',
-    celestia: 'Celestia (TIA)', pendle: 'Pendle (PENDLE)', wormhole: 'Wormhole (W)',
-    ondo: 'Ondo (ONDO)', pyth: 'Pyth (PYTH)', jito: 'Jito (JTO)',
-    tron: 'Tron (TRX)', toncoin: 'Toncoin (TON)', thorchain: 'THORChain (RUNE)',
-    kaspa: 'Kaspa (KAS)', ordi: 'ORDI', 'ethereum-classic': 'Ethereum Classic (ETC)',
-    stellar: 'Stellar (XLM)', 'worldcoin-wld': 'Worldcoin (WLD)', 'dydx-chain': 'dYdX (DYDX)',
-    'the-graph': 'The Graph (GRT)', 'ocean-protocol': 'Ocean (OCEAN)',
-    'en-protocol': 'Ethena (EN)', 'chromia': 'Chromia (CHR)',
-  };
-
-  // Gather all coins from all alert types — use ALL known coins as default when list is empty
-  const defaultAllCoins = Object.keys(symbolMap);
-  const getCoins = (arr) => (Array.isArray(arr) && arr.length > 0) ? arr : defaultAllCoins;
-  const allCoins = new Set();
-  if (config.alerts.rsiExtreme?.enabled) getCoins(config.alerts.rsiExtreme.coins).forEach(c => allCoins.add(c));
-  if (config.alerts.priceChange?.enabled) getCoins(config.alerts.priceChange.coins).forEach(c => allCoins.add(c));
-  if (config.alerts.volumeSpike?.enabled) getCoins(config.alerts.volumeSpike.coins).forEach(c => allCoins.add(c));
-
   try {
-    // ── Process coins in batches of 10 to respect Binance rate limits ──
-    const coinArray = [...allCoins];
-    const BATCH_SIZE = 10;
-    const DELAY_BETWEEN_COINS = 500; // 500ms between each coin in a batch
-    const DELAY_BETWEEN_BATCHES = 2000; // 2s between batches
+    console.log('[Telegram] Fetching CoinGecko market data (top 200 with sparkline)...');
+    const coins = await fetchCoinGeckoMarkets();
+    console.log(`[Telegram] Received ${coins.length} coins from CoinGecko`);
 
-    console.log(`[Telegram] Analyzing ${coinArray.length} coins in ${Math.ceil(coinArray.length / BATCH_SIZE)} batches...`);
+    if (coins.length === 0) {
+      console.error('[Telegram] No coins received from CoinGecko, skipping alert check');
+      return [];
+    }
 
-    for (let batchStart = 0; batchStart < coinArray.length; batchStart += BATCH_SIZE) {
-      const batch = coinArray.slice(batchStart, batchStart + BATCH_SIZE);
-      const batchNum = Math.floor(batchStart / BATCH_SIZE) + 1;
-      console.log(`[Telegram] Batch ${batchNum}: ${batch.join(', ')}`);
+    // Generate setups using same logic as /trades page
+    const setups = generateRealSetups(coins);
+    console.log(`[Telegram] Generated ${setups.length} trade setups`);
 
-      for (const coinId of batch) {
-        const symbol = symbolMap[coinId];
-        if (!symbol) continue;
-        const name = coinNames[coinId] || coinId.toUpperCase();
+    // Send alerts for each setup (respecting cooldowns)
+    for (const setup of setups) {
+      // Check cooldown: skip if same direction was sent within 4 hours
+      if (isCooldownActive(cooldowns, setup.id, setup.side)) {
+        continue;
+      }
 
-        // Check cooldown first
-        if (isCooldownActive(cooldowns, coinId, 'multiTF')) {
-          continue;
+      // Build Telegram message matching /trades card format
+      const dirEmoji = setup.side === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
+      const confEmoji = setup.confidence >= 70 ? '🔥' : setup.confidence >= 50 ? '⚡' : '📊';
+
+      // TP/SL percentages
+      const pctTP1 = ((setup.tp1 - setup.entry) / setup.entry * 100);
+      const pctTP2 = ((setup.tp2 - setup.entry) / setup.entry * 100);
+      const pctTP3 = ((setup.tp3 - setup.entry) / setup.entry * 100);
+      const pctSL = ((setup.stopLoss - setup.entry) / setup.entry * 100);
+
+      // Build S/R section
+      let srSection = '';
+      if (setup.resistances.length > 0) {
+        for (let i = setup.resistances.length - 1; i >= 0; i--) {
+          const r = setup.resistances[i];
+          srSection += `├ R${i + 1} (${r.source}) : <b>$${formatPrice(r.price)}</b> ${r.strength === 'major' ? '🔴' : '⚪'}\n`;
         }
+      }
+      srSection += `├ ── Entry : <b>$${formatPrice(setup.entry)}</b> ──\n`;
+      if (setup.supports.length > 0) {
+        for (let i = 0; i < setup.supports.length; i++) {
+          const s = setup.supports[i];
+          const prefix = i === setup.supports.length - 1 ? '└' : '├';
+          srSection += `${prefix} S${i + 1} (${s.source}) : <b>$${formatPrice(s.price)}</b> ${s.strength === 'major' ? '🟢' : '⚪'}\n`;
+        }
+      } else {
+        srSection += `└ (aucun support identifié)\n`;
+      }
 
-        try {
-          // ── Fetch 3 timeframes from Binance (sequential to avoid burst) ──
-          const data5m = await fetchBinanceKlines(symbol, '5m', 100);
-          await new Promise(r => setTimeout(r, 200));
-          const data15m = await fetchBinanceKlines(symbol, '15m', 100);
-          await new Promise(r => setTimeout(r, 200));
-          const data1h = await fetchBinanceKlines(symbol, '1h', 200);
-
-          // ── Analyze each timeframe ──
-          const tf5m = analyzeTimeframe(data5m.closes, data5m.highs, data5m.lows);
-          const tf15m = analyzeTimeframe(data15m.closes, data15m.highs, data15m.lows);
-          const tf1h = analyzeTimeframe(data1h.closes, data1h.highs, data1h.lows);
-
-          const timeframes = [
-            { label: '5m', ...tf5m },
-            { label: '15m', ...tf15m },
-            { label: '1h', ...tf1h },
-          ];
-
-          // ── Convergence check: at least 2 of 3 TFs must agree ──
-          const bullishTFs = timeframes.filter(tf => tf.bullishCount >= 2).length;
-          const bearishTFs = timeframes.filter(tf => tf.bearishCount >= 2).length;
-
-          let direction = null;
-          if (bullishTFs >= 2) direction = 'LONG';
-          else if (bearishTFs >= 2) direction = 'SHORT';
-
-          if (!direction) {
-            // No convergence — skip this coin
-            await new Promise(r => setTimeout(r, DELAY_BETWEEN_COINS));
-            continue;
-          }
-
-          // ── Calculate support/resistance from 1h (200 candles) ──
-          const { supports, resistances } = findSupportResistance(data1h.highs, data1h.lows, 3);
-          const currentPrice = data5m.closes[data5m.closes.length - 1];
-
-          // ── Calculate trade plan ──
-          const plan = calcTradePlan(currentPrice, supports, resistances, direction);
-
-          // ── Calculate Risk/Reward ratio ──
-          const risk = Math.abs(plan.entry - plan.sl);
-          const reward = Math.abs(plan.tp2 - plan.entry);
-          const rr = risk > 0 ? (reward / risk).toFixed(1) : 'N/A';
-
-          // ── Percentage calculations ──
-          const pctTP1 = ((plan.tp1 - plan.entry) / plan.entry * 100);
-          const pctTP2 = ((plan.tp2 - plan.entry) / plan.entry * 100);
-          const pctTP3 = ((plan.tp3 - plan.entry) / plan.entry * 100);
-          const pctSL = ((plan.sl - plan.entry) / plan.entry * 100);
-
-          // ── Build S/R display (up to 3 each, relative to price) ──
-          const resistancesAbove = resistances.filter(r => r > currentPrice).sort((a, b) => a - b).slice(0, 3);
-          const supportsBelow = supports.filter(s => s < currentPrice).sort((a, b) => b - a).slice(0, 3);
-
-          // Format indicator display for each TF
-          const fmtTF = (tf) => {
-            const rsiStr = !isNaN(tf.rsi) ? tf.rsi.toFixed(1) : 'N/A';
-            const macdStr = tf.macd ? (tf.macd.histogram > 0 ? '▲' : '▼') : 'N/A';
-            const stochStr = tf.stoch ? `${tf.stoch.k.toFixed(0)}/${tf.stoch.d.toFixed(0)}` : 'N/A';
-            return `RSI(14): ${rsiStr} | MACD: ${macdStr} | Stoch: ${stochStr}`;
-          };
-
-          // ── Build S/R section ──
-          let srSection = '';
-          for (let i = resistancesAbove.length - 1; i >= 0; i--) {
-            srSection += `├ R${i + 1} : <b>$${formatPrice(resistancesAbove[i])}</b>\n`;
-          }
-          srSection += `├ ── Prix actuel : <b>$${formatPrice(currentPrice)}</b> ──\n`;
-          for (let i = 0; i < supportsBelow.length; i++) {
-            const prefix = i === supportsBelow.length - 1 ? '└' : '├';
-            srSection += `${prefix} S${i + 1} : <b>$${formatPrice(supportsBelow[i])}</b>\n`;
-          }
-          if (!srSection.includes('└')) srSection += `└ (aucun support identifié)\n`;
-
-          const dirEmoji = direction === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
-          const signalStrength = (bullishTFs === 3 || bearishTFs === 3) ? '⚡⚡⚡ TRÈS FORT' : '⚡⚡ FORT';
-
-          const text = `🔥 <b>SIGNAL CRYPTO — CONVERGENCE MULTI-INDICATEURS</b>
+      const text = `${confEmoji} <b>SIGNAL CRYPTO — PAGE /TRADES</b>
 ━━━━━━━━━━━━━━━━━━━━━
 
-${dirEmoji} — ${signalStrength}
-🪙 <b>${name}</b>
-
-📊 <b>Analyse Multi-Timeframe :</b>
-┌─ <b>1H (Tendance)</b>
-│  ${fmtTF(tf1h)}
-├─ <b>15M (Confirmation)</b>
-│  ${fmtTF(tf15m)}
-└─ <b>5M (Entry)</b>
-   ${fmtTF(tf5m)}
+${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 
 🎯 <b>Plan de Trade :</b>
-├ Entry : <b>$${formatPrice(plan.entry)}</b>
-├ TP1 : <b>$${formatPrice(plan.tp1)}</b> (${pctTP1 >= 0 ? '+' : ''}${pctTP1.toFixed(2)}%)
-├ TP2 : <b>$${formatPrice(plan.tp2)}</b> (${pctTP2 >= 0 ? '+' : ''}${pctTP2.toFixed(2)}%)
-├ TP3 : <b>$${formatPrice(plan.tp3)}</b> (${pctTP3 >= 0 ? '+' : ''}${pctTP3.toFixed(2)}%)
-└ SL : <b>$${formatPrice(plan.sl)}</b> (${pctSL >= 0 ? '+' : ''}${pctSL.toFixed(2)}%)
+├ Entry : <b>$${formatPrice(setup.entry)}</b>
+├ TP1 : <b>$${formatPrice(setup.tp1)}</b> (${pctTP1 >= 0 ? '+' : ''}${pctTP1.toFixed(2)}%)
+├ TP2 : <b>$${formatPrice(setup.tp2)}</b> (${pctTP2 >= 0 ? '+' : ''}${pctTP2.toFixed(2)}%)
+├ TP3 : <b>$${formatPrice(setup.tp3)}</b> (${pctTP3 >= 0 ? '+' : ''}${pctTP3.toFixed(2)}%)
+└ SL : <b>$${formatPrice(setup.stopLoss)}</b> (${pctSL >= 0 ? '+' : ''}${pctSL.toFixed(2)}%)
 
 📐 <b>Supports &amp; Résistances :</b>
 ${srSection}
-⚖️ Risk/Reward : <b>1:${rr}</b>
+⚖️ Risk/Reward : <b>1:${setup.rr}</b>
+📈 24h : <b>${setup.change24h >= 0 ? '+' : ''}${setup.change24h.toFixed(2)}%</b>
+🧠 Confiance : <b>${setup.confidence}%</b>
 
-⏰ ${nowStr} (heure de Montréal)
+📋 <b>Raison :</b>
+<i>${setup.reason}</i>
+
+⏰ ${setup.triggerTime} — ${nowStr} (Montréal)
 ⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
 
-          const result = await sendTelegramMessage(text);
-          if (result.ok) {
-            await sendTelegramLogo();
-            setCooldown(cooldowns, coinId, 'multiTF');
-            sentAlerts.push({
-              type: 'multiTF',
-              coin: coinId,
-              direction,
-              rr,
-              entry: plan.entry,
-              tp1: plan.tp1,
-              sl: plan.sl,
-            });
-            console.log(`[Telegram] ✅ Sent ${direction} signal for ${name}`);
-          }
-        } catch (e) {
-          console.error(`[Telegram] Error analyzing ${coinId}:`, e.message);
-        }
+      const result = await sendTelegramMessage(text);
+      if (result.ok) {
+        await sendTelegramLogo();
+        setCooldown(cooldowns, setup.id, setup.side);
+        sentAlerts.push({
+          type: 'coingecko_signal',
+          coin: setup.id,
+          direction: setup.side,
+          rr: setup.rr,
+          entry: setup.entry,
+          tp1: setup.tp1,
+          tp2: setup.tp2,
+          tp3: setup.tp3,
+          sl: setup.stopLoss,
+          confidence: setup.confidence,
+        });
+        console.log(`[Telegram] ✅ Sent ${setup.side} signal for ${setup.name} (confidence: ${setup.confidence}%)`);
 
-        // Rate limit between coins within a batch
-        await new Promise(r => setTimeout(r, DELAY_BETWEEN_COINS));
-      }
-
-      // Delay between batches
-      if (batchStart + BATCH_SIZE < coinArray.length) {
-        console.log(`[Telegram] Batch ${batchNum} done. Waiting ${DELAY_BETWEEN_BATCHES / 1000}s before next batch...`);
-        await new Promise(r => setTimeout(r, DELAY_BETWEEN_BATCHES));
+        // Small delay between messages to avoid Telegram rate limit
+        await new Promise(r => setTimeout(r, 1000));
       }
     }
 

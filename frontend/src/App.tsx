@@ -34,7 +34,7 @@ const Convertisseur = React.lazy(() => import("./pages/Convertisseur"));
 const Calendrier = React.lazy(() => import("./pages/Calendrier"));
 const BullrunPhase = React.lazy(() => import("./pages/BullrunPhase"));
 const Graphiques = React.lazy(() => import("./pages/Graphiques"));
-const TelegramSetup = React.lazy(() => import("./pages/TelegramSetup"));
+
 const Abonnements = React.lazy(() => import("./pages/Abonnements"));
 const MonCompte = React.lazy(() => import("./pages/MonCompte"));
 const AdminDashboard = React.lazy(() => import("./pages/AdminDashboard"));
@@ -155,7 +155,7 @@ function App() {
           <Route path="/score-confiance-ia" element={<PlanProtected path="/score-confiance-ia"><ScoreConfianceIA /></PlanProtected>} />
           <Route path="/simulateur-strategie-ia" element={<PlanProtected path="/simulateur-strategie-ia"><SimulateurStrategieIA /></PlanProtected>} />
           <Route path="/rapport-hebdomadaire-ia" element={<PlanProtected path="/rapport-hebdomadaire-ia"><RapportHebdomadaireIA /></PlanProtected>} />
-          <Route path="/alertes-telegram" element={<PlanProtected path="/alertes-telegram"><AlertesTelegram /></PlanProtected>} />
+
 
           {/* SEO Prediction Pages - publicly accessible for SEO */}
           <Route path="/predictions" element={<Predictions />} />
@@ -180,7 +180,7 @@ function App() {
           <Route path="/admin/messages" element={<ProtectedAdminRoute><Messages /></ProtectedAdminRoute>} />
           <Route path="/admin/users" element={<ProtectedAdminRoute><Users /></ProtectedAdminRoute>} />
           <Route path="/admin/visitors" element={<ProtectedAdminRoute><Visitors /></ProtectedAdminRoute>} />
-          <Route path="/admin/telegram" element={<ProtectedAdminRoute><TelegramSetup /></ProtectedAdminRoute>} />
+          <Route path="/admin/telegram" element={<ProtectedAdminRoute><AlertesTelegram /></ProtectedAdminRoute>} />
 
           {/* Fallback */}
           <Route path="*" element={<NotFound />} />

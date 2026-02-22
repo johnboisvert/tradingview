@@ -91,7 +91,6 @@ const NAV_SECTIONS = [
     title: "IA & Analyse",
     items: [
       { path: "/alertes-ia", label: "Alertes IA", icon: Bell },
-      { path: "/alertes-telegram", label: "Alertes Telegram", icon: Send },
       { path: "/score-confiance-ia", label: "Score Confiance IA", icon: Shield },
       { path: "/simulateur-strategie-ia", label: "Simulateur Stratégie IA", icon: Target },
       { path: "/rapport-hebdomadaire-ia", label: "Rapport Hebdomadaire IA", icon: FileText },

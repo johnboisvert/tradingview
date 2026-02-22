@@ -410,6 +410,34 @@ async function sendTelegramMessage(text, parseMode = 'HTML') {
   }
 }
 
+// Send logo photo to Telegram after alert message
+async function sendTelegramLogo() {
+  const FormData = require('form-data');
+  const fs = require('fs');
+  const logoPath = path.join(__dirname, 'assets', 'logo-telegram.png');
+  try {
+    if (!fs.existsSync(logoPath)) {
+      console.error('[Telegram] Logo file not found:', logoPath);
+      return { ok: false, description: 'Logo file not found' };
+    }
+    const formData = new FormData();
+    formData.append('chat_id', TELEGRAM_CHAT_ID);
+    formData.append('photo', fs.createReadStream(logoPath));
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      console.error('[Telegram] Logo send error:', data.description);
+    }
+    return data;
+  } catch (err) {
+    console.error('[Telegram] Logo send error:', err);
+    return { ok: false, description: err.message };
+  }
+}
+
 // ─── POST /api/telegram/test — Send test message ───
 app.post('/api/telegram/test', async (req, res) => {
   const now = new Date().toLocaleString('fr-CA', { timeZone: 'America/Montreal' });
@@ -423,6 +451,7 @@ Vous recevrez désormais vos alertes crypto ici.
 
   const result = await sendTelegramMessage(text);
   if (result.ok) {
+    await sendTelegramLogo();
     res.json({ success: true, message: 'Message test envoyé avec succès !' });
   } else {
     res.json({ success: false, message: result.description || 'Erreur Telegram' });
@@ -437,6 +466,7 @@ app.post('/api/telegram/send', async (req, res) => {
   }
   const result = await sendTelegramMessage(text);
   if (result.ok) {
+    await sendTelegramLogo();
     res.json({ success: true, message: 'Message envoyé' });
   } else {
     res.json({ success: false, message: result.description || 'Erreur Telegram' });
@@ -940,6 +970,7 @@ ${srSection}
 
           const result = await sendTelegramMessage(text);
           if (result.ok) {
+            await sendTelegramLogo();
             setCooldown(cooldowns, coinId, 'multiTF');
             sentAlerts.push({
               type: 'multiTF',

@@ -410,30 +410,36 @@ async function sendTelegramMessage(text, parseMode = 'HTML') {
   }
 }
 
-// Send logo photo to Telegram after alert message
-async function sendTelegramLogo() {
-  const FormData = require('form-data');
-  const fs = require('fs');
-  const logoPath = path.join(__dirname, 'assets', 'logo-telegram.png');
+// Send photo to Telegram (ia.png branding image)
+async function sendTelegramPhoto(caption = '') {
+  const photoPath = path.join(__dirname, 'assets', 'ia.png');
   try {
-    if (!fs.existsSync(logoPath)) {
-      console.error('[Telegram] Logo file not found:', logoPath);
-      return { ok: false, description: 'Logo file not found' };
+    if (!existsSync(photoPath)) {
+      console.error('[Telegram] Photo file not found:', photoPath);
+      return { ok: false, description: 'Photo file not found' };
     }
-    const formData = new FormData();
+
+    // Build multipart form data manually using Blob API (Node 18+)
+    const photoBuffer = readFileSync(photoPath);
+    const formData = new globalThis.FormData();
     formData.append('chat_id', TELEGRAM_CHAT_ID);
-    formData.append('photo', fs.createReadStream(logoPath));
+    formData.append('photo', new Blob([photoBuffer], { type: 'image/png' }), 'ia.png');
+    if (caption) {
+      formData.append('caption', caption);
+      formData.append('parse_mode', 'HTML');
+    }
+
     const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
       method: 'POST',
       body: formData,
     });
     const data = await res.json();
     if (!data.ok) {
-      console.error('[Telegram] Logo send error:', data.description);
+      console.error('[Telegram] Photo send error:', data.description);
     }
     return data;
   } catch (err) {
-    console.error('[Telegram] Logo send error:', err);
+    console.error('[Telegram] Photo send error:', err);
     return { ok: false, description: err.message };
   }
 }
@@ -451,7 +457,7 @@ Vous recevrez désormais vos alertes crypto ici.
 
   const result = await sendTelegramMessage(text);
   if (result.ok) {
-    await sendTelegramLogo();
+    await sendTelegramPhoto();
     res.json({ success: true, message: 'Message test envoyé avec succès !' });
   } else {
     res.json({ success: false, message: result.description || 'Erreur Telegram' });
@@ -466,7 +472,7 @@ app.post('/api/telegram/send', async (req, res) => {
   }
   const result = await sendTelegramMessage(text);
   if (result.ok) {
-    await sendTelegramLogo();
+    await sendTelegramPhoto();
     res.json({ success: true, message: 'Message envoyé' });
   } else {
     res.json({ success: false, message: result.description || 'Erreur Telegram' });
@@ -895,13 +901,25 @@ async function checkAndSendAlerts() {
     }
 
     // Generate setups using same logic as /trades page
-    const setups = generateRealSetups(coins);
-    console.log(`[Telegram] Generated ${setups.length} trade setups`);
+    const allSetups = generateRealSetups(coins);
+    console.log(`[Telegram] Generated ${allSetups.length} trade setups`);
+
+    // Deduplicate: keep only the highest-confidence setup per coin
+    const seenCoins = new Map();
+    for (const setup of allSetups) {
+      const existing = seenCoins.get(setup.id);
+      if (!existing || setup.confidence > existing.confidence) {
+        seenCoins.set(setup.id, setup);
+      }
+    }
+    const setups = Array.from(seenCoins.values());
+    console.log(`[Telegram] After dedup: ${setups.length} unique coin setups`);
 
     // Send alerts for each setup (respecting cooldowns)
     for (const setup of setups) {
       // Check cooldown: skip if same direction was sent within 4 hours
       if (isCooldownActive(cooldowns, setup.id, setup.side)) {
+        console.log(`[Telegram] ⏳ Cooldown active for ${setup.name} (${setup.side}), skipping`);
         continue;
       }
 
@@ -960,8 +978,13 @@ ${srSection}
 
       const result = await sendTelegramMessage(text);
       if (result.ok) {
-        await sendTelegramLogo();
+        // Send branding image after the alert message
+        await sendTelegramPhoto();
+
+        // Set cooldown IMMEDIATELY after successful send to prevent duplicates
         setCooldown(cooldowns, setup.id, setup.side);
+        saveCooldowns(cooldowns);
+
         sentAlerts.push({
           type: 'coingecko_signal',
           coin: setup.id,
@@ -977,12 +1000,9 @@ ${srSection}
         console.log(`[Telegram] ✅ Sent ${setup.side} signal for ${setup.name} (confidence: ${setup.confidence}%)`);
 
         // Small delay between messages to avoid Telegram rate limit
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 1500));
       }
     }
-
-    // Save cooldowns
-    saveCooldowns(cooldowns);
 
     // Update last check
     config.lastCheck = now.toISOString();

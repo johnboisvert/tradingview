@@ -26,7 +26,7 @@ COPY --from=builder /app/frontend/assets ./assets
 RUN mkdir -p /app/data
 
 # Create a minimal package.json for the production server (ES modules + deps)
-RUN echo '{"type":"module","dependencies":{"express":"^5.2.1","dotenv":"^16.4.0","form-data":"^4.0.5"}}' > package.json && npm install --omit=dev
+RUN echo '{"type":"module","dependencies":{"express":"^5.2.1","dotenv":"^16.4.0"}}' > package.json && npm install --omit=dev
 
 EXPOSE 3000
 

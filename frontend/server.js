@@ -387,13 +387,13 @@ async function sendTelegramMessage(text, parseMode = 'HTML') {
 
 // ─── POST /api/telegram/test — Send test message ───
 app.post('/api/telegram/test', async (req, res) => {
-  const now = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
+  const now = new Date().toLocaleString('fr-CA', { timeZone: 'America/Montreal' });
   const text = `🚀 <b>CryptoIA — Test de connexion</b>
 
 ✅ Votre bot Telegram est correctement connecté !
 Vous recevrez désormais vos alertes crypto ici.
 
-⏰ ${now}
+⏰ ${now} (heure de Montréal)
 ⚠️ <i>Ceci n'est pas un conseil financier. Faites vos propres recherches (DYOR).</i>`;
 
   const result = await sendTelegramMessage(text);
@@ -460,6 +460,33 @@ function formatPrice(price) {
   return price.toFixed(6);
 }
 
+// ─── Cooldown system — 1 hour per coin per alert type ───
+const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour in ms
+
+function loadCooldowns() {
+  const config = loadTelegramAlerts();
+  return config.cooldowns || {};
+}
+
+function saveCooldowns(cooldowns) {
+  const config = loadTelegramAlerts();
+  config.cooldowns = cooldowns;
+  saveTelegramAlerts(config);
+}
+
+function isCooldownActive(cooldowns, coinId, alertType) {
+  const key = `${coinId}_${alertType}`;
+  const lastSent = cooldowns[key];
+  if (!lastSent) return false;
+  const elapsed = Date.now() - new Date(lastSent).getTime();
+  return elapsed < COOLDOWN_MS;
+}
+
+function setCooldown(cooldowns, coinId, alertType) {
+  const key = `${coinId}_${alertType}`;
+  cooldowns[key] = new Date().toISOString();
+}
+
 // ─── Alert checking logic — uses REAL data from Binance & CoinGecko ───
 async function checkAndSendAlerts() {
   const config = loadTelegramAlerts();
@@ -467,10 +494,14 @@ async function checkAndSendAlerts() {
 
   const sentAlerts = [];
   const now = new Date();
-  const nowStr = now.toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
+  const nowStr = now.toLocaleString('fr-CA', { timeZone: 'America/Montreal' });
+  const cooldowns = loadCooldowns();
 
-  // Track signals per coin for combined "SIGNAL FORT" detection
+  // Track ALL signals per coin for combined "SIGNAL FORT" detection
+  // Signals are collected at NORMAL thresholds (RSI 30/70, price 5%, volume 3x)
+  // but single-indicator alerts only fire at EXTREME thresholds
   const coinSignals = {};
+  const coinData = {}; // Store fetched data for building combined alerts
 
   const symbolMap = {
     bitcoin: 'BTCUSDT', ethereum: 'ETHUSDT', solana: 'SOLUSDT',
@@ -484,84 +515,67 @@ async function checkAndSendAlerts() {
     bnb: 'BNB', avalanche: 'Avalanche (AVAX)', polkadot: 'Polkadot (DOT)',
   };
 
+  // Extreme thresholds for single-indicator alerts
+  const EXTREME_RSI_OVERBOUGHT = 80;
+  const EXTREME_RSI_OVERSOLD = 20;
+  const EXTREME_PRICE_CHANGE = 10; // 10%
+  const EXTREME_VOLUME_MULTIPLIER = 5; // 5x
+
   try {
     // ═══════════════════════════════════════════════════════════════
-    // 1. PRICE CHANGE ALERTS — CoinGecko (données en temps réel)
+    // PHASE 1: COLLECT ALL DATA — gather signals at normal thresholds
     // ═══════════════════════════════════════════════════════════════
+
+    // 1A. Price data from CoinGecko
     if (config.alerts.priceChange?.enabled) {
       const coins = config.alerts.priceChange.coins || ['bitcoin', 'ethereum', 'solana'];
       const threshold = config.alerts.priceChange.threshold || 5;
       const ids = coins.join(',');
 
-      const cgRes = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true`,
-        { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(10000) }
-      );
+      try {
+        const cgRes = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true`,
+          { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(10000) }
+        );
 
-      if (cgRes.ok) {
-        const data = await cgRes.json();
-        for (const [coinId, info] of Object.entries(data)) {
-          const change24h = info.usd_24h_change;
-          const price = info.usd;
-          const volume24h = info.usd_24h_vol;
-          const marketCap = info.usd_market_cap;
-          const name = coinNames[coinId] || coinId.toUpperCase();
+        if (cgRes.ok) {
+          const data = await cgRes.json();
+          for (const [coinId, info] of Object.entries(data)) {
+            const change24h = info.usd_24h_change;
+            const price = info.usd;
+            const volume24h = info.usd_24h_vol;
+            const marketCap = info.usd_market_cap;
+            const name = coinNames[coinId] || coinId.toUpperCase();
 
-          if (Math.abs(change24h) >= threshold) {
-            const isBullish = change24h > 0;
-            const signalEmoji = isBullish ? '🟢' : '🔴';
-            const signalType = isBullish ? 'HAUSSIER (Bullish)' : 'BAISSIER (Bearish)';
-            const signalExplanation = isBullish
-              ? 'Forte pression acheteuse détectée. Le prix montre un momentum positif significatif sur les dernières 24h, indiquant un intérêt acheteur soutenu.'
-              : 'Forte pression vendeuse détectée. Le prix montre un momentum négatif significatif sur les dernières 24h, indiquant une prise de profits ou une panique vendeuse.';
+            // Store data for later use
+            if (!coinData[coinId]) coinData[coinId] = { name, price };
+            coinData[coinId].change24h = change24h;
+            coinData[coinId].volume24h = volume24h;
+            coinData[coinId].marketCap = marketCap;
+            coinData[coinId].price = price;
 
-            const actionSummary = isBullish
-              ? '👉 Surveiller les niveaux de résistance. Un pullback pourrait offrir un point d\'entrée si la tendance se confirme.'
-              : '👉 Surveiller les niveaux de support. Attendre une stabilisation avant d\'envisager un achat.';
-
-            const text = `🚨 <b>ALERTE CRYPTO — Variation de Prix</b>
-━━━━━━━━━━━━━━━━━━━━━
-
-${signalEmoji} <b>Signal ${signalType}</b>
-🪙 <b>${name}</b>
-
-📊 <b>Données du marché :</b>
-├ Variation 24h : <b>${change24h > 0 ? '+' : ''}${change24h.toFixed(2)}%</b>
-├ Prix actuel : <b>$${formatPrice(price)}</b>
-├ Volume 24h : <b>$${formatNumber(volume24h)}</b>
-└ Market Cap : <b>$${formatNumber(marketCap)}</b>
-
-💡 <b>Analyse :</b>
-${signalExplanation}
-
-📋 <b>Résumé actionnable :</b>
-${actionSummary}
-
-📡 <i>Source : CoinGecko API (données en temps réel)</i>
-⏰ ${nowStr}
-⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
-
-            const result = await sendTelegramMessage(text);
-            if (result.ok) {
-              sentAlerts.push({ type: 'priceChange', coin: coinId, change: change24h, price });
-              if (!coinSignals[coinId]) coinSignals[coinId] = { signals: [], price, name };
-              coinSignals[coinId].signals.push({
+            // Register signal at NORMAL threshold for combined detection
+            if (Math.abs(change24h) >= threshold) {
+              const isBullish = change24h > 0;
+              if (!coinSignals[coinId]) coinSignals[coinId] = [];
+              coinSignals[coinId].push({
                 type: 'price',
                 direction: isBullish ? 'bullish' : 'bearish',
                 detail: `Prix ${change24h > 0 ? '+' : ''}${change24h.toFixed(2)}% en 24h`,
+                isExtreme: Math.abs(change24h) >= EXTREME_PRICE_CHANGE,
+                value: change24h,
               });
             }
           }
         }
+      } catch (e) {
+        console.error('CoinGecko fetch error:', e.message);
       }
     }
 
-    // Small delay between API calls to avoid rate limiting
     await new Promise(r => setTimeout(r, 1000));
 
-    // ═══════════════════════════════════════════════════════════════
-    // 2. RSI EXTREME ALERTS — Binance Klines 1h (temps réel)
-    // ═══════════════════════════════════════════════════════════════
+    // 1B. RSI data from Binance (1h)
     if (config.alerts.rsiExtreme?.enabled) {
       const coins = config.alerts.rsiExtreme.coins || ['bitcoin', 'ethereum'];
       const overbought = config.alerts.rsiExtreme.overbought || 70;
@@ -573,7 +587,6 @@ ${actionSummary}
         const name = coinNames[coinId] || coinId.toUpperCase();
 
         try {
-          // Fetch 30 candles of 1h to have enough data for RSI(14)
           const kRes = await fetch(
             `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=30`,
             { signal: AbortSignal.timeout(10000) }
@@ -582,11 +595,9 @@ ${actionSummary}
 
           const klines = await kRes.json();
           const closes = klines.map(k => parseFloat(k[4]));
-          const opens = klines.map(k => parseFloat(k[1]));
           const highs = klines.map(k => parseFloat(k[2]));
           const lows = klines.map(k => parseFloat(k[3]));
 
-          // Calculate RSI 14
           if (closes.length >= 15) {
             const gains = [];
             const losses = [];
@@ -599,7 +610,6 @@ ${actionSummary}
             if (gains.length >= period) {
               let avgGain = gains.slice(0, period).reduce((s, v) => s + v, 0) / period;
               let avgLoss = losses.slice(0, period).reduce((s, v) => s + v, 0) / period;
-              // Wilder's smoothing for more accurate RSI
               for (let i = period; i < gains.length; i++) {
                 avgGain = (avgGain * (period - 1) + gains[i]) / period;
                 avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
@@ -609,82 +619,39 @@ ${actionSummary}
               const currentPrice = closes[closes.length - 1];
               const prevPrice = closes[closes.length - 2];
               const priceChange1h = ((currentPrice - prevPrice) / prevPrice * 100);
-              const high1h = highs[highs.length - 1];
-              const low1h = lows[lows.length - 1];
 
+              if (!coinData[coinId]) coinData[coinId] = { name, price: currentPrice };
+              coinData[coinId].rsi = rsiVal;
+              coinData[coinId].priceChange1h = priceChange1h;
+              coinData[coinId].high1h = highs[highs.length - 1];
+              coinData[coinId].low1h = lows[lows.length - 1];
+              if (!coinData[coinId].price) coinData[coinId].price = currentPrice;
+
+              // Register signal at NORMAL threshold
               if (rsiVal >= overbought || rsiVal <= oversold) {
                 const isOversold = rsiVal <= oversold;
-                const signalEmoji = isOversold ? '🟢' : '🔴';
-                const signalType = isOversold ? 'HAUSSIER (Bullish)' : 'BAISSIER (Bearish)';
-                const zone = isOversold ? 'SURVENTE (Oversold)' : 'SURACHAT (Overbought)';
-
-                const explanation = isOversold
-                  ? `Le RSI est à ${rsiVal.toFixed(1)}, en dessous de ${oversold}. Cela signifie que l'actif est potentiellement <b>sous-évalué</b>. Historiquement, un RSI en zone de survente précède souvent un rebond haussier. Les vendeurs s'épuisent et les acheteurs pourraient reprendre le contrôle.`
-                  : `Le RSI est à ${rsiVal.toFixed(1)}, au dessus de ${overbought}. Cela signifie que l'actif est potentiellement <b>surévalué</b>. Historiquement, un RSI en zone de surachat précède souvent une correction baissière. Les acheteurs s'épuisent et les vendeurs pourraient prendre le relais.`;
-
-                const actionSummary = isOversold
-                  ? '👉 Zone d\'achat potentielle. Attendre une confirmation avec un retournement du RSI au-dessus de 30 avant d\'entrer en position.'
-                  : '👉 Zone de vente/prise de profits potentielle. Envisager de sécuriser les gains ou de placer un stop-loss serré.';
-
-                const rsiGauge = rsiVal <= 20 ? '⚡ EXTRÊME' : rsiVal <= 30 ? '🔥 FORT' : rsiVal >= 80 ? '⚡ EXTRÊME' : '🔥 FORT';
-
-                const text = `🚨 <b>ALERTE CRYPTO — RSI Extrême (1h)</b>
-━━━━━━━━━━━━━━━━━━━━━
-
-${signalEmoji} <b>Signal ${signalType}</b> — ${rsiGauge}
-🪙 <b>${name}</b>
-
-📊 <b>Indicateur RSI :</b>
-├ RSI(14) : <b>${rsiVal.toFixed(1)}</b> — Zone de ${zone}
-├ Timeframe : <b>1h (horaire)</b>
-├ Prix actuel : <b>$${formatPrice(currentPrice)}</b>
-├ Variation 1h : <b>${priceChange1h >= 0 ? '+' : ''}${priceChange1h.toFixed(2)}%</b>
-├ High 1h : <b>$${formatPrice(high1h)}</b>
-└ Low 1h : <b>$${formatPrice(low1h)}</b>
-
-📖 <b>Qu'est-ce que le RSI ?</b>
-Le RSI (Relative Strength Index) mesure la force et la vitesse des mouvements de prix sur une échelle de 0 à 100.
-• RSI &lt; ${oversold} = Survente (potentiel rebond)
-• RSI &gt; ${overbought} = Surachat (potentiel correction)
-
-💡 <b>Analyse :</b>
-${explanation}
-
-📋 <b>Résumé actionnable :</b>
-${actionSummary}
-
-📡 <i>Source : Binance API (klines 1h en temps réel)</i>
-⏰ ${nowStr}
-⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
-
-                const result = await sendTelegramMessage(text);
-                if (result.ok) {
-                  sentAlerts.push({ type: 'rsiExtreme', coin: coinId, rsi: rsiVal, price: currentPrice });
-                  if (!coinSignals[coinId]) coinSignals[coinId] = { signals: [], price: currentPrice, name };
-                  coinSignals[coinId].signals.push({
-                    type: 'rsi',
-                    direction: isOversold ? 'bullish' : 'bearish',
-                    detail: `RSI(14) 1h = ${rsiVal.toFixed(1)} (${zone})`,
-                  });
-                }
+                const zone = isOversold ? 'SURVENTE' : 'SURACHAT';
+                if (!coinSignals[coinId]) coinSignals[coinId] = [];
+                coinSignals[coinId].push({
+                  type: 'rsi',
+                  direction: isOversold ? 'bullish' : 'bearish',
+                  detail: `RSI(14) 1h = ${rsiVal.toFixed(1)} (${zone})`,
+                  isExtreme: rsiVal <= EXTREME_RSI_OVERSOLD || rsiVal >= EXTREME_RSI_OVERBOUGHT,
+                  value: rsiVal,
+                });
               }
             }
           }
         } catch (e) {
           console.error(`RSI check error for ${coinId}:`, e.message);
         }
-
-        // Small delay between coins
         await new Promise(r => setTimeout(r, 500));
       }
     }
 
-    // Small delay between API calls
     await new Promise(r => setTimeout(r, 1000));
 
-    // ═══════════════════════════════════════════════════════════════
-    // 3. VOLUME SPIKE ALERTS — Binance (temps réel)
-    // ═══════════════════════════════════════════════════════════════
+    // 1C. Volume data from Binance
     if (config.alerts.volumeSpike?.enabled) {
       const coins = config.alerts.volumeSpike.coins || ['bitcoin', 'ethereum', 'solana'];
       const multiplier = config.alerts.volumeSpike.multiplier || 3;
@@ -710,128 +677,214 @@ ${actionSummary}
           const currentClose = parseFloat(klines[klines.length - 1][4]);
           const currentHigh = parseFloat(klines[klines.length - 1][2]);
           const currentLow = parseFloat(klines[klines.length - 1][3]);
+          const isBullishCandle = currentClose >= currentOpen;
+
+          if (!coinData[coinId]) coinData[coinId] = { name, price: currentPrice };
+          coinData[coinId].volumeRatio = avgVol > 0 ? currentVol / avgVol : 0;
+          coinData[coinId].isBullishCandle = isBullishCandle;
+          coinData[coinId].candleOpen = currentOpen;
+          coinData[coinId].candleClose = currentClose;
+          coinData[coinId].candleHigh = currentHigh;
+          coinData[coinId].candleLow = currentLow;
 
           if (avgVol > 0 && currentVol >= avgVol * multiplier) {
             const ratio = (currentVol / avgVol).toFixed(1);
-            // Determine if bullish or bearish volume based on candle direction
-            const isBullishCandle = currentClose >= currentOpen;
-            const candleBodyPct = Math.abs(currentClose - currentOpen) / currentOpen * 100;
-            const signalEmoji = isBullishCandle ? '🟢' : '🔴';
-            const signalType = isBullishCandle ? 'HAUSSIER (Bullish)' : 'BAISSIER (Bearish)';
-            const candleType = isBullishCandle ? 'bougie verte (haussière)' : 'bougie rouge (baissière)';
-
-            const explanation = isBullishCandle
-              ? `Un pic de volume ${ratio}x accompagné d'une ${candleType} indique un fort intérêt acheteur. Les gros acteurs (whales/institutions) pourraient accumuler. C'est un signal de <b>pression acheteuse</b> significative.`
-              : `Un pic de volume ${ratio}x accompagné d'une ${candleType} indique une forte pression vendeuse. Les gros acteurs pourraient distribuer/vendre. C'est un signal de <b>pression vendeuse</b> significative.`;
-
-            const actionSummary = isBullishCandle
-              ? '👉 Volume haussier = potentiel mouvement à la hausse. Surveiller si le prix casse une résistance avec ce volume.'
-              : '👉 Volume baissier = potentiel mouvement à la baisse. Surveiller si le prix casse un support avec ce volume.';
-
-            const text = `🚨 <b>ALERTE CRYPTO — Pic de Volume</b>
-━━━━━━━━━━━━━━━━━━━━━
-
-${signalEmoji} <b>Signal ${signalType}</b>
-🪙 <b>${name}</b>
-
-📊 <b>Données de volume :</b>
-├ Volume actuel : <b>${ratio}x</b> la moyenne (24h)
-├ Type de bougie : <b>${candleType}</b>
-├ Variation bougie : <b>${candleBodyPct >= 0 ? '+' : ''}${candleBodyPct.toFixed(2)}%</b>
-├ Prix actuel : <b>$${formatPrice(currentPrice)}</b>
-├ High 1h : <b>$${formatPrice(currentHigh)}</b>
-└ Low 1h : <b>$${formatPrice(currentLow)}</b>
-
-📖 <b>Qu'est-ce qu'un pic de volume ?</b>
-Un volume anormalement élevé (${ratio}x la moyenne) signifie qu'un nombre inhabituel de transactions a eu lieu. Cela indique souvent l'entrée de gros acteurs (whales, institutions) et précède fréquemment un mouvement de prix important.
-
-💡 <b>Analyse :</b>
-${explanation}
-
-📋 <b>Résumé actionnable :</b>
-${actionSummary}
-
-📡 <i>Source : Binance API (volume 1h en temps réel)</i>
-⏰ ${nowStr}
-⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
-
-            const result = await sendTelegramMessage(text);
-            if (result.ok) {
-              sentAlerts.push({ type: 'volumeSpike', coin: coinId, ratio: parseFloat(ratio), price: currentPrice });
-              if (!coinSignals[coinId]) coinSignals[coinId] = { signals: [], price: currentPrice, name };
-              coinSignals[coinId].signals.push({
-                type: 'volume',
-                direction: isBullishCandle ? 'bullish' : 'bearish',
-                detail: `Volume ${ratio}x (${candleType})`,
-              });
-            }
+            const candleType = isBullishCandle ? 'bougie verte' : 'bougie rouge';
+            if (!coinSignals[coinId]) coinSignals[coinId] = [];
+            coinSignals[coinId].push({
+              type: 'volume',
+              direction: isBullishCandle ? 'bullish' : 'bearish',
+              detail: `Volume ${ratio}x (${candleType})`,
+              isExtreme: currentVol >= avgVol * EXTREME_VOLUME_MULTIPLIER,
+              value: parseFloat(ratio),
+            });
           }
         } catch (e) {
           console.error(`Volume check error for ${coinId}:`, e.message);
         }
-
-        // Small delay between coins
         await new Promise(r => setTimeout(r, 500));
       }
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 4. SIGNAL FORT — Combined multi-indicator convergence
+    // PHASE 2: SEND ALERTS — prioritize combined, then extreme singles
     // ═══════════════════════════════════════════════════════════════
-    for (const [coinId, data] of Object.entries(coinSignals)) {
-      if (data.signals.length >= 2) {
-        const bullishSignals = data.signals.filter(s => s.direction === 'bullish');
-        const bearishSignals = data.signals.filter(s => s.direction === 'bearish');
 
-        // Only send if signals converge in the same direction
-        const dominant = bullishSignals.length >= bearishSignals.length ? 'bullish' : 'bearish';
-        const dominantSignals = dominant === 'bullish' ? bullishSignals : bearishSignals;
-        const convergenceCount = dominantSignals.length;
+    for (const [coinId, signals] of Object.entries(coinSignals)) {
+      const data = coinData[coinId] || {};
+      const name = data.name || coinNames[coinId] || coinId.toUpperCase();
+      const price = data.price || 0;
 
-        if (convergenceCount >= 2) {
+      // Count signals by direction
+      const bullishSignals = signals.filter(s => s.direction === 'bullish');
+      const bearishSignals = signals.filter(s => s.direction === 'bearish');
+      const dominant = bullishSignals.length >= bearishSignals.length ? 'bullish' : 'bearish';
+      const dominantSignals = dominant === 'bullish' ? bullishSignals : bearishSignals;
+
+      // ── COMBINED ALERT (2+ signals same direction) — preferred ──
+      if (dominantSignals.length >= 2) {
+        if (!isCooldownActive(cooldowns, coinId, 'signalFort')) {
           const isBullish = dominant === 'bullish';
           const signalEmoji = isBullish ? '🟢🟢🟢' : '🔴🔴🔴';
           const signalType = isBullish ? 'HAUSSIER FORT' : 'BAISSIER FORT';
-          const strength = convergenceCount >= 3 ? '⚡⚡⚡ TRÈS FORT' : '⚡⚡ FORT';
+          const confidence = signals.length >= 3 ? 'Élevée ⭐⭐⭐' : 'Moyenne ⭐⭐';
+          const strength = signals.length >= 3 ? '⚡⚡⚡ TRÈS FORT' : '⚡⚡ FORT';
 
-          const signalsList = data.signals.map((s, i) => {
+          const signalsList = signals.map((s, i) => {
             const icon = s.direction === 'bullish' ? '🟢' : '🔴';
             return `${i + 1}. ${icon} ${s.detail}`;
           }).join('\n');
 
           const explanation = isBullish
-            ? `${convergenceCount} indicateurs convergent vers un signal haussier. Cette convergence multi-indicateurs augmente significativement la probabilité d'un mouvement à la hausse. Plus les signaux sont alignés, plus le signal est fiable.`
-            : `${convergenceCount} indicateurs convergent vers un signal baissier. Cette convergence multi-indicateurs augmente significativement la probabilité d'un mouvement à la baisse. Plus les signaux sont alignés, plus le signal est fiable.`;
+            ? `${dominantSignals.length} indicateurs sur ${signals.length} convergent vers un signal haussier. Cette convergence multi-indicateurs est bien plus fiable qu'un seul indicateur isolé.`
+            : `${dominantSignals.length} indicateurs sur ${signals.length} convergent vers un signal baissier. Cette convergence multi-indicateurs est bien plus fiable qu'un seul indicateur isolé.`;
 
           const actionSummary = isBullish
             ? '👉 CONVERGENCE HAUSSIÈRE : Opportunité d\'achat potentielle. Définir un stop-loss et un objectif de prix avant d\'entrer.'
             : '👉 CONVERGENCE BAISSIÈRE : Prudence recommandée. Envisager de réduire l\'exposition ou de placer des stop-loss serrés.';
 
+          // Build market data section
+          let marketData = '';
+          if (data.change24h !== undefined) marketData += `├ Variation 24h : <b>${data.change24h > 0 ? '+' : ''}${data.change24h.toFixed(2)}%</b>\n`;
+          if (data.rsi !== undefined) marketData += `├ RSI(14) 1h : <b>${data.rsi.toFixed(1)}</b>\n`;
+          if (data.volumeRatio > 0) marketData += `├ Volume : <b>${data.volumeRatio.toFixed(1)}x</b> la moyenne\n`;
+          if (data.volume24h) marketData += `├ Volume 24h : <b>$${formatNumber(data.volume24h)}</b>\n`;
+          if (data.marketCap) marketData += `├ Market Cap : <b>$${formatNumber(data.marketCap)}</b>\n`;
+          marketData += `└ Prix actuel : <b>$${formatPrice(price)}</b>`;
+
           const text = `🔥🔥🔥 <b>SIGNAL FORT — Convergence Multi-Indicateurs</b> 🔥🔥🔥
 ━━━━━━━━━━━━━━━━━━━━━
 
 ${signalEmoji} <b>Signal ${signalType}</b> — ${strength}
-🪙 <b>${data.name}</b>
-💰 Prix : <b>$${formatPrice(data.price)}</b>
+🪙 <b>${name}</b>
+🎯 Confiance : <b>${confidence}</b>
 
-📊 <b>Signaux détectés (${data.signals.length}) :</b>
+📊 <b>Signaux détectés (${signals.length}) :</b>
 ${signalsList}
 
-💡 <b>Analyse de convergence :</b>
+📈 <b>Données du marché :</b>
+${marketData}
+
+💡 <b>Pourquoi ce signal est fiable :</b>
 ${explanation}
+Un seul indicateur (ex: RSI seul) peut donner de faux signaux. Quand plusieurs indicateurs pointent dans la même direction, la probabilité de succès augmente considérablement.
 
 📋 <b>Résumé actionnable :</b>
 ${actionSummary}
 
 📡 <i>Sources : CoinGecko + Binance API (données en temps réel)</i>
-⏰ ${nowStr}
+⏰ ${nowStr} (heure de Montréal)
 ⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
 
-          await sendTelegramMessage(text);
-          sentAlerts.push({ type: 'signalFort', coin: coinId, convergence: convergenceCount, direction: dominant });
+          const result = await sendTelegramMessage(text);
+          if (result.ok) {
+            setCooldown(cooldowns, coinId, 'signalFort');
+            sentAlerts.push({ type: 'signalFort', coin: coinId, convergence: dominantSignals.length, direction: dominant, confidence });
+          }
+        } else {
+          console.log(`[Telegram] Cooldown active for ${coinId}_signalFort — skipping`);
+        }
+        // Skip individual alerts for this coin since we sent a combined one
+        continue;
+      }
+
+      // ── SINGLE INDICATOR ALERTS — only at EXTREME thresholds ──
+      for (const signal of signals) {
+        if (!signal.isExtreme) continue; // Skip non-extreme single signals
+        const alertTypeKey = `${signal.type}Extreme`;
+        if (isCooldownActive(cooldowns, coinId, alertTypeKey)) {
+          console.log(`[Telegram] Cooldown active for ${coinId}_${alertTypeKey} — skipping`);
+          continue;
+        }
+
+        let text = '';
+
+        if (signal.type === 'price') {
+          const isBullish = signal.direction === 'bullish';
+          const signalEmoji = isBullish ? '🟢' : '🔴';
+          const signalType = isBullish ? 'HAUSSIER (Bullish)' : 'BAISSIER (Bearish)';
+          text = `🚨 <b>ALERTE CRYPTO — Variation de Prix EXTRÊME</b>
+━━━━━━━━━━━━━━━━━━━━━
+
+${signalEmoji} <b>Signal ${signalType}</b> — ⚡ EXTRÊME
+🪙 <b>${name}</b>
+
+📊 <b>Données du marché :</b>
+├ Variation 24h : <b>${data.change24h > 0 ? '+' : ''}${data.change24h.toFixed(2)}%</b>
+├ Prix actuel : <b>$${formatPrice(price)}</b>
+${data.volume24h ? `├ Volume 24h : <b>$${formatNumber(data.volume24h)}</b>\n` : ''}${data.marketCap ? `└ Market Cap : <b>$${formatNumber(data.marketCap)}</b>` : ''}
+
+⚠️ <b>Attention :</b> Signal basé sur un seul indicateur (prix). La fiabilité est plus faible qu'un signal combiné. Attendre une confirmation d'autres indicateurs est recommandé.
+
+📡 <i>Source : CoinGecko API (données en temps réel)</i>
+⏰ ${nowStr} (heure de Montréal)
+⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
+        }
+
+        if (signal.type === 'rsi') {
+          const isOversold = signal.value <= EXTREME_RSI_OVERSOLD;
+          const signalEmoji = isOversold ? '🟢' : '🔴';
+          const signalType = isOversold ? 'HAUSSIER (Bullish)' : 'BAISSIER (Bearish)';
+          const zone = isOversold ? 'SURVENTE EXTRÊME' : 'SURACHAT EXTRÊME';
+          text = `🚨 <b>ALERTE CRYPTO — RSI EXTRÊME (1h)</b>
+━━━━━━━━━━━━━━━━━━━━━
+
+${signalEmoji} <b>Signal ${signalType}</b> — ⚡ EXTRÊME
+🪙 <b>${name}</b>
+
+📊 <b>Indicateur RSI :</b>
+├ RSI(14) : <b>${signal.value.toFixed(1)}</b> — ${zone}
+├ Timeframe : <b>1h (horaire)</b>
+├ Prix actuel : <b>$${formatPrice(price)}</b>
+${data.priceChange1h !== undefined ? `├ Variation 1h : <b>${data.priceChange1h >= 0 ? '+' : ''}${data.priceChange1h.toFixed(2)}%</b>\n` : ''}${data.high1h ? `├ High 1h : <b>$${formatPrice(data.high1h)}</b>\n` : ''}${data.low1h ? `└ Low 1h : <b>$${formatPrice(data.low1h)}</b>` : ''}
+
+📖 <b>Qu'est-ce que le RSI ?</b>
+RSI &lt; 20 = Survente extrême (fort potentiel de rebond)
+RSI &gt; 80 = Surachat extrême (fort potentiel de correction)
+
+⚠️ <b>Attention :</b> Signal basé sur un seul indicateur (RSI). Un RSI extrême seul ne garantit pas un retournement. Chercher une confirmation avec le volume ou le prix est recommandé.
+
+📡 <i>Source : Binance API (klines 1h en temps réel)</i>
+⏰ ${nowStr} (heure de Montréal)
+⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
+        }
+
+        if (signal.type === 'volume') {
+          const isBullish = signal.direction === 'bullish';
+          const signalEmoji = isBullish ? '🟢' : '🔴';
+          const signalType = isBullish ? 'HAUSSIER (Bullish)' : 'BAISSIER (Bearish)';
+          const candleType = isBullish ? 'bougie verte (haussière)' : 'bougie rouge (baissière)';
+          text = `🚨 <b>ALERTE CRYPTO — Volume EXTRÊME</b>
+━━━━━━━━━━━━━━━━━━━━━
+
+${signalEmoji} <b>Signal ${signalType}</b> — ⚡ EXTRÊME
+🪙 <b>${name}</b>
+
+📊 <b>Données de volume :</b>
+├ Volume actuel : <b>${signal.value}x</b> la moyenne
+├ Type de bougie : <b>${candleType}</b>
+├ Prix actuel : <b>$${formatPrice(price)}</b>
+${data.candleHigh ? `├ High 1h : <b>$${formatPrice(data.candleHigh)}</b>\n` : ''}${data.candleLow ? `└ Low 1h : <b>$${formatPrice(data.candleLow)}</b>` : ''}
+
+⚠️ <b>Attention :</b> Signal basé sur un seul indicateur (volume). Un pic de volume seul ne confirme pas la direction. Vérifier le RSI et la tendance de prix est recommandé.
+
+📡 <i>Source : Binance API (volume 1h en temps réel)</i>
+⏰ ${nowStr} (heure de Montréal)
+⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
+        }
+
+        if (text) {
+          const result = await sendTelegramMessage(text);
+          if (result.ok) {
+            setCooldown(cooldowns, coinId, alertTypeKey);
+            sentAlerts.push({ type: alertTypeKey, coin: coinId, direction: signal.direction, value: signal.value });
+          }
         }
       }
     }
+
+    // Save cooldowns to file
+    saveCooldowns(cooldowns);
 
     // Update last check
     config.lastCheck = now.toISOString();

@@ -74,7 +74,6 @@ const AlertesTelegram = React.lazy(() => import("./pages/AlertesTelegram"));
 const PaymentSuccess = React.lazy(() => import("./pages/PaymentSuccess"));
 const Predictions = React.lazy(() => import("./pages/Predictions"));
 const PredictionCrypto = React.lazy(() => import("./pages/PredictionCrypto"));
-const Parrainage = React.lazy(() => import("./pages/Parrainage"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 // ── Non-lazy components (needed immediately for route protection) ─────────────
@@ -158,8 +157,6 @@ function App() {
           <Route path="/rapport-hebdomadaire-ia" element={<PlanProtected path="/rapport-hebdomadaire-ia"><RapportHebdomadaireIA /></PlanProtected>} />
 
 
-          {/* Parrainage */}
-          <Route path="/parrainage" element={<Parrainage />} />
 
           {/* SEO Prediction Pages - publicly accessible for SEO */}
           <Route path="/predictions" element={<Predictions />} />

@@ -60,7 +60,6 @@ import {
   Menu,
   X,
   Send,
-  Gift,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -75,8 +74,6 @@ const NAV_SECTIONS = [
     items: [
       { path: "/my-cryptoia", label: "My CryptoIA", icon: User },
       { path: "/gamification", label: "Gamification & Badges", icon: Trophy },
-      { path: "/parrainage", label: "Parrainage", icon: Gift },
-    ],
   },
   {
     title: "Marché",

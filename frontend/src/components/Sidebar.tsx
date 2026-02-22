@@ -74,6 +74,7 @@ const NAV_SECTIONS = [
     items: [
       { path: "/my-cryptoia", label: "My CryptoIA", icon: User },
       { path: "/gamification", label: "Gamification & Badges", icon: Trophy },
+    ],
   },
   {
     title: "Marché",

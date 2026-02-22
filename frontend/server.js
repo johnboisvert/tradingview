@@ -915,8 +915,13 @@ async function checkAndSendAlerts() {
     const setups = Array.from(seenCoins.values());
     console.log(`[Telegram] After dedup: ${setups.length} unique coin setups`);
 
-    // Send alerts for each setup (respecting cooldowns)
-    for (const setup of setups) {
+    // Filter: only send signals with confidence >= 80%
+    const MIN_CONFIDENCE = 80;
+    const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
+    console.log(`[Telegram] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
+
+    // Send alerts for each qualified setup (respecting cooldowns)
+    for (const setup of qualifiedSetups) {
       // Check cooldown: skip if same direction was sent within 4 hours
       if (isCooldownActive(cooldowns, setup.id, setup.side)) {
         console.log(`[Telegram] ⏳ Cooldown active for ${setup.name} (${setup.side}), skipping`);

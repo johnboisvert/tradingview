@@ -79,6 +79,7 @@ const SLUG_LABELS: Record<string, string> = {
   "defi-yield": "DeFi Yield",
   "academy": "Trading Academy",
   "downloads": "Téléchargements",
+  "dtrading-ia-pro": "DTrading IA Pro",
 };
 
 // Slugs exclus de l'affichage (trop basiques ou internes)

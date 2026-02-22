@@ -97,6 +97,8 @@ const ROUTE_TO_SLUG: Record<string, string> = {
   "/success-stories": "dashboard",
   "/onchain-metrics": "onchain",
   "/defi-yield": "defi-yield",
+  "/dtrading-ia-pro": "dtrading-ia-pro",
+  "/predictions": "dashboard",
   "/trading-academy": "academy",
   "/telechargement": "downloads",
   "/contact": "dashboard",

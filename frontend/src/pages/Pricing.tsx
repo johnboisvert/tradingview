@@ -46,6 +46,8 @@ const ALL_ROUTES = [
   "onchain", "defi-yield",
   // ── Contenu & Formation ──────────────────────────────────
   "academy", "downloads",
+  // ── Avancé ───────────────────────────────────────────────
+  "backtesting-visuel", "gamification", "dtrading-ia-pro",
 ];
 
 // Route labels for better readability in the admin UI
@@ -83,6 +85,9 @@ const ROUTE_LABELS: Record<string, string> = {
   "defi-yield": "🌾 DeFi Yield",
   "academy": "🎓 Trading Academy",
   "downloads": "📥 Téléchargements",
+  "backtesting-visuel": "📊 Backtesting Visuel",
+  "gamification": "🏆 Gamification & Badges",
+  "dtrading-ia-pro": "🤖 DTrading IA Pro",
 };
 
 export default function PricingPage() {

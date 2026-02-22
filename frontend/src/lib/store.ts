@@ -113,7 +113,7 @@ const DEFAULT_PLAN_ACCESS: Record<string, string[]> = {
     "ai-whale-tracker", "ai-news-analyzer", "crypto-pepites", "defi-yield", "onchain",
     "portfolio", "market-simulation", "support", "token-scanner",
     "crypto-journal", "screener-technique",
-    "ai-coach", "setup-builder", "backtesting-visuel", "gamification",
+    "ai-coach", "setup-builder", "backtesting-visuel", "gamification", "dtrading-ia-pro",
   ],
   // Elite : accès complet à tout
   elite: [
@@ -124,7 +124,7 @@ const DEFAULT_PLAN_ACCESS: Record<string, string[]> = {
     "portfolio", "market-simulation", "support", "token-scanner",
     "crypto-journal", "screener-technique",
     "ai-coach", "ai-swarm", "narrative-radar", "scam-shield", "altseason-copilot",
-    "setup-builder", "backtesting-visuel", "gamification",
+    "setup-builder", "backtesting-visuel", "gamification", "dtrading-ia-pro",
   ],
 };
 

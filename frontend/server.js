@@ -940,6 +940,128 @@ app.post('/api/telegram/toggle', (req, res) => {
 // Start checker on boot if enabled
 startAlertChecker();
 
+// ============================================================
+// Referral / Parrainage API
+// ============================================================
+const REFERRALS_FILE = path.join(DATA_DIR, 'referrals.json');
+
+function loadReferrals() {
+  try {
+    if (existsSync(REFERRALS_FILE)) {
+      const raw = readFileSync(REFERRALS_FILE, 'utf-8');
+      return JSON.parse(raw);
+    }
+  } catch (err) {
+    console.error('Error loading referrals:', err);
+  }
+  return [];
+}
+
+function saveReferralsFile(referrals) {
+  try {
+    writeFileSync(REFERRALS_FILE, JSON.stringify(referrals, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving referrals:', err);
+  }
+}
+
+// ─── GET /api/referral/:username — Get referral stats for a user ───
+app.get('/api/referral/:username', (req, res) => {
+  const { username } = req.params;
+  if (!username) {
+    return res.status(400).json({ success: false, message: 'Username requis.' });
+  }
+
+  const referrals = loadReferrals();
+  const users = loadUsers();
+  const userReferrals = referrals.filter(
+    (r) => r.referrer.toLowerCase() === username.toLowerCase()
+  );
+
+  const referralDetails = userReferrals.map((r) => {
+    const user = users.find((u) => u.username.toLowerCase() === r.referred.toLowerCase());
+    return {
+      username: r.referred,
+      plan: user?.plan || 'free',
+      created_at: r.created_at,
+      is_paid: !!user && user.plan !== 'free',
+    };
+  });
+
+  const paidCount = referralDetails.filter((r) => r.is_paid).length;
+
+  res.json({
+    success: true,
+    stats: {
+      referral_code: username,
+      total_referrals: userReferrals.length,
+      paid_referrals: paidCount,
+      rewards_earned: paidCount,
+      referrals: referralDetails,
+    },
+  });
+});
+
+// ─── POST /api/referral/track — Track a new referral ───
+app.post('/api/referral/track', (req, res) => {
+  const { referrer, referred } = req.body;
+  if (!referrer || !referred) {
+    return res.status(400).json({ success: false, message: 'referrer et referred requis.' });
+  }
+
+  if (referrer.toLowerCase() === referred.toLowerCase()) {
+    return res.status(400).json({ success: false, message: 'Impossible de se parrainer soi-même.' });
+  }
+
+  const referrals = loadReferrals();
+
+  // Check for duplicate
+  const exists = referrals.find(
+    (r) => r.referred.toLowerCase() === referred.toLowerCase()
+  );
+  if (exists) {
+    return res.json({ success: false, message: 'Cet utilisateur a déjà été parrainé.' });
+  }
+
+  referrals.push({
+    referrer: referrer.toLowerCase(),
+    referred: referred.toLowerCase(),
+    created_at: new Date().toISOString(),
+  });
+  saveReferralsFile(referrals);
+
+  console.log(`[Referral] ${referrer} referred ${referred}`);
+  res.json({ success: true, message: 'Parrainage enregistré avec succès.' });
+});
+
+// ─── GET /api/referral-leaderboard — Get global referral leaderboard (admin) ───
+app.get('/api/referral-leaderboard', (req, res) => {
+  const referrals = loadReferrals();
+  const users = loadUsers();
+
+  const grouped = {};
+  for (const ref of referrals) {
+    const key = ref.referrer.toLowerCase();
+    if (!grouped[key]) grouped[key] = { total: 0, paid: 0, revenue: 0 };
+    grouped[key].total += 1;
+    const user = users.find((u) => u.username.toLowerCase() === ref.referred.toLowerCase());
+    if (user && user.plan !== 'free') {
+      grouped[key].paid += 1;
+    }
+  }
+
+  const leaderboard = Object.entries(grouped)
+    .map(([username, data]) => ({ username, referrals: data.total, paid: data.paid, revenue: data.revenue }))
+    .sort((a, b) => b.paid - a.paid || b.referrals - a.referrals);
+
+  res.json({
+    success: true,
+    total_referrals: referrals.length,
+    paid_referrals: leaderboard.reduce((s, l) => s + l.paid, 0),
+    leaderboard,
+  });
+});
+
 // ─── CryptoPanic News API proxy ───
 app.get('/api/news', async (req, res) => {
   const targetUrl = `https://cryptopanic.com/api/free/v1/posts/?auth_token=free&public=true&kind=news`;

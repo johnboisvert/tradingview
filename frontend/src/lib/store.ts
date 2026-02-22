@@ -930,6 +930,101 @@ export function getVisitorStats() {
   };
 }
 
+// ============================================================
+// Referral / Parrainage
+// ============================================================
+const REFERRAL_KEY = "cryptoia_referrals";
+
+export interface ReferralEntry {
+  referrer: string;       // username of the person who referred
+  referred: string;       // username of the person who signed up
+  created_at: string;
+}
+
+export function getReferrals(): ReferralEntry[] {
+  return getItem<ReferralEntry[]>(REFERRAL_KEY, []);
+}
+
+export function saveReferrals(referrals: ReferralEntry[]): void {
+  setItem(REFERRAL_KEY, referrals);
+}
+
+export function addReferral(referrer: string, referred: string): boolean {
+  const referrals = getReferrals();
+  // Prevent duplicates
+  if (referrals.find((r) => r.referred.toLowerCase() === referred.toLowerCase())) return false;
+  // Can't refer yourself
+  if (referrer.toLowerCase() === referred.toLowerCase()) return false;
+  referrals.push({
+    referrer: referrer.toLowerCase(),
+    referred: referred.toLowerCase(),
+    created_at: new Date().toISOString(),
+  });
+  saveReferrals(referrals);
+  return true;
+}
+
+export function getReferralStats(username: string) {
+  const referrals = getReferrals().filter(
+    (r) => r.referrer.toLowerCase() === username.toLowerCase()
+  );
+  const users = getUsers();
+  const referralDetails = referrals.map((r) => {
+    const user = users.find((u) => u.username.toLowerCase() === r.referred.toLowerCase());
+    return {
+      username: r.referred,
+      plan: user?.plan || "free",
+      created_at: r.created_at,
+      is_paid: !!user && user.plan !== "free",
+    };
+  });
+
+  const paidCount = referralDetails.filter((r) => r.is_paid).length;
+
+  return {
+    referral_code: username,
+    total_referrals: referrals.length,
+    paid_referrals: paidCount,
+    rewards_earned: paidCount, // 1 reward per paid referral
+    referrals: referralDetails,
+  };
+}
+
+export function getAllReferralLeaderboard() {
+  const referrals = getReferrals();
+  const users = getUsers();
+  const prices = getPlanPrices();
+  const planPriceMap: Record<string, number> = {
+    premium: prices.premium,
+    advanced: prices.advanced,
+    pro: prices.pro,
+    elite: prices.elite,
+  };
+
+  // Group by referrer
+  const grouped: Record<string, { total: number; paid: number; revenue: number }> = {};
+  for (const ref of referrals) {
+    const key = ref.referrer.toLowerCase();
+    if (!grouped[key]) grouped[key] = { total: 0, paid: 0, revenue: 0 };
+    grouped[key].total += 1;
+    const user = users.find((u) => u.username.toLowerCase() === ref.referred.toLowerCase());
+    if (user && user.plan !== "free") {
+      grouped[key].paid += 1;
+      grouped[key].revenue += planPriceMap[user.plan] || 0;
+    }
+  }
+
+  const leaderboard = Object.entries(grouped)
+    .map(([username, data]) => ({ username, referrals: data.total, paid: data.paid, revenue: data.revenue }))
+    .sort((a, b) => b.paid - a.paid || b.referrals - a.referrals);
+
+  const totalReferrals = referrals.length;
+  const paidReferrals = leaderboard.reduce((s, l) => s + l.paid, 0);
+  const totalRevenue = leaderboard.reduce((s, l) => s + l.revenue, 0);
+
+  return { totalReferrals, paidReferrals, totalRevenue, leaderboard };
+}
+
 // --- Dashboard Stats (computed from real data) ---
 export function getDashboardStats() {
   const users = getUsers();

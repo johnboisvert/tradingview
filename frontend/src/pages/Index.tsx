@@ -151,7 +151,7 @@ export default function DashboardPage() {
       const { fetchTop200 } = await import("@/lib/cryptoApi");
       const [coinsData, globalRes, fgRes] = await Promise.allSettled([
         fetchTop200(true),
-        fetchWithCorsProxy("https://api.coingecko.com/api/v3/global"),
+        fetch("/api/coingecko/global", { signal: AbortSignal.timeout(15000) }),
         fetchWithCorsProxy("https://api.alternative.me/fng/?limit=1"),
       ]);
 

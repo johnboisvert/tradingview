@@ -23,7 +23,10 @@ let cachedCoins: CoinMarketData[] = [];
 let lastFetchTime = 0;
 const CACHE_DURATION = 120_000; // 120 seconds — reduces CoinGecko API calls (30 req/min free tier)
 
-// Multiple CORS proxy options for reliability
+// CoinGecko base URL for rewriting
+const COINGECKO_API_BASE = 'https://api.coingecko.com/api/v3';
+
+// Multiple CORS proxy options for reliability (fallback only)
 const CORS_PROXIES = [
   (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -31,11 +34,22 @@ const CORS_PROXIES = [
 ];
 
 /**
- * Fetch a URL with CORS proxy fallback.
- * 1. Try direct fetch first (works in dev / same-origin)
- * 2. Try each CORS proxy in order until one succeeds
+ * Fetch a URL with server proxy + CORS proxy fallback.
+ * For CoinGecko URLs: rewrite to /api/coingecko/... (server proxy, no CORS issues)
+ * For other URLs: try direct first, then CORS proxies
  */
 export async function fetchWithCorsProxy(url: string): Promise<Response> {
+  // If this is a CoinGecko URL, route through our server proxy
+  if (url.startsWith(COINGECKO_API_BASE)) {
+    const proxyUrl = url.replace(COINGECKO_API_BASE, '/api/coingecko');
+    try {
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
+      if (res.ok) return res;
+    } catch {
+      // Server proxy failed, fall through to CORS proxies
+    }
+  }
+
   // Try direct first (works in dev mode and when CORS is allowed)
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
@@ -73,8 +87,8 @@ export async function fetchTop200(withSparkline = false): Promise<CoinMarketData
 
   for (const page of pages) {
     try {
-      const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${page}&sparkline=${sparkline}&price_change_percentage=24h,7d,30d`;
-      const res = await fetchWithCorsProxy(url);
+      const url = `/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${page}&sparkline=${sparkline}&price_change_percentage=24h,7d,30d`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
       if (res.ok) {
         const text = await res.text();
         try {
@@ -222,9 +236,9 @@ export async function fetchAltcoinSeasonData(): Promise<{
   // Step 1: Fetch the REAL index from blockchaincenter.net (with hardcoded fallback)
   const bcIndex = await fetchBlockchainCenterIndex();
 
-  // Step 2: Fetch top coins from CoinGecko for the table display
-  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h,7d,30d`;
-  const res = await fetchWithCorsProxy(url);
+  // Step 2: Fetch top coins from CoinGecko for the table display (via server proxy)
+  const url = `/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h,7d,30d`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
 
   if (!res.ok) throw new Error("Failed to fetch data");
 

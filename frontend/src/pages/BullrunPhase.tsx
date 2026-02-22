@@ -131,8 +131,8 @@ export default function BullrunPhase() {
         btcAth = btcData.ath || 0;
       }
 
-      // 2. Fetch global market data
-      const globalRes = await fetchWithCorsProxy("https://api.coingecko.com/api/v3/global");
+      // 2. Fetch global market data (via server proxy to avoid CORS)
+      const globalRes = await fetch("/api/coingecko/global", { signal: AbortSignal.timeout(15000) });
       let btcDominance = 50;
       let totalMarketCap = 0;
       let totalVolume = 0;

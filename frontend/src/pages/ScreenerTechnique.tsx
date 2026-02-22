@@ -6,7 +6,7 @@ import {
   RefreshCw, ChevronUp, ChevronDown, Target, Activity,
   BarChart3, AlertTriangle, CheckCircle, XCircle, Filter
 } from "lucide-react";
-import { fetchWithCorsProxy } from "@/lib/cryptoApi";
+
 import Footer from "@/components/Footer";
 
 interface CoinScreener {
@@ -143,7 +143,7 @@ export default function ScreenerTechnique() {
     setLoading(true);
     try {
       const pages = await Promise.all([1, 2, 3, 4].map(p =>
-        fetchWithCorsProxy(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=${p}&sparkline=true&price_change_percentage=7d`)
+        fetch(`/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=${p}&sparkline=true&price_change_percentage=7d`, { signal: AbortSignal.timeout(15000) })
           .then(r => r.ok ? r.json() : [])
           .catch(() => [])
       ));

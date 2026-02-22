@@ -371,9 +371,9 @@ function loadTelegramAlerts() {
     enabled: false,
     checkIntervalMs: 300000, // 5 minutes
     alerts: {
-      priceChange: { enabled: true, threshold: 5, coins: ['bitcoin', 'ethereum', 'solana'] },
-      rsiExtreme: { enabled: true, overbought: 70, oversold: 30, coins: ['bitcoin', 'ethereum'] },
-      volumeSpike: { enabled: true, multiplier: 3, coins: ['bitcoin', 'ethereum', 'solana'] },
+      priceChange: { enabled: true, threshold: 5, coins: [] },
+      rsiExtreme: { enabled: true, overbought: 70, oversold: 30, coins: [] },
+      volumeSpike: { enabled: true, multiplier: 3, coins: [] },
     },
     lastCheck: null,
     lastAlerts: [],
@@ -746,110 +746,171 @@ async function checkAndSendAlerts() {
     bitcoin: 'BTCUSDT', ethereum: 'ETHUSDT', solana: 'SOLUSDT',
     cardano: 'ADAUSDT', dogecoin: 'DOGEUSDT', xrp: 'XRPUSDT',
     bnb: 'BNBUSDT', avalanche: 'AVAXUSDT', polkadot: 'DOTUSDT',
+    matic: 'MATICUSDT', chainlink: 'LINKUSDT', uniswap: 'UNIUSDT',
+    aave: 'AAVEUSDT', litecoin: 'LTCUSDT', 'bitcoin-cash': 'BCHUSDT',
+    cosmos: 'ATOMUSDT', near: 'NEARUSDT', aptos: 'APTUSDT',
+    sui: 'SUIUSDT', arbitrum: 'ARBUSDT', optimism: 'OPUSDT',
+    filecoin: 'FILUSDT', 'internet-computer': 'ICPUSDT', vechain: 'VETUSDT',
+    algorand: 'ALGOUSDT', fantom: 'FTMUSDT', 'the-sandbox': 'SANDUSDT',
+    decentraland: 'MANAUSDT', 'axie-infinity': 'AXSUSDT', gala: 'GALAUSDT',
+    'immutable-x': 'IMXUSDT', 'render-token': 'RENDERUSDT', injective: 'INJUSDT',
+    'fetch-ai': 'FETUSDT', theta: 'THETAUSDT', hedera: 'HBARUSDT',
+    'elrond-erd-2': 'EGLDUSDT', flow: 'FLOWUSDT', tezos: 'XTZUSDT',
+    eos: 'EOSUSDT', neo: 'NEOUSDT', 'quant-network': 'QNTUSDT',
+    maker: 'MKRUSDT', synthetix: 'SNXUSDT', compound: 'COMPUSDT',
+    'curve-dao-token': 'CRVUSDT', 'lido-dao': 'LDOUSDT',
+    'shiba-inu': 'SHIBUSDT', pepe: 'PEPEUSDT', floki: 'FLOKIUSDT',
+    dogwifcoin: 'WIFUSDT', bonk: 'BONKUSDT', jupiter: 'JUPUSDT',
+    ethena: 'ENAUSDT', stacks: 'STXUSDT', sei: 'SEIUSDT',
+    celestia: 'TIAUSDT', pendle: 'PENDLEUSDT', wormhole: 'WUSDT',
+    ondo: 'ONDOUSDT', pyth: 'PYTHUSDT', jito: 'JTOUSDT',
+    tron: 'TRXUSDT', toncoin: 'TONUSDT', thorchain: 'RUNEUSDT',
+    kaspa: 'KASUSDT', ordi: 'ORDIUSDT', 'ethereum-classic': 'ETCUSDT',
+    stellar: 'XLMUSDT', 'worldcoin-wld': 'WLDUSDT', 'dydx-chain': 'DYDXUSDT',
+    'the-graph': 'GRTUSDT', 'ocean-protocol': 'OCEANUSDT',
+    'en-protocol': 'ENUSDT', 'chromia': 'CHRAUSDT',
   };
 
   const coinNames = {
     bitcoin: 'Bitcoin (BTC)', ethereum: 'Ethereum (ETH)', solana: 'Solana (SOL)',
     cardano: 'Cardano (ADA)', dogecoin: 'Dogecoin (DOGE)', xrp: 'XRP',
     bnb: 'BNB', avalanche: 'Avalanche (AVAX)', polkadot: 'Polkadot (DOT)',
+    matic: 'Polygon (MATIC)', chainlink: 'Chainlink (LINK)', uniswap: 'Uniswap (UNI)',
+    aave: 'Aave (AAVE)', litecoin: 'Litecoin (LTC)', 'bitcoin-cash': 'Bitcoin Cash (BCH)',
+    cosmos: 'Cosmos (ATOM)', near: 'NEAR Protocol (NEAR)', aptos: 'Aptos (APT)',
+    sui: 'Sui (SUI)', arbitrum: 'Arbitrum (ARB)', optimism: 'Optimism (OP)',
+    filecoin: 'Filecoin (FIL)', 'internet-computer': 'Internet Computer (ICP)', vechain: 'VeChain (VET)',
+    algorand: 'Algorand (ALGO)', fantom: 'Fantom (FTM)', 'the-sandbox': 'The Sandbox (SAND)',
+    decentraland: 'Decentraland (MANA)', 'axie-infinity': 'Axie Infinity (AXS)', gala: 'GALA',
+    'immutable-x': 'Immutable X (IMX)', 'render-token': 'Render (RENDER)', injective: 'Injective (INJ)',
+    'fetch-ai': 'Fetch.ai (FET)', theta: 'Theta (THETA)', hedera: 'Hedera (HBAR)',
+    'elrond-erd-2': 'MultiversX (EGLD)', flow: 'Flow (FLOW)', tezos: 'Tezos (XTZ)',
+    eos: 'EOS', neo: 'NEO', 'quant-network': 'Quant (QNT)',
+    maker: 'Maker (MKR)', synthetix: 'Synthetix (SNX)', compound: 'Compound (COMP)',
+    'curve-dao-token': 'Curve (CRV)', 'lido-dao': 'Lido DAO (LDO)',
+    'shiba-inu': 'Shiba Inu (SHIB)', pepe: 'Pepe (PEPE)', floki: 'Floki (FLOKI)',
+    dogwifcoin: 'dogwifhat (WIF)', bonk: 'Bonk (BONK)', jupiter: 'Jupiter (JUP)',
+    ethena: 'Ethena (ENA)', stacks: 'Stacks (STX)', sei: 'Sei (SEI)',
+    celestia: 'Celestia (TIA)', pendle: 'Pendle (PENDLE)', wormhole: 'Wormhole (W)',
+    ondo: 'Ondo (ONDO)', pyth: 'Pyth (PYTH)', jito: 'Jito (JTO)',
+    tron: 'Tron (TRX)', toncoin: 'Toncoin (TON)', thorchain: 'THORChain (RUNE)',
+    kaspa: 'Kaspa (KAS)', ordi: 'ORDI', 'ethereum-classic': 'Ethereum Classic (ETC)',
+    stellar: 'Stellar (XLM)', 'worldcoin-wld': 'Worldcoin (WLD)', 'dydx-chain': 'dYdX (DYDX)',
+    'the-graph': 'The Graph (GRT)', 'ocean-protocol': 'Ocean (OCEAN)',
+    'en-protocol': 'Ethena (EN)', 'chromia': 'Chromia (CHR)',
   };
 
-  // Gather all coins from all alert types
+  // Gather all coins from all alert types — use ALL known coins as default when list is empty
+  const defaultAllCoins = Object.keys(symbolMap);
+  const getCoins = (arr) => (Array.isArray(arr) && arr.length > 0) ? arr : defaultAllCoins;
   const allCoins = new Set();
-  if (config.alerts.rsiExtreme?.enabled) (config.alerts.rsiExtreme.coins || ['bitcoin', 'ethereum']).forEach(c => allCoins.add(c));
-  if (config.alerts.priceChange?.enabled) (config.alerts.priceChange.coins || ['bitcoin', 'ethereum', 'solana']).forEach(c => allCoins.add(c));
-  if (config.alerts.volumeSpike?.enabled) (config.alerts.volumeSpike.coins || ['bitcoin', 'ethereum', 'solana']).forEach(c => allCoins.add(c));
+  if (config.alerts.rsiExtreme?.enabled) getCoins(config.alerts.rsiExtreme.coins).forEach(c => allCoins.add(c));
+  if (config.alerts.priceChange?.enabled) getCoins(config.alerts.priceChange.coins).forEach(c => allCoins.add(c));
+  if (config.alerts.volumeSpike?.enabled) getCoins(config.alerts.volumeSpike.coins).forEach(c => allCoins.add(c));
 
   try {
-    for (const coinId of allCoins) {
-      const symbol = symbolMap[coinId];
-      if (!symbol) continue;
-      const name = coinNames[coinId] || coinId.toUpperCase();
+    // ── Process coins in batches of 10 to respect Binance rate limits ──
+    const coinArray = [...allCoins];
+    const BATCH_SIZE = 10;
+    const DELAY_BETWEEN_COINS = 500; // 500ms between each coin in a batch
+    const DELAY_BETWEEN_BATCHES = 2000; // 2s between batches
 
-      // Check cooldown first
-      if (isCooldownActive(cooldowns, coinId, 'multiTF')) {
-        console.log(`[Telegram] Cooldown active for ${coinId}_multiTF — skipping`);
-        continue;
-      }
+    console.log(`[Telegram] Analyzing ${coinArray.length} coins in ${Math.ceil(coinArray.length / BATCH_SIZE)} batches...`);
 
-      try {
-        // ── Fetch 3 timeframes from Binance ──
-        const [data5m, data15m, data1h] = await Promise.all([
-          fetchBinanceKlines(symbol, '5m', 100),
-          fetchBinanceKlines(symbol, '15m', 100),
-          fetchBinanceKlines(symbol, '1h', 200),
-        ]);
+    for (let batchStart = 0; batchStart < coinArray.length; batchStart += BATCH_SIZE) {
+      const batch = coinArray.slice(batchStart, batchStart + BATCH_SIZE);
+      const batchNum = Math.floor(batchStart / BATCH_SIZE) + 1;
+      console.log(`[Telegram] Batch ${batchNum}: ${batch.join(', ')}`);
 
-        // ── Analyze each timeframe ──
-        const tf5m = analyzeTimeframe(data5m.closes, data5m.highs, data5m.lows);
-        const tf15m = analyzeTimeframe(data15m.closes, data15m.highs, data15m.lows);
-        const tf1h = analyzeTimeframe(data1h.closes, data1h.highs, data1h.lows);
+      for (const coinId of batch) {
+        const symbol = symbolMap[coinId];
+        if (!symbol) continue;
+        const name = coinNames[coinId] || coinId.toUpperCase();
 
-        const timeframes = [
-          { label: '5m', ...tf5m },
-          { label: '15m', ...tf15m },
-          { label: '1h', ...tf1h },
-        ];
-
-        // ── Convergence check: at least 2 of 3 TFs must agree ──
-        const bullishTFs = timeframes.filter(tf => tf.bullishCount >= 2).length;
-        const bearishTFs = timeframes.filter(tf => tf.bearishCount >= 2).length;
-
-        let direction = null;
-        if (bullishTFs >= 2) direction = 'LONG';
-        else if (bearishTFs >= 2) direction = 'SHORT';
-
-        if (!direction) {
-          // No convergence — skip this coin
+        // Check cooldown first
+        if (isCooldownActive(cooldowns, coinId, 'multiTF')) {
           continue;
         }
 
-        // ── Calculate support/resistance from 1h (200 candles) ──
-        const { supports, resistances } = findSupportResistance(data1h.highs, data1h.lows, 3);
-        const currentPrice = data5m.closes[data5m.closes.length - 1];
+        try {
+          // ── Fetch 3 timeframes from Binance (sequential to avoid burst) ──
+          const data5m = await fetchBinanceKlines(symbol, '5m', 100);
+          await new Promise(r => setTimeout(r, 200));
+          const data15m = await fetchBinanceKlines(symbol, '15m', 100);
+          await new Promise(r => setTimeout(r, 200));
+          const data1h = await fetchBinanceKlines(symbol, '1h', 200);
 
-        // ── Calculate trade plan ──
-        const plan = calcTradePlan(currentPrice, supports, resistances, direction);
+          // ── Analyze each timeframe ──
+          const tf5m = analyzeTimeframe(data5m.closes, data5m.highs, data5m.lows);
+          const tf15m = analyzeTimeframe(data15m.closes, data15m.highs, data15m.lows);
+          const tf1h = analyzeTimeframe(data1h.closes, data1h.highs, data1h.lows);
 
-        // ── Calculate Risk/Reward ratio ──
-        const risk = Math.abs(plan.entry - plan.sl);
-        const reward = Math.abs(plan.tp2 - plan.entry);
-        const rr = risk > 0 ? (reward / risk).toFixed(1) : 'N/A';
+          const timeframes = [
+            { label: '5m', ...tf5m },
+            { label: '15m', ...tf15m },
+            { label: '1h', ...tf1h },
+          ];
 
-        // ── Percentage calculations ──
-        const pctTP1 = ((plan.tp1 - plan.entry) / plan.entry * 100);
-        const pctTP2 = ((plan.tp2 - plan.entry) / plan.entry * 100);
-        const pctTP3 = ((plan.tp3 - plan.entry) / plan.entry * 100);
-        const pctSL = ((plan.sl - plan.entry) / plan.entry * 100);
+          // ── Convergence check: at least 2 of 3 TFs must agree ──
+          const bullishTFs = timeframes.filter(tf => tf.bullishCount >= 2).length;
+          const bearishTFs = timeframes.filter(tf => tf.bearishCount >= 2).length;
 
-        // ── Build S/R display (up to 3 each, relative to price) ──
-        const resistancesAbove = resistances.filter(r => r > currentPrice).sort((a, b) => a - b).slice(0, 3);
-        const supportsBelow = supports.filter(s => s < currentPrice).sort((a, b) => b - a).slice(0, 3);
+          let direction = null;
+          if (bullishTFs >= 2) direction = 'LONG';
+          else if (bearishTFs >= 2) direction = 'SHORT';
 
-        // Format indicator display for each TF
-        const fmtTF = (tf) => {
-          const rsiStr = !isNaN(tf.rsi) ? tf.rsi.toFixed(1) : 'N/A';
-          const macdStr = tf.macd ? (tf.macd.histogram > 0 ? '▲' : '▼') : 'N/A';
-          const stochStr = tf.stoch ? `${tf.stoch.k.toFixed(0)}/${tf.stoch.d.toFixed(0)}` : 'N/A';
-          return `RSI(14): ${rsiStr} | MACD: ${macdStr} | Stoch: ${stochStr}`;
-        };
+          if (!direction) {
+            // No convergence — skip this coin
+            await new Promise(r => setTimeout(r, DELAY_BETWEEN_COINS));
+            continue;
+          }
 
-        // ── Build S/R section ──
-        let srSection = '';
-        for (let i = resistancesAbove.length - 1; i >= 0; i--) {
-          srSection += `├ R${i + 1} : <b>$${formatPrice(resistancesAbove[i])}</b>\n`;
-        }
-        srSection += `├ ── Prix actuel : <b>$${formatPrice(currentPrice)}</b> ──\n`;
-        for (let i = 0; i < supportsBelow.length; i++) {
-          const prefix = i === supportsBelow.length - 1 ? '└' : '├';
-          srSection += `${prefix} S${i + 1} : <b>$${formatPrice(supportsBelow[i])}</b>\n`;
-        }
-        if (!srSection.includes('└')) srSection += `└ (aucun support identifié)\n`;
+          // ── Calculate support/resistance from 1h (200 candles) ──
+          const { supports, resistances } = findSupportResistance(data1h.highs, data1h.lows, 3);
+          const currentPrice = data5m.closes[data5m.closes.length - 1];
 
-        const dirEmoji = direction === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
-        const signalStrength = (bullishTFs === 3 || bearishTFs === 3) ? '⚡⚡⚡ TRÈS FORT' : '⚡⚡ FORT';
+          // ── Calculate trade plan ──
+          const plan = calcTradePlan(currentPrice, supports, resistances, direction);
 
-        const text = `🔥 <b>SIGNAL CRYPTO — CONVERGENCE MULTI-INDICATEURS</b>
+          // ── Calculate Risk/Reward ratio ──
+          const risk = Math.abs(plan.entry - plan.sl);
+          const reward = Math.abs(plan.tp2 - plan.entry);
+          const rr = risk > 0 ? (reward / risk).toFixed(1) : 'N/A';
+
+          // ── Percentage calculations ──
+          const pctTP1 = ((plan.tp1 - plan.entry) / plan.entry * 100);
+          const pctTP2 = ((plan.tp2 - plan.entry) / plan.entry * 100);
+          const pctTP3 = ((plan.tp3 - plan.entry) / plan.entry * 100);
+          const pctSL = ((plan.sl - plan.entry) / plan.entry * 100);
+
+          // ── Build S/R display (up to 3 each, relative to price) ──
+          const resistancesAbove = resistances.filter(r => r > currentPrice).sort((a, b) => a - b).slice(0, 3);
+          const supportsBelow = supports.filter(s => s < currentPrice).sort((a, b) => b - a).slice(0, 3);
+
+          // Format indicator display for each TF
+          const fmtTF = (tf) => {
+            const rsiStr = !isNaN(tf.rsi) ? tf.rsi.toFixed(1) : 'N/A';
+            const macdStr = tf.macd ? (tf.macd.histogram > 0 ? '▲' : '▼') : 'N/A';
+            const stochStr = tf.stoch ? `${tf.stoch.k.toFixed(0)}/${tf.stoch.d.toFixed(0)}` : 'N/A';
+            return `RSI(14): ${rsiStr} | MACD: ${macdStr} | Stoch: ${stochStr}`;
+          };
+
+          // ── Build S/R section ──
+          let srSection = '';
+          for (let i = resistancesAbove.length - 1; i >= 0; i--) {
+            srSection += `├ R${i + 1} : <b>$${formatPrice(resistancesAbove[i])}</b>\n`;
+          }
+          srSection += `├ ── Prix actuel : <b>$${formatPrice(currentPrice)}</b> ──\n`;
+          for (let i = 0; i < supportsBelow.length; i++) {
+            const prefix = i === supportsBelow.length - 1 ? '└' : '├';
+            srSection += `${prefix} S${i + 1} : <b>$${formatPrice(supportsBelow[i])}</b>\n`;
+          }
+          if (!srSection.includes('└')) srSection += `└ (aucun support identifié)\n`;
+
+          const dirEmoji = direction === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
+          const signalStrength = (bullishTFs === 3 || bearishTFs === 3) ? '⚡⚡⚡ TRÈS FORT' : '⚡⚡ FORT';
+
+          const text = `🔥 <b>SIGNAL CRYPTO — CONVERGENCE MULTI-INDICATEURS</b>
 ━━━━━━━━━━━━━━━━━━━━━
 
 ${dirEmoji} — ${signalStrength}
@@ -877,26 +938,33 @@ ${srSection}
 ⏰ ${nowStr} (heure de Montréal)
 ⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
 
-        const result = await sendTelegramMessage(text);
-        if (result.ok) {
-          setCooldown(cooldowns, coinId, 'multiTF');
-          sentAlerts.push({
-            type: 'multiTF',
-            coin: coinId,
-            direction,
-            rr,
-            entry: plan.entry,
-            tp1: plan.tp1,
-            sl: plan.sl,
-          });
-          console.log(`[Telegram] ✅ Sent ${direction} signal for ${name}`);
+          const result = await sendTelegramMessage(text);
+          if (result.ok) {
+            setCooldown(cooldowns, coinId, 'multiTF');
+            sentAlerts.push({
+              type: 'multiTF',
+              coin: coinId,
+              direction,
+              rr,
+              entry: plan.entry,
+              tp1: plan.tp1,
+              sl: plan.sl,
+            });
+            console.log(`[Telegram] ✅ Sent ${direction} signal for ${name}`);
+          }
+        } catch (e) {
+          console.error(`[Telegram] Error analyzing ${coinId}:`, e.message);
         }
-      } catch (e) {
-        console.error(`[Telegram] Error analyzing ${coinId}:`, e.message);
+
+        // Rate limit between coins within a batch
+        await new Promise(r => setTimeout(r, DELAY_BETWEEN_COINS));
       }
 
-      // Rate limit between coins
-      await new Promise(r => setTimeout(r, 1000));
+      // Delay between batches
+      if (batchStart + BATCH_SIZE < coinArray.length) {
+        console.log(`[Telegram] Batch ${batchNum} done. Waiting ${DELAY_BETWEEN_BATCHES / 1000}s before next batch...`);
+        await new Promise(r => setTimeout(r, DELAY_BETWEEN_BATCHES));
+      }
     }
 
     // Save cooldowns

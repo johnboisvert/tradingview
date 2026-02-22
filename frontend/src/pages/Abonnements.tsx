@@ -623,6 +623,15 @@ export default function Abonnements() {
           <p className="text-gray-400 max-w-xl mx-auto">
             Choisissez le plan qui correspond à vos besoins de trading. Tous les plans incluent un accès aux données en temps réel.
           </p>
+
+          {/* Marketing value proposition */}
+          <div className="mt-4 mb-2 inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/20">
+            <span className="text-lg">💡</span>
+            <span className="text-sm font-semibold bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
+              Un seul abonnement remplace 5 outils. Économisez jusqu&apos;à 250$/mois.
+            </span>
+          </div>
+
           {/* Payment badges */}
           <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300">

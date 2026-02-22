@@ -79,10 +79,10 @@ const DEFAULT_EBOOKS: Ebook[] = [
 ];
 
 const DEFAULT_PLAN_PRICES: PlanPrices = {
-  premium: 29.99,
-  advanced: 69.99,
-  pro: 119.99,
-  elite: 199.99,
+  premium: 19.99,
+  advanced: 34.99,
+  pro: 54.99,
+  elite: 79.99,
 };
 
 const DEFAULT_PLAN_ACCESS: Record<string, string[]> = {

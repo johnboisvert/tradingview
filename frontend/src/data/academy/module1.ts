@@ -23,6 +23,13 @@ const m1l1: Lesson = {
       ],
       proTips: ["Utilisez Etherscan.io ou Blockchain.com pour explorer les transactions en temps réel — c'est le meilleur moyen de comprendre concrètement comment fonctionne la blockchain"],
       commonMistakes: ["Confondre blockchain et Bitcoin — Bitcoin est UNE application de la technologie blockchain, pas la blockchain elle-même"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/9ebc03f3-d6a9-453d-a7cc-558166e468dd.png",
+          alt: "Architecture de la Blockchain",
+          caption: "Schéma de la blockchain : blocs liés par des hash cryptographiques formant une chaîne immuable"
+        }
+      ],
     },
     {
       title: "Bitcoin : L'Or Numérique",
@@ -111,6 +118,13 @@ const m1l2: Lesson = {
         "Activez TOUJOURS le 2FA avec une app (Google Authenticator), jamais par SMS",
       ],
       commonMistakes: ["Laisser 100% de son capital sur un seul exchange — l'histoire de FTX peut se répéter"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/af8dfedc-5db4-4d4a-9663-9383687a4610.png",
+          alt: "CEX vs DEX comparaison",
+          caption: "Comparaison entre exchanges centralisés (CEX) et décentralisés (DEX) : custody, KYC, liquidité"
+        }
+      ],
     },
     {
       title: "Ordres Market et Limit",
@@ -128,6 +142,13 @@ const m1l2: Lesson = {
       ],
       proTips: ["Utilisez TOUJOURS des ordres Limit pour vos entrées — vous économiserez des centaines de dollars en frais sur le long terme"],
       commonMistakes: ["Utiliser des ordres Market par impatience — le slippage et les frais supplémentaires s'accumulent rapidement"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/26ad5f36-a1ff-4c3f-be68-fc564a1e61fa.png",
+          alt: "Types d'ordres de trading",
+          caption: "Les différents types d'ordres : Market, Limit Buy, Limit Sell, Stop Loss et Take Profit sur un graphique"
+        }
+      ],
     },
     {
       title: "Stop Loss, Take Profit et Ordres Avancés",
@@ -264,6 +285,13 @@ const m1l4: Lesson = {
       ],
       proTips: ["Utilisez un Ledger ou Trezor pour tout montant supérieur à 1 000$ — c'est un investissement de 70-150$ qui peut sauver des milliers"],
       commonMistakes: ["Utiliser un seul wallet pour tout — séparez vos wallets : un pour le trading actif, un pour la DeFi, un pour le stockage long terme"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/716badda-f330-4d29-8cee-3a298a7ab2cb.png",
+          alt: "Types de wallets crypto",
+          caption: "Hot Wallets vs Cold Wallets vs Paper Wallets : niveaux de sécurité et cas d'usage"
+        }
+      ],
     },
     {
       title: "Seed Phrase : Votre Clé Maîtresse",
@@ -332,6 +360,13 @@ const m1l5: Lesson = {
       ],
       proTips: ["Investissez dans les L1 avec le plus grand écosystème de développeurs — c'est le meilleur indicateur de succès à long terme"],
       commonMistakes: ["Investir dans un L1 uniquement à cause du nombre de TPS annoncé — la décentralisation et la sécurité comptent davantage"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/740c1055-16b3-4399-8ed1-74af40665466.png",
+          alt: "Layer 1 vs Layer 2 architecture",
+          caption: "Architecture Layer 1 (Bitcoin, Ethereum, Solana) et Layer 2 (Lightning, Polygon, Arbitrum, Optimism)"
+        }
+      ],
     },
     {
       title: "Layer 2 : Solutions de Scalabilité",
@@ -366,6 +401,13 @@ const m1l5: Lesson = {
       ],
       proTips: ["Gardez toujours une réserve en stablecoins (10-20% du portefeuille) pour acheter les dips et saisir les opportunités"],
       commonMistakes: ["Mettre une part significative du portefeuille dans les meme coins — la majorité perdent 95%+ de leur valeur"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/cbf52264-a423-4363-a0c0-b63c0dfbd4c6.png",
+          alt: "Catégories de cryptomonnaies",
+          caption: "Les principales catégories : Bitcoin, Smart Contracts, DeFi, Stablecoins, Meme Coins et Layer 2"
+        }
+      ],
       exercise: "Classez 15 cryptos du top 50 par catégorie (L1, L2, DeFi, Stablecoin, Meme, Utility). Comparez leur market cap, FDV et utilité réelle.",
     },
   ],

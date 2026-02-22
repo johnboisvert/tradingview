@@ -24,6 +24,13 @@ const m9l1: Lesson = {
       proTips: ["Avant chaque trade, posez-vous la question : 'Si je perds, est-ce que ça change ma journée ?' Si oui, la position est trop grosse"],
       commonMistakes: ["Risquer 5-10% par trade 'parce que c'est sûr' — aucun trade n'est sûr, et 5 pertes à 10% = -41% du capital"],
       example: "Capital 20 000$, risque 1% = 200$. ETH à 3 200$, SL à 3 100$ (distance = 100$). Taille = 200$ / 100$ = 2 ETH (6 400$).",
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/810c3303-6b75-44db-b54f-2cf48568eaef.png",
+          alt: "Position Sizing et Règle du 1-2%",
+          caption: "Position sizing : ne risquez jamais plus de 1-2% de votre capital par trade pour garantir la survie à long terme"
+        }
+      ],
     },
     {
       title: "Position Sizing Avancé",
@@ -226,6 +233,13 @@ const m9l4: Lesson = {
       ],
       proTips: ["Surveillez votre max drawdown en temps réel — si vous approchez de votre limite, réduisez immédiatement la taille de vos positions"],
       commonMistakes: ["Ignorer le drawdown et continuer à trader normalement — un drawdown non contrôlé peut devenir catastrophique"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/f0265400-965c-410a-a7e7-9a6d9b1d8f84.png",
+          alt: "Drawdown et Recovery",
+          caption: "Mathématiques du drawdown : -10%→+11%, -20%→+25%, -50%→+100% pour revenir à l'équilibre"
+        }
+      ],
     },
     {
       title: "Stratégies de Recovery",

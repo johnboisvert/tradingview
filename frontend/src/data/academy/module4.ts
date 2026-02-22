@@ -23,6 +23,13 @@ const m4l1: Lesson = {
       ],
       proTips: ["N'arrêtez JAMAIS le DCA en bear market — c'est paradoxalement le meilleur moment pour accumuler car les prix sont au plus bas"],
       commonMistakes: ["Arrêter le DCA par peur en bear market — c'est exactement le moment où vous devriez investir le plus"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/a7c8867a-4960-4d70-a4d5-18058bd775ea.png",
+          alt: "DCA vs Lump Sum",
+          caption: "Comparaison DCA vs Lump Sum : le DCA lisse le prix d'achat moyen sur 12 mois"
+        }
+      ],
     },
     {
       title: "Lump Sum vs DCA",
@@ -91,6 +98,13 @@ const m4l2: Lesson = {
       ],
       proTips: ["Adaptez votre allocation au cycle du marché : plus de BTC en bear market (sécurité), plus d'altcoins en bull market (rendement)"],
       commonMistakes: ["Mettre 100% dans un seul altcoin — la diversification est essentielle pour survivre aux cycles crypto"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/a4e12dbb-4adc-46ad-a7d3-6c13141921fa.png",
+          alt: "Allocation de portefeuille crypto",
+          caption: "Répartition recommandée : BTC 40%, ETH 25%, Large Caps 15%, Mid Caps 10%, Stablecoins 10%"
+        }
+      ],
     },
     {
       title: "Rééquilibrage du Portefeuille",
@@ -158,6 +172,13 @@ const m4l3: Lesson = {
       ],
       proTips: ["Attendez TOUJOURS une confirmation (chandelier de retournement + volume) avant d'entrer — la patience est la qualité la plus rentable"],
       commonMistakes: ["Acheter sur l'impulsion (FOMO) au lieu d'attendre le pullback — vous payez un prix plus élevé avec un risque plus grand"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/3f7db08d-0fec-40a7-be30-db1c3a9d319c.png",
+          alt: "Points d'entrée et de sortie",
+          caption: "Identification des points d'entrée optimaux, Stop Loss et Take Profit multiples sur un graphique"
+        }
+      ],
     },
     {
       title: "Stratégies de Sortie",
@@ -259,6 +280,13 @@ const m4l4: Lesson = {
       ],
       proTips: ["Documentez votre plan de cycle complet AVANT le bull market — les émotions vous feront dévier de votre plan si vous ne l'avez pas écrit noir sur blanc"],
       commonMistakes: ["Ne pas avoir de plan de sortie défini — l'euphorie du bull market vous fera garder vos positions trop longtemps et rendre la majorité de vos gains"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/1e5733bc-855f-46b8-9432-a99a53ba0e71.png",
+          alt: "Cycle Accumulation-Distribution",
+          caption: "Les 4 phases du cycle de marché : Accumulation → Markup → Distribution → Markdown"
+        }
+      ],
       exercise: "Créez votre plan de cycle complet : allocation par phase, critères de transition entre phases, objectifs de profits à chaque étape, et règles de discipline.",
     },
   ],

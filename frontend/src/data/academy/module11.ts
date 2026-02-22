@@ -22,7 +22,14 @@ const m11l1: Lesson = {
         "Ethereum domine mais les L2 et alt-L1 gagnent du terrain"
       ],
       proTips: ["Commencez toujours par les protocoles les plus établis (TVL élevée, audités) avant d'explorer les nouveaux"],
-      commonMistakes: ["Interagir avec des protocoles non audités attirés par des APY astronomiques"]
+      commonMistakes: ["Interagir avec des protocoles non audités attirés par des APY astronomiques"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/1e5733bc-855f-46b8-9432-a99a53ba0e71.png",
+          alt: "DeFi Finance Décentralisée",
+          caption: "La DeFi : services financiers décentralisés via smart contracts — lending, borrowing, AMM et yield farming"
+        }
+      ]
     },
     {
       title: "Les AMM (Automated Market Makers)",

@@ -23,6 +23,13 @@ const m6l1: Lesson = {
       ],
       proTips: ["Négociez vos frais avec l'exchange en montrant votre volume de trading — chaque 0.01% économisé compte énormément en scalping"],
       commonMistakes: ["Scalper des altcoins à faible liquidité — le slippage et les spreads larges mangent tous les profits"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/f0265400-965c-410a-a7e7-9a6d9b1d8f84.png",
+          alt: "Scalping Setup",
+          caption: "Configuration optimale du scalper : graphiques 1m-5m avec VWAP, order book et time & sales"
+        }
+      ],
     },
     {
       title: "Mindset du Scalpeur",
@@ -107,6 +114,13 @@ const m6l2: Lesson = {
       ],
       proTips: ["L'order flow donne un avantage significatif mais nécessite des mois de pratique — observez avant de trader"],
       commonMistakes: ["Se fier uniquement aux murs visibles dans le carnet d'ordres — les icebergs sont invisibles et souvent plus importants"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/8c2c8456-0127-475f-a792-f56e8d372e66.png",
+          alt: "Order Flow et Tape Reading",
+          caption: "Analyse de l'order flow : absorptions, iceberg orders et pression directionnelle institutionnelle"
+        }
+      ],
     },
     {
       title: "Scalping de Breakout Intraday",
@@ -191,6 +205,13 @@ const m6l3: Lesson = {
       ],
       proTips: ["Ne passez aux futures que quand vous êtes profitable en spot pendant 3 mois — c'est la seule transition responsable"],
       commonMistakes: ["Sauter directement aux futures avec levier élevé sans expérience — recette garantie pour la catastrophe financière"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/c82d17f6-9ca1-4adb-96a0-067a3fdaf689.png",
+          alt: "Spot vs Futures Scalping",
+          caption: "Comparaison Spot vs Futures : avantages, risques et progression recommandée"
+        }
+      ],
     },
   ],
   quiz: [
@@ -258,6 +279,13 @@ const m6l4: Lesson = {
       ],
       proTips: ["Si votre profit factor est < 1.2 après 100 trades, votre stratégie a un problème fondamental — arrêtez et analysez avant de continuer"],
       commonMistakes: ["Ne pas suivre ses métriques de performance — impossible de s'améliorer sans données objectives"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/810c3303-6b75-44db-b54f-2cf48568eaef.png",
+          alt: "Métriques de performance scalping",
+          caption: "Tableau de bord de performance : win rate, profit factor, R:R moyen et drawdown maximum"
+        }
+      ],
       exercise: "Faites 50 trades de scalping en paper trading sur 2 semaines. Documentez chaque trade. Calculez votre win rate, R:R moyen et profit factor. Êtes-vous profitable ?",
     },
   ],

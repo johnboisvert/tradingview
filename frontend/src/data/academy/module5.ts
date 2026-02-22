@@ -40,6 +40,13 @@ const m5l1: Lesson = {
       ],
       proTips: ["La préparation représente 80% du succès — un trader bien préparé a déjà gagné avant même d'ouvrir une position"],
       commonMistakes: ["Trader sans préparation en improvisant — c'est du gambling, pas du trading"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/f0265400-965c-410a-a7e7-9a6d9b1d8f84.png",
+          alt: "Setup de Day Trading",
+          caption: "Configuration multi-écrans optimale pour le day trading : graphiques, order book et news"
+        }
+      ],
     },
     {
       title: "Sessions de Trading Crypto",
@@ -90,6 +97,13 @@ const m5l2: Lesson = {
       ],
       proTips: ["Les breakouts les plus fiables se produisent après une compression de 4h+ avec un volume décroissant suivi d'une explosion de volume"],
       commonMistakes: ["Trader les faux breakouts — attendez toujours la confirmation du volume et idéalement le retest"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/8c2c8456-0127-475f-a792-f56e8d372e66.png",
+          alt: "Stratégie Breakout avec volume",
+          caption: "Breakout de consolidation : cassure avec spike de volume confirmant le mouvement directionnel"
+        }
+      ],
     },
     {
       title: "Stratégie Pullback",
@@ -107,6 +121,13 @@ const m5l2: Lesson = {
       ],
       proTips: ["Le pullback vers l'EMA 21 en tendance forte est le setup le plus fiable et reproductible en day trading — maîtrisez-le en priorité"],
       commonMistakes: ["Entrer trop tôt dans le pullback sans attendre le chandelier de retournement — le pullback peut continuer et devenir un retournement"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/810c3303-6b75-44db-b54f-2cf48568eaef.png",
+          alt: "Stratégie Pullback en tendance",
+          caption: "Pullback vers l'EMA/trendline en tendance haussière : point d'entrée optimal avec SL et target"
+        }
+      ],
     },
     {
       title: "Stratégie Range Trading",
@@ -124,6 +145,13 @@ const m5l2: Lesson = {
       ],
       proTips: ["Combinez le range trading avec le RSI : achetez quand RSI < 30 au support, vendez quand RSI > 70 à la résistance — cela filtre les faux signaux"],
       commonMistakes: ["Continuer à trader le range après sa cassure — adaptez-vous immédiatement aux nouvelles conditions du marché"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/c82d17f6-9ca1-4adb-96a0-067a3fdaf689.png",
+          alt: "Range Trading",
+          caption: "Range Trading : acheter au support, vendre à la résistance dans un marché latéral"
+        }
+      ],
     },
   ],
   quiz: [

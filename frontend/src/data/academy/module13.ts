@@ -22,7 +22,14 @@ const m13l1: Lesson = {
         "Backtesting obligatoire + paper trading avant le réel"
       ],
       proTips: ["Commencez par un simple DCA bot sur Pionex (gratuit) avant d'investir dans des solutions complexes"],
-      commonMistakes: ["Lancer un bot en production sans backtesting ni paper trading — recette pour perdre de l'argent"]
+      commonMistakes: ["Lancer un bot en production sans backtesting ni paper trading — recette pour perdre de l'argent"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/c82d17f6-9ca1-4adb-96a0-067a3fdaf689.png",
+          alt: "Trading Algorithmique",
+          caption: "Trading algorithmique : bots Grid, DCA, Signal et Arbitrage — exécution 24/7 sans émotions"
+        }
+      ]
     },
     {
       title: "Grid Trading en Détail",

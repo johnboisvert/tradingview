@@ -47,6 +47,13 @@ const m3l1: Lesson = {
       ],
       proTips: ["En tendance haussière confirmée, n'utilisez que les signaux d'achat du Stochastique en zone de survente — ignorez les signaux de vente en surachat"],
       commonMistakes: ["Utiliser le Stochastique seul en tendance forte — il restera en zone extrême et générera des faux signaux de retournement"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/006a12eb-ba19-4b48-8f77-3f99c43ce024.png",
+          alt: "Oscillateur Stochastique",
+          caption: "Stochastique : croisements %K/%D en zones de surachat (>80) et survente (<20) avec signaux d'achat/vente"
+        }
+      ],
     },
     {
       title: "Momentum et Rate of Change",
@@ -263,6 +270,13 @@ const m3l4: Lesson = {
       ],
       proTips: ["Le Golden Cross sur le weekly est un signal extrêmement rare et puissant — il ne se produit que quelques fois par décennie sur BTC"],
       commonMistakes: ["Trader les croisements en range — les faux signaux sont très fréquents quand le marché est latéral"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/636bf6a2-975c-44a1-ad1d-2be293095afb.png",
+          alt: "Golden Cross et Death Cross",
+          caption: "Golden Cross (EMA 50 croise EMA 200 par le haut) et Death Cross : signaux majeurs de changement de tendance"
+        }
+      ],
     },
     {
       title: "EMA comme Support/Résistance Dynamique",

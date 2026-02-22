@@ -47,6 +47,13 @@ const m2l1: Lesson = {
       ],
       proTips: ["Tracez sur les corps des chandeliers, pas les mèches — c'est plus cohérent et fiable"],
       commonMistakes: ["Forcer une ligne de tendance en ignorant des points qui ne correspondent pas — si ça ne saute pas aux yeux, ce n'est pas valide"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/1199d16a-eb69-4e1b-bc8f-c01c6209ab69.png",
+          alt: "Lignes de tendance et canaux",
+          caption: "Lignes de tendance haussière (higher lows) et canaux de prix : le prix oscille entre support et résistance dynamiques"
+        }
+      ],
     },
     {
       title: "Zones de Supply et Demand",
@@ -327,6 +334,13 @@ const m2l5: Lesson = {
       ],
       proTips: ["Identifiez dans quelle phase du cycle vous êtes AVANT de prendre des décisions de trading — cela change complètement votre approche"],
       commonMistakes: ["Anticiper les retournements au lieu de suivre la tendance — la majorité des traders perdent en essayant de timer les sommets et les creux"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/1e5733bc-855f-46b8-9432-a99a53ba0e71.png",
+          alt: "Théorie de Dow et phases du marché",
+          caption: "Les 3 phases de la tendance selon Dow : Accumulation, Participation publique, Distribution"
+        }
+      ],
     },
     {
       title: "Structure du Marché : HH, HL, LH, LL",

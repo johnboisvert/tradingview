@@ -23,6 +23,13 @@ const m7l1: Lesson = {
       ],
       proTips: ["Le dimanche soir, analysez le weekly et identifiez 3-5 setups potentiels pour la semaine — c'est votre routine la plus importante"],
       commonMistakes: ["Trader trop souvent par impatience — la patience est la qualité la plus rentable en swing trading"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/810c3303-6b75-44db-b54f-2cf48568eaef.png",
+          alt: "Swing Trading Overview",
+          caption: "Le swing trading : capturer les oscillations du marché sur le daily et 4h avec patience et discipline"
+        }
+      ],
     },
     {
       title: "Avantages vs Autres Styles",
@@ -73,6 +80,13 @@ const m7l2: Lesson = {
       ],
       proTips: ["Utilisez le weekly pour la direction, le daily pour les swings, le 4h pour le timing — cette hiérarchie est non négociable"],
       commonMistakes: ["Trader contre la séquence de swings — si la structure montre LH/LL, ne cherchez pas à acheter"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/3f7db08d-0fec-40a7-be30-db1c3a9d319c.png",
+          alt: "Structure de Swing HH/HL",
+          caption: "Structure de swing : Higher Highs (HH) et Higher Lows (HL) en tendance haussière avec points d'entrée"
+        }
+      ],
     },
     {
       title: "Zones d'Entrée Optimales",
@@ -140,6 +154,13 @@ const m7l3: Lesson = {
       ],
       proTips: ["Le pullback avec volume décroissant vers l'EMA 21 daily est le setup le plus fiable en swing trading — maîtrisez-le parfaitement"],
       commonMistakes: ["Entrer dans le pullback trop tôt sans attendre la confirmation — le pullback peut continuer et devenir un retournement"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/8c2c8456-0127-475f-a792-f56e8d372e66.png",
+          alt: "Pullback en Swing Trading",
+          caption: "Stratégie pullback : entrée sur retracement vers EMA 21 avec confluence Fibonacci et volume décroissant"
+        }
+      ],
     },
     {
       title: "Stratégie Breakout de Structure",

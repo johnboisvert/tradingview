@@ -90,7 +90,14 @@ const m15l2: Lesson = {
         "Règles non négociables écrites et affichées"
       ],
       proTips: ["Imprimez votre plan et collez-le à côté de votre écran de trading"],
-      commonMistakes: ["Avoir un plan 'dans la tête' — s'il n'est pas écrit, il n'existe pas"]
+      commonMistakes: ["Avoir un plan 'dans la tête' — s'il n'est pas écrit, il n'existe pas"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/006a12eb-ba19-4b48-8f77-3f99c43ce024.png",
+          alt: "Plan de Trading",
+          caption: "Plan de trading complet : objectifs SMART, setups définis, gestion du risque et routine structurée"
+        }
+      ]
     },
     {
       title: "Stratégies et Setups Définis",

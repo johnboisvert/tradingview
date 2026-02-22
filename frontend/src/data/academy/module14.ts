@@ -22,7 +22,14 @@ const m14l1: Lesson = {
         "Toujours acheter sur le site officiel du fabricant"
       ],
       proTips: ["Utilisez un passphrase (25ème mot) pour créer un wallet caché — même si quelqu'un trouve votre seed, il n'accède pas au wallet principal"],
-      commonMistakes: ["Stocker la seed phrase dans un fichier sur l'ordinateur ou dans le cloud — c'est la méthode #1 de vol de cryptos"]
+      commonMistakes: ["Stocker la seed phrase dans un fichier sur l'ordinateur ou dans le cloud — c'est la méthode #1 de vol de cryptos"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/f0265400-965c-410a-a7e7-9a6d9b1d8f84.png",
+          alt: "Sécurité Crypto",
+          caption: "Sécurité crypto : hardware wallets, seed phrase sur métal, 2FA par app — protégez vos actifs numériques"
+        }
+      ]
     },
     {
       title: "Sécurité des Comptes et 2FA",

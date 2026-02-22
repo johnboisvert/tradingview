@@ -23,7 +23,14 @@ const m12l1: Lesson = {
       ],
       proTips: ["Utilisez Glassnode ou CryptoQuant pour accéder aux données on-chain en temps réel"],
       commonMistakes: ["Se fier à un seul indicateur on-chain — utilisez-en au moins 3 en confluence"],
-      example: "En novembre 2021 (ATH BTC ~69k$) : MVRV = 3.1, NUPL = 0.72, Puell = 2.8. Tous signalaient une zone de distribution. En novembre 2022 (bottom ~15.5k$) : MVRV = 0.8, NUPL = -0.15. Zone d'accumulation confirmée."
+      example: "En novembre 2021 (ATH BTC ~69k$) : MVRV = 3.1, NUPL = 0.72, Puell = 2.8. Tous signalaient une zone de distribution. En novembre 2022 (bottom ~15.5k$) : MVRV = 0.8, NUPL = -0.15. Zone d'accumulation confirmée.",
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/3f7db08d-0fec-40a7-be30-db1c3a9d319c.png",
+          alt: "Analyse On-Chain",
+          caption: "Indicateurs on-chain : MVRV, NUPL, Exchange Flows — des données blockchain pour anticiper les mouvements du marché"
+        }
+      ]
     },
     {
       title: "Exchange Flows et Whale Tracking",

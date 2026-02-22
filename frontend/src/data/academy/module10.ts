@@ -23,6 +23,13 @@ const m10l1: Lesson = {
       ],
       proTips: ["Identifiez QUELLE émotion vous ressentez avant chaque décision de trading — la simple reconnaissance de l'émotion réduit son pouvoir de 50%"],
       commonMistakes: ["Penser que les émotions ne vous affectent pas — TOUS les traders sont affectés, la différence est dans la gestion"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/810c3303-6b75-44db-b54f-2cf48568eaef.png",
+          alt: "Les émotions du trader",
+          caption: "Les 4 émotions destructrices : Peur, Avidité, FOMO et Espoir — les reconnaître est la première étape pour les maîtriser"
+        }
+      ],
     },
     {
       title: "Le Cycle Émotionnel du Marché",

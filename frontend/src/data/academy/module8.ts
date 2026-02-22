@@ -23,6 +23,13 @@ const m8l1: Lesson = {
       ],
       proTips: ["Commencez avec un levier de 2x maximum pendant vos 50 premiers trades futures — apprenez le mécanisme avant d'augmenter"],
       commonMistakes: ["Utiliser un levier de 20x+ dès le début — c'est la façon la plus rapide de perdre tout votre capital"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/3f7db08d-0fec-40a7-be30-db1c3a9d319c.png",
+          alt: "Futures Perpétuels",
+          caption: "Contrats futures perpétuels : mécanisme de levier, marge isolée vs croisée et funding rate"
+        }
+      ],
     },
     {
       title: "Marge Isolée vs Marge Croisée",
@@ -157,6 +164,13 @@ const m8l3: Lesson = {
       ],
       proTips: ["Calculez votre prix de liquidation AVANT chaque trade et assurez-vous que votre SL est bien au-dessus (long) ou en dessous (short)"],
       commonMistakes: ["Ne pas vérifier le prix de liquidation — vous pourriez être liquidé par un simple mouvement de volatilité normale"],
+      images: [
+        {
+          src: "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-22/c82d17f6-9ca1-4adb-96a0-067a3fdaf689.png",
+          alt: "Mécanisme de liquidation",
+          caption: "Liquidation par levier : plus le levier est élevé, plus la marge d'erreur est mince (5x=-20%, 10x=-10%, 20x=-5%)"
+        }
+      ],
     },
     {
       title: "Cascades de Liquidations",

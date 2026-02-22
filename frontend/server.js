@@ -256,7 +256,7 @@ app.post('/api/ai-chat', async (req, res) => {
 
 // ─── Crypto Prediction API proxy ───
 // Proxies /api/crypto-predict/* to https://crypto-prediction-api-5763.onrender.com/*
-app.all('/api/crypto-predict/*', async (req, res) => {
+app.all('/api/crypto-predict/{*path}', async (req, res) => {
   const targetPath = req.url.replace('/api/crypto-predict', '');
   const targetUrl = `https://crypto-prediction-api-5763.onrender.com${targetPath}`;
 
@@ -282,7 +282,7 @@ app.all('/api/crypto-predict/*', async (req, res) => {
 
 // ─── CoinGecko API proxy ───
 // Proxies /api/coingecko/* to https://api.coingecko.com/api/v3/*
-app.get('/api/coingecko/*', async (req, res) => {
+app.get('/api/coingecko/{*path}', async (req, res) => {
   const targetPath = req.url.replace('/api/coingecko', '');
   const targetUrl = `https://api.coingecko.com/api/v3${targetPath}`;
 
@@ -727,7 +727,7 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // SPA fallback — also with no-cache headers
-app.get('*', (req, res) => {
+app.get('{*path}', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');

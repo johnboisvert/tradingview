@@ -409,6 +409,63 @@ function apiProxyPlugin(): Plugin {
         next();
       });
 
+      // ── FastAPI Backend proxy — forwards /api/v1/* to the Python backend ──
+      server.middlewares.use('/api/v1', async (req: any, res: any) => {
+        const targetUrl = `http://127.0.0.1:8000/api/v1${req.url || ''}`;
+
+        // Handle CORS preflight
+        if (req.method === 'OPTIONS') {
+          res.statusCode = 204;
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Admin-Auth, App-Host');
+          res.end();
+          return;
+        }
+
+        try {
+          // Read request body for POST/PUT methods
+          let bodyData: string | undefined;
+          if (req.method === 'POST' || req.method === 'PUT') {
+            bodyData = await readBody(req);
+          }
+
+          const headers: Record<string, string> = {
+            'Content-Type': req.headers['content-type'] || 'application/json',
+            'Accept': 'application/json',
+          };
+          // Forward relevant headers
+          if (req.headers['authorization']) headers['Authorization'] = req.headers['authorization'];
+          if (req.headers['x-admin-auth']) headers['X-Admin-Auth'] = req.headers['x-admin-auth'];
+          if (req.headers['origin']) headers['App-Host'] = req.headers['origin'];
+
+          const fetchOptions: RequestInit = {
+            method: req.method || 'GET',
+            headers,
+            signal: AbortSignal.timeout(30000),
+          };
+          if (bodyData && (req.method === 'POST' || req.method === 'PUT')) {
+            fetchOptions.body = bodyData;
+          }
+
+          const upstreamRes = await fetch(targetUrl, fetchOptions);
+          const data = await upstreamRes.text();
+
+          res.statusCode = upstreamRes.status;
+          res.setHeader('Content-Type', upstreamRes.headers.get('content-type') || 'application/json');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.end(data);
+        } catch (err: any) {
+          console.error('FastAPI backend proxy error:', err);
+          res.statusCode = 502;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            error: 'Backend non disponible',
+            message: err?.message || 'Impossible de contacter le serveur backend. Vérifiez qu\'il est démarré sur le port 8000.',
+          }));
+        }
+      });
+
       // CryptoPanic News API proxy — proxies /api/news to CryptoPanic
       server.middlewares.use('/api/news', async (req, res) => {
         const targetUrl = `https://cryptopanic.com/api/free/v1/posts/?auth_token=free&public=true&kind=news`;

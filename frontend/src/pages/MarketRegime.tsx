@@ -39,6 +39,26 @@ export default function MarketRegime() {
     try {
       const { fetchTop200 } = await import("@/lib/cryptoApi");
       const allData = await fetchTop200(false);
+
+      // Fetch RIVER separately (outside top 200) and merge if not already present
+      const EXTRA_IDS = ["river"];
+      const existingIds = new Set((allData as any[]).map((c: any) => c.id));
+      const missingIds = EXTRA_IDS.filter((id) => !existingIds.has(id));
+      if (missingIds.length > 0) {
+        try {
+          const extraRes = await fetch(
+            `/api/coingecko/coins/markets?vs_currency=usd&ids=${missingIds.join(",")}&order=market_cap_desc&per_page=${missingIds.length}&page=1&sparkline=false&price_change_percentage=24h,7d,30d`,
+            { signal: AbortSignal.timeout(10000) }
+          );
+          if (extraRes.ok) {
+            const extraData = await extraRes.json();
+            if (Array.isArray(extraData)) {
+              (allData as any[]).push(...extraData);
+            }
+          }
+        } catch { /* ignore — RIVER data not critical */ }
+      }
+
       if (allData.length > 0) {
         const data = allData as any[];
           setCoins(data.map((c: any) => {
@@ -136,7 +156,7 @@ export default function MarketRegime() {
         </div>
 
         <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6">
-          <h2 className="text-lg font-bold mb-4">📊 Détails — Top 50</h2>
+          <h2 className="text-lg font-bold mb-4">📊 Détails — Top 200 + Favoris</h2>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px]">
               <thead>

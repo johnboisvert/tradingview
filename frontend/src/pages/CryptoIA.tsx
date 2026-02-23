@@ -445,7 +445,15 @@ export default function CryptoIA() {
         setSelectedCrypto(crypto);
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur lors de la prédiction");
+      const rawMsg = e instanceof Error ? e.message : "Erreur lors de la prédiction";
+      // Detect unsupported crypto (Kraken data collection failure)
+      if (rawMsg.includes("Collecte") || rawMsg.includes("code 1") || rawMsg.includes("collecte")) {
+        setError(
+          `UNSUPPORTED_CRYPTO::Cette cryptomonnaie (${selectedCrypto?.name || selectedId}) n'est pas encore supportée par le modèle de prédiction IA. Les données historiques de trading nécessaires ne sont pas disponibles sur l'exchange utilisé (Kraken).`
+        );
+      } else {
+        setError(rawMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -637,16 +645,57 @@ export default function CryptoIA() {
 
         {/* Error */}
         {error && !loading && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 mb-6 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-bold text-red-400 mb-1">Erreur lors de la prédiction</h3>
-              <p className="text-sm text-gray-400">{error}</p>
-              <p className="text-xs text-gray-500 mt-2">
-                💡 Conseil : L'API peut prendre 30-60s à démarrer si elle était en veille. Réessayez dans quelques instants.
-              </p>
+          error.startsWith("UNSUPPORTED_CRYPTO::") ? (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 mb-6 flex items-start gap-3">
+              <Info className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-amber-400 mb-1">Crypto non supportée par le modèle IA</h3>
+                <p className="text-sm text-gray-400">{error.replace("UNSUPPORTED_CRYPTO::", "")}</p>
+                <p className="text-xs text-gray-500 mt-3">
+                  💡 Essayez plutôt une de ces cryptos populaires :
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {[
+                    { name: "Bitcoin", id: "bitcoin" },
+                    { name: "Ethereum", id: "ethereum" },
+                    { name: "Solana", id: "solana" },
+                    { name: "BNB", id: "binancecoin" },
+                    { name: "XRP", id: "ripple" },
+                    { name: "Cardano", id: "cardano" },
+                    { name: "Litecoin", id: "litecoin" },
+                    { name: "Dogecoin", id: "dogecoin" },
+                  ].map((coin) => {
+                    const found = cryptos.find((c) => c.id === coin.id);
+                    return (
+                      <button
+                        key={coin.id}
+                        onClick={() => {
+                          if (found) {
+                            handleSelectCrypto(found);
+                            setError("");
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all cursor-pointer"
+                      >
+                        {coin.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 mb-6 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-red-400 mb-1">Erreur lors de la prédiction</h3>
+                <p className="text-sm text-gray-400">{error}</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 Conseil : L'API peut prendre 30-60s à démarrer si elle était en veille. Réessayez dans quelques instants.
+                </p>
+              </div>
+            </div>
+          )
         )}
 
         {/* Result */}

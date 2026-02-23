@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "@/components/AdminLayout";
 import * as storeLib from "@/lib/store";
+import { getUsers, type User } from "@/lib/api";
 import {
-  Shield, Users, BarChart3, CreditCard, MessageSquare, Tag, TrendingUp,
+  Shield, Users, BarChart3, CreditCard, MessageSquare, Tag,
   Activity, Eye, DollarSign, Zap, ArrowUpRight, ArrowDownRight, BookOpen,
   Download, Mail, FileText
 } from "lucide-react";
@@ -32,11 +33,88 @@ function StatCard({ icon: Icon, label, value, change, color, trend }: {
   );
 }
 
+interface DashboardData {
+  totalUsers: number;
+  activeSubscriptions: number;
+  totalRevenue: number;
+  conversionRate: number;
+  unreadMessages: number;
+  activeEbooks: number;
+  totalDownloads: number;
+  activePromos: number;
+  planDistribution: { plan: string; count: number; color: string }[];
+  messages: ReturnType<typeof storeLib.getMessages>;
+  ebooks: ReturnType<typeof storeLib.getEbooks>;
+  promos: ReturnType<typeof storeLib.getPromos>;
+  users: User[];
+}
+
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<ReturnType<typeof storeLib.getDashboardStats> | null>(null);
+  const [stats, setStats] = useState<DashboardData | null>(null);
 
   useEffect(() => {
-    setStats(storeLib.getDashboardStats());
+    async function loadDashboard() {
+      // Fetch real users from server API
+      let serverUsers: User[] = [];
+      try {
+        const result = await getUsers();
+        serverUsers = result.users || [];
+      } catch (err) {
+        console.error("[AdminDashboard] Failed to fetch server users:", err);
+        serverUsers = [];
+      }
+
+      // Get localStorage-based data (messages, ebooks, promos)
+      const messages = storeLib.getMessages();
+      const ebooks = storeLib.getEbooks();
+      const promos = storeLib.getPromos();
+      const prices = storeLib.getPlanPrices();
+
+      // Compute stats from server users
+      const totalUsers = serverUsers.length;
+      const paidUsers = serverUsers.filter((u) => u.plan !== "free");
+      const activeSubscriptions = paidUsers.length;
+
+      const planPriceMap: Record<string, number> = {
+        premium: prices.premium,
+        advanced: prices.advanced,
+        pro: prices.pro,
+        elite: prices.elite,
+      };
+      const totalRevenue = paidUsers.reduce((sum, u) => sum + (planPriceMap[u.plan] || 0), 0);
+      const conversionRate = totalUsers > 0 ? Math.round((activeSubscriptions / totalUsers) * 1000) / 10 : 0;
+
+      const unreadMessages = messages.filter((m) => !m.read).length;
+      const activeEbooks = ebooks.filter((e) => e.active).length;
+      const totalDownloads = ebooks.reduce((sum, e) => sum + e.downloads, 0);
+      const activePromos = promos.filter((p) => p.active).length;
+
+      const planDistribution = [
+        { plan: "Free", count: serverUsers.filter((u) => u.plan === "free").length, color: "#6B7280" },
+        { plan: "Premium", count: serverUsers.filter((u) => u.plan === "premium").length, color: "#3B82F6" },
+        { plan: "Advanced", count: serverUsers.filter((u) => u.plan === "advanced").length, color: "#8B5CF6" },
+        { plan: "Pro", count: serverUsers.filter((u) => u.plan === "pro").length, color: "#F59E0B" },
+        { plan: "Elite", count: serverUsers.filter((u) => u.plan === "elite").length, color: "#10B981" },
+      ];
+
+      setStats({
+        totalUsers,
+        activeSubscriptions,
+        totalRevenue,
+        conversionRate,
+        unreadMessages,
+        activeEbooks,
+        totalDownloads,
+        activePromos,
+        planDistribution,
+        messages,
+        ebooks,
+        promos,
+        users: serverUsers,
+      });
+    }
+
+    loadDashboard();
   }, []);
 
   if (!stats) {
@@ -75,8 +153,8 @@ export default function AdminDashboard() {
     });
   });
 
-  // Add recent users
-  stats.users
+  // Add recent users (from server data)
+  [...stats.users]
     .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
     .slice(0, 3)
     .forEach((u) => {

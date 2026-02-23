@@ -2,6 +2,7 @@ import logging
 import os
 import time
 
+import models  # noqa: F401 — ensure ALL models are registered with Base.metadata before create_tables()
 from core.database import db_manager
 from sqlalchemy import text
 

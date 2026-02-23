@@ -235,7 +235,7 @@ export const savePlanPrices = async (
   try {
     const res = await fetch("/api/v1/admin/pricing", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Auth": "true" },
       body: JSON.stringify({ monthly: prices }),
     });
     if (res.ok) {
@@ -263,7 +263,7 @@ export const saveAnnualPlanPrices = async (
   try {
     const res = await fetch("/api/v1/admin/pricing", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Auth": "true" },
       body: JSON.stringify({ annual: prices }),
     });
     if (res.ok) {
@@ -291,7 +291,7 @@ export const saveAnnualDiscount = async (
   try {
     const res = await fetch("/api/v1/admin/pricing", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Auth": "true" },
       body: JSON.stringify({ annual_discount: discount }),
     });
     if (res.ok) {

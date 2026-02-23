@@ -304,26 +304,6 @@ export default function ScoreConfianceIA() {
     setLoading(true);
     try {
       const data = await fetchTop200(false);
-
-      // Fetch RIVER separately (outside top 200) and merge if not already present
-      const EXTRA_IDS = ["river"];
-      const existingIds = new Set(data.map((c) => c.id));
-      const missingIds = EXTRA_IDS.filter((id) => !existingIds.has(id));
-      if (missingIds.length > 0) {
-        try {
-          const extraRes = await fetch(
-            `/api/coingecko/coins/markets?vs_currency=usd&ids=${missingIds.join(",")}&order=market_cap_desc&per_page=${missingIds.length}&page=1&sparkline=false&price_change_percentage=24h,7d,30d`,
-            { signal: AbortSignal.timeout(10000) }
-          );
-          if (extraRes.ok) {
-            const extraData = await extraRes.json();
-            if (Array.isArray(extraData)) {
-              (data as CoinMarketData[]).push(...extraData);
-            }
-          }
-        } catch { /* ignore — RIVER data not critical */ }
-      }
-
       const built = data.map(buildScore).sort((a, b) => b.globalScore - a.globalScore);
       setScores(built);
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));

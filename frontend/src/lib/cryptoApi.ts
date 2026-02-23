@@ -110,6 +110,26 @@ export async function fetchTop200(withSparkline = false): Promise<CoinMarketData
     }
   }
 
+  // Fetch extra coins not in top 200 (e.g. RIVER) and merge
+  const EXTRA_IDS = ["river"];
+  const existingIds = new Set(results.map((c) => c.id));
+  const missingIds = EXTRA_IDS.filter((id) => !existingIds.has(id));
+  if (missingIds.length > 0) {
+    try {
+      const extraUrl = `/api/coingecko/coins/markets?vs_currency=usd&ids=${missingIds.join(",")}&order=market_cap_desc&per_page=${missingIds.length}&page=1&sparkline=${sparkline}&price_change_percentage=24h,7d,30d`;
+      const extraRes = await fetch(extraUrl, { signal: AbortSignal.timeout(10000) });
+      if (extraRes.ok) {
+        const extraText = await extraRes.text();
+        try {
+          const extraData = JSON.parse(extraText);
+          if (Array.isArray(extraData)) {
+            results.push(...extraData);
+          }
+        } catch { /* JSON parse failed */ }
+      }
+    } catch { /* ignore — extra coins not critical */ }
+  }
+
   if (results.length > 0) {
     cachedCoins = results;
     lastFetchTime = now;

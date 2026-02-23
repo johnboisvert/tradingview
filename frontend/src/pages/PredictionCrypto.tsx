@@ -21,6 +21,16 @@ const BINANCE_MAP: Record<string, string> = {
   aave: "AAVEUSDT", "the-graph": "GRTUSDT", "render-token": "RENDERUSDT", pepe: "PEPEUSDT",
 };
 
+/* ── Stablecoins / wrapped tokens to exclude from "related" section ── */
+const EXCLUDED_IDS = new Set([
+  "tether", "usd-coin", "dai", "binance-usd", "true-usd", "paxos-standard",
+  "usdd", "frax", "gemini-dollar", "paypal-usd", "first-digital-usd",
+  "ethena-usde", "usual-usd", "usds", "usd1", "ripple-usd", "global-dollar",
+  "falcon-usd", "gho", "usdai", "wrapped-bitcoin", "staked-ether",
+  "wrapped-steth", "coinbase-wrapped-staked-eth", "binance-staked-sol",
+  "wrapped-eeth", "mantle-staked-ether",
+]);
+
 /* ── Technical indicators ── */
 function computeRSI(data: number[], period = 14): number {
   if (data.length < period + 1) return 50;
@@ -67,21 +77,24 @@ interface CandleData { time: number; open: number; high: number; low: number; cl
 export default function PredictionCrypto() {
   const { cryptoId } = useParams<{ cryptoId: string }>();
   const [coin, setCoin] = useState<CoinMarketData | null>(null);
+  const [allCoins, setAllCoins] = useState<CoinMarketData[]>([]);
   const [candles, setCandles] = useState<CandleData[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(true);
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<ReturnType<typeof createChart> | null>(null);
 
-  const cryptoInfo = SEO_CRYPTOS.find((c) => c.id === cryptoId);
-  const cryptoName = cryptoInfo?.name || cryptoId || "Crypto";
-  const cryptoSymbol = cryptoInfo?.symbol || "";
+  /* Resolve crypto name/symbol from SEO_CRYPTOS first, then from CoinGecko data */
+  const seoInfo = SEO_CRYPTOS.find((c) => c.id === cryptoId);
+  const cryptoName = seoInfo?.name || coin?.name || cryptoId || "Crypto";
+  const cryptoSymbol = seoInfo?.symbol || coin?.symbol?.toUpperCase() || "";
 
   // Fetch coin market data
   useEffect(() => {
     setLoading(true);
     fetchTop200()
       .then((data) => {
+        setAllCoins(data);
         const found = data.find((c) => c.id === cryptoId);
         if (found) setCoin(found);
       })
@@ -169,6 +182,13 @@ export default function PredictionCrypto() {
   const change24h = coin?.price_change_percentage_24h ?? 0;
   const signal = getSignal(rsi, macdHist, change24h);
 
+  const hasBinanceChart = !!BINANCE_MAP[cryptoId || ""];
+
+  /* Related cryptos: use full coin list, exclude stablecoins/wrapped and current */
+  const relatedCoins = allCoins
+    .filter((c) => c.id !== cryptoId && !EXCLUDED_IDS.has(c.id))
+    .slice(0, 10);
+
   const seoTitle = `Prédiction ${cryptoName} (${cryptoSymbol}) 2025-2026 par IA`;
   const seoDesc = `Analyse et prédiction ${cryptoName} en temps réel par intelligence artificielle. Graphique en chandeliers, RSI, MACD et signaux de trading pour ${cryptoSymbol}.`;
 
@@ -194,7 +214,9 @@ export default function PredictionCrypto() {
                   Prédiction {cryptoName}{" "}
                   <span className="text-gray-500 text-xl">({cryptoSymbol})</span>
                 </h1>
-                <p className="text-gray-400 text-sm mt-1">Analyse IA en temps réel — Données Binance</p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Analyse IA en temps réel {hasBinanceChart ? "— Données Binance" : "— Données CoinGecko"}
+                </p>
               </div>
             </div>
 
@@ -238,11 +260,19 @@ export default function PredictionCrypto() {
                   <BarChart3 className="w-5 h-5 text-indigo-400" />
                   <h2 className="font-bold">Graphique en chandeliers — 90 jours</h2>
                 </div>
-                <button onClick={fetchCandles} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors" title="Rafraîchir">
-                  <RefreshCw className="w-4 h-4 text-gray-400" />
-                </button>
+                {hasBinanceChart && (
+                  <button onClick={fetchCandles} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors" title="Rafraîchir">
+                    <RefreshCw className="w-4 h-4 text-gray-400" />
+                  </button>
+                )}
               </div>
-              {chartLoading ? (
+              {!hasBinanceChart ? (
+                <div className="h-[400px] flex flex-col items-center justify-center text-gray-500">
+                  <BarChart3 className="w-10 h-10 mb-3 text-gray-600" />
+                  <p className="text-sm font-medium">Graphique en chandeliers non disponible pour cette crypto</p>
+                  <p className="text-xs text-gray-600 mt-1">Les données de prix et indicateurs sont calculés via CoinGecko</p>
+                </div>
+              ) : chartLoading ? (
                 <div className="h-[400px] flex items-center justify-center text-gray-500">
                   <Activity className="w-5 h-5 animate-pulse mr-2" /> Chargement du graphique...
                 </div>
@@ -304,8 +334,10 @@ export default function PredictionCrypto() {
                 les données on-chain, le volume de trading et le sentiment global du marché crypto.
               </p>
               <p className="text-sm text-gray-400 leading-relaxed mb-3">
-                Le graphique ci-dessus affiche les chandeliers japonais des 90 derniers jours, alimenté en temps réel par l'API Binance.
-                Le signal IA est calculé en combinant le RSI (14 périodes), le MACD (12/26/9) et le momentum des dernières 24 heures.
+                {hasBinanceChart
+                  ? `Le graphique ci-dessus affiche les chandeliers japonais des 90 derniers jours, alimenté en temps réel par l'API Binance.`
+                  : `Les données de prix sont fournies par CoinGecko en temps réel.`}
+                {" "}Le signal IA est calculé en combinant le RSI (14 périodes), le MACD (12/26/9) et le momentum des dernières 24 heures.
               </p>
               <p className="text-sm text-gray-400 leading-relaxed">
                 <strong className="text-white">⚠️ Avertissement :</strong> Les prédictions IA sont fournies à titre informatif uniquement
@@ -313,18 +345,21 @@ export default function PredictionCrypto() {
               </p>
             </div>
 
-            {/* Related cryptos */}
+            {/* Related cryptos — from full coin list */}
             <div className="mb-8">
               <h3 className="font-bold text-lg mb-4">Autres prédictions crypto</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                {SEO_CRYPTOS.filter((c) => c.id !== cryptoId).slice(0, 10).map((c) => (
+                {relatedCoins.map((c) => (
                   <Link
                     key={c.id}
                     to={`/prediction/${c.id}`}
                     className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center hover:bg-white/[0.06] hover:border-indigo-500/30 transition-all"
                   >
-                    <p className="font-bold text-sm">{c.name}</p>
-                    <p className="text-[10px] text-gray-500">{c.symbol}</p>
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      {c.image && <img src={c.image} alt={c.name} className="w-5 h-5 rounded-full" />}
+                      <p className="font-bold text-sm">{c.name}</p>
+                    </div>
+                    <p className="text-[10px] text-gray-500">{c.symbol.toUpperCase()}</p>
                   </Link>
                 ))}
               </div>

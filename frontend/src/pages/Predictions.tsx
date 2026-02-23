@@ -7,7 +7,7 @@ import ShareButtons from "@/components/ShareButtons";
 import { TrendingUp, TrendingDown, Search, BarChart3 } from "lucide-react";
 import { fetchTop200, type CoinMarketData } from "@/lib/cryptoApi";
 
-/* ── Top cryptos for SEO pages ── */
+/* ── Top cryptos for SEO pages (kept for backward compatibility with PredictionCrypto) ── */
 const SEO_CRYPTOS = [
   { id: "bitcoin", name: "Bitcoin", symbol: "BTC" },
   { id: "ethereum", name: "Ethereum", symbol: "ETH" },
@@ -43,6 +43,16 @@ const SEO_CRYPTOS = [
 
 export { SEO_CRYPTOS };
 
+/* ── Stablecoins / wrapped tokens to exclude from display ── */
+const EXCLUDED_IDS = new Set([
+  "tether", "usd-coin", "dai", "binance-usd", "true-usd", "paxos-standard",
+  "usdd", "frax", "gemini-dollar", "paypal-usd", "first-digital-usd",
+  "ethena-usde", "usual-usd", "usds", "usd1", "ripple-usd", "global-dollar",
+  "falcon-usd", "gho", "usdai", "wrapped-bitcoin", "staked-ether",
+  "wrapped-steth", "coinbase-wrapped-staked-eth", "binance-staked-sol",
+  "wrapped-eeth", "mantle-staked-ether",
+]);
+
 function formatPrice(price: number): string {
   if (price >= 1) return price.toLocaleString("fr-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (price >= 0.01) return price.toFixed(4);
@@ -60,19 +70,20 @@ export default function Predictions() {
       .finally(() => setLoading(false));
   }, []);
 
-  const getCoinData = (id: string) => coins.find((c) => c.id === id);
-
-  const filtered = SEO_CRYPTOS.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.symbol.toLowerCase().includes(search.toLowerCase())
-  );
+  /* Filter out stablecoins/wrapped, then apply search */
+  const displayCoins = coins
+    .filter((c) => !EXCLUDED_IDS.has(c.id))
+    .filter(
+      (c) =>
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.symbol.toLowerCase().includes(search.toLowerCase())
+    );
 
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <SEOHead
         title="Prédictions Crypto par IA 2025-2026"
-        description="Analyses et prédictions IA pour Bitcoin, Ethereum, Solana et 30+ cryptomonnaies. Graphiques en temps réel, indicateurs techniques et signaux de trading."
+        description="Analyses et prédictions IA pour Bitcoin, Ethereum, Solana et 200+ cryptomonnaies. Graphiques en temps réel, indicateurs techniques et signaux de trading."
         path="/predictions"
       />
       <Sidebar />
@@ -103,6 +114,11 @@ export default function Predictions() {
               className="w-full pl-10 pr-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50"
             />
           </div>
+          {!loading && (
+            <p className="text-center text-xs text-gray-500 mt-2">
+              {displayCoins.length} cryptos affichées
+            </p>
+          )}
         </div>
 
         {/* Grid */}
@@ -110,33 +126,32 @@ export default function Predictions() {
           <div className="text-center py-20 text-gray-500">Chargement des données...</div>
         ) : (
           <div className="grid lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2 gap-4 max-w-7xl mx-auto">
-            {filtered.map((crypto) => {
-              const data = getCoinData(crypto.id);
-              const change24h = data?.price_change_percentage_24h ?? 0;
+            {displayCoins.map((data) => {
+              const change24h = data.price_change_percentage_24h ?? 0;
               const isUp = change24h >= 0;
 
               return (
                 <Link
-                  key={crypto.id}
-                  to={`/prediction/${crypto.id}`}
+                  key={data.id}
+                  to={`/prediction/${data.id}`}
                   className="group bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 hover:bg-white/[0.06] hover:border-indigo-500/30 transition-all"
                 >
                   <div className="flex items-center gap-3 mb-3">
-                    {data?.image && (
-                      <img src={data.image} alt={crypto.name} className="w-10 h-10 rounded-full" />
+                    {data.image && (
+                      <img src={data.image} alt={data.name} className="w-10 h-10 rounded-full" />
                     )}
                     <div>
                       <h2 className="font-bold text-white group-hover:text-indigo-300 transition-colors">
-                        {crypto.name}
+                        {data.name}
                       </h2>
-                      <span className="text-xs text-gray-500 uppercase">{crypto.symbol}</span>
+                      <span className="text-xs text-gray-500 uppercase">{data.symbol}</span>
                     </div>
                   </div>
 
                   <div className="flex items-end justify-between">
                     <div>
                       <p className="text-xl font-bold text-white">
-                        ${data ? formatPrice(data.current_price) : "—"}
+                        ${formatPrice(data.current_price)}
                       </p>
                       <p className="text-xs text-gray-500">USD</p>
                     </div>
@@ -171,7 +186,7 @@ export default function Predictions() {
             <p className="text-sm text-gray-400 leading-relaxed">
               Chaque page de prédiction inclut un graphique en chandeliers japonais alimenté par Binance,
               des indicateurs techniques calculés en temps réel, et un résumé IA de la tendance actuelle.
-              Nos analyses couvrent Bitcoin (BTC), Ethereum (ETH), Solana (SOL), et plus de 30 autres cryptomonnaies majeures.
+              Nos analyses couvrent Bitcoin (BTC), Ethereum (ETH), Solana (SOL), et plus de 200 autres cryptomonnaies.
             </p>
           </div>
         </div>

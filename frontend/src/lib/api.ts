@@ -190,20 +190,69 @@ export const resetPassword = async (
 };
 
 // ============================================================
-// Pricing
+// Pricing — fetches from backend API, localStorage as fallback
 // ============================================================
+
+/** Cached pricing to avoid redundant API calls within the same page load */
+let _pricingCache: { monthly: PlanPrices; annual: PlanPrices; annual_discount: number } | null = null;
+
+async function _fetchPricingFromServer(): Promise<{ monthly: PlanPrices; annual: PlanPrices; annual_discount: number } | null> {
+  try {
+    const res = await fetch("/api/v1/pricing");
+    if (res.ok) {
+      const data = await res.json();
+      _pricingCache = {
+        monthly: data.monthly,
+        annual: data.annual,
+        annual_discount: data.annual_discount,
+      };
+      // Also update localStorage as cache for offline/fallback
+      store.savePlanPrices(data.monthly);
+      store.saveAnnualPlanPrices(data.annual);
+      store.saveAnnualDiscount(data.annual_discount);
+      return _pricingCache;
+    }
+    console.warn("[Pricing] Server responded with status:", res.status);
+  } catch (err) {
+    console.warn("[Pricing] Server unreachable, using localStorage fallback:", err);
+  }
+  return null;
+}
+
 export const getPlanPrices = async (): Promise<PlanPrices> => {
+  if (_pricingCache) return _pricingCache.monthly;
+  const server = await _fetchPricingFromServer();
+  if (server) return server.monthly;
   return store.getPlanPrices();
 };
 
 export const savePlanPrices = async (
   prices: PlanPrices
 ): Promise<{ success: boolean }> => {
+  // Save to localStorage immediately (optimistic)
   store.savePlanPrices(prices);
-  return { success: true };
+  // Also save to backend
+  try {
+    const res = await fetch("/api/v1/admin/pricing", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ monthly: prices }),
+    });
+    if (res.ok) {
+      _pricingCache = null; // invalidate cache
+      return { success: true };
+    }
+    console.error("[savePlanPrices] Server responded with status:", res.status);
+  } catch (err) {
+    console.error("[savePlanPrices] Server unreachable:", err);
+  }
+  return { success: true }; // localStorage save succeeded
 };
 
 export const getAnnualPlanPrices = async (): Promise<PlanPrices> => {
+  if (_pricingCache) return _pricingCache.annual;
+  const server = await _fetchPricingFromServer();
+  if (server) return server.annual;
   return store.getAnnualPlanPrices();
 };
 
@@ -211,10 +260,27 @@ export const saveAnnualPlanPrices = async (
   prices: PlanPrices
 ): Promise<{ success: boolean }> => {
   store.saveAnnualPlanPrices(prices);
+  try {
+    const res = await fetch("/api/v1/admin/pricing", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ annual: prices }),
+    });
+    if (res.ok) {
+      _pricingCache = null;
+      return { success: true };
+    }
+    console.error("[saveAnnualPlanPrices] Server responded with status:", res.status);
+  } catch (err) {
+    console.error("[saveAnnualPlanPrices] Server unreachable:", err);
+  }
   return { success: true };
 };
 
 export const getAnnualDiscount = async (): Promise<number> => {
+  if (_pricingCache) return _pricingCache.annual_discount;
+  const server = await _fetchPricingFromServer();
+  if (server) return server.annual_discount;
   return store.getAnnualDiscount();
 };
 
@@ -222,6 +288,20 @@ export const saveAnnualDiscount = async (
   discount: number
 ): Promise<{ success: boolean }> => {
   store.saveAnnualDiscount(discount);
+  try {
+    const res = await fetch("/api/v1/admin/pricing", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ annual_discount: discount }),
+    });
+    if (res.ok) {
+      _pricingCache = null;
+      return { success: true };
+    }
+    console.error("[saveAnnualDiscount] Server responded with status:", res.status);
+  } catch (err) {
+    console.error("[saveAnnualDiscount] Server unreachable:", err);
+  }
   return { success: true };
 };
 

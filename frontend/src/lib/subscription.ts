@@ -1,10 +1,12 @@
 // Subscription management for CryptoIA
-// Tracks the current user's plan and checks route access
+// Tracks the current user's plan, subscription dates, and checks route access
 
 import { getPlanAccess } from "./store";
 import { isAdminAuthenticated } from "@/pages/AdminLogin";
 
 const USER_PLAN_KEY = "cryptoia_user_plan";
+const SUBSCRIPTION_END_KEY = "cryptoia_subscription_end";
+const BILLING_PERIOD_KEY = "cryptoia_billing_period";
 
 // Clean up stale admin auth key (moved to sessionStorage in a previous version)
 if (typeof window !== "undefined") {
@@ -14,6 +16,7 @@ if (typeof window !== "undefined") {
 // Plan hierarchy (higher index = more access)
 export const PLAN_HIERARCHY = ["free", "premium", "advanced", "pro", "elite"] as const;
 export type PlanType = (typeof PLAN_HIERARCHY)[number] | "admin";
+export type BillingPeriod = "monthly" | "annual";
 
 // All plans including admin (for internal use)
 export const ALL_PLANS: PlanType[] = ["free", "premium", "advanced", "pro", "elite", "admin"];
@@ -21,14 +24,76 @@ export const ALL_PLANS: PlanType[] = ["free", "premium", "advanced", "pro", "eli
 // Plans visible to regular users (excludes admin)
 export const USER_VISIBLE_PLANS = PLAN_HIERARCHY;
 
+// ─── Subscription End Date ────────────────────────────────────────────────────
+
+/** Get the stored subscription end date (ISO string or null) */
+export function getSubscriptionEnd(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(SUBSCRIPTION_END_KEY);
+}
+
+/** Set the subscription end date */
+export function setSubscriptionEnd(dateISO: string): void {
+  localStorage.setItem(SUBSCRIPTION_END_KEY, dateISO);
+}
+
+/** Get the stored billing period */
+export function getBillingPeriod(): BillingPeriod {
+  const val = localStorage.getItem(BILLING_PERIOD_KEY);
+  return val === "annual" ? "annual" : "monthly";
+}
+
+/** Set the billing period */
+export function setBillingPeriod(period: BillingPeriod): void {
+  localStorage.setItem(BILLING_PERIOD_KEY, period);
+}
+
+/** Check if the current subscription is expired */
+export function isSubscriptionExpired(): boolean {
+  const endStr = getSubscriptionEnd();
+  if (!endStr) return false; // No end date = no expiry (free plan or legacy)
+  const end = new Date(endStr);
+  return end < new Date();
+}
+
+/** Get days remaining in subscription (-1 if no end date) */
+export function getDaysRemaining(): number {
+  const endStr = getSubscriptionEnd();
+  if (!endStr) return -1;
+  const end = new Date(endStr);
+  const now = new Date();
+  const diff = end.getTime() - now.getTime();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+/** Calculate subscription end date based on billing period */
+export function calculateSubscriptionEnd(billingPeriod: BillingPeriod): string {
+  const now = new Date();
+  if (billingPeriod === "annual") {
+    now.setFullYear(now.getFullYear() + 1);
+  } else {
+    now.setMonth(now.getMonth() + 1);
+  }
+  return now.toISOString().split("T")[0];
+}
+
+// ─── Plan Management ──────────────────────────────────────────────────────────
+
 // Get current user plan from localStorage
 // If admin is authenticated, always return "admin"
+// If subscription is expired, revert to "free"
 export function getUserPlan(): PlanType {
   if (isAdminAuthenticated()) {
     return "admin";
   }
   const plan = localStorage.getItem(USER_PLAN_KEY);
   if (plan && ALL_PLANS.includes(plan as PlanType)) {
+    // Check if subscription has expired (only for paid plans)
+    if (plan !== "free" && plan !== "admin" && isSubscriptionExpired()) {
+      // Auto-revert to free on expiry
+      localStorage.setItem(USER_PLAN_KEY, "free");
+      return "free";
+    }
     return plan as PlanType;
   }
   return "free";
@@ -39,9 +104,63 @@ export function setUserPlan(plan: PlanType): void {
   localStorage.setItem(USER_PLAN_KEY, plan);
 }
 
+/**
+ * Activate a subscription after successful payment.
+ * Sets plan, billing period, and calculates end date.
+ */
+export function activateSubscription(
+  plan: PlanType,
+  billingPeriod: BillingPeriod = "monthly",
+  endDate?: string
+): void {
+  setUserPlan(plan);
+  setBillingPeriod(billingPeriod);
+  const end = endDate || calculateSubscriptionEnd(billingPeriod);
+  setSubscriptionEnd(end);
+
+  // Also update the dev-mode user API if available
+  try {
+    fetch("/api/users/update-plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        plan,
+        billing_period: billingPeriod,
+        subscription_end: end,
+      }),
+    }).catch(() => {
+      // Silently fail — dev API may not be available in production
+    });
+  } catch {
+    // Ignore
+  }
+}
+
 // Clear user plan (logout / reset)
 export function clearUserPlan(): void {
   localStorage.removeItem(USER_PLAN_KEY);
+  localStorage.removeItem(SUBSCRIPTION_END_KEY);
+  localStorage.removeItem(BILLING_PERIOD_KEY);
+}
+
+/** Get full subscription info for display */
+export function getSubscriptionInfo() {
+  const plan = getUserPlan();
+  const endDate = getSubscriptionEnd();
+  const billingPeriod = getBillingPeriod();
+  const daysRemaining = getDaysRemaining();
+  const expired = isSubscriptionExpired();
+
+  return {
+    plan,
+    endDate,
+    billingPeriod,
+    daysRemaining,
+    expired,
+    isActive: plan !== "free" && plan !== "admin" && !expired,
+    isFree: plan === "free",
+    isAdmin: plan === "admin",
+  };
 }
 
 // Route path to plan access slug mapping

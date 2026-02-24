@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { CheckCircle, XCircle, Loader2, ArrowRight, Home } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, ArrowRight, Home, Clock, Calendar } from "lucide-react";
+import { activateSubscription, type BillingPeriod } from "@/lib/subscription";
 import Footer from "@/components/Footer";
 
 const PLAN_LABELS: Record<string, string> = {
@@ -17,9 +18,11 @@ export default function PaymentSuccess() {
   const planParam = params.get("plan") || "";
   const provider = params.get("provider") || "stripe"; // "stripe" | "nowpayments"
   const orderId = params.get("order_id") || "";
+  const billingParam = (params.get("billing") || "monthly") as BillingPeriod;
 
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [planName, setPlanName] = useState(planParam);
+  const [subscriptionEnd, setSubscriptionEnd] = useState("");
 
   useEffect(() => {
     // NOWPayments — success redirect means payment was initiated (not necessarily confirmed)
@@ -27,9 +30,9 @@ export default function PaymentSuccess() {
     if (provider === "nowpayments") {
       if (planParam) {
         setPlanName(planParam);
-        // SECURITY FIX: DO NOT set plan from URL params — plan activation must be done
-        // server-side via IPN webhook after blockchain confirmation.
-        // The plan will be activated automatically once the webhook confirms payment.
+        // SECURITY: DO NOT activate plan from URL params for crypto payments.
+        // Plan activation must be done server-side via IPN webhook after blockchain confirmation.
+        // Show pending status to user.
         setStatus("success");
       } else {
         setStatus("error");
@@ -56,9 +59,29 @@ export default function PaymentSuccess() {
         if (data.status === "complete" || data.payment_status === "paid") {
           const confirmedPlan = data.plan || planParam;
           setPlanName(confirmedPlan);
-          // Only set plan after backend verification confirms payment
+
           if (confirmedPlan) {
-            localStorage.setItem("cryptoia_user_plan", confirmedPlan);
+            // Determine billing period from the response or URL params
+            const billing: BillingPeriod = data.billing_period || billingParam;
+
+            // Activate subscription with proper end date tracking
+            activateSubscription(
+              confirmedPlan,
+              billing,
+              data.subscription_end // Backend may provide this
+            );
+
+            // Calculate and display end date
+            const endDate = data.subscription_end || (() => {
+              const d = new Date();
+              if (billing === "annual") {
+                d.setFullYear(d.getFullYear() + 1);
+              } else {
+                d.setMonth(d.getMonth() + 1);
+              }
+              return d.toISOString().split("T")[0];
+            })();
+            setSubscriptionEnd(endDate);
           }
           setStatus("success");
         } else {
@@ -70,9 +93,22 @@ export default function PaymentSuccess() {
     };
 
     verify();
-  }, [sessionId, planParam, provider]);
+  }, [sessionId, planParam, provider, billingParam]);
 
   const isNowPayments = provider === "nowpayments";
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "";
+    try {
+      return new Date(dateStr).toLocaleDateString("fr-CA", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white flex items-center justify-center p-6">
@@ -88,7 +124,11 @@ export default function PaymentSuccess() {
         {status === "success" && (
           <div className="space-y-6">
             <div className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto">
-              <CheckCircle className="w-12 h-12 text-emerald-400" />
+              {isNowPayments ? (
+                <Clock className="w-12 h-12 text-amber-400" />
+              ) : (
+                <CheckCircle className="w-12 h-12 text-emerald-400" />
+              )}
             </div>
             <div>
               <h1 className="text-3xl font-extrabold mb-2 bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
@@ -133,14 +173,23 @@ export default function PaymentSuccess() {
                 </>
               ) : (
                 <>
-                  <p className="text-xs text-gray-400">
-                    ✅ Accès immédiat à toutes les fonctionnalités de votre plan
+                  <p className="text-xs text-gray-400 flex items-center gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                    Accès immédiat à toutes les fonctionnalités du plan {PLAN_LABELS[planName] || planName}
                   </p>
-                  <p className="text-xs text-gray-400">
-                    ✅ Confirmation envoyée par email via Stripe
+                  <p className="text-xs text-gray-400 flex items-center gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                    Confirmation envoyée par email via Stripe
                   </p>
-                  <p className="text-xs text-gray-400">
-                    ✅ Renouvellement automatique chaque mois
+                  {subscriptionEnd && (
+                    <p className="text-xs text-gray-400 flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+                      Prochain renouvellement : <span className="text-white font-semibold">{formatDate(subscriptionEnd)}</span>
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-400 flex items-center gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                    Renouvellement automatique — annulable à tout moment
                   </p>
                 </>
               )}
@@ -154,10 +203,10 @@ export default function PaymentSuccess() {
                 Accéder au Dashboard <ArrowRight className="w-4 h-4" />
               </button>
               <button
-                onClick={() => navigate("/abonnements")}
+                onClick={() => navigate("/mon-compte")}
                 className="w-full py-3 rounded-xl bg-white/[0.06] border border-white/[0.08] font-bold text-sm hover:bg-white/[0.1] transition-all flex items-center justify-center gap-2"
               >
-                <Home className="w-4 h-4" /> Voir mes abonnements
+                <Home className="w-4 h-4" /> Mon Compte
               </button>
             </div>
           </div>
@@ -188,7 +237,7 @@ export default function PaymentSuccess() {
           </div>
         )}
       </div>
-    <Footer />
+      <Footer />
     </div>
   );
 }

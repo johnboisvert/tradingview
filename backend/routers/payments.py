@@ -3,6 +3,7 @@ Payment router — Stripe checkout sessions + webhook pour activation sécurisé
 """
 import json
 import logging
+from datetime import datetime, timedelta
 from typing import Literal, Optional
 
 import stripe
@@ -54,6 +55,7 @@ PLAN_LABELS: dict[str, str] = {
 class CreateSessionRequest(BaseModel):
     plan: Literal["premium", "advanced", "pro", "elite"]
     amount_cad: float          # price in CAD dollars (e.g. 29.99)
+    billing_period: Literal["monthly", "annual"] = "monthly"
     promo_code: Optional[str] = None
 
 
@@ -72,6 +74,8 @@ class VerifyPaymentResponse(BaseModel):
     plan: str
     amount_total: int    # cents
     currency: str
+    billing_period: str  # "monthly" | "annual"
+    subscription_end: str  # ISO date string
 
 
 class PublishableKeyResponse(BaseModel):
@@ -101,8 +105,23 @@ async def create_payment_session(data: CreateSessionRequest, request: Request):
     stripe.api_key = _get_stripe_key()
     host = _frontend_host(request)
 
-    amount_cents = int(round(data.amount_cad * 100))
+    is_annual = data.billing_period == "annual"
+
+    if is_annual:
+        # For annual billing: charge the full annual amount as a single payment
+        # then create a yearly recurring subscription
+        amount_cents = int(round(data.amount_cad * 100))
+        interval = "year"
+        interval_count = 1
+    else:
+        # Monthly billing
+        amount_cents = int(round(data.amount_cad * 100))
+        interval = "month"
+        interval_count = 1
+
     label = PLAN_LABELS.get(data.plan, f"Abonnement {data.plan.capitalize()} — CryptoIA")
+    if is_annual:
+        label += " (Annuel)"
 
     try:
         session = stripe.checkout.Session.create(
@@ -113,18 +132,24 @@ async def create_payment_session(data: CreateSessionRequest, request: Request):
                         "currency": "cad",
                         "product_data": {"name": label},
                         "unit_amount": amount_cents,
-                        "recurring": {"interval": "month"},
+                        "recurring": {
+                            "interval": interval,
+                            "interval_count": interval_count,
+                        },
                     },
                     "quantity": 1,
                 }
             ],
             mode="subscription",
-            success_url=f"{host}/payment-success?session_id={{CHECKOUT_SESSION_ID}}&plan={data.plan}",
+            success_url=f"{host}/payment-success?session_id={{CHECKOUT_SESSION_ID}}&plan={data.plan}&billing={data.billing_period}",
             cancel_url=f"{host}/abonnements",
-            metadata={"plan": data.plan},
+            metadata={
+                "plan": data.plan,
+                "billing_period": data.billing_period,
+            },
             allow_promotion_codes=True,
         )
-        logger.info(f"Stripe session created: {session.id} for plan={data.plan}")
+        logger.info(f"Stripe session created: {session.id} for plan={data.plan}, billing={data.billing_period}")
         return CreateSessionResponse(session_id=session.id, url=session.url)
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error: {e}")
@@ -140,9 +165,21 @@ async def verify_payment(data: VerifyPaymentRequest):
     stripe.api_key = _get_stripe_key()
     try:
         session = stripe.checkout.Session.retrieve(data.session_id)
-        plan = session.metadata.get("plan", "unknown") if session.metadata else "unknown"
+        metadata = session.metadata or {}
+        plan = metadata.get("plan", "unknown")
+        billing_period = metadata.get("billing_period", "monthly")
 
-        logger.info(f"Stripe verify: session={data.session_id}, status={session.status}, plan={plan}")
+        # Calculate subscription end date
+        now = datetime.utcnow()
+        if billing_period == "annual":
+            subscription_end = (now + timedelta(days=365)).strftime("%Y-%m-%d")
+        else:
+            subscription_end = (now + timedelta(days=30)).strftime("%Y-%m-%d")
+
+        logger.info(
+            f"Stripe verify: session={data.session_id}, status={session.status}, "
+            f"plan={plan}, billing={billing_period}, end={subscription_end}"
+        )
 
         return VerifyPaymentResponse(
             status=session.status,
@@ -150,6 +187,8 @@ async def verify_payment(data: VerifyPaymentRequest):
             plan=plan,
             amount_total=session.amount_total or 0,
             currency=session.currency or "cad",
+            billing_period=billing_period,
+            subscription_end=subscription_end,
         )
     except stripe.error.StripeError as e:
         logger.error(f"Stripe verify error: {e}")
@@ -196,12 +235,23 @@ async def stripe_webhook(request: Request):
         metadata = session_obj.get("metadata", {}) if isinstance(session_obj, dict) else (session_obj.metadata or {})
         payment_status = session_obj.get("payment_status", "") if isinstance(session_obj, dict) else session_obj.payment_status
         plan = metadata.get("plan", "unknown")
+        billing_period = metadata.get("billing_period", "monthly")
+        customer_email = (
+            session_obj.get("customer_details", {}).get("email", "")
+            if isinstance(session_obj, dict)
+            else getattr(getattr(session_obj, "customer_details", None), "email", "")
+        )
 
-        logger.info(f"✅ Stripe checkout.session.completed: session={session_id}, plan={plan}, payment_status={payment_status}")
+        logger.info(
+            f"✅ Stripe checkout.session.completed: session={session_id}, plan={plan}, "
+            f"billing={billing_period}, payment_status={payment_status}, email={customer_email}"
+        )
 
-        # Ici vous activeriez le plan dans votre base de données utilisateur.
-        # Exemple : await db.execute("UPDATE users SET plan=? WHERE stripe_session_id=?", plan, session_id)
-        # Pour l'instant, le frontend active le plan via verify_payment après redirection.
+        # TODO: Activate plan in database when user auth is fully implemented
+        # await db.execute(
+        #     "UPDATE users SET plan=?, billing_period=?, subscription_end=? WHERE email=?",
+        #     plan, billing_period, subscription_end, customer_email
+        # )
 
     # ── invoice.payment_succeeded (renouvellements) ─────────────────────────
     elif event_type == "invoice.payment_succeeded":
@@ -215,9 +265,9 @@ async def stripe_webhook(request: Request):
         subscription = event["data"]["object"] if isinstance(event, dict) else event.data.object
         customer_id = subscription.get("customer") if isinstance(subscription, dict) else subscription.customer
         logger.info(f"❌ Stripe subscription.deleted: customer={customer_id}")
-        # Ici vous réinitialiseriez le plan à "free" dans votre base de données.
+        # TODO: Reset plan to "free" in database
 
     else:
-        logger.debug(f"Stripe webhook event ignoré: {event_type}")
+        logger.info(f"Stripe webhook event (unhandled): {event_type}")
 
-    return {"status": "ok", "event_type": event_type}
+    return {"status": "ok"}

@@ -3,12 +3,13 @@ Payment router — Stripe checkout sessions + webhook pour activation sécurisé
 """
 import json
 import logging
-import os
 from typing import Literal, Optional
 
 import stripe
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/api/v1/payment", tags=["payment"])
 # ---------------------------------------------------------------------------
 
 def _get_stripe_key() -> str:
-    key = os.environ.get("STRIPE_SECRET_KEY", "")
+    key = settings.stripe_secret_key
     if not key:
         raise HTTPException(
             status_code=503,
@@ -84,9 +85,9 @@ class PublishableKeyResponse(BaseModel):
 @router.get("/config", response_model=PublishableKeyResponse)
 async def get_stripe_config():
     """Return the Stripe publishable key so the frontend can initialise Stripe.js."""
-    pk = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+    pk = settings.stripe_publishable_key
     if not pk:
-        sk = os.environ.get("STRIPE_SECRET_KEY", "")
+        sk = settings.stripe_secret_key
         if sk.startswith("sk_live_"):
             pk = sk.replace("sk_live_", "pk_live_", 1)
         elif sk.startswith("sk_test_"):
@@ -166,14 +167,14 @@ async def stripe_webhook(request: Request):
     URL : https://votre-domaine.up.railway.app/api/v1/payment/stripe_webhook
     Événements à activer : checkout.session.completed, invoice.payment_succeeded
     """
-    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+    webhook_secret = settings.stripe_webhook_secret
     body = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
 
     try:
         if webhook_secret and sig_header:
             # Vérification de signature Stripe (recommandé en production)
-            stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+            stripe.api_key = settings.stripe_secret_key
             event = stripe.Webhook.construct_event(body, sig_header, webhook_secret)
         else:
             # Mode développement sans signature (à éviter en production)

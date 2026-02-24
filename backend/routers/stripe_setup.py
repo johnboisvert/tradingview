@@ -2,10 +2,11 @@
 Stripe setup helper — endpoint pour vérifier la configuration Stripe.
 """
 import logging
-import os
 
 import stripe
 from fastapi import APIRouter
+
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +19,9 @@ async def check_stripe_config():
     Vérifie si Stripe est correctement configuré.
     Retourne le statut de la configuration sans exposer les clés.
     """
-    sk = os.environ.get("STRIPE_SECRET_KEY", "")
-    pk = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
-    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+    sk = settings.stripe_secret_key
+    pk = settings.stripe_publishable_key
+    webhook_secret = settings.stripe_webhook_secret
 
     config_status = {
         "stripe_secret_key": {

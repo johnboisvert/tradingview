@@ -5,13 +5,14 @@ import hashlib
 import hmac
 import json
 import logging
-import os
 import time
 from typing import Literal, Optional
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ PLAN_LABELS: dict[str, str] = {
 
 
 def _get_api_key() -> str:
-    key = os.environ.get("NOWPAYMENTS_API_KEY", "")
+    key = settings.nowpayments_api_key
     if not key:
         raise HTTPException(
             status_code=503,
@@ -38,7 +39,7 @@ def _get_api_key() -> str:
 
 
 def _get_ipn_secret() -> str:
-    return os.environ.get("NOWPAYMENTS_IPN_SECRET", "")
+    return settings.nowpayments_ipn_secret
 
 
 def _frontend_host(request: Request) -> str:

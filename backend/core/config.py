@@ -1,13 +1,24 @@
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
+# Resolve .env path relative to this file's directory (core/) -> parent is backend/
+_env_file_path = Path(__file__).resolve().parent.parent / ".env"
+
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=str(_env_file_path),
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
     # Application
     app_name: str = "FastAPI Modular Template"
     debug: bool = False
@@ -16,6 +27,18 @@ class Settings(BaseSettings):
     # Server
     host: str = "0.0.0.0"
     port: int = 8000
+
+    # Database
+    database_url: str = ""
+
+    # Stripe
+    stripe_secret_key: str = ""
+    stripe_publishable_key: str = ""
+    stripe_webhook_secret: str = ""
+
+    # NOWPayments
+    nowpayments_api_key: str = ""
+    nowpayments_ipn_secret: str = ""
 
     # AWS Lambda Configuration
     is_lambda: bool = False
@@ -34,10 +57,6 @@ class Settings(BaseSettings):
             # Use localhost for external callbacks instead of 0.0.0.0
             display_host = "127.0.0.1" if self.host == "0.0.0.0" else self.host
             return os.environ.get("PYTHON_BACKEND_URL", f"http://{display_host}:{self.port}")
-
-    class Config:
-        case_sensitive = False
-        extra = "ignore"
 
     def __getattr__(self, name: str) -> Any:
         """

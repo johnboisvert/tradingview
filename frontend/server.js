@@ -1317,7 +1317,7 @@ app.get('/api/referral-leaderboard', (req, res) => {
 // Payment & Pricing API Routes
 // ============================================================
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
-const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || 'pk_live_51SVcgLFybcd9xVWDKtS8lqcDXy9AAEOPAV3Zs66PmQduhKxgsbnu3AMFgWAbuHygoRCmRFkIQnA451cB65oGb46200RNdhThr8';
+const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || 'pk_live_51T4QrBHkGf0ASc9NayAkTOa6wRUwXzGjbPQb6WYSMSBdzh0nqwndc6XzLcml75pxJ3dTFFTBCBoZj5xrNoh7UEpI00dKriHv01';
 const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
 const NOWPAYMENTS_IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET || '';
 

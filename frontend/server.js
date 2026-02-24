@@ -20,14 +20,17 @@ const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
 const cgCache = new Map(); // key → { data, status, timestamp }
 const CG_CACHE_TTL = 60_000; // 60 seconds
 
-// Parse JSON bodies
+// Stripe webhook needs raw body for signature verification — must be before json parser
+app.use('/api/v1/payment/stripe_webhook', express.raw({ type: 'application/json' }));
+
+// Parse JSON bodies for all other routes
 app.use(express.json({ limit: '1mb' }));
 
 // CORS middleware — allow all origins (needed for Railway deployment)
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Auth, stripe-signature');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -1307,6 +1310,380 @@ app.get('/api/referral-leaderboard', (req, res) => {
     total_referrals: referrals.length,
     paid_referrals: leaderboard.reduce((s, l) => s + l.paid, 0),
     leaderboard,
+  });
+});
+
+// ============================================================
+// Payment & Pricing API Routes
+// ============================================================
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
+const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || 'pk_live_51SVcgLFybcd9xVWDKtS8lqcDXy9AAEOPAV3Zs66PmQduhKxgsbnu3AMFgWAbuHygoRCmRFkIQnA451cB65oGb46200RNdhThr8';
+const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
+const NOWPAYMENTS_IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET || '';
+
+// Lazy-load stripe instance (async because stripe is ESM)
+let stripeInstance = null;
+async function getStripeInstance() {
+  if (!stripeInstance && STRIPE_SECRET_KEY) {
+    const { default: Stripe } = await import('stripe');
+    stripeInstance = new Stripe(STRIPE_SECRET_KEY);
+  }
+  return stripeInstance;
+}
+
+// Pricing file persistence
+const PRICING_FILE = path.join(DATA_DIR, 'pricing.json');
+
+const DEFAULT_MONTHLY = { premium: 19.99, advanced: 34.99, pro: 54.99, elite: 79.99 };
+const DEFAULT_ANNUAL_DISCOUNT = 20.0;
+
+function loadPricing() {
+  try {
+    if (existsSync(PRICING_FILE)) {
+      return JSON.parse(readFileSync(PRICING_FILE, 'utf-8'));
+    }
+  } catch (err) {
+    console.error('Error loading pricing:', err);
+  }
+  // Return defaults
+  const factor = 1 - DEFAULT_ANNUAL_DISCOUNT / 100;
+  const annual = {};
+  for (const [k, v] of Object.entries(DEFAULT_MONTHLY)) {
+    annual[k] = Math.round(v * factor * 100) / 100;
+  }
+  return {
+    monthly: { ...DEFAULT_MONTHLY },
+    annual,
+    annual_discount: DEFAULT_ANNUAL_DISCOUNT,
+  };
+}
+
+function savePricing(pricing) {
+  try {
+    writeFileSync(PRICING_FILE, JSON.stringify(pricing, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving pricing:', err);
+  }
+}
+
+function getFrontendHost(req) {
+  let host = req.headers['app-host'] || '';
+  if (host && !host.startsWith('http://') && !host.startsWith('https://')) {
+    host = `https://${host}`;
+  }
+  if (!host) {
+    const origin = req.headers['origin'] || '';
+    host = origin || `${req.protocol}://${req.headers.host}`;
+  }
+  return host.replace(/\/+$/, '');
+}
+
+const PLAN_LABELS = {
+  premium: 'Abonnement Premium — CryptoIA',
+  advanced: 'Abonnement Advanced — CryptoIA',
+  pro: 'Abonnement Pro — CryptoIA',
+  elite: 'Abonnement Elite — CryptoIA',
+};
+
+// ─── GET /api/v1/pricing ───
+app.get('/api/v1/pricing', (req, res) => {
+  const pricing = loadPricing();
+  res.json(pricing);
+});
+
+// ─── PUT /api/v1/admin/pricing ───
+app.put('/api/v1/admin/pricing', (req, res) => {
+  const adminAuth = req.headers['x-admin-auth'];
+  if (adminAuth !== 'true') {
+    return res.status(401).json({ success: false, message: 'Admin authentication required.' });
+  }
+
+  const { monthly, annual, annual_discount } = req.body;
+  const current = loadPricing();
+
+  if (monthly) {
+    for (const plan of ['premium', 'advanced', 'pro', 'elite']) {
+      if (monthly[plan] !== undefined) current.monthly[plan] = monthly[plan];
+    }
+  }
+  if (annual) {
+    for (const plan of ['premium', 'advanced', 'pro', 'elite']) {
+      if (annual[plan] !== undefined) current.annual[plan] = annual[plan];
+    }
+  }
+  if (annual_discount !== undefined) {
+    current.annual_discount = annual_discount;
+  }
+
+  savePricing(current);
+  res.json({ success: true, message: 'Pricing updated successfully' });
+});
+
+// ─── GET /api/v1/payment/config ───
+app.get('/api/v1/payment/config', (req, res) => {
+  let pk = STRIPE_PUBLISHABLE_KEY;
+  if (!pk && STRIPE_SECRET_KEY) {
+    pk = STRIPE_SECRET_KEY.replace('sk_live_', 'pk_live_').replace('sk_test_', 'pk_test_');
+  }
+  res.json({ publishable_key: pk || '' });
+});
+
+// ─── POST /api/v1/payment/create_payment_session ───
+app.post('/api/v1/payment/create_payment_session', async (req, res) => {
+  if (!STRIPE_SECRET_KEY) {
+    return res.status(503).json({ error: 'Stripe non configuré — ajoutez STRIPE_SECRET_KEY dans Railway' });
+  }
+
+  try {
+    const stripe = await getStripeInstance();
+    const { plan, amount_cad, billing_period = 'monthly', promo_code } = req.body;
+
+    if (!plan || !amount_cad) {
+      return res.status(400).json({ error: 'plan et amount_cad requis' });
+    }
+
+    const host = getFrontendHost(req);
+    const isAnnual = billing_period === 'annual';
+    const amountCents = Math.round(amount_cad * 100);
+    const interval = isAnnual ? 'year' : 'month';
+
+    let label = PLAN_LABELS[plan] || `Abonnement ${plan.charAt(0).toUpperCase() + plan.slice(1)} — CryptoIA`;
+    if (isAnnual) label += ' (Annuel)';
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'cad',
+            product_data: { name: label },
+            unit_amount: amountCents,
+            recurring: { interval, interval_count: 1 },
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: `${host}/payment-success?session_id={CHECKOUT_SESSION_ID}&plan=${plan}&billing=${billing_period}`,
+      cancel_url: `${host}/abonnements`,
+      metadata: { plan, billing_period },
+      allow_promotion_codes: true,
+    });
+
+    console.log(`[Payment] Stripe session created: ${session.id} for plan=${plan}, billing=${billing_period}`);
+    res.json({ session_id: session.id, url: session.url });
+  } catch (err) {
+    console.error('[Payment] Stripe create session error:', err);
+    const message = err?.raw?.message || err?.message || 'Erreur Stripe';
+    res.status(400).json({ error: message });
+  }
+});
+
+// ─── POST /api/v1/payment/verify_payment ───
+app.post('/api/v1/payment/verify_payment', async (req, res) => {
+  if (!STRIPE_SECRET_KEY) {
+    return res.status(503).json({ error: 'Stripe non configuré' });
+  }
+
+  try {
+    const stripe = await getStripeInstance();
+    const { session_id } = req.body;
+
+    if (!session_id) {
+      return res.status(400).json({ error: 'session_id requis' });
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    const metadata = session.metadata || {};
+    const plan = metadata.plan || 'unknown';
+    const billingPeriod = metadata.billing_period || 'monthly';
+
+    // Calculate subscription end date
+    const now = new Date();
+    let endDate;
+    if (billingPeriod === 'annual') {
+      endDate = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+    } else {
+      endDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    }
+    const subscriptionEnd = endDate.toISOString().split('T')[0];
+
+    console.log(`[Payment] Stripe verify: session=${session_id}, status=${session.status}, plan=${plan}, billing=${billingPeriod}`);
+
+    res.json({
+      status: session.status,
+      payment_status: session.payment_status,
+      plan,
+      amount_total: session.amount_total || 0,
+      currency: session.currency || 'cad',
+      billing_period: billingPeriod,
+      subscription_end: subscriptionEnd,
+    });
+  } catch (err) {
+    console.error('[Payment] Stripe verify error:', err);
+    const message = err?.raw?.message || err?.message || 'Erreur Stripe';
+    res.status(400).json({ error: message });
+  }
+});
+
+// ─── POST /api/v1/payment/stripe_webhook ───
+app.post('/api/v1/payment/stripe_webhook', async (req, res) => {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+  const sig = req.headers['stripe-signature'] || '';
+
+  let event;
+  try {
+    if (webhookSecret && sig && STRIPE_SECRET_KEY) {
+      const stripe = await getStripeInstance();
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } else {
+      // Dev mode: parse body directly
+      event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      if (Buffer.isBuffer(event)) event = JSON.parse(event.toString());
+    }
+  } catch (err) {
+    console.error('[Payment] Stripe webhook signature error:', err.message);
+    return res.status(401).json({ error: 'Signature invalide' });
+  }
+
+  const eventType = event.type || event?.type;
+  console.log(`[Payment] Stripe webhook event: ${eventType}`);
+
+  if (eventType === 'checkout.session.completed') {
+    const session = event.data?.object || {};
+    const metadata = session.metadata || {};
+    console.log(`[Payment] ✅ checkout.session.completed: plan=${metadata.plan}, billing=${metadata.billing_period}, email=${session.customer_details?.email}`);
+  } else if (eventType === 'invoice.payment_succeeded') {
+    const invoice = event.data?.object || {};
+    console.log(`[Payment] ✅ invoice.payment_succeeded: subscription=${invoice.subscription}`);
+  } else if (eventType === 'customer.subscription.deleted') {
+    const sub = event.data?.object || {};
+    console.log(`[Payment] ❌ subscription.deleted: customer=${sub.customer}`);
+  }
+
+  res.json({ status: 'ok' });
+});
+
+// ============================================================
+// NOWPayments API Routes
+// ============================================================
+
+// ─── POST /api/v1/nowpayments/create_payment ───
+app.post('/api/v1/nowpayments/create_payment', async (req, res) => {
+  const apiKey = NOWPAYMENTS_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({ error: 'NOWPayments non configuré — ajoutez NOWPAYMENTS_API_KEY dans Railway' });
+  }
+
+  try {
+    const { plan, amount_cad, user_email } = req.body;
+    if (!plan || !amount_cad) {
+      return res.status(400).json({ error: 'plan et amount_cad requis' });
+    }
+
+    const host = getFrontendHost(req);
+    const label = PLAN_LABELS[plan] || `Abonnement ${plan.charAt(0).toUpperCase() + plan.slice(1)} — CryptoIA`;
+    const orderId = `cryptoia_${plan}_${Date.now()}`;
+
+    const payload = {
+      price_amount: Math.round(amount_cad * 100) / 100,
+      price_currency: 'cad',
+      order_id: orderId,
+      order_description: label,
+      ipn_callback_url: `${host}/api/v1/nowpayments/webhook`,
+      success_url: `${host}/payment-success?provider=nowpayments&plan=${plan}&order_id=${orderId}`,
+      cancel_url: `${host}/abonnements`,
+      is_fixed_rate: true,
+      is_fee_paid_by_user: false,
+    };
+
+    if (user_email) {
+      payload.customer_email = user_email;
+    }
+
+    const response = await fetch('https://api.nowpayments.io/v1/invoice', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({ message: response.statusText }));
+      console.error(`[NOWPayments] Error ${response.status}:`, errData);
+      return res.status(400).json({ error: errData.message || 'Erreur NOWPayments' });
+    }
+
+    const result = await response.json();
+    console.log(`[NOWPayments] Invoice created: id=${result.id}, order_id=${orderId}, plan=${plan}`);
+
+    res.json({
+      payment_url: result.invoice_url || '',
+      payment_id: String(result.id || ''),
+    });
+  } catch (err) {
+    console.error('[NOWPayments] create_payment error:', err);
+    res.status(500).json({ error: `Erreur interne: ${err.message}` });
+  }
+});
+
+// ─── POST /api/v1/nowpayments/webhook ───
+app.post('/api/v1/nowpayments/webhook', async (req, res) => {
+  const payload = req.body;
+  const paymentStatus = payload?.payment_status || '';
+  const orderId = payload?.order_id || '';
+  const paymentId = String(payload?.payment_id || '');
+
+  console.log(`[NOWPayments] IPN: payment_id=${paymentId}, status=${paymentStatus}, order_id=${orderId}`);
+
+  // Extract plan from order_id (format: cryptoia_{plan}_{timestamp})
+  let plan = 'unknown';
+  if (orderId.startsWith('cryptoia_')) {
+    const parts = orderId.split('_');
+    if (parts.length >= 2) plan = parts[1];
+  }
+
+  if (paymentStatus === 'finished' || paymentStatus === 'confirmed') {
+    console.log(`[NOWPayments] ✅ Payment CONFIRMED: plan=${plan}, order_id=${orderId}`);
+  } else if (paymentStatus === 'partially_paid') {
+    console.log(`[NOWPayments] ⚠️ Partially paid: plan=${plan}, order_id=${orderId}`);
+  } else if (['failed', 'refunded', 'expired'].includes(paymentStatus)) {
+    console.log(`[NOWPayments] ❌ Payment ${paymentStatus}: plan=${plan}, order_id=${orderId}`);
+  }
+
+  res.json({ status: 'ok', payment_id: paymentId, plan, payment_status: paymentStatus });
+});
+
+// ─── GET /api/v1/nowpayments/status ───
+app.get('/api/v1/nowpayments/status', async (req, res) => {
+  const apiKey = NOWPAYMENTS_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({ error: 'NOWPayments non configuré' });
+  }
+
+  try {
+    const response = await fetch('https://api.nowpayments.io/v1/status', {
+      headers: { 'x-api-key': apiKey },
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error('[NOWPayments] Status check error:', err);
+    res.status(503).json({ error: `NOWPayments inaccessible: ${err.message}` });
+  }
+});
+
+// ─── GET /api/config — Legacy config endpoint ───
+app.get('/api/config', (req, res) => {
+  const pricing = loadPricing();
+  res.json({
+    pricing,
+    stripe_publishable_key: STRIPE_PUBLISHABLE_KEY || '',
+    nowpayments_enabled: !!NOWPAYMENTS_API_KEY,
   });
 });
 

@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "checkIntervalMs": 900000,
+  "alerts": {
+    "priceChange": {
+      "enabled": true,
+      "threshold": 5,
+      "coins": []
+    },
+    "rsiExtreme": {
+      "enabled": true,
+      "overbought": 70,
+      "oversold": 30,
+      "coins": []
+    },
+    "volumeSpike": {
+      "enabled": true,
+      "multiplier": 3,
+      "coins": []
+    }
+  },
+  "lastCheck": null,
+  "lastAlerts": []
+}

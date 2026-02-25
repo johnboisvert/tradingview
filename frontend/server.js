@@ -371,7 +371,7 @@ function loadTelegramAlerts() {
     console.error('Error loading telegram alerts:', err);
   }
   return {
-    enabled: false,
+    enabled: true,
     checkIntervalMs: 900000, // 15 minutes (was 5min — reduced to avoid duplicate floods)
     alerts: {
       priceChange: { enabled: true, threshold: 5, coins: [] },
@@ -1211,10 +1211,18 @@ const inMemoryScalpCooldowns = new Map();
 
 // Top symbols for scalp trading (high volume, tight spreads)
 const SCALP_SYMBOLS = [
+  // Top 20 (original)
   'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
   'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT',
   'LINKUSDT', 'LTCUSDT', 'UNIUSDT', 'ATOMUSDT', 'NEARUSDT',
   'APTUSDT', 'ARBUSDT', 'OPUSDT', 'SUIUSDT', 'PEPEUSDT',
+  // Extended list (~30 additional high-volume cryptos)
+  'TRXUSDT', 'SHIBUSDT', 'FTMUSDT', 'FILUSDT', 'ALGOUSDT',
+  'VETUSDT', 'ICPUSDT', 'SANDUSDT', 'MANAUSDT', 'AXSUSDT',
+  'AAVEUSDT', 'GRTUSDT', 'INJUSDT', 'TIAUSDT', 'SEIUSDT',
+  'WLDUSDT', 'JUPUSDT', 'STXUSDT', 'RENDERUSDT', 'FETUSDT',
+  'ONDOUSDT', 'ENAUSDT', 'WIFUSDT', 'BONKUSDT', 'FLOKIUSDT',
+  'RUNEUSDT', 'PENDLEUSDT', 'JASMYUSDT', 'CFXUSDT', 'EGLDUSDT',
 ];
 
 function loadScalpCooldowns() {

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
+import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
-import { TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3, Clock, Shield, Target, ChevronDown, ChevronUp, Link2, Zap, Eye, EyeOff } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3, Clock, Shield, Target, ChevronDown, ChevronUp, Link2, Zap, Eye, EyeOff, Trophy } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -635,6 +636,36 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
   return setups.sort((a, b) => b.confidence - a.confidence);
 }
 
+/* ─── Auto-register calls to backend ─── */
+
+async function registerCallsToBackend(setups: TradeSetup[]) {
+  for (const setup of setups) {
+    try {
+      await fetch("/api/v1/trade-calls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symbol: setup.symbol,
+          side: setup.side,
+          entry_price: setup.entry,
+          stop_loss: setup.stopLoss,
+          tp0: setup.tp0,
+          tp1: setup.tp1,
+          tp2: setup.tp2,
+          tp3: setup.tp3,
+          confidence: setup.confidence,
+          reason: setup.reason,
+          rsi4h: setup.rsi4h,
+          has_convergence: setup.hasConvergence,
+          rr: setup.rr,
+        }),
+      });
+    } catch {
+      // Silently ignore registration errors — non-blocking
+    }
+  }
+}
+
 /* ─── RSI Badge Color ─── */
 
 function rsiBadge(rsi: number | null): { text: string; color: string; bg: string } {
@@ -665,6 +696,8 @@ export default function Trades() {
         const preSetups = detectPreSetups(allData);
         const enriched = await enrichWithBinance4h(preSetups);
         setSetups(enriched);
+        // Auto-register calls to backend (non-blocking)
+        registerCallsToBackend(enriched).catch(() => {});
       }
     } catch (e) {
       console.error("Fetch error:", e);
@@ -726,6 +759,12 @@ export default function Trades() {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-500">MAJ: {lastUpdate}</span>
+              <Link
+                to="/trades/performance"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/20 text-sm font-semibold text-amber-400 transition-all"
+              >
+                <Trophy className="w-4 h-4" /> Performance
+              </Link>
               <button onClick={fetchTrades}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-sm font-semibold transition-all">
                 <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Rafraîchir

@@ -19,6 +19,127 @@
       "coins": []
     }
   },
-  "lastCheck": null,
-  "lastAlerts": []
+  "lastCheck": "2026-02-25T19:47:37.036Z",
+  "lastAlerts": [
+    {
+      "type": "coingecko_signal",
+      "coin": "aave",
+      "direction": "LONG",
+      "rr": 1.1,
+      "entry": 122.43,
+      "tp1": 123.54,
+      "tp2": 124.78,
+      "tp3": 660.37,
+      "sl": 120.31,
+      "confidence": 95
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "pepe",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 0.00000434,
+      "tp1": 0.000005,
+      "tp2": 0.000005,
+      "tp3": 0.000005,
+      "sl": 0.000004,
+      "confidence": 95
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "pump-fun",
+      "direction": "LONG",
+      "rr": 2.3,
+      "entry": 0.00191612,
+      "tp1": 0.001943,
+      "tp2": 0.00204,
+      "tp3": 0.002117,
+      "sl": 0.001862,
+      "confidence": 95
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "ethena",
+      "direction": "LONG",
+      "rr": 3.9,
+      "entry": 0.110718,
+      "tp1": 0.115,
+      "tp2": 0.124,
+      "tp3": 0.132,
+      "sl": 0.1073,
+      "confidence": 95
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "filecoin",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 1.095,
+      "tp1": 1.25,
+      "tp2": 1.35,
+      "tp3": 1.51,
+      "sl": 0.99,
+      "confidence": 95
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "render-token",
+      "direction": "LONG",
+      "rr": 4.8,
+      "entry": 1.51,
+      "tp1": 1.52,
+      "tp2": 1.64,
+      "tp3": 1.72,
+      "sl": 1.48,
+      "confidence": 95
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "sei-network",
+      "direction": "LONG",
+      "rr": 5.7,
+      "entry": 0.071918,
+      "tp1": 0.0722,
+      "tp2": 0.0785,
+      "tp3": 0.0824,
+      "sl": 0.0708,
+      "confidence": 95
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "pudgy-penguins",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 0.00741963,
+      "tp1": 0.008104,
+      "tp2": 0.008559,
+      "tp3": 0.009243,
+      "sl": 0.006964,
+      "confidence": 95
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "virtual-protocol",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 0.710541,
+      "tp1": 0.7813,
+      "tp2": 0.8284,
+      "tp3": 0.8991,
+      "sl": 0.6634,
+      "confidence": 95
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "celestia",
+      "direction": "LONG",
+      "rr": 2,
+      "entry": 0.363215,
+      "tp1": 0.4069,
+      "tp2": 0.436,
+      "tp3": 0.4797,
+      "sl": 0.3264,
+      "confidence": 95
+    }
+  ]
 }

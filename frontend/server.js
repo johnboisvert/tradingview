@@ -1177,10 +1177,20 @@ app.post('/api/telegram/toggle', (req, res) => {
   saveTelegramAlerts(config);
   if (config.enabled) {
     startAlertChecker();
-  } else if (alertInterval) {
-    clearInterval(alertInterval);
-    alertInterval = null;
-    console.log('[Telegram] Alert checker stopped');
+    // Also start scalp alerts if the function exists
+    if (typeof startScalpAlertChecker === 'function') startScalpAlertChecker();
+  } else {
+    if (alertInterval) {
+      clearInterval(alertInterval);
+      alertInterval = null;
+      console.log('[Telegram] Alert checker stopped');
+    }
+    // Also stop scalp alerts
+    if (typeof scalpAlertInterval !== 'undefined' && scalpAlertInterval) {
+      clearInterval(scalpAlertInterval);
+      scalpAlertInterval = null;
+      console.log('[ScalpAlert] Scalp alert checker stopped');
+    }
   }
   res.json({ success: true, enabled: config.enabled });
 });
@@ -1190,6 +1200,512 @@ initCooldownsFromFile();
 
 // Start checker on boot if enabled
 startAlertChecker();
+
+// ============================================================
+// SCALP TRADING — Telegram Alert System (Stoch RSI + MACD)
+// ============================================================
+
+const SCALP_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes cooldown for scalp
+const SCALP_COOLDOWNS_FILE = path.join(DATA_DIR, 'scalp_cooldowns.json');
+const inMemoryScalpCooldowns = new Map();
+
+// Top symbols for scalp trading (high volume, tight spreads)
+const SCALP_SYMBOLS = [
+  'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
+  'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT',
+  'LINKUSDT', 'LTCUSDT', 'UNIUSDT', 'ATOMUSDT', 'NEARUSDT',
+  'APTUSDT', 'ARBUSDT', 'OPUSDT', 'SUIUSDT', 'PEPEUSDT',
+];
+
+function loadScalpCooldowns() {
+  try {
+    if (fs.existsSync(SCALP_COOLDOWNS_FILE)) {
+      return JSON.parse(fs.readFileSync(SCALP_COOLDOWNS_FILE, 'utf8'));
+    }
+  } catch (_e) { /* ignore */ }
+  return {};
+}
+
+function saveScalpCooldowns(cooldowns) {
+  try {
+    fs.writeFileSync(SCALP_COOLDOWNS_FILE, JSON.stringify(cooldowns, null, 2));
+  } catch (err) {
+    console.error('[ScalpAlert] Error saving cooldowns:', err);
+  }
+}
+
+function isScalpCooldownActive(cooldowns, symbol, direction) {
+  const now = Date.now();
+  const memKey = `${symbol}_${direction}`;
+  const memTs = inMemoryScalpCooldowns.get(memKey);
+  if (memTs && (now - memTs) < SCALP_COOLDOWN_MS) return true;
+  const fileEntry = cooldowns[memKey];
+  if (fileEntry) {
+    const elapsed = now - new Date(fileEntry.timestamp).getTime();
+    if (elapsed < SCALP_COOLDOWN_MS && fileEntry.direction === direction) {
+      inMemoryScalpCooldowns.set(memKey, new Date(fileEntry.timestamp).getTime());
+      return true;
+    }
+  }
+  return false;
+}
+
+function setScalpCooldown(cooldowns, symbol, direction) {
+  const now = Date.now();
+  const memKey = `${symbol}_${direction}`;
+  inMemoryScalpCooldowns.set(memKey, now);
+  cooldowns[memKey] = { timestamp: new Date(now).toISOString(), direction };
+}
+
+// Initialize scalp cooldowns from file on boot
+(function initScalpCooldownsFromFile() {
+  const cooldowns = loadScalpCooldowns();
+  const now = Date.now();
+  for (const [key, entry] of Object.entries(cooldowns)) {
+    if (entry && entry.timestamp) {
+      const elapsed = now - new Date(entry.timestamp).getTime();
+      if (elapsed < SCALP_COOLDOWN_MS) {
+        inMemoryScalpCooldowns.set(key, new Date(entry.timestamp).getTime());
+      }
+    }
+  }
+  console.log(`[ScalpAlert] Loaded ${inMemoryScalpCooldowns.size} active scalp cooldowns from file`);
+})();
+
+// ─── Technical Indicator Calculations ───
+
+function calcEMA(data, period) {
+  const k = 2 / (period + 1);
+  const ema = [data[0]];
+  for (let i = 1; i < data.length; i++) {
+    ema.push(data[i] * k + ema[i - 1] * (1 - k));
+  }
+  return ema;
+}
+
+function calcRSI(closes, period = 14) {
+  const rsi = new Array(closes.length).fill(50);
+  if (closes.length < period + 1) return rsi;
+  let avgGain = 0, avgLoss = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff > 0) avgGain += diff; else avgLoss += Math.abs(diff);
+  }
+  avgGain /= period;
+  avgLoss /= period;
+  rsi[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  for (let i = period + 1; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    avgGain = (avgGain * (period - 1) + (diff > 0 ? diff : 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + (diff < 0 ? Math.abs(diff) : 0)) / period;
+    rsi[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  }
+  return rsi;
+}
+
+function calcStochRSI(closes, rsiPeriod = 14, stochPeriod = 14, kSmooth = 3, dSmooth = 3) {
+  const rsi = calcRSI(closes, rsiPeriod);
+  const stochRaw = new Array(rsi.length).fill(50);
+  for (let i = stochPeriod - 1; i < rsi.length; i++) {
+    const slice = rsi.slice(i - stochPeriod + 1, i + 1);
+    const min = Math.min(...slice);
+    const max = Math.max(...slice);
+    stochRaw[i] = max === min ? 50 : ((rsi[i] - min) / (max - min)) * 100;
+  }
+  // SMA smoothing for K
+  const kLine = new Array(stochRaw.length).fill(50);
+  for (let i = kSmooth - 1; i < stochRaw.length; i++) {
+    let sum = 0;
+    for (let j = 0; j < kSmooth; j++) sum += stochRaw[i - j];
+    kLine[i] = sum / kSmooth;
+  }
+  // SMA smoothing for D
+  const dLine = new Array(kLine.length).fill(50);
+  for (let i = dSmooth - 1; i < kLine.length; i++) {
+    let sum = 0;
+    for (let j = 0; j < dSmooth; j++) sum += kLine[i - j];
+    dLine[i] = sum / dSmooth;
+  }
+  return { k: kLine, d: dLine };
+}
+
+function calcMACD(closes, fast = 12, slow = 26, signal = 9) {
+  const emaFast = calcEMA(closes, fast);
+  const emaSlow = calcEMA(closes, slow);
+  const macdLine = emaFast.map((v, i) => v - emaSlow[i]);
+  const signalLine = calcEMA(macdLine, signal);
+  const histogram = macdLine.map((v, i) => v - signalLine[i]);
+  return { macd: macdLine, signal: signalLine, histogram };
+}
+
+// ─── Fetch Binance klines for a symbol ───
+async function fetchBinanceKlines(symbol, interval, limit = 100) {
+  try {
+    const resp = await fetch(
+      `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return data.map(k => ({
+      open: parseFloat(k[1]),
+      high: parseFloat(k[2]),
+      low: parseFloat(k[3]),
+      close: parseFloat(k[4]),
+      volume: parseFloat(k[5]),
+      time: k[0],
+    }));
+  } catch (err) {
+    console.error(`[ScalpAlert] Binance klines error for ${symbol} ${interval}:`, err.message);
+    return [];
+  }
+}
+
+// ─── Generate Scalp Setup for a single symbol ───
+async function generateScalpSetup(symbol) {
+  // Fetch M5 candles (100 candles = ~8h of data)
+  const m5Candles = await fetchBinanceKlines(symbol, '5m', 100);
+  if (m5Candles.length < 50) return null;
+
+  // Fetch H1 candles for trend confirmation
+  const h1Candles = await fetchBinanceKlines(symbol, '1h', 50);
+  if (h1Candles.length < 25) return null;
+
+  const m5Closes = m5Candles.map(c => c.close);
+  const h1Closes = h1Candles.map(c => c.close);
+  const currentPrice = m5Closes[m5Closes.length - 1];
+
+  // ─── M5 Stoch RSI (14,14,3,3) ───
+  const stochRSI = calcStochRSI(m5Closes, 14, 14, 3, 3);
+  const kVal = stochRSI.k[stochRSI.k.length - 1];
+  const dVal = stochRSI.d[stochRSI.d.length - 1];
+  const kPrev = stochRSI.k[stochRSI.k.length - 2];
+  const dPrev = stochRSI.d[stochRSI.d.length - 2];
+
+  // ─── M5 MACD (12,26,9) ───
+  const macd = calcMACD(m5Closes, 12, 26, 9);
+  const macdHist = macd.histogram[macd.histogram.length - 1];
+  const macdHistPrev = macd.histogram[macd.histogram.length - 2];
+  const macdLine = macd.macd[macd.macd.length - 1];
+  const macdSignalLine = macd.signal[macd.signal.length - 1];
+
+  // ─── H1 Trend (EMA20 + RSI) ───
+  const h1EMA20 = calcEMA(h1Closes, 20);
+  const h1EmaVal = h1EMA20[h1EMA20.length - 1];
+  const h1RSI = calcRSI(h1Closes, 14);
+  const h1RsiVal = h1RSI[h1RSI.length - 1];
+  const h1Price = h1Closes[h1Closes.length - 1];
+
+  let h1Trend = 'neutral';
+  if (h1Price > h1EmaVal && h1RsiVal > 50) h1Trend = 'bullish';
+  else if (h1Price < h1EmaVal && h1RsiVal < 50) h1Trend = 'bearish';
+
+  // ─── Signal Detection ───
+  let side = null;
+  let confidence = 0;
+  const reasons = [];
+
+  // LONG conditions
+  const stochBullishCross = kPrev <= dPrev && kVal > dVal;
+  const stochOversold = kVal < 30 || dVal < 30;
+  const macdBullish = macdHist > macdHistPrev;
+  const macdCrossUp = macdHistPrev < 0 && macdHist >= 0;
+
+  // SHORT conditions
+  const stochBearishCross = kPrev >= dPrev && kVal < dVal;
+  const stochOverbought = kVal > 70 || dVal > 70;
+  const macdBearish = macdHist < macdHistPrev;
+  const macdCrossDown = macdHistPrev > 0 && macdHist <= 0;
+
+  // ─── LONG Signal ───
+  if ((stochBullishCross || stochOversold) && (macdBullish || macdCrossUp)) {
+    side = 'LONG';
+    confidence = 50;
+
+    if (stochBullishCross && stochOversold) { confidence += 15; reasons.push('Stoch RSI croisement haussier en zone de survente'); }
+    else if (stochBullishCross) { confidence += 10; reasons.push('Stoch RSI croisement haussier (K > D)'); }
+    else if (stochOversold) { confidence += 8; reasons.push(`Stoch RSI en survente (K=${kVal.toFixed(1)}, D=${dVal.toFixed(1)})`); }
+
+    if (macdCrossUp) { confidence += 15; reasons.push('MACD croisement haussier (histogramme positif)'); }
+    else if (macdBullish) { confidence += 8; reasons.push('MACD momentum haussier croissant'); }
+
+    if (h1Trend === 'bullish') { confidence += 15; reasons.push('Tendance H1 haussière (prix > EMA20, RSI > 50)'); }
+    else if (h1Trend === 'neutral') { confidence += 5; reasons.push('Tendance H1 neutre'); }
+    else { confidence -= 10; reasons.push('⚠️ Contre-tendance H1 baissière'); }
+  }
+  // ─── SHORT Signal ───
+  else if ((stochBearishCross || stochOverbought) && (macdBearish || macdCrossDown)) {
+    side = 'SHORT';
+    confidence = 50;
+
+    if (stochBearishCross && stochOverbought) { confidence += 15; reasons.push('Stoch RSI croisement baissier en zone de surachat'); }
+    else if (stochBearishCross) { confidence += 10; reasons.push('Stoch RSI croisement baissier (K < D)'); }
+    else if (stochOverbought) { confidence += 8; reasons.push(`Stoch RSI en surachat (K=${kVal.toFixed(1)}, D=${dVal.toFixed(1)})`); }
+
+    if (macdCrossDown) { confidence += 15; reasons.push('MACD croisement baissier (histogramme négatif)'); }
+    else if (macdBearish) { confidence += 8; reasons.push('MACD momentum baissier croissant'); }
+
+    if (h1Trend === 'bearish') { confidence += 15; reasons.push('Tendance H1 baissière (prix < EMA20, RSI < 50)'); }
+    else if (h1Trend === 'neutral') { confidence += 5; reasons.push('Tendance H1 neutre'); }
+    else { confidence -= 10; reasons.push('⚠️ Contre-tendance H1 haussière'); }
+  }
+
+  if (!side) return null;
+
+  // Volume confirmation (last 5 candles vs average)
+  const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+  const avgVol = m5Candles.slice(-50).reduce((s, c) => s + c.volume, 0) / 50;
+  if (recentVol > avgVol * 1.5) { confidence += 8; reasons.push('Volume supérieur à la moyenne (+50%)'); }
+  else if (recentVol > avgVol * 1.2) { confidence += 4; reasons.push('Volume légèrement supérieur'); }
+
+  confidence = Math.min(95, Math.max(25, confidence));
+
+  // ─── TP / SL Calculation (scalp-tight) ───
+  // ATR-like volatility from last 20 M5 candles
+  const last20 = m5Candles.slice(-20);
+  const avgRange = last20.reduce((s, c) => s + (c.high - c.low), 0) / last20.length;
+  const atrPct = (avgRange / currentPrice) * 100;
+  const slPct = Math.max(atrPct * 1.5, 0.3);
+  const tp1Pct = slPct * 1.0;
+  const tp2Pct = slPct * 1.8;
+  const tp3Pct = slPct * 2.8;
+
+  let entry, stopLoss, tp1, tp2, tp3;
+  if (side === 'LONG') {
+    entry = currentPrice;
+    stopLoss = currentPrice * (1 - slPct / 100);
+    tp1 = currentPrice * (1 + tp1Pct / 100);
+    tp2 = currentPrice * (1 + tp2Pct / 100);
+    tp3 = currentPrice * (1 + tp3Pct / 100);
+  } else {
+    entry = currentPrice;
+    stopLoss = currentPrice * (1 + slPct / 100);
+    tp1 = currentPrice * (1 - tp1Pct / 100);
+    tp2 = currentPrice * (1 - tp2Pct / 100);
+    tp3 = currentPrice * (1 - tp3Pct / 100);
+  }
+
+  const riskDist = Math.abs(entry - stopLoss);
+  const rewardDist = Math.abs(tp2 - entry);
+  const rr = riskDist > 0 ? Math.round((rewardDist / riskDist) * 10) / 10 : 1.8;
+
+  // Determine MACD signal label
+  let macdSignalLabel = 'neutral';
+  if (macdLine > macdSignalLine) macdSignalLabel = 'bullish';
+  else if (macdLine < macdSignalLine) macdSignalLabel = 'bearish';
+
+  return {
+    symbol,
+    name: symbol.replace('USDT', ''),
+    side,
+    entry,
+    stopLoss,
+    tp1, tp2, tp3,
+    rr,
+    confidence,
+    reason: reasons.join(' | '),
+    stoch_rsi_k: kVal,
+    stoch_rsi_d: dVal,
+    macd_signal: macdSignalLabel,
+    h1_trend: h1Trend,
+    currentPrice,
+  };
+}
+
+// ─── Check and send Scalp alerts ───
+async function checkAndSendScalpAlerts() {
+  const config = loadTelegramAlerts();
+  if (!config.enabled) return [];
+
+  if (isDailyLimitReached()) {
+    console.log(`[ScalpAlert] ⛔ Daily alert limit reached. Skipping.`);
+    return [];
+  }
+
+  const sentAlerts = [];
+  const now = new Date();
+  const nowStr = now.toLocaleString('fr-CA', { timeZone: 'America/Montreal' });
+  const cooldowns = loadScalpCooldowns();
+
+  try {
+    console.log(`[ScalpAlert] 📡 Analyzing ${SCALP_SYMBOLS.length} symbols for scalp setups...`);
+
+    const setups = [];
+    // Process symbols in batches of 5 to avoid rate limits
+    for (let i = 0; i < SCALP_SYMBOLS.length; i += 5) {
+      const batch = SCALP_SYMBOLS.slice(i, i + 5);
+      const results = await Promise.all(batch.map(sym => generateScalpSetup(sym)));
+      for (const setup of results) {
+        if (setup) setups.push(setup);
+      }
+      // Small delay between batches to respect Binance rate limits
+      if (i + 5 < SCALP_SYMBOLS.length) {
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+
+    console.log(`[ScalpAlert] Generated ${setups.length} scalp setups`);
+
+    // Filter: only send signals with confidence >= 90%
+    const MIN_CONFIDENCE = 90;
+    const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
+    console.log(`[ScalpAlert] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
+
+    // Sort by confidence descending
+    qualifiedSetups.sort((a, b) => b.confidence - a.confidence);
+
+    for (const setup of qualifiedSetups) {
+      if (isDailyLimitReached()) {
+        console.log(`[ScalpAlert] ⛔ Daily limit reached. Stopping.`);
+        break;
+      }
+
+      if (isScalpCooldownActive(cooldowns, setup.symbol, setup.side)) {
+        console.log(`[ScalpAlert] 🛑 Cooldown active for ${setup.symbol} ${setup.side}, skipping`);
+        continue;
+      }
+
+      const dirEmoji = setup.side === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
+      const confEmoji = setup.confidence >= 80 ? '🔥' : setup.confidence >= 65 ? '⚡' : '📊';
+
+      const pctTP1 = ((setup.tp1 - setup.entry) / setup.entry * 100);
+      const pctTP2 = ((setup.tp2 - setup.entry) / setup.entry * 100);
+      const pctTP3 = ((setup.tp3 - setup.entry) / setup.entry * 100);
+      const pctSL = ((setup.stopLoss - setup.entry) / setup.entry * 100);
+
+      const trendEmoji = setup.h1_trend === 'bullish' ? '🟢 Haussière' : setup.h1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
+      const macdEmoji = setup.macd_signal === 'bullish' ? '🟢' : setup.macd_signal === 'bearish' ? '🔴' : '⚪';
+
+      const text = `${confEmoji} <b>⚡ SCALP TRADING — SIGNAL CRYPTO</b>
+━━━━━━━━━━━━━━━━━━━━━
+
+${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
+
+📐 <b>Indicateurs M5 :</b>
+├ Stoch RSI K : <b>${setup.stoch_rsi_k.toFixed(1)}</b>
+├ Stoch RSI D : <b>${setup.stoch_rsi_d.toFixed(1)}</b>
+├ MACD : ${macdEmoji} <b>${setup.macd_signal}</b>
+└ Tendance H1 : ${trendEmoji}
+
+🎯 <b>Plan de Trade :</b>
+├ Entry : <b>$${formatPrice(setup.entry)}</b>
+├ TP1 : <b>$${formatPrice(setup.tp1)}</b> (${pctTP1 >= 0 ? '+' : ''}${pctTP1.toFixed(2)}%)
+├ TP2 : <b>$${formatPrice(setup.tp2)}</b> (${pctTP2 >= 0 ? '+' : ''}${pctTP2.toFixed(2)}%)
+├ TP3 : <b>$${formatPrice(setup.tp3)}</b> (${pctTP3 >= 0 ? '+' : ''}${pctTP3.toFixed(2)}%)
+└ SL : <b>$${formatPrice(setup.stopLoss)}</b> (${pctSL >= 0 ? '+' : ''}${pctSL.toFixed(2)}%)
+
+⚖️ Risk/Reward : <b>1:${setup.rr}</b>
+🧠 Confiance : <b>${setup.confidence}%</b>
+
+📋 <b>Raison :</b>
+<i>${setup.reason}</i>
+
+⏰ Timeframe : M5 — ${nowStr} (Montréal)
+⚠️ <i>Scalp trade — Ceci n'est pas un conseil financier. DYOR.</i>`;
+
+      const result = await sendTelegramMessage(text);
+      if (result.ok) {
+        await sendTelegramPhoto();
+
+        setScalpCooldown(cooldowns, setup.symbol, setup.side);
+        saveScalpCooldowns(cooldowns);
+        incrementDailyCount();
+
+        // Auto-register as scalp call
+        try {
+          const calls = loadScalpCalls();
+          scalpCallIdCounter++;
+          const expiresAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+          calls.push({
+            id: scalpCallIdCounter,
+            symbol: setup.symbol, side: setup.side,
+            entry_price: setup.entry, stop_loss: setup.stopLoss,
+            tp1: setup.tp1, tp2: setup.tp2, tp3: setup.tp3,
+            confidence: setup.confidence, reason: setup.reason,
+            stoch_rsi_k: setup.stoch_rsi_k, stoch_rsi_d: setup.stoch_rsi_d,
+            macd_signal: setup.macd_signal, h1_trend: setup.h1_trend,
+            rr: setup.rr, status: 'active',
+            tp1_hit: false, tp2_hit: false, tp3_hit: false, sl_hit: false,
+            best_tp_reached: 0, exit_price: null, profit_pct: null,
+            created_at: now.toISOString(), resolved_at: null,
+            expires_at: expiresAt.toISOString(),
+          });
+          saveScalpCalls(calls);
+          console.log(`[ScalpAlert] Auto-registered scalp call #${scalpCallIdCounter}`);
+        } catch (regErr) {
+          console.error('[ScalpAlert] Failed to auto-register scalp call:', regErr);
+        }
+
+        sentAlerts.push({
+          type: 'scalp_signal',
+          symbol: setup.symbol,
+          direction: setup.side,
+          rr: setup.rr,
+          entry: setup.entry,
+          confidence: setup.confidence,
+        });
+        console.log(`[ScalpAlert] ✅ Sent ${setup.side} scalp signal for ${setup.name} (confidence: ${setup.confidence}%) — daily: ${dailyAlertCount}/${MAX_DAILY_ALERTS}`);
+
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+  } catch (err) {
+    console.error('[ScalpAlert] Check error:', err);
+  }
+
+  return sentAlerts;
+}
+
+// ─── Periodic scalp alert checker (every 3 minutes) ───
+let scalpAlertInterval = null;
+
+function startScalpAlertChecker() {
+  const config = loadTelegramAlerts();
+  if (scalpAlertInterval) clearInterval(scalpAlertInterval);
+  if (config.enabled) {
+    const interval = 3 * 60 * 1000; // 3 minutes for scalp
+    console.log(`[ScalpAlert] Scalp alert checker started — checking every ${interval / 1000}s`);
+    scalpAlertInterval = setInterval(async () => {
+      console.log('[ScalpAlert] Running periodic scalp alert check...');
+      const alerts = await checkAndSendScalpAlerts();
+      if (alerts.length > 0) {
+        console.log(`[ScalpAlert] Sent ${alerts.length} scalp alerts`);
+      }
+    }, interval);
+    // Run initial check after 30s delay (let swing alerts go first)
+    setTimeout(() => {
+      checkAndSendScalpAlerts().then(alerts => {
+        if (alerts.length > 0) console.log(`[ScalpAlert] Initial check sent ${alerts.length} scalp alerts`);
+      });
+    }, 30000);
+  }
+}
+
+// Start scalp checker on boot if enabled
+startScalpAlertChecker();
+
+// ─── POST /api/telegram/scalp-toggle — Enable/disable scalp alerts specifically ───
+app.post('/api/telegram/scalp-toggle', (req, res) => {
+  const { enabled } = req.body;
+  if (enabled) {
+    startScalpAlertChecker();
+  } else if (scalpAlertInterval) {
+    clearInterval(scalpAlertInterval);
+    scalpAlertInterval = null;
+    console.log('[ScalpAlert] Scalp alert checker stopped');
+  }
+  res.json({ success: true, scalp_alerts_enabled: !!enabled });
+});
+
+// ─── POST /api/telegram/scalp-check — Force a manual scalp alert check ───
+app.post('/api/telegram/scalp-check', async (req, res) => {
+  try {
+    const alerts = await checkAndSendScalpAlerts();
+    res.json({ success: true, alerts_sent: alerts.length, alerts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // ============================================================
 // Referral / Parrainage API

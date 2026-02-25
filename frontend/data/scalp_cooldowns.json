@@ -26,5 +26,9 @@
   "ICPUSDT_LONG": {
     "timestamp": "2026-02-25T20:26:15.763Z",
     "direction": "LONG"
+  },
+  "BONKUSDT_LONG": {
+    "timestamp": "2026-02-25T20:27:03.162Z",
+    "direction": "LONG"
   }
 }

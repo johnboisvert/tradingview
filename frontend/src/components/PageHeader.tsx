@@ -10,7 +10,7 @@ interface PageHeaderProps {
   icon: React.ReactNode;
   title: string;
   subtitle: string;
-  steps: Step[];
+  steps?: Step[];
   accentColor?: string; // tailwind gradient class or hex
 }
 
@@ -26,7 +26,7 @@ const ACCENT_CLASSES: Record<string, string> = {
   indigo: "from-indigo-500 to-blue-500",
 };
 
-export default function PageHeader({ icon, title, subtitle, steps, accentColor = "blue" }: PageHeaderProps) {
+export default function PageHeader({ icon, title, subtitle, steps = [], accentColor = "blue" }: PageHeaderProps) {
   const gradient = ACCENT_CLASSES[accentColor] ?? ACCENT_CLASSES["blue"];
 
   return (
@@ -43,6 +43,7 @@ export default function PageHeader({ icon, title, subtitle, steps, accentColor =
       </div>
 
       {/* Steps */}
+      {steps.length > 0 && (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
         {steps.map((step) => (
           <div
@@ -61,6 +62,7 @@ export default function PageHeader({ icon, title, subtitle, steps, accentColor =
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

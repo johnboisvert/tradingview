@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import React, { Suspense } from "react";
 import LoadingSpinner from "./components/LoadingSpinner";
 import PageTracker from "./components/PageTracker";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 // ── Lazy-loaded pages ────────────────────────────────────────────────────────
 const Index = React.lazy(() => import("./pages/Index"));
@@ -90,6 +91,7 @@ function PlanProtected({ path, children }: { path: string; children: React.React
 
 function App() {
   return (
+    <ErrorBoundary>
     <Router>
       <PageTracker />
       <Suspense fallback={<LoadingSpinner />}>
@@ -194,6 +196,7 @@ function App() {
         </Routes>
       </Suspense>
     </Router>
+    </ErrorBoundary>
   );
 }
 

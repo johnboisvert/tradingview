@@ -661,22 +661,42 @@ export default function ScalpTrading() {
   const [minConfidence, setMinConfidence] = useState(50);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [showSR, setShowSR] = useState(true);
+  const [dataWarning, setDataWarning] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
+    setDataWarning(null);
     try {
       // Fetch top 200 coins from CoinGecko via proxy
       const allCoins: any[] = [];
       for (let page = 1; page <= 2; page++) {
-        const res = await fetch(
-          `/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${page}&sparkline=true&price_change_percentage=24h`,
-          { signal: AbortSignal.timeout(15000) }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) allCoins.push(...data);
+        try {
+          const res = await fetch(
+            `/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${page}&sparkline=true&price_change_percentage=24h`,
+            { signal: AbortSignal.timeout(15000) }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) allCoins.push(...data);
+          }
+        } catch (e) {
+          console.warn(`CoinGecko page ${page} fetch failed:`, e);
         }
         if (page < 2) await new Promise(r => setTimeout(r, 500));
+      }
+
+      if (allCoins.length === 0) {
+        setFetchError("Impossible de récupérer les données de marché. Vérifiez votre connexion et réessayez.");
+        setLoading(false);
+        return;
+      }
+
+      // Quick check if Binance is available
+      const binanceTest = await fetchBinanceKlines("BTC", "1h", 5);
+      if (binanceTest.length === 0) {
+        setDataWarning("Les données Binance ne sont pas disponibles depuis cette localisation. Les signaux de scalping nécessitent les klines M5/H1 de Binance pour fonctionner. Les alertes Telegram côté serveur continuent de fonctionner normalement.");
       }
 
       const setups = await generateScalpSetups(allCoins);
@@ -684,9 +704,10 @@ export default function ScalpTrading() {
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
 
       // Register calls to backend (non-blocking)
-      registerScalpCallsToBackend(setups.filter(s => s.confidence >= 60));
+      registerScalpCallsToBackend(setups.filter(s => s.confidence >= 60)).catch(() => {});
     } catch (err) {
       console.error("Scalp fetch error:", err);
+      setFetchError("Une erreur est survenue lors de l'analyse. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }
@@ -812,6 +833,29 @@ export default function ScalpTrading() {
               </span>
             </p>
           </div>
+
+          {/* Error Banner */}
+          {fetchError && (
+            <div className="mb-4 bg-red-500/[0.08] border border-red-500/20 rounded-xl p-4">
+              <p className="text-sm text-red-300 flex items-center gap-2">
+                <Shield className="w-4 h-4 flex-shrink-0" />
+                <span>{fetchError}</span>
+              </p>
+            </div>
+          )}
+
+          {/* Data Warning Banner */}
+          {dataWarning && !fetchError && (
+            <div className="mb-4 bg-orange-500/[0.08] border border-orange-500/20 rounded-xl p-4">
+              <p className="text-sm text-orange-300 flex items-center gap-2">
+                <Shield className="w-4 h-4 flex-shrink-0" />
+                <span>{dataWarning}</span>
+              </p>
+              <p className="text-xs text-orange-300/60 mt-2 ml-6">
+                💡 Les alertes Telegram sont envoyées depuis le serveur backend qui a accès aux données Binance. Consultez votre canal Telegram pour les signaux en temps réel.
+              </p>
+            </div>
+          )}
 
           {/* Table */}
           <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden">

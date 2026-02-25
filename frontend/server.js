@@ -1207,7 +1207,7 @@ startAlertChecker();
 // SCALP TRADING — Telegram Alert System (Stoch RSI + MACD)
 // ============================================================
 
-const SCALP_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 hours cooldown for scalp
+const SCALP_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes cooldown for scalp
 const SCALP_COOLDOWNS_FILE = path.join(DATA_DIR, 'scalp_cooldowns.json');
 const inMemoryScalpCooldowns = new Map();
 
@@ -1672,14 +1672,14 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
   return sentAlerts;
 }
 
-// ─── Periodic scalp alert checker (every 5 minutes) ───
+// ─── Periodic scalp alert checker (every 3 minutes) ───
 let scalpAlertInterval = null;
 
 function startScalpAlertChecker() {
   const config = loadTelegramAlerts();
   if (scalpAlertInterval) clearInterval(scalpAlertInterval);
   if (config.enabled) {
-    const interval = 5 * 60 * 1000; // 5 minutes for scalp
+    const interval = 3 * 60 * 1000; // 3 minutes for scalp
     console.log(`[ScalpAlert] Scalp alert checker started — checking every ${interval / 1000}s`);
     scalpAlertInterval = setInterval(async () => {
       console.log('[ScalpAlert] Running periodic scalp alert check...');

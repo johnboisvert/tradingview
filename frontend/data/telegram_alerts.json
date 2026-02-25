@@ -237,5 +237,63 @@
       "sl": 1.21,
       "confidence": 95
     }
-  ]
+  ],
+  "cooldowns": {
+    "sui_signal": {
+      "timestamp": "2026-02-25T22:29:02.269Z",
+      "direction": "LONG"
+    },
+    "polkadot_signal": {
+      "timestamp": "2026-02-25T22:29:04.593Z",
+      "direction": "LONG"
+    },
+    "aave_signal": {
+      "timestamp": "2026-02-25T22:29:06.912Z",
+      "direction": "LONG"
+    },
+    "pepe_signal": {
+      "timestamp": "2026-02-25T22:29:09.246Z",
+      "direction": "LONG"
+    },
+    "worldcoin-wld_signal": {
+      "timestamp": "2026-02-25T22:29:11.582Z",
+      "direction": "LONG"
+    },
+    "filecoin_signal": {
+      "timestamp": "2026-02-25T22:29:13.910Z",
+      "direction": "LONG"
+    },
+    "aptos_signal": {
+      "timestamp": "2026-02-25T22:29:16.259Z",
+      "direction": "LONG"
+    },
+    "sei-network_signal": {
+      "timestamp": "2026-02-25T22:29:18.559Z",
+      "direction": "LONG"
+    },
+    "pudgy-penguins_signal": {
+      "timestamp": "2026-02-25T22:29:20.873Z",
+      "direction": "LONG"
+    },
+    "virtual-protocol_signal": {
+      "timestamp": "2026-02-25T22:29:23.192Z",
+      "direction": "LONG"
+    },
+    "dash_signal": {
+      "timestamp": "2026-02-25T22:29:25.516Z",
+      "direction": "LONG"
+    },
+    "celestia_signal": {
+      "timestamp": "2026-02-25T22:29:27.839Z",
+      "direction": "LONG"
+    },
+    "optimism_signal": {
+      "timestamp": "2026-02-25T22:29:30.172Z",
+      "direction": "LONG"
+    },
+    "starknet_signal": {
+      "timestamp": "2026-02-25T22:29:32.539Z",
+      "direction": "LONG"
+    }
+  }
 }

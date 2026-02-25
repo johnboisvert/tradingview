@@ -150,6 +150,38 @@
     "pepe_signal": {
       "timestamp": "2026-02-25T20:26:26.014Z",
       "direction": "LONG"
+    },
+    "pump-fun_signal": {
+      "timestamp": "2026-02-25T20:26:28.343Z",
+      "direction": "LONG"
+    },
+    "filecoin_signal": {
+      "timestamp": "2026-02-25T20:26:30.672Z",
+      "direction": "LONG"
+    },
+    "sei-network_signal": {
+      "timestamp": "2026-02-25T20:26:32.977Z",
+      "direction": "LONG"
+    },
+    "pudgy-penguins_signal": {
+      "timestamp": "2026-02-25T20:26:35.298Z",
+      "direction": "LONG"
+    },
+    "virtual-protocol_signal": {
+      "timestamp": "2026-02-25T20:26:37.627Z",
+      "direction": "LONG"
+    },
+    "dash_signal": {
+      "timestamp": "2026-02-25T20:26:39.959Z",
+      "direction": "LONG"
+    },
+    "aerodrome-finance_signal": {
+      "timestamp": "2026-02-25T20:26:42.279Z",
+      "direction": "LONG"
+    },
+    "celestia_signal": {
+      "timestamp": "2026-02-25T20:26:44.670Z",
+      "direction": "LONG"
     }
   }
 }

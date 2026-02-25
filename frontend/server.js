@@ -4,7 +4,8 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createHash } from 'crypto';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import fs from 'fs';
+const { readFileSync, writeFileSync, existsSync, mkdirSync } = fs;
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -881,7 +882,7 @@ function generateRealSetups(coins) {
 
     if (change24h > 2 && volMcapRatio > 0.08) {
       side = 'LONG';
-      confidence = 50;
+    confidence = 50;
       if (change24h > 5) confidence += 15; else confidence += 8;
       if (volMcapRatio > 0.2) confidence += 15; else if (volMcapRatio > 0.1) confidence += 10;
       if (change24h > 8) confidence += 10;
@@ -894,7 +895,7 @@ function generateRealSetups(coins) {
       reason = `Survente potentielle (${change24h.toFixed(1)}%) — rebond technique possible`;
     } else if (change24h < -3 && volMcapRatio > 0.1) {
       side = 'SHORT';
-      confidence = 50;
+    confidence = 50;
       if (change24h < -5) confidence += 10; else confidence += 5;
       if (volMcapRatio > 0.2) confidence += 15; else confidence += 8;
       reason = `Tendance baissière (${change24h.toFixed(1)}%) avec volume de distribution (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
@@ -1428,7 +1429,7 @@ async function generateScalpSetup(symbol) {
   // ─── LONG Signal ───
   if ((stochBullishCross || stochOversold) && (macdBullish || macdCrossUp)) {
     side = 'LONG';
-    confidence = 50;
+    confidence = 60;
 
     if (stochBullishCross && stochOversold) { confidence += 15; reasons.push('Stoch RSI croisement haussier en zone de survente'); }
     else if (stochBullishCross) { confidence += 10; reasons.push('Stoch RSI croisement haussier (K > D)'); }
@@ -1444,7 +1445,7 @@ async function generateScalpSetup(symbol) {
   // ─── SHORT Signal ───
   else if ((stochBearishCross || stochOverbought) && (macdBearish || macdCrossDown)) {
     side = 'SHORT';
-    confidence = 50;
+    confidence = 60;
 
     if (stochBearishCross && stochOverbought) { confidence += 15; reasons.push('Stoch RSI croisement baissier en zone de surachat'); }
     else if (stochBearishCross) { confidence += 10; reasons.push('Stoch RSI croisement baissier (K < D)'); }
@@ -1560,7 +1561,7 @@ async function checkAndSendScalpAlerts() {
     }
 
     // Filter: only send signals with confidence >= 90%
-    const MIN_CONFIDENCE = 75;
+    const MIN_CONFIDENCE = 90;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[ScalpAlert] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 
@@ -2468,7 +2469,7 @@ async function resolveActiveTradeCalls() {
   const prices = {};
   for (const sym of symbols) {
     try {
-      const resp = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${sym}`, {
+      const resp = await fetch(`https://api.binance.us/api/v3/ticker/price?symbol=${sym}`, {
         signal: AbortSignal.timeout(8000),
       });
       if (resp.ok) {
@@ -2743,7 +2744,7 @@ async function resolveActiveScalpCalls() {
   const prices = {};
   for (const sym of symbols) {
     try {
-      const resp = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${sym}`, { signal: AbortSignal.timeout(8000) });
+      const resp = await fetch(`https://api.binance.us/api/v3/ticker/price?symbol=${sym}`, { signal: AbortSignal.timeout(8000) });
       if (resp.ok) { const data = await resp.json(); prices[sym] = parseFloat(data.price); }
     } catch (_e) { /* skip */ }
   }

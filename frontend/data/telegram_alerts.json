@@ -249,5 +249,11 @@
       "sl": 0.243,
       "confidence": 91
     }
-  ]
+  ],
+  "cooldowns": {
+    "sui_signal": {
+      "timestamp": "2026-02-25T21:13:14.381Z",
+      "direction": "LONG"
+    }
+  }
 }

@@ -15,7 +15,6 @@ interface TradeCallRecord {
   side: "LONG" | "SHORT";
   entry_price: number;
   stop_loss: number;
-  tp0: number | null;
   tp1: number;
   tp2: number;
   tp3: number;
@@ -25,7 +24,6 @@ interface TradeCallRecord {
   has_convergence: boolean;
   rr: number | null;
   status: string;
-  tp0_hit: boolean;
   tp1_hit: boolean;
   tp2_hit: boolean;
   tp3_hit: boolean;
@@ -43,7 +41,6 @@ interface Stats {
   resolved_calls: number;
   expired_calls: number;
   win_rate: number;
-  tp0_rate: number;
   tp1_rate: number;
   tp2_rate: number;
   tp3_rate: number;
@@ -196,7 +193,6 @@ export default function TradesPerformance() {
                     <Target className="w-4 h-4 text-emerald-400" /> Taux de Réussite par TP
                   </h3>
                   <div className="space-y-3">
-                    <WinRateBar label="TP0" rate={stats.tp0_rate} color="#f59e0b" />
                     <WinRateBar label="TP1" rate={stats.tp1_rate} color="#34d399" />
                     <WinRateBar label="TP2" rate={stats.tp2_rate} color="#22c55e" />
                     <WinRateBar label="TP3" rate={stats.tp3_rate} color="#16a34a" />
@@ -358,7 +354,6 @@ export default function TradesPerformance() {
                           else if (call.tp3_hit) resultText = "TP3 ✓";
                           else if (call.tp2_hit) resultText = "TP2 ✓";
                           else if (call.tp1_hit) resultText = "TP1 ✓";
-                          else if (call.tp0_hit) resultText = "TP0 ✓";
                           else if (call.status === "expired") resultText = "Expiré";
 
                           return (

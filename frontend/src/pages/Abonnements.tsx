@@ -80,6 +80,7 @@ const SLUG_LABELS: Record<string, string> = {
   "academy": "Trading Academy",
   "downloads": "Téléchargements",
   "dtrading-ia-pro": "DTrading IA Pro",
+  "scalp-trading": "Scalp Trading (Stoch RSI + MACD)",
 };
 
 // Slugs exclus de l'affichage (trop basiques ou internes)

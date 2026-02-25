@@ -176,6 +176,7 @@ const ROUTE_TO_SLUG: Record<string, string> = {
   "/spot-trading": "strategie",
   "/calculatrice": "calculatrice",
   "/trades": "strategie",
+  "/scalp": "strategie",
   "/risk-management": "strategie",
   "/watchlist": "strategie",
   "/graphiques": "strategie",

@@ -60,6 +60,7 @@ import {
   Menu,
   X,
   Send,
+  Zap,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -120,6 +121,7 @@ const NAV_SECTIONS = [
       { path: "/spot-trading", label: "Spot Trading", icon: Gem },
       { path: "/calculatrice", label: "Calculatrice", icon: Calculator },
       { path: "/trades", label: "Swing Trading", icon: TrendingUp },
+      { path: "/scalp", label: "Scalp Trading", icon: Zap },
       { path: "/risk-management", label: "Risk Management", icon: AlertTriangle },
       { path: "/watchlist", label: "Watchlist", icon: Eye },
       { path: "/graphiques", label: "Graphiques", icon: LineChart },

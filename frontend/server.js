@@ -334,7 +334,7 @@ app.get('/api/coingecko/{*path}', async (req, res) => {
 // ─── Binance Klines API proxy ───
 app.get('/api/binance/klines', async (req, res) => {
   const { symbol, interval, limit } = req.query;
-  const targetUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval || '1h'}&limit=${limit || '168'}`;
+  const targetUrl = `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${interval || '1h'}&limit=${limit || '168'}`;
 
   try {
     const upstreamRes = await fetch(targetUrl, {
@@ -1350,7 +1350,7 @@ function calcMACD(closes, fast = 12, slow = 26, signal = 9) {
 async function fetchBinanceKlines(symbol, interval, limit = 100) {
   try {
     const resp = await fetch(
-      `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+      `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
       { signal: AbortSignal.timeout(10000) }
     );
     if (!resp.ok) return [];
@@ -1553,9 +1553,14 @@ async function checkAndSendScalpAlerts() {
     }
 
     console.log(`[ScalpAlert] Generated ${setups.length} scalp setups`);
+    // Debug: log all setup confidences
+    if (setups.length > 0) {
+      const confValues = setups.map(s => `${s.symbol}:${s.confidence}%${s.side}`);
+      console.log(`[ScalpAlert] Setup confidences: ${confValues.join(", ")}`);
+    }
 
     // Filter: only send signals with confidence >= 90%
-    const MIN_CONFIDENCE = 90;
+    const MIN_CONFIDENCE = 75;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[ScalpAlert] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 

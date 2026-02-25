@@ -19,17 +19,17 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-02-25T21:13:11.544Z",
+  "lastCheck": "2026-02-25T22:28:59.580Z",
   "lastAlerts": [
     {
       "type": "coingecko_signal",
       "coin": "sui",
       "direction": "LONG",
       "rr": 2.7,
-      "entry": 1.01,
+      "entry": 1.007,
       "tp1": 1.11,
-      "tp2": 1.18,
-      "tp3": 1.28,
+      "tp2": 1.17,
+      "tp3": 1.27,
       "sl": 0.95,
       "confidence": 95
     },
@@ -38,10 +38,10 @@
       "coin": "polkadot",
       "direction": "LONG",
       "rr": 2.5,
-      "entry": 1.67,
-      "tp1": 2.02,
-      "tp2": 2.26,
-      "tp3": 2.61,
+      "entry": 1.69,
+      "tp1": 2.06,
+      "tp2": 2.31,
+      "tp3": 2.68,
       "sl": 1.44,
       "confidence": 95
     },
@@ -49,8 +49,8 @@
       "type": "coingecko_signal",
       "coin": "aave",
       "direction": "LONG",
-      "rr": 0.9,
-      "entry": 122.63,
+      "rr": 1.4,
+      "entry": 122.15,
       "tp1": 123.54,
       "tp2": 124.78,
       "tp3": 660.37,
@@ -62,8 +62,8 @@
       "coin": "pepe",
       "direction": "LONG",
       "rr": 2.5,
-      "entry": 0.00000435,
-      "tp1": 0.000005,
+      "entry": 0.00000433,
+      "tp1": 0.000004,
       "tp2": 0.000005,
       "tp3": 0.000005,
       "sl": 0.000004,
@@ -74,11 +74,11 @@
       "coin": "worldcoin-wld",
       "direction": "LONG",
       "rr": 2.5,
-      "entry": 0.421152,
+      "entry": 0.422895,
       "tp1": 0.4332,
-      "tp2": 0.4734,
-      "tp3": 0.5047,
-      "sl": 0.4003,
+      "tp2": 0.4751,
+      "tp3": 0.5063,
+      "sl": 0.402,
       "confidence": 95
     },
     {
@@ -86,10 +86,10 @@
       "coin": "filecoin",
       "direction": "LONG",
       "rr": 2.5,
-      "entry": 1.098,
-      "tp1": 1.26,
-      "tp2": 1.37,
-      "tp3": 1.53,
+      "entry": 1.088,
+      "tp1": 1.24,
+      "tp2": 1.34,
+      "tp3": 1.49,
       "sl": 0.99,
       "confidence": 95
     },
@@ -98,11 +98,23 @@
       "coin": "aptos",
       "direction": "LONG",
       "rr": 2.5,
-      "entry": 1.042,
-      "tp1": 1.21,
-      "tp2": 1.32,
-      "tp3": 1.49,
-      "sl": 0.93,
+      "entry": 1.024,
+      "tp1": 1.17,
+      "tp2": 1.27,
+      "tp3": 1.42,
+      "sl": 0.92,
+      "confidence": 95
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "sei-network",
+      "direction": "LONG",
+      "rr": 8.7,
+      "entry": 0.07306,
+      "tp1": 0.0777,
+      "tp2": 0.0809,
+      "tp3": 0.0855,
+      "sl": 0.0722,
       "confidence": 95
     },
     {
@@ -110,47 +122,35 @@
       "coin": "pudgy-penguins",
       "direction": "LONG",
       "rr": 2.5,
-      "entry": 0.00750775,
-      "tp1": 0.008288,
-      "tp2": 0.008808,
-      "tp3": 0.009588,
-      "sl": 0.006988,
+      "entry": 0.00753158,
+      "tp1": 0.008299,
+      "tp2": 0.00881,
+      "tp3": 0.009578,
+      "sl": 0.00702,
       "confidence": 95
     },
     {
       "type": "coingecko_signal",
       "coin": "virtual-protocol",
       "direction": "LONG",
-      "rr": 1.9,
-      "entry": 0.711113,
-      "tp1": 0.7884,
-      "tp2": 0.8399,
-      "tp3": 0.9172,
-      "sl": 0.6416,
+      "rr": 2.5,
+      "entry": 0.712101,
+      "tp1": 0.7783,
+      "tp2": 0.8225,
+      "tp3": 0.8888,
+      "sl": 0.6679,
       "confidence": 95
     },
     {
       "type": "coingecko_signal",
       "coin": "dash",
       "direction": "LONG",
-      "rr": 7,
-      "entry": 35.82,
-      "tp1": 36.11,
-      "tp2": 39.36,
-      "tp3": 41.48,
-      "sl": 35.31,
-      "confidence": 95
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "story-2",
-      "direction": "LONG",
-      "rr": 1.5,
-      "entry": 1.088,
-      "tp1": 1.1,
-      "tp2": 1.12,
-      "tp3": 14.75,
-      "sl": 1.07,
+      "rr": 0.4,
+      "entry": 35.66,
+      "tp1": 35.84,
+      "tp2": 36.2,
+      "tp3": 1490.6,
+      "sl": 34.26,
       "confidence": 95
     },
     {
@@ -158,10 +158,10 @@
       "coin": "celestia",
       "direction": "LONG",
       "rr": 2.1,
-      "entry": 0.364648,
-      "tp1": 0.4128,
-      "tp2": 0.4449,
-      "tp3": 0.493,
+      "entry": 0.362473,
+      "tp1": 0.4072,
+      "tp2": 0.4369,
+      "tp3": 0.4816,
       "sl": 0.3264,
       "confidence": 95
     },
@@ -169,9 +169,9 @@
       "type": "coingecko_signal",
       "coin": "optimism",
       "direction": "LONG",
-      "rr": 2.9,
-      "entry": 0.130012,
-      "tp1": 0.1327,
+      "rr": 4.1,
+      "entry": 0.12928,
+      "tp1": 0.1324,
       "tp2": 0.1391,
       "tp3": 4.8303,
       "sl": 0.1269,
@@ -181,8 +181,8 @@
       "type": "coingecko_signal",
       "coin": "starknet",
       "direction": "LONG",
-      "rr": 0.6,
-      "entry": 0.04593091,
+      "rr": 0.8,
+      "entry": 0.04582655,
       "tp1": 0.0463,
       "tp2": 0.0468,
       "tp3": 4.4012,
@@ -193,107 +193,49 @@
       "type": "coingecko_signal",
       "coin": "monad",
       "direction": "LONG",
-      "rr": 1.5,
-      "entry": 0.02208651,
-      "tp1": 0.0222,
-      "tp2": 0.0242,
-      "tp3": 0.0255,
-      "sl": 0.0207,
+      "rr": 2.5,
+      "entry": 0.02243022,
+      "tp1": 0.0239,
+      "tp2": 0.0249,
+      "tp3": 0.0264,
+      "sl": 0.0214,
       "confidence": 95
     },
     {
       "type": "coingecko_signal",
-      "coin": "axie-infinity",
+      "coin": "plasma",
       "direction": "LONG",
-      "rr": 2.9,
-      "entry": 1.39,
-      "tp1": 1.5,
-      "tp2": 1.57,
-      "tp3": 1.67,
-      "sl": 1.33,
+      "rr": 2.5,
+      "entry": 0.1084,
+      "tp1": 0.1237,
+      "tp2": 0.134,
+      "tp3": 0.1493,
+      "sl": 0.0982,
       "confidence": 95
     },
     {
       "type": "coingecko_signal",
       "coin": "dogwifcoin",
       "direction": "LONG",
-      "rr": 3.4,
-      "entry": 0.223326,
-      "tp1": 0.242,
-      "tp2": 0.2545,
-      "tp3": 0.2731,
+      "rr": 3,
+      "entry": 0.225869,
+      "tp1": 0.2469,
+      "tp2": 0.261,
+      "tp3": 0.2821,
       "sl": 0.2142,
       "confidence": 95
     },
     {
       "type": "coingecko_signal",
-      "coin": "pendle",
+      "coin": "venice-token",
       "direction": "LONG",
-      "rr": 1.6,
-      "entry": 1.3,
-      "tp1": 1.32,
-      "tp2": 1.44,
-      "tp3": 1.52,
-      "sl": 1.21,
+      "rr": 2.6,
+      "entry": 4.16,
+      "tp1": 4.47,
+      "tp2": 4.79,
+      "tp3": 22.53,
+      "sl": 3.92,
       "confidence": 95
     }
-  ],
-  "cooldowns": {
-    "sui_signal": {
-      "timestamp": "2026-02-25T22:29:02.269Z",
-      "direction": "LONG"
-    },
-    "polkadot_signal": {
-      "timestamp": "2026-02-25T22:29:04.593Z",
-      "direction": "LONG"
-    },
-    "aave_signal": {
-      "timestamp": "2026-02-25T22:29:06.912Z",
-      "direction": "LONG"
-    },
-    "pepe_signal": {
-      "timestamp": "2026-02-25T22:29:09.246Z",
-      "direction": "LONG"
-    },
-    "worldcoin-wld_signal": {
-      "timestamp": "2026-02-25T22:29:11.582Z",
-      "direction": "LONG"
-    },
-    "filecoin_signal": {
-      "timestamp": "2026-02-25T22:29:13.910Z",
-      "direction": "LONG"
-    },
-    "aptos_signal": {
-      "timestamp": "2026-02-25T22:29:16.259Z",
-      "direction": "LONG"
-    },
-    "sei-network_signal": {
-      "timestamp": "2026-02-25T22:29:18.559Z",
-      "direction": "LONG"
-    },
-    "pudgy-penguins_signal": {
-      "timestamp": "2026-02-25T22:29:20.873Z",
-      "direction": "LONG"
-    },
-    "virtual-protocol_signal": {
-      "timestamp": "2026-02-25T22:29:23.192Z",
-      "direction": "LONG"
-    },
-    "dash_signal": {
-      "timestamp": "2026-02-25T22:29:25.516Z",
-      "direction": "LONG"
-    },
-    "celestia_signal": {
-      "timestamp": "2026-02-25T22:29:27.839Z",
-      "direction": "LONG"
-    },
-    "optimism_signal": {
-      "timestamp": "2026-02-25T22:29:30.172Z",
-      "direction": "LONG"
-    },
-    "starknet_signal": {
-      "timestamp": "2026-02-25T22:29:32.539Z",
-      "direction": "LONG"
-    }
-  }
+  ]
 }

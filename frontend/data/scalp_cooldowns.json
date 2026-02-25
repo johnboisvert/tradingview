@@ -38,5 +38,13 @@
   "DOGEUSDT_LONG": {
     "timestamp": "2026-02-25T21:13:55.763Z",
     "direction": "LONG"
+  },
+  "SUIUSDT_LONG": {
+    "timestamp": "2026-02-25T22:29:40.912Z",
+    "direction": "LONG"
+  },
+  "DOTUSDT_LONG": {
+    "timestamp": "2026-02-25T22:29:43.235Z",
+    "direction": "LONG"
   }
 }

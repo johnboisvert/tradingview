@@ -461,7 +461,7 @@ Vous recevrez désormais vos alertes crypto ici.
 
   const result = await sendTelegramMessage(text);
   if (result.ok) {
-    await sendTelegramPhoto();
+    // Photo removed per user request
     res.json({ success: true, message: 'Message test envoyé avec succès !' });
   } else {
     res.json({ success: false, message: result.description || 'Erreur Telegram' });
@@ -476,7 +476,7 @@ app.post('/api/telegram/send', async (req, res) => {
   }
   const result = await sendTelegramMessage(text);
   if (result.ok) {
-    await sendTelegramPhoto();
+    // Photo removed per user request
     res.json({ success: true, message: 'Message envoyé' });
   } else {
     res.json({ success: false, message: result.description || 'Erreur Telegram' });
@@ -1080,7 +1080,8 @@ async function checkAndSendAlerts() {
         srSection += `└ (aucun support identifié)\n`;
       }
 
-      const text = `${confEmoji} <b>🔄 SWING TRADING — SIGNAL CRYPTO</b>
+      const text = `🔵🔵🔵 <b>🔄 SWING TRADING — SIGNAL CRYPTO</b> 🔵🔵🔵
+🌐 https://CryptoIA.ca
 ━━━━━━━━━━━━━━━━━━━━━
 
 ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
@@ -1107,7 +1108,7 @@ ${srSection}
       const result = await sendTelegramMessage(text);
       if (result.ok) {
         // Send branding image after the alert message
-        await sendTelegramPhoto();
+        // Photo removed per user request
 
         // Set cooldown IMMEDIATELY in memory + file to prevent duplicates
         setCooldown(cooldowns, setup.id, setup.side);
@@ -1590,7 +1591,8 @@ async function checkAndSendScalpAlerts() {
       const trendEmoji = setup.h1_trend === 'bullish' ? '🟢 Haussière' : setup.h1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
       const macdEmoji = setup.macd_signal === 'bullish' ? '🟢' : setup.macd_signal === 'bearish' ? '🔴' : '⚪';
 
-      const text = `${confEmoji} <b>⚡ SCALP TRADING — SIGNAL CRYPTO</b>
+      const text = `🔴🔴🔴 <b>⚡ SCALP TRADING — SIGNAL CRYPTO</b> 🔴🔴🔴
+🌐 https://CryptoIA.ca
 ━━━━━━━━━━━━━━━━━━━━━
 
 ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
@@ -1619,7 +1621,7 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 
       const result = await sendTelegramMessage(text);
       if (result.ok) {
-        await sendTelegramPhoto();
+        // Photo removed per user request
 
         setScalpCooldown(cooldowns, setup.symbol, setup.side);
         saveScalpCooldowns(cooldowns);

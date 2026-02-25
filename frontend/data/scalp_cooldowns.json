@@ -18,5 +18,13 @@
   "AAVEUSDT_LONG": {
     "timestamp": "2026-02-25T20:20:27.199Z",
     "direction": "LONG"
+  },
+  "ETHUSDT_LONG": {
+    "timestamp": "2026-02-25T20:23:16.006Z",
+    "direction": "LONG"
+  },
+  "ICPUSDT_LONG": {
+    "timestamp": "2026-02-25T20:26:15.763Z",
+    "direction": "LONG"
   }
 }

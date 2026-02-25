@@ -30,5 +30,13 @@
   "BONKUSDT_LONG": {
     "timestamp": "2026-02-25T20:27:03.162Z",
     "direction": "LONG"
+  },
+  "SOLUSDT_LONG": {
+    "timestamp": "2026-02-25T21:13:53.338Z",
+    "direction": "LONG"
+  },
+  "DOGEUSDT_LONG": {
+    "timestamp": "2026-02-25T21:13:55.763Z",
+    "direction": "LONG"
   }
 }

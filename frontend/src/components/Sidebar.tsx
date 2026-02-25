@@ -119,7 +119,7 @@ const NAV_SECTIONS = [
       { path: "/strategy", label: "Stratégie", icon: BarChart3 },
       { path: "/spot-trading", label: "Spot Trading", icon: Gem },
       { path: "/calculatrice", label: "Calculatrice", icon: Calculator },
-      { path: "/trades", label: "Trades", icon: TrendingUp },
+      { path: "/trades", label: "Swing Trading", icon: TrendingUp },
       { path: "/risk-management", label: "Risk Management", icon: AlertTriangle },
       { path: "/watchlist", label: "Watchlist", icon: Eye },
       { path: "/graphiques", label: "Graphiques", icon: LineChart },

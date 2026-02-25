@@ -736,7 +736,7 @@ export default function Trades() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
         <PageHeader
           icon={<BarChart3 className="w-6 h-6" />}
-          title="Suggestions de Trades"
+          title="Suggestions de Swing Trading"
           subtitle="Setups de trading avec chandeliers Binance 4h, RSI, TP0 Quick Profit, convergence S/R et gestion du risque avancée."
           accentColor="blue"
           steps={[
@@ -753,7 +753,7 @@ export default function Trades() {
           <div className="relative z-10 h-full flex items-center justify-between px-8">
             <div>
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                📊 Suggestions de Trades
+                📊 Suggestions de Swing Trading
               </h1>
               <p className="text-sm text-gray-400 mt-1">Setups multi-timeframe (7j + 4h) avec TP0, RSI et convergence S/R</p>
             </div>

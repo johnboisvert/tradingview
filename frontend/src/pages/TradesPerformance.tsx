@@ -155,7 +155,7 @@ export default function TradesPerformance() {
               to="/trades"
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-sm text-gray-400 hover:text-white transition-all"
             >
-              <ArrowLeft className="w-4 h-4" /> Retour aux Trades
+              <ArrowLeft className="w-4 h-4" /> Retour au Swing Trading
             </Link>
             <div className="flex-1">
               <h1 className="text-2xl font-extrabold bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent flex items-center gap-3">

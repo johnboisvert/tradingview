@@ -1032,8 +1032,8 @@ async function checkAndSendAlerts() {
     const setups = Array.from(seenCoins.values());
     console.log(`[Telegram] After dedup: ${setups.length} unique coin setups`);
 
-    // Filter: only send signals with confidence >= 80%
-    const MIN_CONFIDENCE = 80;
+    // Filter: only send signals with confidence >= 90%
+    const MIN_CONFIDENCE = 90;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[Telegram] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 

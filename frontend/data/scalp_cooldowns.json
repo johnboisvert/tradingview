@@ -92,7 +92,7 @@
     "direction": "SHORT"
   },
   "SUIUSDT_SHORT": {
-    "timestamp": "2026-02-26T18:26:13.687Z",
+    "timestamp": "2026-02-26T20:29:35.526Z",
     "direction": "SHORT"
   },
   "SHIBUSDT_SHORT": {
@@ -117,6 +117,14 @@
   },
   "SEIUSDT_SHORT": {
     "timestamp": "2026-02-26T18:34:20.685Z",
+    "direction": "SHORT"
+  },
+  "DOGEUSDT_SHORT": {
+    "timestamp": "2026-02-26T20:35:04.934Z",
+    "direction": "SHORT"
+  },
+  "BONKUSDT_SHORT": {
+    "timestamp": "2026-02-26T20:38:04.947Z",
     "direction": "SHORT"
   }
 }

@@ -46,6 +46,106 @@ interface ScalpSetup {
   macdSignal: "bullish" | "bearish" | "neutral";
   h1MacdSignal: "bullish" | "bearish" | "neutral";
   h1Trend: "bullish" | "bearish" | "neutral";
+  source?: "client" | "server";
+}
+
+/* ─── Server-side scalp call type (from /api/v1/scalp-calls) ─── */
+
+interface ServerScalpCall {
+  id: number;
+  symbol: string;
+  side: "LONG" | "SHORT";
+  entry_price: number;
+  stop_loss: number;
+  tp1: number;
+  tp2: number;
+  tp3: number;
+  confidence: number;
+  reason: string;
+  stoch_rsi_k: number | null;
+  stoch_rsi_d: number | null;
+  macd_signal: string;
+  h1_macd_signal: string;
+  h1_trend: string;
+  rr: number;
+  status: string;
+  created_at: string;
+  expires_at: string;
+}
+
+/* ─── Convert server call to ScalpSetup ─── */
+
+function serverCallToSetup(call: ServerScalpCall): ScalpSetup {
+  const createdAt = new Date(call.created_at);
+  const triggerTime = createdAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const name = call.symbol.replace(/USDT$/, "");
+
+  return {
+    id: `server-${call.id}`,
+    symbol: call.symbol,
+    name,
+    image: "",
+    side: call.side,
+    currentPrice: call.entry_price,
+    entry: call.entry_price,
+    stopLoss: call.stop_loss,
+    tp1: call.tp1,
+    tp2: call.tp2,
+    tp3: call.tp3,
+    rr: call.rr || 1.5,
+    change24h: 0,
+    volume: 0,
+    marketCap: 0,
+    confidence: call.confidence,
+    reason: call.reason || "",
+    triggerTime,
+    supports: [],
+    resistances: [],
+    stochRsiK: call.stoch_rsi_k,
+    stochRsiD: call.stoch_rsi_d,
+    macdSignal: (call.macd_signal as "bullish" | "bearish" | "neutral") || "neutral",
+    h1MacdSignal: (call.h1_macd_signal as "bullish" | "bearish" | "neutral") || "neutral",
+    h1Trend: (call.h1_trend as "bullish" | "bearish" | "neutral") || "neutral",
+    source: "server",
+  };
+}
+
+/* ─── Fetch active server-side scalp calls ─── */
+
+async function fetchServerScalpCalls(): Promise<ScalpSetup[]> {
+  try {
+    const res = await fetch("/api/v1/scalp-calls?status=active&limit=50", {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const data: ServerScalpCall[] = await res.json();
+    if (!Array.isArray(data)) return [];
+    return data.map(serverCallToSetup);
+  } catch {
+    console.warn("Failed to fetch server-side scalp calls");
+    return [];
+  }
+}
+
+/* ─── Merge server calls with client setups (deduplicate) ─── */
+
+function mergeSetups(clientSetups: ScalpSetup[], serverSetups: ScalpSetup[]): ScalpSetup[] {
+  // Mark client setups
+  const tagged = clientSetups.map(s => ({ ...s, source: "client" as const }));
+
+  // For each server setup, check if a matching client setup exists (same symbol + same side within 30min)
+  const merged = [...tagged];
+  for (const serverSetup of serverSetups) {
+    const isDuplicate = tagged.some(cs =>
+      cs.symbol === serverSetup.symbol && cs.side === serverSetup.side
+    );
+    if (!isDuplicate) {
+      merged.push(serverSetup);
+    }
+  }
+
+  // Sort by confidence descending
+  return merged.sort((a, b) => b.confidence - a.confidence);
 }
 
 /* ─── Formatters ─── */
@@ -708,12 +808,18 @@ export default function ScalpTrading() {
         setDataWarning("Les données Binance ne sont pas disponibles depuis cette localisation. Les signaux de scalping nécessitent les klines M5/H1 de Binance pour fonctionner. Les alertes Telegram côté serveur continuent de fonctionner normalement.");
       }
 
-      const setups = await generateScalpSetups(allCoins);
-      setTrades(setups);
+      const clientSetups = await generateScalpSetups(allCoins);
+
+      // Fetch server-side Telegram alerts (active calls)
+      const serverSetups = await fetchServerScalpCalls();
+
+      // Merge: server calls appear even when client can't compute them (e.g. Binance blocked)
+      const merged = mergeSetups(clientSetups, serverSetups);
+      setTrades(merged);
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
 
-      // Register calls to backend (non-blocking)
-      registerScalpCallsToBackend(setups.filter(s => s.confidence >= 60)).catch(() => {});
+      // Register client calls to backend (non-blocking)
+      registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 60)).catch(() => {});
     } catch (err) {
       console.error("Scalp fetch error:", err);
       setFetchError("Une erreur est survenue lors de l'analyse. Veuillez réessayer.");
@@ -736,6 +842,7 @@ export default function ScalpTrading() {
 
   const longCount = trades.filter(t => t.side === "LONG").length;
   const shortCount = trades.filter(t => t.side === "SHORT").length;
+  const serverCount = trades.filter(t => t.source === "server").length;
   const avgConfidence = trades.length > 0 ? Math.round(trades.reduce((s, t) => s + t.confidence, 0) / trades.length) : 0;
 
   return (
@@ -751,7 +858,7 @@ export default function ScalpTrading() {
 
         <div className="px-4 md:px-6 pb-6">
           {/* Stats Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Signaux</p>
               <p className="text-xl font-black text-white">{trades.length}</p>
@@ -763,6 +870,10 @@ export default function ScalpTrading() {
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Short</p>
               <p className="text-xl font-black text-red-400">{shortCount}</p>
+            </div>
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">📱 Telegram</p>
+              <p className="text-xl font-black text-blue-400">{serverCount}</p>
             </div>
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Confiance Moy.</p>
@@ -906,12 +1017,28 @@ export default function ScalpTrading() {
                             {/* Crypto */}
                             <td className="px-3 py-3">
                               <div className="flex items-center gap-2.5">
-                                {trade.image && (
+                                {trade.image ? (
                                   <img src={trade.image} alt={trade.name} className="w-6 h-6 rounded-full" loading="lazy" />
+                                ) : (
+                                  <div className="w-6 h-6 rounded-full bg-white/[0.08] flex items-center justify-center text-[10px] font-bold text-gray-400">
+                                    {trade.name.charAt(0)}
+                                  </div>
                                 )}
                                 <div>
-                                  <p className="font-bold text-sm">{trade.symbol}</p>
-                                  <p className="text-[10px] text-gray-500">{trade.name}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-bold text-sm">{trade.symbol}</p>
+                                    {trade.source === "server" && (
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/25 text-[9px] font-bold text-blue-400" title="Signal envoyé via Telegram">
+                                        📱 TG
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] text-gray-500">
+                                    {trade.name}
+                                    {trade.source === "server" && (
+                                      <span className="ml-1 text-blue-400/60">• Alerte Telegram</span>
+                                    )}
+                                  </p>
                                 </div>
                               </div>
                             </td>

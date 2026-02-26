@@ -1494,6 +1494,16 @@ async function generateScalpSetup(symbol) {
   if (macdLine > macdSignalLine) macdSignalLabel = 'bullish';
   else if (macdLine < macdSignalLine) macdSignalLabel = 'bearish';
 
+  // ─── VALIDATION: Ensure MACD labels are coherent with signal direction ───
+  if (side === 'LONG' && (macdSignalLabel !== 'bullish' || h1MacdSignalLabel !== 'bullish')) {
+    console.log(`[ScalpAlert] ⚠️ VALIDATION FAILED for ${symbol}: side=${side} but macd_signal=${macdSignalLabel}, h1_macd_signal=${h1MacdSignalLabel}`);
+    return null;
+  }
+  if (side === 'SHORT' && (macdSignalLabel !== 'bearish' || h1MacdSignalLabel !== 'bearish')) {
+    console.log(`[ScalpAlert] ⚠️ VALIDATION FAILED for ${symbol}: side=${side} but macd_signal=${macdSignalLabel}, h1_macd_signal=${h1MacdSignalLabel}`);
+    return null;
+  }
+
   return {
     symbol,
     name: symbol.replace('USDT', ''),
@@ -1566,6 +1576,13 @@ async function checkAndSendScalpAlerts() {
         }
 
         console.log(`[ScalpAlert] 📤 Sending ${idx + 1}/${qualifiedSetups.length}: ${setup.symbol} ${setup.side} (${setup.confidence}%)...`);
+
+        // ─── Pre-send MACD coherence validation ───
+        const expectedMacd = setup.side === 'LONG' ? 'bullish' : 'bearish';
+        if (setup.macd_signal !== expectedMacd || setup.h1_macd_signal !== expectedMacd) {
+          console.log(`[ScalpAlert] ⚠️ PRE-SEND VALIDATION FAILED for ${setup.symbol}: side=${setup.side} but macd_signal=${setup.macd_signal}, h1_macd_signal=${setup.h1_macd_signal} — SKIPPING`);
+          continue;
+        }
 
         const dirEmoji = setup.side === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
 

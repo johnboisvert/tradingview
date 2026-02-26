@@ -19,42 +19,42 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-02-26T18:34:45.285Z",
+  "lastCheck": "2026-02-26T19:01:43.044Z",
   "lastAlerts": [
     {
       "type": "coingecko_signal",
-      "coin": "lombard-protocol",
-      "direction": "LONG",
-      "rr": 1,
-      "entry": 0.857417,
-      "tp1": 0.8723,
-      "tp2": 0.8903,
-      "tp3": 1.6966,
-      "sl": 0.8244,
+      "coin": "filecoin",
+      "direction": "SHORT",
+      "rr": 7.2,
+      "entry": 0.996077,
+      "tp1": 0.9858,
+      "tp2": 0.9086,
+      "tp3": 0.8802,
+      "sl": 1.0082,
       "confidence": 95
     },
     {
       "type": "coingecko_signal",
-      "coin": "sui",
-      "direction": "SHORT",
-      "rr": 3.7,
-      "entry": 0.914767,
-      "tp1": 0.8622,
-      "tp2": 0.8482,
-      "tp3": 0.8082,
-      "sl": 0.933,
-      "confidence": 91
+      "coin": "lombard-protocol",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 0.867962,
+      "tp1": 0.8903,
+      "tp2": 0.9708,
+      "tp3": 1.0325,
+      "sl": 0.8268,
+      "confidence": 95
     },
     {
       "type": "coingecko_signal",
-      "coin": "layerzero",
-      "direction": "SHORT",
-      "rr": 1.2,
-      "entry": 1.53,
-      "tp1": 1.51,
-      "tp2": 1.5,
-      "tp3": 1.48,
-      "sl": 1.56,
+      "coin": "river",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 11.77,
+      "tp1": 14.33,
+      "tp2": 16.04,
+      "tp3": 18.6,
+      "sl": 10.06,
       "confidence": 91
     }
   ]

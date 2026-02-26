@@ -1373,25 +1373,42 @@ async function generateScalpSetup(symbol) {
   if (h1Price > h1EmaVal && h1RsiVal > 50) h1Trend = 'bullish';
   else if (h1Price < h1EmaVal && h1RsiVal < 50) h1Trend = 'bearish';
 
+  // Skip neutral H1 trends — no valid scalp signal without clear trend
+  if (h1Trend === 'neutral') return null;
+
+  // ─── H1 MACD (12,26,9) — both timeframes must agree ───
+  const h1Macd = calcMACD(h1Closes, 12, 26, 9);
+  const h1MacdLine = h1Macd.macd[h1Macd.macd.length - 1];
+  const h1MacdSignalLine = h1Macd.signal[h1Macd.signal.length - 1];
+  const h1MacdBullish = h1MacdLine > h1MacdSignalLine;
+  const h1MacdBearish = h1MacdLine < h1MacdSignalLine;
+
+  // Determine H1 MACD label
+  let h1MacdSignalLabel = 'neutral';
+  if (h1MacdBullish) h1MacdSignalLabel = 'bullish';
+  else if (h1MacdBearish) h1MacdSignalLabel = 'bearish';
+
   // ─── Signal Detection ───
   let side = null;
   let confidence = 0;
   const reasons = [];
 
-  // LONG conditions
+  // LONG conditions (M5)
   const stochBullishCross = kPrev <= dPrev && kVal > dVal;
   const stochOversold = kVal < 30 || dVal < 30;
-  const macdBullish = macdHist > macdHistPrev;
-  const macdCrossUp = macdHistPrev < 0 && macdHist >= 0;
+  // M5 MACD: require MACD line above signal line AND increasing histogram
+  const macdBullish = macdLine > macdSignalLine && macdHist > macdHistPrev;
+  const macdCrossUp = macdHistPrev < 0 && macdHist >= 0 && macdLine > macdSignalLine;
 
-  // SHORT conditions
+  // SHORT conditions (M5)
   const stochBearishCross = kPrev >= dPrev && kVal < dVal;
   const stochOverbought = kVal > 70 || dVal > 70;
-  const macdBearish = macdHist < macdHistPrev;
-  const macdCrossDown = macdHistPrev > 0 && macdHist <= 0;
+  // M5 MACD: require MACD line below signal line AND decreasing histogram
+  const macdBearish = macdLine < macdSignalLine && macdHist < macdHistPrev;
+  const macdCrossDown = macdHistPrev > 0 && macdHist <= 0 && macdLine < macdSignalLine;
 
-  // ─── LONG Signal ───
-  if ((stochBullishCross || stochOversold) && (macdBullish || macdCrossUp)) {
+  // ─── LONG Signal: H1 bullish trend + H1 MACD bullish + M5 Stoch + M5 MACD ───
+  if ((stochBullishCross || stochOversold) && (macdBullish || macdCrossUp) && h1Trend === 'bullish' && h1MacdBullish) {
     side = 'LONG';
     confidence = 60;
 
@@ -1399,15 +1416,14 @@ async function generateScalpSetup(symbol) {
     else if (stochBullishCross) { confidence += 10; reasons.push('Stoch RSI croisement haussier (K > D)'); }
     else if (stochOversold) { confidence += 8; reasons.push(`Stoch RSI en survente (K=${kVal.toFixed(1)}, D=${dVal.toFixed(1)})`); }
 
-    if (macdCrossUp) { confidence += 15; reasons.push('MACD croisement haussier (histogramme positif)'); }
-    else if (macdBullish) { confidence += 8; reasons.push('MACD momentum haussier croissant'); }
+    if (macdCrossUp) { confidence += 15; reasons.push('MACD M5 croisement haussier'); }
+    else if (macdBullish) { confidence += 10; reasons.push('MACD M5 haussier'); }
 
-    if (h1Trend === 'bullish') { confidence += 15; reasons.push('Tendance H1 haussière (prix > EMA20, RSI > 50)'); }
-    else if (h1Trend === 'neutral') { confidence += 5; reasons.push('Tendance H1 neutre'); }
-    else { confidence -= 10; reasons.push('⚠️ Contre-tendance H1 baissière'); }
+    confidence += 15; reasons.push('Tendance H1 haussière (prix > EMA20, RSI > 50)');
+    confidence += 10; reasons.push('MACD H1 haussier');
   }
-  // ─── SHORT Signal ───
-  else if ((stochBearishCross || stochOverbought) && (macdBearish || macdCrossDown)) {
+  // ─── SHORT Signal: H1 bearish trend + H1 MACD bearish + M5 Stoch + M5 MACD ───
+  else if ((stochBearishCross || stochOverbought) && (macdBearish || macdCrossDown) && h1Trend === 'bearish' && h1MacdBearish) {
     side = 'SHORT';
     confidence = 60;
 
@@ -1415,12 +1431,11 @@ async function generateScalpSetup(symbol) {
     else if (stochBearishCross) { confidence += 10; reasons.push('Stoch RSI croisement baissier (K < D)'); }
     else if (stochOverbought) { confidence += 8; reasons.push(`Stoch RSI en surachat (K=${kVal.toFixed(1)}, D=${dVal.toFixed(1)})`); }
 
-    if (macdCrossDown) { confidence += 15; reasons.push('MACD croisement baissier (histogramme négatif)'); }
-    else if (macdBearish) { confidence += 8; reasons.push('MACD momentum baissier croissant'); }
+    if (macdCrossDown) { confidence += 15; reasons.push('MACD M5 croisement baissier'); }
+    else if (macdBearish) { confidence += 10; reasons.push('MACD M5 baissier'); }
 
-    if (h1Trend === 'bearish') { confidence += 15; reasons.push('Tendance H1 baissière (prix < EMA20, RSI < 50)'); }
-    else if (h1Trend === 'neutral') { confidence += 5; reasons.push('Tendance H1 neutre'); }
-    else { confidence -= 10; reasons.push('⚠️ Contre-tendance H1 haussière'); }
+    confidence += 15; reasons.push('Tendance H1 baissière (prix < EMA20, RSI < 50)');
+    confidence += 10; reasons.push('MACD H1 baissier');
   }
 
   if (!side) return null;
@@ -1480,6 +1495,7 @@ async function generateScalpSetup(symbol) {
     stoch_rsi_k: kVal,
     stoch_rsi_d: dVal,
     macd_signal: macdSignalLabel,
+    h1_macd_signal: h1MacdSignalLabel,
     h1_trend: h1Trend,
     currentPrice,
   };
@@ -1542,7 +1558,8 @@ async function checkAndSendScalpAlerts() {
       const pctSL = ((setup.stopLoss - setup.entry) / setup.entry * 100);
 
       const trendEmoji = setup.h1_trend === 'bullish' ? '🟢 Haussière' : setup.h1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
-      const macdEmoji = setup.macd_signal === 'bullish' ? '🟢' : setup.macd_signal === 'bearish' ? '🔴' : '⚪';
+      const macdM5Emoji = setup.macd_signal === 'bullish' ? '🟢' : setup.macd_signal === 'bearish' ? '🔴' : '⚪';
+      const macdH1Emoji = setup.h1_macd_signal === 'bullish' ? '🟢' : setup.h1_macd_signal === 'bearish' ? '🔴' : '⚪';
 
       const text = `🔴🔴🔴 <b>⚡ SCALP TRADING — SIGNAL CRYPTO</b> 🔴🔴🔴
 🌐 https://CryptoIA.ca
@@ -1550,10 +1567,11 @@ async function checkAndSendScalpAlerts() {
 
 ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 
-📐 <b>Indicateurs M5 :</b>
+📐 <b>Indicateurs :</b>
 ├ Stoch RSI K : <b>${setup.stoch_rsi_k.toFixed(1)}</b>
 ├ Stoch RSI D : <b>${setup.stoch_rsi_d.toFixed(1)}</b>
-├ MACD : ${macdEmoji} <b>${setup.macd_signal}</b>
+├ MACD M5 : ${macdM5Emoji} <b>${setup.macd_signal}</b>
+├ MACD H1 : ${macdH1Emoji} <b>${setup.h1_macd_signal}</b>
 └ Tendance H1 : ${trendEmoji}
 
 🎯 <b>Plan de Trade :</b>
@@ -1591,7 +1609,7 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
             tp1: setup.tp1, tp2: setup.tp2, tp3: setup.tp3,
             confidence: setup.confidence, reason: setup.reason,
             stoch_rsi_k: setup.stoch_rsi_k, stoch_rsi_d: setup.stoch_rsi_d,
-            macd_signal: setup.macd_signal, h1_trend: setup.h1_trend,
+            macd_signal: setup.macd_signal, h1_macd_signal: setup.h1_macd_signal, h1_trend: setup.h1_trend,
             rr: setup.rr, status: 'active',
             tp1_hit: false, tp2_hit: false, tp3_hit: false, sl_hit: false,
             best_tp_reached: 0, exit_price: null, profit_pct: null,

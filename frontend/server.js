@@ -534,29 +534,7 @@ const COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours in ms
 // key: `${coinId}_${direction}` → timestamp (ms)
 const inMemoryCooldowns = new Map();
 
-// DAILY ALERT LIMIT — max 20 alerts per 24h rolling window
-const MAX_DAILY_ALERTS = 20;
-let dailyAlertCount = 0;
-let dailyAlertResetTime = Date.now() + 24 * 60 * 60 * 1000;
-
-function checkAndResetDailyLimit() {
-  const now = Date.now();
-  if (now >= dailyAlertResetTime) {
-    dailyAlertCount = 0;
-    dailyAlertResetTime = now + 24 * 60 * 60 * 1000;
-    console.log('[Telegram] 🔄 Daily alert counter reset (new 24h window)');
-  }
-}
-
-function isDailyLimitReached() {
-  checkAndResetDailyLimit();
-  return dailyAlertCount >= MAX_DAILY_ALERTS;
-}
-
-function incrementDailyCount() {
-  checkAndResetDailyLimit();
-  dailyAlertCount++;
-}
+// NO daily alert limit — only per-crypto cooldown applies
 
 // Load file-based cooldowns into in-memory Map on startup
 function initCooldownsFromFile() {
@@ -997,19 +975,13 @@ async function checkAndSendAlerts() {
   const config = loadTelegramAlerts();
   if (!config.enabled) return [];
 
-  // Check daily limit before doing any work
-  if (isDailyLimitReached()) {
-    console.log(`[Telegram] ⛔ Daily alert limit reached (${MAX_DAILY_ALERTS}/${MAX_DAILY_ALERTS}). Skipping until reset.`);
-    return [];
-  }
-
   const sentAlerts = [];
   const now = new Date();
   const nowStr = now.toLocaleString('fr-CA', { timeZone: 'America/Montreal' });
   const cooldowns = loadCooldowns();
 
   try {
-    console.log(`[Telegram] 📡 Fetching CoinGecko market data... (daily alerts: ${dailyAlertCount}/${MAX_DAILY_ALERTS})`);
+    console.log(`[Telegram] 📡 Fetching CoinGecko market data...`);
     const coins = await fetchCoinGeckoMarkets();
     console.log(`[Telegram] Received ${coins.length} coins from CoinGecko`);
 
@@ -1038,14 +1010,8 @@ async function checkAndSendAlerts() {
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[Telegram] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 
-    // Send alerts for each qualified setup (respecting cooldowns + daily limit)
+    // Send alerts for each qualified setup (respecting per-crypto cooldowns)
     for (const setup of qualifiedSetups) {
-      // Check daily limit before each send
-      if (isDailyLimitReached()) {
-        console.log(`[Telegram] ⛔ Daily limit reached (${MAX_DAILY_ALERTS}). Stopping sends for today.`);
-        break;
-      }
-
       // Check cooldown: skip if same direction was sent within 4 hours
       if (isCooldownActive(cooldowns, setup.id, setup.side)) {
         continue;
@@ -1114,9 +1080,6 @@ ${srSection}
         setCooldown(cooldowns, setup.id, setup.side);
         saveCooldowns(cooldowns);
 
-        // Increment daily counter
-        incrementDailyCount();
-
         sentAlerts.push({
           type: 'coingecko_signal',
           coin: setup.id,
@@ -1129,7 +1092,7 @@ ${srSection}
           sl: setup.stopLoss,
           confidence: setup.confidence,
         });
-        console.log(`[Telegram] ✅ Sent ${setup.side} signal for ${setup.name} (confidence: ${setup.confidence}%) — daily: ${dailyAlertCount}/${MAX_DAILY_ALERTS}`);
+        console.log(`[Telegram] ✅ Sent ${setup.side} signal for ${setup.name} (confidence: ${setup.confidence}%)`);
 
         // Small delay between messages to avoid Telegram rate limit
         await new Promise(r => setTimeout(r, 2000));
@@ -1527,11 +1490,6 @@ async function checkAndSendScalpAlerts() {
   const config = loadTelegramAlerts();
   if (!config.enabled) return [];
 
-  if (isDailyLimitReached()) {
-    console.log(`[ScalpAlert] ⛔ Daily alert limit reached. Skipping.`);
-    return [];
-  }
-
   const sentAlerts = [];
   const now = new Date();
   const nowStr = now.toLocaleString('fr-CA', { timeZone: 'America/Montreal' });
@@ -1570,11 +1528,6 @@ async function checkAndSendScalpAlerts() {
     qualifiedSetups.sort((a, b) => b.confidence - a.confidence);
 
     for (const setup of qualifiedSetups) {
-      if (isDailyLimitReached()) {
-        console.log(`[ScalpAlert] ⛔ Daily limit reached. Stopping.`);
-        break;
-      }
-
       if (isScalpCooldownActive(cooldowns, setup.symbol, setup.side)) {
         console.log(`[ScalpAlert] 🛑 Cooldown active for ${setup.symbol} ${setup.side}, skipping`);
         continue;
@@ -1625,7 +1578,6 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 
         setScalpCooldown(cooldowns, setup.symbol, setup.side);
         saveScalpCooldowns(cooldowns);
-        incrementDailyCount();
 
         // Auto-register as scalp call
         try {
@@ -1660,7 +1612,7 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
           entry: setup.entry,
           confidence: setup.confidence,
         });
-        console.log(`[ScalpAlert] ✅ Sent ${setup.side} scalp signal for ${setup.name} (confidence: ${setup.confidence}%) — daily: ${dailyAlertCount}/${MAX_DAILY_ALERTS}`);
+        console.log(`[ScalpAlert] ✅ Sent ${setup.side} scalp signal for ${setup.name} (confidence: ${setup.confidence}%)`);
 
         await new Promise(r => setTimeout(r, 2000));
       }

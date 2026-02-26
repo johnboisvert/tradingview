@@ -114,5 +114,9 @@
   "WLDUSDT_LONG": {
     "timestamp": "2026-02-26T18:26:25.336Z",
     "direction": "LONG"
+  },
+  "SEIUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:34:20.685Z",
+    "direction": "SHORT"
   }
 }

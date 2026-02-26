@@ -1415,8 +1415,8 @@ async function generateScalpSetup(symbol) {
   const hasStochBullish = stochBullishCross || stochOversold;
   const hasStochBearish = stochBearishCross || stochOverbought;
 
-  // ─── LONG Signal: H1 bullish trend + M5 Stoch signal + at least one MACD agrees ───
-  if (hasStochBullish && (h1MacdBullish || anyM5MacdBullish) && h1Trend === 'bullish') {
+  // ─── LONG Signal: H1 bullish trend + M5 Stoch signal + BOTH MACDs bullish ───
+  if (hasStochBullish && h1MacdBullish && (m5MacdBullish || m5MacdCrossUp) && h1Trend === 'bullish') {
     side = 'LONG';
     confidence = 55;
 
@@ -1424,21 +1424,13 @@ async function generateScalpSetup(symbol) {
     else if (stochBullishCross) { confidence += 10; reasons.push('Stoch RSI croisement haussier (K > D)'); }
     else if (stochOversold) { confidence += 8; reasons.push(`Stoch RSI en survente (K=${kVal.toFixed(1)}, D=${dVal.toFixed(1)})`); }
 
-    // Both MACDs agree = higher confidence
-    if (h1MacdBullish && (m5MacdBullish || m5MacdCrossUp)) {
-      confidence += 15; reasons.push('MACD M5 + H1 haussiers (double confirmation)');
-    } else if (h1MacdBullish) {
-      confidence += 10; reasons.push('MACD H1 haussier');
-    } else if (m5MacdBullish || m5MacdCrossUp) {
-      confidence += 10; reasons.push('MACD M5 haussier');
-    } else {
-      confidence += 5; reasons.push('MACD momentum haussier');
-    }
+    // Both MACDs required and aligned — always full confidence
+    confidence += 15; reasons.push('MACD M5 + H1 haussiers (double confirmation)');
 
     confidence += 10; reasons.push('Tendance H1 haussière (prix > EMA20, RSI > 50)');
   }
-  // ─── SHORT Signal: H1 bearish trend + M5 Stoch signal + at least one MACD agrees ───
-  else if (hasStochBearish && (h1MacdBearish || anyM5MacdBearish) && h1Trend === 'bearish') {
+  // ─── SHORT Signal: H1 bearish trend + M5 Stoch signal + BOTH MACDs bearish ───
+  else if (hasStochBearish && h1MacdBearish && (m5MacdBearish || m5MacdCrossDown) && h1Trend === 'bearish') {
     side = 'SHORT';
     confidence = 55;
 
@@ -1446,16 +1438,8 @@ async function generateScalpSetup(symbol) {
     else if (stochBearishCross) { confidence += 10; reasons.push('Stoch RSI croisement baissier (K < D)'); }
     else if (stochOverbought) { confidence += 8; reasons.push(`Stoch RSI en surachat (K=${kVal.toFixed(1)}, D=${dVal.toFixed(1)})`); }
 
-    // Both MACDs agree = higher confidence
-    if (h1MacdBearish && (m5MacdBearish || m5MacdCrossDown)) {
-      confidence += 15; reasons.push('MACD M5 + H1 baissiers (double confirmation)');
-    } else if (h1MacdBearish) {
-      confidence += 10; reasons.push('MACD H1 baissier');
-    } else if (m5MacdBearish || m5MacdCrossDown) {
-      confidence += 10; reasons.push('MACD M5 baissier');
-    } else {
-      confidence += 5; reasons.push('MACD momentum baissier');
-    }
+    // Both MACDs required and aligned — always full confidence
+    confidence += 15; reasons.push('MACD M5 + H1 baissiers (double confirmation)');
 
     confidence += 10; reasons.push('Tendance H1 baissière (prix < EMA20, RSI < 50)');
   }

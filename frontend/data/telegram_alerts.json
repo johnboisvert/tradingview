@@ -19,41 +19,29 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-02-26T18:25:09.044Z",
+  "lastCheck": "2026-02-26T18:34:45.285Z",
   "lastAlerts": [
-    {
-      "type": "coingecko_signal",
-      "coin": "plasma",
-      "direction": "SHORT",
-      "rr": 3.5,
-      "entry": 0.09351,
-      "tp1": 0.0927,
-      "tp2": 0.0868,
-      "tp3": 0.085,
-      "sl": 0.0954,
-      "confidence": 95
-    },
     {
       "type": "coingecko_signal",
       "coin": "lombard-protocol",
       "direction": "LONG",
       "rr": 1,
-      "entry": 0.855471,
+      "entry": 0.857417,
       "tp1": 0.8723,
       "tp2": 0.8903,
       "tp3": 1.6966,
-      "sl": 0.8213,
+      "sl": 0.8244,
       "confidence": 95
     },
     {
       "type": "coingecko_signal",
       "coin": "sui",
       "direction": "SHORT",
-      "rr": 3.4,
-      "entry": 0.914589,
+      "rr": 3.7,
+      "entry": 0.914767,
       "tp1": 0.8622,
-      "tp2": 0.8517,
-      "tp3": 0.8139,
+      "tp2": 0.8482,
+      "tp3": 0.8082,
       "sl": 0.933,
       "confidence": 91
     },
@@ -67,18 +55,6 @@
       "tp2": 1.5,
       "tp3": 1.48,
       "sl": 1.56,
-      "confidence": 91
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "river",
-      "direction": "LONG",
-      "rr": 2.5,
-      "entry": 11.98,
-      "tp1": 14.69,
-      "tp2": 16.5,
-      "tp3": 19.21,
-      "sl": 10.17,
       "confidence": 91
     }
   ]

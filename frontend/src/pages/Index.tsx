@@ -14,6 +14,7 @@ import {
 import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import Footer from "@/components/Footer";
 import ShareButtons from "@/components/ShareButtons";
+import MarketHours from "@/components/MarketHours";
 
 const HERO_IMG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/6e7996e5-3fd7-4958-9f83-5d5f09ef989f.png";
@@ -337,6 +338,9 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Market Hours */}
+        <MarketHours />
 
         {/* Coins Table */}
         <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5">

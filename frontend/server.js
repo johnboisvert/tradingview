@@ -1558,7 +1558,7 @@ async function checkAndSendScalpAlerts() {
     }
 
     // Filter: only send signals with confidence >= 75%
-    const MIN_CONFIDENCE = 75;
+    const MIN_CONFIDENCE = 90;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[ScalpAlert] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 

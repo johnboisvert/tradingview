@@ -4,7 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import {
   Trophy, TrendingUp, TrendingDown, Target, Shield, BarChart3,
-  ArrowLeft, RefreshCw, Clock, Zap, Filter,
+  ArrowLeft, RefreshCw, Clock, Zap, Filter, Trash2,
 } from "lucide-react";
 
 /* ─── Types ─── */
@@ -112,8 +112,37 @@ export default function TradesPerformance() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [calls, setCalls] = useState<TradeCallRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resetting, setResetting] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterSide, setFilterSide] = useState<string>("all");
+
+  const handleReset = async () => {
+    const confirmed = window.confirm(
+      "Êtes-vous sûr de vouloir réinitialiser toutes les données de performance swing ?\n\nCette action est irréversible."
+    );
+    if (!confirmed) return;
+    setResetting(true);
+    try {
+      const res = await fetch("/api/v1/trade-calls/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
+      });
+      if (res.ok) {
+        setStats(null);
+        setCalls([]);
+        await fetchData();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert("Erreur lors de la réinitialisation : " + (err.error || "Erreur inconnue"));
+      }
+    } catch (e) {
+      console.error("Reset error:", e);
+      alert("Erreur réseau lors de la réinitialisation.");
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -161,12 +190,22 @@ export default function TradesPerformance() {
               </h1>
               <p className="text-sm text-gray-400 mt-1">Statistiques et historique de tous les calls de trading enregistrés</p>
             </div>
-            <button
-              onClick={fetchData}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-sm font-semibold transition-all"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Rafraîchir
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchData}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-sm font-semibold transition-all"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Rafraîchir
+              </button>
+              <button
+                onClick={handleReset}
+                disabled={resetting}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-sm font-semibold text-red-400 hover:text-red-300 transition-all disabled:opacity-50"
+                title="Réinitialiser toutes les données de performance swing"
+              >
+                <Trash2 className={`w-4 h-4 ${resetting ? "animate-pulse" : ""}`} /> {resetting ? "Reset..." : "Réinitialiser"}
+              </button>
+            </div>
           </div>
 
           {loading && !stats ? (

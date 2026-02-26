@@ -126,5 +126,9 @@
   "BONKUSDT_SHORT": {
     "timestamp": "2026-02-26T20:38:04.947Z",
     "direction": "SHORT"
+  },
+  "EGLDUSDT_SHORT": {
+    "timestamp": "2026-02-26T20:47:04.947Z",
+    "direction": "SHORT"
   }
 }

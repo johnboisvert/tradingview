@@ -2459,6 +2459,23 @@ function getWeekNumber(d) {
   return Math.ceil(((date - yearStart) / 86400000 + 1) / 7);
 }
 
+// ─── POST /api/v1/trade-calls/reset — Reset all trade calls ───
+app.post('/api/v1/trade-calls/reset', (req, res) => {
+  const { confirm } = req.body || {};
+  if (!confirm) {
+    return res.status(400).json({ error: 'Missing { "confirm": true } in request body' });
+  }
+  try {
+    saveTradeCalls([]);
+    tradeCallIdCounter = 0;
+    console.log('[TradeCall] All trade calls have been reset');
+    res.json({ reset: true, message: 'Toutes les données de performance swing ont été réinitialisées.' });
+  } catch (err) {
+    console.error('[TradeCall] Reset error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── POST /api/v1/trade-calls/resolve — Check active calls vs Binance prices ───
 app.post('/api/v1/trade-calls/resolve', async (req, res) => {
   try {
@@ -2738,6 +2755,23 @@ app.get('/api/v1/scalp-calls/stats', (req, res) => {
     },
     weekly_win_rate: weeklySorted,
   });
+});
+
+// ─── POST /api/v1/scalp-calls/reset — Reset all scalp calls ───
+app.post('/api/v1/scalp-calls/reset', (req, res) => {
+  const { confirm } = req.body || {};
+  if (!confirm) {
+    return res.status(400).json({ error: 'Missing { "confirm": true } in request body' });
+  }
+  try {
+    saveScalpCalls([]);
+    scalpCallIdCounter = 0;
+    console.log('[ScalpCall] All scalp calls have been reset');
+    res.json({ reset: true, message: 'Toutes les données de performance scalp ont été réinitialisées.' });
+  } catch (err) {
+    console.error('[ScalpCall] Reset error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── POST /api/v1/scalp-calls/resolve — Check active scalp calls vs Binance ───

@@ -44,6 +44,7 @@ interface ScalpSetup {
   stochRsiK: number | null;
   stochRsiD: number | null;
   macdSignal: "bullish" | "bearish" | "neutral";
+  h1MacdSignal: "bullish" | "bearish" | "neutral";
   h1Trend: "bullish" | "bearish" | "neutral";
 }
 
@@ -490,18 +491,24 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
     const macdResult = calculateMACD(m5Closes, 12, 26, 9);
     const macdSignal = macdResult?.direction || "neutral";
 
-    // 4. Entry logic: H1 trend + M5 Stoch RSI + MACD confirmation
+    // 3b. Calculate MACD on H1 — both timeframes must agree
+    const h1Closes = h1Klines.map(k => k.close);
+    const h1MacdResult = calculateMACD(h1Closes, 12, 26, 9);
+    const h1MacdSignal = h1MacdResult?.direction || "neutral";
+
+    // 4. Entry logic: H1 trend + H1 MACD + M5 Stoch RSI + M5 MACD — ALL must agree
     let side: "LONG" | "SHORT" | null = null;
     let confidence = 0;
     let reason = "";
 
     if (h1Trend === "bullish") {
-      // LONG: H1 bullish + M5 Stoch RSI oversold crossing up + MACD bullish
+      // LONG: H1 bullish trend + H1 MACD bullish + M5 Stoch RSI oversold/crossing up + M5 MACD bullish
       const stochOversold = stochRsi.k !== null && stochRsi.k < 30;
       const stochCrossingUp = stochRsi.k !== null && stochRsi.d !== null && stochRsi.k > stochRsi.d;
       const macdBullish = macdSignal === "bullish";
+      const h1MacdBullish = h1MacdSignal === "bullish";
 
-      if ((stochOversold || stochCrossingUp) && macdBullish) {
+      if ((stochOversold || stochCrossingUp) && macdBullish && h1MacdBullish) {
         side = "LONG";
         confidence = 55;
         reason = `Tendance H1 haussière`;
@@ -514,21 +521,23 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
           reason += ` | Stoch RSI M5 croisement haussier (K:${stochRsi.k} > D:${stochRsi.d})`;
         }
 
-        if (macdBullish) {
-          confidence += 10;
-          reason += ` | MACD M5 haussier`;
-        }
+        confidence += 10;
+        reason += ` | MACD M5 haussier`;
+
+        confidence += 10;
+        reason += ` | MACD H1 haussier`;
 
         if (volMcapRatio > 0.15) { confidence += 8; reason += ` | Volume élevé`; }
         if (change24h > 2) { confidence += 5; }
       }
     } else if (h1Trend === "bearish") {
-      // SHORT: H1 bearish + M5 Stoch RSI overbought crossing down + MACD bearish
+      // SHORT: H1 bearish trend + H1 MACD bearish + M5 Stoch RSI overbought/crossing down + M5 MACD bearish
       const stochOverbought = stochRsi.k !== null && stochRsi.k > 70;
       const stochCrossingDown = stochRsi.k !== null && stochRsi.d !== null && stochRsi.k < stochRsi.d;
       const macdBearish = macdSignal === "bearish";
+      const h1MacdBearish = h1MacdSignal === "bearish";
 
-      if ((stochOverbought || stochCrossingDown) && macdBearish) {
+      if ((stochOverbought || stochCrossingDown) && macdBearish && h1MacdBearish) {
         side = "SHORT";
         confidence = 55;
         reason = `Tendance H1 baissière`;
@@ -541,10 +550,11 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
           reason += ` | Stoch RSI M5 croisement baissier (K:${stochRsi.k} < D:${stochRsi.d})`;
         }
 
-        if (macdBearish) {
-          confidence += 10;
-          reason += ` | MACD M5 baissier`;
-        }
+        confidence += 10;
+        reason += ` | MACD M5 baissier`;
+
+        confidence += 10;
+        reason += ` | MACD H1 baissier`;
 
         if (volMcapRatio > 0.15) { confidence += 8; reason += ` | Volume élevé`; }
         if (change24h < -2) { confidence += 5; }
@@ -612,6 +622,7 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
       stochRsiK: stochRsi.k,
       stochRsiD: stochRsi.d,
       macdSignal,
+      h1MacdSignal,
       h1Trend,
     });
   }
@@ -734,7 +745,7 @@ export default function ScalpTrading() {
         <PageHeader
           icon={<Zap className="w-7 h-7" />}
           title="Scalp Trading"
-          subtitle="Signaux de scalping basés sur Stoch RSI + MACD (M5) avec confirmation de tendance H1"
+          subtitle="Signaux de scalping : MACD H1 + MACD M5 alignés + Stoch RSI M5 avec tendance H1"
           accentColor="amber"
         />
 
@@ -820,7 +831,7 @@ export default function ScalpTrading() {
             <p className="text-xs text-amber-300/80 flex items-center gap-2">
               <Zap className="w-4 h-4 flex-shrink-0" />
               <span>
-                <strong>Stratégie :</strong> Tendance H1 (EMA20 + RSI) → Entrée M5 (Stoch RSI croisement + MACD confirmation).
+                <strong>Stratégie :</strong> Tendance H1 (EMA20 + RSI + MACD H1) → Entrée M5 (Stoch RSI croisement + MACD M5 confirmation). Les deux MACD (H1 et M5) doivent être dans la même direction.
                 SL serré (0.3-0.8%), TP rapides. Idéal pour des trades de quelques minutes à 1h.
               </span>
             </p>
@@ -857,10 +868,10 @@ export default function ScalpTrading() {
               <span className="text-xs text-gray-500 ml-2">Cliquez sur une ligne pour voir les détails (S/R, indicateurs, raison)</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1400px]">
+              <table className="w-full min-w-[1500px]">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
-                    {["#", "Crypto", "Type", "Entry", "SL", "TP1", "TP2", "TP3", "H1", "Stoch RSI", "MACD", "Confiance", "R:R", ""].map(h => (
+                    {["#", "Crypto", "Type", "Entry", "SL", "TP1", "TP2", "TP3", "H1", "Stoch RSI", "MACD M5", "MACD H1", "Confiance", "R:R", ""].map(h => (
                       <th key={h} className="px-3 py-3 text-left text-[10px] uppercase tracking-wider font-semibold text-gray-500">{h}</th>
                     ))}
                   </tr>
@@ -868,7 +879,7 @@ export default function ScalpTrading() {
                 <tbody>
                   {loading && trades.length === 0 ? (
                     <tr>
-                      <td colSpan={14} className="text-center py-16">
+                      <td colSpan={15} className="text-center py-16">
                         <RefreshCw className="w-6 h-6 text-amber-400 animate-spin mx-auto mb-2" />
                         <p className="text-sm text-gray-500">Analyse des timeframes H1 + M5 en cours...</p>
                         <p className="text-xs text-gray-600 mt-1">Calcul Stoch RSI + MACD sur 30 cryptos</p>
@@ -876,7 +887,7 @@ export default function ScalpTrading() {
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={14} className="text-center py-16">
+                      <td colSpan={15} className="text-center py-16">
                         <p className="text-sm text-gray-500">Aucun signal de scalping détecté avec ces filtres</p>
                         <p className="text-xs text-gray-600 mt-1">Essayez de réduire le filtre de confiance</p>
                       </td>
@@ -989,7 +1000,7 @@ export default function ScalpTrading() {
                                 <span className="text-xs text-gray-600">—</span>
                               )}
                             </td>
-                            {/* MACD */}
+                            {/* MACD M5 */}
                             <td className="px-3 py-3">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
                                 trade.macdSignal === "bullish"
@@ -1000,6 +1011,19 @@ export default function ScalpTrading() {
                               }`}>
                                 {trade.macdSignal === "bullish" ? "↑" : trade.macdSignal === "bearish" ? "↓" : "—"}
                                 {trade.macdSignal === "bullish" ? "Bull" : trade.macdSignal === "bearish" ? "Bear" : "—"}
+                              </span>
+                            </td>
+                            {/* MACD H1 */}
+                            <td className="px-3 py-3">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                                trade.h1MacdSignal === "bullish"
+                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  : trade.h1MacdSignal === "bearish"
+                                  ? "bg-red-500/10 text-red-400"
+                                  : "bg-gray-500/10 text-gray-400"
+                              }`}>
+                                {trade.h1MacdSignal === "bullish" ? "↑" : trade.h1MacdSignal === "bearish" ? "↓" : "—"}
+                                {trade.h1MacdSignal === "bullish" ? "Bull" : trade.h1MacdSignal === "bearish" ? "Bear" : "—"}
                               </span>
                             </td>
                             {/* Confidence */}
@@ -1036,7 +1060,7 @@ export default function ScalpTrading() {
                           {/* Expanded Detail Row */}
                           {isExpanded && (
                             <tr className="border-b border-white/[0.04]">
-                              <td colSpan={14} className="px-4 py-4 bg-white/[0.01]">
+                              <td colSpan={15} className="px-4 py-4 bg-white/[0.01]">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                   {/* Reason */}
                                   <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
@@ -1115,7 +1139,15 @@ export default function ScalpTrading() {
                                         <span className={`text-xs font-bold ${
                                           trade.macdSignal === "bullish" ? "text-emerald-400" : trade.macdSignal === "bearish" ? "text-red-400" : "text-gray-400"
                                         }`}>
-                                          {trade.macdSignal === "bullish" ? "↑ Haussier" : trade.macdSignal === "bearish" ? "↓ Baissier" : "— Neutre"}
+                                          {trade.macdSignal === "bullish" ? "🟢 Haussier" : trade.macdSignal === "bearish" ? "🔴 Baissier" : "— Neutre"}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-gray-400">MACD H1</span>
+                                        <span className={`text-xs font-bold ${
+                                          trade.h1MacdSignal === "bullish" ? "text-emerald-400" : trade.h1MacdSignal === "bearish" ? "text-red-400" : "text-gray-400"
+                                        }`}>
+                                          {trade.h1MacdSignal === "bullish" ? "🟢 Haussier" : trade.h1MacdSignal === "bearish" ? "🔴 Baissier" : "— Neutre"}
                                         </span>
                                       </div>
                                       <div className="flex items-center justify-between">

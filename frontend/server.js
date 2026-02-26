@@ -405,12 +405,13 @@ async function sendTelegramMessage(text, parseMode = 'HTML') {
         parse_mode: parseMode,
         disable_web_page_preview: true,
       }),
+      signal: AbortSignal.timeout(15000), // 15s timeout to prevent hanging
     });
     const data = await res.json();
     return data;
   } catch (err) {
-    console.error('Telegram send error:', err);
-    return { ok: false, description: err.message };
+    console.error('Telegram send error:', err.message || err);
+    return { ok: false, description: err.message || 'Telegram request failed' };
   }
 }
 
@@ -1066,7 +1067,7 @@ ${srSection}
 🧠 Confiance : <b>${setup.confidence}%</b>
 
 📋 <b>Raison :</b>
-<i>${setup.reason}</i>
+<i>${(setup.reason || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</i>
 
 ⏰ ${setup.triggerTime} — ${nowStr} (Montréal)
 ⚠️ <i>Ceci n'est pas un conseil financier. DYOR.</i>`;
@@ -1373,10 +1374,7 @@ async function generateScalpSetup(symbol) {
   if (h1Price > h1EmaVal && h1RsiVal > 50) h1Trend = 'bullish';
   else if (h1Price < h1EmaVal && h1RsiVal < 50) h1Trend = 'bearish';
 
-  // Skip neutral H1 trends — no valid scalp signal without clear trend
-  if (h1Trend === 'neutral') return null;
-
-  // ─── H1 MACD (12,26,9) — both timeframes must agree ───
+  // ─── H1 MACD (12,26,9) ───
   const h1Macd = calcMACD(h1Closes, 12, 26, 9);
   const h1MacdLine = h1Macd.macd[h1Macd.macd.length - 1];
   const h1MacdSignalLine = h1Macd.signal[h1Macd.signal.length - 1];
@@ -1388,6 +1386,12 @@ async function generateScalpSetup(symbol) {
   if (h1MacdBullish) h1MacdSignalLabel = 'bullish';
   else if (h1MacdBearish) h1MacdSignalLabel = 'bearish';
 
+  // Skip neutral H1 trends — no valid scalp signal without clear trend
+  if (h1Trend === 'neutral') {
+    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: H1 trend neutral (price=${h1Price.toFixed(2)}, EMA20=${h1EmaVal.toFixed(2)}, RSI=${h1RsiVal.toFixed(1)})`);
+    return null;
+  }
+
   // ─── Signal Detection ───
   let side = null;
   let confidence = 0;
@@ -1396,49 +1400,73 @@ async function generateScalpSetup(symbol) {
   // LONG conditions (M5)
   const stochBullishCross = kPrev <= dPrev && kVal > dVal;
   const stochOversold = kVal < 30 || dVal < 30;
-  // M5 MACD: require MACD line above signal line AND increasing histogram
-  const macdBullish = macdLine > macdSignalLine && macdHist > macdHistPrev;
-  const macdCrossUp = macdHistPrev < 0 && macdHist >= 0 && macdLine > macdSignalLine;
+  const m5MacdBullish = macdLine > macdSignalLine && macdHist > macdHistPrev;
+  const m5MacdCrossUp = macdHistPrev < 0 && macdHist >= 0;
+  const anyM5MacdBullish = m5MacdBullish || m5MacdCrossUp || (macdHist > macdHistPrev);
 
   // SHORT conditions (M5)
   const stochBearishCross = kPrev >= dPrev && kVal < dVal;
   const stochOverbought = kVal > 70 || dVal > 70;
-  // M5 MACD: require MACD line below signal line AND decreasing histogram
-  const macdBearish = macdLine < macdSignalLine && macdHist < macdHistPrev;
-  const macdCrossDown = macdHistPrev > 0 && macdHist <= 0 && macdLine < macdSignalLine;
+  const m5MacdBearish = macdLine < macdSignalLine && macdHist < macdHistPrev;
+  const m5MacdCrossDown = macdHistPrev > 0 && macdHist <= 0;
+  const anyM5MacdBearish = m5MacdBearish || m5MacdCrossDown || (macdHist < macdHistPrev);
 
-  // ─── LONG Signal: H1 bullish trend + H1 MACD bullish + M5 Stoch + M5 MACD ───
-  if ((stochBullishCross || stochOversold) && (macdBullish || macdCrossUp) && h1Trend === 'bullish' && h1MacdBullish) {
+  // Check if stoch has a signal
+  const hasStochBullish = stochBullishCross || stochOversold;
+  const hasStochBearish = stochBearishCross || stochOverbought;
+
+  // ─── LONG Signal: H1 bullish trend + M5 Stoch signal + at least one MACD agrees ───
+  if (hasStochBullish && (h1MacdBullish || anyM5MacdBullish) && h1Trend === 'bullish') {
     side = 'LONG';
-    confidence = 60;
+    confidence = 55;
 
     if (stochBullishCross && stochOversold) { confidence += 15; reasons.push('Stoch RSI croisement haussier en zone de survente'); }
     else if (stochBullishCross) { confidence += 10; reasons.push('Stoch RSI croisement haussier (K > D)'); }
     else if (stochOversold) { confidence += 8; reasons.push(`Stoch RSI en survente (K=${kVal.toFixed(1)}, D=${dVal.toFixed(1)})`); }
 
-    if (macdCrossUp) { confidence += 15; reasons.push('MACD M5 croisement haussier'); }
-    else if (macdBullish) { confidence += 10; reasons.push('MACD M5 haussier'); }
+    // Both MACDs agree = higher confidence
+    if (h1MacdBullish && (m5MacdBullish || m5MacdCrossUp)) {
+      confidence += 15; reasons.push('MACD M5 + H1 haussiers (double confirmation)');
+    } else if (h1MacdBullish) {
+      confidence += 10; reasons.push('MACD H1 haussier');
+    } else if (m5MacdBullish || m5MacdCrossUp) {
+      confidence += 10; reasons.push('MACD M5 haussier');
+    } else {
+      confidence += 5; reasons.push('MACD momentum haussier');
+    }
 
-    confidence += 15; reasons.push('Tendance H1 haussière (prix > EMA20, RSI > 50)');
-    confidence += 10; reasons.push('MACD H1 haussier');
+    confidence += 10; reasons.push('Tendance H1 haussière (prix > EMA20, RSI > 50)');
   }
-  // ─── SHORT Signal: H1 bearish trend + H1 MACD bearish + M5 Stoch + M5 MACD ───
-  else if ((stochBearishCross || stochOverbought) && (macdBearish || macdCrossDown) && h1Trend === 'bearish' && h1MacdBearish) {
+  // ─── SHORT Signal: H1 bearish trend + M5 Stoch signal + at least one MACD agrees ───
+  else if (hasStochBearish && (h1MacdBearish || anyM5MacdBearish) && h1Trend === 'bearish') {
     side = 'SHORT';
-    confidence = 60;
+    confidence = 55;
 
     if (stochBearishCross && stochOverbought) { confidence += 15; reasons.push('Stoch RSI croisement baissier en zone de surachat'); }
     else if (stochBearishCross) { confidence += 10; reasons.push('Stoch RSI croisement baissier (K < D)'); }
     else if (stochOverbought) { confidence += 8; reasons.push(`Stoch RSI en surachat (K=${kVal.toFixed(1)}, D=${dVal.toFixed(1)})`); }
 
-    if (macdCrossDown) { confidence += 15; reasons.push('MACD M5 croisement baissier'); }
-    else if (macdBearish) { confidence += 10; reasons.push('MACD M5 baissier'); }
+    // Both MACDs agree = higher confidence
+    if (h1MacdBearish && (m5MacdBearish || m5MacdCrossDown)) {
+      confidence += 15; reasons.push('MACD M5 + H1 baissiers (double confirmation)');
+    } else if (h1MacdBearish) {
+      confidence += 10; reasons.push('MACD H1 baissier');
+    } else if (m5MacdBearish || m5MacdCrossDown) {
+      confidence += 10; reasons.push('MACD M5 baissier');
+    } else {
+      confidence += 5; reasons.push('MACD momentum baissier');
+    }
 
-    confidence += 15; reasons.push('Tendance H1 baissière (prix < EMA20, RSI < 50)');
-    confidence += 10; reasons.push('MACD H1 baissier');
+    confidence += 10; reasons.push('Tendance H1 baissière (prix < EMA20, RSI < 50)');
   }
 
-  if (!side) return null;
+  if (!side) {
+    // Debug: log why no signal was generated
+    const stochInfo = `K=${kVal.toFixed(1)},D=${dVal.toFixed(1)},bullCross=${stochBullishCross},bearCross=${stochBearishCross},OS=${stochOversold},OB=${stochOverbought}`;
+    const macdInfo = `M5bull=${anyM5MacdBullish},M5bear=${anyM5MacdBearish},H1bull=${h1MacdBullish},H1bear=${h1MacdBearish}`;
+    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: no signal match (H1=${h1Trend}, ${stochInfo}, ${macdInfo})`);
+    return null;
+  }
 
   // Volume confirmation (last 5 candles vs average)
   const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
@@ -1535,33 +1563,41 @@ async function checkAndSendScalpAlerts() {
       console.log(`[ScalpAlert] Setup confidences: ${confValues.join(", ")}`);
     }
 
-    // Filter: only send signals with confidence >= 90%
-    const MIN_CONFIDENCE = 90;
+    // Filter: only send signals with confidence >= 75%
+    const MIN_CONFIDENCE = 75;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[ScalpAlert] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 
     // Sort by confidence descending
     qualifiedSetups.sort((a, b) => b.confidence - a.confidence);
 
-    for (const setup of qualifiedSetups) {
-      if (isScalpCooldownActive(cooldowns, setup.symbol, setup.side)) {
-        console.log(`[ScalpAlert] 🛑 Cooldown active for ${setup.symbol} ${setup.side}, skipping`);
-        continue;
-      }
+    console.log(`[ScalpAlert] Starting to send ${qualifiedSetups.length} scalp alerts to Telegram...`);
 
-      const dirEmoji = setup.side === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
-      const confEmoji = setup.confidence >= 80 ? '🔥' : setup.confidence >= 65 ? '⚡' : '📊';
+    for (let idx = 0; idx < qualifiedSetups.length; idx++) {
+      const setup = qualifiedSetups[idx];
+      try {
+        if (isScalpCooldownActive(cooldowns, setup.symbol, setup.side)) {
+          console.log(`[ScalpAlert] 🛑 Cooldown active for ${setup.symbol} ${setup.side}, skipping`);
+          continue;
+        }
 
-      const pctTP1 = ((setup.tp1 - setup.entry) / setup.entry * 100);
-      const pctTP2 = ((setup.tp2 - setup.entry) / setup.entry * 100);
-      const pctTP3 = ((setup.tp3 - setup.entry) / setup.entry * 100);
-      const pctSL = ((setup.stopLoss - setup.entry) / setup.entry * 100);
+        console.log(`[ScalpAlert] 📤 Sending ${idx + 1}/${qualifiedSetups.length}: ${setup.symbol} ${setup.side} (${setup.confidence}%)...`);
 
-      const trendEmoji = setup.h1_trend === 'bullish' ? '🟢 Haussière' : setup.h1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
-      const macdM5Emoji = setup.macd_signal === 'bullish' ? '🟢' : setup.macd_signal === 'bearish' ? '🔴' : '⚪';
-      const macdH1Emoji = setup.h1_macd_signal === 'bullish' ? '🟢' : setup.h1_macd_signal === 'bearish' ? '🔴' : '⚪';
+        const dirEmoji = setup.side === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
 
-      const text = `🔴🔴🔴 <b>⚡ SCALP TRADING — SIGNAL CRYPTO</b> 🔴🔴🔴
+        const pctTP1 = ((setup.tp1 - setup.entry) / setup.entry * 100);
+        const pctTP2 = ((setup.tp2 - setup.entry) / setup.entry * 100);
+        const pctTP3 = ((setup.tp3 - setup.entry) / setup.entry * 100);
+        const pctSL = ((setup.stopLoss - setup.entry) / setup.entry * 100);
+
+        const trendEmoji = setup.h1_trend === 'bullish' ? '🟢 Haussière' : setup.h1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
+        const macdM5Emoji = setup.macd_signal === 'bullish' ? '🟢' : setup.macd_signal === 'bearish' ? '🔴' : '⚪';
+        const macdH1Emoji = setup.h1_macd_signal === 'bullish' ? '🟢' : setup.h1_macd_signal === 'bearish' ? '🔴' : '⚪';
+
+        // Escape HTML entities in reason text to prevent Telegram parse errors
+        const safeReason = (setup.reason || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const text = `🔴🔴🔴 <b>⚡ SCALP TRADING — SIGNAL CRYPTO</b> 🔴🔴🔴
 🌐 https://CryptoIA.ca
 ━━━━━━━━━━━━━━━━━━━━━
 
@@ -1585,56 +1621,63 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 🧠 Confiance : <b>${setup.confidence}%</b>
 
 📋 <b>Raison :</b>
-<i>${setup.reason}</i>
+<i>${safeReason}</i>
 
 ⏰ Timeframe : M5 — ${nowStr} (Montréal)
 ⚠️ <i>Scalp trade — Ceci n'est pas un conseil financier. DYOR.</i>`;
 
-      const result = await sendTelegramMessage(text);
-      if (result.ok) {
-        // Photo removed per user request
+        const result = await sendTelegramMessage(text);
+        console.log(`[ScalpAlert] Telegram response for ${setup.symbol}: ok=${result.ok}, desc=${result.description || 'none'}`);
 
-        setScalpCooldown(cooldowns, setup.symbol, setup.side);
-        saveScalpCooldowns(cooldowns);
+        if (result.ok) {
+          setScalpCooldown(cooldowns, setup.symbol, setup.side);
+          saveScalpCooldowns(cooldowns);
 
-        // Auto-register as scalp call
-        try {
-          const calls = loadScalpCalls();
-          scalpCallIdCounter++;
-          const expiresAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
-          calls.push({
-            id: scalpCallIdCounter,
-            symbol: setup.symbol, side: setup.side,
-            entry_price: setup.entry, stop_loss: setup.stopLoss,
-            tp1: setup.tp1, tp2: setup.tp2, tp3: setup.tp3,
-            confidence: setup.confidence, reason: setup.reason,
-            stoch_rsi_k: setup.stoch_rsi_k, stoch_rsi_d: setup.stoch_rsi_d,
-            macd_signal: setup.macd_signal, h1_macd_signal: setup.h1_macd_signal, h1_trend: setup.h1_trend,
-            rr: setup.rr, status: 'active',
-            tp1_hit: false, tp2_hit: false, tp3_hit: false, sl_hit: false,
-            best_tp_reached: 0, exit_price: null, profit_pct: null,
-            created_at: now.toISOString(), resolved_at: null,
-            expires_at: expiresAt.toISOString(),
+          // Auto-register as scalp call
+          try {
+            const calls = loadScalpCalls();
+            scalpCallIdCounter++;
+            const expiresAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+            calls.push({
+              id: scalpCallIdCounter,
+              symbol: setup.symbol, side: setup.side,
+              entry_price: setup.entry, stop_loss: setup.stopLoss,
+              tp1: setup.tp1, tp2: setup.tp2, tp3: setup.tp3,
+              confidence: setup.confidence, reason: setup.reason,
+              stoch_rsi_k: setup.stoch_rsi_k, stoch_rsi_d: setup.stoch_rsi_d,
+              macd_signal: setup.macd_signal, h1_macd_signal: setup.h1_macd_signal, h1_trend: setup.h1_trend,
+              rr: setup.rr, status: 'active',
+              tp1_hit: false, tp2_hit: false, tp3_hit: false, sl_hit: false,
+              best_tp_reached: 0, exit_price: null, profit_pct: null,
+              created_at: now.toISOString(), resolved_at: null,
+              expires_at: expiresAt.toISOString(),
+            });
+            saveScalpCalls(calls);
+            console.log(`[ScalpAlert] Auto-registered scalp call #${scalpCallIdCounter}`);
+          } catch (regErr) {
+            console.error('[ScalpAlert] Failed to auto-register scalp call:', regErr);
+          }
+
+          sentAlerts.push({
+            type: 'scalp_signal',
+            symbol: setup.symbol,
+            direction: setup.side,
+            rr: setup.rr,
+            entry: setup.entry,
+            confidence: setup.confidence,
           });
-          saveScalpCalls(calls);
-          console.log(`[ScalpAlert] Auto-registered scalp call #${scalpCallIdCounter}`);
-        } catch (regErr) {
-          console.error('[ScalpAlert] Failed to auto-register scalp call:', regErr);
+          console.log(`[ScalpAlert] ✅ Sent ${setup.side} scalp signal for ${setup.name} (confidence: ${setup.confidence}%)`);
+
+          await new Promise(r => setTimeout(r, 2000));
+        } else {
+          console.error(`[ScalpAlert] ❌ Failed to send ${setup.symbol}: ${result.description || JSON.stringify(result)}`);
         }
-
-        sentAlerts.push({
-          type: 'scalp_signal',
-          symbol: setup.symbol,
-          direction: setup.side,
-          rr: setup.rr,
-          entry: setup.entry,
-          confidence: setup.confidence,
-        });
-        console.log(`[ScalpAlert] ✅ Sent ${setup.side} scalp signal for ${setup.name} (confidence: ${setup.confidence}%)`);
-
-        await new Promise(r => setTimeout(r, 2000));
+      } catch (sendErr) {
+        console.error(`[ScalpAlert] ❌ Exception sending ${setup.symbol}:`, sendErr.message || sendErr);
       }
     }
+
+    console.log(`[ScalpAlert] Finished sending loop. Total sent: ${sentAlerts.length}`);
   } catch (err) {
     console.error('[ScalpAlert] Check error:', err);
   }

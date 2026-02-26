@@ -19,66 +19,30 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-02-26T19:16:43.089Z",
+  "lastCheck": "2026-02-26T19:46:43.122Z",
   "lastAlerts": [
     {
       "type": "coingecko_signal",
-      "coin": "pudgy-penguins",
+      "coin": "kite-2",
       "direction": "SHORT",
-      "rr": 2.2,
-      "entry": 0.0069222,
-      "tp1": 0.006779,
-      "tp2": 0.006619,
-      "tp3": 0.006408,
-      "sl": 0.00706,
-      "confidence": 95
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "optimism",
-      "direction": "SHORT",
-      "rr": 1.9,
-      "entry": 0.119423,
-      "tp1": 0.1166,
-      "tp2": 0.1154,
-      "tp3": 0.1092,
-      "sl": 0.1215,
-      "confidence": 95
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "aave",
-      "direction": "SHORT",
-      "rr": 3.5,
-      "entry": 113.33,
-      "tp1": 111.32,
-      "tp2": 104.94,
-      "tp3": 99.9,
-      "sl": 115.71,
-      "confidence": 93
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "arbitrum",
-      "direction": "SHORT",
-      "rr": 2.5,
-      "entry": 0.099351,
-      "tp1": 0.096,
-      "tp2": 0.0938,
-      "tp3": 0.0918,
-      "sl": 0.1015,
+      "rr": 5.5,
+      "entry": 0.261979,
+      "tp1": 0.2541,
+      "tp2": 0.2313,
+      "tp3": 0.2264,
+      "sl": 0.2676,
       "confidence": 91
     },
     {
       "type": "coingecko_signal",
-      "coin": "syrup",
-      "direction": "LONG",
-      "rr": 2.1,
-      "entry": 0.244501,
-      "tp1": 0.2572,
-      "tp2": 0.2657,
-      "tp3": 0.2784,
-      "sl": 0.2345,
+      "coin": "dogwifcoin",
+      "direction": "SHORT",
+      "rr": 3.5,
+      "entry": 0.210316,
+      "tp1": 0.2045,
+      "tp2": 0.2011,
+      "tp3": 0.1947,
+      "sl": 0.213,
       "confidence": 91
     }
   ]

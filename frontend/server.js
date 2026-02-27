@@ -1643,6 +1643,7 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
               id: scalpCallIdCounter,
               symbol: setup.symbol, side: setup.side,
               entry_price: setup.entry, stop_loss: setup.stopLoss,
+              trailing_sl: setup.stopLoss, // Initially same as stop_loss
               tp1: setup.tp1, tp2: setup.tp2, tp3: setup.tp3,
               confidence: setup.confidence, reason: setup.reason,
               stoch_rsi_k: setup.stoch_rsi_k, stoch_rsi_d: setup.stoch_rsi_d,
@@ -2744,6 +2745,7 @@ app.post('/api/v1/scalp-calls', (req, res) => {
     h1_trend: h1_trend || 'neutral',
     rr: rr || null,
     status: 'active',
+    trailing_sl: stop_loss, // Initially same as stop_loss, updated when TP1/TP2 hit
     tp1_hit: false, tp2_hit: false, tp3_hit: false, sl_hit: false,
     best_tp_reached: 0,
     exit_price: null, profit_pct: null,
@@ -2788,13 +2790,21 @@ app.get('/api/v1/scalp-calls/stats', (req, res) => {
   const weeklyData = {};
 
   for (const c of closedCalls) {
-    const isWin = c.tp1_hit && !c.sl_hit;
+    // Win = TP1 was hit (trailing stop protects at breakeven, so even if SL hit after TP1, it's a win/breakeven)
+    const isWin = c.tp1_hit;
     if (isWin) wins++;
     if (c.tp1_hit) tp1Hits++;
     if (c.tp2_hit) tp2Hits++;
     if (c.tp3_hit) tp3Hits++;
     if (c.sl_hit) slHits++;
-    if (c.profit_pct != null) { totalProfit += c.profit_pct; profits.push(c.profit_pct); }
+
+    // Profit calculation: if TP1 hit + SL hit → breakeven (0%), not negative
+    let effectiveProfit = c.profit_pct;
+    if (c.tp1_hit && c.sl_hit && (effectiveProfit == null || effectiveProfit < 0)) {
+      effectiveProfit = 0; // Trailing stop protected at breakeven
+    }
+    if (effectiveProfit != null) { totalProfit += effectiveProfit; profits.push(effectiveProfit); }
+
     if (c.side === 'LONG') { longTotal++; if (isWin) longWins++; }
     else { shortTotal++; if (isWin) shortWins++; }
 
@@ -2889,37 +2899,130 @@ async function resolveActiveScalpCalls() {
   let resolvedCount = 0, expiredCount = 0;
 
   for (const call of activeCalls) {
+    // Check expiry — if expired and TP1 was hit, count as breakeven win
     if (call.expires_at && new Date(call.expires_at) <= now) {
-      call.status = 'expired'; call.resolved_at = now.toISOString(); expiredCount++; continue;
+      call.status = 'expired';
+      call.resolved_at = now.toISOString();
+      if (call.tp1_hit) {
+        // TP1 was hit before expiry → trailing stop protected at breakeven
+        call.exit_price = call.entry_price;
+        call.profit_pct = 0;
+      }
+      expiredCount++;
+      console.log(`[ScalpCall] Call #${call.id} ${call.symbol} expired (tp1_hit: ${call.tp1_hit})`);
+      continue;
     }
+
     const currentPrice = prices[call.symbol];
     if (currentPrice == null) continue;
 
+    // Initialize trailing_sl if not set
+    if (call.trailing_sl == null) {
+      call.trailing_sl = call.stop_loss;
+    }
+
     if (call.side === 'LONG') {
-      if (currentPrice <= call.stop_loss) {
-        call.sl_hit = true; call.status = 'resolved'; call.exit_price = currentPrice;
-        call.profit_pct = Math.round((currentPrice - call.entry_price) / call.entry_price * 10000) / 100;
-        call.resolved_at = now.toISOString(); resolvedCount++; continue;
+      // First check TP hits (before SL check, so trailing SL updates first)
+      if (currentPrice >= call.tp1 && !call.tp1_hit) {
+        call.tp1_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 1);
+        // Trailing stop: move SL to breakeven (entry price)
+        call.trailing_sl = call.entry_price;
+        console.log(`[ScalpCall] Call #${call.id} ${call.symbol} LONG TP1 hit — trailing SL moved to breakeven ${call.entry_price}`);
+      } else if (currentPrice >= call.tp1) {
+        call.best_tp_reached = Math.max(call.best_tp_reached, 1);
       }
-      if (currentPrice >= call.tp1) { call.tp1_hit = true; call.best_tp_reached = Math.max(call.best_tp_reached, 1); }
-      if (currentPrice >= call.tp2) { call.tp2_hit = true; call.best_tp_reached = Math.max(call.best_tp_reached, 2); }
+
+      if (currentPrice >= call.tp2 && !call.tp2_hit) {
+        call.tp2_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 2);
+        // Trailing stop: move SL to TP1
+        call.trailing_sl = call.tp1;
+        console.log(`[ScalpCall] Call #${call.id} ${call.symbol} LONG TP2 hit — trailing SL moved to TP1 ${call.tp1}`);
+      } else if (currentPrice >= call.tp2) {
+        call.best_tp_reached = Math.max(call.best_tp_reached, 2);
+      }
+
       if (currentPrice >= call.tp3) {
-        call.tp3_hit = true; call.best_tp_reached = 3; call.status = 'resolved'; call.exit_price = currentPrice;
+        call.tp3_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 3);
+        call.status = 'resolved';
+        call.exit_price = currentPrice;
         call.profit_pct = Math.round((currentPrice - call.entry_price) / call.entry_price * 10000) / 100;
-        call.resolved_at = now.toISOString(); resolvedCount++;
+        call.resolved_at = now.toISOString();
+        resolvedCount++;
+        console.log(`[ScalpCall] Call #${call.id} ${call.symbol} LONG TP3 hit — resolved +${call.profit_pct}%`);
+        continue;
+      }
+
+      // Check trailing SL (uses trailing_sl instead of original stop_loss)
+      const effectiveSL = call.trailing_sl != null ? call.trailing_sl : call.stop_loss;
+      if (currentPrice <= effectiveSL) {
+        call.sl_hit = true;
+        call.status = 'resolved';
+        call.exit_price = currentPrice;
+        // If TP1 was already hit, exit at breakeven (entry) not at current price
+        if (call.tp1_hit) {
+          call.profit_pct = 0; // Breakeven — trailing stop protected
+          call.exit_price = call.entry_price;
+        } else {
+          call.profit_pct = Math.round((currentPrice - call.entry_price) / call.entry_price * 10000) / 100;
+        }
+        call.resolved_at = now.toISOString();
+        resolvedCount++;
+        console.log(`[ScalpCall] Call #${call.id} ${call.symbol} LONG SL hit (trailing: ${effectiveSL}) — ${call.tp1_hit ? 'breakeven' : call.profit_pct + '%'}`);
+        continue;
       }
     } else {
-      if (currentPrice >= call.stop_loss) {
-        call.sl_hit = true; call.status = 'resolved'; call.exit_price = currentPrice;
-        call.profit_pct = Math.round((call.entry_price - currentPrice) / call.entry_price * 10000) / 100;
-        call.resolved_at = now.toISOString(); resolvedCount++; continue;
+      // SHORT
+      if (currentPrice <= call.tp1 && !call.tp1_hit) {
+        call.tp1_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 1);
+        // Trailing stop: move SL to breakeven (entry price)
+        call.trailing_sl = call.entry_price;
+        console.log(`[ScalpCall] Call #${call.id} ${call.symbol} SHORT TP1 hit — trailing SL moved to breakeven ${call.entry_price}`);
+      } else if (currentPrice <= call.tp1) {
+        call.best_tp_reached = Math.max(call.best_tp_reached, 1);
       }
-      if (currentPrice <= call.tp1) { call.tp1_hit = true; call.best_tp_reached = Math.max(call.best_tp_reached, 1); }
-      if (currentPrice <= call.tp2) { call.tp2_hit = true; call.best_tp_reached = Math.max(call.best_tp_reached, 2); }
+
+      if (currentPrice <= call.tp2 && !call.tp2_hit) {
+        call.tp2_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 2);
+        // Trailing stop: move SL to TP1
+        call.trailing_sl = call.tp1;
+        console.log(`[ScalpCall] Call #${call.id} ${call.symbol} SHORT TP2 hit — trailing SL moved to TP1 ${call.tp1}`);
+      } else if (currentPrice <= call.tp2) {
+        call.best_tp_reached = Math.max(call.best_tp_reached, 2);
+      }
+
       if (currentPrice <= call.tp3) {
-        call.tp3_hit = true; call.best_tp_reached = 3; call.status = 'resolved'; call.exit_price = currentPrice;
+        call.tp3_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 3);
+        call.status = 'resolved';
+        call.exit_price = currentPrice;
         call.profit_pct = Math.round((call.entry_price - currentPrice) / call.entry_price * 10000) / 100;
-        call.resolved_at = now.toISOString(); resolvedCount++;
+        call.resolved_at = now.toISOString();
+        resolvedCount++;
+        console.log(`[ScalpCall] Call #${call.id} ${call.symbol} SHORT TP3 hit — resolved +${call.profit_pct}%`);
+        continue;
+      }
+
+      // Check trailing SL
+      const effectiveSL = call.trailing_sl != null ? call.trailing_sl : call.stop_loss;
+      if (currentPrice >= effectiveSL) {
+        call.sl_hit = true;
+        call.status = 'resolved';
+        call.exit_price = currentPrice;
+        if (call.tp1_hit) {
+          call.profit_pct = 0; // Breakeven
+          call.exit_price = call.entry_price;
+        } else {
+          call.profit_pct = Math.round((call.entry_price - currentPrice) / call.entry_price * 10000) / 100;
+        }
+        call.resolved_at = now.toISOString();
+        resolvedCount++;
+        console.log(`[ScalpCall] Call #${call.id} ${call.symbol} SHORT SL hit (trailing: ${effectiveSL}) — ${call.tp1_hit ? 'breakeven' : call.profit_pct + '%'}`);
+        continue;
       }
     }
   }

@@ -819,7 +819,7 @@ export default function ScalpTrading() {
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
 
       // Register client calls to backend (non-blocking)
-      registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 60)).catch(() => {});
+      registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 70)).catch(() => {});
     } catch (err) {
       console.error("Scalp fetch error:", err);
       setFetchError("Une erreur est survenue lors de l'analyse. Veuillez réessayer.");

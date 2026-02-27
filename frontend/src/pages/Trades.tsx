@@ -576,7 +576,7 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
 
     // TP alignment with merged S/R
     const volatility = Math.max(Math.abs(c.price_change_percentage_24h || 0) * 0.5, 1.5);
-    const slPercent = volatility * 0.8;
+    const slPercent = volatility * 1.2;
     const { tp1, tp2, tp3, sl } = alignTPWithSR(side, price, slPercent, mergedSupports, mergedResistances);
 
     // TP1 alignment bonus
@@ -639,7 +639,9 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
 /* ─── Auto-register calls to backend ─── */
 
 async function registerCallsToBackend(setups: TradeSetup[]) {
-  for (const setup of setups) {
+  // Only register setups with confidence >= 60% to avoid polluting performance data
+  const qualifiedSetups = setups.filter(s => s.confidence >= 60);
+  for (const setup of qualifiedSetups) {
     try {
       await fetch("/api/v1/trade-calls", {
         method: "POST",

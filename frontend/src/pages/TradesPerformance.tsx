@@ -15,6 +15,7 @@ interface TradeCallRecord {
   side: "LONG" | "SHORT";
   entry_price: number;
   stop_loss: number;
+  trailing_sl: number | null;
   tp1: number;
   tp2: number;
   tp3: number;
@@ -380,20 +381,27 @@ export default function TradesPerformance() {
                         </tr>
                       ) : (
                         filteredCalls.slice(0, 50).map((call) => {
-                          const isWin = call.tp1_hit && !call.sl_hit;
+                          // Win = TP1 hit (trailing stop protects at breakeven)
+                          const isWin = call.tp1_hit;
+                          const isBreakeven = call.tp1_hit && call.sl_hit;
                           const statusColors: Record<string, string> = {
                             active: "bg-blue-500/15 text-blue-400 border-blue-500/20",
                             resolved: isWin ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" : "bg-red-500/15 text-red-400 border-red-500/20",
-                            expired: "bg-gray-500/15 text-gray-400 border-gray-500/20",
+                            expired: call.tp1_hit ? "bg-amber-500/15 text-amber-400 border-amber-500/20" : "bg-gray-500/15 text-gray-400 border-gray-500/20",
                           };
 
                           let resultText = "—";
-                          if (call.status === "active") resultText = "En cours";
-                          else if (call.sl_hit) resultText = "SL touché";
-                          else if (call.tp3_hit) resultText = "TP3 ✓";
-                          else if (call.tp2_hit) resultText = "TP2 ✓";
-                          else if (call.tp1_hit) resultText = "TP1 ✓";
-                          else if (call.status === "expired") resultText = "Expiré";
+                          let resultColor = "text-gray-500";
+                          if (call.status === "active") { resultText = "En cours"; resultColor = "text-blue-400"; }
+                          else if (isBreakeven) { resultText = "BE (TP1→SL)"; resultColor = "text-amber-400"; }
+                          else if (call.tp3_hit) { resultText = "TP3 ✓"; resultColor = "text-emerald-400"; }
+                          else if (call.tp2_hit) { resultText = "TP2 ✓"; resultColor = "text-emerald-400"; }
+                          else if (call.tp1_hit) { resultText = "TP1 ✓"; resultColor = "text-emerald-400"; }
+                          else if (call.sl_hit) { resultText = "SL touché"; resultColor = "text-red-400"; }
+                          else if (call.status === "expired") { resultText = "Expiré"; resultColor = "text-gray-500"; }
+
+                          // Effective profit: if TP1 hit + SL hit → breakeven
+                          const effectiveProfit = (call.tp1_hit && call.sl_hit && (call.profit_pct == null || call.profit_pct < 0)) ? 0 : call.profit_pct;
 
                           return (
                             <tr key={call.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
@@ -410,7 +418,14 @@ export default function TradesPerformance() {
                                 </span>
                               </td>
                               <td className="px-3 py-3 font-mono text-xs text-blue-300">${formatPrice(call.entry_price)}</td>
-                              <td className="px-3 py-3 font-mono text-xs text-red-400">${formatPrice(call.stop_loss)}</td>
+                              <td className="px-3 py-3">
+                                <div className="font-mono text-xs text-red-400">${formatPrice(call.stop_loss)}</div>
+                                {call.trailing_sl != null && call.trailing_sl !== call.stop_loss && (
+                                  <div className="font-mono text-[9px] text-amber-400 mt-0.5" title="Trailing Stop">
+                                    ↳ TS: ${formatPrice(call.trailing_sl)}
+                                  </div>
+                                )}
+                              </td>
                               <td className="px-3 py-3 font-mono text-xs text-emerald-300">${formatPrice(call.tp1)}</td>
                               <td className="px-3 py-3 font-mono text-xs text-emerald-400">${formatPrice(call.tp2)}</td>
                               <td className="px-3 py-3 font-mono text-xs text-emerald-500">${formatPrice(call.tp3)}</td>
@@ -423,14 +438,14 @@ export default function TradesPerformance() {
                                 </span>
                               </td>
                               <td className="px-3 py-3 text-xs font-semibold">
-                                <span className={call.sl_hit ? "text-red-400" : call.tp1_hit ? "text-emerald-400" : "text-gray-500"}>
+                                <span className={resultColor}>
                                   {resultText}
                                 </span>
                               </td>
                               <td className="px-3 py-3">
-                                {call.profit_pct != null ? (
-                                  <span className={`text-xs font-bold ${call.profit_pct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                                    {call.profit_pct >= 0 ? "+" : ""}{call.profit_pct}%
+                                {effectiveProfit != null ? (
+                                  <span className={`text-xs font-bold ${effectiveProfit > 0 ? "text-emerald-400" : effectiveProfit === 0 ? "text-amber-400" : "text-red-400"}`}>
+                                    {effectiveProfit > 0 ? "+" : effectiveProfit === 0 ? "±" : ""}{effectiveProfit}%
                                   </span>
                                 ) : (
                                   <span className="text-xs text-gray-600">—</span>

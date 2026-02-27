@@ -19,19 +19,6 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-02-26T20:43:53.271Z",
-  "lastAlerts": [
-    {
-      "type": "coingecko_signal",
-      "coin": "axie-infinity",
-      "direction": "SHORT",
-      "rr": 1.3,
-      "entry": 1.35,
-      "tp1": 1.34,
-      "tp2": 1.32,
-      "tp3": 1.3,
-      "sl": 1.37,
-      "confidence": 91
-    }
-  ]
+  "lastCheck": "2026-02-26T20:58:53.276Z",
+  "lastAlerts": []
 }

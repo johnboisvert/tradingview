@@ -56,7 +56,7 @@
     "direction": "SHORT"
   },
   "BNBUSDT_SHORT": {
-    "timestamp": "2026-02-26T18:25:52.781Z",
+    "timestamp": "2026-02-26T20:59:04.764Z",
     "direction": "SHORT"
   },
   "BTCUSDT_SHORT": {
@@ -129,6 +129,14 @@
   },
   "EGLDUSDT_SHORT": {
     "timestamp": "2026-02-26T20:47:04.947Z",
+    "direction": "SHORT"
+  },
+  "LINKUSDT_SHORT": {
+    "timestamp": "2026-02-26T21:05:05.132Z",
+    "direction": "SHORT"
+  },
+  "LTCUSDT_SHORT": {
+    "timestamp": "2026-02-26T21:05:07.443Z",
     "direction": "SHORT"
   }
 }

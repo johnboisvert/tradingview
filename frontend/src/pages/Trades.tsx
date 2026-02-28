@@ -431,6 +431,94 @@ function computeTP0(
   }
 }
 
+/* ─── Bollinger Bands (period 20, stdDev 2) ─── */
+
+function calculateBollingerBands(closes: number[], period = 20, stdDevMultiplier = 2): { upper: number; middle: number; lower: number } | null {
+  if (closes.length < period) return null;
+  const slice = closes.slice(-period);
+  const mean = slice.reduce((a, b) => a + b, 0) / period;
+  const variance = slice.reduce((a, v) => a + (v - mean) ** 2, 0) / period;
+  const stdDev = Math.sqrt(variance);
+  return {
+    upper: mean + stdDevMultiplier * stdDev,
+    middle: mean,
+    lower: mean - stdDevMultiplier * stdDev,
+  };
+}
+
+/* ─── VWAP (Volume Weighted Average Price) ─── */
+
+function calculateVWAP(klines: BinanceKline[], volumes: number[]): number | null {
+  if (klines.length === 0 || klines.length !== volumes.length) return null;
+  let cumulativeTPV = 0;
+  let cumulativeVolume = 0;
+  for (let i = 0; i < klines.length; i++) {
+    const typicalPrice = (klines[i].high + klines[i].low + klines[i].close) / 3;
+    cumulativeTPV += typicalPrice * volumes[i];
+    cumulativeVolume += volumes[i];
+  }
+  return cumulativeVolume > 0 ? cumulativeTPV / cumulativeVolume : null;
+}
+
+/* ─── Volume Profile — Point of Control (POC) ─── */
+
+function calculatePOC(klines: BinanceKline[], volumes: number[], bins = 30): number | null {
+  if (klines.length === 0 || klines.length !== volumes.length) return null;
+  let minPrice = Infinity;
+  let maxPrice = -Infinity;
+  for (const k of klines) {
+    if (k.low < minPrice) minPrice = k.low;
+    if (k.high > maxPrice) maxPrice = k.high;
+  }
+  if (maxPrice <= minPrice) return null;
+  const binSize = (maxPrice - minPrice) / bins;
+  const volumeProfile = new Array(bins).fill(0);
+  for (let i = 0; i < klines.length; i++) {
+    const midPrice = (klines[i].high + klines[i].low) / 2;
+    const binIdx = Math.min(bins - 1, Math.floor((midPrice - minPrice) / binSize));
+    volumeProfile[binIdx] += volumes[i];
+  }
+  let maxVol = 0;
+  let pocBin = 0;
+  for (let i = 0; i < bins; i++) {
+    if (volumeProfile[i] > maxVol) {
+      maxVol = volumeProfile[i];
+      pocBin = i;
+    }
+  }
+  return minPrice + (pocBin + 0.5) * binSize;
+}
+
+/* ─── Fetch Binance 4h Klines with Volume ─── */
+
+interface BinanceKlineWithVolume extends BinanceKline {
+  volume: number;
+}
+
+async function fetchBinance4hKlinesWithVolume(symbolUpper: string): Promise<BinanceKlineWithVolume[]> {
+  const base = symbolUpper.replace(/USDT$/, "");
+  const mapped = BINANCE_SYMBOL_MAP[base] || base;
+  const pair = `${mapped}USDT`;
+  try {
+    const res = await fetch(
+      `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=4h&limit=50`,
+      { signal: AbortSignal.timeout(6000) }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    return data.map((k: any[]) => ({
+      open: parseFloat(k[1]),
+      high: parseFloat(k[2]),
+      low: parseFloat(k[3]),
+      close: parseFloat(k[4]),
+      volume: parseFloat(k[5]),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /* ─── Generate trade setups from real market data ─── */
 
 interface PreSetup {
@@ -512,16 +600,16 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
   const triggerTime = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const setups: TradeSetup[] = [];
 
-  // Fetch Binance 4h klines in parallel (max 15 concurrent to avoid rate limits)
+  // Fetch Binance 4h klines (with volume) in parallel (max 15 concurrent to avoid rate limits)
   const BATCH_SIZE = 15;
-  const binanceResults: Map<string, BinanceKline[]> = new Map();
+  const binanceResults: Map<string, BinanceKlineWithVolume[]> = new Map();
 
   for (let i = 0; i < preSetups.length; i += BATCH_SIZE) {
     const batch = preSetups.slice(i, i + BATCH_SIZE);
     const promises = batch.map(async (ps) => {
       const sym = ((ps.coin.symbol || "") as string).toUpperCase();
       if (!binanceResults.has(sym)) {
-        const klines = await fetchBinance4hKlines(sym);
+        const klines = await fetchBinance4hKlinesWithVolume(sym);
         binanceResults.set(sym, klines);
       }
     });
@@ -533,7 +621,8 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
     let { confidence, reason } = ps;
     const price = c.current_price;
     const sym = ((c.symbol || "") as string).toUpperCase();
-    const klines = binanceResults.get(sym) || [];
+    const klinesWithVol = binanceResults.get(sym) || [];
+    const klines: BinanceKline[] = klinesWithVol;
 
     // Calculate 4h S/R
     const sr4h = calculate4hSRLevels(klines, price);
@@ -552,6 +641,43 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
         reason += ` | RSI 4h suracheté (${rsi4h})`;
       } else if (rsi4h >= 40 && rsi4h <= 60) {
         confidence -= 5;
+      }
+    }
+
+    // ── Bollinger Bands on 4h closes ──
+    const bb = calculateBollingerBands(closes, 20, 2);
+    if (bb) {
+      const distToLower = Math.abs(price - bb.lower) / price;
+      const distToUpper = Math.abs(price - bb.upper) / price;
+      if (side === "LONG" && distToLower < 0.01) {
+        confidence += 10;
+        reason += ` | BB 4h: prix proche bande basse ($${formatPrice(bb.lower)})`;
+      } else if (side === "SHORT" && distToUpper < 0.01) {
+        confidence += 10;
+        reason += ` | BB 4h: prix proche bande haute ($${formatPrice(bb.upper)})`;
+      }
+    }
+
+    // ── VWAP on 4h ──
+    const volumes = klinesWithVol.map(k => k.volume);
+    const vwap = calculateVWAP(klines, volumes);
+    if (vwap !== null) {
+      if (side === "LONG" && price < vwap) {
+        confidence += 8;
+        reason += ` | VWAP 4h: prix sous fair value ($${formatPrice(vwap)})`;
+      } else if (side === "SHORT" && price > vwap) {
+        confidence += 8;
+        reason += ` | VWAP 4h: prix au-dessus fair value ($${formatPrice(vwap)})`;
+      }
+    }
+
+    // ── Volume Profile POC on 4h ──
+    const poc = calculatePOC(klines, volumes, 30);
+    if (poc !== null) {
+      const distToPOC = Math.abs(price - poc) / price;
+      if (distToPOC < 0.015) {
+        confidence += 5;
+        reason += ` | POC 4h: zone haute liquidité ($${formatPrice(poc)})`;
       }
     }
 
@@ -600,7 +726,7 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
     // TP0 Quick Profit
     const tp0 = computeTP0(side, price, sr4h.supports, sr4h.resistances);
 
-    confidence = Math.min(95, Math.max(25, confidence));
+    confidence = Math.min(98, Math.max(25, confidence));
 
     const riskDistance = Math.abs(price - sl);
     const rewardDistance = Math.abs(tp2 - price);
@@ -639,8 +765,8 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
 /* ─── Auto-register calls to backend ─── */
 
 async function registerCallsToBackend(setups: TradeSetup[]) {
-  // Only register setups with confidence >= 60% to avoid polluting performance data
-  const qualifiedSetups = setups.filter(s => s.confidence >= 60);
+  // Only register setups with confidence >= 90% for high-quality performance data
+  const qualifiedSetups = setups.filter(s => s.confidence >= 90);
   for (const setup of qualifiedSetups) {
     try {
       await fetch("/api/v1/trade-calls", {
@@ -715,8 +841,8 @@ export default function Trades() {
     return () => clearInterval(interval);
   }, [fetchTrades]);
 
-  // Apply confidence filter
-  const confFiltered = showAllConfidence ? setups : setups.filter(t => t.confidence >= 65);
+  // Apply confidence filter — default to 90% minimum
+  const confFiltered = showAllConfidence ? setups : setups.filter(t => t.confidence >= 90);
 
   const filtered = confFiltered.filter((t) => {
     if (filterSide !== "all" && t.side !== filterSide) return false;
@@ -729,7 +855,7 @@ export default function Trades() {
   const avgConfidence = setups.length > 0
     ? Math.round(setups.reduce((s, t) => s + t.confidence, 0) / setups.length)
     : 0;
-  const highConfCount = setups.filter((t) => t.confidence >= 70).length;
+  const highConfCount = setups.filter((t) => t.confidence >= 90).length;
   const convergenceCount = setups.filter((t) => t.hasConvergence).length;
 
   return (
@@ -782,7 +908,7 @@ export default function Trades() {
             { icon: "🟢", label: "LONG", value: String(longCount), change: "Haussiers" },
             { icon: "🔴", label: "SHORT", value: String(shortCount), change: "Baissiers" },
             { icon: "🎯", label: "Confiance Moy.", value: `${avgConfidence}%`, change: "Score moyen" },
-            { icon: "⭐", label: "Haute Confiance", value: String(highConfCount), change: "≥ 70%" },
+            { icon: "⭐", label: "Haute Confiance", value: String(highConfCount), change: "≥ 90%" },
             { icon: "🔗", label: "Convergence", value: String(convergenceCount), change: "S/R 4h ≈ 7j" },
           ].map((stat, i) => (
             <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-blue-500/30 hover:bg-white/[0.05] transition-all">
@@ -817,7 +943,7 @@ export default function Trades() {
             }`}
           >
             {showAllConfidence ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            {showAllConfidence ? "Tous les setups" : "Confiance ≥ 65%"}
+            {showAllConfidence ? "Tous les setups" : "Confiance ≥ 90%"}
           </button>
 
           <span className="text-xs text-gray-500 ml-auto">({filtered.length} résultats)</span>
@@ -847,7 +973,7 @@ export default function Trades() {
                   </td></tr>
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={13} className="text-center py-12 text-gray-500">
-                    {showAllConfidence ? "Aucun setup détecté avec ces filtres" : "Aucun setup avec confiance ≥ 65%. Cliquez \"Tous les setups\" pour voir les autres."}
+                    {showAllConfidence ? "Aucun setup détecté avec ces filtres" : "Aucun setup avec confiance ≥ 90%. Cliquez \"Tous les setups\" pour voir les autres."}
                   </td></tr>
                 ) : (
                   filtered.slice(0, 30).map((trade) => {
@@ -973,7 +1099,7 @@ export default function Trades() {
                               <div className="h-1.5 w-12 bg-white/[0.06] rounded-full overflow-hidden">
                                 <div className="h-full rounded-full" style={{
                                   width: `${trade.confidence}%`,
-                                  background: trade.confidence > 70 ? "#22c55e" : trade.confidence > 50 ? "#f59e0b" : "#6b7280",
+                                  background: trade.confidence >= 90 ? "#22c55e" : trade.confidence >= 70 ? "#f59e0b" : "#6b7280",
                                 }} />
                               </div>
                               <span className="text-xs font-bold text-gray-400">{trade.confidence}%</span>

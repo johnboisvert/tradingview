@@ -384,6 +384,91 @@ function detectH1Trend(klines: BinanceKline[]): "bullish" | "bearish" | "neutral
   return "neutral";
 }
 
+/* ─── Bollinger Bands (period 20, stdDev 2) ─── */
+
+function calculateBollingerBands(closes: number[], period = 20, stdDevMultiplier = 2): { upper: number; middle: number; lower: number } | null {
+  if (closes.length < period) return null;
+  const slice = closes.slice(-period);
+  const mean = slice.reduce((a, b) => a + b, 0) / period;
+  const variance = slice.reduce((a, v) => a + (v - mean) ** 2, 0) / period;
+  const stdDev = Math.sqrt(variance);
+  return {
+    upper: mean + stdDevMultiplier * stdDev,
+    middle: mean,
+    lower: mean - stdDevMultiplier * stdDev,
+  };
+}
+
+/* ─── VWAP (Volume Weighted Average Price) ─── */
+
+function calculateVWAP(klines: BinanceKline[], volumes: number[]): number | null {
+  if (klines.length === 0 || klines.length !== volumes.length) return null;
+  let cumulativeTPV = 0;
+  let cumulativeVolume = 0;
+  for (let i = 0; i < klines.length; i++) {
+    const typicalPrice = (klines[i].high + klines[i].low + klines[i].close) / 3;
+    cumulativeTPV += typicalPrice * volumes[i];
+    cumulativeVolume += volumes[i];
+  }
+  return cumulativeVolume > 0 ? cumulativeTPV / cumulativeVolume : null;
+}
+
+/* ─── Volume Profile — Point of Control (POC) ─── */
+
+function calculatePOC(klines: BinanceKline[], volumes: number[], bins = 30): number | null {
+  if (klines.length === 0 || klines.length !== volumes.length) return null;
+  let minPrice = Infinity;
+  let maxPrice = -Infinity;
+  for (const k of klines) {
+    if (k.low < minPrice) minPrice = k.low;
+    if (k.high > maxPrice) maxPrice = k.high;
+  }
+  if (maxPrice <= minPrice) return null;
+  const binSize = (maxPrice - minPrice) / bins;
+  const volumeProfile = new Array(bins).fill(0);
+  for (let i = 0; i < klines.length; i++) {
+    const midPrice = (klines[i].high + klines[i].low) / 2;
+    const binIdx = Math.min(bins - 1, Math.floor((midPrice - minPrice) / binSize));
+    volumeProfile[binIdx] += volumes[i];
+  }
+  let maxVol = 0;
+  let pocBin = 0;
+  for (let i = 0; i < bins; i++) {
+    if (volumeProfile[i] > maxVol) {
+      maxVol = volumeProfile[i];
+      pocBin = i;
+    }
+  }
+  return minPrice + (pocBin + 0.5) * binSize;
+}
+
+/* ─── Fetch Binance Klines with Volume ─── */
+
+async function fetchBinanceKlinesWithVolume(symbolUpper: string, interval: string, limit: number): Promise<{ kline: BinanceKline; volume: number }[]> {
+  const base = symbolUpper.replace(/USDT$/, "");
+  const pair = `${base}USDT`;
+  try {
+    const res = await fetch(
+      `/api/binance/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    return data.map((k: number[]) => ({
+      kline: {
+        open: parseFloat(String(k[1])),
+        high: parseFloat(String(k[2])),
+        low: parseFloat(String(k[3])),
+        close: parseFloat(String(k[4])),
+      },
+      volume: parseFloat(String(k[5])),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /* ─── M5 S/R from Binance pivots ─── */
 
 function calculateM5SRLevels(klines: BinanceKline[], currentPrice: number): { supports: SRLevel[]; resistances: SRLevel[] } {
@@ -545,18 +630,26 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
     return ratioB - ratioA;
   }).slice(0, 30);
 
-  // Fetch H1 and M5 klines in parallel
+  // Fetch H1 and M5 klines (with volume) in parallel
   const BATCH_SIZE = 10;
   const h1Data: Map<string, BinanceKline[]> = new Map();
   const m5Data: Map<string, BinanceKline[]> = new Map();
+  const h1Volumes: Map<string, number[]> = new Map();
+  const m5Volumes: Map<string, number[]> = new Map();
 
   for (let i = 0; i < sorted.length; i += BATCH_SIZE) {
     const batch = sorted.slice(i, i + BATCH_SIZE);
     const promises = batch.flatMap(c => {
       const sym = ((c.symbol || "") as string).toUpperCase();
       return [
-        fetchBinanceKlines(sym, "1h", 100).then(k => h1Data.set(sym, k)),
-        fetchBinanceKlines(sym, "5m", 100).then(k => m5Data.set(sym, k)),
+        fetchBinanceKlinesWithVolume(sym, "1h", 100).then(data => {
+          h1Data.set(sym, data.map(d => d.kline));
+          h1Volumes.set(sym, data.map(d => d.volume));
+        }),
+        fetchBinanceKlinesWithVolume(sym, "5m", 100).then(data => {
+          m5Data.set(sym, data.map(d => d.kline));
+          m5Volumes.set(sym, data.map(d => d.volume));
+        }),
       ];
     });
     await Promise.all(promises);
@@ -681,6 +774,44 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
       }
     }
 
+    // ── Bollinger Bands on M5 closes ──
+    const bb = calculateBollingerBands(m5Closes, 20, 2);
+    if (bb) {
+      const distToLower = Math.abs(price - bb.lower) / price;
+      const distToUpper = Math.abs(price - bb.upper) / price;
+      if (side === "LONG" && distToLower < 0.01) {
+        confidence += 10;
+        reason += ` | BB M5: prix proche bande basse`;
+      } else if (side === "SHORT" && distToUpper < 0.01) {
+        confidence += 10;
+        reason += ` | BB M5: prix proche bande haute`;
+      }
+    }
+
+    // ── VWAP on H1 ──
+    const h1Vols = h1Volumes.get(sym) || [];
+    const vwap = calculateVWAP(h1Klines, h1Vols);
+    if (vwap !== null) {
+      if (side === "LONG" && price < vwap) {
+        confidence += 8;
+        reason += ` | VWAP H1: prix sous fair value`;
+      } else if (side === "SHORT" && price > vwap) {
+        confidence += 8;
+        reason += ` | VWAP H1: prix au-dessus fair value`;
+      }
+    }
+
+    // ── Volume Profile POC on M5 ──
+    const m5Vols = m5Volumes.get(sym) || [];
+    const poc = calculatePOC(m5Klines, m5Vols, 30);
+    if (poc !== null) {
+      const distToPOC = Math.abs(price - poc) / price;
+      if (distToPOC < 0.008) {
+        confidence += 5;
+        reason += ` | POC M5: zone haute liquidité`;
+      }
+    }
+
     // 7. Scalp-tight TP/SL (0.3-0.8% SL for scalping)
     const volatility5m = m5Klines.slice(-20).reduce((acc, k) => acc + (k.high - k.low) / k.close * 100, 0) / 20;
     const slPercent = Math.max(0.3, Math.min(0.8, volatility5m * 1.5));
@@ -692,7 +823,7 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
       confidence -= 10;
     }
 
-    confidence = Math.min(95, Math.max(25, confidence));
+    confidence = Math.min(98, Math.max(25, confidence));
 
     const riskDistance = Math.abs(price - sl);
     const rewardDistance = Math.abs(tp2 - price);
@@ -819,7 +950,7 @@ export default function ScalpTrading() {
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
 
       // Register client calls to backend (non-blocking)
-      registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 70)).catch(() => {});
+      registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 90)).catch(() => {});
     } catch (err) {
       console.error("Scalp fetch error:", err);
       setFetchError("Une erreur est survenue lors de l'analyse. Veuillez réessayer.");

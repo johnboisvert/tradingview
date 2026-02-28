@@ -1337,11 +1337,13 @@ async function fetchBinanceKlines(symbol, interval, limit = 100) {
 
 // ─── Generate Scalp Setup for a single symbol ───
 async function generateScalpSetup(symbol) {
+  // ═══ "Suivi de Flux" Strategy: EMA 8/20 + VWAP + Stochastique (9,3,1) ═══
+
   // Fetch M5 candles (100 candles = ~8h of data)
   const m5Candles = await fetchBinanceKlines(symbol, '5m', 100);
   if (m5Candles.length < 50) return null;
 
-  // Fetch H1 candles for trend confirmation
+  // Fetch H1 candles for bias
   const h1Candles = await fetchBinanceKlines(symbol, '1h', 50);
   if (h1Candles.length < 25) return null;
 
@@ -1349,228 +1351,216 @@ async function generateScalpSetup(symbol) {
   const h1Closes = h1Candles.map(c => c.close);
   const currentPrice = m5Closes[m5Closes.length - 1];
 
-  // ─── M5 Stoch RSI (14,14,3,3) ───
-  const stochRSI = calcStochRSI(m5Closes, 14, 14, 3, 3);
-  const kVal = stochRSI.k[stochRSI.k.length - 1];
-  const dVal = stochRSI.d[stochRSI.d.length - 1];
-  const kPrev = stochRSI.k[stochRSI.k.length - 2];
-  const dPrev = stochRSI.d[stochRSI.d.length - 2];
-
-  // ─── M5 MACD (12,26,9) ───
-  const macd = calcMACD(m5Closes, 12, 26, 9);
-  const macdHist = macd.histogram[macd.histogram.length - 1];
-  const macdHistPrev = macd.histogram[macd.histogram.length - 2];
-  const macdLine = macd.macd[macd.macd.length - 1];
-  const macdSignalLine = macd.signal[macd.signal.length - 1];
-
-  // ─── H1 Trend (EMA20 + RSI) ───
-  const h1EMA20 = calcEMA(h1Closes, 20);
-  const h1EmaVal = h1EMA20[h1EMA20.length - 1];
-  const h1RSI = calcRSI(h1Closes, 14);
-  const h1RsiVal = h1RSI[h1RSI.length - 1];
+  // ─── H1 EMA 8 & EMA 20 ───
+  const h1Ema8 = calcEMA(h1Closes, 8);
+  const h1Ema20 = calcEMA(h1Closes, 20);
+  const h1Ema8Val = h1Ema8[h1Ema8.length - 1];
+  const h1Ema20Val = h1Ema20[h1Ema20.length - 1];
   const h1Price = h1Closes[h1Closes.length - 1];
 
+  // ─── H1 VWAP ───
+  let h1CumTPV = 0, h1CumVol = 0;
+  for (const c of h1Candles) {
+    const tp = (c.high + c.low + c.close) / 3;
+    h1CumTPV += tp * c.volume;
+    h1CumVol += c.volume;
+  }
+  const h1Vwap = h1CumVol > 0 ? h1CumTPV / h1CumVol : null;
+  if (h1Vwap === null) return null;
+
+  // ─── Step 1: H1 Bias ───
   let h1Trend = 'neutral';
-  if (h1Price > h1EmaVal && h1RsiVal > 50) h1Trend = 'bullish';
-  else if (h1Price < h1EmaVal && h1RsiVal < 50) h1Trend = 'bearish';
+  if (h1Price > h1Ema20Val && h1Price > h1Vwap) h1Trend = 'bullish';
+  else if (h1Price < h1Ema20Val && h1Price < h1Vwap) h1Trend = 'bearish';
 
-  // ─── H1 MACD (12,26,9) ───
-  const h1Macd = calcMACD(h1Closes, 12, 26, 9);
-  const h1MacdLine = h1Macd.macd[h1Macd.macd.length - 1];
-  const h1MacdSignalLine = h1Macd.signal[h1Macd.signal.length - 1];
-  const h1MacdBullish = h1MacdLine > h1MacdSignalLine;
-  const h1MacdBearish = h1MacdLine < h1MacdSignalLine;
-
-  // Determine H1 MACD label
-  let h1MacdSignalLabel = 'neutral';
-  if (h1MacdBullish) h1MacdSignalLabel = 'bullish';
-  else if (h1MacdBearish) h1MacdSignalLabel = 'bearish';
-
-  // Skip neutral H1 trends — no valid scalp signal without clear trend
   if (h1Trend === 'neutral') {
-    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: H1 trend neutral (price=${h1Price.toFixed(2)}, EMA20=${h1EmaVal.toFixed(2)}, RSI=${h1RsiVal.toFixed(1)})`);
+    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: H1 bias neutral (price=${h1Price.toFixed(2)}, EMA20=${h1Ema20Val.toFixed(2)}, VWAP=${h1Vwap.toFixed(2)})`);
     return null;
   }
+
+  // ─── M5 EMA 8 & EMA 20 ───
+  const m5Ema8 = calcEMA(m5Closes, 8);
+  const m5Ema20 = calcEMA(m5Closes, 20);
+  const m5Ema8Val = m5Ema8[m5Ema8.length - 1];
+  const m5Ema20Val = m5Ema20[m5Ema20.length - 1];
+
+  // ─── M5 VWAP ───
+  let m5CumTPV = 0, m5CumVol = 0;
+  for (const c of m5Candles) {
+    const tp = (c.high + c.low + c.close) / 3;
+    m5CumTPV += tp * c.volume;
+    m5CumVol += c.volume;
+  }
+  const m5Vwap = m5CumVol > 0 ? m5CumTPV / m5CumVol : null;
+  if (m5Vwap === null) return null;
+
+  // ─── M5 Stochastic (9, 3, 1) ───
+  // %K = (close - LL9) / (HH9 - LL9) * 100, %D = SMA(%K, 3)
+  const stochKArr = [];
+  for (let i = 8; i < m5Candles.length; i++) {
+    const window = m5Candles.slice(i - 8, i + 1);
+    const ll = Math.min(...window.map(c => c.low));
+    const hh = Math.max(...window.map(c => c.high));
+    const close = m5Candles[i].close;
+    stochKArr.push(hh === ll ? 50 : ((close - ll) / (hh - ll)) * 100);
+  }
+  if (stochKArr.length < 4) return null;
+
+  const stochDArr = [];
+  for (let i = 2; i < stochKArr.length; i++) {
+    stochDArr.push((stochKArr[i] + stochKArr[i - 1] + stochKArr[i - 2]) / 3);
+  }
+  if (stochDArr.length < 2) return null;
+
+  const kVal = stochKArr[stochKArr.length - 1];
+  const dVal = stochDArr[stochDArr.length - 1];
+  const kPrev = stochKArr[stochKArr.length - 2];
+  const dPrev = stochDArr[stochDArr.length - 2];
+
+  // ─── M5 EMA crossover check (last 3 candles) ───
+  let emaCrossUp = false, emaCrossDown = false;
+  for (let i = Math.max(0, m5Ema8.length - 3); i < m5Ema8.length; i++) {
+    if (i > 0 && m5Ema8[i - 1] <= m5Ema20[i - 1] && m5Ema8[i] > m5Ema20[i]) emaCrossUp = true;
+    if (i > 0 && m5Ema8[i - 1] >= m5Ema20[i - 1] && m5Ema8[i] < m5Ema20[i]) emaCrossDown = true;
+  }
+
+  const ema8AboveEma20 = m5Ema8Val > m5Ema20Val;
+  const ema8BelowEma20 = m5Ema8Val < m5Ema20Val;
+
+  // Price proximity to EMA (rebond)
+  const distToEma8 = Math.abs(currentPrice - m5Ema8Val) / currentPrice;
+  const distToEma20 = Math.abs(currentPrice - m5Ema20Val) / currentPrice;
+  const priceNearEma = distToEma8 < 0.003 || distToEma20 < 0.003;
+  const priceBetweenEmas = (currentPrice >= Math.min(m5Ema8Val, m5Ema20Val) && currentPrice <= Math.max(m5Ema8Val, m5Ema20Val));
+
+  // Stochastic conditions
+  const stochOversold = kVal < 20;
+  const stochOverbought = kVal > 80;
+  const stochCrossUp = kPrev <= dPrev && kVal > dVal;
+  const stochCrossDown = kPrev >= dPrev && kVal < dVal;
+  const stochRising = kVal > kPrev;
+  const stochFalling = kVal < kPrev;
 
   // ─── Signal Detection ───
   let side = null;
   let confidence = 0;
   const reasons = [];
 
-  // LONG conditions (M5)
-  const stochBullishCross = kPrev <= dPrev && kVal > dVal;
-  const stochOversold = kVal < 30 || dVal < 30;
-  const m5MacdBullish = macdLine > macdSignalLine && macdHist > macdHistPrev;
-  const m5MacdCrossUp = macdHistPrev < 0 && macdHist >= 0;
-  const anyM5MacdBullish = m5MacdBullish || m5MacdCrossUp || (macdHist > macdHistPrev);
+  // ─── LONG Signal ───
+  if (h1Trend === 'bullish') {
+    const cond2 = ema8AboveEma20 || emaCrossUp;
+    const cond3 = priceNearEma || priceBetweenEmas;
+    const cond4 = currentPrice > m5Vwap;
+    const cond5 = stochOversold && (stochCrossUp || stochRising);
 
-  // SHORT conditions (M5)
-  const stochBearishCross = kPrev >= dPrev && kVal < dVal;
-  const stochOverbought = kVal > 70 || dVal > 70;
-  const m5MacdBearish = macdLine < macdSignalLine && macdHist < macdHistPrev;
-  const m5MacdCrossDown = macdHistPrev > 0 && macdHist <= 0;
-  const anyM5MacdBearish = m5MacdBearish || m5MacdCrossDown || (macdHist < macdHistPrev);
+    if (cond2 && cond3 && cond4 && cond5) {
+      side = 'LONG';
+      confidence = 50;
+      reasons.push(`H1: Prix > EMA20 ($${h1Ema20Val.toFixed(2)}) & VWAP ($${h1Vwap.toFixed(2)}) ✓`);
 
-  // Check if stoch has a signal
-  const hasStochBullish = stochBullishCross || stochOversold;
-  const hasStochBearish = stochBearishCross || stochOverbought;
+      if (emaCrossUp) { confidence += 10; reasons.push('M5: Croisement EMA8 > EMA20 récent ↑'); }
+      else { reasons.push('M5: EMA8 > EMA20 ✓'); }
 
-  // ─── LONG Signal: H1 bullish trend + M5 Stoch signal + BOTH MACDs bullish ───
-  if (hasStochBullish && h1MacdBullish && (m5MacdBullish || m5MacdCrossUp) && h1Trend === 'bullish') {
-    side = 'LONG';
-    confidence = 55;
+      if (distToEma20 < 0.001) { confidence += 8; reasons.push(`M5: Rebond parfait EMA20`); }
+      else if (priceNearEma) { confidence += 4; reasons.push('M5: Prix proche EMA'); }
 
-    if (stochBullishCross && stochOversold) { confidence += 15; reasons.push('Stoch RSI croisement haussier en zone de survente'); }
-    else if (stochBullishCross) { confidence += 10; reasons.push('Stoch RSI croisement haussier (K > D)'); }
-    else if (stochOversold) { confidence += 8; reasons.push(`Stoch RSI en survente (K=${kVal.toFixed(1)}, D=${dVal.toFixed(1)})`); }
+      if (kVal < 10) { confidence += 10; reasons.push(`Stoch: Survente extrême (K:${kVal.toFixed(1)})`); }
+      else { confidence += 5; reasons.push(`Stoch: Survente (K:${kVal.toFixed(1)})`); }
 
-    // Both MACDs required and aligned — always full confidence
-    confidence += 15; reasons.push('MACD M5 + H1 haussiers (double confirmation)');
+      if (stochCrossUp) { confidence += 8; reasons.push(`Stoch: Croisement K↑D`); }
 
-    confidence += 10; reasons.push('Tendance H1 haussière (prix > EMA20, RSI > 50)');
+      const vwapDist = (currentPrice - m5Vwap) / currentPrice;
+      if (vwapDist > 0.002) { confidence += 4; reasons.push('VWAP M5: bien au-dessus ✓'); }
+
+      // Volume bonus
+      const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+      const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+      if (avgVol > 0 && recentVol > avgVol * 1.3) { confidence += 5; reasons.push('Volume M5 supérieur'); }
+
+      // H1 EMA spread bonus
+      const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
+      if (h1Spread > 0.005) { confidence += 5; reasons.push('H1: Tendance forte (EMA8/20 écartées)'); }
+    }
   }
-  // ─── SHORT Signal: H1 bearish trend + M5 Stoch signal + BOTH MACDs bearish ───
-  else if (hasStochBearish && h1MacdBearish && (m5MacdBearish || m5MacdCrossDown) && h1Trend === 'bearish') {
-    side = 'SHORT';
-    confidence = 55;
 
-    if (stochBearishCross && stochOverbought) { confidence += 15; reasons.push('Stoch RSI croisement baissier en zone de surachat'); }
-    else if (stochBearishCross) { confidence += 10; reasons.push('Stoch RSI croisement baissier (K < D)'); }
-    else if (stochOverbought) { confidence += 8; reasons.push(`Stoch RSI en surachat (K=${kVal.toFixed(1)}, D=${dVal.toFixed(1)})`); }
+  // ─── SHORT Signal ───
+  if (h1Trend === 'bearish' && !side) {
+    const cond2 = ema8BelowEma20 || emaCrossDown;
+    const cond3 = priceNearEma || priceBetweenEmas;
+    const cond4 = currentPrice < m5Vwap;
+    const cond5 = stochOverbought && (stochCrossDown || stochFalling);
 
-    // Both MACDs required and aligned — always full confidence
-    confidence += 15; reasons.push('MACD M5 + H1 baissiers (double confirmation)');
+    if (cond2 && cond3 && cond4 && cond5) {
+      side = 'SHORT';
+      confidence = 50;
+      reasons.push(`H1: Prix < EMA20 ($${h1Ema20Val.toFixed(2)}) & VWAP ($${h1Vwap.toFixed(2)}) ✓`);
 
-    confidence += 10; reasons.push('Tendance H1 baissière (prix < EMA20, RSI < 50)');
+      if (emaCrossDown) { confidence += 10; reasons.push('M5: Croisement EMA8 < EMA20 récent ↓'); }
+      else { reasons.push('M5: EMA8 < EMA20 ✓'); }
+
+      if (distToEma20 < 0.001) { confidence += 8; reasons.push(`M5: Rejet parfait EMA20`); }
+      else if (priceNearEma) { confidence += 4; reasons.push('M5: Prix proche EMA'); }
+
+      if (kVal > 90) { confidence += 10; reasons.push(`Stoch: Surachat extrême (K:${kVal.toFixed(1)})`); }
+      else { confidence += 5; reasons.push(`Stoch: Surachat (K:${kVal.toFixed(1)})`); }
+
+      if (stochCrossDown) { confidence += 8; reasons.push(`Stoch: Croisement K↓D`); }
+
+      const vwapDist = (m5Vwap - currentPrice) / currentPrice;
+      if (vwapDist > 0.002) { confidence += 4; reasons.push('VWAP M5: bien en-dessous ✓'); }
+
+      const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+      const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+      if (avgVol > 0 && recentVol > avgVol * 1.3) { confidence += 5; reasons.push('Volume M5 supérieur'); }
+
+      const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
+      if (h1Spread > 0.005) { confidence += 5; reasons.push('H1: Tendance forte (EMA8/20 écartées)'); }
+    }
   }
 
   if (!side) {
-    // Debug: log why no signal was generated
-    const stochInfo = `K=${kVal.toFixed(1)},D=${dVal.toFixed(1)},bullCross=${stochBullishCross},bearCross=${stochBearishCross},OS=${stochOversold},OB=${stochOverbought}`;
-    const macdInfo = `M5bull=${anyM5MacdBullish},M5bear=${anyM5MacdBearish},H1bull=${h1MacdBullish},H1bear=${h1MacdBearish}`;
-    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: no signal match (H1=${h1Trend}, ${stochInfo}, ${macdInfo})`);
+    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: no Suivi de Flux signal (H1=${h1Trend}, EMA8>${m5Ema8Val.toFixed(2)}, EMA20>${m5Ema20Val.toFixed(2)}, StochK=${kVal.toFixed(1)}, VWAP=${m5Vwap.toFixed(2)})`);
     return null;
-  }
-
-  // Volume confirmation (last 5 candles vs average)
-  const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
-  const avgVol = m5Candles.slice(-50).reduce((s, c) => s + c.volume, 0) / 50;
-  if (recentVol > avgVol * 1.5) { confidence += 8; reasons.push('Volume supérieur à la moyenne (+50%)'); }
-  else if (recentVol > avgVol * 1.2) { confidence += 4; reasons.push('Volume légèrement supérieur'); }
-
-  // ─── Bollinger Bands on M5 (period 20, stdDev 2) ───
-  if (m5Closes.length >= 20) {
-    const bbSlice = m5Closes.slice(-20);
-    const bbMean = bbSlice.reduce((a, b) => a + b, 0) / 20;
-    const bbVariance = bbSlice.reduce((a, v) => a + (v - bbMean) ** 2, 0) / 20;
-    const bbStdDev = Math.sqrt(bbVariance);
-    const bbUpper = bbMean + 2 * bbStdDev;
-    const bbLower = bbMean - 2 * bbStdDev;
-    const distToLower = Math.abs(currentPrice - bbLower) / currentPrice;
-    const distToUpper = Math.abs(currentPrice - bbUpper) / currentPrice;
-    if (side === 'LONG' && distToLower < 0.01) {
-      confidence += 10;
-      reasons.push(`BB M5: prix proche bande basse ($${bbLower.toFixed(2)})`);
-    } else if (side === 'SHORT' && distToUpper < 0.01) {
-      confidence += 10;
-      reasons.push(`BB M5: prix proche bande haute ($${bbUpper.toFixed(2)})`);
-    }
-  }
-
-  // ─── VWAP on H1 ───
-  if (h1Candles.length > 0) {
-    let cumTPV = 0, cumVol = 0;
-    for (const c of h1Candles) {
-      const tp = (c.high + c.low + c.close) / 3;
-      cumTPV += tp * c.volume;
-      cumVol += c.volume;
-    }
-    if (cumVol > 0) {
-      const vwap = cumTPV / cumVol;
-      if (side === 'LONG' && currentPrice < vwap) {
-        confidence += 8;
-        reasons.push(`VWAP H1: prix sous fair value ($${vwap.toFixed(2)})`);
-      } else if (side === 'SHORT' && currentPrice > vwap) {
-        confidence += 8;
-        reasons.push(`VWAP H1: prix au-dessus fair value ($${vwap.toFixed(2)})`);
-      }
-    }
-  }
-
-  // ─── Volume Profile POC on M5 ───
-  if (m5Candles.length >= 20) {
-    let vpMin = Infinity, vpMax = -Infinity;
-    for (const c of m5Candles) {
-      if (c.low < vpMin) vpMin = c.low;
-      if (c.high > vpMax) vpMax = c.high;
-    }
-    if (vpMax > vpMin) {
-      const bins = 30;
-      const binSize = (vpMax - vpMin) / bins;
-      const volProfile = new Array(bins).fill(0);
-      for (const c of m5Candles) {
-        const mid = (c.high + c.low) / 2;
-        const idx = Math.min(bins - 1, Math.floor((mid - vpMin) / binSize));
-        volProfile[idx] += c.volume;
-      }
-      let maxVolBin = 0, pocIdx = 0;
-      for (let i = 0; i < bins; i++) {
-        if (volProfile[i] > maxVolBin) { maxVolBin = volProfile[i]; pocIdx = i; }
-      }
-      const poc = vpMin + (pocIdx + 0.5) * binSize;
-      const distToPOC = Math.abs(currentPrice - poc) / currentPrice;
-      if (distToPOC < 0.008) {
-        confidence += 5;
-        reasons.push(`POC M5: zone haute liquidité ($${poc.toFixed(2)})`);
-      }
-    }
   }
 
   confidence = Math.min(98, Math.max(25, confidence));
 
-  // ─── TP / SL Calculation (scalp-tight) ───
-  // ATR-like volatility from last 20 M5 candles
-  const last20 = m5Candles.slice(-20);
-  const avgRange = last20.reduce((s, c) => s + (c.high - c.low), 0) / last20.length;
-  const atrPct = (avgRange / currentPrice) * 100;
-  const slPct = Math.max(atrPct * 1.5, 0.3);
-  const tp1Pct = slPct * 1.0;
-  const tp2Pct = slPct * 1.8;
-  const tp3Pct = slPct * 2.8;
+  // ─── SL / TP Calculation ───
+  // SL: dernier plus bas/haut local M5 (10 bougies) ou sous/au-dessus EMA20
+  const last10 = m5Candles.slice(-10);
+  let entry = currentPrice;
+  let stopLoss, tp1, tp2, tp3;
 
-  let entry, stopLoss, tp1, tp2, tp3;
   if (side === 'LONG') {
-    entry = currentPrice;
-    stopLoss = currentPrice * (1 - slPct / 100);
-    tp1 = currentPrice * (1 + tp1Pct / 100);
-    tp2 = currentPrice * (1 + tp2Pct / 100);
-    tp3 = currentPrice * (1 + tp3Pct / 100);
+    const lowestLow = Math.min(...last10.map(c => c.low));
+    const ema20SL = m5Ema20Val * 0.997;
+    stopLoss = Math.min(lowestLow, ema20SL);
+    if (Math.abs(entry - stopLoss) / entry < 0.002) stopLoss = entry * 0.997;
+    stopLoss *= 0.999; // margin
   } else {
-    entry = currentPrice;
-    stopLoss = currentPrice * (1 + slPct / 100);
-    tp1 = currentPrice * (1 - tp1Pct / 100);
-    tp2 = currentPrice * (1 - tp2Pct / 100);
-    tp3 = currentPrice * (1 - tp3Pct / 100);
+    const highestHigh = Math.max(...last10.map(c => c.high));
+    const ema20SL = m5Ema20Val * 1.003;
+    stopLoss = Math.max(highestHigh, ema20SL);
+    if (Math.abs(stopLoss - entry) / entry < 0.002) stopLoss = entry * 1.003;
+    stopLoss *= 1.001;
   }
 
-  const riskDist = Math.abs(entry - stopLoss);
-  const rewardDist = Math.abs(tp2 - entry);
-  const rr = riskDist > 0 ? Math.round((rewardDist / riskDist) * 10) / 10 : 1.8;
-
-  // Determine MACD signal label
-  let macdSignalLabel = 'neutral';
-  if (macdLine > macdSignalLine) macdSignalLabel = 'bullish';
-  else if (macdLine < macdSignalLine) macdSignalLabel = 'bearish';
-
-  // ─── VALIDATION: Ensure MACD labels are coherent with signal direction ───
-  if (side === 'LONG' && (macdSignalLabel !== 'bullish' || h1MacdSignalLabel !== 'bullish')) {
-    console.log(`[ScalpAlert] ⚠️ VALIDATION FAILED for ${symbol}: side=${side} but macd_signal=${macdSignalLabel}, h1_macd_signal=${h1MacdSignalLabel}`);
-    return null;
+  const slDist = Math.abs(entry - stopLoss);
+  if (side === 'LONG') {
+    tp1 = entry + slDist * 1.0;  // 1:1
+    tp2 = entry + slDist * 1.5;  // 1:1.5
+    tp3 = entry + slDist * 2.0;  // 1:2
+  } else {
+    tp1 = entry - slDist * 1.0;
+    tp2 = entry - slDist * 1.5;
+    tp3 = entry - slDist * 2.0;
   }
-  if (side === 'SHORT' && (macdSignalLabel !== 'bearish' || h1MacdSignalLabel !== 'bearish')) {
-    console.log(`[ScalpAlert] ⚠️ VALIDATION FAILED for ${symbol}: side=${side} but macd_signal=${macdSignalLabel}, h1_macd_signal=${h1MacdSignalLabel}`);
-    return null;
-  }
+
+  // SL too tight penalty
+  if (slDist / entry < 0.002) confidence -= 10;
+  confidence = Math.min(98, Math.max(25, confidence));
+
+  const rr = slDist > 0 ? Math.round((Math.abs(tp2 - entry) / slDist) * 10) / 10 : 1.5;
 
   return {
     symbol,
@@ -1584,8 +1574,8 @@ async function generateScalpSetup(symbol) {
     reason: reasons.join(' | '),
     stoch_rsi_k: kVal,
     stoch_rsi_d: dVal,
-    macd_signal: macdSignalLabel,
-    h1_macd_signal: h1MacdSignalLabel,
+    macd_signal: h1Trend === 'bullish' ? 'bullish' : 'bearish',
+    h1_macd_signal: h1Trend === 'bullish' ? 'bullish' : 'bearish',
     h1_trend: h1Trend,
     currentPrice,
   };

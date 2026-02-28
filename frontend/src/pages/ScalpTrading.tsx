@@ -3,12 +3,10 @@ import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import {
   TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3,
-  Shield, Target, ChevronDown, ChevronUp, Link2, Zap, Trophy,
+  Shield, Target, ChevronDown, ChevronUp, Zap, Trophy,
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
-
-
 
 /* ─── Types ─── */
 
@@ -17,7 +15,6 @@ interface SRLevel {
   type: "support" | "resistance";
   strength: "major" | "minor";
   source: string;
-  convergent?: boolean;
 }
 
 interface ScalpSetup {
@@ -41,15 +38,20 @@ interface ScalpSetup {
   triggerTime: string;
   supports: SRLevel[];
   resistances: SRLevel[];
-  stochRsiK: number | null;
-  stochRsiD: number | null;
-  macdSignal: "bullish" | "bearish" | "neutral";
-  h1MacdSignal: "bullish" | "bearish" | "neutral";
-  h1Trend: "bullish" | "bearish" | "neutral";
+  /* New indicator values */
+  ema8_m5: number | null;
+  ema20_m5: number | null;
+  ema8_h1: number | null;
+  ema20_h1: number | null;
+  vwap_h1: number | null;
+  vwap_m5: number | null;
+  stoch_k: number | null;
+  stoch_d: number | null;
+  h1Bias: "bullish" | "bearish" | "neutral";
   source?: "client" | "server";
 }
 
-/* ─── Server-side scalp call type (from /api/v1/scalp-calls) ─── */
+/* ─── Server-side scalp call type ─── */
 
 interface ServerScalpCall {
   id: number;
@@ -73,13 +75,10 @@ interface ServerScalpCall {
   expires_at: string;
 }
 
-/* ─── Convert server call to ScalpSetup ─── */
-
 function serverCallToSetup(call: ServerScalpCall): ScalpSetup {
   const createdAt = new Date(call.created_at);
   const triggerTime = createdAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const name = call.symbol.replace(/USDT$/, "");
-
   return {
     id: `server-${call.id}`,
     symbol: call.symbol,
@@ -101,50 +100,39 @@ function serverCallToSetup(call: ServerScalpCall): ScalpSetup {
     triggerTime,
     supports: [],
     resistances: [],
-    stochRsiK: call.stoch_rsi_k,
-    stochRsiD: call.stoch_rsi_d,
-    macdSignal: (call.macd_signal as "bullish" | "bearish" | "neutral") || "neutral",
-    h1MacdSignal: (call.h1_macd_signal as "bullish" | "bearish" | "neutral") || "neutral",
-    h1Trend: (call.h1_trend as "bullish" | "bearish" | "neutral") || "neutral",
+    ema8_m5: null,
+    ema20_m5: null,
+    ema8_h1: null,
+    ema20_h1: null,
+    vwap_h1: null,
+    vwap_m5: null,
+    stoch_k: call.stoch_rsi_k,
+    stoch_d: call.stoch_rsi_d,
+    h1Bias: (call.h1_trend as "bullish" | "bearish" | "neutral") || "neutral",
     source: "server",
   };
 }
 
-/* ─── Fetch active server-side scalp calls ─── */
-
 async function fetchServerScalpCalls(): Promise<ScalpSetup[]> {
   try {
-    const res = await fetch("/api/v1/scalp-calls?status=active&limit=50", {
-      signal: AbortSignal.timeout(8000),
-    });
+    const res = await fetch("/api/v1/scalp-calls?status=active&limit=50", { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return [];
     const data: ServerScalpCall[] = await res.json();
     if (!Array.isArray(data)) return [];
     return data.map(serverCallToSetup);
   } catch {
-    console.warn("Failed to fetch server-side scalp calls");
     return [];
   }
 }
 
-/* ─── Merge server calls with client setups (deduplicate) ─── */
-
 function mergeSetups(clientSetups: ScalpSetup[], serverSetups: ScalpSetup[]): ScalpSetup[] {
-  // Mark client setups
   const tagged = clientSetups.map(s => ({ ...s, source: "client" as const }));
-
-  // For each server setup, check if a matching client setup exists (same symbol + same side within 30min)
   const merged = [...tagged];
-  for (const serverSetup of serverSetups) {
-    const isDuplicate = tagged.some(cs =>
-      cs.symbol === serverSetup.symbol && cs.side === serverSetup.side
-    );
-    if (!isDuplicate) {
-      merged.push(serverSetup);
+  for (const ss of serverSetups) {
+    if (!tagged.some(cs => cs.symbol === ss.symbol && cs.side === ss.side)) {
+      merged.push(ss);
     }
   }
-
-  // Sort by confidence descending
   return merged.sort((a, b) => b.confidence - a.confidence);
 }
 
@@ -171,23 +159,21 @@ function roundPrice(value: number, reference: number): number {
   return Math.round(value * 1000000) / 1000000;
 }
 
-/* ─── Binance Klines Fetcher ─── */
+/* ─── Binance Klines with Volume ─── */
 
-interface BinanceKline {
+interface KlineWithVol {
   open: number;
   high: number;
   low: number;
   close: number;
+  volume: number;
 }
 
-async function fetchBinanceKlines(symbolUpper: string, interval: string, limit: number): Promise<BinanceKline[]> {
+async function fetchKlines(symbolUpper: string, interval: string, limit: number): Promise<KlineWithVol[]> {
   const base = symbolUpper.replace(/USDT$/, "");
   const pair = `${base}USDT`;
   try {
-    const res = await fetch(
-      `/api/binance/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
-      { signal: AbortSignal.timeout(8000) }
-    );
+    const res = await fetch(`/api/binance/klines?symbol=${pair}&interval=${interval}&limit=${limit}`, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return [];
     const data = await res.json();
     if (!Array.isArray(data)) return [];
@@ -196,272 +182,6 @@ async function fetchBinanceKlines(symbolUpper: string, interval: string, limit: 
       high: parseFloat(String(k[2])),
       low: parseFloat(String(k[3])),
       close: parseFloat(String(k[4])),
-    }));
-  } catch {
-    return [];
-  }
-}
-
-/* ─── RSI Calculation ─── */
-
-function calculateRSI(closes: number[], period = 14): number | null {
-  if (closes.length < period + 1) return null;
-  let gainSum = 0;
-  let lossSum = 0;
-  for (let i = 1; i <= period; i++) {
-    const diff = closes[i] - closes[i - 1];
-    if (diff >= 0) gainSum += diff;
-    else lossSum += Math.abs(diff);
-  }
-  let avgGain = gainSum / period;
-  let avgLoss = lossSum / period;
-  for (let i = period + 1; i < closes.length; i++) {
-    const diff = closes[i] - closes[i - 1];
-    if (diff >= 0) {
-      avgGain = (avgGain * (period - 1) + diff) / period;
-      avgLoss = (avgLoss * (period - 1)) / period;
-    } else {
-      avgGain = (avgGain * (period - 1)) / period;
-      avgLoss = (avgLoss * (period - 1) + Math.abs(diff)) / period;
-    }
-  }
-  if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
-  return Math.round((100 - 100 / (1 + rs)) * 10) / 10;
-}
-
-/* ─── Stochastic RSI Calculation ─── */
-
-function calculateStochRSI(closes: number[], rsiPeriod = 14, stochPeriod = 14, kSmooth = 3, dSmooth = 3): { k: number | null; d: number | null } {
-  if (closes.length < rsiPeriod + stochPeriod + kSmooth + dSmooth) return { k: null, d: null };
-
-  // Step 1: Calculate RSI series
-  const rsiValues: number[] = [];
-  let gainSum = 0;
-  let lossSum = 0;
-  for (let i = 1; i <= rsiPeriod; i++) {
-    const diff = closes[i] - closes[i - 1];
-    if (diff >= 0) gainSum += diff;
-    else lossSum += Math.abs(diff);
-  }
-  let avgGain = gainSum / rsiPeriod;
-  let avgLoss = lossSum / rsiPeriod;
-  rsiValues.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
-
-  for (let i = rsiPeriod + 1; i < closes.length; i++) {
-    const diff = closes[i] - closes[i - 1];
-    if (diff >= 0) {
-      avgGain = (avgGain * (rsiPeriod - 1) + diff) / rsiPeriod;
-      avgLoss = (avgLoss * (rsiPeriod - 1)) / rsiPeriod;
-    } else {
-      avgGain = (avgGain * (rsiPeriod - 1)) / rsiPeriod;
-      avgLoss = (avgLoss * (rsiPeriod - 1) + Math.abs(diff)) / rsiPeriod;
-    }
-    rsiValues.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
-  }
-
-  if (rsiValues.length < stochPeriod) return { k: null, d: null };
-
-  // Step 2: Stochastic of RSI
-  const stochRaw: number[] = [];
-  for (let i = stochPeriod - 1; i < rsiValues.length; i++) {
-    const window = rsiValues.slice(i - stochPeriod + 1, i + 1);
-    const min = Math.min(...window);
-    const max = Math.max(...window);
-    stochRaw.push(max === min ? 50 : ((rsiValues[i] - min) / (max - min)) * 100);
-  }
-
-  if (stochRaw.length < kSmooth) return { k: null, d: null };
-
-  // Step 3: Smooth %K (SMA of stochRaw)
-  const kValues: number[] = [];
-  for (let i = kSmooth - 1; i < stochRaw.length; i++) {
-    const sum = stochRaw.slice(i - kSmooth + 1, i + 1).reduce((a, b) => a + b, 0);
-    kValues.push(sum / kSmooth);
-  }
-
-  if (kValues.length < dSmooth) return { k: kValues[kValues.length - 1] ?? null, d: null };
-
-  // Step 4: %D (SMA of %K)
-  const dValues: number[] = [];
-  for (let i = dSmooth - 1; i < kValues.length; i++) {
-    const sum = kValues.slice(i - dSmooth + 1, i + 1).reduce((a, b) => a + b, 0);
-    dValues.push(sum / dSmooth);
-  }
-
-  return {
-    k: Math.round((kValues[kValues.length - 1] ?? 0) * 10) / 10,
-    d: Math.round((dValues[dValues.length - 1] ?? 0) * 10) / 10,
-  };
-}
-
-/* ─── MACD Calculation ─── */
-
-function calculateMACD(closes: number[], fastPeriod = 12, slowPeriod = 26, signalPeriod = 9): { macd: number; signal: number; histogram: number; direction: "bullish" | "bearish" | "neutral" } | null {
-  if (closes.length < slowPeriod + signalPeriod) return null;
-
-  const ema = (data: number[], period: number): number[] => {
-    const result: number[] = [];
-    const multiplier = 2 / (period + 1);
-    let prev = data.slice(0, period).reduce((a, b) => a + b, 0) / period;
-    result.push(prev);
-    for (let i = period; i < data.length; i++) {
-      prev = (data[i] - prev) * multiplier + prev;
-      result.push(prev);
-    }
-    return result;
-  };
-
-  const emaFast = ema(closes, fastPeriod);
-  const emaSlow = ema(closes, slowPeriod);
-
-  // Align arrays — emaSlow starts later
-  const offset = slowPeriod - fastPeriod;
-  const macdLine: number[] = [];
-  for (let i = 0; i < emaSlow.length; i++) {
-    macdLine.push(emaFast[i + offset] - emaSlow[i]);
-  }
-
-  if (macdLine.length < signalPeriod) return null;
-
-  const signalLine = ema(macdLine, signalPeriod);
-  const signalOffset = macdLine.length - signalLine.length;
-
-  const lastMacd = macdLine[macdLine.length - 1];
-  const lastSignal = signalLine[signalLine.length - 1];
-  const histogram = lastMacd - lastSignal;
-
-  // Check crossover (last 2 values)
-  let direction: "bullish" | "bearish" | "neutral" = "neutral";
-  if (macdLine.length >= 2 && signalLine.length >= 2) {
-    const prevMacd = macdLine[macdLine.length - 2];
-    const prevSignal = signalLine[signalLine.length - 2];
-    const prevSignalIdx = signalLine.length - 2;
-    const prevMacdForSignal = macdLine[prevSignalIdx + signalOffset];
-
-    if (lastMacd > lastSignal && prevMacdForSignal !== undefined && prevMacdForSignal <= prevSignal) {
-      direction = "bullish"; // Bullish crossover
-    } else if (lastMacd < lastSignal && prevMacdForSignal !== undefined && prevMacdForSignal >= prevSignal) {
-      direction = "bearish"; // Bearish crossover
-    } else if (histogram > 0) {
-      direction = "bullish";
-    } else if (histogram < 0) {
-      direction = "bearish";
-    }
-  } else if (histogram > 0) {
-    direction = "bullish";
-  } else if (histogram < 0) {
-    direction = "bearish";
-  }
-
-  return {
-    macd: Math.round(lastMacd * 1e6) / 1e6,
-    signal: Math.round(lastSignal * 1e6) / 1e6,
-    histogram: Math.round(histogram * 1e6) / 1e6,
-    direction,
-  };
-}
-
-/* ─── H1 Trend Detection ─── */
-
-function detectH1Trend(klines: BinanceKline[]): "bullish" | "bearish" | "neutral" {
-  if (klines.length < 20) return "neutral";
-  const closes = klines.map(k => k.close);
-
-  // EMA 20 on H1
-  const period = 20;
-  const multiplier = 2 / (period + 1);
-  let ema20 = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
-  for (let i = period; i < closes.length; i++) {
-    ema20 = (closes[i] - ema20) * multiplier + ema20;
-  }
-
-  const lastClose = closes[closes.length - 1];
-  const rsi = calculateRSI(closes);
-
-  if (lastClose > ema20 * 1.002 && rsi !== null && rsi > 50) return "bullish";
-  if (lastClose < ema20 * 0.998 && rsi !== null && rsi < 50) return "bearish";
-  return "neutral";
-}
-
-/* ─── Bollinger Bands (period 20, stdDev 2) ─── */
-
-function calculateBollingerBands(closes: number[], period = 20, stdDevMultiplier = 2): { upper: number; middle: number; lower: number } | null {
-  if (closes.length < period) return null;
-  const slice = closes.slice(-period);
-  const mean = slice.reduce((a, b) => a + b, 0) / period;
-  const variance = slice.reduce((a, v) => a + (v - mean) ** 2, 0) / period;
-  const stdDev = Math.sqrt(variance);
-  return {
-    upper: mean + stdDevMultiplier * stdDev,
-    middle: mean,
-    lower: mean - stdDevMultiplier * stdDev,
-  };
-}
-
-/* ─── VWAP (Volume Weighted Average Price) ─── */
-
-function calculateVWAP(klines: BinanceKline[], volumes: number[]): number | null {
-  if (klines.length === 0 || klines.length !== volumes.length) return null;
-  let cumulativeTPV = 0;
-  let cumulativeVolume = 0;
-  for (let i = 0; i < klines.length; i++) {
-    const typicalPrice = (klines[i].high + klines[i].low + klines[i].close) / 3;
-    cumulativeTPV += typicalPrice * volumes[i];
-    cumulativeVolume += volumes[i];
-  }
-  return cumulativeVolume > 0 ? cumulativeTPV / cumulativeVolume : null;
-}
-
-/* ─── Volume Profile — Point of Control (POC) ─── */
-
-function calculatePOC(klines: BinanceKline[], volumes: number[], bins = 30): number | null {
-  if (klines.length === 0 || klines.length !== volumes.length) return null;
-  let minPrice = Infinity;
-  let maxPrice = -Infinity;
-  for (const k of klines) {
-    if (k.low < minPrice) minPrice = k.low;
-    if (k.high > maxPrice) maxPrice = k.high;
-  }
-  if (maxPrice <= minPrice) return null;
-  const binSize = (maxPrice - minPrice) / bins;
-  const volumeProfile = new Array(bins).fill(0);
-  for (let i = 0; i < klines.length; i++) {
-    const midPrice = (klines[i].high + klines[i].low) / 2;
-    const binIdx = Math.min(bins - 1, Math.floor((midPrice - minPrice) / binSize));
-    volumeProfile[binIdx] += volumes[i];
-  }
-  let maxVol = 0;
-  let pocBin = 0;
-  for (let i = 0; i < bins; i++) {
-    if (volumeProfile[i] > maxVol) {
-      maxVol = volumeProfile[i];
-      pocBin = i;
-    }
-  }
-  return minPrice + (pocBin + 0.5) * binSize;
-}
-
-/* ─── Fetch Binance Klines with Volume ─── */
-
-async function fetchBinanceKlinesWithVolume(symbolUpper: string, interval: string, limit: number): Promise<{ kline: BinanceKline; volume: number }[]> {
-  const base = symbolUpper.replace(/USDT$/, "");
-  const pair = `${base}USDT`;
-  try {
-    const res = await fetch(
-      `/api/binance/klines?symbol=${pair}&interval=${interval}&limit=${limit}`,
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!Array.isArray(data)) return [];
-    return data.map((k: number[]) => ({
-      kline: {
-        open: parseFloat(String(k[1])),
-        high: parseFloat(String(k[2])),
-        low: parseFloat(String(k[3])),
-        close: parseFloat(String(k[4])),
-      },
       volume: parseFloat(String(k[5])),
     }));
   } catch {
@@ -469,194 +189,159 @@ async function fetchBinanceKlinesWithVolume(symbolUpper: string, interval: strin
   }
 }
 
-/* ─── M5 S/R from Binance pivots ─── */
+/* ═══════════════════════════════════════════════════════════════
+   INDICATOR CALCULATIONS — "Suivi de Flux" Strategy
+   EMA 8 + EMA 20 + VWAP + Stochastique (9, 3, 1)
+   ═══════════════════════════════════════════════════════════════ */
 
-function calculateM5SRLevels(klines: BinanceKline[], currentPrice: number): { supports: SRLevel[]; resistances: SRLevel[] } {
+/** EMA series — returns array of EMA values (same length as input, first `period-1` are SMA-seeded) */
+function calcEMASeries(closes: number[], period: number): number[] {
+  if (closes.length < period) return [];
+  const k = 2 / (period + 1);
+  const result: number[] = [];
+  let ema = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  // Fill first period-1 entries with NaN (not enough data)
+  for (let i = 0; i < period - 1; i++) result.push(NaN);
+  result.push(ema);
+  for (let i = period; i < closes.length; i++) {
+    ema = closes[i] * k + ema * (1 - k);
+    result.push(ema);
+  }
+  return result;
+}
+
+/** VWAP from klines with volume */
+function calcVWAP(klines: KlineWithVol[]): number | null {
+  if (klines.length === 0) return null;
+  let cumTPV = 0;
+  let cumVol = 0;
+  for (const c of klines) {
+    const tp = (c.high + c.low + c.close) / 3;
+    cumTPV += tp * c.volume;
+    cumVol += c.volume;
+  }
+  return cumVol > 0 ? cumTPV / cumVol : null;
+}
+
+/** Stochastic Oscillator (kPeriod, dPeriod, kSmoothing)
+ *  Standard: %K = (close - LL) / (HH - LL) * 100, smoothed by kSmoothing=1 (raw), %D = SMA(%K, dPeriod)
+ *  Parameters: (9, 3, 1) — period 9, %D smoothing 3, %K smoothing 1 (raw)
+ *  Returns arrays of K and D values
+ */
+function calcStochastic(klines: KlineWithVol[], kPeriod = 9, dPeriod = 3, _kSmooth = 1): { kArr: number[]; dArr: number[] } {
+  if (klines.length < kPeriod) return { kArr: [], dArr: [] };
+
+  const rawK: number[] = [];
+  for (let i = kPeriod - 1; i < klines.length; i++) {
+    const window = klines.slice(i - kPeriod + 1, i + 1);
+    const lowestLow = Math.min(...window.map(c => c.low));
+    const highestHigh = Math.max(...window.map(c => c.high));
+    const close = klines[i].close;
+    const k = highestHigh === lowestLow ? 50 : ((close - lowestLow) / (highestHigh - lowestLow)) * 100;
+    rawK.push(k);
+  }
+
+  // %K smoothing = 1 means raw (no smoothing)
+  const kArr = rawK;
+
+  // %D = SMA of %K over dPeriod
+  const dArr: number[] = [];
+  for (let i = dPeriod - 1; i < kArr.length; i++) {
+    const sum = kArr.slice(i - dPeriod + 1, i + 1).reduce((a, b) => a + b, 0);
+    dArr.push(sum / dPeriod);
+  }
+
+  return { kArr, dArr };
+}
+
+/* ─── M5 S/R from pivots ─── */
+
+function calculateM5SR(klines: KlineWithVol[], currentPrice: number): { supports: SRLevel[]; resistances: SRLevel[] } {
   const supports: SRLevel[] = [];
   const resistances: SRLevel[] = [];
   if (klines.length < 10) return { supports, resistances };
 
-  const windowSize = 3;
+  const w = 3;
   const localMins: number[] = [];
   const localMaxs: number[] = [];
 
-  for (let i = windowSize; i < klines.length - windowSize; i++) {
+  for (let i = w; i < klines.length - w; i++) {
     let isMin = true;
     let isMax = true;
-    const low_i = klines[i].low;
-    const high_i = klines[i].high;
-
-    for (let j = i - windowSize; j <= i + windowSize; j++) {
+    for (let j = i - w; j <= i + w; j++) {
       if (j === i) continue;
-      if (klines[j].low <= low_i) isMin = false;
-      if (klines[j].high >= high_i) isMax = false;
+      if (klines[j].low <= klines[i].low) isMin = false;
+      if (klines[j].high >= klines[i].high) isMax = false;
     }
-    if (isMin) localMins.push(low_i);
-    if (isMax) localMaxs.push(high_i);
+    if (isMin) localMins.push(klines[i].low);
+    if (isMax) localMaxs.push(klines[i].high);
   }
 
-  const clusterLevels = (levels: number[]): number[] => {
+  const cluster = (levels: number[]): number[] => {
     if (levels.length === 0) return [];
     const sorted = [...levels].sort((a, b) => a - b);
     const clusters: number[][] = [[sorted[0]]];
     for (let i = 1; i < sorted.length; i++) {
-      const lastCluster = clusters[clusters.length - 1];
-      const clusterAvg = lastCluster.reduce((s, v) => s + v, 0) / lastCluster.length;
-      if (Math.abs(sorted[i] - clusterAvg) / clusterAvg < 0.005) {
-        lastCluster.push(sorted[i]);
-      } else {
-        clusters.push([sorted[i]]);
-      }
+      const last = clusters[clusters.length - 1];
+      const avg = last.reduce((s, v) => s + v, 0) / last.length;
+      if (Math.abs(sorted[i] - avg) / avg < 0.005) last.push(sorted[i]);
+      else clusters.push([sorted[i]]);
     }
     return clusters.map(c => c.reduce((s, v) => s + v, 0) / c.length);
   };
 
-  const clusteredMins = clusterLevels(localMins);
-  const clusteredMaxs = clusterLevels(localMaxs);
-
-  for (const level of clusteredMins) {
+  for (const level of cluster(localMins)) {
     if (level < currentPrice * 0.999) {
-      supports.push({
-        price: level,
-        type: "support",
-        strength: Math.abs(level - currentPrice) / currentPrice < 0.01 ? "major" : "minor",
-        source: "M5",
-      });
+      supports.push({ price: level, type: "support", strength: Math.abs(level - currentPrice) / currentPrice < 0.01 ? "major" : "minor", source: "M5" });
     }
   }
-
-  for (const level of clusteredMaxs) {
+  for (const level of cluster(localMaxs)) {
     if (level > currentPrice * 1.001) {
-      resistances.push({
-        price: level,
-        type: "resistance",
-        strength: Math.abs(level - currentPrice) / currentPrice < 0.01 ? "major" : "minor",
-        source: "M5",
-      });
+      resistances.push({ price: level, type: "resistance", strength: Math.abs(level - currentPrice) / currentPrice < 0.01 ? "major" : "minor", source: "M5" });
     }
   }
 
   supports.sort((a, b) => b.price - a.price);
   resistances.sort((a, b) => a.price - b.price);
-
   return { supports: supports.slice(0, 4), resistances: resistances.slice(0, 4) };
 }
 
-/* ─── Align TP for Scalping (tighter targets) ─── */
-
-function alignScalpTP(
-  side: "LONG" | "SHORT",
-  entry: number,
-  slPercent: number,
-  supports: SRLevel[],
-  resistances: SRLevel[],
-): { tp1: number; tp2: number; tp3: number; sl: number } {
-  const slDistance = entry * (slPercent / 100);
-  let tp1: number, tp2: number, tp3: number, sl: number;
-
-  if (side === "LONG") {
-    sl = entry - slDistance;
-    tp1 = entry + slDistance * 1.2;
-    tp2 = entry + slDistance * 2.0;
-    tp3 = entry + slDistance * 3.0;
-
-    const nearestSupport = supports.find(s => s.price < entry * 0.998);
-    if (nearestSupport && nearestSupport.price > sl * 0.97 && nearestSupport.price < entry * 0.995) {
-      sl = nearestSupport.price * 0.999;
-    }
-
-    const resAbove = resistances.filter(r => r.price > entry * 1.002);
-    if (resAbove.length >= 1 && resAbove[0].price > tp1 * 0.95 && resAbove[0].price < tp1 * 1.15) {
-      tp1 = resAbove[0].price * 0.999;
-    }
-    if (resAbove.length >= 2 && resAbove[1].price > tp2 * 0.90 && resAbove[1].price < tp2 * 1.15) {
-      tp2 = resAbove[1].price * 0.999;
-    }
-    if (resAbove.length >= 3 && resAbove[2].price > tp3 * 0.85) {
-      tp3 = resAbove[2].price * 0.999;
-    }
-  } else {
-    sl = entry + slDistance;
-    tp1 = entry - slDistance * 1.2;
-    tp2 = entry - slDistance * 2.0;
-    tp3 = entry - slDistance * 3.0;
-
-    const nearestResistance = resistances.find(r => r.price > entry * 1.002);
-    if (nearestResistance && nearestResistance.price < sl * 1.03 && nearestResistance.price > entry * 1.005) {
-      sl = nearestResistance.price * 1.001;
-    }
-
-    const supBelow = supports.filter(s => s.price < entry * 0.998);
-    if (supBelow.length >= 1 && supBelow[0].price < tp1 * 1.05 && supBelow[0].price > tp1 * 0.85) {
-      tp1 = supBelow[0].price * 1.001;
-    }
-    if (supBelow.length >= 2 && supBelow[1].price < tp2 * 1.10 && supBelow[1].price > tp2 * 0.85) {
-      tp2 = supBelow[1].price * 1.001;
-    }
-    if (supBelow.length >= 3 && supBelow[2].price < tp3 * 1.15) {
-      tp3 = supBelow[2].price * 1.001;
-    }
-  }
-
-  if (side === "LONG") {
-    tp2 = Math.max(tp2, tp1 * 1.005);
-    tp3 = Math.max(tp3, tp2 * 1.005);
-  } else {
-    tp2 = Math.min(tp2, tp1 * 0.995);
-    tp3 = Math.min(tp3, tp2 * 0.995);
-  }
-
-  return { tp1, tp2, tp3, sl };
-}
-
-/* ─── Generate Scalp Setups ─── */
+/* ═══════════════════════════════════════════════════════════════
+   GENERATE SCALP SETUPS — "Suivi de Flux" Strategy
+   ═══════════════════════════════════════════════════════════════ */
 
 async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
   const triggerTime = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const setups: ScalpSetup[] = [];
 
-  // Pre-filter coins with enough volume and movement
   const candidates = coins.filter(c => {
     if (!c || !c.current_price || !c.market_cap) return false;
     const vol = c.total_volume || 0;
     const mcap = c.market_cap || 1;
-    return vol / mcap > 0.05 && mcap > 50_000_000; // Min 50M mcap for scalping liquidity
+    return vol / mcap > 0.05 && mcap > 50_000_000;
   });
 
-  // Take top 30 by volume/mcap ratio for scalping
   const sorted = [...candidates].sort((a, b) => {
-    const ratioA = (a.total_volume || 0) / (a.market_cap || 1);
-    const ratioB = (b.total_volume || 0) / (b.market_cap || 1);
-    return ratioB - ratioA;
+    const rA = (a.total_volume || 0) / (a.market_cap || 1);
+    const rB = (b.total_volume || 0) / (b.market_cap || 1);
+    return rB - rA;
   }).slice(0, 30);
 
-  // Fetch H1 and M5 klines (with volume) in parallel
-  const BATCH_SIZE = 10;
-  const h1Data: Map<string, BinanceKline[]> = new Map();
-  const m5Data: Map<string, BinanceKline[]> = new Map();
-  const h1Volumes: Map<string, number[]> = new Map();
-  const m5Volumes: Map<string, number[]> = new Map();
+  /* Fetch H1 and M5 klines in batches */
+  const BATCH = 10;
+  const h1Map = new Map<string, KlineWithVol[]>();
+  const m5Map = new Map<string, KlineWithVol[]>();
 
-  for (let i = 0; i < sorted.length; i += BATCH_SIZE) {
-    const batch = sorted.slice(i, i + BATCH_SIZE);
-    const promises = batch.flatMap(c => {
+  for (let i = 0; i < sorted.length; i += BATCH) {
+    const batch = sorted.slice(i, i + BATCH);
+    await Promise.all(batch.flatMap(c => {
       const sym = ((c.symbol || "") as string).toUpperCase();
       return [
-        fetchBinanceKlinesWithVolume(sym, "1h", 100).then(data => {
-          h1Data.set(sym, data.map(d => d.kline));
-          h1Volumes.set(sym, data.map(d => d.volume));
-        }),
-        fetchBinanceKlinesWithVolume(sym, "5m", 100).then(data => {
-          m5Data.set(sym, data.map(d => d.kline));
-          m5Volumes.set(sym, data.map(d => d.volume));
-        }),
+        fetchKlines(sym, "1h", 100).then(d => h1Map.set(sym, d)),
+        fetchKlines(sym, "5m", 100).then(d => m5Map.set(sym, d)),
       ];
-    });
-    await Promise.all(promises);
-    // Small delay between batches
-    if (i + BATCH_SIZE < sorted.length) {
-      await new Promise(r => setTimeout(r, 300));
-    }
+    }));
+    if (i + BATCH < sorted.length) await new Promise(r => setTimeout(r, 300));
   }
 
   for (const c of sorted) {
@@ -665,169 +350,270 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
     const change24h = c.price_change_percentage_24h || 0;
     const volume = c.total_volume || 0;
     const mcap = c.market_cap || 1;
-    const volMcapRatio = volume / mcap;
 
-    const h1Klines = h1Data.get(sym) || [];
-    const m5Klines = m5Data.get(sym) || [];
+    const h1K = h1Map.get(sym) || [];
+    const m5K = m5Map.get(sym) || [];
+    if (h1K.length < 25 || m5K.length < 50) continue;
 
-    if (h1Klines.length < 30 || m5Klines.length < 50) continue;
+    const h1Closes = h1K.map(k => k.close);
+    const m5Closes = m5K.map(k => k.close);
 
-    // 1. Determine H1 trend
-    const h1Trend = detectH1Trend(h1Klines);
-    if (h1Trend === "neutral") continue; // Skip neutral trends for scalping
+    /* ─── H1 Indicators ─── */
+    const h1Ema8Arr = calcEMASeries(h1Closes, 8);
+    const h1Ema20Arr = calcEMASeries(h1Closes, 20);
+    const h1Ema8 = h1Ema8Arr[h1Ema8Arr.length - 1];
+    const h1Ema20 = h1Ema20Arr[h1Ema20Arr.length - 1];
+    const h1Vwap = calcVWAP(h1K);
+    const h1Price = h1Closes[h1Closes.length - 1];
 
-    // 2. Calculate Stoch RSI on M5
-    const m5Closes = m5Klines.map(k => k.close);
-    const stochRsi = calculateStochRSI(m5Closes, 14, 14, 3, 3);
+    if (isNaN(h1Ema20) || h1Vwap === null) continue;
 
-    // 3. Calculate MACD on M5
-    const macdResult = calculateMACD(m5Closes, 12, 26, 9);
-    const macdSignal = macdResult?.direction || "neutral";
+    /* ─── Step 1: H1 Bias ─── */
+    let h1Bias: "bullish" | "bearish" | "neutral" = "neutral";
+    if (h1Price > h1Ema20 && h1Price > h1Vwap) h1Bias = "bullish";
+    else if (h1Price < h1Ema20 && h1Price < h1Vwap) h1Bias = "bearish";
 
-    // 3b. Calculate MACD on H1 — both timeframes must agree
-    const h1Closes = h1Klines.map(k => k.close);
-    const h1MacdResult = calculateMACD(h1Closes, 12, 26, 9);
-    const h1MacdSignal = h1MacdResult?.direction || "neutral";
+    if (h1Bias === "neutral") continue; // No signal without clear H1 bias
 
-    // 4. Entry logic: H1 trend + H1 MACD + M5 Stoch RSI + M5 MACD — ALL must agree
+    /* ─── M5 Indicators ─── */
+    const m5Ema8Arr = calcEMASeries(m5Closes, 8);
+    const m5Ema20Arr = calcEMASeries(m5Closes, 20);
+    const m5Ema8 = m5Ema8Arr[m5Ema8Arr.length - 1];
+    const m5Ema20 = m5Ema20Arr[m5Ema20Arr.length - 1];
+    const m5Vwap = calcVWAP(m5K);
+
+    if (isNaN(m5Ema8) || isNaN(m5Ema20) || m5Vwap === null) continue;
+
+    /* Stochastic (9, 3, 1) on M5 */
+    const stoch = calcStochastic(m5K, 9, 3, 1);
+    if (stoch.kArr.length < 3 || stoch.dArr.length < 2) continue;
+
+    const stochK = stoch.kArr[stoch.kArr.length - 1];
+    const stochD = stoch.dArr[stoch.dArr.length - 1];
+    const stochKPrev = stoch.kArr[stoch.kArr.length - 2];
+    const stochDPrev = stoch.dArr[stoch.dArr.length - 2];
+
+    /* ─── Step 2: M5 Signal Detection ─── */
     let side: "LONG" | "SHORT" | null = null;
     let confidence = 0;
-    let reason = "";
+    const reasons: string[] = [];
 
-    if (h1Trend === "bullish") {
-      // LONG: H1 bullish trend + H1 MACD bullish + M5 Stoch RSI oversold/crossing up + M5 MACD bullish
-      const stochOversold = stochRsi.k !== null && stochRsi.k < 30;
-      const stochCrossingUp = stochRsi.k !== null && stochRsi.d !== null && stochRsi.k > stochRsi.d;
-      const macdBullish = macdSignal === "bullish";
-      const h1MacdBullish = h1MacdSignal === "bullish";
-
-      if ((stochOversold || stochCrossingUp) && macdBullish && h1MacdBullish) {
-        side = "LONG";
-        confidence = 55;
-        reason = `Tendance H1 haussière`;
-
-        if (stochOversold) {
-          confidence += 15;
-          reason += ` | Stoch RSI M5 survendu (K:${stochRsi.k})`;
-        } else if (stochCrossingUp) {
-          confidence += 10;
-          reason += ` | Stoch RSI M5 croisement haussier (K:${stochRsi.k} > D:${stochRsi.d})`;
-        }
-
-        confidence += 10;
-        reason += ` | MACD M5 haussier`;
-
-        confidence += 10;
-        reason += ` | MACD H1 haussier`;
-
-        if (volMcapRatio > 0.15) { confidence += 8; reason += ` | Volume élevé`; }
-        if (change24h > 2) { confidence += 5; }
+    // Check EMA crossover in last 3 M5 candles
+    const recentEma8 = m5Ema8Arr.slice(-4);
+    const recentEma20 = m5Ema20Arr.slice(-4);
+    let emaCrossUp = false;
+    let emaCrossDown = false;
+    for (let i = 1; i < recentEma8.length; i++) {
+      if (!isNaN(recentEma8[i]) && !isNaN(recentEma20[i]) && !isNaN(recentEma8[i - 1]) && !isNaN(recentEma20[i - 1])) {
+        if (recentEma8[i - 1] <= recentEma20[i - 1] && recentEma8[i] > recentEma20[i]) emaCrossUp = true;
+        if (recentEma8[i - 1] >= recentEma20[i - 1] && recentEma8[i] < recentEma20[i]) emaCrossDown = true;
       }
-    } else if (h1Trend === "bearish") {
-      // SHORT: H1 bearish trend + H1 MACD bearish + M5 Stoch RSI overbought/crossing down + M5 MACD bearish
-      const stochOverbought = stochRsi.k !== null && stochRsi.k > 70;
-      const stochCrossingDown = stochRsi.k !== null && stochRsi.d !== null && stochRsi.k < stochRsi.d;
-      const macdBearish = macdSignal === "bearish";
-      const h1MacdBearish = h1MacdSignal === "bearish";
+    }
 
-      if ((stochOverbought || stochCrossingDown) && macdBearish && h1MacdBearish) {
-        side = "SHORT";
-        confidence = 55;
-        reason = `Tendance H1 baissière`;
+    const ema8AboveEma20 = m5Ema8 > m5Ema20;
+    const ema8BelowEma20 = m5Ema8 < m5Ema20;
 
-        if (stochOverbought) {
-          confidence += 15;
-          reason += ` | Stoch RSI M5 suracheté (K:${stochRsi.k})`;
-        } else if (stochCrossingDown) {
+    // Price proximity to EMA (rebond)
+    const distToEma8 = Math.abs(price - m5Ema8) / price;
+    const distToEma20 = Math.abs(price - m5Ema20) / price;
+    const priceNearEma = distToEma8 < 0.003 || distToEma20 < 0.003;
+    const priceBetweenEmas = (price >= Math.min(m5Ema8, m5Ema20) && price <= Math.max(m5Ema8, m5Ema20));
+
+    // Stochastic conditions
+    const stochOversold = stochK < 20;
+    const stochOverbought = stochK > 80;
+    const stochCrossUp = stochKPrev <= stochDPrev && stochK > stochD;
+    const stochCrossDown = stochKPrev >= stochDPrev && stochK < stochD;
+    const stochRising = stochK > stochKPrev;
+    const stochFalling = stochK < stochKPrev;
+
+    /* ─── LONG Signal ─── */
+    if (h1Bias === "bullish") {
+      const cond1 = true; // H1 bias already checked
+      const cond2 = ema8AboveEma20 || emaCrossUp;
+      const cond3 = priceNearEma || priceBetweenEmas;
+      const cond4 = price > m5Vwap;
+      const cond5 = stochOversold && (stochCrossUp || stochRising);
+
+      if (cond1 && cond2 && cond3 && cond4 && cond5) {
+        side = "LONG";
+        confidence = 50;
+        reasons.push(`H1: Prix > EMA20 ($${h1Ema20.toFixed(2)}) & VWAP ($${h1Vwap.toFixed(2)}) ✓`);
+
+        // EMA crossover bonus
+        if (emaCrossUp) {
           confidence += 10;
-          reason += ` | Stoch RSI M5 croisement baissier (K:${stochRsi.k} < D:${stochRsi.d})`;
+          reasons.push("M5: Croisement EMA8 > EMA20 récent ↑");
+        } else {
+          reasons.push("M5: EMA8 > EMA20 ✓");
         }
 
-        confidence += 10;
-        reason += ` | MACD M5 baissier`;
+        // Rebond EMA
+        if (distToEma20 < 0.001) {
+          confidence += 8;
+          reasons.push(`M5: Rebond parfait EMA20 ($${m5Ema20.toFixed(2)})`);
+        } else if (priceNearEma) {
+          confidence += 4;
+          reasons.push("M5: Prix proche EMA");
+        }
 
-        confidence += 10;
-        reason += ` | MACD H1 baissier`;
+        // Stochastic
+        if (stochK < 10) {
+          confidence += 10;
+          reasons.push(`Stoch: Survente extrême (K:${stochK.toFixed(1)})`);
+        } else {
+          confidence += 5;
+          reasons.push(`Stoch: Survente (K:${stochK.toFixed(1)})`);
+        }
+        if (stochCrossUp) {
+          confidence += 8;
+          reasons.push(`Stoch: Croisement K↑D (${stochK.toFixed(1)}→${stochD.toFixed(1)})`);
+        } else {
+          reasons.push(`Stoch: K remonte (${stochKPrev.toFixed(1)}→${stochK.toFixed(1)})`);
+        }
 
-        if (volMcapRatio > 0.15) { confidence += 8; reason += ` | Volume élevé`; }
-        if (change24h < -2) { confidence += 5; }
+        // VWAP M5 alignment
+        const vwapDist = (price - m5Vwap) / price;
+        if (vwapDist > 0.002) {
+          confidence += 4;
+          reasons.push("VWAP M5: bien au-dessus ✓");
+        } else {
+          reasons.push("VWAP M5 ✓");
+        }
+
+        // Volume bonus
+        const recentVol = m5K.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+        const avgVol = m5K.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+        if (avgVol > 0 && recentVol > avgVol * 1.3) {
+          confidence += 5;
+          reasons.push("Volume M5 supérieur à la moyenne");
+        }
+
+        // H1 EMA spread bonus (strong trend)
+        const h1EmaSpread = Math.abs(h1Ema8 - h1Ema20) / h1Ema20;
+        if (!isNaN(h1Ema8) && h1EmaSpread > 0.005) {
+          confidence += 5;
+          reasons.push("H1: Tendance forte (EMA8/20 écartées)");
+        }
+      }
+    }
+
+    /* ─── SHORT Signal ─── */
+    if (h1Bias === "bearish" && !side) {
+      const cond1 = true;
+      const cond2 = ema8BelowEma20 || emaCrossDown;
+      const cond3 = priceNearEma || priceBetweenEmas;
+      const cond4 = price < m5Vwap;
+      const cond5 = stochOverbought && (stochCrossDown || stochFalling);
+
+      if (cond1 && cond2 && cond3 && cond4 && cond5) {
+        side = "SHORT";
+        confidence = 50;
+        reasons.push(`H1: Prix < EMA20 ($${h1Ema20.toFixed(2)}) & VWAP ($${h1Vwap.toFixed(2)}) ✓`);
+
+        if (emaCrossDown) {
+          confidence += 10;
+          reasons.push("M5: Croisement EMA8 < EMA20 récent ↓");
+        } else {
+          reasons.push("M5: EMA8 < EMA20 ✓");
+        }
+
+        if (distToEma20 < 0.001) {
+          confidence += 8;
+          reasons.push(`M5: Rejet parfait EMA20 ($${m5Ema20.toFixed(2)})`);
+        } else if (priceNearEma) {
+          confidence += 4;
+          reasons.push("M5: Prix proche EMA");
+        }
+
+        if (stochK > 90) {
+          confidence += 10;
+          reasons.push(`Stoch: Surachat extrême (K:${stochK.toFixed(1)})`);
+        } else {
+          confidence += 5;
+          reasons.push(`Stoch: Surachat (K:${stochK.toFixed(1)})`);
+        }
+        if (stochCrossDown) {
+          confidence += 8;
+          reasons.push(`Stoch: Croisement K↓D (${stochK.toFixed(1)}→${stochD.toFixed(1)})`);
+        } else {
+          reasons.push(`Stoch: K redescend (${stochKPrev.toFixed(1)}→${stochK.toFixed(1)})`);
+        }
+
+        const vwapDist = (m5Vwap - price) / price;
+        if (vwapDist > 0.002) {
+          confidence += 4;
+          reasons.push("VWAP M5: bien en-dessous ✓");
+        } else {
+          reasons.push("VWAP M5 ✓");
+        }
+
+        const recentVol = m5K.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+        const avgVol = m5K.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+        if (avgVol > 0 && recentVol > avgVol * 1.3) {
+          confidence += 5;
+          reasons.push("Volume M5 supérieur à la moyenne");
+        }
+
+        const h1EmaSpread = Math.abs(h1Ema8 - h1Ema20) / h1Ema20;
+        if (!isNaN(h1Ema8) && h1EmaSpread > 0.005) {
+          confidence += 5;
+          reasons.push("H1: Tendance forte (EMA8/20 écartées)");
+        }
       }
     }
 
     if (!side) continue;
 
-    // 5. Calculate M5 S/R levels
-    const m5SR = calculateM5SRLevels(m5Klines, price);
+    /* ─── SL / TP Calculation ─── */
+    const m5SR = calculateM5SR(m5K, price);
 
-    // 6. S/R proximity bonus
+    // SL: dernier plus bas/haut local M5 (5-10 bougies) OU sous/au-dessus EMA20
+    const last10 = m5K.slice(-10);
+    let sl: number;
     if (side === "LONG") {
-      const nearSup = m5SR.supports[0];
-      if (nearSup && Math.abs(price - nearSup.price) / price < 0.005) {
-        confidence += 8;
-        reason += ` | Proche support M5 $${formatPrice(nearSup.price)}`;
+      const lowestLow = Math.min(...last10.map(k => k.low));
+      const ema20SL = m5Ema20 * 0.997; // 0.3% sous EMA20
+      sl = Math.min(lowestLow, ema20SL);
+      // Ensure SL is not too tight
+      if (Math.abs(price - sl) / price < 0.002) {
+        sl = price * 0.997; // Minimum 0.3%
       }
+      // Add margin
+      sl = sl * 0.999;
     } else {
-      const nearRes = m5SR.resistances[0];
-      if (nearRes && Math.abs(price - nearRes.price) / price < 0.005) {
-        confidence += 8;
-        reason += ` | Proche résistance M5 $${formatPrice(nearRes.price)}`;
+      const highestHigh = Math.max(...last10.map(k => k.high));
+      const ema20SL = m5Ema20 * 1.003;
+      sl = Math.max(highestHigh, ema20SL);
+      if (Math.abs(sl - price) / price < 0.002) {
+        sl = price * 1.003;
       }
+      sl = sl * 1.001;
     }
 
-    // ── Bollinger Bands on M5 closes ──
-    const bb = calculateBollingerBands(m5Closes, 20, 2);
-    if (bb) {
-      const distToLower = Math.abs(price - bb.lower) / price;
-      const distToUpper = Math.abs(price - bb.upper) / price;
-      if (side === "LONG" && distToLower < 0.01) {
-        confidence += 10;
-        reason += ` | BB M5: prix proche bande basse`;
-      } else if (side === "SHORT" && distToUpper < 0.01) {
-        confidence += 10;
-        reason += ` | BB M5: prix proche bande haute`;
-      }
+    const slDist = Math.abs(price - sl);
+
+    // TP based on SL distance (ratio-based)
+    let tp1: number, tp2: number, tp3: number;
+    if (side === "LONG") {
+      tp1 = price + slDist * 1.0;  // 1:1
+      tp2 = price + slDist * 1.5;  // 1:1.5
+      // TP3 = next resistance or 1:2
+      const nextRes = m5SR.resistances[0];
+      tp3 = nextRes && nextRes.price > tp2 ? nextRes.price * 0.999 : price + slDist * 2.0;
+    } else {
+      tp1 = price - slDist * 1.0;
+      tp2 = price - slDist * 1.5;
+      const nextSup = m5SR.supports[0];
+      tp3 = nextSup && nextSup.price < tp2 ? nextSup.price * 1.001 : price - slDist * 2.0;
     }
-
-    // ── VWAP on H1 ──
-    const h1Vols = h1Volumes.get(sym) || [];
-    const vwap = calculateVWAP(h1Klines, h1Vols);
-    if (vwap !== null) {
-      if (side === "LONG" && price < vwap) {
-        confidence += 8;
-        reason += ` | VWAP H1: prix sous fair value`;
-      } else if (side === "SHORT" && price > vwap) {
-        confidence += 8;
-        reason += ` | VWAP H1: prix au-dessus fair value`;
-      }
-    }
-
-    // ── Volume Profile POC on M5 ──
-    const m5Vols = m5Volumes.get(sym) || [];
-    const poc = calculatePOC(m5Klines, m5Vols, 30);
-    if (poc !== null) {
-      const distToPOC = Math.abs(price - poc) / price;
-      if (distToPOC < 0.008) {
-        confidence += 5;
-        reason += ` | POC M5: zone haute liquidité`;
-      }
-    }
-
-    // 7. Scalp-tight TP/SL (0.3-0.8% SL for scalping)
-    const volatility5m = m5Klines.slice(-20).reduce((acc, k) => acc + (k.high - k.low) / k.close * 100, 0) / 20;
-    const slPercent = Math.max(0.3, Math.min(0.8, volatility5m * 1.5));
-
-    const { tp1, tp2, tp3, sl } = alignScalpTP(side, price, slPercent, m5SR.supports, m5SR.resistances);
 
     // SL too tight penalty
-    if (Math.abs(sl - price) / price < 0.002) {
-      confidence -= 10;
-    }
+    if (slDist / price < 0.002) confidence -= 10;
 
     confidence = Math.min(98, Math.max(25, confidence));
 
-    const riskDistance = Math.abs(price - sl);
-    const rewardDistance = Math.abs(tp2 - price);
-    const rr = riskDistance > 0 ? Math.round((rewardDistance / riskDistance) * 10) / 10 : 1.5;
+    const rr = slDist > 0 ? Math.round((Math.abs(tp2 - price) / slDist) * 10) / 10 : 1.5;
 
     setups.push({
       id: c.id,
@@ -846,15 +632,19 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
       volume,
       marketCap: mcap,
       confidence,
-      reason,
+      reason: reasons.join(" | "),
       triggerTime,
       supports: m5SR.supports.slice(0, 3),
       resistances: m5SR.resistances.slice(0, 3),
-      stochRsiK: stochRsi.k,
-      stochRsiD: stochRsi.d,
-      macdSignal,
-      h1MacdSignal,
-      h1Trend,
+      ema8_m5: m5Ema8,
+      ema20_m5: m5Ema20,
+      ema8_h1: isNaN(h1Ema8) ? null : h1Ema8,
+      ema20_h1: h1Ema20,
+      vwap_h1: h1Vwap,
+      vwap_m5: m5Vwap,
+      stoch_k: stochK,
+      stoch_d: stochD,
+      h1Bias,
     });
   }
 
@@ -864,42 +654,44 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
 /* ─── Auto-register scalp calls to backend ─── */
 
 async function registerScalpCallsToBackend(setups: ScalpSetup[]) {
-  for (const setup of setups) {
+  for (const s of setups) {
     try {
       await fetch("/api/v1/scalp-calls", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          symbol: setup.symbol,
-          side: setup.side,
-          entry_price: setup.entry,
-          stop_loss: setup.stopLoss,
-          tp1: setup.tp1,
-          tp2: setup.tp2,
-          tp3: setup.tp3,
-          confidence: setup.confidence,
-          reason: setup.reason,
-          stoch_rsi_k: setup.stochRsiK,
-          stoch_rsi_d: setup.stochRsiD,
-          macd_signal: setup.macdSignal,
-          h1_trend: setup.h1Trend,
-          rr: setup.rr,
+          symbol: s.symbol,
+          side: s.side,
+          entry_price: s.entry,
+          stop_loss: s.stopLoss,
+          tp1: s.tp1,
+          tp2: s.tp2,
+          tp3: s.tp3,
+          confidence: s.confidence,
+          reason: s.reason,
+          stoch_rsi_k: s.stoch_k,
+          stoch_rsi_d: s.stoch_d,
+          macd_signal: s.h1Bias === "bullish" ? "bullish" : "bearish",
+          h1_trend: s.h1Bias,
+          rr: s.rr,
         }),
       });
     } catch {
-      // Silent fail — non-critical
+      // Silent fail
     }
   }
 }
 
-/* ─── Component ─── */
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENT
+   ═══════════════════════════════════════════════════════════════ */
 
 export default function ScalpTrading() {
   const [trades, setTrades] = useState<ScalpSetup[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [filter, setFilter] = useState<"all" | "LONG" | "SHORT">("all");
-  const [minConfidence, setMinConfidence] = useState(50);
+  const [minConfidence, setMinConfidence] = useState(90);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -909,7 +701,6 @@ export default function ScalpTrading() {
     setFetchError(null);
     setDataWarning(null);
     try {
-      // Fetch top 200 coins from CoinGecko via proxy
       const allCoins: any[] = [];
       for (let page = 1; page <= 2; page++) {
         try {
@@ -933,23 +724,19 @@ export default function ScalpTrading() {
         return;
       }
 
-      // Quick check if Binance is available
-      const binanceTest = await fetchBinanceKlines("BTC", "1h", 5);
-      if (binanceTest.length === 0) {
-        setDataWarning("Les données Binance ne sont pas disponibles depuis cette localisation. Les signaux de scalping nécessitent les klines M5/H1 de Binance pour fonctionner. Les alertes Telegram côté serveur continuent de fonctionner normalement.");
+      // Quick Binance check
+      const testK = await fetchKlines("BTC", "1h", 5);
+      if (testK.length === 0) {
+        setDataWarning("Les données Binance ne sont pas disponibles. Les alertes Telegram côté serveur continuent de fonctionner.");
       }
 
       const clientSetups = await generateScalpSetups(allCoins);
-
-      // Fetch server-side Telegram alerts (active calls)
       const serverSetups = await fetchServerScalpCalls();
-
-      // Merge: server calls appear even when client can't compute them (e.g. Binance blocked)
       const merged = mergeSetups(clientSetups, serverSetups);
       setTrades(merged);
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
 
-      // Register client calls to backend (non-blocking)
+      // Register high-confidence calls (≥90%)
       registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 90)).catch(() => {});
     } catch (err) {
       console.error("Scalp fetch error:", err);
@@ -961,7 +748,7 @@ export default function ScalpTrading() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 3 * 60 * 1000); // Refresh every 3 min for scalping
+    const interval = setInterval(fetchData, 3 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -974,6 +761,7 @@ export default function ScalpTrading() {
   const longCount = trades.filter(t => t.side === "LONG").length;
   const shortCount = trades.filter(t => t.side === "SHORT").length;
   const serverCount = trades.filter(t => t.source === "server").length;
+  const highConfCount = trades.filter(t => t.confidence >= 90).length;
   const avgConfidence = trades.length > 0 ? Math.round(trades.reduce((s, t) => s + t.confidence, 0) / trades.length) : 0;
 
   return (
@@ -982,8 +770,8 @@ export default function ScalpTrading() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
         <PageHeader
           icon={<Zap className="w-7 h-7" />}
-          title="Scalp Trading"
-          subtitle="Signaux de scalping : MACD H1 + MACD M5 alignés + Stoch RSI M5 avec tendance H1"
+          title="Scalp Trading — Suivi de Flux"
+          subtitle="EMA 8/20 + VWAP + Stochastique (9,3,1) — Biais H1, Entrée M5"
           accentColor="amber"
         />
 
@@ -1007,12 +795,12 @@ export default function ScalpTrading() {
               <p className="text-xl font-black text-blue-400">{serverCount}</p>
             </div>
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Confiance Moy.</p>
-              <p className="text-xl font-black text-amber-400">{avgConfidence}%</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Haute Conf. ≥90%</p>
+              <p className="text-xl font-black text-amber-400">{highConfCount}</p>
             </div>
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Dernière MAJ</p>
-              <p className="text-sm font-bold text-gray-300">{lastUpdate || "—"}</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Confiance Moy.</p>
+              <p className="text-xl font-black text-amber-400">{avgConfidence}%</p>
             </div>
           </div>
 
@@ -1059,13 +847,11 @@ export default function ScalpTrading() {
               >
                 <option value={30}>≥ 30%</option>
                 <option value={50}>≥ 50%</option>
-                <option value={60}>≥ 60%</option>
                 <option value={70}>≥ 70%</option>
                 <option value={80}>≥ 80%</option>
+                <option value={90}>≥ 90%</option>
               </select>
             </div>
-
-
           </div>
 
           {/* Strategy Info */}
@@ -1073,8 +859,8 @@ export default function ScalpTrading() {
             <p className="text-xs text-amber-300/80 flex items-center gap-2">
               <Zap className="w-4 h-4 flex-shrink-0" />
               <span>
-                <strong>Stratégie :</strong> Tendance H1 (EMA20 + RSI + MACD H1) → Entrée M5 (Stoch RSI croisement + MACD M5 confirmation). Les deux MACD (H1 et M5) doivent être dans la même direction.
-                SL serré (0.3-0.8%), TP rapides. Idéal pour des trades de quelques minutes à 1h.
+                <strong>Stratégie "Suivi de Flux" :</strong> Biais H1 (prix vs EMA20 + VWAP) → Entrée M5 (rebond EMA8/20 + prix vs VWAP M5 + Stochastique 9,3,1 en survente/surachat avec croisement).
+                SL sous dernier creux / EMA20. TP1 = 1:1, TP2 = 1:1.5, TP3 = résistance/support ou 1:2.
               </span>
             </p>
           </div>
@@ -1096,9 +882,6 @@ export default function ScalpTrading() {
                 <Shield className="w-4 h-4 flex-shrink-0" />
                 <span>{dataWarning}</span>
               </p>
-              <p className="text-xs text-orange-300/60 mt-2 ml-6">
-                💡 Les alertes Telegram sont envoyées depuis le serveur backend qui a accès aux données Binance. Consultez votre canal Telegram pour les signaux en temps réel.
-              </p>
             </div>
           )}
 
@@ -1106,14 +889,14 @@ export default function ScalpTrading() {
           <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3">
               <Zap className="w-5 h-5 text-amber-400" />
-              <h2 className="text-lg font-bold">Signaux de Scalping</h2>
-              <span className="text-xs text-gray-500 ml-2">Cliquez sur une ligne pour voir les détails (S/R, indicateurs, raison)</span>
+              <h2 className="text-lg font-bold">Signaux Scalp — Suivi de Flux</h2>
+              <span className="text-xs text-gray-500 ml-2">Cliquez sur une ligne pour les détails</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1500px]">
+              <table className="w-full min-w-[1400px]">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
-                    {["#", "Crypto", "Type", "Entry", "SL", "TP1", "TP2", "TP3", "H1", "Stoch RSI", "MACD M5", "MACD H1", "Confiance", "R:R", ""].map(h => (
+                    {["#", "Crypto", "Type", "Entry", "SL", "TP1", "TP2", "TP3", "Biais H1", "Stoch (9,3,1)", "EMA M5", "VWAP", "Confiance", "R:R", ""].map(h => (
                       <th key={h} className="px-3 py-3 text-left text-[10px] uppercase tracking-wider font-semibold text-gray-500">{h}</th>
                     ))}
                   </tr>
@@ -1123,14 +906,14 @@ export default function ScalpTrading() {
                     <tr>
                       <td colSpan={15} className="text-center py-16">
                         <RefreshCw className="w-6 h-6 text-amber-400 animate-spin mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">Analyse des timeframes H1 + M5 en cours...</p>
-                        <p className="text-xs text-gray-600 mt-1">Calcul Stoch RSI + MACD sur 30 cryptos</p>
+                        <p className="text-sm text-gray-500">Analyse EMA + VWAP + Stochastique en cours...</p>
+                        <p className="text-xs text-gray-600 mt-1">Calcul sur H1 + M5 pour 30 cryptos</p>
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
                       <td colSpan={15} className="text-center py-16">
-                        <p className="text-sm text-gray-500">Aucun signal de scalping détecté avec ces filtres</p>
+                        <p className="text-sm text-gray-500">Aucun signal détecté avec ces filtres</p>
                         <p className="text-xs text-gray-600 mt-1">Essayez de réduire le filtre de confiance</p>
                       </td>
                     </tr>
@@ -1143,7 +926,6 @@ export default function ScalpTrading() {
                             className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer"
                             onClick={() => setExpandedRow(isExpanded ? null : trade.id)}
                           >
-                            {/* # */}
                             <td className="px-3 py-3 text-xs text-gray-500 font-mono">{idx + 1}</td>
                             {/* Crypto */}
                             <td className="px-3 py-3">
@@ -1159,17 +941,12 @@ export default function ScalpTrading() {
                                   <div className="flex items-center gap-1.5">
                                     <p className="font-bold text-sm">{trade.symbol}</p>
                                     {trade.source === "server" && (
-                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/25 text-[9px] font-bold text-blue-400" title="Signal envoyé via Telegram">
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/25 text-[9px] font-bold text-blue-400">
                                         📱 TG
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-[10px] text-gray-500">
-                                    {trade.name}
-                                    {trade.source === "server" && (
-                                      <span className="ml-1 text-blue-400/60">• Alerte Telegram</span>
-                                    )}
-                                  </p>
+                                  <p className="text-[10px] text-gray-500">{trade.name}</p>
                                 </div>
                               </div>
                             </td>
@@ -1197,7 +974,7 @@ export default function ScalpTrading() {
                                 <span className="font-mono text-xs text-red-400 font-semibold">${formatPrice(trade.stopLoss)}</span>
                               </div>
                               <span className="text-[9px] text-red-400/60">
-                                {trade.side === "LONG" ? "-" : "+"}{Math.abs((trade.stopLoss - trade.entry) / trade.entry * 100).toFixed(1)}%
+                                {trade.side === "LONG" ? "-" : "+"}{Math.abs((trade.stopLoss - trade.entry) / trade.entry * 100).toFixed(2)}%
                               </span>
                             </td>
                             {/* TP1 */}
@@ -1206,9 +983,7 @@ export default function ScalpTrading() {
                                 <Target className="w-3 h-3 text-emerald-300" />
                                 <span className="font-mono text-xs text-emerald-300 font-semibold">${formatPrice(trade.tp1)}</span>
                               </div>
-                              <span className="text-[9px] text-emerald-300/60">
-                                {trade.side === "LONG" ? "+" : "-"}{Math.abs((trade.tp1 - trade.entry) / trade.entry * 100).toFixed(1)}%
-                              </span>
+                              <span className="text-[9px] text-emerald-300/60">1:1</span>
                             </td>
                             {/* TP2 */}
                             <td className="px-3 py-3">
@@ -1216,9 +991,7 @@ export default function ScalpTrading() {
                                 <Target className="w-3 h-3 text-emerald-400" />
                                 <span className="font-mono text-xs text-emerald-400 font-semibold">${formatPrice(trade.tp2)}</span>
                               </div>
-                              <span className="text-[9px] text-emerald-400/60">
-                                {trade.side === "LONG" ? "+" : "-"}{Math.abs((trade.tp2 - trade.entry) / trade.entry * 100).toFixed(1)}%
-                              </span>
+                              <span className="text-[9px] text-emerald-400/60">1:1.5</span>
                             </td>
                             {/* TP3 */}
                             <td className="px-3 py-3">
@@ -1226,63 +999,74 @@ export default function ScalpTrading() {
                                 <Target className="w-3 h-3 text-emerald-500" />
                                 <span className="font-mono text-xs text-emerald-500 font-semibold">${formatPrice(trade.tp3)}</span>
                               </div>
-                              <span className="text-[9px] text-emerald-500/60">
-                                {trade.side === "LONG" ? "+" : "-"}{Math.abs((trade.tp3 - trade.entry) / trade.entry * 100).toFixed(1)}%
-                              </span>
+                              <span className="text-[9px] text-emerald-500/60">1:2</span>
                             </td>
-                            {/* H1 Trend */}
+                            {/* H1 Bias */}
                             <td className="px-3 py-3">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                trade.h1Trend === "bullish"
+                                trade.h1Bias === "bullish"
                                   ? "bg-emerald-500/10 text-emerald-400"
                                   : "bg-red-500/10 text-red-400"
                               }`}>
-                                {trade.h1Trend === "bullish" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                {trade.h1Trend === "bullish" ? "Bull" : "Bear"}
+                                {trade.h1Bias === "bullish" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                {trade.h1Bias === "bullish" ? "Bull" : "Bear"}
                               </span>
                             </td>
-                            {/* Stoch RSI */}
+                            {/* Stochastic */}
                             <td className="px-3 py-3">
-                              {trade.stochRsiK !== null ? (
+                              {trade.stoch_k !== null ? (
                                 <div className="flex flex-col">
                                   <span className={`text-xs font-bold ${
-                                    trade.stochRsiK < 20 ? "text-emerald-400" : trade.stochRsiK > 80 ? "text-red-400" : "text-gray-300"
+                                    trade.stoch_k < 20 ? "text-emerald-400" : trade.stoch_k > 80 ? "text-red-400" : "text-gray-300"
                                   }`}>
-                                    K: {trade.stochRsiK}
+                                    K: {trade.stoch_k.toFixed(1)}
                                   </span>
-                                  {trade.stochRsiD !== null && (
-                                    <span className="text-[10px] text-gray-500">D: {trade.stochRsiD}</span>
+                                  {trade.stoch_d !== null && (
+                                    <span className="text-[10px] text-gray-500">D: {trade.stoch_d.toFixed(1)}</span>
                                   )}
+                                  <span className={`text-[9px] mt-0.5 ${
+                                    trade.stoch_k < 20 ? "text-emerald-400/60" : trade.stoch_k > 80 ? "text-red-400/60" : "text-gray-600"
+                                  }`}>
+                                    {trade.stoch_k < 20 ? "Survente" : trade.stoch_k > 80 ? "Surachat" : "Neutre"}
+                                  </span>
                                 </div>
                               ) : (
                                 <span className="text-xs text-gray-600">—</span>
                               )}
                             </td>
-                            {/* MACD M5 */}
+                            {/* EMA M5 */}
                             <td className="px-3 py-3">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
-                                trade.macdSignal === "bullish"
-                                  ? "bg-emerald-500/10 text-emerald-400"
-                                  : trade.macdSignal === "bearish"
-                                  ? "bg-red-500/10 text-red-400"
-                                  : "bg-gray-500/10 text-gray-400"
-                              }`}>
-                                {trade.macdSignal === "bullish" ? "↑" : trade.macdSignal === "bearish" ? "↓" : "—"}
-                                {trade.macdSignal === "bullish" ? "Bull" : trade.macdSignal === "bearish" ? "Bear" : "—"}
-                              </span>
+                              {trade.ema8_m5 !== null && trade.ema20_m5 !== null ? (
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] text-cyan-400">EMA8: ${formatPrice(trade.ema8_m5)}</span>
+                                  <span className="text-[10px] text-orange-400">EMA20: ${formatPrice(trade.ema20_m5)}</span>
+                                  <span className={`text-[9px] mt-0.5 ${
+                                    trade.ema8_m5 > trade.ema20_m5 ? "text-emerald-400/60" : "text-red-400/60"
+                                  }`}>
+                                    {trade.ema8_m5 > trade.ema20_m5 ? "EMA8 > EMA20 ↑" : "EMA8 < EMA20 ↓"}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-600">—</span>
+                              )}
                             </td>
-                            {/* MACD H1 */}
+                            {/* VWAP */}
                             <td className="px-3 py-3">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
-                                trade.h1MacdSignal === "bullish"
-                                  ? "bg-emerald-500/10 text-emerald-400"
-                                  : trade.h1MacdSignal === "bearish"
-                                  ? "bg-red-500/10 text-red-400"
-                                  : "bg-gray-500/10 text-gray-400"
-                              }`}>
-                                {trade.h1MacdSignal === "bullish" ? "↑" : trade.h1MacdSignal === "bearish" ? "↓" : "—"}
-                                {trade.h1MacdSignal === "bullish" ? "Bull" : trade.h1MacdSignal === "bearish" ? "Bear" : "—"}
-                              </span>
+                              {trade.vwap_m5 !== null ? (
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] text-purple-400">M5: ${formatPrice(trade.vwap_m5)}</span>
+                                  {trade.vwap_h1 !== null && (
+                                    <span className="text-[10px] text-purple-300/60">H1: ${formatPrice(trade.vwap_h1)}</span>
+                                  )}
+                                  <span className={`text-[9px] mt-0.5 ${
+                                    trade.currentPrice > (trade.vwap_m5 || 0) ? "text-emerald-400/60" : "text-red-400/60"
+                                  }`}>
+                                    {trade.currentPrice > (trade.vwap_m5 || 0) ? "Prix > VWAP" : "Prix < VWAP"}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-600">—</span>
+                              )}
                             </td>
                             {/* Confidence */}
                             <td className="px-3 py-3">
@@ -1292,12 +1076,12 @@ export default function ScalpTrading() {
                                     className="h-full rounded-full transition-all"
                                     style={{
                                       width: `${Math.min(100, trade.confidence)}%`,
-                                      background: trade.confidence >= 70 ? "#22c55e" : trade.confidence >= 50 ? "#f59e0b" : "#ef4444",
+                                      background: trade.confidence >= 80 ? "#22c55e" : trade.confidence >= 60 ? "#f59e0b" : "#ef4444",
                                     }}
                                   />
                                 </div>
                                 <span className={`text-xs font-bold ${
-                                  trade.confidence >= 70 ? "text-emerald-400" : trade.confidence >= 50 ? "text-amber-400" : "text-red-400"
+                                  trade.confidence >= 80 ? "text-emerald-400" : trade.confidence >= 60 ? "text-amber-400" : "text-red-400"
                                 }`}>
                                   {trade.confidence}%
                                 </span>
@@ -1333,9 +1117,7 @@ export default function ScalpTrading() {
                                       <div className="space-y-1.5">
                                         {trade.supports.map((s, i) => (
                                           <div key={i} className="flex items-center justify-between">
-                                            <span className="text-xs text-gray-400 flex items-center gap-1">
-                                              S{i + 1} <span className="text-gray-600">({s.source})</span>
-                                            </span>
+                                            <span className="text-xs text-gray-400">S{i + 1}</span>
                                             <div className="flex items-center gap-2">
                                               <span className={`text-[9px] px-1.5 py-0.5 rounded ${s.strength === "major" ? "bg-emerald-500/15 text-emerald-400" : "bg-gray-500/15 text-gray-400"}`}>
                                                 {s.strength === "major" ? "Fort" : "Mineur"}
@@ -1357,9 +1139,7 @@ export default function ScalpTrading() {
                                       <div className="space-y-1.5">
                                         {trade.resistances.map((r, i) => (
                                           <div key={i} className="flex items-center justify-between">
-                                            <span className="text-xs text-gray-400 flex items-center gap-1">
-                                              R{i + 1} <span className="text-gray-600">({r.source})</span>
-                                            </span>
+                                            <span className="text-xs text-gray-400">R{i + 1}</span>
                                             <div className="flex items-center gap-2">
                                               <span className={`text-[9px] px-1.5 py-0.5 rounded ${r.strength === "major" ? "bg-red-500/15 text-red-400" : "bg-gray-500/15 text-gray-400"}`}>
                                                 {r.strength === "major" ? "Fort" : "Mineur"}
@@ -1379,44 +1159,76 @@ export default function ScalpTrading() {
                                     <p className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold mb-2">📊 Indicateurs</p>
                                     <div className="space-y-2">
                                       <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-400">Tendance H1</span>
-                                        <span className={`text-xs font-bold ${trade.h1Trend === "bullish" ? "text-emerald-400" : "text-red-400"}`}>
-                                          {trade.h1Trend === "bullish" ? "🟢 Haussière" : "🔴 Baissière"}
+                                        <span className="text-xs text-gray-400">Biais H1</span>
+                                        <span className={`text-xs font-bold ${trade.h1Bias === "bullish" ? "text-emerald-400" : "text-red-400"}`}>
+                                          {trade.h1Bias === "bullish" ? "🟢 Haussier" : "🔴 Baissier"}
                                         </span>
                                       </div>
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-400">Stoch RSI M5</span>
-                                        <span className={`text-xs font-bold ${
-                                          trade.stochRsiK !== null && trade.stochRsiK < 30 ? "text-emerald-400" : trade.stochRsiK !== null && trade.stochRsiK > 70 ? "text-red-400" : "text-gray-300"
-                                        }`}>
-                                          {trade.stochRsiK !== null ? `K:${trade.stochRsiK} / D:${trade.stochRsiD ?? "—"}` : "N/A"}
-                                        </span>
+                                      {trade.ema8_h1 !== null && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-gray-400">EMA8 H1</span>
+                                          <span className="text-xs font-mono text-cyan-400">${formatPrice(trade.ema8_h1)}</span>
+                                        </div>
+                                      )}
+                                      {trade.ema20_h1 !== null && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-gray-400">EMA20 H1</span>
+                                          <span className="text-xs font-mono text-orange-400">${formatPrice(trade.ema20_h1)}</span>
+                                        </div>
+                                      )}
+                                      {trade.vwap_h1 !== null && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-gray-400">VWAP H1</span>
+                                          <span className="text-xs font-mono text-purple-400">${formatPrice(trade.vwap_h1)}</span>
+                                        </div>
+                                      )}
+                                      <div className="border-t border-white/[0.06] pt-2 mt-2">
+                                        {trade.ema8_m5 !== null && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-xs text-gray-400">EMA8 M5</span>
+                                            <span className="text-xs font-mono text-cyan-400">${formatPrice(trade.ema8_m5)}</span>
+                                          </div>
+                                        )}
+                                        {trade.ema20_m5 !== null && (
+                                          <div className="flex items-center justify-between mt-1">
+                                            <span className="text-xs text-gray-400">EMA20 M5</span>
+                                            <span className="text-xs font-mono text-orange-400">${formatPrice(trade.ema20_m5)}</span>
+                                          </div>
+                                        )}
+                                        {trade.vwap_m5 !== null && (
+                                          <div className="flex items-center justify-between mt-1">
+                                            <span className="text-xs text-gray-400">VWAP M5</span>
+                                            <span className="text-xs font-mono text-purple-400">${formatPrice(trade.vwap_m5)}</span>
+                                          </div>
+                                        )}
                                       </div>
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-400">MACD M5</span>
-                                        <span className={`text-xs font-bold ${
-                                          trade.macdSignal === "bullish" ? "text-emerald-400" : trade.macdSignal === "bearish" ? "text-red-400" : "text-gray-400"
-                                        }`}>
-                                          {trade.macdSignal === "bullish" ? "🟢 Haussier" : trade.macdSignal === "bearish" ? "🔴 Baissier" : "— Neutre"}
-                                        </span>
+                                      <div className="border-t border-white/[0.06] pt-2 mt-2">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-gray-400">Stoch K (9,3,1)</span>
+                                          <span className={`text-xs font-bold ${
+                                            trade.stoch_k !== null && trade.stoch_k < 20 ? "text-emerald-400" : trade.stoch_k !== null && trade.stoch_k > 80 ? "text-red-400" : "text-gray-300"
+                                          }`}>
+                                            {trade.stoch_k !== null ? trade.stoch_k.toFixed(1) : "N/A"}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center justify-between mt-1">
+                                          <span className="text-xs text-gray-400">Stoch D</span>
+                                          <span className="text-xs font-mono text-gray-300">
+                                            {trade.stoch_d !== null ? trade.stoch_d.toFixed(1) : "N/A"}
+                                          </span>
+                                        </div>
                                       </div>
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-400">MACD H1</span>
-                                        <span className={`text-xs font-bold ${
-                                          trade.h1MacdSignal === "bullish" ? "text-emerald-400" : trade.h1MacdSignal === "bearish" ? "text-red-400" : "text-gray-400"
-                                        }`}>
-                                          {trade.h1MacdSignal === "bullish" ? "🟢 Haussier" : trade.h1MacdSignal === "bearish" ? "🔴 Baissier" : "— Neutre"}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-400">Volume 24h</span>
-                                        <span className="text-xs font-mono text-gray-300">{formatUsd(trade.volume)}</span>
-                                      </div>
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-400">Variation 24h</span>
-                                        <span className={`text-xs font-bold ${trade.change24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                                          {trade.change24h >= 0 ? "+" : ""}{trade.change24h.toFixed(2)}%
-                                        </span>
+                                      <div className="border-t border-white/[0.06] pt-2 mt-2">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-gray-400">Volume 24h</span>
+                                          <span className="text-xs font-mono text-gray-300">{formatUsd(trade.volume)}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between mt-1">
+                                          <span className="text-xs text-gray-400">Variation 24h</span>
+                                          <span className={`text-xs font-bold ${trade.change24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                                            {trade.change24h >= 0 ? "+" : ""}{trade.change24h.toFixed(2)}%
+                                          </span>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
@@ -1435,17 +1247,25 @@ export default function ScalpTrading() {
                                     </span>
                                     <span className="text-gray-600">→</span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 font-mono">
-                                      TP1: ${formatPrice(trade.tp1)}
+                                      TP1: ${formatPrice(trade.tp1)} (1:1)
                                     </span>
                                     <span className="text-gray-600">→</span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-400 font-mono">
-                                      TP2: ${formatPrice(trade.tp2)}
+                                      TP2: ${formatPrice(trade.tp2)} (1:1.5)
                                     </span>
                                     <span className="text-gray-600">→</span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 font-mono font-bold">
-                                      TP3: ${formatPrice(trade.tp3)}
+                                      TP3: ${formatPrice(trade.tp3)} (1:2)
                                     </span>
                                   </div>
+                                </div>
+
+                                {/* Trailing Stop Info */}
+                                <div className="mt-3 bg-blue-500/[0.04] border border-blue-500/10 rounded-lg p-3">
+                                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold mb-1">🔄 Gestion Trailing Stop</p>
+                                  <p className="text-xs text-blue-300/70">
+                                    TP1 touché → SL remonte au breakeven (entry) | TP2 touché → SL remonte à TP1 | Sortie si Stoch atteint zone opposée
+                                  </p>
                                 </div>
                               </td>
                             </tr>
@@ -1462,9 +1282,10 @@ export default function ScalpTrading() {
           {/* Disclaimer */}
           <div className="mt-6 bg-amber-500/[0.06] border border-amber-500/15 rounded-2xl p-4">
             <p className="text-xs text-amber-300/80 text-center">
-              ⚠️ <strong>Avertissement :</strong> Ces signaux de scalping sont générés automatiquement à partir des données Binance (Stoch RSI 14 + MACD 12/26/9 sur M5, tendance H1 via EMA20+RSI).
-              Les niveaux S/R sont calculés sur le timeframe M5. Les TP/SL sont serrés et adaptés au scalping (mouvements rapides).
-              Elles ne constituent pas des conseils financiers. Faites toujours votre propre analyse avant de trader.
+              ⚠️ <strong>Avertissement :</strong> Stratégie "Suivi de Flux" — EMA 8/20 + VWAP + Stochastique (9,3,1).
+              Biais directionnel H1, entrée précise M5. SL sous dernier creux/EMA20, TP ratio 1:1 à 1:2.
+              Le VWAP est utilisé par les algorithmes institutionnels — trader avec le VWAP = trader avec "l'argent intelligent".
+              Ces signaux ne constituent pas des conseils financiers.
             </p>
           </div>
           <Footer />

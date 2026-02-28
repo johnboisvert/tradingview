@@ -1572,10 +1572,14 @@ async function generateScalpSetup(symbol) {
     rr,
     confidence,
     reason: reasons.join(' | '),
-    stoch_rsi_k: kVal,
-    stoch_rsi_d: dVal,
-    macd_signal: h1Trend === 'bullish' ? 'bullish' : 'bearish',
-    h1_macd_signal: h1Trend === 'bullish' ? 'bullish' : 'bearish',
+    stoch_k: kVal,
+    stoch_d: dVal,
+    ema8_m5: m5Ema8Val,
+    ema20_m5: m5Ema20Val,
+    ema8_h1: h1Ema8Val,
+    ema20_h1: h1Ema20Val,
+    vwap_m5: m5Vwap,
+    vwap_h1: h1Vwap,
     h1_trend: h1Trend,
     currentPrice,
   };
@@ -1635,10 +1639,9 @@ async function checkAndSendScalpAlerts() {
 
         console.log(`[ScalpAlert] 📤 Sending ${idx + 1}/${qualifiedSetups.length}: ${setup.symbol} ${setup.side} (${setup.confidence}%)...`);
 
-        // ─── Pre-send MACD coherence validation ───
-        const expectedMacd = setup.side === 'LONG' ? 'bullish' : 'bearish';
-        if (setup.macd_signal !== expectedMacd || setup.h1_macd_signal !== expectedMacd) {
-          console.log(`[ScalpAlert] ⚠️ PRE-SEND VALIDATION FAILED for ${setup.symbol}: side=${setup.side} but macd_signal=${setup.macd_signal}, h1_macd_signal=${setup.h1_macd_signal} — SKIPPING`);
+        // ─── Pre-send trend coherence validation ───
+        if ((setup.side === 'LONG' && setup.h1_trend !== 'bullish') || (setup.side === 'SHORT' && setup.h1_trend !== 'bearish')) {
+          console.log(`[ScalpAlert] ⚠️ PRE-SEND VALIDATION FAILED for ${setup.symbol}: side=${setup.side} but h1_trend=${setup.h1_trend} — SKIPPING`);
           continue;
         }
 
@@ -1650,8 +1653,6 @@ async function checkAndSendScalpAlerts() {
         const pctSL = ((setup.stopLoss - setup.entry) / setup.entry * 100);
 
         const trendEmoji = setup.h1_trend === 'bullish' ? '🟢 Haussière' : setup.h1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
-        const macdM5Emoji = setup.macd_signal === 'bullish' ? '🟢' : setup.macd_signal === 'bearish' ? '🔴' : '⚪';
-        const macdH1Emoji = setup.h1_macd_signal === 'bullish' ? '🟢' : setup.h1_macd_signal === 'bearish' ? '🔴' : '⚪';
 
         // Escape HTML entities in reason text to prevent Telegram parse errors
         const safeReason = (setup.reason || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -1663,10 +1664,13 @@ async function checkAndSendScalpAlerts() {
 ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 
 📐 <b>Indicateurs :</b>
-├ Stoch RSI K : <b>${setup.stoch_rsi_k.toFixed(1)}</b>
-├ Stoch RSI D : <b>${setup.stoch_rsi_d.toFixed(1)}</b>
-├ MACD M5 : ${macdM5Emoji} <b>${setup.macd_signal}</b>
-├ MACD H1 : ${macdH1Emoji} <b>${setup.h1_macd_signal}</b>
+├ EMA 8 M5 : <b>$${formatPrice(setup.ema8_m5)}</b>
+├ EMA 20 M5 : <b>$${formatPrice(setup.ema20_m5)}</b>
+├ VWAP M5 : <b>$${formatPrice(setup.vwap_m5)}</b>
+├ Stoch K : <b>${setup.stoch_k.toFixed(1)}</b>
+├ Stoch D : <b>${setup.stoch_d.toFixed(1)}</b>
+├ EMA 20 H1 : <b>$${formatPrice(setup.ema20_h1)}</b>
+├ VWAP H1 : <b>$${formatPrice(setup.vwap_h1)}</b>
 └ Tendance H1 : ${trendEmoji}
 
 🎯 <b>Plan de Trade :</b>
@@ -1704,8 +1708,10 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
               trailing_sl: setup.stopLoss, // Initially same as stop_loss
               tp1: setup.tp1, tp2: setup.tp2, tp3: setup.tp3,
               confidence: setup.confidence, reason: setup.reason,
-              stoch_rsi_k: setup.stoch_rsi_k, stoch_rsi_d: setup.stoch_rsi_d,
-              macd_signal: setup.macd_signal, h1_macd_signal: setup.h1_macd_signal, h1_trend: setup.h1_trend,
+              stoch_k: setup.stoch_k, stoch_d: setup.stoch_d,
+              ema8_m5: setup.ema8_m5, ema20_m5: setup.ema20_m5,
+              vwap_m5: setup.vwap_m5, vwap_h1: setup.vwap_h1,
+              h1_trend: setup.h1_trend,
               rr: setup.rr, status: 'active',
               tp1_hit: false, tp2_hit: false, tp3_hit: false, sl_hit: false,
               best_tp_reached: 0, exit_price: null, profit_pct: null,
@@ -2770,7 +2776,7 @@ try {
 
 // ─── POST /api/v1/scalp-calls — Record a new scalp call ───
 app.post('/api/v1/scalp-calls', (req, res) => {
-  const { symbol, side, entry_price, stop_loss, tp1, tp2, tp3, confidence, reason, stoch_rsi_k, stoch_rsi_d, macd_signal, h1_trend, rr } = req.body;
+  const { symbol, side, entry_price, stop_loss, tp1, tp2, tp3, confidence, reason, stoch_k, stoch_d, ema8_m5, ema20_m5, vwap_m5, vwap_h1, h1_trend, rr } = req.body;
 
   if (!symbol || !side || !entry_price) {
     return res.status(400).json({ created: false, message: 'symbol, side, entry_price requis' });
@@ -2797,9 +2803,12 @@ app.post('/api/v1/scalp-calls', (req, res) => {
     id: scalpCallIdCounter,
     symbol, side, entry_price, stop_loss, tp1, tp2, tp3, confidence,
     reason: reason || '',
-    stoch_rsi_k: stoch_rsi_k || null,
-    stoch_rsi_d: stoch_rsi_d || null,
-    macd_signal: macd_signal || 'neutral',
+    stoch_k: stoch_k || null,
+    stoch_d: stoch_d || null,
+    ema8_m5: ema8_m5 || null,
+    ema20_m5: ema20_m5 || null,
+    vwap_m5: vwap_m5 || null,
+    vwap_h1: vwap_h1 || null,
     h1_trend: h1_trend || 'neutral',
     rr: rr || null,
     status: 'active',

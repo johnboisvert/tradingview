@@ -632,7 +632,7 @@
     "h1_macd_signal": "bearish",
     "h1_trend": "bullish",
     "rr": 1.8,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -641,7 +641,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-02-26T18:22:07.386Z",
-    "resolved_at": null,
+    "resolved_at": "2026-02-28T18:27:06.761Z",
     "expires_at": "2026-02-26T22:22:07.386Z"
   },
   {
@@ -922,7 +922,7 @@
     "h1_macd_signal": "bearish",
     "h1_trend": "bearish",
     "rr": 1.8,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -931,7 +931,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-02-26T18:25:39.115Z",
-    "resolved_at": null,
+    "resolved_at": "2026-02-28T18:27:06.761Z",
     "expires_at": "2026-02-26T22:25:39.115Z"
   },
   {
@@ -1125,7 +1125,7 @@
     "h1_macd_signal": "bearish",
     "h1_trend": "bearish",
     "rr": 1.8,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -1134,7 +1134,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-02-26T18:34:09.152Z",
-    "resolved_at": null,
+    "resolved_at": "2026-02-28T18:27:06.761Z",
     "expires_at": "2026-02-26T22:34:09.152Z"
   },
   {
@@ -1154,7 +1154,7 @@
     "h1_macd_signal": "bearish",
     "h1_trend": "bearish",
     "rr": 1.8,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -1163,7 +1163,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-02-26T20:29:23.315Z",
-    "resolved_at": null,
+    "resolved_at": "2026-02-28T18:27:06.761Z",
     "expires_at": "2026-02-27T00:29:23.315Z"
   },
   {
@@ -1183,7 +1183,7 @@
     "h1_macd_signal": "bearish",
     "h1_trend": "bearish",
     "rr": 1.8,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -1192,7 +1192,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-02-26T20:34:53.391Z",
-    "resolved_at": null,
+    "resolved_at": "2026-02-28T18:27:06.761Z",
     "expires_at": "2026-02-27T00:34:53.391Z"
   },
   {
@@ -1212,7 +1212,7 @@
     "h1_macd_signal": "bearish",
     "h1_trend": "bearish",
     "rr": 1.8,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -1221,7 +1221,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-02-26T20:37:53.392Z",
-    "resolved_at": null,
+    "resolved_at": "2026-02-28T18:27:06.761Z",
     "expires_at": "2026-02-27T00:37:53.392Z"
   },
   {
@@ -1241,7 +1241,7 @@
     "h1_macd_signal": "bearish",
     "h1_trend": "bearish",
     "rr": 1.8,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -1250,7 +1250,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-02-26T20:46:53.398Z",
-    "resolved_at": null,
+    "resolved_at": "2026-02-28T18:27:06.761Z",
     "expires_at": "2026-02-27T00:46:53.398Z"
   },
   {
@@ -1270,7 +1270,7 @@
     "h1_macd_signal": "bearish",
     "h1_trend": "bearish",
     "rr": 1.8,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -1279,7 +1279,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-02-26T20:55:53.481Z",
-    "resolved_at": null,
+    "resolved_at": "2026-02-28T18:27:06.761Z",
     "expires_at": "2026-02-27T00:55:53.481Z"
   },
   {
@@ -1299,7 +1299,7 @@
     "h1_macd_signal": "bearish",
     "h1_trend": "bearish",
     "rr": 1.8,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -1308,7 +1308,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-02-26T20:58:53.465Z",
-    "resolved_at": null,
+    "resolved_at": "2026-02-28T18:27:06.761Z",
     "expires_at": "2026-02-27T00:58:53.465Z"
   },
   {
@@ -1328,7 +1328,7 @@
     "h1_macd_signal": "bearish",
     "h1_trend": "bearish",
     "rr": 1.8,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -1337,7 +1337,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-02-26T21:04:53.519Z",
-    "resolved_at": null,
+    "resolved_at": "2026-02-28T18:27:06.761Z",
     "expires_at": "2026-02-27T01:04:53.519Z"
   },
   {
@@ -1357,7 +1357,7 @@
     "h1_macd_signal": "bearish",
     "h1_trend": "bearish",
     "rr": 1.8,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -1366,7 +1366,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-02-26T21:04:53.519Z",
-    "resolved_at": null,
+    "resolved_at": "2026-02-28T18:27:06.761Z",
     "expires_at": "2026-02-27T01:04:53.519Z"
   }
 ]

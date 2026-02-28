@@ -1168,7 +1168,7 @@ initCooldownsFromFile();
 startAlertChecker();
 
 // ============================================================
-// SCALP TRADING — Telegram Alert System (Stoch RSI + MACD)
+// SCALP TRADING — Telegram Alert System (EMA + VWAP + Stochastic)
 // ============================================================
 
 const SCALP_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes cooldown for scalp
@@ -1176,13 +1176,12 @@ const SCALP_COOLDOWNS_FILE = path.join(DATA_DIR, 'scalp_cooldowns.json');
 const inMemoryScalpCooldowns = new Map();
 
 // Top symbols for scalp trading (high volume, tight spreads)
-const SCALP_SYMBOLS = [
-  // Top 20 (original)
+// Fallback static list (used if dynamic fetch fails)
+const SCALP_SYMBOLS_FALLBACK = [
   'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
   'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT',
   'LINKUSDT', 'LTCUSDT', 'UNIUSDT', 'ATOMUSDT', 'NEARUSDT',
   'APTUSDT', 'ARBUSDT', 'OPUSDT', 'SUIUSDT', 'PEPEUSDT',
-  // Extended list (~30 additional high-volume cryptos)
   'TRXUSDT', 'SHIBUSDT', 'FTMUSDT', 'FILUSDT', 'ALGOUSDT',
   'VETUSDT', 'ICPUSDT', 'SANDUSDT', 'MANAUSDT', 'AXSUSDT',
   'AAVEUSDT', 'GRTUSDT', 'INJUSDT', 'TIAUSDT', 'SEIUSDT',
@@ -1190,6 +1189,54 @@ const SCALP_SYMBOLS = [
   'ONDOUSDT', 'ENAUSDT', 'WIFUSDT', 'BONKUSDT', 'FLOKIUSDT',
   'RUNEUSDT', 'PENDLEUSDT', 'JASMYUSDT', 'CFXUSDT', 'EGLDUSDT',
 ];
+
+// Dynamic top-200 USDT symbols from Binance (cached for 1 hour)
+let _cachedScalpSymbols = null;
+let _cachedScalpSymbolsTs = 0;
+const SCALP_SYMBOLS_CACHE_MS = 60 * 60 * 1000; // 1 hour
+
+async function fetchTop200USDTSymbols() {
+  const now = Date.now();
+  if (_cachedScalpSymbols && (now - _cachedScalpSymbolsTs) < SCALP_SYMBOLS_CACHE_MS) {
+    return _cachedScalpSymbols;
+  }
+  try {
+    const resp = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+    if (!resp.ok) throw new Error(`Binance API error: ${resp.status}`);
+    const tickers = await resp.json();
+    // Filter USDT pairs, exclude stablecoins and leveraged tokens
+    const excluded = ['USDCUSDT', 'BUSDUSDT', 'TUSDUSDT', 'DAIUSDT', 'FDUSDUSDT', 'EURUSDT', 'GBPUSDT', 'AUDUSDT', 'USDPUSDT'];
+    const usdtPairs = tickers
+      .filter(t =>
+        t.symbol.endsWith('USDT') &&
+        !excluded.includes(t.symbol) &&
+        !t.symbol.includes('UP') &&
+        !t.symbol.includes('DOWN') &&
+        !t.symbol.includes('BEAR') &&
+        !t.symbol.includes('BULL') &&
+        parseFloat(t.quoteVolume) > 0
+      )
+      .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+      .slice(0, 200)
+      .map(t => t.symbol);
+
+    if (usdtPairs.length >= 50) {
+      _cachedScalpSymbols = usdtPairs;
+      _cachedScalpSymbolsTs = now;
+      console.log(`[ScalpAlert] Fetched top ${usdtPairs.length} USDT symbols from Binance by volume`);
+      return usdtPairs;
+    }
+    throw new Error(`Only ${usdtPairs.length} symbols found, using fallback`);
+  } catch (err) {
+    console.warn(`[ScalpAlert] Failed to fetch dynamic symbols: ${err.message}. Using fallback list.`);
+    return SCALP_SYMBOLS_FALLBACK;
+  }
+}
+
+// Synchronous reference for non-async contexts (initialized on first fetch)
+let SCALP_SYMBOLS = [...SCALP_SYMBOLS_FALLBACK];
+// Pre-fetch on boot
+fetchTop200USDTSymbols().then(syms => { SCALP_SYMBOLS = syms; }).catch(() => {});
 
 function loadScalpCooldowns() {
   try {
@@ -1596,19 +1643,23 @@ async function checkAndSendScalpAlerts() {
   const cooldowns = loadScalpCooldowns();
 
   try {
-    console.log(`[ScalpAlert] 📡 Analyzing ${SCALP_SYMBOLS.length} symbols for scalp setups...`);
+    // Dynamically fetch top 200 symbols (cached 1h)
+    const symbols = await fetchTop200USDTSymbols();
+    SCALP_SYMBOLS = symbols; // Update global reference
+    console.log(`[ScalpAlert] 📡 Analyzing ${symbols.length} symbols for scalp setups...`);
 
     const setups = [];
-    // Process symbols in batches of 5 to avoid rate limits
-    for (let i = 0; i < SCALP_SYMBOLS.length; i += 5) {
-      const batch = SCALP_SYMBOLS.slice(i, i + 5);
+    // Process symbols in batches of 10 to balance speed vs rate limits
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
+      const batch = symbols.slice(i, i + BATCH_SIZE);
       const results = await Promise.all(batch.map(sym => generateScalpSetup(sym)));
       for (const setup of results) {
         if (setup) setups.push(setup);
       }
-      // Small delay between batches to respect Binance rate limits
-      if (i + 5 < SCALP_SYMBOLS.length) {
-        await new Promise(r => setTimeout(r, 1000));
+      // Delay between batches to respect Binance rate limits
+      if (i + BATCH_SIZE < symbols.length) {
+        await new Promise(r => setTimeout(r, 500));
       }
     }
 

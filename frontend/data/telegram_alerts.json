@@ -19,6 +19,55 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-02-26T20:58:53.276Z",
-  "lastAlerts": []
+  "lastCheck": "2026-02-28T18:22:05.405Z",
+  "lastAlerts": [
+    {
+      "type": "coingecko_signal",
+      "coin": "kite-2",
+      "direction": "LONG",
+      "rr": 0.4,
+      "entry": 0.262561,
+      "tp1": 0.2665,
+      "tp2": 0.2706,
+      "tp3": 0.2828,
+      "sl": 0.2429,
+      "confidence": 98
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "lombard-protocol",
+      "direction": "LONG",
+      "rr": 1.2,
+      "entry": 1.011,
+      "tp1": 1.06,
+      "tp2": 1.09,
+      "tp3": 1.7,
+      "sl": 0.94,
+      "confidence": 98
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "river",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 12.8,
+      "tp1": 13.31,
+      "tp2": 14.07,
+      "tp3": 14.84,
+      "sl": 12.29,
+      "confidence": 96
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "venice-token",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 5.21,
+      "tp1": 5.72,
+      "tp2": 6.06,
+      "tp3": 6.57,
+      "sl": 4.87,
+      "confidence": 91
+    }
+  ]
 }

@@ -912,7 +912,7 @@ function generateRealSetups(coins) {
     if (supports.length >= 2) confidence += 3;
     if (resistances.length >= 2) confidence += 3;
 
-    confidence = Math.min(95, Math.max(25, confidence));
+    confidence = Math.min(98, Math.max(25, confidence));
 
     const riskDistance = Math.abs(price - sl);
     const rewardDistance = Math.abs(tp2 - price);
@@ -1458,7 +1458,75 @@ async function generateScalpSetup(symbol) {
   if (recentVol > avgVol * 1.5) { confidence += 8; reasons.push('Volume supérieur à la moyenne (+50%)'); }
   else if (recentVol > avgVol * 1.2) { confidence += 4; reasons.push('Volume légèrement supérieur'); }
 
-  confidence = Math.min(95, Math.max(25, confidence));
+  // ─── Bollinger Bands on M5 (period 20, stdDev 2) ───
+  if (m5Closes.length >= 20) {
+    const bbSlice = m5Closes.slice(-20);
+    const bbMean = bbSlice.reduce((a, b) => a + b, 0) / 20;
+    const bbVariance = bbSlice.reduce((a, v) => a + (v - bbMean) ** 2, 0) / 20;
+    const bbStdDev = Math.sqrt(bbVariance);
+    const bbUpper = bbMean + 2 * bbStdDev;
+    const bbLower = bbMean - 2 * bbStdDev;
+    const distToLower = Math.abs(currentPrice - bbLower) / currentPrice;
+    const distToUpper = Math.abs(currentPrice - bbUpper) / currentPrice;
+    if (side === 'LONG' && distToLower < 0.01) {
+      confidence += 10;
+      reasons.push(`BB M5: prix proche bande basse ($${bbLower.toFixed(2)})`);
+    } else if (side === 'SHORT' && distToUpper < 0.01) {
+      confidence += 10;
+      reasons.push(`BB M5: prix proche bande haute ($${bbUpper.toFixed(2)})`);
+    }
+  }
+
+  // ─── VWAP on H1 ───
+  if (h1Candles.length > 0) {
+    let cumTPV = 0, cumVol = 0;
+    for (const c of h1Candles) {
+      const tp = (c.high + c.low + c.close) / 3;
+      cumTPV += tp * c.volume;
+      cumVol += c.volume;
+    }
+    if (cumVol > 0) {
+      const vwap = cumTPV / cumVol;
+      if (side === 'LONG' && currentPrice < vwap) {
+        confidence += 8;
+        reasons.push(`VWAP H1: prix sous fair value ($${vwap.toFixed(2)})`);
+      } else if (side === 'SHORT' && currentPrice > vwap) {
+        confidence += 8;
+        reasons.push(`VWAP H1: prix au-dessus fair value ($${vwap.toFixed(2)})`);
+      }
+    }
+  }
+
+  // ─── Volume Profile POC on M5 ───
+  if (m5Candles.length >= 20) {
+    let vpMin = Infinity, vpMax = -Infinity;
+    for (const c of m5Candles) {
+      if (c.low < vpMin) vpMin = c.low;
+      if (c.high > vpMax) vpMax = c.high;
+    }
+    if (vpMax > vpMin) {
+      const bins = 30;
+      const binSize = (vpMax - vpMin) / bins;
+      const volProfile = new Array(bins).fill(0);
+      for (const c of m5Candles) {
+        const mid = (c.high + c.low) / 2;
+        const idx = Math.min(bins - 1, Math.floor((mid - vpMin) / binSize));
+        volProfile[idx] += c.volume;
+      }
+      let maxVolBin = 0, pocIdx = 0;
+      for (let i = 0; i < bins; i++) {
+        if (volProfile[i] > maxVolBin) { maxVolBin = volProfile[i]; pocIdx = i; }
+      }
+      const poc = vpMin + (pocIdx + 0.5) * binSize;
+      const distToPOC = Math.abs(currentPrice - poc) / currentPrice;
+      if (distToPOC < 0.008) {
+        confidence += 5;
+        reasons.push(`POC M5: zone haute liquidité ($${poc.toFixed(2)})`);
+      }
+    }
+  }
+
+  confidence = Math.min(98, Math.max(25, confidence));
 
   // ─── TP / SL Calculation (scalp-tight) ───
   // ATR-like volatility from last 20 M5 candles

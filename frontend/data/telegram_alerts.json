@@ -19,6 +19,31 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-02-28T18:37:05.447Z",
-  "lastAlerts": []
+  "lastCheck": "2026-03-02T14:34:31.427Z",
+  "lastAlerts": [
+    {
+      "type": "coingecko_signal",
+      "coin": "grass",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 0.304773,
+      "tp1": 0.3232,
+      "tp2": 0.3489,
+      "tp3": 0.3753,
+      "sl": 0.2871,
+      "confidence": 98
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "venice-token",
+      "direction": "LONG",
+      "rr": 1.8,
+      "entry": 6.3,
+      "tp1": 6.66,
+      "tp2": 6.73,
+      "tp3": 22.53,
+      "sl": 6.05,
+      "confidence": 96
+    }
+  ]
 }

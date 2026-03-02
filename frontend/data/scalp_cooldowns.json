@@ -20,7 +20,7 @@
     "direction": "LONG"
   },
   "ETHUSDT_LONG": {
-    "timestamp": "2026-02-25T20:23:16.006Z",
+    "timestamp": "2026-03-02T16:02:35.441Z",
     "direction": "LONG"
   },
   "ICPUSDT_LONG": {
@@ -173,6 +173,26 @@
   },
   "APEUSDT_LONG": {
     "timestamp": "2026-03-02T15:53:35.544Z",
+    "direction": "LONG"
+  },
+  "LINKUSDT_LONG": {
+    "timestamp": "2026-03-02T16:02:37.804Z",
+    "direction": "LONG"
+  },
+  "PUMPUSDT_LONG": {
+    "timestamp": "2026-03-02T16:02:40.163Z",
+    "direction": "LONG"
+  },
+  "FILUSDT_LONG": {
+    "timestamp": "2026-03-02T16:02:42.505Z",
+    "direction": "LONG"
+  },
+  "CAKEUSDT_LONG": {
+    "timestamp": "2026-03-02T16:02:44.852Z",
+    "direction": "LONG"
+  },
+  "FLOKIUSDT_LONG": {
+    "timestamp": "2026-03-02T16:02:47.204Z",
     "direction": "LONG"
   }
 }

@@ -154,5 +154,25 @@
   "AVAXUSDT_LONG": {
     "timestamp": "2026-03-02T15:48:15.055Z",
     "direction": "LONG"
+  },
+  "BNBUSDT_LONG": {
+    "timestamp": "2026-03-02T15:50:35.990Z",
+    "direction": "LONG"
+  },
+  "ARBUSDT_LONG": {
+    "timestamp": "2026-03-02T15:50:38.415Z",
+    "direction": "LONG"
+  },
+  "OPUSDT_LONG": {
+    "timestamp": "2026-03-02T15:50:40.774Z",
+    "direction": "LONG"
+  },
+  "ROSEUSDT_LONG": {
+    "timestamp": "2026-03-02T15:50:43.115Z",
+    "direction": "LONG"
+  },
+  "APEUSDT_LONG": {
+    "timestamp": "2026-03-02T15:53:35.544Z",
+    "direction": "LONG"
   }
 }

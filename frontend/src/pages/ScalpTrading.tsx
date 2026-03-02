@@ -691,7 +691,7 @@ export default function ScalpTrading() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [filter, setFilter] = useState<"all" | "LONG" | "SHORT">("all");
-  const [minConfidence, setMinConfidence] = useState(90);
+  const [minConfidence, setMinConfidence] = useState(60);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -737,7 +737,7 @@ export default function ScalpTrading() {
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
 
       // Register high-confidence calls (≥90%)
-      registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 90)).catch(() => {});
+      registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 60)).catch(() => {});
     } catch (err) {
       console.error("Scalp fetch error:", err);
       setFetchError("Une erreur est survenue lors de l'analyse. Veuillez réessayer.");
@@ -761,7 +761,7 @@ export default function ScalpTrading() {
   const longCount = trades.filter(t => t.side === "LONG").length;
   const shortCount = trades.filter(t => t.side === "SHORT").length;
   const serverCount = trades.filter(t => t.source === "server").length;
-  const highConfCount = trades.filter(t => t.confidence >= 90).length;
+  const highConfCount = trades.filter(t => t.confidence >= 60).length;
   const avgConfidence = trades.length > 0 ? Math.round(trades.reduce((s, t) => s + t.confidence, 0) / trades.length) : 0;
 
   return (
@@ -847,6 +847,7 @@ export default function ScalpTrading() {
               >
                 <option value={30}>≥ 30%</option>
                 <option value={50}>≥ 50%</option>
+                <option value={60}>≥ 60%</option>
                 <option value={70}>≥ 70%</option>
                 <option value={80}>≥ 80%</option>
                 <option value={90}>≥ 90%</option>

@@ -740,7 +740,7 @@ export default function ScalpTrading() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [filter, setFilter] = useState<"all" | "LONG" | "SHORT">("all");
-  const [minConfidence, setMinConfidence] = useState(90);
+  const [minConfidence, setMinConfidence] = useState(60);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -829,7 +829,7 @@ export default function ScalpTrading() {
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Signaux</p>
-              <p className="text-xl font-black text-white">{trades.length}</p>
+              <p className="text-xl font-black text-white">{filtered.length}</p>
             </div>
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Long</p>

@@ -19,31 +19,55 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-03-02T14:34:31.427Z",
+  "lastCheck": "2026-03-02T14:58:30.943Z",
   "lastAlerts": [
     {
       "type": "coingecko_signal",
       "coin": "grass",
       "direction": "LONG",
       "rr": 2.5,
-      "entry": 0.304773,
-      "tp1": 0.3232,
-      "tp2": 0.3489,
-      "tp3": 0.3753,
-      "sl": 0.2871,
-      "confidence": 98
+      "entry": 0.316232,
+      "tp1": 0.3561,
+      "tp2": 0.3826,
+      "tp3": 0.4225,
+      "sl": 0.2897,
+      "confidence": 96
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "aave",
+      "direction": "LONG",
+      "rr": 2.8,
+      "entry": 117.56,
+      "tp1": 120.95,
+      "tp2": 123.01,
+      "tp3": 660.37,
+      "sl": 115.61,
+      "confidence": 94
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "near",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 1.29,
+      "tp1": 1.38,
+      "tp2": 1.44,
+      "tp3": 1.53,
+      "sl": 1.23,
+      "confidence": 93
     },
     {
       "type": "coingecko_signal",
       "coin": "venice-token",
       "direction": "LONG",
-      "rr": 1.8,
-      "entry": 6.3,
-      "tp1": 6.66,
-      "tp2": 6.73,
+      "rr": 1.7,
+      "entry": 6.57,
+      "tp1": 7.05,
+      "tp2": 7.12,
       "tp3": 22.53,
-      "sl": 6.05,
-      "confidence": 96
+      "sl": 6.25,
+      "confidence": 91
     }
   ]
 }

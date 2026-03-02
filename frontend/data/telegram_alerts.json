@@ -19,19 +19,139 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-03-02T16:47:21.505Z",
+  "lastCheck": "2026-03-02T16:57:23.866Z",
   "lastAlerts": [
+    {
+      "type": "coingecko_signal",
+      "coin": "plasma",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 0.106792,
+      "tp1": 0.1101,
+      "tp2": 0.1155,
+      "tp3": 0.1207,
+      "sl": 0.1033,
+      "confidence": 98
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "dogwifcoin",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 0.207476,
+      "tp1": 0.2085,
+      "tp2": 0.2148,
+      "tp3": 0.2257,
+      "sl": 0.2045,
+      "confidence": 98
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "aave",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 125.35,
+      "tp1": 132.75,
+      "tp2": 137.69,
+      "tp3": 145.09,
+      "sl": 120.41,
+      "confidence": 96
+    },
     {
       "type": "coingecko_signal",
       "coin": "ethena",
       "direction": "LONG",
-      "rr": 1.8,
-      "entry": 0.113618,
+      "rr": 2,
+      "entry": 0.113937,
       "tp1": 0.1161,
-      "tp2": 0.1233,
-      "tp3": 0.1291,
+      "tp2": 0.125,
+      "tp3": 0.1317,
       "sl": 0.1083,
       "confidence": 96
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "pudgy-penguins",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 0.0075367,
+      "tp1": 0.008044,
+      "tp2": 0.008382,
+      "tp3": 0.008889,
+      "sl": 0.007199,
+      "confidence": 96
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "near",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 1.32,
+      "tp1": 1.44,
+      "tp2": 1.52,
+      "tp3": 1.65,
+      "sl": 1.24,
+      "confidence": 93
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "pepe",
+      "direction": "LONG",
+      "rr": 2.6,
+      "entry": 0.00000367,
+      "tp1": 0.000004,
+      "tp2": 0.000004,
+      "tp3": 0.000004,
+      "sl": 0.000004,
+      "confidence": 91
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "pump-fun",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 0.0021018,
+      "tp1": 0.002209,
+      "tp2": 0.002281,
+      "tp3": 0.002389,
+      "sl": 0.00203,
+      "confidence": 91
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "layerzero",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 1.89,
+      "tp1": 1.92,
+      "tp2": 2.01,
+      "tp3": 2.09,
+      "sl": 1.84,
+      "confidence": 91
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "venice-token",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 7.68,
+      "tp1": 9.14,
+      "tp2": 10.12,
+      "tp3": 11.58,
+      "sl": 6.7,
+      "confidence": 91
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "optimism",
+      "direction": "LONG",
+      "rr": 0.4,
+      "entry": 0.128822,
+      "tp1": 0.1293,
+      "tp2": 0.1311,
+      "tp3": 4.8303,
+      "sl": 0.1236,
+      "confidence": 91
     }
   ]
 }

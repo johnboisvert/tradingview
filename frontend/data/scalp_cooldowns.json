@@ -20,7 +20,7 @@
     "direction": "LONG"
   },
   "ETHUSDT_LONG": {
-    "timestamp": "2026-03-02T16:02:35.441Z",
+    "timestamp": "2026-03-02T16:53:35.910Z",
     "direction": "LONG"
   },
   "ICPUSDT_LONG": {
@@ -164,7 +164,7 @@
     "direction": "LONG"
   },
   "OPUSDT_LONG": {
-    "timestamp": "2026-03-02T16:23:35.576Z",
+    "timestamp": "2026-03-02T16:56:35.887Z",
     "direction": "LONG"
   },
   "ROSEUSDT_LONG": {
@@ -241,6 +241,10 @@
   },
   "XRPUSDT_LONG": {
     "timestamp": "2026-03-02T16:44:40.379Z",
+    "direction": "LONG"
+  },
+  "ZECUSDT_LONG": {
+    "timestamp": "2026-03-02T16:56:38.212Z",
     "direction": "LONG"
   }
 }

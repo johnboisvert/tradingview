@@ -234,6 +234,62 @@
     "virtual-protocol_signal": {
       "timestamp": "2026-03-02T20:39:13.899Z",
       "direction": "LONG"
+    },
+    "pudgy-penguins_signal": {
+      "timestamp": "2026-03-02T20:39:16.234Z",
+      "direction": "LONG"
+    },
+    "dash_signal": {
+      "timestamp": "2026-03-02T20:39:18.544Z",
+      "direction": "LONG"
+    },
+    "optimism_signal": {
+      "timestamp": "2026-03-02T20:39:20.928Z",
+      "direction": "LONG"
+    },
+    "plasma_signal": {
+      "timestamp": "2026-03-02T20:39:23.255Z",
+      "direction": "LONG"
+    },
+    "dogwifcoin_signal": {
+      "timestamp": "2026-03-02T20:39:25.578Z",
+      "direction": "LONG"
+    },
+    "near_signal": {
+      "timestamp": "2026-03-02T20:39:27.907Z",
+      "direction": "LONG"
+    },
+    "official-trump_signal": {
+      "timestamp": "2026-03-02T20:39:30.238Z",
+      "direction": "LONG"
+    },
+    "bonk_signal": {
+      "timestamp": "2026-03-02T20:39:32.563Z",
+      "direction": "LONG"
+    },
+    "venice-token_signal": {
+      "timestamp": "2026-03-02T20:39:34.900Z",
+      "direction": "LONG"
+    },
+    "celestia_signal": {
+      "timestamp": "2026-03-02T20:39:37.245Z",
+      "direction": "LONG"
+    },
+    "grass_signal": {
+      "timestamp": "2026-03-02T20:39:39.562Z",
+      "direction": "LONG"
+    },
+    "sui_signal": {
+      "timestamp": "2026-03-02T20:39:41.882Z",
+      "direction": "LONG"
+    },
+    "pepe_signal": {
+      "timestamp": "2026-03-02T20:39:44.201Z",
+      "direction": "LONG"
+    },
+    "ethena_signal": {
+      "timestamp": "2026-03-02T20:39:46.547Z",
+      "direction": "LONG"
     }
   }
 }

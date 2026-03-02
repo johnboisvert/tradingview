@@ -19,6 +19,19 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-03-02T16:02:21.465Z",
-  "lastAlerts": []
+  "lastCheck": "2026-03-02T16:47:21.505Z",
+  "lastAlerts": [
+    {
+      "type": "coingecko_signal",
+      "coin": "ethena",
+      "direction": "LONG",
+      "rr": 1.8,
+      "entry": 0.113618,
+      "tp1": 0.1161,
+      "tp2": 0.1233,
+      "tp3": 0.1291,
+      "sl": 0.1083,
+      "confidence": 96
+    }
+  ]
 }

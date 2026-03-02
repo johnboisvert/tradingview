@@ -1,6 +1,6 @@
 {
   "UNIUSDT_LONG": {
-    "timestamp": "2026-02-25T20:17:45.740Z",
+    "timestamp": "2026-03-02T16:26:40.221Z",
     "direction": "LONG"
   },
   "SHIBUSDT_LONG": {
@@ -8,15 +8,15 @@
     "direction": "LONG"
   },
   "BTCUSDT_LONG": {
-    "timestamp": "2026-03-02T15:48:12.470Z",
+    "timestamp": "2026-03-02T16:23:37.996Z",
     "direction": "LONG"
   },
   "PEPEUSDT_LONG": {
-    "timestamp": "2026-02-25T20:20:23.337Z",
+    "timestamp": "2026-03-02T16:14:37.768Z",
     "direction": "LONG"
   },
   "AAVEUSDT_LONG": {
-    "timestamp": "2026-02-25T20:20:27.199Z",
+    "timestamp": "2026-03-02T16:05:37.798Z",
     "direction": "LONG"
   },
   "ETHUSDT_LONG": {
@@ -24,7 +24,7 @@
     "direction": "LONG"
   },
   "ICPUSDT_LONG": {
-    "timestamp": "2026-02-25T20:26:15.763Z",
+    "timestamp": "2026-03-02T16:26:35.552Z",
     "direction": "LONG"
   },
   "BONKUSDT_LONG": {
@@ -32,15 +32,15 @@
     "direction": "LONG"
   },
   "SOLUSDT_LONG": {
-    "timestamp": "2026-02-25T21:13:53.338Z",
+    "timestamp": "2026-03-02T16:47:38.419Z",
     "direction": "LONG"
   },
   "DOGEUSDT_LONG": {
-    "timestamp": "2026-02-25T21:13:55.763Z",
+    "timestamp": "2026-03-02T16:50:35.535Z",
     "direction": "LONG"
   },
   "SUIUSDT_LONG": {
-    "timestamp": "2026-02-25T22:29:40.912Z",
+    "timestamp": "2026-03-02T16:08:38.127Z",
     "direction": "LONG"
   },
   "DOTUSDT_LONG": {
@@ -140,7 +140,7 @@
     "direction": "SHORT"
   },
   "PENGUUSDT_LONG": {
-    "timestamp": "2026-03-02T15:48:05.362Z",
+    "timestamp": "2026-03-02T16:50:44.954Z",
     "direction": "LONG"
   },
   "CRVUSDT_LONG": {
@@ -148,7 +148,7 @@
     "direction": "LONG"
   },
   "DUSKUSDT_LONG": {
-    "timestamp": "2026-03-02T15:48:10.126Z",
+    "timestamp": "2026-03-02T16:32:38.087Z",
     "direction": "LONG"
   },
   "AVAXUSDT_LONG": {
@@ -156,7 +156,7 @@
     "direction": "LONG"
   },
   "BNBUSDT_LONG": {
-    "timestamp": "2026-03-02T15:50:35.990Z",
+    "timestamp": "2026-03-02T16:47:36.085Z",
     "direction": "LONG"
   },
   "ARBUSDT_LONG": {
@@ -164,11 +164,11 @@
     "direction": "LONG"
   },
   "OPUSDT_LONG": {
-    "timestamp": "2026-03-02T15:50:40.774Z",
+    "timestamp": "2026-03-02T16:23:35.576Z",
     "direction": "LONG"
   },
   "ROSEUSDT_LONG": {
-    "timestamp": "2026-03-02T15:50:43.115Z",
+    "timestamp": "2026-03-02T16:50:42.597Z",
     "direction": "LONG"
   },
   "APEUSDT_LONG": {
@@ -176,7 +176,7 @@
     "direction": "LONG"
   },
   "LINKUSDT_LONG": {
-    "timestamp": "2026-03-02T16:02:37.804Z",
+    "timestamp": "2026-03-02T16:44:38.043Z",
     "direction": "LONG"
   },
   "PUMPUSDT_LONG": {
@@ -188,11 +188,59 @@
     "direction": "LONG"
   },
   "CAKEUSDT_LONG": {
-    "timestamp": "2026-03-02T16:02:44.852Z",
+    "timestamp": "2026-03-02T16:50:40.253Z",
     "direction": "LONG"
   },
   "FLOKIUSDT_LONG": {
     "timestamp": "2026-03-02T16:02:47.204Z",
+    "direction": "LONG"
+  },
+  "ADAUSDT_LONG": {
+    "timestamp": "2026-03-02T16:05:35.424Z",
+    "direction": "LONG"
+  },
+  "HBARUSDT_LONG": {
+    "timestamp": "2026-03-02T16:08:35.656Z",
+    "direction": "LONG"
+  },
+  "PAXGUSDT_SHORT": {
+    "timestamp": "2026-03-02T16:08:40.466Z",
+    "direction": "SHORT"
+  },
+  "ETCUSDT_LONG": {
+    "timestamp": "2026-03-02T16:11:35.677Z",
+    "direction": "LONG"
+  },
+  "DASHUSDT_LONG": {
+    "timestamp": "2026-03-02T16:11:38.030Z",
+    "direction": "LONG"
+  },
+  "VETUSDT_LONG": {
+    "timestamp": "2026-03-02T16:14:35.430Z",
+    "direction": "LONG"
+  },
+  "NEARUSDT_LONG": {
+    "timestamp": "2026-03-02T16:50:37.909Z",
+    "direction": "LONG"
+  },
+  "IOTAUSDT_SHORT": {
+    "timestamp": "2026-03-02T16:23:40.374Z",
+    "direction": "SHORT"
+  },
+  "FETUSDT_LONG": {
+    "timestamp": "2026-03-02T16:26:37.878Z",
+    "direction": "LONG"
+  },
+  "ASTERUSDT_LONG": {
+    "timestamp": "2026-03-02T16:32:35.761Z",
+    "direction": "LONG"
+  },
+  "EGLDUSDT_LONG": {
+    "timestamp": "2026-03-02T16:44:35.682Z",
+    "direction": "LONG"
+  },
+  "XRPUSDT_LONG": {
+    "timestamp": "2026-03-02T16:44:40.379Z",
     "direction": "LONG"
   }
 }

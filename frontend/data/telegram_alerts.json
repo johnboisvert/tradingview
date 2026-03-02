@@ -33,5 +33,31 @@
       "sl": 0.9088,
       "confidence": 91
     }
-  ]
+  ],
+  "cooldowns": {
+    "aave_signal": {
+      "timestamp": "2026-03-02T20:27:13.989Z",
+      "direction": "LONG"
+    },
+    "virtual-protocol_signal": {
+      "timestamp": "2026-03-02T20:27:16.348Z",
+      "direction": "LONG"
+    },
+    "pudgy-penguins_signal": {
+      "timestamp": "2026-03-02T20:27:18.678Z",
+      "direction": "LONG"
+    },
+    "dash_signal": {
+      "timestamp": "2026-03-02T20:27:21.018Z",
+      "direction": "LONG"
+    },
+    "optimism_signal": {
+      "timestamp": "2026-03-02T20:27:23.367Z",
+      "direction": "LONG"
+    },
+    "plasma_signal": {
+      "timestamp": "2026-03-02T20:27:25.704Z",
+      "direction": "LONG"
+    }
+  }
 }

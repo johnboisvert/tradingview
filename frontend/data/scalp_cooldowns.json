@@ -266,5 +266,9 @@
   "KNCUSDT_LONG": {
     "timestamp": "2026-03-02T18:57:47.558Z",
     "direction": "LONG"
+  },
+  "APTUSDT_LONG": {
+    "timestamp": "2026-03-02T20:30:15.318Z",
+    "direction": "LONG"
   }
 }

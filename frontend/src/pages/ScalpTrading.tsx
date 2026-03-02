@@ -169,12 +169,54 @@ interface KlineWithVol {
   volume: number;
 }
 
+/* ─── CoinGecko symbol → Binance symbol mapping ─── */
+// Stablecoins and tokens that don't have valid USDT pairs on Binance
+const EXCLUDED_COINGECKO_SYMBOLS = new Set([
+  "usdt", "usdc", "busd", "tusd", "dai", "fdusd", "usdp", "usdd", "gusd",
+  "frax", "lusd", "susd", "eurs", "eurt", "usdj", "tribe", "ust", "ausd",
+  "pyusd", "crvusd", "eurc", "usde",
+]);
+
+// CoinGecko symbol → Binance base symbol overrides
+// (CoinGecko uses different ticker symbols than Binance for some coins)
+const COINGECKO_TO_BINANCE: Record<string, string> = {
+  "xaut": "", // Tether Gold — not on Binance as XAUTUSDT
+  "ff": "",   // not a valid Binance pair
+  "xpl": "",  // not a valid Binance pair
+  "bard": "", // not a valid Binance pair
+  "vvv": "",  // not a valid Binance pair
+  "mon": "",  // not a valid Binance pair
+  "kite": "", // not a valid Binance pair
+};
+
+/** Convert CoinGecko symbol to Binance USDT pair. Returns empty string if invalid. */
+function cgSymbolToBinancePair(cgSymbol: string): string {
+  const lower = cgSymbol.toLowerCase();
+  // Exclude stablecoins
+  if (EXCLUDED_COINGECKO_SYMBOLS.has(lower)) return "";
+  // Check override map
+  if (lower in COINGECKO_TO_BINANCE) return COINGECKO_TO_BINANCE[lower] || "";
+  // Default: uppercase + USDT
+  const base = cgSymbol.toUpperCase();
+  if (!base || base.length < 2) return "";
+  return `${base}USDT`;
+}
+
+// Cache of known-bad Binance symbols to avoid repeated 400 errors
+const _badBinanceSymbols = new Set<string>();
+
 async function fetchKlines(symbolUpper: string, interval: string, limit: number): Promise<KlineWithVol[]> {
   const base = symbolUpper.replace(/USDT$/, "");
   const pair = `${base}USDT`;
+  // Skip if we already know this symbol is invalid
+  if (!base || base.length < 2 || _badBinanceSymbols.has(pair)) return [];
   try {
     const res = await fetch(`/api/binance/klines?symbol=${pair}&interval=${interval}&limit=${limit}`, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      // Mark as bad so we don't retry
+      if (res.status === 400) _badBinanceSymbols.add(pair);
+      return [];
+    }
     const data = await res.json();
     if (!Array.isArray(data)) return [];
     return data.map((k: number[]) => ({
@@ -327,13 +369,19 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
     return rB - rA;
   }).slice(0, 30);
 
-  /* Fetch H1 and M5 klines in batches */
+  /* Fetch H1 and M5 klines in batches — only for coins with valid Binance pairs */
   const BATCH = 10;
   const h1Map = new Map<string, KlineWithVol[]>();
   const m5Map = new Map<string, KlineWithVol[]>();
 
-  for (let i = 0; i < sorted.length; i += BATCH) {
-    const batch = sorted.slice(i, i + BATCH);
+  // Pre-filter: only keep coins with valid Binance pairs
+  const validSorted = sorted.filter(c => {
+    const cgSym = (c.symbol || "") as string;
+    return cgSymbolToBinancePair(cgSym) !== "";
+  });
+
+  for (let i = 0; i < validSorted.length; i += BATCH) {
+    const batch = validSorted.slice(i, i + BATCH);
     await Promise.all(batch.flatMap(c => {
       const sym = ((c.symbol || "") as string).toUpperCase();
       return [
@@ -341,10 +389,10 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
         fetchKlines(sym, "5m", 100).then(d => m5Map.set(sym, d)),
       ];
     }));
-    if (i + BATCH < sorted.length) await new Promise(r => setTimeout(r, 300));
+    if (i + BATCH < validSorted.length) await new Promise(r => setTimeout(r, 300));
   }
 
-  for (const c of sorted) {
+  for (const c of validSorted) {
     const sym = ((c.symbol || "") as string).toUpperCase();
     const price = c.current_price;
     const change24h = c.price_change_percentage_24h || 0;
@@ -615,9 +663,10 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
 
     const rr = slDist > 0 ? Math.round((Math.abs(tp2 - price) / slDist) * 10) / 10 : 1.5;
 
+    const binancePair = cgSymbolToBinancePair((c.symbol || "") as string);
     setups.push({
       id: c.id,
-      symbol: sym + "USDT",
+      symbol: binancePair || (sym + "USDT"),
       name: c.name || "Unknown",
       image: c.image || "",
       side,
@@ -691,7 +740,7 @@ export default function ScalpTrading() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [filter, setFilter] = useState<"all" | "LONG" | "SHORT">("all");
-  const [minConfidence, setMinConfidence] = useState(60);
+  const [minConfidence, setMinConfidence] = useState(90);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -737,7 +786,7 @@ export default function ScalpTrading() {
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
 
       // Register high-confidence calls (≥90%)
-      registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 60)).catch(() => {});
+      registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 90)).catch(() => {});
     } catch (err) {
       console.error("Scalp fetch error:", err);
       setFetchError("Une erreur est survenue lors de l'analyse. Veuillez réessayer.");
@@ -761,7 +810,7 @@ export default function ScalpTrading() {
   const longCount = trades.filter(t => t.side === "LONG").length;
   const shortCount = trades.filter(t => t.side === "SHORT").length;
   const serverCount = trades.filter(t => t.source === "server").length;
-  const highConfCount = trades.filter(t => t.confidence >= 60).length;
+  const highConfCount = trades.filter(t => t.confidence >= 90).length;
   const avgConfidence = trades.length > 0 ? Math.round(trades.reduce((s, t) => s + t.confidence, 0) / trades.length) : 0;
 
   return (

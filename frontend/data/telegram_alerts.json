@@ -225,5 +225,15 @@
       "sl": 0.1939,
       "confidence": 91
     }
-  ]
+  ],
+  "cooldowns": {
+    "aave_signal": {
+      "timestamp": "2026-03-02T20:39:11.575Z",
+      "direction": "LONG"
+    },
+    "virtual-protocol_signal": {
+      "timestamp": "2026-03-02T20:39:13.899Z",
+      "direction": "LONG"
+    }
+  }
 }

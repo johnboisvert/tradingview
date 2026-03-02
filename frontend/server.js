@@ -332,9 +332,33 @@ app.get('/api/coingecko/{*path}', async (req, res) => {
   }
 });
 
-// ─── Binance Klines API proxy ───
+// ─── Binance Klines API proxy (with symbol validation) ───
+const INVALID_BINANCE_SYMBOLS = new Set(); // Cache of known-bad symbols
+const STABLECOIN_BASES = new Set([
+  'USDT', 'USDC', 'BUSD', 'TUSD', 'DAI', 'FDUSD', 'USDP', 'USDD', 'GUSD',
+  'FRAX', 'LUSD', 'SUSD', 'EURS', 'EURT', 'USDJ', 'UST', 'AUSD', 'PYUSD',
+  'CRVUSD', 'EURC', 'USDE', 'EUR', 'GBP', 'AUD',
+]);
+
 app.get('/api/binance/klines', async (req, res) => {
   const { symbol, interval, limit } = req.query;
+
+  // Validate symbol format
+  if (!symbol || typeof symbol !== 'string' || symbol.length < 5 || !symbol.endsWith('USDT')) {
+    return res.status(400).json({ error: 'Invalid symbol format', symbol });
+  }
+
+  // Extract base and check if it's a stablecoin (e.g., USDTUSDT is invalid)
+  const base = symbol.replace(/USDT$/, '');
+  if (!base || base.length < 2 || STABLECOIN_BASES.has(base)) {
+    return res.status(400).json({ error: 'Invalid or stablecoin symbol', symbol });
+  }
+
+  // Check cached invalid symbols
+  if (INVALID_BINANCE_SYMBOLS.has(symbol)) {
+    return res.status(400).json({ error: 'Known invalid Binance symbol', symbol });
+  }
+
   const targetUrl = `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${interval || '1h'}&limit=${limit || '168'}`;
 
   try {
@@ -345,6 +369,12 @@ app.get('/api/binance/klines', async (req, res) => {
     });
 
     const data = await upstreamRes.text();
+
+    // Cache 400 responses to avoid repeated requests
+    if (upstreamRes.status === 400) {
+      INVALID_BINANCE_SYMBOLS.add(symbol);
+    }
+
     res.status(upstreamRes.status)
       .set('Content-Type', 'application/json')
       .send(data);

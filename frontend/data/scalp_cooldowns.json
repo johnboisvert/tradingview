@@ -1,0 +1,274 @@
+{
+  "UNIUSDT_LONG": {
+    "timestamp": "2026-03-02T16:26:40.221Z",
+    "direction": "LONG"
+  },
+  "SHIBUSDT_LONG": {
+    "timestamp": "2026-02-25T20:20:15.950Z",
+    "direction": "LONG"
+  },
+  "BTCUSDT_LONG": {
+    "timestamp": "2026-03-02T16:23:37.996Z",
+    "direction": "LONG"
+  },
+  "PEPEUSDT_LONG": {
+    "timestamp": "2026-03-02T17:06:40.372Z",
+    "direction": "LONG"
+  },
+  "AAVEUSDT_LONG": {
+    "timestamp": "2026-03-02T16:05:37.798Z",
+    "direction": "LONG"
+  },
+  "ETHUSDT_LONG": {
+    "timestamp": "2026-03-02T16:53:35.910Z",
+    "direction": "LONG"
+  },
+  "ICPUSDT_LONG": {
+    "timestamp": "2026-03-02T16:26:35.552Z",
+    "direction": "LONG"
+  },
+  "BONKUSDT_LONG": {
+    "timestamp": "2026-02-25T20:27:03.162Z",
+    "direction": "LONG"
+  },
+  "SOLUSDT_LONG": {
+    "timestamp": "2026-03-02T16:47:38.419Z",
+    "direction": "LONG"
+  },
+  "DOGEUSDT_LONG": {
+    "timestamp": "2026-03-02T16:50:35.535Z",
+    "direction": "LONG"
+  },
+  "SUIUSDT_LONG": {
+    "timestamp": "2026-03-02T18:46:17.566Z",
+    "direction": "LONG"
+  },
+  "DOTUSDT_LONG": {
+    "timestamp": "2026-03-02T17:00:37.589Z",
+    "direction": "LONG"
+  },
+  "RENDERUSDT_LONG": {
+    "timestamp": "2026-02-26T00:35:04.379Z",
+    "direction": "LONG"
+  },
+  "UNIUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:25:50.460Z",
+    "direction": "SHORT"
+  },
+  "BNBUSDT_SHORT": {
+    "timestamp": "2026-02-26T20:59:04.764Z",
+    "direction": "SHORT"
+  },
+  "BTCUSDT_SHORT": {
+    "timestamp": "2026-02-26T20:56:05.118Z",
+    "direction": "SHORT"
+  },
+  "ETHUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:25:57.422Z",
+    "direction": "SHORT"
+  },
+  "SOLUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:25:59.745Z",
+    "direction": "SHORT"
+  },
+  "XRPUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:26:02.069Z",
+    "direction": "SHORT"
+  },
+  "ADAUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:26:04.394Z",
+    "direction": "SHORT"
+  },
+  "AVAXUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:26:06.722Z",
+    "direction": "SHORT"
+  },
+  "ATOMUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:26:09.041Z",
+    "direction": "SHORT"
+  },
+  "NEARUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:26:11.373Z",
+    "direction": "SHORT"
+  },
+  "SUIUSDT_SHORT": {
+    "timestamp": "2026-02-26T20:29:35.526Z",
+    "direction": "SHORT"
+  },
+  "SHIBUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:26:16.014Z",
+    "direction": "SHORT"
+  },
+  "FTMUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:26:18.339Z",
+    "direction": "SHORT"
+  },
+  "FILUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:26:20.667Z",
+    "direction": "SHORT"
+  },
+  "ALGOUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:26:22.989Z",
+    "direction": "SHORT"
+  },
+  "WLDUSDT_LONG": {
+    "timestamp": "2026-02-26T18:26:25.336Z",
+    "direction": "LONG"
+  },
+  "SEIUSDT_SHORT": {
+    "timestamp": "2026-02-26T18:34:20.685Z",
+    "direction": "SHORT"
+  },
+  "DOGEUSDT_SHORT": {
+    "timestamp": "2026-02-26T20:35:04.934Z",
+    "direction": "SHORT"
+  },
+  "BONKUSDT_SHORT": {
+    "timestamp": "2026-02-26T20:38:04.947Z",
+    "direction": "SHORT"
+  },
+  "EGLDUSDT_SHORT": {
+    "timestamp": "2026-02-26T20:47:04.947Z",
+    "direction": "SHORT"
+  },
+  "LINKUSDT_SHORT": {
+    "timestamp": "2026-02-26T21:05:05.132Z",
+    "direction": "SHORT"
+  },
+  "LTCUSDT_SHORT": {
+    "timestamp": "2026-02-26T21:05:07.443Z",
+    "direction": "SHORT"
+  },
+  "PENGUUSDT_LONG": {
+    "timestamp": "2026-03-02T16:50:44.954Z",
+    "direction": "LONG"
+  },
+  "CRVUSDT_LONG": {
+    "timestamp": "2026-03-02T15:48:07.794Z",
+    "direction": "LONG"
+  },
+  "DUSKUSDT_LONG": {
+    "timestamp": "2026-03-02T18:54:45.297Z",
+    "direction": "LONG"
+  },
+  "AVAXUSDT_LONG": {
+    "timestamp": "2026-03-02T17:00:39.919Z",
+    "direction": "LONG"
+  },
+  "BNBUSDT_LONG": {
+    "timestamp": "2026-03-02T16:47:36.085Z",
+    "direction": "LONG"
+  },
+  "ARBUSDT_LONG": {
+    "timestamp": "2026-03-02T15:50:38.415Z",
+    "direction": "LONG"
+  },
+  "OPUSDT_LONG": {
+    "timestamp": "2026-03-02T16:56:35.887Z",
+    "direction": "LONG"
+  },
+  "ROSEUSDT_LONG": {
+    "timestamp": "2026-03-02T16:50:42.597Z",
+    "direction": "LONG"
+  },
+  "APEUSDT_LONG": {
+    "timestamp": "2026-03-02T15:53:35.544Z",
+    "direction": "LONG"
+  },
+  "LINKUSDT_LONG": {
+    "timestamp": "2026-03-02T16:44:38.043Z",
+    "direction": "LONG"
+  },
+  "PUMPUSDT_LONG": {
+    "timestamp": "2026-03-02T16:02:40.163Z",
+    "direction": "LONG"
+  },
+  "FILUSDT_LONG": {
+    "timestamp": "2026-03-02T16:02:42.505Z",
+    "direction": "LONG"
+  },
+  "CAKEUSDT_LONG": {
+    "timestamp": "2026-03-02T16:50:40.253Z",
+    "direction": "LONG"
+  },
+  "FLOKIUSDT_LONG": {
+    "timestamp": "2026-03-02T16:02:47.204Z",
+    "direction": "LONG"
+  },
+  "ADAUSDT_LONG": {
+    "timestamp": "2026-03-02T16:05:35.424Z",
+    "direction": "LONG"
+  },
+  "HBARUSDT_LONG": {
+    "timestamp": "2026-03-02T17:00:42.267Z",
+    "direction": "LONG"
+  },
+  "PAXGUSDT_SHORT": {
+    "timestamp": "2026-03-02T16:08:40.466Z",
+    "direction": "SHORT"
+  },
+  "ETCUSDT_LONG": {
+    "timestamp": "2026-03-02T16:11:35.677Z",
+    "direction": "LONG"
+  },
+  "DASHUSDT_LONG": {
+    "timestamp": "2026-03-02T16:11:38.030Z",
+    "direction": "LONG"
+  },
+  "VETUSDT_LONG": {
+    "timestamp": "2026-03-02T16:14:35.430Z",
+    "direction": "LONG"
+  },
+  "NEARUSDT_LONG": {
+    "timestamp": "2026-03-02T16:50:37.909Z",
+    "direction": "LONG"
+  },
+  "IOTAUSDT_SHORT": {
+    "timestamp": "2026-03-02T16:23:40.374Z",
+    "direction": "SHORT"
+  },
+  "FETUSDT_LONG": {
+    "timestamp": "2026-03-02T16:26:37.878Z",
+    "direction": "LONG"
+  },
+  "ASTERUSDT_LONG": {
+    "timestamp": "2026-03-02T16:32:35.761Z",
+    "direction": "LONG"
+  },
+  "EGLDUSDT_LONG": {
+    "timestamp": "2026-03-02T16:44:35.682Z",
+    "direction": "LONG"
+  },
+  "XRPUSDT_LONG": {
+    "timestamp": "2026-03-02T18:36:21.192Z",
+    "direction": "LONG"
+  },
+  "ZECUSDT_LONG": {
+    "timestamp": "2026-03-02T16:56:38.212Z",
+    "direction": "LONG"
+  },
+  "JUPUSDT_LONG": {
+    "timestamp": "2026-03-02T18:24:52.618Z",
+    "direction": "LONG"
+  },
+  "POLUSDT_SHORT": {
+    "timestamp": "2026-03-02T18:46:15.221Z",
+    "direction": "SHORT"
+  },
+  "TIAUSDT_LONG": {
+    "timestamp": "2026-03-02T18:51:45.472Z",
+    "direction": "LONG"
+  },
+  "VIRTUALUSDT_LONG": {
+    "timestamp": "2026-03-02T18:57:45.220Z",
+    "direction": "LONG"
+  },
+  "KNCUSDT_LONG": {
+    "timestamp": "2026-03-02T18:57:47.558Z",
+    "direction": "LONG"
+  },
+  "APTUSDT_LONG": {
+    "timestamp": "2026-03-02T20:30:15.318Z",
+    "direction": "LONG"
+  }
+}

@@ -1,0 +1,11 @@
+[
+  {"key": "monthly_premium", "value": 19.99},
+  {"key": "monthly_advanced", "value": 34.99},
+  {"key": "monthly_pro", "value": 54.99},
+  {"key": "monthly_elite", "value": 79.99},
+  {"key": "annual_discount", "value": 20.0},
+  {"key": "annual_premium", "value": 15.99},
+  {"key": "annual_advanced", "value": 28.0},
+  {"key": "annual_pro", "value": 44.0},
+  {"key": "annual_elite", "value": 63.99}
+]

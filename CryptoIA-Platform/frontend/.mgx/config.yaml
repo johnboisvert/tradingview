@@ -1,0 +1,15 @@
+# CryptoIA Trading Platform - Configuration
+project:
+  name: CryptoIA Trading Platform
+  type: python-fastapi
+  framework: fastapi
+  
+scripts:
+  dev: "cd /workspace && python -m uvicorn main:app --host 0.0.0.0 --port 8080 --reload"
+  start: "cd /workspace && python -m uvicorn main:app --host 0.0.0.0 --port 8080"
+  build: "echo 'No build step needed for Python/FastAPI'"
+  install: "cd /workspace && pip install -r requirements-minimal.txt"
+
+settings:
+  port: 8080
+  host: "0.0.0.0"

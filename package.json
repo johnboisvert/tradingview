@@ -1,0 +1,17 @@
+{
+  "name": "cryptoia-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "cd frontend && npm install",
+    "build": "cd frontend && npm install && npm run build",
+    "start": "exec node_modules/.bin/serve frontend/dist --single --listen ${PORT:-3000}"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "pdfkit": "^0.17.2"
+  }
+}

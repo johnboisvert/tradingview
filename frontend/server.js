@@ -359,7 +359,7 @@ app.get('/api/binance/klines', async (req, res) => {
     return res.status(400).json({ error: 'Known invalid Binance symbol', symbol });
   }
 
-  const targetUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval || '1h'}&limit=${limit || '168'}`;
+  const targetUrl = `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval || '1h'}&limit=${limit || '168'}`;
 
   try {
     const upstreamRes = await fetch(targetUrl, {
@@ -1231,7 +1231,7 @@ async function fetchTop200USDTSymbols() {
     return _cachedScalpSymbols;
   }
   try {
-    const resp = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+    const resp = await fetch('https://data-api.binance.vision/api/v3/ticker/24hr');
     if (!resp.ok) throw new Error(`Binance API error: ${resp.status}`);
     const tickers = await resp.json();
     // Filter USDT pairs, exclude stablecoins and leveraged tokens
@@ -1393,7 +1393,7 @@ function calcMACD(closes, fast = 12, slow = 26, signal = 9) {
 async function fetchBinanceKlines(symbol, interval, limit = 100) {
   try {
     const resp = await fetch(
-      `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+      `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
       { signal: AbortSignal.timeout(10000) }
     );
     if (!resp.ok) return [];
@@ -2913,7 +2913,7 @@ async function resolveActiveTradeCalls() {
   const prices = {};
   for (const sym of symbols) {
     try {
-      const resp = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${sym}`, {
+      const resp = await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${sym}`, {
         signal: AbortSignal.timeout(8000),
       });
       if (resp.ok) {
@@ -3296,7 +3296,7 @@ async function resolveActiveScalpCalls() {
   const prices = {};
   for (const sym of symbols) {
     try {
-      const resp = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${sym}`, { signal: AbortSignal.timeout(8000) });
+      const resp = await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${sym}`, { signal: AbortSignal.timeout(8000) });
       if (resp.ok) { const data = await resp.json(); prices[sym] = parseFloat(data.price); }
     } catch (_e) { /* skip */ }
   }

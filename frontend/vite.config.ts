@@ -265,7 +265,7 @@ function apiProxyPlugin(): Plugin {
         const symbol = url.searchParams.get('symbol') || '';
         const interval = url.searchParams.get('interval') || '1h';
         const limit = url.searchParams.get('limit') || '168';
-        const targetUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+        const targetUrl = `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
 
         try {
           const upstreamRes = await fetch(targetUrl, {

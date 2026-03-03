@@ -235,6 +235,12 @@ const COINGECKO_TO_BINANCE: Record<string, string> = {
   "vvv": "",  // not a valid Binance pair
   "mon": "",  // not a valid Binance pair
   "kite": "", // not a valid Binance pair
+  "power": "", // not on Binance
+  "siren": "", // not on Binance
+  "pippin": "", // not on Binance
+  "river": "", // not on Binance
+  "apepe": "", // not on Binance
+  "m": "",     // not on Binance (single letter, invalid)
 };
 
 /** Convert CoinGecko symbol to Binance USDT pair. Returns empty string if invalid. */

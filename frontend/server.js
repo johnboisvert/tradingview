@@ -333,7 +333,10 @@ app.get('/api/coingecko/{*path}', async (req, res) => {
 });
 
 // ─── Binance Klines API proxy (with symbol validation + Bybit fallback) ───
-const INVALID_BINANCE_SYMBOLS = new Set(); // Cache of known-bad symbols on Binance
+const INVALID_BINANCE_SYMBOLS = new Set([
+  'POWERUSDT', 'SIRENUSDT', 'PIPPINUSDT', 'RIVERUSDT', 'APEPEUSDT',
+  'XAUTUSDT', 'FFUSDT', 'XPLUSDT', 'BARDUSDT', 'VVVUSDT', 'MONUSDT', 'KITEUSDT',
+]); // Pre-populated known-bad symbols + runtime cache
 const BYBIT_FALLBACK_SYMBOLS = new Set(); // Cache of symbols that need Bybit
 const STABLECOIN_BASES = new Set([
   'USDT', 'USDC', 'BUSD', 'TUSD', 'DAI', 'FDUSD', 'USDP', 'USDD', 'GUSD',

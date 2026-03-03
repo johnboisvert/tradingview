@@ -15,7 +15,7 @@ interface SRLevel {
   type: "support" | "resistance";
   strength: "major" | "minor";
   source: string;
-  convergent?: boolean; // true when 4h S/R is within 1.5% of a 7j S/R
+  convergent?: boolean;
 }
 
 interface TradeSetup {
@@ -27,7 +27,7 @@ interface TradeSetup {
   currentPrice: number;
   entry: number;
   stopLoss: number;
-  tp0: number | null; // Quick Profit — nearest 4h S/R
+  tp0: number | null;
   tp1: number;
   tp2: number;
   tp3: number;
@@ -40,8 +40,8 @@ interface TradeSetup {
   triggerTime: string;
   supports: SRLevel[];
   resistances: SRLevel[];
-  rsi4h: number | null; // RSI 14 on 4h candles
-  hasConvergence: boolean; // at least one convergent S/R
+  rsi1h: number | null;
+  hasConvergence: boolean;
 }
 
 /* ─── Signal Tracking Types ─── */
@@ -90,7 +90,6 @@ function loadTrackedSignals(): TrackedSignal[] {
 
 function saveTrackedSignals(signals: TrackedSignal[]) {
   try {
-    // Keep only last 200 signals to avoid storage bloat
     const trimmed = signals.slice(-200);
     localStorage.setItem(SIGNAL_STORAGE_KEY, JSON.stringify(trimmed));
   } catch {
@@ -149,8 +148,8 @@ function updateSignalsWithPrices(currentPrices: Map<string, number>) {
       if (price <= sig.tp3 && !sig.tp3Hit) { sig.tp3Hit = true; sig.resolved = true; changed = true; }
     }
 
-    // Auto-expire signals older than 48h
-    if (Date.now() - sig.timestamp > 48 * 60 * 60 * 1000 && !sig.resolved) {
+    // Auto-expire signals older than 24h (shorter for 1h timeframe)
+    if (Date.now() - sig.timestamp > 24 * 60 * 60 * 1000 && !sig.resolved) {
       sig.resolved = true;
       changed = true;
     }
@@ -215,14 +214,6 @@ function WinrateBadge({ score, tp }: { score: number; tp: "tp0" | "tp1" | "tp2" 
 
 /* ─── Formatters ─── */
 
-function formatUsd(v: number): string {
-  if (v == null || isNaN(v)) return "$0.00";
-  if (Math.abs(v) >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
-  if (Math.abs(v) >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
-  if (Math.abs(v) >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
-  return `$${v.toFixed(2)}`;
-}
-
 function formatPrice(p: number): string {
   if (p == null || isNaN(p)) return "0.00";
   if (p >= 1000) return p.toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -238,7 +229,7 @@ function roundPrice(value: number, reference: number): number {
   return Math.round(value * 1000000) / 1000000;
 }
 
-/* ─── Binance 4h Klines ─── */
+/* ─── Binance 1h Klines ─── */
 
 interface BinanceKline {
   open: number;
@@ -248,34 +239,8 @@ interface BinanceKline {
 }
 
 const BINANCE_SYMBOL_MAP: Record<string, string> = {
-  // Some CoinGecko symbols differ from Binance tickers
   IOTA: "IOTA",
 };
-
-async function fetchBinance4hKlines(symbolUpper: string): Promise<BinanceKline[]> {
-  // Strip "USDT" suffix if present to get the base symbol
-  const base = symbolUpper.replace(/USDT$/, "");
-  const mapped = BINANCE_SYMBOL_MAP[base] || base;
-  const pair = `${mapped}USDT`;
-
-  try {
-    const res = await fetch(
-      `/api/binance/klines?symbol=${pair}&interval=4h&limit=50`,
-      { signal: AbortSignal.timeout(6000) }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!Array.isArray(data)) return [];
-    return data.map((k: any[]) => ({
-      open: parseFloat(k[1]),
-      high: parseFloat(k[2]),
-      low: parseFloat(k[3]),
-      close: parseFloat(k[4]),
-    }));
-  } catch {
-    return [];
-  }
-}
 
 /* ─── RSI 14 Calculation ─── */
 
@@ -294,7 +259,6 @@ function calculateRSI(closes: number[], period = 14): number | null {
   let avgGain = gainSum / period;
   let avgLoss = lossSum / period;
 
-  // Smooth with Wilder's method for remaining data
   for (let i = period + 1; i < closes.length; i++) {
     const diff = closes[i] - closes[i - 1];
     if (diff >= 0) {
@@ -311,9 +275,9 @@ function calculateRSI(closes: number[], period = 14): number | null {
   return Math.round((100 - 100 / (1 + rs)) * 10) / 10;
 }
 
-/* ─── 4h S/R from Binance pivots ─── */
+/* ─── 1h S/R from Binance pivots ─── */
 
-function calculate4hSRLevels(klines: BinanceKline[], currentPrice: number): { supports: SRLevel[]; resistances: SRLevel[] } {
+function calculate1hSRLevels(klines: BinanceKline[], currentPrice: number): { supports: SRLevel[]; resistances: SRLevel[] } {
   const supports: SRLevel[] = [];
   const resistances: SRLevel[] = [];
   if (klines.length < 5) return { supports, resistances };
@@ -337,7 +301,6 @@ function calculate4hSRLevels(klines: BinanceKline[], currentPrice: number): { su
     if (isMax) localMaxs.push(high_i);
   }
 
-  // Cluster nearby levels (within 1%)
   const clusterLevels = (levels: number[]): number[] => {
     if (levels.length === 0) return [];
     const sorted = [...levels].sort((a, b) => a - b);
@@ -363,7 +326,7 @@ function calculate4hSRLevels(klines: BinanceKline[], currentPrice: number): { su
         price: level,
         type: "support",
         strength: Math.abs(level - currentPrice) / currentPrice < 0.025 ? "major" : "minor",
-        source: "Binance 4h",
+        source: "Binance 1h",
       });
     }
   }
@@ -374,7 +337,7 @@ function calculate4hSRLevels(klines: BinanceKline[], currentPrice: number): { su
         price: level,
         type: "resistance",
         strength: Math.abs(level - currentPrice) / currentPrice < 0.025 ? "major" : "minor",
-        source: "Binance 4h",
+        source: "Binance 1h",
       });
     }
   }
@@ -385,7 +348,7 @@ function calculate4hSRLevels(klines: BinanceKline[], currentPrice: number): { su
   return { supports: supports.slice(0, 4), resistances: resistances.slice(0, 4) };
 }
 
-/* ─── 7j S/R from CoinGecko sparkline (existing logic) ─── */
+/* ─── 7j S/R from CoinGecko sparkline ─── */
 
 function calculate7jSRLevels(coin: any): { supports: SRLevel[]; resistances: SRLevel[] } {
   const price = coin.current_price;
@@ -484,27 +447,24 @@ function calculate7jSRLevels(coin: any): { supports: SRLevel[]; resistances: SRL
 
 function markConvergence(
   levels7j: SRLevel[],
-  levels4h: SRLevel[],
+  levels1h: SRLevel[],
 ): { merged: SRLevel[]; convergenceCount: number } {
   let convergenceCount = 0;
   const merged: SRLevel[] = [...levels7j];
 
-  for (const l4h of levels4h) {
+  for (const l1h of levels1h) {
     const match7j = levels7j.find(
-      l7j => Math.abs(l7j.price - l4h.price) / l4h.price < 0.015
+      l7j => Math.abs(l7j.price - l1h.price) / l1h.price < 0.015
     );
     if (match7j) {
-      // Mark the 7j level as convergent
       match7j.convergent = true;
-      match7j.strength = "major"; // upgrade strength
+      match7j.strength = "major";
       convergenceCount++;
-      // Also mark the 4h level
-      l4h.convergent = true;
+      l1h.convergent = true;
     }
-    // Add 4h level if not too close to existing
-    const tooClose = merged.some(m => Math.abs(m.price - l4h.price) / l4h.price < 0.005);
+    const tooClose = merged.some(m => Math.abs(m.price - l1h.price) / l1h.price < 0.005);
     if (!tooClose) {
-      merged.push(l4h);
+      merged.push(l1h);
     }
   }
 
@@ -532,7 +492,7 @@ function alignTPWithSR(
     sl = entry - slDistance;
     tp1 = entry + slDistance * 1.5;
     tp2 = entry + slDistance * 2.5;
-    tp3 = entry + slDistance * 3; // Changed from ×4 to ×3
+    tp3 = entry + slDistance * 3;
 
     const nearestSupport = supports.find(s => s.price < entry * 0.995);
     if (nearestSupport && nearestSupport.price > sl * 0.97 && nearestSupport.price < entry * 0.99) {
@@ -553,7 +513,7 @@ function alignTPWithSR(
     sl = entry + slDistance;
     tp1 = entry - slDistance * 1.5;
     tp2 = entry - slDistance * 2.5;
-    tp3 = entry - slDistance * 3; // Changed from ×4 to ×3
+    tp3 = entry - slDistance * 3;
 
     const nearestResistance = resistances.find(r => r.price > entry * 1.005);
     if (nearestResistance && nearestResistance.price < sl * 1.03 && nearestResistance.price > entry * 1.01) {
@@ -583,21 +543,19 @@ function alignTPWithSR(
   return { tp1, tp2, tp3, sl };
 }
 
-/* ─── Compute TP0 (Quick Profit) from 4h S/R ─── */
+/* ─── Compute TP0 (Quick Profit) from 1h S/R ─── */
 
 function computeTP0(
   side: "LONG" | "SHORT",
   entry: number,
-  supports4h: SRLevel[],
-  resistances4h: SRLevel[],
+  supports1h: SRLevel[],
+  resistances1h: SRLevel[],
 ): number | null {
   if (side === "LONG") {
-    // Nearest 4h resistance above entry
-    const nearest = resistances4h.find(r => r.price > entry * 1.003 && r.price < entry * 1.05);
+    const nearest = resistances1h.find(r => r.price > entry * 1.003 && r.price < entry * 1.05);
     return nearest ? roundPrice(nearest.price * 0.999, entry) : null;
   } else {
-    // Nearest 4h support below entry
-    const nearest = supports4h.find(s => s.price < entry * 0.997 && s.price > entry * 0.95);
+    const nearest = supports1h.find(s => s.price < entry * 0.997 && s.price > entry * 0.95);
     return nearest ? roundPrice(nearest.price * 1.001, entry) : null;
   }
 }
@@ -617,7 +575,7 @@ function calculateBollingerBands(closes: number[], period = 20, stdDevMultiplier
   };
 }
 
-/* ─── VWAP (Volume Weighted Average Price) ─── */
+/* ─── VWAP ─── */
 
 function calculateVWAP(klines: BinanceKline[], volumes: number[]): number | null {
   if (klines.length === 0 || klines.length !== volumes.length) return null;
@@ -660,20 +618,20 @@ function calculatePOC(klines: BinanceKline[], volumes: number[], bins = 30): num
   return minPrice + (pocBin + 0.5) * binSize;
 }
 
-/* ─── Fetch Binance 4h Klines with Volume ─── */
+/* ─── Fetch Binance 1h Klines with Volume ─── */
 
 interface BinanceKlineWithVolume extends BinanceKline {
   volume: number;
 }
 
-async function fetchBinance4hKlinesWithVolume(symbolUpper: string): Promise<BinanceKlineWithVolume[]> {
+async function fetchBinance1hKlinesWithVolume(symbolUpper: string): Promise<BinanceKlineWithVolume[]> {
   const base = symbolUpper.replace(/USDT$/, "");
   const mapped = BINANCE_SYMBOL_MAP[base] || base;
   const pair = `${mapped}USDT`;
   try {
     const res = await fetch(
-      `/api/binance/klines?symbol=${pair}&interval=4h&limit=50`,
-      { signal: AbortSignal.timeout(6000) }
+      `/api/binance/klines?symbol=${pair}&interval=1h&limit=168`,
+      { signal: AbortSignal.timeout(8000) }
     );
     if (!res.ok) return [];
     const data = await res.json();
@@ -741,7 +699,6 @@ function detectPreSetups(coins: any[]): PreSetup[] {
       continue;
     }
 
-    // S/R proximity bonus (7j)
     const price = c.current_price;
     const nearestSupport = supports[0];
     const nearestResistance = resistances[0];
@@ -767,11 +724,10 @@ function detectPreSetups(coins: any[]): PreSetup[] {
   return preSetups;
 }
 
-async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]> {
+async function enrichWithBinance1h(preSetups: PreSetup[]): Promise<TradeSetup[]> {
   const triggerTime = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const setups: TradeSetup[] = [];
 
-  // Fetch Binance 4h klines (with volume) in parallel (max 15 concurrent to avoid rate limits)
   const BATCH_SIZE = 15;
   const binanceResults: Map<string, BinanceKlineWithVolume[]> = new Map();
 
@@ -780,7 +736,7 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
     const promises = batch.map(async (ps) => {
       const sym = ((ps.coin.symbol || "") as string).toUpperCase();
       if (!binanceResults.has(sym)) {
-        const klines = await fetchBinance4hKlinesWithVolume(sym);
+        const klines = await fetchBinance1hKlinesWithVolume(sym);
         binanceResults.set(sym, klines);
       }
     });
@@ -795,88 +751,85 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
     const klinesWithVol = binanceResults.get(sym) || [];
     const klines: BinanceKline[] = klinesWithVol;
 
-    // Calculate 4h S/R
-    const sr4h = calculate4hSRLevels(klines, price);
+    // Calculate 1h S/R
+    const sr1h = calculate1hSRLevels(klines, price);
 
-    // Calculate RSI 14 on 4h
+    // Calculate RSI 14 on 1h
     const closes = klines.map(k => k.close);
-    const rsi4h = calculateRSI(closes);
+    const rsi1h = calculateRSI(closes);
 
     // RSI confidence adjustment
-    if (rsi4h !== null) {
-      if (side === "LONG" && rsi4h < 30) {
+    if (rsi1h !== null) {
+      if (side === "LONG" && rsi1h < 30) {
         confidence += 10;
-        reason += ` | RSI 4h survendu (${rsi4h})`;
-      } else if (side === "SHORT" && rsi4h > 70) {
+        reason += ` | RSI 1h survendu (${rsi1h})`;
+      } else if (side === "SHORT" && rsi1h > 70) {
         confidence += 10;
-        reason += ` | RSI 4h suracheté (${rsi4h})`;
-      } else if (rsi4h >= 40 && rsi4h <= 60) {
+        reason += ` | RSI 1h suracheté (${rsi1h})`;
+      } else if (rsi1h >= 40 && rsi1h <= 60) {
         confidence -= 5;
       }
     }
 
-    // ── Bollinger Bands on 4h closes ──
+    // ── Bollinger Bands on 1h closes ──
     const bb = calculateBollingerBands(closes, 20, 2);
     if (bb) {
       const distToLower = Math.abs(price - bb.lower) / price;
       const distToUpper = Math.abs(price - bb.upper) / price;
       if (side === "LONG" && distToLower < 0.01) {
         confidence += 10;
-        reason += ` | BB 4h: prix proche bande basse ($${formatPrice(bb.lower)})`;
+        reason += ` | BB 1h: prix proche bande basse ($${formatPrice(bb.lower)})`;
       } else if (side === "SHORT" && distToUpper < 0.01) {
         confidence += 10;
-        reason += ` | BB 4h: prix proche bande haute ($${formatPrice(bb.upper)})`;
+        reason += ` | BB 1h: prix proche bande haute ($${formatPrice(bb.upper)})`;
       }
     }
 
-    // ── VWAP on 4h ──
+    // ── VWAP on 1h ──
     const volumes = klinesWithVol.map(k => k.volume);
     const vwap = calculateVWAP(klines, volumes);
     if (vwap !== null) {
       if (side === "LONG" && price < vwap) {
         confidence += 8;
-        reason += ` | VWAP 4h: prix sous fair value ($${formatPrice(vwap)})`;
+        reason += ` | VWAP 1h: prix sous fair value ($${formatPrice(vwap)})`;
       } else if (side === "SHORT" && price > vwap) {
         confidence += 8;
-        reason += ` | VWAP 4h: prix au-dessus fair value ($${formatPrice(vwap)})`;
+        reason += ` | VWAP 1h: prix au-dessus fair value ($${formatPrice(vwap)})`;
       }
     }
 
-    // ── Volume Profile POC on 4h ──
+    // ── Volume Profile POC on 1h ──
     const poc = calculatePOC(klines, volumes, 30);
     if (poc !== null) {
       const distToPOC = Math.abs(price - poc) / price;
       if (distToPOC < 0.015) {
         confidence += 5;
-        reason += ` | POC 4h: zone haute liquidité ($${formatPrice(poc)})`;
+        reason += ` | POC 1h: zone haute liquidité ($${formatPrice(poc)})`;
       }
     }
 
-    // Merge 7j + 4h S/R and detect convergence
+    // Merge 7j + 1h S/R and detect convergence
     const { merged: mergedSupports, convergenceCount: convSup } = markConvergence(
       ps.supports7j.filter(s => s.type === "support"),
-      sr4h.supports
+      sr1h.supports
     );
     const { merged: mergedResistances, convergenceCount: convRes } = markConvergence(
       ps.resistances7j.filter(r => r.type === "resistance"),
-      sr4h.resistances
+      sr1h.resistances
     );
 
     const totalConvergence = convSup + convRes;
     const hasConvergence = totalConvergence > 0;
 
-    // Convergence bonus
     if (hasConvergence) {
       confidence += 10;
       reason += ` | 🔗 Convergence S/R (${totalConvergence} niveau${totalConvergence > 1 ? "x" : ""})`;
     }
 
-    // TP alignment with merged S/R
     const volatility = Math.max(Math.abs(c.price_change_percentage_24h || 0) * 0.5, 1.5);
     const slPercent = volatility * 1.2;
     const { tp1, tp2, tp3, sl } = alignTPWithSR(side, price, slPercent, mergedSupports, mergedResistances);
 
-    // TP1 alignment bonus
     if (side === "LONG") {
       const nearestRes = mergedResistances[0];
       if (nearestRes && Math.abs(tp1 - nearestRes.price) / tp1 < 0.02) {
@@ -889,13 +842,11 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
       }
     }
 
-    // SL too tight penalty
     if (Math.abs(sl - price) / price < 0.005) {
       confidence -= 10;
     }
 
-    // TP0 Quick Profit
-    const tp0 = computeTP0(side, price, sr4h.supports, sr4h.resistances);
+    const tp0 = computeTP0(side, price, sr1h.supports, sr1h.resistances);
 
     confidence = Math.min(98, Math.max(25, confidence));
 
@@ -925,7 +876,7 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
       triggerTime,
       supports: mergedSupports.filter(s => s.type === "support").slice(0, 5),
       resistances: mergedResistances.filter(r => r.type === "resistance").slice(0, 5),
-      rsi4h,
+      rsi1h,
       hasConvergence,
     });
   }
@@ -936,7 +887,6 @@ async function enrichWithBinance4h(preSetups: PreSetup[]): Promise<TradeSetup[]>
 /* ─── Auto-register calls to backend ─── */
 
 async function registerCallsToBackend(setups: TradeSetup[]) {
-  // Only register setups with confidence >= 90% for high-quality performance data
   const qualifiedSetups = setups.filter(s => s.confidence >= 90);
   for (const setup of qualifiedSetups) {
     try {
@@ -954,13 +904,13 @@ async function registerCallsToBackend(setups: TradeSetup[]) {
           tp3: setup.tp3,
           confidence: setup.confidence,
           reason: setup.reason,
-          rsi4h: setup.rsi4h,
+          rsi1h: setup.rsi1h,
           has_convergence: setup.hasConvergence,
           rr: setup.rr,
         }),
       });
     } catch {
-      // Silently ignore registration errors — non-blocking
+      // Silently ignore
     }
   }
 }
@@ -994,13 +944,11 @@ export default function Trades() {
       const allData = await fetchTop200(true);
       if (allData.length > 0) {
         const preSetups = detectPreSetups(allData);
-        const enriched = await enrichWithBinance4h(preSetups);
+        const enriched = await enrichWithBinance1h(preSetups);
         setSetups(enriched);
 
-        // Store new signals for tracking
         storeNewSignals(enriched);
 
-        // Update tracked signals with current prices
         const priceMap = new Map<string, number>();
         for (const s of enriched) {
           priceMap.set(s.symbol, s.currentPrice);
@@ -1008,7 +956,6 @@ export default function Trades() {
         const updatedSignals = updateSignalsWithPrices(priceMap);
         setPerfStats(computePerformanceStats(updatedSignals));
 
-        // Auto-register calls to backend (non-blocking)
         registerCallsToBackend(enriched).catch(() => {});
       }
     } catch (e) {
@@ -1020,7 +967,6 @@ export default function Trades() {
   }, []);
 
   useEffect(() => {
-    // Load initial perf stats
     const signals = loadTrackedSignals();
     setPerfStats(computePerformanceStats(signals));
 
@@ -1029,7 +975,6 @@ export default function Trades() {
     return () => clearInterval(interval);
   }, [fetchTrades]);
 
-  // Apply confidence filter — default to 90% minimum
   const confFiltered = showAllConfidence ? setups : setups.filter(t => t.confidence >= 90);
 
   const filtered = confFiltered.filter((t) => {
@@ -1055,12 +1000,12 @@ export default function Trades() {
         <PageHeader
           icon={<BarChart3 className="w-6 h-6" />}
           title="Suggestions de Swing Trading"
-          subtitle="Setups de trading avec chandeliers Binance 4h, RSI, TP0 Quick Profit, convergence S/R et gestion du risque avancée."
+          subtitle="Setups de trading avec chandeliers Binance 1h, RSI, TP0 Quick Profit, convergence S/R et gestion du risque avancée."
           accentColor="blue"
           steps={[
-            { n: "1", title: "Analyse S/R Multi-TF", desc: "Supports/résistances calculés sur sparkline 7j (CoinGecko) ET chandeliers 4h (Binance) pour une précision accrue." },
-            { n: "2", title: "TP0 Quick Profit", desc: "Objectif rapide (~1-3%) basé sur la résistance/support 4h la plus proche. Atteignable en quelques heures." },
-            { n: "3", title: "RSI 4h + Convergence", desc: "RSI 14 sur 4h ajuste le score. Les niveaux S/R convergents (4h ≈ 7j) reçoivent un bonus de fiabilité." },
+            { n: "1", title: "Analyse S/R Multi-TF", desc: "Supports/résistances calculés sur sparkline 7j (CoinGecko) ET chandeliers 1h (Binance) pour une précision accrue." },
+            { n: "2", title: "TP0 Quick Profit", desc: "Objectif rapide (~1-3%) basé sur la résistance/support 1h la plus proche. Atteignable en 30min à 2h." },
+            { n: "3", title: "RSI 1h + Convergence", desc: "RSI 14 sur 1h ajuste le score. Les niveaux S/R convergents (1h ≈ 7j) reçoivent un bonus de fiabilité." },
           ]}
         />
 
@@ -1073,7 +1018,7 @@ export default function Trades() {
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                 📊 Suggestions de Swing Trading
               </h1>
-              <p className="text-sm text-gray-400 mt-1">Setups multi-timeframe (7j + 4h) avec TP0, RSI et convergence S/R</p>
+              <p className="text-sm text-gray-400 mt-1">Setups multi-timeframe (7j + 1h) avec TP0, RSI et convergence S/R</p>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-500">MAJ: {lastUpdate}</span>
@@ -1098,7 +1043,7 @@ export default function Trades() {
             <div className="flex flex-wrap gap-4 text-xs">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 font-semibold">📊 Analyse</span>
-                <span className="text-gray-400">Klines 4h (50 bougies ≈ 8 jours) + S/R 7 jours</span>
+                <span className="text-gray-400">Klines 1h (168 bougies ≈ 7 jours) + S/R 7 jours</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-semibold">⚡ Entrée</span>
@@ -1106,7 +1051,7 @@ export default function Trades() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold">⏱️ Durée</span>
-                <span className="text-gray-400">4h à 48h selon le TP visé</span>
+                <span className="text-gray-400">1h à 24h selon le TP visé (TP0: 30min-2h • TP1: 2-6h • TP2: 6-12h • TP3: 12-24h)</span>
               </div>
             </div>
           </div>
@@ -1166,7 +1111,7 @@ export default function Trades() {
             { icon: "🔴", label: "SHORT", value: String(shortCount), change: "Baissiers" },
             { icon: "🎯", label: "Score Tech. Moy.", value: `${avgConfidence}%`, change: "Score moyen" },
             { icon: "⭐", label: "Haut Score", value: String(highConfCount), change: "≥ 90%" },
-            { icon: "🔗", label: "Convergence", value: String(convergenceCount), change: "S/R 4h ≈ 7j" },
+            { icon: "🔗", label: "Convergence", value: String(convergenceCount), change: "S/R 1h ≈ 7j" },
           ].map((stat, i) => (
             <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-blue-500/30 hover:bg-white/[0.05] transition-all">
               <span className="text-2xl">{stat.icon}</span>
@@ -1190,7 +1135,6 @@ export default function Trades() {
             placeholder="🔍 Rechercher symbole..."
             className="px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-sm text-white placeholder-gray-500 flex-1 min-w-[180px]" />
 
-          {/* Confidence filter toggle */}
           <button
             onClick={() => setShowAllConfidence(!showAllConfidence)}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
@@ -1226,7 +1170,7 @@ export default function Trades() {
                 {loading ? (
                   <tr><td colSpan={13} className="text-center py-12">
                     <RefreshCw className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">Chargement des données CoinGecko + Binance 4h...</p>
+                    <p className="text-sm text-gray-500">Chargement des données CoinGecko + Binance 1h...</p>
                   </td></tr>
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={13} className="text-center py-12 text-gray-500">
@@ -1241,14 +1185,12 @@ export default function Trades() {
                           className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors cursor-pointer"
                           onClick={() => setExpandedRow(isExpanded ? null : trade.id)}
                         >
-                          {/* Trigger Time */}
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-1.5">
                               <Clock className="w-3 h-3 text-gray-500" />
                               <span className="text-[11px] font-mono text-gray-400">{trade.triggerTime}</span>
                             </div>
                           </td>
-                          {/* Symbol */}
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-2">
                               {trade.image && <img src={trade.image} alt={trade.symbol} className="w-6 h-6 rounded-full" loading="lazy" />}
@@ -1265,7 +1207,6 @@ export default function Trades() {
                               </div>
                             </div>
                           </td>
-                          {/* Side */}
                           <td className="px-3 py-3">
                             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
                               trade.side === "LONG"
@@ -1276,13 +1217,11 @@ export default function Trades() {
                               {trade.side}
                             </span>
                           </td>
-                          {/* Entry */}
                           <td className="px-3 py-3">
                             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-2 py-1 inline-block">
                               <span className="font-mono text-sm font-bold text-blue-300">${formatPrice(trade.entry)}</span>
                             </div>
                           </td>
-                          {/* SL */}
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-1">
                               <Shield className="w-3 h-3 text-red-400" />
@@ -1292,7 +1231,6 @@ export default function Trades() {
                               {trade.side === "LONG" ? "-" : "+"}{trade.entry ? Math.abs((trade.stopLoss - trade.entry) / trade.entry * 100).toFixed(1) : "0.0"}%
                             </span>
                           </td>
-                          {/* TP0 */}
                           <td className="px-3 py-3">
                             {trade.tp0 !== null ? (
                               <div>
@@ -1311,7 +1249,6 @@ export default function Trades() {
                               <span className="text-[10px] text-gray-600">—</span>
                             )}
                           </td>
-                          {/* TP1 */}
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-1">
                               <Target className="w-3 h-3 text-emerald-300" />
@@ -1324,7 +1261,6 @@ export default function Trades() {
                               <WinrateBadge score={trade.confidence} tp="tp1" />
                             </div>
                           </td>
-                          {/* TP2 */}
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-1">
                               <Target className="w-3 h-3 text-emerald-400" />
@@ -1337,7 +1273,6 @@ export default function Trades() {
                               <WinrateBadge score={trade.confidence} tp="tp2" />
                             </div>
                           </td>
-                          {/* TP3 */}
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-1">
                               <Target className="w-3 h-3 text-emerald-500" />
@@ -1350,19 +1285,16 @@ export default function Trades() {
                               <WinrateBadge score={trade.confidence} tp="tp3" />
                             </div>
                           </td>
-                          {/* R:R */}
                           <td className="px-3 py-3">
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-xs font-bold text-purple-400">
                               {trade.rr}:1
                             </span>
                           </td>
-                          {/* 24h */}
                           <td className="px-3 py-3">
                             <span className={`text-sm font-bold ${trade.change24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                               {trade.change24h >= 0 ? "+" : ""}{(trade.change24h ?? 0).toFixed(2)}%
                             </span>
                           </td>
-                          {/* Score Technique */}
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-2">
                               <div className="h-1.5 w-12 bg-white/[0.06] rounded-full overflow-hidden">
@@ -1374,24 +1306,20 @@ export default function Trades() {
                               <span className="text-xs font-bold text-gray-400">{trade.confidence}%</span>
                             </div>
                           </td>
-                          {/* Expand */}
                           <td className="px-3 py-3">
                             {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
                           </td>
                         </tr>
 
-                        {/* Expanded Row */}
                         {isExpanded && (
                           <tr className="border-b border-white/[0.03]">
                             <td colSpan={13} className="px-4 py-4 bg-white/[0.01]">
                               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                {/* Reason */}
                                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
                                   <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">📋 Raison du Signal</p>
                                   <p className="text-xs text-gray-300 leading-relaxed">{trade.reason}</p>
                                 </div>
 
-                                {/* Supports */}
                                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
                                   <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-2">🟢 Supports</p>
                                   {trade.supports.length > 0 ? (
@@ -1421,7 +1349,6 @@ export default function Trades() {
                                   )}
                                 </div>
 
-                                {/* Resistances */}
                                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
                                   <p className="text-[10px] uppercase tracking-wider text-red-400 font-semibold mb-2">🔴 Résistances</p>
                                   {trade.resistances.length > 0 ? (
@@ -1451,22 +1378,20 @@ export default function Trades() {
                                   )}
                                 </div>
 
-                                {/* RSI 4h */}
                                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
-                                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold mb-2">📉 RSI 14 (4h)</p>
-                                  {trade.rsi4h !== null ? (
+                                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold mb-2">📉 RSI 14 (1h)</p>
+                                  {trade.rsi1h !== null ? (
                                     <div>
                                       <div className="flex items-center gap-3 mb-2">
-                                        <span className={`text-3xl font-black ${rsiBadge(trade.rsi4h).color}`}>{trade.rsi4h}</span>
-                                        <span className={`text-[10px] px-2 py-1 rounded-full font-semibold ${rsiBadge(trade.rsi4h).bg} ${rsiBadge(trade.rsi4h).color}`}>
-                                          {trade.rsi4h < 30 ? "Survendu" : trade.rsi4h > 70 ? "Suracheté" : trade.rsi4h <= 60 && trade.rsi4h >= 40 ? "Neutre" : trade.rsi4h < 40 ? "Faible" : "Fort"}
+                                        <span className={`text-3xl font-black ${rsiBadge(trade.rsi1h).color}`}>{trade.rsi1h}</span>
+                                        <span className={`text-[10px] px-2 py-1 rounded-full font-semibold ${rsiBadge(trade.rsi1h).bg} ${rsiBadge(trade.rsi1h).color}`}>
+                                          {trade.rsi1h < 30 ? "Survendu" : trade.rsi1h > 70 ? "Suracheté" : trade.rsi1h <= 60 && trade.rsi1h >= 40 ? "Neutre" : trade.rsi1h < 40 ? "Faible" : "Fort"}
                                         </span>
                                       </div>
-                                      {/* RSI visual bar */}
                                       <div className="relative h-2 bg-gradient-to-r from-emerald-500 via-gray-500 to-red-500 rounded-full overflow-hidden">
                                         <div
                                           className="absolute top-0 w-1.5 h-full bg-white rounded-full shadow-lg"
-                                          style={{ left: `${Math.min(100, Math.max(0, trade.rsi4h))}%`, transform: "translateX(-50%)" }}
+                                          style={{ left: `${Math.min(100, Math.max(0, trade.rsi1h))}%`, transform: "translateX(-50%)" }}
                                         />
                                       </div>
                                       <div className="flex justify-between text-[8px] text-gray-600 mt-1">
@@ -1549,8 +1474,8 @@ export default function Trades() {
         <div className="mt-6 bg-amber-500/[0.06] border border-amber-500/15 rounded-2xl p-4">
           <p className="text-xs text-amber-300/80 text-center">
             ⚠️ <strong>Avertissement :</strong> Ces suggestions sont générées automatiquement à partir des données de marché CoinGecko (prix, volumes, sparkline 7j, high/low 24h, ATH)
-            et des chandeliers Binance 4h (RSI 14, supports/résistances court terme). Les niveaux S/R sont calculés algorithmiquement sur deux timeframes et les TP sont alignés avec ces niveaux.
-            Le TP0 "Quick Profit" vise un objectif atteignable en quelques heures (~1-3%). Le "Score Technique" reflète la qualité technique du setup, pas la probabilité de succès.
+            et des chandeliers Binance 1h (RSI 14, supports/résistances court terme). Les niveaux S/R sont calculés algorithmiquement sur deux timeframes et les TP sont alignés avec ces niveaux.
+            Le TP0 "Quick Profit" vise un objectif atteignable en 30min à 2h (~1-3%). Le "Score Technique" reflète la qualité technique du setup, pas la probabilité de succès.
             Les winrates estimés sont basés sur des moyennes historiques indicatives.
             Elles ne constituent pas des conseils financiers. Faites toujours votre propre analyse avant de trader.
           </p>

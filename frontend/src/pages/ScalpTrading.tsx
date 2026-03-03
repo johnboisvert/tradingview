@@ -159,6 +159,54 @@ function roundPrice(value: number, reference: number): number {
   return Math.round(value * 1000000) / 1000000;
 }
 
+/* ─── Fallback symbols when CoinGecko is unavailable ─── */
+
+const FALLBACK_SYMBOLS = [
+  { symbol: "BTCUSDT", id: "bitcoin", name: "Bitcoin" },
+  { symbol: "ETHUSDT", id: "ethereum", name: "Ethereum" },
+  { symbol: "SOLUSDT", id: "solana", name: "Solana" },
+  { symbol: "BNBUSDT", id: "binancecoin", name: "BNB" },
+  { symbol: "XRPUSDT", id: "ripple", name: "XRP" },
+  { symbol: "ADAUSDT", id: "cardano", name: "Cardano" },
+  { symbol: "DOGEUSDT", id: "dogecoin", name: "Dogecoin" },
+  { symbol: "AVAXUSDT", id: "avalanche-2", name: "Avalanche" },
+  { symbol: "DOTUSDT", id: "polkadot", name: "Polkadot" },
+  { symbol: "LINKUSDT", id: "chainlink", name: "Chainlink" },
+  { symbol: "MATICUSDT", id: "matic-network", name: "Polygon" },
+  { symbol: "UNIUSDT", id: "uniswap", name: "Uniswap" },
+  { symbol: "ATOMUSDT", id: "cosmos", name: "Cosmos" },
+  { symbol: "NEARUSDT", id: "near", name: "NEAR" },
+  { symbol: "APTUSDT", id: "aptos", name: "Aptos" },
+  { symbol: "ARBUSDT", id: "arbitrum", name: "Arbitrum" },
+  { symbol: "OPUSDT", id: "optimism", name: "Optimism" },
+  { symbol: "INJUSDT", id: "injective-protocol", name: "Injective" },
+  { symbol: "SUIUSDT", id: "sui", name: "Sui" },
+  { symbol: "SEIUSDT", id: "sei-network", name: "Sei" },
+  { symbol: "TIAUSDT", id: "celestia", name: "Celestia" },
+  { symbol: "JUPUSDT", id: "jupiter-exchange-solana", name: "Jupiter" },
+  { symbol: "WIFUSDT", id: "dogwifcoin", name: "dogwifhat" },
+  { symbol: "PEPEUSDT", id: "pepe", name: "Pepe" },
+  { symbol: "BONKUSDT", id: "bonk", name: "Bonk" },
+  { symbol: "RENDERUSDT", id: "render-token", name: "Render" },
+  { symbol: "FETUSDT", id: "fetch-ai", name: "Fetch.ai" },
+  { symbol: "TAOUSDT", id: "bittensor", name: "Bittensor" },
+  { symbol: "ONDOUSDT", id: "ondo-finance", name: "Ondo" },
+  { symbol: "FTMUSDT", id: "fantom", name: "Fantom" },
+];
+
+function buildFallbackCoins(): any[] {
+  return FALLBACK_SYMBOLS.map(fb => ({
+    id: fb.id,
+    symbol: fb.symbol.replace(/USDT$/, "").toLowerCase(),
+    name: fb.name,
+    current_price: 0,
+    market_cap: 100_000_000,
+    total_volume: 10_000_000,
+    price_change_percentage_24h: 0,
+    image: "",
+  }));
+}
+
 /* ─── Binance Klines with Volume ─── */
 
 interface KlineWithVol {
@@ -393,8 +441,9 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
   }
 
   for (const c of validSorted) {
+    try {
     const sym = ((c.symbol || "") as string).toUpperCase();
-    const price = c.current_price;
+    let price = c.current_price;
     const change24h = c.price_change_percentage_24h || 0;
     const volume = c.total_volume || 0;
     const mcap = c.market_cap || 1;
@@ -402,6 +451,12 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
     const h1K = h1Map.get(sym) || [];
     const m5K = m5Map.get(sym) || [];
     if (h1K.length < 25 || m5K.length < 50) continue;
+
+    // If price is 0 (fallback mode), get it from the latest M5 candle
+    if (!price || price <= 0) {
+      price = m5K[m5K.length - 1]?.close || 0;
+      if (price <= 0) continue;
+    }
 
     const h1Closes = h1K.map(k => k.close);
     const m5Closes = m5K.map(k => k.close);
@@ -695,6 +750,10 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
       stoch_d: stochD,
       h1Bias,
     });
+    } catch (coinErr) {
+      console.warn(`Scalp setup error for ${c?.symbol || "unknown"}:`, coinErr);
+      continue;
+    }
   }
 
   return setups.sort((a, b) => b.confidence - a.confidence);
@@ -750,32 +809,55 @@ export default function ScalpTrading() {
     setFetchError(null);
     setDataWarning(null);
     try {
-      const allCoins: any[] = [];
+      let allCoins: any[] = [];
+      let usedFallback = false;
+
+      // Attempt CoinGecko fetch with retry on 429
       for (let page = 1; page <= 2; page++) {
-        try {
-          const res = await fetch(
-            `/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${page}&sparkline=true&price_change_percentage=24h`,
-            { signal: AbortSignal.timeout(15000) }
-          );
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data)) allCoins.push(...data);
+        let fetched = false;
+        for (let attempt = 0; attempt < 2 && !fetched; attempt++) {
+          try {
+            const res = await fetch(
+              `/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${page}&sparkline=true&price_change_percentage=24h`,
+              { signal: AbortSignal.timeout(15000) }
+            );
+            if (res.ok) {
+              const data = await res.json();
+              if (Array.isArray(data)) { allCoins.push(...data); fetched = true; }
+            } else if (res.status === 429 && attempt === 0) {
+              // Rate limited — wait 2s and retry once
+              console.warn(`CoinGecko page ${page} rate limited (429), retrying in 2s...`);
+              await new Promise(r => setTimeout(r, 2000));
+            } else {
+              console.warn(`CoinGecko page ${page} returned ${res.status}`);
+              break; // Don't retry on other errors
+            }
+          } catch (e) {
+            console.warn(`CoinGecko page ${page} attempt ${attempt + 1} failed:`, e);
+            if (attempt === 0) {
+              await new Promise(r => setTimeout(r, 2000));
+            }
           }
-        } catch (e) {
-          console.warn(`CoinGecko page ${page} fetch failed:`, e);
         }
-        if (page < 2) await new Promise(r => setTimeout(r, 500));
+        if (page < 2 && allCoins.length > 0) await new Promise(r => setTimeout(r, 500));
       }
 
+      // If CoinGecko failed entirely, use fallback symbols
       if (allCoins.length === 0) {
-        setFetchError("Impossible de récupérer les données de marché. Vérifiez votre connexion et réessayez.");
-        setLoading(false);
-        return;
+        console.warn("CoinGecko unavailable — using fallback symbol list for Binance-only analysis");
+        allCoins = buildFallbackCoins();
+        usedFallback = true;
       }
 
       // Quick Binance check
       const testK = await fetchKlines("BTC", "1h", 5);
       if (testK.length === 0) {
+        if (usedFallback) {
+          // Both CoinGecko and Binance failed — show error
+          setFetchError("Impossible de récupérer les données de marché. Vérifiez votre connexion et réessayez.");
+          setLoading(false);
+          return;
+        }
         setDataWarning("Les données Binance ne sont pas disponibles. Les alertes Telegram côté serveur continuent de fonctionner.");
       }
 
@@ -784,6 +866,13 @@ export default function ScalpTrading() {
       const merged = mergeSetups(clientSetups, serverSetups);
       setTrades(merged);
       setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
+
+      // Set appropriate warning/error based on results
+      if (usedFallback && merged.length > 0) {
+        setDataWarning("⚠️ Données CoinGecko indisponibles — Analyse basée sur les données Binance uniquement");
+      } else if (usedFallback && merged.length === 0) {
+        setFetchError("Aucun signal n'a pu être généré. Les données de marché sont temporairement indisponibles.");
+      }
 
       // Register high-confidence calls (≥90%)
       registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 90)).catch(() => {});

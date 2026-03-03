@@ -17,9 +17,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
 
-// ─── CoinGecko response cache (in-memory, 60s TTL) ───
+// ─── CoinGecko response cache (in-memory, 5min TTL) ───
 const cgCache = new Map(); // key → { data, status, timestamp }
-const CG_CACHE_TTL = 60_000; // 60 seconds
+const CG_CACHE_TTL = 300_000; // 5 minutes — reduced rate limit hits
 
 // Stripe webhook needs raw body for signature verification — must be before json parser
 app.use('/api/v1/payment/stripe_webhook', express.raw({ type: 'application/json' }));
@@ -2093,8 +2093,8 @@ async function checkAndSendScalpAlerts() {
       console.log(`[ScalpAlert] Setup confidences: ${confValues.join(", ")}`);
     }
 
-    // Filter: only send signals with confidence >= 60% (scalp trades are short-term)
-    const MIN_CONFIDENCE = 60;
+    // Filter: only send signals with confidence >= 90% (high-quality signals only)
+    const MIN_CONFIDENCE = 90;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[ScalpAlert] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 

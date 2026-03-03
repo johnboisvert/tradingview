@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
-import { TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3, Clock, Shield, Target, ChevronDown, ChevronUp, Link2, Zap, Eye, EyeOff, Trophy } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3, Clock, Shield, Target, ChevronDown, ChevronUp, Link2, Zap, Eye, EyeOff, Trophy, Info } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -44,9 +44,179 @@ interface TradeSetup {
   hasConvergence: boolean; // at least one convergent S/R
 }
 
+/* ─── Signal Tracking Types ─── */
+
+interface TrackedSignal {
+  symbol: string;
+  side: "LONG" | "SHORT";
+  entry: number;
+  tp0: number | null;
+  tp1: number;
+  tp2: number;
+  tp3: number;
+  sl: number;
+  score: number;
+  timestamp: number;
+  tp0Hit?: boolean;
+  tp1Hit?: boolean;
+  tp2Hit?: boolean;
+  tp3Hit?: boolean;
+  slHit?: boolean;
+  resolved?: boolean;
+}
+
+interface PerformanceStats {
+  total: number;
+  tp0Hits: number;
+  tp1Hits: number;
+  tp2Hits: number;
+  tp3Hits: number;
+  slHits: number;
+  pending: number;
+}
+
+const SIGNAL_STORAGE_KEY = "dtrading_tracked_signals";
+
+function loadTrackedSignals(): TrackedSignal[] {
+  try {
+    const raw = localStorage.getItem(SIGNAL_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveTrackedSignals(signals: TrackedSignal[]) {
+  try {
+    // Keep only last 200 signals to avoid storage bloat
+    const trimmed = signals.slice(-200);
+    localStorage.setItem(SIGNAL_STORAGE_KEY, JSON.stringify(trimmed));
+  } catch {
+    // Silent fail
+  }
+}
+
+function storeNewSignals(setups: TradeSetup[]) {
+  const existing = loadTrackedSignals();
+  const existingKeys = new Set(existing.map(s => `${s.symbol}-${s.side}-${s.entry}`));
+  const newSignals: TrackedSignal[] = [];
+
+  for (const s of setups) {
+    const key = `${s.symbol}-${s.side}-${s.entry}`;
+    if (!existingKeys.has(key)) {
+      newSignals.push({
+        symbol: s.symbol,
+        side: s.side,
+        entry: s.entry,
+        tp0: s.tp0,
+        tp1: s.tp1,
+        tp2: s.tp2,
+        tp3: s.tp3,
+        sl: s.stopLoss,
+        score: s.confidence,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  if (newSignals.length > 0) {
+    saveTrackedSignals([...existing, ...newSignals]);
+  }
+}
+
+function updateSignalsWithPrices(currentPrices: Map<string, number>) {
+  const signals = loadTrackedSignals();
+  let changed = false;
+
+  for (const sig of signals) {
+    if (sig.resolved) continue;
+    const price = currentPrices.get(sig.symbol);
+    if (price == null) continue;
+
+    if (sig.side === "LONG") {
+      if (price <= sig.sl && !sig.slHit) { sig.slHit = true; sig.resolved = true; changed = true; }
+      if (sig.tp0 != null && price >= sig.tp0 && !sig.tp0Hit) { sig.tp0Hit = true; changed = true; }
+      if (price >= sig.tp1 && !sig.tp1Hit) { sig.tp1Hit = true; changed = true; }
+      if (price >= sig.tp2 && !sig.tp2Hit) { sig.tp2Hit = true; changed = true; }
+      if (price >= sig.tp3 && !sig.tp3Hit) { sig.tp3Hit = true; sig.resolved = true; changed = true; }
+    } else {
+      if (price >= sig.sl && !sig.slHit) { sig.slHit = true; sig.resolved = true; changed = true; }
+      if (sig.tp0 != null && price <= sig.tp0 && !sig.tp0Hit) { sig.tp0Hit = true; changed = true; }
+      if (price <= sig.tp1 && !sig.tp1Hit) { sig.tp1Hit = true; changed = true; }
+      if (price <= sig.tp2 && !sig.tp2Hit) { sig.tp2Hit = true; changed = true; }
+      if (price <= sig.tp3 && !sig.tp3Hit) { sig.tp3Hit = true; sig.resolved = true; changed = true; }
+    }
+
+    // Auto-expire signals older than 48h
+    if (Date.now() - sig.timestamp > 48 * 60 * 60 * 1000 && !sig.resolved) {
+      sig.resolved = true;
+      changed = true;
+    }
+  }
+
+  if (changed) saveTrackedSignals(signals);
+  return signals;
+}
+
+function computePerformanceStats(signals: TrackedSignal[]): PerformanceStats {
+  const resolved = signals.filter(s => s.resolved || s.tp0Hit || s.tp1Hit || s.tp2Hit || s.tp3Hit || s.slHit);
+  const total = resolved.length;
+  if (total === 0) return { total: signals.length, tp0Hits: 0, tp1Hits: 0, tp2Hits: 0, tp3Hits: 0, slHits: 0, pending: signals.length };
+
+  return {
+    total: signals.length,
+    tp0Hits: resolved.filter(s => s.tp0Hit).length,
+    tp1Hits: resolved.filter(s => s.tp1Hit).length,
+    tp2Hits: resolved.filter(s => s.tp2Hit).length,
+    tp3Hits: resolved.filter(s => s.tp3Hit).length,
+    slHits: resolved.filter(s => s.slHit).length,
+    pending: signals.filter(s => !s.resolved).length,
+  };
+}
+
+/* ─── Winrate Estimates ─── */
+
+function getWinrateEstimate(score: number, tp: "tp0" | "tp1" | "tp2" | "tp3"): number {
+  if (score >= 90) {
+    if (tp === "tp0") return 75;
+    if (tp === "tp1") return 60;
+    if (tp === "tp2") return 40;
+    return 25;
+  }
+  if (score >= 80) {
+    if (tp === "tp0") return 65;
+    if (tp === "tp1") return 50;
+    if (tp === "tp2") return 30;
+    return 18;
+  }
+  if (score >= 70) {
+    if (tp === "tp0") return 55;
+    if (tp === "tp1") return 40;
+    if (tp === "tp2") return 22;
+    return 12;
+  }
+  if (tp === "tp0") return 45;
+  if (tp === "tp1") return 30;
+  if (tp === "tp2") return 15;
+  return 8;
+}
+
+function WinrateBadge({ score, tp }: { score: number; tp: "tp0" | "tp1" | "tp2" | "tp3" }) {
+  const wr = getWinrateEstimate(score, tp);
+  const color = wr >= 60 ? "text-emerald-400 bg-emerald-500/10" : wr >= 40 ? "text-amber-400 bg-amber-500/10" : "text-gray-400 bg-gray-500/10";
+  return (
+    <span className={`text-[8px] px-1 py-0.5 rounded font-semibold ${color}`}>
+      WR ~{wr}%
+    </span>
+  );
+}
+
 /* ─── Formatters ─── */
 
 function formatUsd(v: number): string {
+  if (v == null || isNaN(v)) return "$0.00";
   if (Math.abs(v) >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
   if (Math.abs(v) >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
   if (Math.abs(v) >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
@@ -54,6 +224,7 @@ function formatUsd(v: number): string {
 }
 
 function formatPrice(p: number): string {
+  if (p == null || isNaN(p)) return "0.00";
   if (p >= 1000) return p.toLocaleString("en-US", { maximumFractionDigits: 2 });
   if (p >= 1) return p.toFixed(2);
   if (p >= 0.01) return p.toFixed(4);
@@ -361,7 +532,7 @@ function alignTPWithSR(
     sl = entry - slDistance;
     tp1 = entry + slDistance * 1.5;
     tp2 = entry + slDistance * 2.5;
-    tp3 = entry + slDistance * 4;
+    tp3 = entry + slDistance * 3; // Changed from ×4 to ×3
 
     const nearestSupport = supports.find(s => s.price < entry * 0.995);
     if (nearestSupport && nearestSupport.price > sl * 0.97 && nearestSupport.price < entry * 0.99) {
@@ -382,7 +553,7 @@ function alignTPWithSR(
     sl = entry + slDistance;
     tp1 = entry - slDistance * 1.5;
     tp2 = entry - slDistance * 2.5;
-    tp3 = entry - slDistance * 4;
+    tp3 = entry - slDistance * 3; // Changed from ×4 to ×3
 
     const nearestResistance = resistances.find(r => r.price > entry * 1.005);
     if (nearestResistance && nearestResistance.price < sl * 1.03 && nearestResistance.price > entry * 1.01) {
@@ -814,6 +985,7 @@ export default function Trades() {
   const [searchSymbol, setSearchSymbol] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [showAllConfidence, setShowAllConfidence] = useState(false);
+  const [perfStats, setPerfStats] = useState<PerformanceStats>({ total: 0, tp0Hits: 0, tp1Hits: 0, tp2Hits: 0, tp3Hits: 0, slHits: 0, pending: 0 });
 
   const fetchTrades = useCallback(async () => {
     setLoading(true);
@@ -824,6 +996,18 @@ export default function Trades() {
         const preSetups = detectPreSetups(allData);
         const enriched = await enrichWithBinance4h(preSetups);
         setSetups(enriched);
+
+        // Store new signals for tracking
+        storeNewSignals(enriched);
+
+        // Update tracked signals with current prices
+        const priceMap = new Map<string, number>();
+        for (const s of enriched) {
+          priceMap.set(s.symbol, s.currentPrice);
+        }
+        const updatedSignals = updateSignalsWithPrices(priceMap);
+        setPerfStats(computePerformanceStats(updatedSignals));
+
         // Auto-register calls to backend (non-blocking)
         registerCallsToBackend(enriched).catch(() => {});
       }
@@ -836,6 +1020,10 @@ export default function Trades() {
   }, []);
 
   useEffect(() => {
+    // Load initial perf stats
+    const signals = loadTrackedSignals();
+    setPerfStats(computePerformanceStats(signals));
+
     fetchTrades();
     const interval = setInterval(fetchTrades, 90000);
     return () => clearInterval(interval);
@@ -858,6 +1046,8 @@ export default function Trades() {
   const highConfCount = setups.filter((t) => t.confidence >= 90).length;
   const convergenceCount = setups.filter((t) => t.hasConvergence).length;
 
+  const resolvedTotal = perfStats.tp0Hits + perfStats.tp1Hits + perfStats.tp2Hits + perfStats.tp3Hits + perfStats.slHits;
+
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
@@ -870,7 +1060,7 @@ export default function Trades() {
           steps={[
             { n: "1", title: "Analyse S/R Multi-TF", desc: "Supports/résistances calculés sur sparkline 7j (CoinGecko) ET chandeliers 4h (Binance) pour une précision accrue." },
             { n: "2", title: "TP0 Quick Profit", desc: "Objectif rapide (~1-3%) basé sur la résistance/support 4h la plus proche. Atteignable en quelques heures." },
-            { n: "3", title: "RSI 4h + Convergence", desc: "RSI 14 sur 4h ajuste la confiance. Les niveaux S/R convergents (4h ≈ 7j) reçoivent un bonus de fiabilité." },
+            { n: "3", title: "RSI 4h + Convergence", desc: "RSI 14 sur 4h ajuste le score. Les niveaux S/R convergents (4h ≈ 7j) reçoivent un bonus de fiabilité." },
           ]}
         />
 
@@ -901,14 +1091,81 @@ export default function Trades() {
           </div>
         </div>
 
+        {/* Timeframe Info Section */}
+        <div className="mb-6 bg-blue-500/[0.06] border border-blue-500/15 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+            <div className="flex flex-wrap gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 font-semibold">📊 Analyse</span>
+                <span className="text-gray-400">Klines 4h (50 bougies ≈ 8 jours) + S/R 7 jours</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-semibold">⚡ Entrée</span>
+                <span className="text-gray-400">Signal immédiat au prix actuel</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold">⏱️ Durée</span>
+                <span className="text-gray-400">4h à 48h selon le TP visé</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Performance Tracking Section */}
+        {perfStats.total > 0 && (
+          <div className="mb-6 bg-gradient-to-r from-amber-500/[0.04] to-orange-500/[0.04] border border-amber-500/15 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Trophy className="w-5 h-5 text-amber-400" />
+              <h3 className="text-sm font-bold text-amber-400">Suivi des Signaux (localStorage)</h3>
+              <span className="text-[10px] text-gray-500 ml-2">{perfStats.total} signaux suivis • {perfStats.pending} en cours</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+              <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Total</p>
+                <p className="text-lg font-black text-white">{perfStats.total}</p>
+              </div>
+              <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                <p className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">TP0 Hit</p>
+                <p className="text-lg font-black text-amber-400">{perfStats.tp0Hits}</p>
+                <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp0Hits / resolvedTotal * 100)}%` : "—"}</p>
+              </div>
+              <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                <p className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">TP1 Hit</p>
+                <p className="text-lg font-black text-emerald-300">{perfStats.tp1Hits}</p>
+                <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp1Hits / resolvedTotal * 100)}%` : "—"}</p>
+              </div>
+              <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">TP2 Hit</p>
+                <p className="text-lg font-black text-emerald-400">{perfStats.tp2Hits}</p>
+                <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp2Hits / resolvedTotal * 100)}%` : "—"}</p>
+              </div>
+              <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                <p className="text-[10px] uppercase tracking-wider text-emerald-500 font-semibold">TP3 Hit</p>
+                <p className="text-lg font-black text-emerald-500">{perfStats.tp3Hits}</p>
+                <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp3Hits / resolvedTotal * 100)}%` : "—"}</p>
+              </div>
+              <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                <p className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">SL Hit</p>
+                <p className="text-lg font-black text-red-400">{perfStats.slHits}</p>
+                <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.slHits / resolvedTotal * 100)}%` : "—"}</p>
+              </div>
+              <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">En Cours</p>
+                <p className="text-lg font-black text-blue-400">{perfStats.pending}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
           {[
             { icon: "📈", label: "Total Setups", value: String(setups.length), change: "Détectés" },
             { icon: "🟢", label: "LONG", value: String(longCount), change: "Haussiers" },
             { icon: "🔴", label: "SHORT", value: String(shortCount), change: "Baissiers" },
-            { icon: "🎯", label: "Confiance Moy.", value: `${avgConfidence}%`, change: "Score moyen" },
-            { icon: "⭐", label: "Haute Confiance", value: String(highConfCount), change: "≥ 90%" },
+            { icon: "🎯", label: "Score Tech. Moy.", value: `${avgConfidence}%`, change: "Score moyen" },
+            { icon: "⭐", label: "Haut Score", value: String(highConfCount), change: "≥ 90%" },
             { icon: "🔗", label: "Convergence", value: String(convergenceCount), change: "S/R 4h ≈ 7j" },
           ].map((stat, i) => (
             <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-blue-500/30 hover:bg-white/[0.05] transition-all">
@@ -943,7 +1200,7 @@ export default function Trades() {
             }`}
           >
             {showAllConfidence ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            {showAllConfidence ? "Tous les setups" : "Confiance ≥ 90%"}
+            {showAllConfidence ? "Tous les setups" : "Score Technique ≥ 90%"}
           </button>
 
           <span className="text-xs text-gray-500 ml-auto">({filtered.length} résultats)</span>
@@ -960,7 +1217,7 @@ export default function Trades() {
             <table className="w-full min-w-[1300px]">
               <thead>
                 <tr className="border-b border-white/[0.06]">
-                  {["Heure", "Symbole", "Type", "Entry", "SL", "TP0", "TP1", "TP2", "TP3", "R:R", "24h", "Confiance", ""].map((h) => (
+                  {["Heure", "Symbole", "Type", "Entry", "SL", "TP0", "TP1", "TP2", "TP3", "R:R", "24h", "Score Tech.", ""].map((h) => (
                     <th key={h} className={`px-3 py-3 text-left text-[10px] uppercase tracking-wider font-semibold ${h === "TP0" ? "text-amber-400" : "text-gray-500"}`}>{h}</th>
                   ))}
                 </tr>
@@ -973,7 +1230,7 @@ export default function Trades() {
                   </td></tr>
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={13} className="text-center py-12 text-gray-500">
-                    {showAllConfidence ? "Aucun setup détecté avec ces filtres" : "Aucun setup avec confiance ≥ 90%. Cliquez \"Tous les setups\" pour voir les autres."}
+                    {showAllConfidence ? "Aucun setup détecté avec ces filtres" : "Aucun setup avec score technique ≥ 90%. Cliquez \"Tous les setups\" pour voir les autres."}
                   </td></tr>
                 ) : (
                   filtered.slice(0, 30).map((trade) => {
@@ -1032,21 +1289,24 @@ export default function Trades() {
                               <span className="font-mono text-xs text-red-400 font-semibold">${formatPrice(trade.stopLoss)}</span>
                             </div>
                             <span className="text-[9px] text-red-400/60">
-                              {trade.side === "LONG" ? "-" : "+"}{Math.abs((trade.stopLoss - trade.entry) / trade.entry * 100).toFixed(1)}%
+                              {trade.side === "LONG" ? "-" : "+"}{trade.entry ? Math.abs((trade.stopLoss - trade.entry) / trade.entry * 100).toFixed(1) : "0.0"}%
                             </span>
                           </td>
                           {/* TP0 */}
                           <td className="px-3 py-3">
                             {trade.tp0 !== null ? (
-                              <>
+                              <div>
                                 <div className="flex items-center gap-1">
                                   <Zap className="w-3 h-3 text-amber-400" />
                                   <span className="font-mono text-xs text-amber-400 font-semibold">${formatPrice(trade.tp0)}</span>
                                 </div>
-                                <span className="text-[9px] text-amber-400/60">
-                                  {trade.side === "LONG" ? "+" : "-"}{Math.abs((trade.tp0 - trade.entry) / trade.entry * 100).toFixed(1)}%
-                                </span>
-                              </>
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <span className="text-[9px] text-amber-400/60">
+                                    {trade.side === "LONG" ? "+" : "-"}{trade.entry ? Math.abs((trade.tp0 - trade.entry) / trade.entry * 100).toFixed(1) : "0.0"}%
+                                  </span>
+                                  <WinrateBadge score={trade.confidence} tp="tp0" />
+                                </div>
+                              </div>
                             ) : (
                               <span className="text-[10px] text-gray-600">—</span>
                             )}
@@ -1057,9 +1317,12 @@ export default function Trades() {
                               <Target className="w-3 h-3 text-emerald-300" />
                               <span className="font-mono text-xs text-emerald-300 font-semibold">${formatPrice(trade.tp1)}</span>
                             </div>
-                            <span className="text-[9px] text-emerald-300/60">
-                              {trade.side === "LONG" ? "+" : "-"}{Math.abs((trade.tp1 - trade.entry) / trade.entry * 100).toFixed(1)}%
-                            </span>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="text-[9px] text-emerald-300/60">
+                                {trade.side === "LONG" ? "+" : "-"}{trade.entry ? Math.abs((trade.tp1 - trade.entry) / trade.entry * 100).toFixed(1) : "0.0"}%
+                              </span>
+                              <WinrateBadge score={trade.confidence} tp="tp1" />
+                            </div>
                           </td>
                           {/* TP2 */}
                           <td className="px-3 py-3">
@@ -1067,9 +1330,12 @@ export default function Trades() {
                               <Target className="w-3 h-3 text-emerald-400" />
                               <span className="font-mono text-xs text-emerald-400 font-semibold">${formatPrice(trade.tp2)}</span>
                             </div>
-                            <span className="text-[9px] text-emerald-400/60">
-                              {trade.side === "LONG" ? "+" : "-"}{Math.abs((trade.tp2 - trade.entry) / trade.entry * 100).toFixed(1)}%
-                            </span>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="text-[9px] text-emerald-400/60">
+                                {trade.side === "LONG" ? "+" : "-"}{trade.entry ? Math.abs((trade.tp2 - trade.entry) / trade.entry * 100).toFixed(1) : "0.0"}%
+                              </span>
+                              <WinrateBadge score={trade.confidence} tp="tp2" />
+                            </div>
                           </td>
                           {/* TP3 */}
                           <td className="px-3 py-3">
@@ -1077,9 +1343,12 @@ export default function Trades() {
                               <Target className="w-3 h-3 text-emerald-500" />
                               <span className="font-mono text-xs text-emerald-500 font-semibold">${formatPrice(trade.tp3)}</span>
                             </div>
-                            <span className="text-[9px] text-emerald-500/60">
-                              {trade.side === "LONG" ? "+" : "-"}{Math.abs((trade.tp3 - trade.entry) / trade.entry * 100).toFixed(1)}%
-                            </span>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="text-[9px] text-emerald-500/60">
+                                {trade.side === "LONG" ? "+" : "-"}{trade.entry ? Math.abs((trade.tp3 - trade.entry) / trade.entry * 100).toFixed(1) : "0.0"}%
+                              </span>
+                              <WinrateBadge score={trade.confidence} tp="tp3" />
+                            </div>
                           </td>
                           {/* R:R */}
                           <td className="px-3 py-3">
@@ -1090,10 +1359,10 @@ export default function Trades() {
                           {/* 24h */}
                           <td className="px-3 py-3">
                             <span className={`text-sm font-bold ${trade.change24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                              {trade.change24h >= 0 ? "+" : ""}{trade.change24h.toFixed(2)}%
+                              {trade.change24h >= 0 ? "+" : ""}{(trade.change24h ?? 0).toFixed(2)}%
                             </span>
                           </td>
-                          {/* Confidence */}
+                          {/* Score Technique */}
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-2">
                               <div className="h-1.5 w-12 bg-white/[0.06] rounded-full overflow-hidden">
@@ -1210,6 +1479,27 @@ export default function Trades() {
                                 </div>
                               </div>
 
+                              {/* Winrate Estimates Detail */}
+                              <div className="mt-3 bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">📈 Estimation Winrate (Score Tech. {trade.confidence}%)</p>
+                                <div className="flex items-center gap-3 flex-wrap text-[10px]">
+                                  {trade.tp0 !== null && (
+                                    <span className="px-2 py-1 rounded bg-amber-500/10 border border-amber-400/20 text-amber-400 font-mono">
+                                      TP0: WR ~{getWinrateEstimate(trade.confidence, "tp0")}%
+                                    </span>
+                                  )}
+                                  <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 font-mono">
+                                    TP1: WR ~{getWinrateEstimate(trade.confidence, "tp1")}%
+                                  </span>
+                                  <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-400 font-mono">
+                                    TP2: WR ~{getWinrateEstimate(trade.confidence, "tp2")}%
+                                  </span>
+                                  <span className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 font-mono">
+                                    TP3: WR ~{getWinrateEstimate(trade.confidence, "tp3")}%
+                                  </span>
+                                </div>
+                              </div>
+
                               {/* Visual Key Levels Bar */}
                               <div className="mt-3 bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
                                 <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">📊 Niveaux Clés</p>
@@ -1260,7 +1550,8 @@ export default function Trades() {
           <p className="text-xs text-amber-300/80 text-center">
             ⚠️ <strong>Avertissement :</strong> Ces suggestions sont générées automatiquement à partir des données de marché CoinGecko (prix, volumes, sparkline 7j, high/low 24h, ATH)
             et des chandeliers Binance 4h (RSI 14, supports/résistances court terme). Les niveaux S/R sont calculés algorithmiquement sur deux timeframes et les TP sont alignés avec ces niveaux.
-            Le TP0 "Quick Profit" vise un objectif atteignable en quelques heures (~1-3%).
+            Le TP0 "Quick Profit" vise un objectif atteignable en quelques heures (~1-3%). Le "Score Technique" reflète la qualité technique du setup, pas la probabilité de succès.
+            Les winrates estimés sont basés sur des moyennes historiques indicatives.
             Elles ne constituent pas des conseils financiers. Faites toujours votre propre analyse avant de trader.
           </p>
         </div>

@@ -332,13 +332,70 @@ app.get('/api/coingecko/{*path}', async (req, res) => {
   }
 });
 
-// ─── Binance Klines API proxy (with symbol validation) ───
-const INVALID_BINANCE_SYMBOLS = new Set(); // Cache of known-bad symbols
+// ─── Binance Klines API proxy (with symbol validation + Bybit fallback) ───
+const INVALID_BINANCE_SYMBOLS = new Set(); // Cache of known-bad symbols on Binance
+const BYBIT_FALLBACK_SYMBOLS = new Set(); // Cache of symbols that need Bybit
 const STABLECOIN_BASES = new Set([
   'USDT', 'USDC', 'BUSD', 'TUSD', 'DAI', 'FDUSD', 'USDP', 'USDD', 'GUSD',
   'FRAX', 'LUSD', 'SUSD', 'EURS', 'EURT', 'USDJ', 'UST', 'AUSD', 'PYUSD',
   'CRVUSD', 'EURC', 'USDE', 'EUR', 'GBP', 'AUD',
 ]);
+
+// ─── Bybit interval mapping (Binance → Bybit) ───
+function binanceToBybitInterval(interval) {
+  const map = { '1m': '1', '3m': '3', '5m': '5', '15m': '15', '30m': '30', '1h': '60', '2h': '120', '4h': '240', '6h': '360', '12h': '720', '1d': 'D', '1w': 'W', '1M': 'M' };
+  return map[interval] || '60';
+}
+
+// ─── Convert Bybit klines to Binance klines format ───
+function bybitKlinesToBinanceFormat(bybitList) {
+  // Bybit returns: [[timestamp, open, high, low, close, volume, turnover], ...]
+  // Bybit returns newest first, so reverse
+  const reversed = [...bybitList].reverse();
+  return reversed.map(k => [
+    parseInt(k[0]),        // 0: Open time (timestamp ms)
+    k[1],                  // 1: Open
+    k[2],                  // 2: High
+    k[3],                  // 3: Low
+    k[4],                  // 4: Close
+    k[5],                  // 5: Volume
+    parseInt(k[0]) + 60000, // 6: Close time (approx)
+    k[6] || '0',           // 7: Quote asset volume (turnover)
+    '0',                   // 8: Number of trades
+    '0',                   // 9: Taker buy base
+    '0',                   // 10: Taker buy quote
+    '0',                   // 11: Ignore
+  ]);
+}
+
+// ─── Fetch klines from Bybit as fallback ───
+async function fetchBybitKlines(symbol, interval, limit) {
+  const bybitInterval = binanceToBybitInterval(interval);
+  const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${bybitInterval}&limit=${limit}`;
+  const resp = await fetch(url, {
+    method: 'GET',
+    headers: { 'Accept': 'application/json', 'User-Agent': 'CryptoIA/1.0' },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!resp.ok) return null;
+  const json = await resp.json();
+  if (json.retCode !== 0 || !json.result?.list?.length) return null;
+  return json.result.list;
+}
+
+// ─── Fetch ticker price from Bybit as fallback ───
+async function fetchBybitPrice(symbol) {
+  const url = `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`;
+  const resp = await fetch(url, {
+    method: 'GET',
+    headers: { 'Accept': 'application/json' },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!resp.ok) return null;
+  const json = await resp.json();
+  if (json.retCode !== 0 || !json.result?.list?.length) return null;
+  return parseFloat(json.result.list[0].lastPrice);
+}
 
 app.get('/api/binance/klines', async (req, res) => {
   const { symbol, interval, limit } = req.query;
@@ -354,12 +411,29 @@ app.get('/api/binance/klines', async (req, res) => {
     return res.status(400).json({ error: 'Invalid or stablecoin symbol', symbol });
   }
 
-  // Check cached invalid symbols
-  if (INVALID_BINANCE_SYMBOLS.has(symbol)) {
-    return res.status(400).json({ error: 'Known invalid Binance symbol', symbol });
+  const effectiveInterval = interval || '1h';
+  const effectiveLimit = limit || '168';
+
+  // If we know this symbol needs Bybit, go directly to Bybit
+  if (BYBIT_FALLBACK_SYMBOLS.has(symbol)) {
+    try {
+      const bybitList = await fetchBybitKlines(symbol, effectiveInterval, effectiveLimit);
+      if (bybitList) {
+        const binanceFormat = bybitKlinesToBinanceFormat(bybitList);
+        return res.status(200).set('Content-Type', 'application/json').json(binanceFormat);
+      }
+    } catch (err) {
+      console.error(`[Bybit] Klines fallback error for ${symbol}:`, err.message);
+    }
+    return res.status(400).json({ error: 'Symbol not available on Binance or Bybit', symbol });
   }
 
-  const targetUrl = `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval || '1h'}&limit=${limit || '168'}`;
+  // Check cached invalid symbols (not on Binance AND not on Bybit)
+  if (INVALID_BINANCE_SYMBOLS.has(symbol)) {
+    return res.status(400).json({ error: 'Known invalid symbol', symbol });
+  }
+
+  const targetUrl = `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${effectiveInterval}&limit=${effectiveLimit}`;
 
   try {
     const upstreamRes = await fetch(targetUrl, {
@@ -368,18 +442,39 @@ app.get('/api/binance/klines', async (req, res) => {
       signal: AbortSignal.timeout(15000),
     });
 
-    const data = await upstreamRes.text();
-
-    // Cache 400 responses to avoid repeated requests
-    if (upstreamRes.status === 400) {
+    // If Binance returns 400 (invalid symbol), try Bybit as fallback
+    if (upstreamRes.status === 400 || upstreamRes.status === 451) {
+      console.log(`[Binance] ${symbol} returned ${upstreamRes.status}, trying Bybit fallback...`);
+      try {
+        const bybitList = await fetchBybitKlines(symbol, effectiveInterval, effectiveLimit);
+        if (bybitList) {
+          BYBIT_FALLBACK_SYMBOLS.add(symbol); // Cache for future requests
+          console.log(`[Bybit] ✅ ${symbol} found on Bybit (${bybitList.length} klines)`);
+          const binanceFormat = bybitKlinesToBinanceFormat(bybitList);
+          return res.status(200).set('Content-Type', 'application/json').json(binanceFormat);
+        }
+      } catch (bybitErr) {
+        console.error(`[Bybit] Fallback error for ${symbol}:`, bybitErr.message);
+      }
+      // Neither Binance nor Bybit has this symbol
       INVALID_BINANCE_SYMBOLS.add(symbol);
+      return res.status(400).json({ error: 'Symbol not available on Binance or Bybit', symbol });
     }
 
+    const data = await upstreamRes.text();
     res.status(upstreamRes.status)
       .set('Content-Type', 'application/json')
       .send(data);
   } catch (err) {
     console.error('Binance proxy error:', err);
+    // On network error, also try Bybit
+    try {
+      const bybitList = await fetchBybitKlines(symbol, effectiveInterval, effectiveLimit);
+      if (bybitList) {
+        const binanceFormat = bybitKlinesToBinanceFormat(bybitList);
+        return res.status(200).set('Content-Type', 'application/json').json(binanceFormat);
+      }
+    } catch (_e) { /* ignore */ }
     res.status(502).json({ error: 'Binance proxy failed', message: err?.message });
   }
 });
@@ -1389,14 +1484,54 @@ function calcMACD(closes, fast = 12, slow = 26, signal = 9) {
   return { macd: macdLine, signal: signalLine, histogram };
 }
 
-// ─── Fetch Binance klines for a symbol ───
+// ─── Fetch Binance klines for a symbol (with Bybit fallback) ───
 async function fetchBinanceKlines(symbol, interval, limit = 100) {
+  // If known Bybit symbol, go directly to Bybit
+  if (BYBIT_FALLBACK_SYMBOLS.has(symbol)) {
+    try {
+      const bybitList = await fetchBybitKlines(symbol, interval, String(limit));
+      if (bybitList) {
+        const reversed = [...bybitList].reverse();
+        return reversed.map(k => ({
+          open: parseFloat(k[1]),
+          high: parseFloat(k[2]),
+          low: parseFloat(k[3]),
+          close: parseFloat(k[4]),
+          volume: parseFloat(k[5]),
+          time: parseInt(k[0]),
+        }));
+      }
+    } catch (err) {
+      console.error(`[ScalpAlert] Bybit klines error for ${symbol} ${interval}:`, err.message);
+    }
+    return [];
+  }
+
   try {
     const resp = await fetch(
       `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
       { signal: AbortSignal.timeout(10000) }
     );
-    if (!resp.ok) return [];
+    if (!resp.ok) {
+      // Try Bybit fallback
+      try {
+        const bybitList = await fetchBybitKlines(symbol, interval, String(limit));
+        if (bybitList) {
+          BYBIT_FALLBACK_SYMBOLS.add(symbol);
+          console.log(`[ScalpAlert] ${symbol} found on Bybit (fallback)`);
+          const reversed = [...bybitList].reverse();
+          return reversed.map(k => ({
+            open: parseFloat(k[1]),
+            high: parseFloat(k[2]),
+            low: parseFloat(k[3]),
+            close: parseFloat(k[4]),
+            volume: parseFloat(k[5]),
+            time: parseInt(k[0]),
+          }));
+        }
+      } catch (_e) { /* ignore */ }
+      return [];
+    }
     const data = await resp.json();
     return data.map(k => ({
       open: parseFloat(k[1]),
@@ -2909,19 +3044,36 @@ async function resolveActiveTradeCalls() {
   // Unique symbols
   const symbols = [...new Set(activeCalls.map(c => c.symbol))];
 
-  // Fetch prices from Binance
+  // Fetch prices from Binance (with Bybit fallback)
   const prices = {};
   for (const sym of symbols) {
     try {
+      // If known Bybit symbol, go directly to Bybit
+      if (BYBIT_FALLBACK_SYMBOLS.has(sym)) {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; continue; }
+      }
       const resp = await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${sym}`, {
         signal: AbortSignal.timeout(8000),
       });
       if (resp.ok) {
         const data = await resp.json();
         prices[sym] = parseFloat(data.price);
+      } else {
+        // Binance failed, try Bybit
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) {
+          prices[sym] = bybitPrice;
+          BYBIT_FALLBACK_SYMBOLS.add(sym);
+        }
       }
     } catch (err) {
       console.warn(`[TradeCall] Failed to fetch price for ${sym}:`, err.message);
+      // Try Bybit on network error
+      try {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; }
+      } catch (_e) { /* skip */ }
     }
   }
 
@@ -3296,9 +3448,25 @@ async function resolveActiveScalpCalls() {
   const prices = {};
   for (const sym of symbols) {
     try {
+      // If known Bybit symbol, go directly to Bybit
+      if (BYBIT_FALLBACK_SYMBOLS.has(sym)) {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; continue; }
+      }
       const resp = await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${sym}`, { signal: AbortSignal.timeout(8000) });
       if (resp.ok) { const data = await resp.json(); prices[sym] = parseFloat(data.price); }
-    } catch (_e) { /* skip */ }
+      else {
+        // Binance failed, try Bybit
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; BYBIT_FALLBACK_SYMBOLS.add(sym); }
+      }
+    } catch (_e) {
+      // Try Bybit on network error
+      try {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; }
+      } catch (__e) { /* skip */ }
+    }
   }
 
   const now = new Date();

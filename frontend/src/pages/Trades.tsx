@@ -89,7 +89,7 @@ async function fetchBinance4hKlines(symbolUpper: string): Promise<BinanceKline[]
 
   try {
     const res = await fetch(
-      `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=4h&limit=50`,
+      `/api/binance/klines?symbol=${pair}&interval=4h&limit=50`,
       { signal: AbortSignal.timeout(6000) }
     );
     if (!res.ok) return [];
@@ -501,7 +501,7 @@ async function fetchBinance4hKlinesWithVolume(symbolUpper: string): Promise<Bina
   const pair = `${mapped}USDT`;
   try {
     const res = await fetch(
-      `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=4h&limit=50`,
+      `/api/binance/klines?symbol=${pair}&interval=4h&limit=50`,
       { signal: AbortSignal.timeout(6000) }
     );
     if (!res.ok) return [];

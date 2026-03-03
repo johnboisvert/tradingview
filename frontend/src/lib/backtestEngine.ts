@@ -47,7 +47,7 @@ export async function fetchBinanceKlines(
   interval: string,
   limit: number = 500
 ): Promise<Candle[]> {
-  const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const url = `/api/binance/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Binance API error: ${res.status}`);
   const data = await res.json();

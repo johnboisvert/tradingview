@@ -119,7 +119,7 @@ export default function TechnicalAnalysis() {
     setLoading(true);
     try {
       const res = await fetch(
-        `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=200`
+        `/api/binance/klines?symbol=${symbol}&interval=${interval}&limit=200`
       );
       if (!res.ok) throw new Error("API error");
       const klines = await res.json();

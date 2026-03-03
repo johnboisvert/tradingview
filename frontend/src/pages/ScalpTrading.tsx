@@ -139,6 +139,7 @@ function mergeSetups(clientSetups: ScalpSetup[], serverSetups: ScalpSetup[]): Sc
 /* ─── Formatters ─── */
 
 function formatUsd(v: number): string {
+  if (v == null || isNaN(v)) return "$0.00";
   if (Math.abs(v) >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
   if (Math.abs(v) >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
   if (Math.abs(v) >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
@@ -146,6 +147,7 @@ function formatUsd(v: number): string {
 }
 
 function formatPrice(p: number): string {
+  if (p == null || isNaN(p)) return "0.00";
   if (p >= 1000) return p.toLocaleString("en-US", { maximumFractionDigits: 2 });
   if (p >= 1) return p.toFixed(2);
   if (p >= 0.01) return p.toFixed(4);
@@ -265,7 +267,7 @@ async function fetchKlines(symbolUpper: string, interval: string, limit: number)
   // Skip if we already know this symbol is invalid
   if (!base || base.length < 2 || _badBinanceSymbols.has(pair)) return [];
   try {
-    const res = await fetch(`/api/binance/klines?symbol=${pair}&interval=${interval}&limit=${limit}`, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(`/api/binance/klines?symbol=${pair}&interval=${interval}&limit=${limit}`, { signal: AbortSignal.timeout(5000) });
     if (!res.ok) {
       // Mark as bad so we don't retry
       if (res.status === 400) _badBinanceSymbols.add(pair);
@@ -810,6 +812,16 @@ export default function ScalpTrading() {
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  /* Catch stray unhandled promise rejections so they don't bubble to ErrorBoundary */
+  useEffect(() => {
+    const handler = (e: PromiseRejectionEvent) => {
+      e.preventDefault();
+      console.warn("Unhandled rejection caught in ScalpTrading:", e.reason);
+    };
+    window.addEventListener("unhandledrejection", handler);
+    return () => window.removeEventListener("unhandledrejection", handler);
+  }, []);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setFetchError(null);
@@ -880,11 +892,14 @@ export default function ScalpTrading() {
         setFetchError("Aucun signal n'a pu être généré. Les données de marché sont temporairement indisponibles.");
       }
 
-      // Register high-confidence calls (≥90%)
-      registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 90)).catch(() => {});
+      // Register high-confidence calls (≥90%) — decoupled from main flow
+      setTimeout(() => {
+        registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 90)).catch(() => {});
+      }, 100);
     } catch (err) {
       console.error("Scalp fetch error:", err);
       setFetchError("Une erreur est survenue lors de l'analyse. Veuillez réessayer.");
+      setTrades([]);
     } finally {
       setLoading(false);
     }
@@ -1119,7 +1134,7 @@ export default function ScalpTrading() {
                                 <span className="font-mono text-xs text-red-400 font-semibold">${formatPrice(trade.stopLoss)}</span>
                               </div>
                               <span className="text-[9px] text-red-400/60">
-                                {trade.side === "LONG" ? "-" : "+"}{Math.abs((trade.stopLoss - trade.entry) / trade.entry * 100).toFixed(2)}%
+                                {trade.side === "LONG" ? "-" : "+"}{trade.entry ? Math.abs((trade.stopLoss - trade.entry) / trade.entry * 100).toFixed(2) : "0.00"}%
                               </span>
                             </td>
                             {/* TP1 */}
@@ -1159,14 +1174,14 @@ export default function ScalpTrading() {
                             </td>
                             {/* Stochastic */}
                             <td className="px-3 py-3">
-                              {trade.stoch_k !== null ? (
+                              {trade.stoch_k != null && !isNaN(trade.stoch_k) ? (
                                 <div className="flex flex-col">
                                   <span className={`text-xs font-bold ${
                                     trade.stoch_k < 20 ? "text-emerald-400" : trade.stoch_k > 80 ? "text-red-400" : "text-gray-300"
                                   }`}>
                                     K: {trade.stoch_k.toFixed(1)}
                                   </span>
-                                  {trade.stoch_d !== null && (
+                                  {trade.stoch_d != null && !isNaN(trade.stoch_d) && (
                                     <span className="text-[10px] text-gray-500">D: {trade.stoch_d.toFixed(1)}</span>
                                   )}
                                   <span className={`text-[9px] mt-0.5 ${
@@ -1351,15 +1366,15 @@ export default function ScalpTrading() {
                                         <div className="flex items-center justify-between">
                                           <span className="text-xs text-gray-400">Stoch K (9,3,1)</span>
                                           <span className={`text-xs font-bold ${
-                                            trade.stoch_k !== null && trade.stoch_k < 20 ? "text-emerald-400" : trade.stoch_k !== null && trade.stoch_k > 80 ? "text-red-400" : "text-gray-300"
+                                            trade.stoch_k != null && !isNaN(trade.stoch_k) && trade.stoch_k < 20 ? "text-emerald-400" : trade.stoch_k != null && !isNaN(trade.stoch_k) && trade.stoch_k > 80 ? "text-red-400" : "text-gray-300"
                                           }`}>
-                                            {trade.stoch_k !== null ? trade.stoch_k.toFixed(1) : "N/A"}
+                                            {trade.stoch_k != null && !isNaN(trade.stoch_k) ? trade.stoch_k.toFixed(1) : "N/A"}
                                           </span>
                                         </div>
                                         <div className="flex items-center justify-between mt-1">
                                           <span className="text-xs text-gray-400">Stoch D</span>
                                           <span className="text-xs font-mono text-gray-300">
-                                            {trade.stoch_d !== null ? trade.stoch_d.toFixed(1) : "N/A"}
+                                            {trade.stoch_d != null && !isNaN(trade.stoch_d) ? trade.stoch_d.toFixed(1) : "N/A"}
                                           </span>
                                         </div>
                                       </div>
@@ -1370,8 +1385,8 @@ export default function ScalpTrading() {
                                         </div>
                                         <div className="flex items-center justify-between mt-1">
                                           <span className="text-xs text-gray-400">Variation 24h</span>
-                                          <span className={`text-xs font-bold ${trade.change24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                                            {trade.change24h >= 0 ? "+" : ""}{trade.change24h.toFixed(2)}%
+                                          <span className={`text-xs font-bold ${(trade.change24h ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                                            {(trade.change24h ?? 0) >= 0 ? "+" : ""}{(trade.change24h != null && !isNaN(trade.change24h)) ? trade.change24h.toFixed(2) : "0.00"}%
                                           </span>
                                         </div>
                                       </div>

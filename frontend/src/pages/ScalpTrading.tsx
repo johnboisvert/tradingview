@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback, Fragment } from "react";
+import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import {
-  TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3,
+  TrendingUp, TrendingDown, RefreshCw, Filter,
   Shield, Target, ChevronDown, ChevronUp, Zap, Trophy,
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -113,9 +113,9 @@ function serverCallToSetup(call: ServerScalpCall): ScalpSetup {
   };
 }
 
-async function fetchServerScalpCalls(): Promise<ScalpSetup[]> {
+async function fetchServerScalpCalls(signal?: AbortSignal): Promise<ScalpSetup[]> {
   try {
-    const res = await fetch("/api/v1/scalp-calls?status=active&limit=50", { signal: AbortSignal.timeout(8000) });
+    const res = await fetch("/api/v1/scalp-calls?status=active&limit=50", { signal: signal ?? AbortSignal.timeout(8000) });
     if (!res.ok) return [];
     const data: ServerScalpCall[] = await res.json();
     if (!Array.isArray(data)) return [];
@@ -261,13 +261,13 @@ function cgSymbolToBinancePair(cgSymbol: string): string {
 // Cache of known-bad Binance symbols to avoid repeated 400 errors
 const _badBinanceSymbols = new Set<string>();
 
-async function fetchKlines(symbolUpper: string, interval: string, limit: number): Promise<KlineWithVol[]> {
+async function fetchKlines(symbolUpper: string, interval: string, limit: number, signal?: AbortSignal): Promise<KlineWithVol[]> {
   const base = symbolUpper.replace(/USDT$/, "");
   const pair = `${base}USDT`;
   // Skip if we already know this symbol is invalid
   if (!base || base.length < 2 || _badBinanceSymbols.has(pair)) return [];
   try {
-    const res = await fetch(`/api/binance/klines?symbol=${pair}&interval=${interval}&limit=${limit}`, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`/api/binance/klines?symbol=${pair}&interval=${interval}&limit=${limit}`, { signal: signal ?? AbortSignal.timeout(5000) });
     if (!res.ok) {
       // Mark as bad so we don't retry
       if (res.status === 400) _badBinanceSymbols.add(pair);
@@ -408,7 +408,7 @@ function calculateM5SR(klines: KlineWithVol[], currentPrice: number): { supports
    GENERATE SCALP SETUPS — "Suivi de Flux" Strategy
    ═══════════════════════════════════════════════════════════════ */
 
-async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
+async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<ScalpSetup[]> {
   const triggerTime = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const setups: ScalpSetup[] = [];
 
@@ -441,8 +441,8 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
     await Promise.all(batch.flatMap(c => {
       const sym = ((c.symbol || "") as string).toUpperCase();
       return [
-        fetchKlines(sym, "1h", 100).then(d => h1Map.set(sym, d)),
-        fetchKlines(sym, "5m", 100).then(d => m5Map.set(sym, d)),
+        fetchKlines(sym, "1h", 100, signal).then(d => h1Map.set(sym, d)),
+        fetchKlines(sym, "5m", 100, signal).then(d => m5Map.set(sym, d)),
       ];
     }));
     if (i + BATCH < validSorted.length) await new Promise(r => setTimeout(r, 300));
@@ -812,6 +812,10 @@ export default function ScalpTrading() {
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // Refs for safe async cleanup
+  const mountedRef = useRef(true);
+  const abortRef = useRef<AbortController | null>(null);
+
   /* Catch stray unhandled promise rejections so they don't bubble to ErrorBoundary */
   useEffect(() => {
     const handler = (e: PromiseRejectionEvent) => {
@@ -823,6 +827,13 @@ export default function ScalpTrading() {
   }, []);
 
   const fetchData = useCallback(async () => {
+    // Abort any previous in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const { signal } = controller;
+
+    if (!mountedRef.current) return;
     setLoading(true);
     setFetchError(null);
     setDataWarning(null);
@@ -832,25 +843,26 @@ export default function ScalpTrading() {
 
       // Attempt CoinGecko fetch with retry on 429
       for (let page = 1; page <= 2; page++) {
+        if (signal.aborted) return;
         let fetched = false;
         for (let attempt = 0; attempt < 2 && !fetched; attempt++) {
           try {
             const res = await fetch(
               `/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${page}&sparkline=true&price_change_percentage=24h`,
-              { signal: AbortSignal.timeout(15000) }
+              { signal }
             );
             if (res.ok) {
               const data = await res.json();
               if (Array.isArray(data)) { allCoins.push(...data); fetched = true; }
             } else if (res.status === 429 && attempt === 0) {
-              // Rate limited — wait 2s and retry once
               console.warn(`CoinGecko page ${page} rate limited (429), retrying in 2s...`);
               await new Promise(r => setTimeout(r, 2000));
             } else {
               console.warn(`CoinGecko page ${page} returned ${res.status}`);
-              break; // Don't retry on other errors
+              break;
             }
-          } catch (e) {
+          } catch (e: any) {
+            if (e?.name === "AbortError" || signal.aborted) return;
             console.warn(`CoinGecko page ${page} attempt ${attempt + 1} failed:`, e);
             if (attempt === 0) {
               await new Promise(r => setTimeout(r, 2000));
@@ -860,6 +872,8 @@ export default function ScalpTrading() {
         if (page < 2 && allCoins.length > 0) await new Promise(r => setTimeout(r, 500));
       }
 
+      if (signal.aborted || !mountedRef.current) return;
+
       // If CoinGecko failed entirely, use fallback symbols
       if (allCoins.length === 0) {
         console.warn("CoinGecko unavailable — using fallback symbol list for Binance-only analysis");
@@ -868,47 +882,68 @@ export default function ScalpTrading() {
       }
 
       // Quick Binance check
-      const testK = await fetchKlines("BTC", "1h", 5);
+      const testK = await fetchKlines("BTC", "1h", 5, signal);
+      if (signal.aborted || !mountedRef.current) return;
+
       if (testK.length === 0) {
         if (usedFallback) {
-          // Both CoinGecko and Binance failed — show error
-          setFetchError("Impossible de récupérer les données de marché. Vérifiez votre connexion et réessayez.");
-          setLoading(false);
+          if (mountedRef.current) {
+            setFetchError("Impossible de récupérer les données de marché. Vérifiez votre connexion et réessayez.");
+            setLoading(false);
+          }
           return;
         }
-        setDataWarning("Les données Binance ne sont pas disponibles. Les alertes Telegram côté serveur continuent de fonctionner.");
+        if (mountedRef.current) {
+          setDataWarning("Les données Binance ne sont pas disponibles. Les alertes Telegram côté serveur continuent de fonctionner.");
+        }
       }
 
-      const clientSetups = await generateScalpSetups(allCoins);
-      const serverSetups = await fetchServerScalpCalls();
-      const merged = mergeSetups(clientSetups, serverSetups);
-      setTrades(merged);
-      setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
+      const clientSetups = await generateScalpSetups(allCoins, signal);
+      if (signal.aborted || !mountedRef.current) return;
 
-      // Set appropriate warning/error based on results
-      if (usedFallback && merged.length > 0) {
-        setDataWarning("⚠️ Données CoinGecko indisponibles — Analyse basée sur les données Binance uniquement");
-      } else if (usedFallback && merged.length === 0) {
-        setFetchError("Aucun signal n'a pu être généré. Les données de marché sont temporairement indisponibles.");
+      const serverSetups = await fetchServerScalpCalls(signal);
+      if (signal.aborted || !mountedRef.current) return;
+
+      const merged = mergeSetups(clientSetups, serverSetups);
+
+      if (mountedRef.current) {
+        setTrades(merged);
+        setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
+
+        if (usedFallback && merged.length > 0) {
+          setDataWarning("⚠️ Données CoinGecko indisponibles — Analyse basée sur les données Binance uniquement");
+        } else if (usedFallback && merged.length === 0) {
+          setFetchError("Aucun signal n'a pu être généré. Les données de marché sont temporairement indisponibles.");
+        }
       }
 
       // Register high-confidence calls (≥90%) — decoupled from main flow
       setTimeout(() => {
         registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 90)).catch(() => {});
       }, 100);
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.name === "AbortError" || signal.aborted) return;
       console.error("Scalp fetch error:", err);
-      setFetchError("Une erreur est survenue lors de l'analyse. Veuillez réessayer.");
-      setTrades([]);
+      if (mountedRef.current) {
+        setFetchError("Une erreur est survenue lors de l'analyse. Veuillez réessayer.");
+        setTrades([]);
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     fetchData();
     const interval = setInterval(fetchData, 3 * 60 * 1000);
-    return () => clearInterval(interval);
+    return () => {
+      mountedRef.current = false;
+      abortRef.current?.abort();
+      clearInterval(interval);
+    };
   }, [fetchData]);
 
   const filtered = trades.filter(t => {

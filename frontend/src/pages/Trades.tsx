@@ -42,6 +42,9 @@ interface TradeSetup {
   resistances: SRLevel[];
   rsi1h: number | null;
   hasConvergence: boolean;
+  ema8_1h: number | null;
+  ema21_1h: number | null;
+  ema50_1h: number | null;
 }
 
 /* ─── Signal Tracking Types ─── */
@@ -175,31 +178,31 @@ function computePerformanceStats(signals: TrackedSignal[]): PerformanceStats {
   };
 }
 
-/* ─── Winrate Estimates ─── */
+/* ─── Winrate Estimates (v2 — updated) ─── */
 
 function getWinrateEstimate(score: number, tp: "tp0" | "tp1" | "tp2" | "tp3"): number {
   if (score >= 90) {
-    if (tp === "tp0") return 75;
-    if (tp === "tp1") return 60;
-    if (tp === "tp2") return 40;
-    return 25;
+    if (tp === "tp0") return 78;
+    if (tp === "tp1") return 65;
+    if (tp === "tp2") return 48;
+    return 30;
   }
   if (score >= 80) {
-    if (tp === "tp0") return 65;
-    if (tp === "tp1") return 50;
-    if (tp === "tp2") return 30;
-    return 18;
+    if (tp === "tp0") return 70;
+    if (tp === "tp1") return 55;
+    if (tp === "tp2") return 38;
+    return 22;
   }
   if (score >= 70) {
-    if (tp === "tp0") return 55;
-    if (tp === "tp1") return 40;
-    if (tp === "tp2") return 22;
-    return 12;
+    if (tp === "tp0") return 60;
+    if (tp === "tp1") return 45;
+    if (tp === "tp2") return 28;
+    return 15;
   }
-  if (tp === "tp0") return 45;
-  if (tp === "tp1") return 30;
-  if (tp === "tp2") return 15;
-  return 8;
+  if (tp === "tp0") return 50;
+  if (tp === "tp1") return 35;
+  if (tp === "tp2") return 20;
+  return 10;
 }
 
 function WinrateBadge({ score, tp }: { score: number; tp: "tp0" | "tp1" | "tp2" | "tp3" }) {
@@ -241,6 +244,22 @@ interface BinanceKline {
 const BINANCE_SYMBOL_MAP: Record<string, string> = {
   IOTA: "IOTA",
 };
+
+/* ─── EMA Calculation ─── */
+
+function calcEMA(closes: number[], period: number): number[] {
+  if (closes.length < period) return [];
+  const k = 2 / (period + 1);
+  const result: number[] = [];
+  let ema = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = 0; i < period - 1; i++) result.push(NaN);
+  result.push(ema);
+  for (let i = period; i < closes.length; i++) {
+    ema = closes[i] * k + ema * (1 - k);
+    result.push(ema);
+  }
+  return result;
+}
 
 /* ─── RSI 14 Calculation ─── */
 
@@ -476,7 +495,7 @@ function markConvergence(
   return { merged, convergenceCount };
 }
 
-/* ─── Align TP levels with S/R ─── */
+/* ─── Align TP levels with S/R — v2: closer TPs (1:1, 1.5:1, 2:1) ─── */
 
 function alignTPWithSR(
   side: "LONG" | "SHORT",
@@ -490,9 +509,9 @@ function alignTPWithSR(
 
   if (side === "LONG") {
     sl = entry - slDistance;
-    tp1 = entry + slDistance * 1.5;
-    tp2 = entry + slDistance * 2.5;
-    tp3 = entry + slDistance * 3;
+    tp1 = entry + slDistance * 1.0;   // 1:1 ratio
+    tp2 = entry + slDistance * 1.5;   // 1.5:1 ratio
+    tp3 = entry + slDistance * 2.0;   // 2:1 ratio
 
     const nearestSupport = supports.find(s => s.price < entry * 0.995);
     if (nearestSupport && nearestSupport.price > sl * 0.97 && nearestSupport.price < entry * 0.99) {
@@ -511,9 +530,9 @@ function alignTPWithSR(
     }
   } else {
     sl = entry + slDistance;
-    tp1 = entry - slDistance * 1.5;
-    tp2 = entry - slDistance * 2.5;
-    tp3 = entry - slDistance * 3;
+    tp1 = entry - slDistance * 1.0;   // 1:1 ratio
+    tp2 = entry - slDistance * 1.5;   // 1.5:1 ratio
+    tp3 = entry - slDistance * 2.0;   // 2:1 ratio
 
     const nearestResistance = resistances.find(r => r.price > entry * 1.005);
     if (nearestResistance && nearestResistance.price < sl * 1.03 && nearestResistance.price > entry * 1.01) {
@@ -659,6 +678,7 @@ interface PreSetup {
   resistances7j: SRLevel[];
 }
 
+/* Change #5: Stricter entry conditions */
 function detectPreSetups(coins: any[]): PreSetup[] {
   const preSetups: PreSetup[] = [];
 
@@ -676,20 +696,23 @@ function detectPreSetups(coins: any[]): PreSetup[] {
     let confidence = 0;
     let reason: string;
 
-    if (change24h > 2 && volMcapRatio > 0.08) {
+    // LONG momentum — require stronger momentum AND not too extended
+    if (change24h > 3 && change24h < 15 && volMcapRatio > 0.10) {
       side = "LONG";
       confidence = 50;
       if (change24h > 5) confidence += 15; else confidence += 8;
       if (volMcapRatio > 0.2) confidence += 15; else if (volMcapRatio > 0.1) confidence += 10;
       if (change24h > 8) confidence += 10;
       reason = `Momentum haussier (+${change24h.toFixed(1)}%) avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
-    } else if (change24h < -8) {
+    // LONG oversold — tighter range for mean reversion
+    } else if (change24h < -6 && change24h > -20 && volMcapRatio > 0.08) {
       side = "LONG";
       confidence = 45;
       if (change24h < -15) confidence += 15; else if (change24h < -10) confidence += 10;
       if (volMcapRatio > 0.15) confidence += 10;
       reason = `Survente potentielle (${change24h.toFixed(1)}%) — rebond technique possible`;
-    } else if (change24h < -3 && volMcapRatio > 0.1) {
+    // SHORT — require stronger bearish signal
+    } else if (change24h < -4 && change24h > -25 && volMcapRatio > 0.12) {
       side = "SHORT";
       confidence = 50;
       if (change24h < -5) confidence += 10; else confidence += 5;
@@ -758,16 +781,65 @@ async function enrichWithBinance1h(preSetups: PreSetup[]): Promise<TradeSetup[]>
     const closes = klines.map(k => k.close);
     const rsi1h = calculateRSI(closes);
 
-    // RSI confidence adjustment
+    // ── Change #1: EMA Trend Filter on 1h ──
+    const ema8Arr = calcEMA(closes, 8);
+    const ema21Arr = calcEMA(closes, 21);
+    const ema50Arr = calcEMA(closes, 50);
+    const lastEma8 = ema8Arr.length > 0 ? ema8Arr[ema8Arr.length - 1] : NaN;
+    const lastEma21 = ema21Arr.length > 0 ? ema21Arr[ema21Arr.length - 1] : NaN;
+    const lastEma50 = ema50Arr.length > 0 ? ema50Arr[ema50Arr.length - 1] : NaN;
+
+    // EMA TREND FILTER — strict: skip if trend doesn't confirm
+    if (!isNaN(lastEma8) && !isNaN(lastEma21)) {
+      if (side === "LONG" && (price < lastEma21 || lastEma8 < lastEma21)) {
+        continue; // Don't LONG against the 1h trend
+      }
+      if (side === "SHORT" && (price > lastEma21 || lastEma8 > lastEma21)) {
+        continue; // Don't SHORT against the 1h trend
+      }
+
+      // EMA trend confirmed — add reason
+      if (side === "LONG") {
+        reason += ` | EMA 1h: tendance haussière (8 > 21)`;
+      } else {
+        reason += ` | EMA 1h: tendance baissière (8 < 21)`;
+      }
+
+      // Bonus if EMA21 > EMA50 (strong trend alignment)
+      if (!isNaN(lastEma50)) {
+        if (side === "LONG" && lastEma21 > lastEma50) {
+          confidence += 10;
+          reason += ` | EMA 1h: tendance forte confirmée (8 > 21 > 50)`;
+        } else if (side === "SHORT" && lastEma21 < lastEma50) {
+          confidence += 10;
+          reason += ` | EMA 1h: tendance forte confirmée (8 < 21 < 50)`;
+        }
+      }
+    }
+
+    // ── Change #4: Strict RSI Filter ──
     if (rsi1h !== null) {
-      if (side === "LONG" && rsi1h < 30) {
-        confidence += 10;
-        reason += ` | RSI 1h survendu (${rsi1h})`;
-      } else if (side === "SHORT" && rsi1h > 70) {
-        confidence += 10;
-        reason += ` | RSI 1h suracheté (${rsi1h})`;
-      } else if (rsi1h >= 40 && rsi1h <= 60) {
-        confidence -= 5;
+      // Don't enter against RSI extremes
+      if (side === "LONG" && rsi1h > 70) {
+        continue; // Don't LONG when already overbought
+      }
+      if (side === "SHORT" && rsi1h < 30) {
+        continue; // Don't SHORT when already oversold
+      }
+
+      // Better RSI bonus — only when RSI confirms direction
+      if (side === "LONG" && rsi1h >= 40 && rsi1h <= 55) {
+        confidence += 8;
+        reason += ` | RSI 1h en zone favorable LONG (${rsi1h})`;
+      } else if (side === "SHORT" && rsi1h >= 45 && rsi1h <= 60) {
+        confidence += 8;
+        reason += ` | RSI 1h en zone favorable SHORT (${rsi1h})`;
+      } else if (side === "LONG" && rsi1h < 35) {
+        confidence += 12;
+        reason += ` | RSI 1h survendu (${rsi1h}) — rebond probable`;
+      } else if (side === "SHORT" && rsi1h > 65) {
+        confidence += 12;
+        reason += ` | RSI 1h suracheté (${rsi1h}) — correction probable`;
       }
     }
 
@@ -826,8 +898,9 @@ async function enrichWithBinance1h(preSetups: PreSetup[]): Promise<TradeSetup[]>
       reason += ` | 🔗 Convergence S/R (${totalConvergence} niveau${totalConvergence > 1 ? "x" : ""})`;
     }
 
-    const volatility = Math.max(Math.abs(c.price_change_percentage_24h || 0) * 0.5, 1.5);
-    const slPercent = volatility * 1.2;
+    // ── Change #2: Wider SL — minimum 3%, max 6% ──
+    const rawVolatility = Math.abs(c.price_change_percentage_24h || 0);
+    const slPercent = Math.max(3.0, Math.min(rawVolatility * 0.6, 6.0));
     const { tp1, tp2, tp3, sl } = alignTPWithSR(side, price, slPercent, mergedSupports, mergedResistances);
 
     if (side === "LONG") {
@@ -842,7 +915,8 @@ async function enrichWithBinance1h(preSetups: PreSetup[]): Promise<TradeSetup[]>
       }
     }
 
-    if (Math.abs(sl - price) / price < 0.005) {
+    // SL too tight penalty — increased threshold
+    if (Math.abs(sl - price) / price < 0.025) {
       confidence -= 10;
     }
 
@@ -878,6 +952,9 @@ async function enrichWithBinance1h(preSetups: PreSetup[]): Promise<TradeSetup[]>
       resistances: mergedResistances.filter(r => r.type === "resistance").slice(0, 5),
       rsi1h,
       hasConvergence,
+      ema8_1h: isNaN(lastEma8) ? null : lastEma8,
+      ema21_1h: isNaN(lastEma21) ? null : lastEma21,
+      ema50_1h: isNaN(lastEma50) ? null : lastEma50,
     });
   }
 
@@ -967,6 +1044,14 @@ export default function Trades() {
   }, []);
 
   useEffect(() => {
+    // Change #7: Clear old tracking data from previous algorithm version
+    const ALGO_VERSION_KEY = "dtrading_algo_version";
+    const CURRENT_VERSION = "v2_ema_trend";
+    if (localStorage.getItem(ALGO_VERSION_KEY) !== CURRENT_VERSION) {
+      localStorage.removeItem(SIGNAL_STORAGE_KEY);
+      localStorage.setItem(ALGO_VERSION_KEY, CURRENT_VERSION);
+    }
+
     const signals = loadTrackedSignals();
     setPerfStats(computePerformanceStats(signals));
 
@@ -1000,12 +1085,12 @@ export default function Trades() {
         <PageHeader
           icon={<BarChart3 className="w-6 h-6" />}
           title="Suggestions de Swing Trading"
-          subtitle="Setups de trading avec chandeliers Binance 1h, RSI, TP0 Quick Profit, convergence S/R et gestion du risque avancée."
+          subtitle="Setups v2 avec filtre EMA 1h, RSI strict, SL élargi (3-6%), TP rapprochés (1:1 à 2:1) et convergence S/R."
           accentColor="blue"
           steps={[
-            { n: "1", title: "Analyse S/R Multi-TF", desc: "Supports/résistances calculés sur sparkline 7j (CoinGecko) ET chandeliers 1h (Binance) pour une précision accrue." },
-            { n: "2", title: "TP0 Quick Profit", desc: "Objectif rapide (~1-3%) basé sur la résistance/support 1h la plus proche. Atteignable en 30min à 2h." },
-            { n: "3", title: "RSI 1h + Convergence", desc: "RSI 14 sur 1h ajuste le score. Les niveaux S/R convergents (1h ≈ 7j) reçoivent un bonus de fiabilité." },
+            { n: "1", title: "Filtre EMA 1h (8/21/50)", desc: "Seuls les setups alignés avec la tendance EMA 1h sont retenus. LONG: prix > EMA21 & EMA8 > EMA21. SHORT: inverse." },
+            { n: "2", title: "RSI Strict + SL 3-6%", desc: "RSI filtre les entrées contre-tendance. SL minimum 3% pour éviter les faux stops. TP rapprochés (1:1, 1.5:1, 2:1)." },
+            { n: "3", title: "Convergence S/R + TP0", desc: "Niveaux S/R convergents (1h ≈ 7j) reçoivent un bonus. TP0 Quick Profit basé sur la résistance/support 1h la plus proche." },
           ]}
         />
 
@@ -1016,9 +1101,9 @@ export default function Trades() {
           <div className="relative z-10 h-full flex items-center justify-between px-8">
             <div>
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                📊 Suggestions de Swing Trading
+                📊 Suggestions de Swing Trading v2
               </h1>
-              <p className="text-sm text-gray-400 mt-1">Setups multi-timeframe (7j + 1h) avec TP0, RSI et convergence S/R</p>
+              <p className="text-sm text-gray-400 mt-1">Filtre EMA 1h + RSI strict + SL élargi + TP rapprochés</p>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-500">MAJ: {lastUpdate}</span>
@@ -1043,15 +1128,15 @@ export default function Trades() {
             <div className="flex flex-wrap gap-4 text-xs">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 font-semibold">📊 Analyse</span>
-                <span className="text-gray-400">Klines 1h (168 bougies ≈ 7 jours) + S/R 7 jours</span>
+                <span className="text-gray-400">Klines 1h (168 bougies ≈ 7 jours) + EMA 8/21/50 + RSI 14</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-semibold">⚡ Entrée</span>
-                <span className="text-gray-400">Signal immédiat au prix actuel</span>
+                <span className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-semibold">⚡ Filtre</span>
+                <span className="text-gray-400">EMA trend + RSI strict + SL min 3%</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold">⏱️ Durée</span>
-                <span className="text-gray-400">1h à 24h selon le TP visé (TP0: 30min-2h • TP1: 2-6h • TP2: 6-12h • TP3: 12-24h)</span>
+                <span className="px-2 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold">🎯 TP</span>
+                <span className="text-gray-400">TP0: Quick Profit • TP1: 1:1 • TP2: 1.5:1 • TP3: 2:1</span>
               </div>
             </div>
           </div>
@@ -1062,7 +1147,7 @@ export default function Trades() {
           <div className="mb-6 bg-gradient-to-r from-amber-500/[0.04] to-orange-500/[0.04] border border-amber-500/15 rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <Trophy className="w-5 h-5 text-amber-400" />
-              <h3 className="text-sm font-bold text-amber-400">Suivi des Signaux (localStorage)</h3>
+              <h3 className="text-sm font-bold text-amber-400">Suivi des Signaux v2 (localStorage)</h3>
               <span className="text-[10px] text-gray-500 ml-2">{perfStats.total} signaux suivis • {perfStats.pending} en cours</span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
@@ -1154,8 +1239,8 @@ export default function Trades() {
         <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3">
             <BarChart3 className="w-5 h-5 text-blue-400" />
-            <h2 className="text-lg font-bold">Setups Détectés</h2>
-            <span className="text-xs text-gray-500 ml-2">Cliquez sur une ligne pour voir les détails (S/R, RSI, convergence)</span>
+            <h2 className="text-lg font-bold">Setups Détectés v2</h2>
+            <span className="text-xs text-gray-500 ml-2">Filtrés par EMA 1h + RSI strict • Cliquez pour les détails</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1300px]">
@@ -1170,11 +1255,11 @@ export default function Trades() {
                 {loading ? (
                   <tr><td colSpan={13} className="text-center py-12">
                     <RefreshCw className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">Chargement des données CoinGecko + Binance 1h...</p>
+                    <p className="text-sm text-gray-500">Analyse EMA + RSI + S/R en cours...</p>
                   </td></tr>
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={13} className="text-center py-12 text-gray-500">
-                    {showAllConfidence ? "Aucun setup détecté avec ces filtres" : "Aucun setup avec score technique ≥ 90%. Cliquez \"Tous les setups\" pour voir les autres."}
+                    {showAllConfidence ? "Aucun setup détecté avec ces filtres (le filtre EMA 1h est strict)" : "Aucun setup avec score technique ≥ 90%. Cliquez \"Tous les setups\" pour voir les autres."}
                   </td></tr>
                 ) : (
                   filtered.slice(0, 30).map((trade) => {
@@ -1378,8 +1463,9 @@ export default function Trades() {
                                   )}
                                 </div>
 
+                                {/* RSI + EMA Section */}
                                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
-                                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold mb-2">📉 RSI 14 (1h)</p>
+                                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold mb-2">📉 RSI 14 + EMA (1h)</p>
                                   {trade.rsi1h !== null ? (
                                     <div>
                                       <div className="flex items-center gap-3 mb-2">
@@ -1399,8 +1485,41 @@ export default function Trades() {
                                       </div>
                                     </div>
                                   ) : (
-                                    <p className="text-xs text-gray-500">Données Binance non disponibles pour ce symbole</p>
+                                    <p className="text-xs text-gray-500">RSI non disponible</p>
                                   )}
+
+                                  {/* EMA Info */}
+                                  <div className="mt-3 border-t border-white/[0.06] pt-2">
+                                    <p className="text-[10px] uppercase tracking-wider text-cyan-400 font-semibold mb-1">📈 EMA 1h</p>
+                                    <div className="space-y-1">
+                                      {trade.ema8_1h !== null && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] text-gray-400">EMA 8</span>
+                                          <span className="text-[10px] font-mono text-cyan-400">${formatPrice(trade.ema8_1h)}</span>
+                                        </div>
+                                      )}
+                                      {trade.ema21_1h !== null && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] text-gray-400">EMA 21</span>
+                                          <span className="text-[10px] font-mono text-orange-400">${formatPrice(trade.ema21_1h)}</span>
+                                        </div>
+                                      )}
+                                      {trade.ema50_1h !== null && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] text-gray-400">EMA 50</span>
+                                          <span className="text-[10px] font-mono text-purple-400">${formatPrice(trade.ema50_1h)}</span>
+                                        </div>
+                                      )}
+                                      {trade.ema8_1h !== null && trade.ema21_1h !== null && (
+                                        <div className="flex items-center justify-between mt-1">
+                                          <span className="text-[10px] text-gray-400">Tendance</span>
+                                          <span className={`text-[10px] font-bold ${trade.ema8_1h > trade.ema21_1h ? "text-emerald-400" : "text-red-400"}`}>
+                                            {trade.ema8_1h > trade.ema21_1h ? "↑ Haussière" : "↓ Baissière"}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
 
@@ -1414,13 +1533,13 @@ export default function Trades() {
                                     </span>
                                   )}
                                   <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 font-mono">
-                                    TP1: WR ~{getWinrateEstimate(trade.confidence, "tp1")}%
+                                    TP1 (1:1): WR ~{getWinrateEstimate(trade.confidence, "tp1")}%
                                   </span>
                                   <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-400 font-mono">
-                                    TP2: WR ~{getWinrateEstimate(trade.confidence, "tp2")}%
+                                    TP2 (1.5:1): WR ~{getWinrateEstimate(trade.confidence, "tp2")}%
                                   </span>
                                   <span className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 font-mono">
-                                    TP3: WR ~{getWinrateEstimate(trade.confidence, "tp3")}%
+                                    TP3 (2:1): WR ~{getWinrateEstimate(trade.confidence, "tp3")}%
                                   </span>
                                 </div>
                               </div>
@@ -1446,15 +1565,15 @@ export default function Trades() {
                                     </>
                                   )}
                                   <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 font-mono">
-                                    TP1: ${formatPrice(trade.tp1)}
+                                    TP1: ${formatPrice(trade.tp1)} (1:1)
                                   </span>
                                   <span className="text-gray-600">→</span>
                                   <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-400 font-mono">
-                                    TP2: ${formatPrice(trade.tp2)}
+                                    TP2: ${formatPrice(trade.tp2)} (1.5:1)
                                   </span>
                                   <span className="text-gray-600">→</span>
                                   <span className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 font-mono font-bold">
-                                    TP3: ${formatPrice(trade.tp3)}
+                                    TP3: ${formatPrice(trade.tp3)} (2:1)
                                   </span>
                                 </div>
                               </div>
@@ -1473,11 +1592,9 @@ export default function Trades() {
         {/* Disclaimer */}
         <div className="mt-6 bg-amber-500/[0.06] border border-amber-500/15 rounded-2xl p-4">
           <p className="text-xs text-amber-300/80 text-center">
-            ⚠️ <strong>Avertissement :</strong> Ces suggestions sont générées automatiquement à partir des données de marché CoinGecko (prix, volumes, sparkline 7j, high/low 24h, ATH)
-            et des chandeliers Binance 1h (RSI 14, supports/résistances court terme). Les niveaux S/R sont calculés algorithmiquement sur deux timeframes et les TP sont alignés avec ces niveaux.
-            Le TP0 "Quick Profit" vise un objectif atteignable en 30min à 2h (~1-3%). Le "Score Technique" reflète la qualité technique du setup, pas la probabilité de succès.
-            Les winrates estimés sont basés sur des moyennes historiques indicatives.
-            Elles ne constituent pas des conseils financiers. Faites toujours votre propre analyse avant de trader.
+            ⚠️ <strong>Avertissement :</strong> Algorithme v2 — Filtre EMA 1h (8/21/50) + RSI strict + SL élargi (3-6%) + TP rapprochés (1:1 à 2:1).
+            Seuls les setups alignés avec la tendance 1h sont retenus. Les winrates estimés sont basés sur des moyennes historiques indicatives.
+            Ces suggestions ne constituent pas des conseils financiers. Faites toujours votre propre analyse avant de trader.
           </p>
         </div>
         <Footer />

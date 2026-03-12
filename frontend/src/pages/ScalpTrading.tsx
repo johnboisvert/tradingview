@@ -1155,7 +1155,7 @@ export default function ScalpTrading() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [filter, setFilter] = useState<"all" | "LONG" | "SHORT">("all");
-  const [minConfidence, setMinConfidence] = useState(30);
+  const [minConfidence, setMinConfidence] = useState(85);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -1458,10 +1458,10 @@ export default function ScalpTrading() {
               >
                 <option value={30}>≥ 30%</option>
                 <option value={50}>≥ 50%</option>
-                <option value={60}>≥ 60%</option>
                 <option value={70}>≥ 70%</option>
-                <option value={80}>≥ 80%</option>
+                <option value={85}>≥ 85%</option>
                 <option value={90}>≥ 90%</option>
+                <option value={95}>≥ 95%</option>
               </select>
             </div>
 

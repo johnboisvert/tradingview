@@ -575,14 +575,14 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
     if (!c || !c.current_price || !c.market_cap) return false;
     const vol = c.total_volume || 0;
     const mcap = c.market_cap || 1;
-    return vol / mcap > 0.05 && mcap > 50_000_000;
+    return vol / mcap > 0.03 && mcap > 30_000_000;
   });
 
   const sorted = [...candidates].sort((a, b) => {
     const rA = (a.total_volume || 0) / (a.market_cap || 1);
     const rB = (b.total_volume || 0) / (b.market_cap || 1);
     return rB - rA;
-  }).slice(0, 30);
+  }).slice(0, 50);
 
   /* Fetch H1 and M5 klines in batches — only for coins with valid Binance pairs */
   const BATCH = 10;
@@ -686,7 +686,7 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
     // Price proximity to EMA (rebond)
     const distToEma8 = Math.abs(price - m5Ema8) / price;
     const distToEma20 = Math.abs(price - m5Ema20) / price;
-    const priceNearEma = distToEma8 < 0.003 || distToEma20 < 0.003;
+    const priceNearEma = distToEma8 < 0.01 || distToEma20 < 0.01;
     const priceBetweenEmas = (price >= Math.min(m5Ema8, m5Ema20) && price <= Math.max(m5Ema8, m5Ema20));
 
     // Stochastic conditions
@@ -697,15 +697,16 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
     const stochRising = stochK > stochKPrev;
     const stochFalling = stochK < stochKPrev;
 
-    /* ─── LONG Signal ─── */
+    /* ─── LONG Signal (relaxed stochastic) ─── */
     if (h1Bias === "bullish") {
-      const cond1 = true; // H1 bias already checked
       const cond2 = ema8AboveEma20 || emaCrossUp;
       const cond3 = priceNearEma || priceBetweenEmas;
       const cond4 = price > m5Vwap;
-      const cond5 = stochOversold && (stochCrossUp || stochRising);
+      const cond5_strong = stochOversold && (stochCrossUp || stochRising);
+      const cond5_moderate = stochK < 50 && stochRising; // K below 50 and rising = momentum building
+      const cond5_any = stochK < 70; // Not overbought = acceptable for LONG
 
-      if (cond1 && cond2 && cond3 && cond4 && cond5) {
+      if (cond2 && cond4 && (cond5_strong || cond5_moderate || (cond3 && cond5_any))) {
         side = "LONG";
         confidence = 50;
         reasons.push(`H1: Prix > EMA20 ($${h1Ema20.toFixed(2)}) & VWAP ($${h1Vwap.toFixed(2)}) ✓`);
@@ -719,7 +720,7 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
         }
 
         // Rebond EMA
-        if (distToEma20 < 0.001) {
+        if (distToEma20 < 0.002) {
           confidence += 8;
           reasons.push(`M5: Rebond parfait EMA20 ($${m5Ema20.toFixed(2)})`);
         } else if (priceNearEma) {
@@ -727,19 +728,16 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
           reasons.push("M5: Prix proche EMA");
         }
 
-        // Stochastic
-        if (stochK < 10) {
-          confidence += 10;
-          reasons.push(`Stoch: Survente extrême (K:${stochK.toFixed(1)})`);
-        } else {
-          confidence += 5;
-          reasons.push(`Stoch: Survente (K:${stochK.toFixed(1)})`);
-        }
-        if (stochCrossUp) {
+        // Stochastic scoring based on signal strength
+        if (cond5_strong) {
+          confidence += 15;
+          reasons.push(`Stoch: Survente (K:${stochK.toFixed(1)}) + croisement = signal fort`);
+        } else if (cond5_moderate) {
           confidence += 8;
-          reasons.push(`Stoch: Croisement K↑D (${stochK.toFixed(1)}→${stochD.toFixed(1)})`);
+          reasons.push(`Stoch: K montant sous 50 (K:${stochK.toFixed(1)}) = momentum`);
         } else {
-          reasons.push(`Stoch: K remonte (${stochKPrev.toFixed(1)}→${stochK.toFixed(1)})`);
+          confidence += 3;
+          reasons.push(`Stoch: K acceptable (${stochK.toFixed(1)})`);
         }
 
         // VWAP M5 alignment
@@ -768,15 +766,16 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
       }
     }
 
-    /* ─── SHORT Signal ─── */
+    /* ─── SHORT Signal (relaxed stochastic) ─── */
     if (h1Bias === "bearish" && !side) {
-      const cond1 = true;
       const cond2 = ema8BelowEma20 || emaCrossDown;
       const cond3 = priceNearEma || priceBetweenEmas;
       const cond4 = price < m5Vwap;
-      const cond5 = stochOverbought && (stochCrossDown || stochFalling);
+      const cond5_strong = stochOverbought && (stochCrossDown || stochFalling);
+      const cond5_moderate = stochK > 50 && stochFalling;
+      const cond5_any = stochK > 30;
 
-      if (cond1 && cond2 && cond3 && cond4 && cond5) {
+      if (cond2 && cond4 && (cond5_strong || cond5_moderate || (cond3 && cond5_any))) {
         side = "SHORT";
         confidence = 50;
         reasons.push(`H1: Prix < EMA20 ($${h1Ema20.toFixed(2)}) & VWAP ($${h1Vwap.toFixed(2)}) ✓`);
@@ -788,7 +787,7 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
           reasons.push("M5: EMA8 < EMA20 ✓");
         }
 
-        if (distToEma20 < 0.001) {
+        if (distToEma20 < 0.002) {
           confidence += 8;
           reasons.push(`M5: Rejet parfait EMA20 ($${m5Ema20.toFixed(2)})`);
         } else if (priceNearEma) {
@@ -796,18 +795,16 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
           reasons.push("M5: Prix proche EMA");
         }
 
-        if (stochK > 90) {
-          confidence += 10;
-          reasons.push(`Stoch: Surachat extrême (K:${stochK.toFixed(1)})`);
-        } else {
-          confidence += 5;
-          reasons.push(`Stoch: Surachat (K:${stochK.toFixed(1)})`);
-        }
-        if (stochCrossDown) {
+        // Stochastic scoring based on signal strength
+        if (cond5_strong) {
+          confidence += 15;
+          reasons.push(`Stoch: Surachat (K:${stochK.toFixed(1)}) + croisement = signal fort`);
+        } else if (cond5_moderate) {
           confidence += 8;
-          reasons.push(`Stoch: Croisement K↓D (${stochK.toFixed(1)}→${stochD.toFixed(1)})`);
+          reasons.push(`Stoch: K descendant au-dessus 50 (K:${stochK.toFixed(1)}) = pression`);
         } else {
-          reasons.push(`Stoch: K redescend (${stochKPrev.toFixed(1)}→${stochK.toFixed(1)})`);
+          confidence += 3;
+          reasons.push(`Stoch: K acceptable (${stochK.toFixed(1)})`);
         }
 
         const vwapDist = (m5Vwap - price) / price;
@@ -829,6 +826,58 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
         if (!isNaN(h1Ema8) && h1EmaSpread > 0.005) {
           confidence += 5;
           reasons.push("H1: Tendance forte (EMA8/20 écartées)");
+        }
+      }
+    }
+
+    /* ─── LONG Momentum Signal (alternative — no stochastic requirement) ─── */
+    if (h1Bias === "bullish" && !side) {
+      const m5StrongTrend = m5Ema8 > m5Ema20 && price > m5Ema8;
+      const aboveVwap = price > m5Vwap;
+      const stochNotExtreme = stochK < 85; // Not extremely overbought
+
+      if (m5StrongTrend && aboveVwap && stochNotExtreme) {
+        side = "LONG";
+        confidence = 45;
+        reasons.push(`H1: Biais haussier ✓`);
+        reasons.push(`M5: Momentum fort (prix > EMA8 > EMA20)`);
+        reasons.push(`VWAP M5: au-dessus ✓`);
+        reasons.push(`Stoch: ${stochK.toFixed(1)} (non suracheté)`);
+
+        if (emaCrossUp) { confidence += 10; reasons.push("Croisement EMA récent ↑"); }
+        if (stochRising) { confidence += 3; }
+
+        const recentVol = m5K.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+        const avgVol = m5K.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+        if (avgVol > 0 && recentVol > avgVol * 1.3) {
+          confidence += 5;
+          reasons.push("Volume M5 supérieur à la moyenne");
+        }
+      }
+    }
+
+    /* ─── SHORT Momentum Signal (alternative — no stochastic requirement) ─── */
+    if (h1Bias === "bearish" && !side) {
+      const m5StrongTrend = m5Ema8 < m5Ema20 && price < m5Ema8;
+      const belowVwap = price < m5Vwap;
+      const stochNotExtreme = stochK > 15;
+
+      if (m5StrongTrend && belowVwap && stochNotExtreme) {
+        side = "SHORT";
+        confidence = 45;
+        reasons.push(`H1: Biais baissier ✓`);
+        reasons.push(`M5: Momentum fort (prix < EMA8 < EMA20)`);
+        reasons.push(`VWAP M5: en-dessous ✓`);
+        reasons.push(`Stoch: ${stochK.toFixed(1)} (non survendu)`);
+
+        if (emaCrossDown) { confidence += 10; reasons.push("Croisement EMA récent ↓"); }
+        if (stochFalling) { confidence += 3; }
+
+        const recentVol = m5K.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+        const avgVol = m5K.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+        if (avgVol > 0 && recentVol > avgVol * 1.3) {
+          confidence += 5;
+          reasons.push("Volume M5 supérieur à la moyenne");
         }
       }
     }
@@ -966,7 +1015,7 @@ export default function ScalpTrading() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [filter, setFilter] = useState<"all" | "LONG" | "SHORT">("all");
-  const [minConfidence, setMinConfidence] = useState(90);
+  const [minConfidence, setMinConfidence] = useState(70);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);

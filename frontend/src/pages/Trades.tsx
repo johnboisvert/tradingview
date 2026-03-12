@@ -1060,7 +1060,7 @@ async function enrichWithBinance1h(preSetups: PreSetup[]): Promise<TradeSetup[]>
 /* ─── Auto-register calls to backend ─── */
 
 async function registerCallsToBackend(setups: TradeSetup[]) {
-  const qualifiedSetups = setups.filter(s => s.confidence >= 85);
+  const qualifiedSetups = setups.filter(s => s.confidence >= 50);
   for (const setup of qualifiedSetups) {
     try {
       await fetch("/api/v1/trade-calls", {
@@ -1107,7 +1107,7 @@ export default function Trades() {
   const [filterSide, setFilterSide] = useState<"all" | "LONG" | "SHORT">("all");
   const [searchSymbol, setSearchSymbol] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [showAllConfidence, setShowAllConfidence] = useState(false);
+  const [showAllConfidence, setShowAllConfidence] = useState(true);
   const [perfStats, setPerfStats] = useState<PerformanceStats>({ total: 0, tp0Hits: 0, tp1Hits: 0, tp2Hits: 0, tp3Hits: 0, slHits: 0, pending: 0 });
 
   const fetchTrades = useCallback(async () => {
@@ -1156,7 +1156,7 @@ export default function Trades() {
     return () => clearInterval(interval);
   }, [fetchTrades]);
 
-  const confFiltered = showAllConfidence ? setups : setups.filter(t => t.confidence >= 85);
+  const confFiltered = showAllConfidence ? setups : setups.filter(t => t.confidence >= 50);
 
   const filtered = confFiltered.filter((t) => {
     if (filterSide !== "all" && t.side !== filterSide) return false;
@@ -1169,7 +1169,7 @@ export default function Trades() {
   const avgConfidence = setups.length > 0
     ? Math.round(setups.reduce((s, t) => s + t.confidence, 0) / setups.length)
     : 0;
-  const highConfCount = setups.filter((t) => t.confidence >= 85).length;
+  const highConfCount = setups.filter((t) => t.confidence >= 70).length;
   const convergenceCount = setups.filter((t) => t.hasConvergence).length;
 
   const resolvedTotal = perfStats.tp0Hits + perfStats.tp1Hits + perfStats.tp2Hits + perfStats.tp3Hits + perfStats.slHits;
@@ -1291,7 +1291,7 @@ export default function Trades() {
             { icon: "🟢", label: "LONG", value: String(longCount), change: "Haussiers" },
             { icon: "🔴", label: "SHORT", value: String(shortCount), change: "Baissiers" },
             { icon: "🎯", label: "Score Tech. Moy.", value: `${avgConfidence}%`, change: "Score moyen" },
-            { icon: "⭐", label: "Haut Score", value: String(highConfCount), change: "≥ 85%" },
+            { icon: "⭐", label: "Haut Score", value: String(highConfCount), change: "≥ 70%" },
             { icon: "🔗", label: "Convergence", value: String(convergenceCount), change: "S/R 1h ≈ 7j" },
           ].map((stat, i) => (
             <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-blue-500/30 hover:bg-white/[0.05] transition-all">
@@ -1325,7 +1325,7 @@ export default function Trades() {
             }`}
           >
             {showAllConfidence ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            {showAllConfidence ? "Tous les setups" : "Score Technique ≥ 85%"}
+            {showAllConfidence ? "Tous les setups" : "Score Technique ≥ 50%"}
           </button>
 
           <span className="text-xs text-gray-500 ml-auto">({filtered.length} résultats)</span>
@@ -1355,7 +1355,7 @@ export default function Trades() {
                   </td></tr>
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={13} className="text-center py-12 text-gray-500">
-                    {showAllConfidence ? "Aucun setup détecté — le filtrage v3 est très strict (EMA parfait + MACD + RSI)" : "Aucun setup avec score technique ≥ 85%. Cliquez \"Tous les setups\" pour voir les autres."}
+                    {showAllConfidence ? "Aucun setup détecté — le filtrage v3 est très strict (EMA parfait + MACD + RSI)" : "Aucun setup avec score technique ≥ 50%. Cliquez \"Tous les setups\" pour voir les autres."}
                   </td></tr>
                 ) : (
                   filtered.slice(0, 30).map((trade) => {

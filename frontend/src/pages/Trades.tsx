@@ -45,6 +45,9 @@ interface TradeSetup {
   ema8_1h: number | null;
   ema21_1h: number | null;
   ema50_1h: number | null;
+  macdHistogram: number | null;
+  macdBullishCross: boolean;
+  volumeSpikeRatio: number | null;
 }
 
 /* ─── Signal Tracking Types ─── */
@@ -151,7 +154,7 @@ function updateSignalsWithPrices(currentPrices: Map<string, number>) {
       if (price <= sig.tp3 && !sig.tp3Hit) { sig.tp3Hit = true; sig.resolved = true; changed = true; }
     }
 
-    // Auto-expire signals older than 24h (shorter for 1h timeframe)
+    // Auto-expire signals older than 24h
     if (Date.now() - sig.timestamp > 24 * 60 * 60 * 1000 && !sig.resolved) {
       sig.resolved = true;
       changed = true;
@@ -178,31 +181,31 @@ function computePerformanceStats(signals: TrackedSignal[]): PerformanceStats {
   };
 }
 
-/* ─── Winrate Estimates (v2 — updated) ─── */
+/* ─── Winrate Estimates (v3 — optimized for TP1) ─── */
 
 function getWinrateEstimate(score: number, tp: "tp0" | "tp1" | "tp2" | "tp3"): number {
   if (score >= 90) {
-    if (tp === "tp0") return 78;
-    if (tp === "tp1") return 65;
-    if (tp === "tp2") return 48;
-    return 30;
+    if (tp === "tp0") return 82;
+    if (tp === "tp1") return 72;
+    if (tp === "tp2") return 50;
+    return 32;
   }
   if (score >= 80) {
-    if (tp === "tp0") return 70;
-    if (tp === "tp1") return 55;
-    if (tp === "tp2") return 38;
-    return 22;
+    if (tp === "tp0") return 75;
+    if (tp === "tp1") return 63;
+    if (tp === "tp2") return 42;
+    return 25;
   }
   if (score >= 70) {
-    if (tp === "tp0") return 60;
-    if (tp === "tp1") return 45;
-    if (tp === "tp2") return 28;
-    return 15;
+    if (tp === "tp0") return 65;
+    if (tp === "tp1") return 52;
+    if (tp === "tp2") return 32;
+    return 18;
   }
-  if (tp === "tp0") return 50;
-  if (tp === "tp1") return 35;
-  if (tp === "tp2") return 20;
-  return 10;
+  if (tp === "tp0") return 55;
+  if (tp === "tp1") return 42;
+  if (tp === "tp2") return 22;
+  return 12;
 }
 
 function WinrateBadge({ score, tp }: { score: number; tp: "tp0" | "tp1" | "tp2" | "tp3" }) {
@@ -259,6 +262,70 @@ function calcEMA(closes: number[], period: number): number[] {
     result.push(ema);
   }
   return result;
+}
+
+/* ─── MACD Calculation ─── */
+
+interface MACDResult {
+  macdLine: number;
+  signalLine: number;
+  histogram: number;
+  bullishCross: boolean;
+  bearishCross: boolean;
+}
+
+function calculateMACD(closes: number[], fastPeriod = 12, slowPeriod = 26, signalPeriod = 9): MACDResult | null {
+  if (closes.length < slowPeriod + signalPeriod) return null;
+
+  const emaFast = calcEMA(closes, fastPeriod);
+  const emaSlow = calcEMA(closes, slowPeriod);
+
+  if (emaFast.length === 0 || emaSlow.length === 0) return null;
+
+  // Calculate MACD line = EMA fast - EMA slow
+  const macdValues: number[] = [];
+  for (let i = 0; i < closes.length; i++) {
+    if (i < slowPeriod - 1 || isNaN(emaFast[i]) || isNaN(emaSlow[i])) {
+      macdValues.push(NaN);
+    } else {
+      macdValues.push(emaFast[i] - emaSlow[i]);
+    }
+  }
+
+  // Calculate signal line = EMA of MACD line
+  const validMacd = macdValues.filter(v => !isNaN(v));
+  if (validMacd.length < signalPeriod) return null;
+
+  const signalEma = calcEMA(validMacd, signalPeriod);
+  if (signalEma.length === 0) return null;
+
+  const currentMacd = validMacd[validMacd.length - 1];
+  const prevMacd = validMacd[validMacd.length - 2];
+  const currentSignal = signalEma[signalEma.length - 1];
+  const prevSignal = signalEma.length >= 2 ? signalEma[signalEma.length - 2] : currentSignal;
+
+  const histogram = currentMacd - currentSignal;
+  const bullishCross = prevMacd <= prevSignal && currentMacd > currentSignal;
+  const bearishCross = prevMacd >= prevSignal && currentMacd < currentSignal;
+
+  return {
+    macdLine: currentMacd,
+    signalLine: currentSignal,
+    histogram,
+    bullishCross,
+    bearishCross,
+  };
+}
+
+/* ─── Volume Spike Detection ─── */
+
+function detectVolumeSpike(volumes: number[], lookback = 20): { isSpike: boolean; ratio: number } {
+  if (volumes.length < lookback + 1) return { isSpike: false, ratio: 1 };
+  const recentVols = volumes.slice(-lookback, -1);
+  const avgVol = recentVols.reduce((a, b) => a + b, 0) / recentVols.length;
+  const currentVol = volumes[volumes.length - 1];
+  const ratio = avgVol > 0 ? currentVol / avgVol : 1;
+  return { isSpike: ratio > 1.5, ratio };
 }
 
 /* ─── RSI 14 Calculation ─── */
@@ -495,7 +562,7 @@ function markConvergence(
   return { merged, convergenceCount };
 }
 
-/* ─── Align TP levels with S/R — v2: closer TPs (1:1, 1.5:1, 2:1) ─── */
+/* ─── Align TP levels with S/R — v3: TP1 at 0.7:1 for max winrate ─── */
 
 function alignTPWithSR(
   side: "LONG" | "SHORT",
@@ -509,9 +576,9 @@ function alignTPWithSR(
 
   if (side === "LONG") {
     sl = entry - slDistance;
-    tp1 = entry + slDistance * 1.0;   // 1:1 ratio
-    tp2 = entry + slDistance * 1.5;   // 1.5:1 ratio
-    tp3 = entry + slDistance * 2.0;   // 2:1 ratio
+    tp1 = entry + slDistance * 0.7;   // 0.7:1 ratio — HIGH winrate target
+    tp2 = entry + slDistance * 1.2;   // 1.2:1 ratio
+    tp3 = entry + slDistance * 1.8;   // 1.8:1 ratio
 
     const nearestSupport = supports.find(s => s.price < entry * 0.995);
     if (nearestSupport && nearestSupport.price > sl * 0.97 && nearestSupport.price < entry * 0.99) {
@@ -530,9 +597,9 @@ function alignTPWithSR(
     }
   } else {
     sl = entry + slDistance;
-    tp1 = entry - slDistance * 1.0;   // 1:1 ratio
-    tp2 = entry - slDistance * 1.5;   // 1.5:1 ratio
-    tp3 = entry - slDistance * 2.0;   // 2:1 ratio
+    tp1 = entry - slDistance * 0.7;   // 0.7:1 ratio — HIGH winrate target
+    tp2 = entry - slDistance * 1.2;   // 1.2:1 ratio
+    tp3 = entry - slDistance * 1.8;   // 1.8:1 ratio
 
     const nearestResistance = resistances.find(r => r.price > entry * 1.005);
     if (nearestResistance && nearestResistance.price < sl * 1.03 && nearestResistance.price > entry * 1.01) {
@@ -678,7 +745,6 @@ interface PreSetup {
   resistances7j: SRLevel[];
 }
 
-/* Change #5: Stricter entry conditions */
 function detectPreSetups(coins: any[]): PreSetup[] {
   const preSetups: PreSetup[] = [];
 
@@ -696,7 +762,6 @@ function detectPreSetups(coins: any[]): PreSetup[] {
     let confidence = 0;
     let reason: string;
 
-    // LONG momentum — require stronger momentum AND not too extended
     if (change24h > 3 && change24h < 15 && volMcapRatio > 0.10) {
       side = "LONG";
       confidence = 50;
@@ -704,14 +769,12 @@ function detectPreSetups(coins: any[]): PreSetup[] {
       if (volMcapRatio > 0.2) confidence += 15; else if (volMcapRatio > 0.1) confidence += 10;
       if (change24h > 8) confidence += 10;
       reason = `Momentum haussier (+${change24h.toFixed(1)}%) avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
-    // LONG oversold — tighter range for mean reversion
     } else if (change24h < -6 && change24h > -20 && volMcapRatio > 0.08) {
       side = "LONG";
       confidence = 45;
       if (change24h < -15) confidence += 15; else if (change24h < -10) confidence += 10;
       if (volMcapRatio > 0.15) confidence += 10;
       reason = `Survente potentielle (${change24h.toFixed(1)}%) — rebond technique possible`;
-    // SHORT — require stronger bearish signal
     } else if (change24h < -4 && change24h > -25 && volMcapRatio > 0.12) {
       side = "SHORT";
       confidence = 50;
@@ -781,7 +844,7 @@ async function enrichWithBinance1h(preSetups: PreSetup[]): Promise<TradeSetup[]>
     const closes = klines.map(k => k.close);
     const rsi1h = calculateRSI(closes);
 
-    // ── Change #1: EMA Trend Filter on 1h ──
+    // ── EMA Trend Filter — STRICT: require full alignment ──
     const ema8Arr = calcEMA(closes, 8);
     const ema21Arr = calcEMA(closes, 21);
     const ema50Arr = calcEMA(closes, 50);
@@ -789,45 +852,76 @@ async function enrichWithBinance1h(preSetups: PreSetup[]): Promise<TradeSetup[]>
     const lastEma21 = ema21Arr.length > 0 ? ema21Arr[ema21Arr.length - 1] : NaN;
     const lastEma50 = ema50Arr.length > 0 ? ema50Arr[ema50Arr.length - 1] : NaN;
 
-    // EMA TREND FILTER — strict: skip if trend doesn't confirm
-    if (!isNaN(lastEma8) && !isNaN(lastEma21)) {
+    if (!isNaN(lastEma8) && !isNaN(lastEma21) && !isNaN(lastEma50)) {
+      if (side === "LONG") {
+        // Require FULL alignment: price > EMA8 > EMA21 > EMA50
+        if (price < lastEma8 || lastEma8 < lastEma21 || lastEma21 < lastEma50) {
+          continue;
+        }
+        confidence += 10;
+        reason += ` | EMA 1h: alignement parfait (prix > 8 > 21 > 50)`;
+      } else {
+        // Require FULL alignment: price < EMA8 < EMA21 < EMA50
+        if (price > lastEma8 || lastEma8 > lastEma21 || lastEma21 > lastEma50) {
+          continue;
+        }
+        confidence += 10;
+        reason += ` | EMA 1h: alignement parfait (prix < 8 < 21 < 50)`;
+      }
+    } else if (!isNaN(lastEma8) && !isNaN(lastEma21)) {
+      // Fallback: at least EMA8/21 alignment
       if (side === "LONG" && (price < lastEma21 || lastEma8 < lastEma21)) {
-        continue; // Don't LONG against the 1h trend
+        continue;
       }
       if (side === "SHORT" && (price > lastEma21 || lastEma8 > lastEma21)) {
-        continue; // Don't SHORT against the 1h trend
+        continue;
       }
+      reason += ` | EMA 1h: tendance ${side === "LONG" ? "haussière" : "baissière"} (8 ${side === "LONG" ? ">" : "<"} 21)`;
+    }
 
-      // EMA trend confirmed — add reason
-      if (side === "LONG") {
-        reason += ` | EMA 1h: tendance haussière (8 > 21)`;
-      } else {
-        reason += ` | EMA 1h: tendance baissière (8 < 21)`;
+    // ── MACD Confirmation Filter ──
+    const macd = calculateMACD(closes);
+    if (macd !== null) {
+      if (side === "LONG" && macd.histogram < 0) {
+        continue; // MACD bearish — skip LONG
       }
-
-      // Bonus if EMA21 > EMA50 (strong trend alignment)
-      if (!isNaN(lastEma50)) {
-        if (side === "LONG" && lastEma21 > lastEma50) {
-          confidence += 10;
-          reason += ` | EMA 1h: tendance forte confirmée (8 > 21 > 50)`;
-        } else if (side === "SHORT" && lastEma21 < lastEma50) {
-          confidence += 10;
-          reason += ` | EMA 1h: tendance forte confirmée (8 < 21 < 50)`;
-        }
+      if (side === "SHORT" && macd.histogram > 0) {
+        continue; // MACD bullish — skip SHORT
+      }
+      // Bonus for fresh crossover
+      if (side === "LONG" && macd.bullishCross) {
+        confidence += 12;
+        reason += ` | MACD 1h: croisement haussier frais`;
+      } else if (side === "SHORT" && macd.bearishCross) {
+        confidence += 12;
+        reason += ` | MACD 1h: croisement baissier frais`;
+      } else if (side === "LONG" && macd.histogram > 0) {
+        confidence += 5;
+        reason += ` | MACD 1h: momentum haussier`;
+      } else if (side === "SHORT" && macd.histogram < 0) {
+        confidence += 5;
+        reason += ` | MACD 1h: momentum baissier`;
       }
     }
 
-    // ── Change #4: Strict RSI Filter ──
+    // ── Volume Spike Filter ──
+    const volSpike = detectVolumeSpike(klinesWithVol.map(k => k.volume));
+    if (volSpike.isSpike) {
+      confidence += 8;
+      reason += ` | Volume spike 1h (${volSpike.ratio.toFixed(1)}x moyenne)`;
+    } else if (volSpike.ratio < 0.7) {
+      confidence -= 5; // Low volume = less reliable signal
+    }
+
+    // ── Strict RSI Filter ──
     if (rsi1h !== null) {
-      // Don't enter against RSI extremes
       if (side === "LONG" && rsi1h > 70) {
-        continue; // Don't LONG when already overbought
+        continue;
       }
       if (side === "SHORT" && rsi1h < 30) {
-        continue; // Don't SHORT when already oversold
+        continue;
       }
 
-      // Better RSI bonus — only when RSI confirms direction
       if (side === "LONG" && rsi1h >= 40 && rsi1h <= 55) {
         confidence += 8;
         reason += ` | RSI 1h en zone favorable LONG (${rsi1h})`;
@@ -898,7 +992,7 @@ async function enrichWithBinance1h(preSetups: PreSetup[]): Promise<TradeSetup[]>
       reason += ` | 🔗 Convergence S/R (${totalConvergence} niveau${totalConvergence > 1 ? "x" : ""})`;
     }
 
-    // ── Change #2: Wider SL — minimum 3%, max 6% ──
+    // ── SL: minimum 3%, max 6% ──
     const rawVolatility = Math.abs(c.price_change_percentage_24h || 0);
     const slPercent = Math.max(3.0, Math.min(rawVolatility * 0.6, 6.0));
     const { tp1, tp2, tp3, sl } = alignTPWithSR(side, price, slPercent, mergedSupports, mergedResistances);
@@ -915,7 +1009,6 @@ async function enrichWithBinance1h(preSetups: PreSetup[]): Promise<TradeSetup[]>
       }
     }
 
-    // SL too tight penalty — increased threshold
     if (Math.abs(sl - price) / price < 0.025) {
       confidence -= 10;
     }
@@ -955,6 +1048,9 @@ async function enrichWithBinance1h(preSetups: PreSetup[]): Promise<TradeSetup[]>
       ema8_1h: isNaN(lastEma8) ? null : lastEma8,
       ema21_1h: isNaN(lastEma21) ? null : lastEma21,
       ema50_1h: isNaN(lastEma50) ? null : lastEma50,
+      macdHistogram: macd?.histogram ?? null,
+      macdBullishCross: macd?.bullishCross ?? false,
+      volumeSpikeRatio: volSpike.isSpike ? volSpike.ratio : null,
     });
   }
 
@@ -1044,9 +1140,9 @@ export default function Trades() {
   }, []);
 
   useEffect(() => {
-    // Change #7: Clear old tracking data from previous algorithm version
+    // Clear old tracking data from previous algorithm version
     const ALGO_VERSION_KEY = "dtrading_algo_version";
-    const CURRENT_VERSION = "v2_ema_trend";
+    const CURRENT_VERSION = "v3_macd_vol";
     if (localStorage.getItem(ALGO_VERSION_KEY) !== CURRENT_VERSION) {
       localStorage.removeItem(SIGNAL_STORAGE_KEY);
       localStorage.setItem(ALGO_VERSION_KEY, CURRENT_VERSION);
@@ -1084,13 +1180,13 @@ export default function Trades() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
         <PageHeader
           icon={<BarChart3 className="w-6 h-6" />}
-          title="Suggestions de Swing Trading"
-          subtitle="Setups v2 avec filtre EMA 1h, RSI strict, SL élargi (3-6%), TP rapprochés (1:1 à 2:1) et convergence S/R."
+          title="Suggestions de Swing Trading v3"
+          subtitle="EMA alignement parfait + MACD + Volume Spike + RSI strict — TP1 rapproché (0.7:1) pour winrate maximum"
           accentColor="blue"
           steps={[
-            { n: "1", title: "Filtre EMA 1h (8/21/50)", desc: "Seuls les setups alignés avec la tendance EMA 1h sont retenus. LONG: prix > EMA21 & EMA8 > EMA21. SHORT: inverse." },
-            { n: "2", title: "RSI Strict + SL 3-6%", desc: "RSI filtre les entrées contre-tendance. SL minimum 3% pour éviter les faux stops. TP rapprochés (1:1, 1.5:1, 2:1)." },
-            { n: "3", title: "Convergence S/R + TP0", desc: "Niveaux S/R convergents (1h ≈ 7j) reçoivent un bonus. TP0 Quick Profit basé sur la résistance/support 1h la plus proche." },
+            { n: "1", title: "EMA Parfait + MACD", desc: "LONG: prix > EMA8 > EMA21 > EMA50 + MACD haussier. SHORT: inverse. Filtrage ultra-strict." },
+            { n: "2", title: "Volume Spike + RSI", desc: "Bonus pour volume spike (>1.5x moyenne). RSI filtre les entrées contre-tendance. SL min 3%." },
+            { n: "3", title: "TP1 Rapproché (0.7:1)", desc: "TP1 à 0.7x le SL pour un winrate maximum. TP2: 1.2:1, TP3: 1.8:1. TP0 Quick Profit sur S/R 1h." },
           ]}
         />
 
@@ -1101,9 +1197,9 @@ export default function Trades() {
           <div className="relative z-10 h-full flex items-center justify-between px-8">
             <div>
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                📊 Suggestions de Swing Trading v2
+                📊 Swing Trading v3 — Max Winrate
               </h1>
-              <p className="text-sm text-gray-400 mt-1">Filtre EMA 1h + RSI strict + SL élargi + TP rapprochés</p>
+              <p className="text-sm text-gray-400 mt-1">EMA parfait + MACD + Volume Spike + TP1 rapproché (0.7:1)</p>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-500">MAJ: {lastUpdate}</span>
@@ -1127,16 +1223,16 @@ export default function Trades() {
             <Info className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
             <div className="flex flex-wrap gap-4 text-xs">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 font-semibold">📊 Analyse</span>
-                <span className="text-gray-400">Klines 1h (168 bougies ≈ 7 jours) + EMA 8/21/50 + RSI 14</span>
+                <span className="px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 font-semibold">📊 Filtres</span>
+                <span className="text-gray-400">EMA 8/21/50 alignées + MACD confirmé + RSI strict</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-semibold">⚡ Filtre</span>
-                <span className="text-gray-400">EMA trend + RSI strict + SL min 3%</span>
+                <span className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-semibold">⚡ Volume</span>
+                <span className="text-gray-400">Bonus pour volume spike (&gt;1.5x moyenne 1h)</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold">🎯 TP</span>
-                <span className="text-gray-400">TP0: Quick Profit • TP1: 1:1 • TP2: 1.5:1 • TP3: 2:1</span>
+                <span className="text-gray-400">TP0: Quick • TP1: 0.7:1 (max WR) • TP2: 1.2:1 • TP3: 1.8:1</span>
               </div>
             </div>
           </div>
@@ -1147,7 +1243,7 @@ export default function Trades() {
           <div className="mb-6 bg-gradient-to-r from-amber-500/[0.04] to-orange-500/[0.04] border border-amber-500/15 rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <Trophy className="w-5 h-5 text-amber-400" />
-              <h3 className="text-sm font-bold text-amber-400">Suivi des Signaux v2 (localStorage)</h3>
+              <h3 className="text-sm font-bold text-amber-400">Suivi des Signaux v3 (localStorage)</h3>
               <span className="text-[10px] text-gray-500 ml-2">{perfStats.total} signaux suivis • {perfStats.pending} en cours</span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
@@ -1239,8 +1335,8 @@ export default function Trades() {
         <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3">
             <BarChart3 className="w-5 h-5 text-blue-400" />
-            <h2 className="text-lg font-bold">Setups Détectés v2</h2>
-            <span className="text-xs text-gray-500 ml-2">Filtrés par EMA 1h + RSI strict • Cliquez pour les détails</span>
+            <h2 className="text-lg font-bold">Setups Détectés v3</h2>
+            <span className="text-xs text-gray-500 ml-2">EMA parfait + MACD + Volume • Cliquez pour les détails</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1300px]">
@@ -1255,11 +1351,11 @@ export default function Trades() {
                 {loading ? (
                   <tr><td colSpan={13} className="text-center py-12">
                     <RefreshCw className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">Analyse EMA + RSI + S/R en cours...</p>
+                    <p className="text-sm text-gray-500">Analyse EMA + MACD + RSI + Volume en cours...</p>
                   </td></tr>
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={13} className="text-center py-12 text-gray-500">
-                    {showAllConfidence ? "Aucun setup détecté avec ces filtres (le filtre EMA 1h est strict)" : "Aucun setup avec score technique ≥ 90%. Cliquez \"Tous les setups\" pour voir les autres."}
+                    {showAllConfidence ? "Aucun setup détecté — le filtrage v3 est très strict (EMA parfait + MACD + RSI)" : "Aucun setup avec score technique ≥ 90%. Cliquez \"Tous les setups\" pour voir les autres."}
                   </td></tr>
                 ) : (
                   filtered.slice(0, 30).map((trade) => {
@@ -1285,6 +1381,16 @@ export default function Trades() {
                                   {trade.hasConvergence && (
                                     <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20 font-semibold flex items-center gap-0.5">
                                       <Link2 className="w-2.5 h-2.5" />Conv
+                                    </span>
+                                  )}
+                                  {trade.macdBullishCross && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 font-semibold">
+                                      🔥 MACD
+                                    </span>
+                                  )}
+                                  {trade.volumeSpikeRatio !== null && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/20 font-semibold">
+                                      ⚡ Vol
                                     </span>
                                   )}
                                 </div>
@@ -1463,15 +1569,15 @@ export default function Trades() {
                                   )}
                                 </div>
 
-                                {/* RSI + EMA Section */}
+                                {/* RSI + EMA + MACD + Volume Section */}
                                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
-                                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold mb-2">📉 RSI 14 + EMA (1h)</p>
+                                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold mb-2">📉 Indicateurs 1h</p>
                                   {trade.rsi1h !== null ? (
                                     <div>
                                       <div className="flex items-center gap-3 mb-2">
-                                        <span className={`text-3xl font-black ${rsiBadge(trade.rsi1h).color}`}>{trade.rsi1h}</span>
+                                        <span className={`text-2xl font-black ${rsiBadge(trade.rsi1h).color}`}>{trade.rsi1h}</span>
                                         <span className={`text-[10px] px-2 py-1 rounded-full font-semibold ${rsiBadge(trade.rsi1h).bg} ${rsiBadge(trade.rsi1h).color}`}>
-                                          {trade.rsi1h < 30 ? "Survendu" : trade.rsi1h > 70 ? "Suracheté" : trade.rsi1h <= 60 && trade.rsi1h >= 40 ? "Neutre" : trade.rsi1h < 40 ? "Faible" : "Fort"}
+                                          RSI {trade.rsi1h < 30 ? "Survendu" : trade.rsi1h > 70 ? "Suracheté" : trade.rsi1h <= 60 && trade.rsi1h >= 40 ? "Neutre" : trade.rsi1h < 40 ? "Faible" : "Fort"}
                                         </span>
                                       </div>
                                       <div className="relative h-2 bg-gradient-to-r from-emerald-500 via-gray-500 to-red-500 rounded-full overflow-hidden">
@@ -1512,20 +1618,53 @@ export default function Trades() {
                                       )}
                                       {trade.ema8_1h !== null && trade.ema21_1h !== null && (
                                         <div className="flex items-center justify-between mt-1">
-                                          <span className="text-[10px] text-gray-400">Tendance</span>
+                                          <span className="text-[10px] text-gray-400">Alignement</span>
                                           <span className={`text-[10px] font-bold ${trade.ema8_1h > trade.ema21_1h ? "text-emerald-400" : "text-red-400"}`}>
-                                            {trade.ema8_1h > trade.ema21_1h ? "↑ Haussière" : "↓ Baissière"}
+                                            {trade.ema8_1h > trade.ema21_1h ? "✅ Parfait ↑" : "✅ Parfait ↓"}
                                           </span>
                                         </div>
                                       )}
                                     </div>
                                   </div>
+
+                                  {/* MACD Info */}
+                                  <div className="mt-2 border-t border-white/[0.06] pt-2">
+                                    <p className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold mb-1">📊 MACD</p>
+                                    {trade.macdHistogram !== null ? (
+                                      <div className="space-y-1">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] text-gray-400">Histogramme</span>
+                                          <span className={`text-[10px] font-mono font-bold ${trade.macdHistogram > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                                            {trade.macdHistogram > 0 ? "▲" : "▼"} {trade.macdHistogram.toFixed(4)}
+                                            {trade.macdBullishCross && " 🔥"}
+                                          </span>
+                                        </div>
+                                        {trade.macdBullishCross && (
+                                          <p className="text-[9px] text-emerald-400/80">Croisement haussier frais détecté</p>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <p className="text-[10px] text-gray-500">Non disponible</p>
+                                    )}
+                                  </div>
+
+                                  {/* Volume Spike Info */}
+                                  {trade.volumeSpikeRatio !== null && (
+                                    <div className="mt-2 border-t border-white/[0.06] pt-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[10px] text-gray-400">Volume Spike</span>
+                                        <span className="text-[10px] font-mono text-amber-400 font-bold">
+                                          ⚡ {trade.volumeSpikeRatio.toFixed(1)}x moyenne
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
 
                               {/* Winrate Estimates Detail */}
                               <div className="mt-3 bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
-                                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">📈 Estimation Winrate (Score Tech. {trade.confidence}%)</p>
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">📈 Estimation Winrate v3 (Score Tech. {trade.confidence}%)</p>
                                 <div className="flex items-center gap-3 flex-wrap text-[10px]">
                                   {trade.tp0 !== null && (
                                     <span className="px-2 py-1 rounded bg-amber-500/10 border border-amber-400/20 text-amber-400 font-mono">
@@ -1533,13 +1672,13 @@ export default function Trades() {
                                     </span>
                                   )}
                                   <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 font-mono">
-                                    TP1 (1:1): WR ~{getWinrateEstimate(trade.confidence, "tp1")}%
+                                    TP1 (0.7:1): WR ~{getWinrateEstimate(trade.confidence, "tp1")}%
                                   </span>
                                   <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-400 font-mono">
-                                    TP2 (1.5:1): WR ~{getWinrateEstimate(trade.confidence, "tp2")}%
+                                    TP2 (1.2:1): WR ~{getWinrateEstimate(trade.confidence, "tp2")}%
                                   </span>
                                   <span className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 font-mono">
-                                    TP3 (2:1): WR ~{getWinrateEstimate(trade.confidence, "tp3")}%
+                                    TP3 (1.8:1): WR ~{getWinrateEstimate(trade.confidence, "tp3")}%
                                   </span>
                                 </div>
                               </div>
@@ -1565,15 +1704,15 @@ export default function Trades() {
                                     </>
                                   )}
                                   <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 font-mono">
-                                    TP1: ${formatPrice(trade.tp1)} (1:1)
+                                    TP1: ${formatPrice(trade.tp1)} (0.7:1)
                                   </span>
                                   <span className="text-gray-600">→</span>
                                   <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-400 font-mono">
-                                    TP2: ${formatPrice(trade.tp2)} (1.5:1)
+                                    TP2: ${formatPrice(trade.tp2)} (1.2:1)
                                   </span>
                                   <span className="text-gray-600">→</span>
                                   <span className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 font-mono font-bold">
-                                    TP3: ${formatPrice(trade.tp3)} (2:1)
+                                    TP3: ${formatPrice(trade.tp3)} (1.8:1)
                                   </span>
                                 </div>
                               </div>
@@ -1592,8 +1731,9 @@ export default function Trades() {
         {/* Disclaimer */}
         <div className="mt-6 bg-amber-500/[0.06] border border-amber-500/15 rounded-2xl p-4">
           <p className="text-xs text-amber-300/80 text-center">
-            ⚠️ <strong>Avertissement :</strong> Algorithme v2 — Filtre EMA 1h (8/21/50) + RSI strict + SL élargi (3-6%) + TP rapprochés (1:1 à 2:1).
-            Seuls les setups alignés avec la tendance 1h sont retenus. Les winrates estimés sont basés sur des moyennes historiques indicatives.
+            ⚠️ <strong>Avertissement :</strong> Algorithme v3 — EMA alignement parfait (8/21/50) + MACD confirmé + Volume Spike + RSI strict.
+            TP1 rapproché à 0.7:1 pour maximiser le winrate. SL élargi (3-6%).
+            Seuls les setups avec tous les indicateurs alignés sont retenus.
             Ces suggestions ne constituent pas des conseils financiers. Faites toujours votre propre analyse avant de trader.
           </p>
         </div>

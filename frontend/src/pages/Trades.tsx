@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
-import { TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3, Clock, Shield, Target, ChevronDown, ChevronUp, Link2, Zap, Eye, EyeOff, Trophy, Info } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3, Clock, Shield, Target, ChevronDown, ChevronUp, Link2, Zap, Trophy, Info } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -1107,7 +1107,7 @@ export default function Trades() {
   const [filterSide, setFilterSide] = useState<"all" | "LONG" | "SHORT">("all");
   const [searchSymbol, setSearchSymbol] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [showAllConfidence, setShowAllConfidence] = useState(true);
+  const [minConfidence, setMinConfidence] = useState(85);
   const [perfStats, setPerfStats] = useState<PerformanceStats>({ total: 0, tp0Hits: 0, tp1Hits: 0, tp2Hits: 0, tp3Hits: 0, slHits: 0, pending: 0 });
 
   const fetchTrades = useCallback(async () => {
@@ -1156,7 +1156,7 @@ export default function Trades() {
     return () => clearInterval(interval);
   }, [fetchTrades]);
 
-  const confFiltered = showAllConfidence ? setups : setups.filter(t => t.confidence >= 50);
+  const confFiltered = setups.filter(t => t.confidence >= minConfidence);
 
   const filtered = confFiltered.filter((t) => {
     if (filterSide !== "all" && t.side !== filterSide) return false;
@@ -1316,17 +1316,21 @@ export default function Trades() {
             placeholder="🔍 Rechercher symbole..."
             className="px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08] text-sm text-white placeholder-gray-500 flex-1 min-w-[180px]" />
 
-          <button
-            onClick={() => setShowAllConfidence(!showAllConfidence)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
-              showAllConfidence
-                ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-            }`}
-          >
-            {showAllConfidence ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            {showAllConfidence ? "Tous les setups" : "Score Technique ≥ 50%"}
-          </button>
+          <div className="flex items-center gap-2">
+            <Filter className="w-3.5 h-3.5 text-gray-500" />
+            <select
+              value={minConfidence}
+              onChange={e => setMinConfidence(Number(e.target.value))}
+              className="px-2 py-1.5 rounded-lg bg-black/30 border border-white/[0.08] text-xs text-white"
+            >
+              <option value={30}>≥ 30%</option>
+              <option value={50}>≥ 50%</option>
+              <option value={70}>≥ 70%</option>
+              <option value={85}>≥ 85%</option>
+              <option value={90}>≥ 90%</option>
+              <option value={95}>≥ 95%</option>
+            </select>
+          </div>
 
           <span className="text-xs text-gray-500 ml-auto">({filtered.length} résultats)</span>
         </div>
@@ -1355,7 +1359,7 @@ export default function Trades() {
                   </td></tr>
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={13} className="text-center py-12 text-gray-500">
-                    {showAllConfidence ? "Aucun setup détecté — le filtrage v3 est très strict (EMA parfait + MACD + RSI)" : "Aucun setup avec score technique ≥ 50%. Cliquez \"Tous les setups\" pour voir les autres."}
+                    {`Aucun setup avec score technique ≥ ${minConfidence}%. Essayez de baisser le filtre de confiance.`}
                   </td></tr>
                 ) : (
                   filtered.slice(0, 30).map((trade) => {

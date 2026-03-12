@@ -1015,7 +1015,7 @@ export default function ScalpTrading() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [filter, setFilter] = useState<"all" | "LONG" | "SHORT">("all");
-  const [minConfidence, setMinConfidence] = useState(70);
+  const [minConfidence, setMinConfidence] = useState(85);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -1135,9 +1135,9 @@ export default function ScalpTrading() {
         }
       }
 
-      // Register high-confidence calls (≥90%) — decoupled from main flow
+      // Register high-confidence calls (≥85%) — decoupled from main flow
       setTimeout(() => {
-        registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 90)).catch(() => {});
+        registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 85)).catch(() => {});
       }, 100);
     } catch (err: any) {
       if (err?.name === "AbortError" || signal.aborted) return;

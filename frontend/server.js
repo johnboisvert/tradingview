@@ -1572,6 +1572,9 @@ async function generateScalpSetup(symbol) {
   const h1Candles = await fetchBinanceKlines(symbol, '1h', 50);
   if (h1Candles.length < 25) return null;
 
+  // Fetch 4H candles for higher timeframe trend filter
+  const h4Candles = await fetchBinanceKlines(symbol, '4h', 50);
+
   const m5Closes = m5Candles.map(c => c.close);
   const h1Closes = h1Candles.map(c => c.close);
   const currentPrice = m5Closes[m5Closes.length - 1];
@@ -1593,6 +1596,27 @@ async function generateScalpSetup(symbol) {
   const h1Vwap = h1CumVol > 0 ? h1CumTPV / h1CumVol : null;
   if (h1Vwap === null) return null;
 
+  // ─── 4H EMA 8 & EMA 20 (Higher Timeframe Trend Filter) ───
+  let h4Trend = 'neutral';
+  let h4Ema8Val = null;
+  let h4Ema20Val = null;
+  if (h4Candles.length >= 25) {
+    const h4Closes = h4Candles.map(c => c.close);
+    const h4Ema8 = calcEMA(h4Closes, 8);
+    const h4Ema20 = calcEMA(h4Closes, 20);
+    h4Ema8Val = h4Ema8[h4Ema8.length - 1];
+    h4Ema20Val = h4Ema20[h4Ema20.length - 1];
+    const h4Spread = Math.abs(h4Ema8Val - h4Ema20Val) / h4Ema20Val;
+    // If EMAs are within 0.1%, consider neutral
+    if (h4Spread < 0.001) {
+      h4Trend = 'neutral';
+    } else if (h4Ema8Val > h4Ema20Val) {
+      h4Trend = 'bullish';
+    } else {
+      h4Trend = 'bearish';
+    }
+  }
+
   // ─── Step 1: H1 Bias ───
   let h1Trend = 'neutral';
   if (h1Price > h1Ema20Val && h1Price > h1Vwap) h1Trend = 'bullish';
@@ -1602,6 +1626,19 @@ async function generateScalpSetup(symbol) {
     console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: H1 bias neutral (price=${h1Price.toFixed(2)}, EMA20=${h1Ema20Val.toFixed(2)}, VWAP=${h1Vwap.toFixed(2)})`);
     return null;
   }
+
+  // ─── Step 1b: 4H Trend Filter — Reject signals conflicting with 4H trend ───
+  if (h1Trend === 'bullish' && h4Trend === 'bearish') {
+    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: 4H trend Bearish conflicts with LONG signal (4H EMA8=${h4Ema8Val?.toFixed(2)}, EMA20=${h4Ema20Val?.toFixed(2)})`);
+    return null;
+  }
+  if (h1Trend === 'bearish' && h4Trend === 'bullish') {
+    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: 4H trend Bullish conflicts with SHORT signal (4H EMA8=${h4Ema8Val?.toFixed(2)}, EMA20=${h4Ema20Val?.toFixed(2)})`);
+    return null;
+  }
+
+  // 4H neutral: allow signal but will reduce confidence by 5 later
+  const h4NeutralPenalty = (h4Trend === 'neutral') ? 5 : 0;
 
   // ─── M5 EMA 8 & EMA 20 ───
   const m5Ema8 = calcEMA(m5Closes, 8);
@@ -2002,10 +2039,12 @@ async function generateScalpSetup(symbol) {
   }
 
   if (!side) {
-    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: no Suivi de Flux signal (H1=${h1Trend}, EMA8>${m5Ema8Val.toFixed(2)}, EMA20>${m5Ema20Val.toFixed(2)}, StochK=${kVal.toFixed(1)}, VWAP=${m5Vwap.toFixed(2)})`);
+    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: no Suivi de Flux signal (H1=${h1Trend}, 4H=${h4Trend}, EMA8>${m5Ema8Val.toFixed(2)}, EMA20>${m5Ema20Val.toFixed(2)}, StochK=${kVal.toFixed(1)}, VWAP=${m5Vwap.toFixed(2)})`);
     return null;
   }
 
+  // Apply 4H neutral penalty
+  confidence -= h4NeutralPenalty;
   confidence = Math.min(98, Math.max(25, confidence));
 
   // ─── SL / TP Calculation ───
@@ -2064,6 +2103,9 @@ async function generateScalpSetup(symbol) {
     vwap_m5: m5Vwap,
     vwap_h1: h1Vwap,
     h1_trend: h1Trend,
+    h4_trend: h4Trend,
+    ema8_h4: h4Ema8Val,
+    ema20_h4: h4Ema20Val,
     currentPrice,
   };
 }
@@ -2140,6 +2182,7 @@ async function checkAndSendScalpAlerts() {
         const pctSL = ((setup.stopLoss - setup.entry) / setup.entry * 100);
 
         const trendEmoji = setup.h1_trend === 'bullish' ? '🟢 Haussière' : setup.h1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
+        const h4TrendEmoji = setup.h4_trend === 'bullish' ? '🟢 Haussière' : setup.h4_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
 
         // Escape HTML entities in reason text to prevent Telegram parse errors
         const safeReason = (setup.reason || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -2158,7 +2201,8 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 ├ Stoch D : <b>${setup.stoch_d.toFixed(1)}</b>
 ├ EMA 20 H1 : <b>$${formatPrice(setup.ema20_h1)}</b>
 ├ VWAP H1 : <b>$${formatPrice(setup.vwap_h1)}</b>
-└ Tendance H1 : ${trendEmoji}
+├ Tendance H1 : ${trendEmoji}
+└ Tendance 4H : ${h4TrendEmoji}${setup.ema8_h4 != null ? ` (EMA8: $${formatPrice(setup.ema8_h4)}, EMA20: $${formatPrice(setup.ema20_h4)})` : ''}
 
 🎯 <b>Plan de Trade :</b>
 ├ Entry : <b>$${formatPrice(setup.entry)}</b>

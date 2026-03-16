@@ -48,6 +48,9 @@ interface ScalpSetup {
   stoch_k: number | null;
   stoch_d: number | null;
   h1Bias: "bullish" | "bearish" | "neutral";
+  h4Bias: "bullish" | "bearish" | "neutral";
+  ema8_h4: number | null;
+  ema20_h4: number | null;
   source?: "client" | "server";
 }
 
@@ -234,6 +237,9 @@ interface ServerScalpCall {
   macd_signal: string;
   h1_macd_signal: string;
   h1_trend: string;
+  h4_trend?: string;
+  ema8_h4?: number | null;
+  ema20_h4?: number | null;
   rr: number;
   status: string;
   created_at: string;
@@ -274,6 +280,9 @@ function serverCallToSetup(call: ServerScalpCall): ScalpSetup {
     stoch_k: call.stoch_k ?? call.stoch_rsi_k ?? null,
     stoch_d: call.stoch_d ?? call.stoch_rsi_d ?? null,
     h1Bias: (call.h1_trend as "bullish" | "bearish" | "neutral") || "neutral",
+    h4Bias: (call.h4_trend as "bullish" | "bearish" | "neutral") || "neutral",
+    ema8_h4: call.ema8_h4 ?? null,
+    ema20_h4: call.ema20_h4 ?? null,
     source: "server",
   };
 }
@@ -590,9 +599,10 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
     return rB - rA;
   }).slice(0, 120);
 
-  /* Fetch H1 and M5 klines in batches — only for coins with valid Binance pairs */
+  /* Fetch H1, 4H and M5 klines in batches — only for coins with valid Binance pairs */
   const BATCH = 10;
   const h1Map = new Map<string, KlineWithVol[]>();
+  const h4Map = new Map<string, KlineWithVol[]>();
   const m5Map = new Map<string, KlineWithVol[]>();
 
   // Pre-filter: only keep coins with valid Binance pairs
@@ -607,6 +617,7 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
       const sym = ((c.symbol || "") as string).toUpperCase();
       return [
         fetchKlines(sym, "1h", 100, signal).then(d => h1Map.set(sym, d)),
+        fetchKlines(sym, "4h", 50, signal).then(d => h4Map.set(sym, d)),
         fetchKlines(sym, "5m", 100, signal).then(d => m5Map.set(sym, d)),
       ];
     }));
@@ -650,6 +661,36 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
     else if (h1Price < h1Ema20 && h1Price < h1Vwap) h1Bias = "bearish";
 
     if (h1Bias === "neutral") continue; // No signal without clear H1 bias
+
+    /* ─── 4H Indicators (Higher Timeframe Trend Filter) ─── */
+    const h4K = h4Map.get(sym) || [];
+    let h4Bias: "bullish" | "bearish" | "neutral" = "neutral";
+    let h4Ema8Val: number | null = null;
+    let h4Ema20Val: number | null = null;
+    if (h4K.length >= 25) {
+      const h4Closes = h4K.map(k => k.close);
+      const h4Ema8Arr = calcEMASeries(h4Closes, 8);
+      const h4Ema20Arr = calcEMASeries(h4Closes, 20);
+      h4Ema8Val = h4Ema8Arr[h4Ema8Arr.length - 1];
+      h4Ema20Val = h4Ema20Arr[h4Ema20Arr.length - 1];
+      if (!isNaN(h4Ema8Val) && !isNaN(h4Ema20Val)) {
+        const h4Spread = Math.abs(h4Ema8Val - h4Ema20Val) / h4Ema20Val;
+        if (h4Spread < 0.001) {
+          h4Bias = "neutral";
+        } else if (h4Ema8Val > h4Ema20Val) {
+          h4Bias = "bullish";
+        } else {
+          h4Bias = "bearish";
+        }
+      }
+    }
+
+    // Reject signals conflicting with 4H trend
+    if (h1Bias === "bullish" && h4Bias === "bearish") continue;
+    if (h1Bias === "bearish" && h4Bias === "bullish") continue;
+
+    // 4H neutral penalty applied later
+    const h4NeutralPenalty = h4Bias === "neutral" ? 5 : 0;
 
     /* ─── M5 Indicators ─── */
     const m5Ema8Arr = calcEMASeries(m5Closes, 8);
@@ -1066,6 +1107,9 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
     // SL too tight penalty
     if (slDist / price < 0.003) confidence -= 10;
 
+    // Apply 4H neutral penalty
+    confidence -= h4NeutralPenalty;
+
     confidence = Math.min(98, Math.max(25, confidence));
 
     const rr = slDist > 0 ? Math.round((Math.abs(tp2 - price) / slDist) * 10) / 10 : 1.5;
@@ -1101,6 +1145,9 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
       stoch_k: stochK,
       stoch_d: stochD,
       h1Bias,
+      h4Bias,
+      ema8_h4: h4Ema8Val,
+      ema20_h4: h4Ema20Val,
     });
     } catch (coinErr) {
       console.warn(`Scalp setup error for ${c?.symbol || "unknown"}:`, coinErr);
@@ -1335,7 +1382,7 @@ export default function ScalpTrading() {
         <PageHeader
           icon={<Zap className="w-7 h-7" />}
           title="Scalp Trading — Suivi de Flux"
-          subtitle="EMA 8/20 + VWAP + Stochastique (9,3,1) — Biais H1, Entrée M5"
+          subtitle="EMA 8/20 + VWAP + Stochastique (9,3,1) — Filtre 4H, Biais H1, Entrée M5"
           accentColor="amber"
         />
 
@@ -1473,7 +1520,7 @@ export default function ScalpTrading() {
             <p className="text-xs text-amber-300/80 flex items-center gap-2">
               <Zap className="w-4 h-4 flex-shrink-0" />
               <span>
-                <strong>Stratégie "Suivi de Flux" :</strong> Biais H1 (prix vs EMA20 + VWAP) → Entrée M5 (rebond EMA8/20 + prix vs VWAP M5 + Stochastique 9,3,1 en survente/surachat avec croisement).
+                <strong>Stratégie "Suivi de Flux" :</strong> Filtre 4H (EMA8/20 — rejet si tendance contraire) → Biais H1 (prix vs EMA20 + VWAP) → Entrée M5 (rebond EMA8/20 + prix vs VWAP M5 + Stochastique 9,3,1 en survente/surachat avec croisement).
                 SL sous dernier creux / EMA20 (min 0.5%). TP1 = 1:1, TP2 = 1:1.5, TP3 = résistance/support ou 1:2.
               </span>
             </p>
@@ -1510,7 +1557,7 @@ export default function ScalpTrading() {
               <table className="w-full min-w-[1400px]">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
-                    {["#", "Crypto", "Type", "Entry", "SL", "TP1", "TP2", "TP3", "Biais H1", "Stoch (9,3,1)", "EMA M5", "VWAP", "Confiance", "R:R", ""].map(h => (
+                    {["#", "Crypto", "Type", "Entry", "SL", "TP1", "TP2", "TP3", "Biais H1", "Biais 4H", "Stoch (9,3,1)", "EMA M5", "VWAP", "Confiance", "R:R", ""].map(h => (
                       <th key={h} className="px-3 py-3 text-left text-[10px] uppercase tracking-wider font-semibold text-gray-500">{h}</th>
                     ))}
                   </tr>
@@ -1518,15 +1565,15 @@ export default function ScalpTrading() {
                 <tbody>
                   {loading && trades.length === 0 ? (
                     <tr>
-                      <td colSpan={15} className="text-center py-16">
+                      <td colSpan={16} className="text-center py-16">
                         <RefreshCw className="w-6 h-6 text-amber-400 animate-spin mx-auto mb-2" />
                         <p className="text-sm text-gray-500">Analyse EMA + VWAP + Stochastique en cours...</p>
-                        <p className="text-xs text-gray-600 mt-1">Calcul sur H1 + M5 pour 30 cryptos</p>
+                        <p className="text-xs text-gray-600 mt-1">Calcul sur 4H + H1 + M5 pour 30 cryptos</p>
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={15} className="text-center py-16">
+                      <td colSpan={16} className="text-center py-16">
                         <p className="text-sm text-gray-500">Aucun signal détecté avec ces filtres</p>
                         <p className="text-xs text-gray-600 mt-1">Essayez de réduire le filtre de confiance</p>
                       </td>
@@ -1635,6 +1682,19 @@ export default function ScalpTrading() {
                                 {trade.h1Bias === "bullish" ? "Bull" : "Bear"}
                               </span>
                             </td>
+                            {/* 4H Bias */}
+                            <td className="px-3 py-3">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                trade.h4Bias === "bullish"
+                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  : trade.h4Bias === "bearish"
+                                  ? "bg-red-500/10 text-red-400"
+                                  : "bg-gray-500/10 text-gray-400"
+                              }`}>
+                                {trade.h4Bias === "bullish" ? <TrendingUp className="w-3 h-3" /> : trade.h4Bias === "bearish" ? <TrendingDown className="w-3 h-3" /> : null}
+                                {trade.h4Bias === "bullish" ? "Bull" : trade.h4Bias === "bearish" ? "Bear" : "Neutre"}
+                              </span>
+                            </td>
                             {/* Stochastic */}
                             <td className="px-3 py-3">
                               {trade.stoch_k != null && !isNaN(trade.stoch_k) ? (
@@ -1725,7 +1785,7 @@ export default function ScalpTrading() {
                           {/* Expanded Detail Row */}
                           {isExpanded && (
                             <tr className="border-b border-white/[0.04]">
-                              <td colSpan={15} className="px-4 py-4 bg-white/[0.01]">
+                              <td colSpan={16} className="px-4 py-4 bg-white/[0.01]">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                   {/* Reason */}
                                   <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
@@ -1781,6 +1841,25 @@ export default function ScalpTrading() {
                                   <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
                                     <p className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold mb-2">📊 Indicateurs</p>
                                     <div className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-gray-400">Biais 4H</span>
+                                        <span className={`text-xs font-bold ${trade.h4Bias === "bullish" ? "text-emerald-400" : trade.h4Bias === "bearish" ? "text-red-400" : "text-gray-400"}`}>
+                                          {trade.h4Bias === "bullish" ? "🟢 Haussier" : trade.h4Bias === "bearish" ? "🔴 Baissier" : "⚪ Neutre"}
+                                        </span>
+                                      </div>
+                                      {trade.ema8_h4 !== null && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-gray-400">EMA8 4H</span>
+                                          <span className="text-xs font-mono text-cyan-400">${formatPrice(trade.ema8_h4)}</span>
+                                        </div>
+                                      )}
+                                      {trade.ema20_h4 !== null && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-gray-400">EMA20 4H</span>
+                                          <span className="text-xs font-mono text-orange-400">${formatPrice(trade.ema20_h4)}</span>
+                                        </div>
+                                      )}
+                                      <div className="border-t border-white/[0.06] pt-2 mt-2" />
                                       <div className="flex items-center justify-between">
                                         <span className="text-xs text-gray-400">Biais H1</span>
                                         <span className={`text-xs font-bold ${trade.h1Bias === "bullish" ? "text-emerald-400" : "text-red-400"}`}>
@@ -1922,7 +2001,7 @@ export default function ScalpTrading() {
           <div className="mt-6 bg-amber-500/[0.06] border border-amber-500/15 rounded-2xl p-4">
             <p className="text-xs text-amber-300/80 text-center">
               ⚠️ <strong>Avertissement :</strong> Stratégie "Suivi de Flux" — EMA 8/20 + VWAP + Stochastique (9,3,1).
-              Biais directionnel H1, entrée précise M5. SL sous dernier creux/EMA20 (min 0.5%), TP ratio 1:1 à 1:2.
+              Filtre 4H (rejet si tendance contraire), biais directionnel H1, entrée précise M5. SL sous dernier creux/EMA20 (min 0.5%), TP ratio 1:1 à 1:2.
               Le VWAP est utilisé par les algorithmes institutionnels — trader avec le VWAP = trader avec "l'argent intelligent".
               Les winrates estimés sont basés sur des moyennes historiques indicatives.
               Ces signaux ne constituent pas des conseils financiers.

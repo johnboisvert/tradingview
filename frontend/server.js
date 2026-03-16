@@ -1187,6 +1187,7 @@ async function checkAndSendAlerts() {
 
       const text = `🔵🔵🔵 <b>🔄 SWING TRADING — SIGNAL CRYPTO</b> 🔵🔵🔵
 🌐 https://CryptoIA.ca
+📊 Entry sur le timeframe <b>H1</b> | Analyse : <b>CoinGecko 24h</b> + <b>S/R 7j</b> + <b>Confirmation H1</b>
 ━━━━━━━━━━━━━━━━━━━━━
 
 ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
@@ -2189,6 +2190,7 @@ async function checkAndSendScalpAlerts() {
 
         const text = `🔴🔴🔴 <b>⚡ SCALP TRADING — SIGNAL CRYPTO</b> 🔴🔴🔴
 🌐 https://CryptoIA.ca
+📊 Entry sur le timeframe <b>M5</b> | Biais directionnel : <b>H1</b> + <b>4H</b>
 ━━━━━━━━━━━━━━━━━━━━━
 
 ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})

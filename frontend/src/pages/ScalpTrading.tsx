@@ -1028,22 +1028,22 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
     let sl: number;
     if (side === "LONG") {
       const lowestLow = Math.min(...last10.map(k => k.low));
-      const ema20SL = m5Ema20 * 0.997; // 0.3% sous EMA20
+      const ema20SL = m5Ema20 * 0.992; // 0.8% sous EMA20
       sl = Math.min(lowestLow, ema20SL);
-      // Ensure SL is not too tight — minimum 0.5%
-      if (Math.abs(price - sl) / price < 0.005) {
-        sl = price * 0.995; // Minimum 0.5%
+      // Ensure SL is not too tight — minimum 0.8%
+      if (Math.abs(price - sl) / price < 0.008) {
+        sl = price * 0.992; // Minimum 0.8%
       }
-      // Add margin
-      sl = sl * 0.999;
+      // Add margin buffer
+      sl = sl * 0.998;
     } else {
       const highestHigh = Math.max(...last10.map(k => k.high));
-      const ema20SL = m5Ema20 * 1.003;
+      const ema20SL = m5Ema20 * 1.008;
       sl = Math.max(highestHigh, ema20SL);
-      if (Math.abs(sl - price) / price < 0.005) {
-        sl = price * 1.005;
+      if (Math.abs(sl - price) / price < 0.008) {
+        sl = price * 1.008;
       }
-      sl = sl * 1.001;
+      sl = sl * 1.002;
     }
 
     const slDist = Math.abs(price - sl);

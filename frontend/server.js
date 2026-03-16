@@ -2006,16 +2006,16 @@ async function generateScalpSetup(symbol) {
 
   if (side === 'LONG') {
     const lowestLow = Math.min(...last10.map(c => c.low));
-    const ema20SL = m5Ema20Val * 0.997;
+    const ema20SL = m5Ema20Val * 0.992;
     stopLoss = Math.min(lowestLow, ema20SL);
-    if (Math.abs(entry - stopLoss) / entry < 0.002) stopLoss = entry * 0.997;
-    stopLoss *= 0.999; // margin
+    if (Math.abs(entry - stopLoss) / entry < 0.008) stopLoss = entry * 0.992;
+    stopLoss *= 0.998; // margin buffer
   } else {
     const highestHigh = Math.max(...last10.map(c => c.high));
-    const ema20SL = m5Ema20Val * 1.003;
+    const ema20SL = m5Ema20Val * 1.008;
     stopLoss = Math.max(highestHigh, ema20SL);
-    if (Math.abs(stopLoss - entry) / entry < 0.002) stopLoss = entry * 1.003;
-    stopLoss *= 1.001;
+    if (Math.abs(stopLoss - entry) / entry < 0.008) stopLoss = entry * 1.008;
+    stopLoss *= 1.002; // margin buffer
   }
 
   const slDist = Math.abs(entry - stopLoss);
@@ -2030,7 +2030,7 @@ async function generateScalpSetup(symbol) {
   }
 
   // SL too tight penalty
-  if (slDist / entry < 0.002) confidence -= 10;
+  if (slDist / entry < 0.006) confidence -= 10;
   confidence = Math.min(98, Math.max(25, confidence));
 
   const rr = slDist > 0 ? Math.round((Math.abs(tp2 - entry) / slDist) * 10) / 10 : 1.5;
@@ -2788,6 +2788,11 @@ function loadTradeCalls() {
   } catch (err) {
     console.error('Error loading trade calls:', err);
   }
+  // Initialize file if missing
+  try {
+    writeFileSync(TRADE_CALLS_FILE, '[]', 'utf-8');
+    console.log('[TradeCall] Initialized empty trade_calls.json');
+  } catch (_e) { /* ignore */ }
   return [];
 }
 
@@ -3224,7 +3229,7 @@ async function resolveActiveTradeCalls() {
   return { resolved: resolvedCount, expired: expiredCount, checked: activeCalls.length };
 }
 
-// ─── Periodic trade call resolver (every 15 minutes) ───
+// ─── Periodic trade call resolver (every 5 minutes — faster for accurate SL/TP tracking) ───
 setInterval(async () => {
   try {
     const result = await resolveActiveTradeCalls();
@@ -3234,7 +3239,7 @@ setInterval(async () => {
   } catch (err) {
     console.error('[TradeCall] Periodic resolve error:', err.message);
   }
-}, 15 * 60 * 1000); // 15 minutes
+}, 5 * 60 * 1000); // 5 minutes
 
 // ============================================================
 // Scalp Trading Calls — JSON file persistence
@@ -3608,7 +3613,7 @@ async function resolveActiveScalpCalls() {
   return { resolved: resolvedCount, expired: expiredCount, checked: activeCalls.length };
 }
 
-// ─── Periodic scalp call resolver (every 5 min) ───
+// ─── Periodic scalp call resolver (every 2 min — fast enough for scalp SL/TP checks) ───
 setInterval(async () => {
   try {
     const result = await resolveActiveScalpCalls();
@@ -3618,7 +3623,7 @@ setInterval(async () => {
   } catch (err) {
     console.error('[ScalpCall] Periodic error:', err.message);
   }
-}, 5 * 60 * 1000);
+}, 2 * 60 * 1000);
 
 // ─── CryptoPanic News API proxy ───
 app.get('/api/news', async (req, res) => {

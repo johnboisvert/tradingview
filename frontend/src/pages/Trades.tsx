@@ -562,7 +562,7 @@ function markConvergence(
   return { merged, convergenceCount };
 }
 
-/* ─── Align TP levels with S/R — v3: TP1 at 0.7:1 for max winrate ─── */
+/* ─── Align TP levels with S/R — v4: TP1 at 1.2:1 minimum profitable ratio ─── */
 
 function alignTPWithSR(
   side: "LONG" | "SHORT",
@@ -576,9 +576,9 @@ function alignTPWithSR(
 
   if (side === "LONG") {
     sl = entry - slDistance;
-    tp1 = entry + slDistance * 0.7;   // 0.7:1 ratio — HIGH winrate target
-    tp2 = entry + slDistance * 1.2;   // 1.2:1 ratio
-    tp3 = entry + slDistance * 1.8;   // 1.8:1 ratio
+    tp1 = entry + slDistance * 1.2;   // 1.2:1 ratio — minimum profitable target
+    tp2 = entry + slDistance * 2.0;   // 2.0:1 ratio
+    tp3 = entry + slDistance * 3.0;   // 3.0:1 ratio
 
     const nearestSupport = supports.find(s => s.price < entry * 0.995);
     if (nearestSupport && nearestSupport.price > sl * 0.97 && nearestSupport.price < entry * 0.99) {
@@ -597,9 +597,9 @@ function alignTPWithSR(
     }
   } else {
     sl = entry + slDistance;
-    tp1 = entry - slDistance * 0.7;   // 0.7:1 ratio — HIGH winrate target
-    tp2 = entry - slDistance * 1.2;   // 1.2:1 ratio
-    tp3 = entry - slDistance * 1.8;   // 1.8:1 ratio
+    tp1 = entry - slDistance * 1.2;   // 1.2:1 ratio — minimum profitable target
+    tp2 = entry - slDistance * 2.0;   // 2.0:1 ratio
+    tp3 = entry - slDistance * 3.0;   // 3.0:1 ratio
 
     const nearestResistance = resistances.find(r => r.price > entry * 1.005);
     if (nearestResistance && nearestResistance.price < sl * 1.03 && nearestResistance.price > entry * 1.01) {

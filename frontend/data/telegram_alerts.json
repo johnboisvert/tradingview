@@ -19,7 +19,7 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-03-16T20:56:37.034Z",
+  "lastCheck": "2026-03-16T21:01:33.100Z",
   "lastAlerts": [
     {
       "type": "coingecko_signal",
@@ -38,132 +38,12 @@
       "coin": "fetch-ai",
       "direction": "LONG",
       "rr": 2,
-      "entry": 0.240482,
+      "entry": 0.239712,
       "tp1": 0.2533,
-      "tp2": 0.2774,
-      "tp3": 0.2959,
-      "sl": 0.222,
+      "tp2": 0.2758,
+      "tp3": 0.2939,
+      "sl": 0.2217,
       "confidence": 98
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "dogwifcoin",
-      "direction": "LONG",
-      "rr": 2,
-      "entry": 0.18796,
-      "tp1": 0.1916,
-      "tp2": 0.207,
-      "tp3": 0.2165,
-      "sl": 0.1784,
-      "confidence": 98
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "dogecoin",
-      "direction": "LONG",
-      "rr": 2.8,
-      "entry": 0.10175,
-      "tp1": 0.1024,
-      "tp2": 0.1071,
-      "tp3": 0.1098,
-      "sl": 0.0998,
-      "confidence": 96
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "pepe",
-      "direction": "LONG",
-      "rr": 2,
-      "entry": 0.00000399,
-      "tp1": 0.000004,
-      "tp2": 0.000005,
-      "tp3": 0.000005,
-      "sl": 0.000004,
-      "confidence": 96
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "pump-fun",
-      "direction": "LONG",
-      "rr": 2,
-      "entry": 0.00213275,
-      "tp1": 0.00217,
-      "tp2": 0.002292,
-      "tp3": 0.002372,
-      "sl": 0.002053,
-      "confidence": 96
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "worldcoin-wld",
-      "direction": "LONG",
-      "rr": 2,
-      "entry": 0.39701,
-      "tp1": 0.3989,
-      "tp2": 0.4278,
-      "tp3": 0.4432,
-      "sl": 0.3816,
-      "confidence": 96
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "conflux-token",
-      "direction": "LONG",
-      "rr": 2,
-      "entry": 0.066646,
-      "tp1": 0.0675,
-      "tp2": 0.0716,
-      "tp3": 0.074,
-      "sl": 0.0642,
-      "confidence": 96
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "floki",
-      "direction": "LONG",
-      "rr": 0.6,
-      "entry": 0.00003215,
-      "tp1": 0.000032,
-      "tp2": 0.000033,
-      "tp3": 0.000344,
-      "sl": 0.000031,
-      "confidence": 96
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "plasma",
-      "direction": "LONG",
-      "rr": 2,
-      "entry": 0.119536,
-      "tp1": 0.1261,
-      "tp2": 0.1305,
-      "tp3": 0.136,
-      "sl": 0.1141,
-      "confidence": 96
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "ethereum-name-service",
-      "direction": "LONG",
-      "rr": 1.6,
-      "entry": 6.67,
-      "tp1": 6.74,
-      "tp2": 7.13,
-      "tp3": 7.36,
-      "sl": 6.38,
-      "confidence": 96
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "fartcoin",
-      "direction": "LONG",
-      "rr": 2,
-      "entry": 0.189317,
-      "tp1": 0.203,
-      "tp2": 0.2121,
-      "tp3": 0.2235,
-      "sl": 0.1779,
-      "confidence": 96
     }
   ]
 }

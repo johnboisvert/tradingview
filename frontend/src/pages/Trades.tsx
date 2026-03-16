@@ -1119,6 +1119,19 @@ export default function Trades() {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [minConfidence, setMinConfidence] = useState(85);
   const [perfStats, setPerfStats] = useState<PerformanceStats>({ total: 0, tp0Hits: 0, tp1Hits: 0, tp2Hits: 0, tp3Hits: 0, slHits: 0, pending: 0 });
+  const [resetConfirm, setResetConfirm] = useState(false);
+
+  const handleResetTracking = useCallback(() => {
+    if (!resetConfirm) {
+      setResetConfirm(true);
+      setTimeout(() => setResetConfirm(false), 3000);
+      return;
+    }
+    localStorage.removeItem(SIGNAL_STORAGE_KEY);
+    localStorage.removeItem("dtrading_algo_version");
+    setPerfStats({ total: 0, tp0Hits: 0, tp1Hits: 0, tp2Hits: 0, tp3Hits: 0, slHits: 0, pending: 0 });
+    setResetConfirm(false);
+  }, [resetConfirm]);
 
   const fetchTrades = useCallback(async () => {
     setLoading(true);
@@ -1152,7 +1165,7 @@ export default function Trades() {
   useEffect(() => {
     // Clear old tracking data from previous algorithm version
     const ALGO_VERSION_KEY = "dtrading_algo_version";
-    const CURRENT_VERSION = "v3_macd_vol";
+    const CURRENT_VERSION = "v3_h1_filter";
     if (localStorage.getItem(ALGO_VERSION_KEY) !== CURRENT_VERSION) {
       localStorage.removeItem(SIGNAL_STORAGE_KEY);
       localStorage.setItem(ALGO_VERSION_KEY, CURRENT_VERSION);
@@ -1255,6 +1268,17 @@ export default function Trades() {
               <Trophy className="w-5 h-5 text-amber-400" />
               <h3 className="text-sm font-bold text-amber-400">Suivi des Signaux v3 (localStorage)</h3>
               <span className="text-[10px] text-gray-500 ml-2">{perfStats.total} signaux suivis • {perfStats.pending} en cours</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleResetTracking(); }}
+                className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
+                  resetConfirm
+                    ? "bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30"
+                    : "bg-white/[0.05] border border-white/[0.08] text-gray-400 hover:bg-white/[0.08] hover:text-white"
+                }`}
+              >
+                <RefreshCw className="w-3 h-3" />
+                {resetConfirm ? "Confirmer la réinitialisation ?" : "Réinitialiser"}
+              </button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
               <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">

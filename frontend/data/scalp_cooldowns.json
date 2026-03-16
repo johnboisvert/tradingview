@@ -270,5 +270,9 @@
   "APTUSDT_LONG": {
     "timestamp": "2026-03-02T20:30:15.318Z",
     "direction": "LONG"
+  },
+  "ATOMUSDT_LONG": {
+    "timestamp": "2026-03-16T20:59:55.679Z",
+    "direction": "LONG"
   }
 }

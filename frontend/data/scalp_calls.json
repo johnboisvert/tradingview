@@ -2605,7 +2605,7 @@
     "vwap_h1": 1.3766549801947094,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -2614,7 +2614,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T16:44:21.912Z",
-    "resolved_at": null,
+    "resolved_at": "2026-03-16T20:58:39.265Z",
     "expires_at": "2026-03-02T20:44:21.912Z"
   },
   {
@@ -2733,7 +2733,7 @@
     "vwap_h1": 1.1915194480234539,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -2742,7 +2742,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T16:50:21.941Z",
-    "resolved_at": null,
+    "resolved_at": "2026-03-16T20:58:39.265Z",
     "expires_at": "2026-03-02T20:50:21.941Z"
   },
   {
@@ -2893,7 +2893,7 @@
     "vwap_h1": 0.12233362822986035,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -2902,7 +2902,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T16:56:21.985Z",
-    "resolved_at": null,
+    "resolved_at": "2026-03-16T20:58:39.265Z",
     "expires_at": "2026-03-02T20:56:21.985Z"
   },
   {
@@ -3117,7 +3117,7 @@
     "vwap_h1": 0.16843333333333332,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3126,7 +3126,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:24:47.237Z",
-    "resolved_at": null,
+    "resolved_at": "2026-03-16T20:58:39.265Z",
     "expires_at": "2026-03-02T22:24:47.237Z"
   },
   {
@@ -3149,7 +3149,7 @@
     "vwap_h1": 1.3825190653372765,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3158,7 +3158,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:36:17.319Z",
-    "resolved_at": null,
+    "resolved_at": "2026-03-16T20:58:39.265Z",
     "expires_at": "2026-03-02T22:36:17.319Z"
   },
   {
@@ -3181,7 +3181,7 @@
     "vwap_h1": 0.10503051359226565,
     "h1_trend": "bearish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3190,7 +3190,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:46:01.406Z",
-    "resolved_at": null,
+    "resolved_at": "2026-03-16T20:58:39.265Z",
     "expires_at": "2026-03-02T22:46:01.406Z"
   },
   {
@@ -3213,7 +3213,7 @@
     "vwap_h1": 0.9104667173533367,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3222,7 +3222,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:46:01.406Z",
-    "resolved_at": null,
+    "resolved_at": "2026-03-16T20:58:39.265Z",
     "expires_at": "2026-03-02T22:46:01.406Z"
   },
   {
@@ -3245,7 +3245,7 @@
     "vwap_h1": 0.32572305876665386,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3254,7 +3254,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:51:31.449Z",
-    "resolved_at": null,
+    "resolved_at": "2026-03-16T20:58:39.265Z",
     "expires_at": "2026-03-02T22:51:31.449Z"
   },
   {
@@ -3309,7 +3309,7 @@
     "vwap_h1": 0.6761176217850835,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3318,7 +3318,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:57:31.474Z",
-    "resolved_at": null,
+    "resolved_at": "2026-03-16T20:58:39.265Z",
     "expires_at": "2026-03-02T22:57:31.474Z"
   },
   {
@@ -3341,7 +3341,7 @@
     "vwap_h1": 0.14997576476363966,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3350,7 +3350,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:57:31.474Z",
-    "resolved_at": null,
+    "resolved_at": "2026-03-16T20:58:39.265Z",
     "expires_at": "2026-03-02T22:57:31.474Z"
   },
   {
@@ -3373,7 +3373,7 @@
     "vwap_h1": 0.9713324672884507,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3382,7 +3382,39 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T20:30:11.258Z",
-    "resolved_at": null,
+    "resolved_at": "2026-03-16T20:58:39.265Z",
     "expires_at": "2026-03-03T00:30:11.258Z"
+  },
+  {
+    "id": 112,
+    "symbol": "ATOMUSDT",
+    "side": "LONG",
+    "entry_price": 1.978,
+    "stop_loss": 1.96614189,
+    "trailing_sl": 1.96614189,
+    "tp1": 1.98985811,
+    "tp2": 1.9957871649999999,
+    "tp3": 2.0017162199999996,
+    "confidence": 86,
+    "reason": "H1: Prix > EMA20 ($1.92) & VWAP ($1.91) ✓ | M5: EMA8 > EMA20 ✓ | M5: Prix proche EMA | Stoch: Survente extrême (K:12.5) | Stoch: Croisement K↑D | VWAP M5: bien au-dessus ✓ | Volume M5 supérieur | H1: Tendance forte (EMA8/20 écartées)",
+    "stoch_k": 12.500000000000085,
+    "stoch_d": 4.166666666666695,
+    "ema8_m5": 1.9834550847982004,
+    "ema20_m5": 1.983224524275663,
+    "vwap_m5": 1.9543142521230166,
+    "vwap_h1": 1.907552384362976,
+    "h1_trend": "bullish",
+    "rr": 1.5,
+    "status": "active",
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "sl_hit": false,
+    "best_tp_reached": 0,
+    "exit_price": null,
+    "profit_pct": null,
+    "created_at": "2026-03-16T20:59:37.257Z",
+    "resolved_at": null,
+    "expires_at": "2026-03-17T00:59:37.257Z"
   }
 ]

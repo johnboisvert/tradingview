@@ -571,11 +571,15 @@ function alignTPWithSR(
   supports: SRLevel[],
   resistances: SRLevel[],
 ): { tp1: number; tp2: number; tp3: number; sl: number } {
-  const slDistance = entry * (slPercent / 100);
+  // Enforce minimum 1.5% SL for swing trades
+  const effectiveSlPercent = Math.max(slPercent, 1.5);
+  const slDistance = entry * (effectiveSlPercent / 100);
   let tp1: number, tp2: number, tp3: number, sl: number;
 
   if (side === "LONG") {
     sl = entry - slDistance;
+    // Enforce minimum 1.5% SL distance
+    if (Math.abs(entry - sl) / entry < 0.015) sl = entry * 0.985;
     tp1 = entry + slDistance * 1.2;   // 1.2:1 ratio — minimum profitable target
     tp2 = entry + slDistance * 2.0;   // 2.0:1 ratio
     tp3 = entry + slDistance * 3.0;   // 3.0:1 ratio
@@ -583,6 +587,8 @@ function alignTPWithSR(
     const nearestSupport = supports.find(s => s.price < entry * 0.995);
     if (nearestSupport && nearestSupport.price > sl * 0.97 && nearestSupport.price < entry * 0.99) {
       sl = nearestSupport.price * 0.998;
+      // Re-enforce minimum 1.5% after S/R adjustment
+      if (Math.abs(entry - sl) / entry < 0.015) sl = entry * 0.985;
     }
 
     const resAbove = resistances.filter(r => r.price > entry * 1.005);
@@ -597,6 +603,8 @@ function alignTPWithSR(
     }
   } else {
     sl = entry + slDistance;
+    // Enforce minimum 1.5% SL distance
+    if (Math.abs(sl - entry) / entry < 0.015) sl = entry * 1.015;
     tp1 = entry - slDistance * 1.2;   // 1.2:1 ratio — minimum profitable target
     tp2 = entry - slDistance * 2.0;   // 2.0:1 ratio
     tp3 = entry - slDistance * 3.0;   // 3.0:1 ratio
@@ -604,6 +612,8 @@ function alignTPWithSR(
     const nearestResistance = resistances.find(r => r.price > entry * 1.005);
     if (nearestResistance && nearestResistance.price < sl * 1.03 && nearestResistance.price > entry * 1.01) {
       sl = nearestResistance.price * 1.002;
+      // Re-enforce minimum 1.5% after S/R adjustment
+      if (Math.abs(sl - entry) / entry < 0.015) sl = entry * 1.015;
     }
 
     const supBelow = supports.filter(s => s.price < entry * 0.995);

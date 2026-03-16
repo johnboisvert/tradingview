@@ -894,19 +894,25 @@ function calculateSRLevels(coin) {
  * (Same algorithm as Trades.tsx alignTPWithSR)
  */
 function alignTPWithSR(side, entry, slPercent, supports, resistances) {
-  const slDistance = entry * (slPercent / 100);
+  // Enforce minimum 1.5% SL for swing trades
+  const effectiveSlPercent = Math.max(slPercent, 1.5);
+  const slDistance = entry * (effectiveSlPercent / 100);
 
   let tp1, tp2, tp3, sl;
 
   if (side === 'LONG') {
     sl = entry - slDistance;
-    tp1 = entry + slDistance * 1.5;
-    tp2 = entry + slDistance * 2.5;
-    tp3 = entry + slDistance * 4;
+    // Enforce minimum 1.5% SL distance
+    if (Math.abs(entry - sl) / entry < 0.015) sl = entry * 0.985;
+    tp1 = entry + slDistance * 1.2;   // 1.2:1 ratio
+    tp2 = entry + slDistance * 2.0;   // 2.0:1 ratio
+    tp3 = entry + slDistance * 3.0;   // 3.0:1 ratio
 
     const nearestSupport = supports.find(s => s.price < entry * 0.995);
     if (nearestSupport && nearestSupport.price > sl * 0.97 && nearestSupport.price < entry * 0.99) {
       sl = nearestSupport.price * 0.998;
+      // Re-enforce minimum 1.5% after S/R adjustment
+      if (Math.abs(entry - sl) / entry < 0.015) sl = entry * 0.985;
     }
 
     const resAbove = resistances.filter(r => r.price > entry * 1.005);
@@ -921,13 +927,17 @@ function alignTPWithSR(side, entry, slPercent, supports, resistances) {
     }
   } else {
     sl = entry + slDistance;
-    tp1 = entry - slDistance * 1.5;
-    tp2 = entry - slDistance * 2.5;
-    tp3 = entry - slDistance * 4;
+    // Enforce minimum 1.5% SL distance
+    if (Math.abs(sl - entry) / entry < 0.015) sl = entry * 1.015;
+    tp1 = entry - slDistance * 1.2;   // 1.2:1 ratio
+    tp2 = entry - slDistance * 2.0;   // 2.0:1 ratio
+    tp3 = entry - slDistance * 3.0;   // 3.0:1 ratio
 
     const nearestResistance = resistances.find(r => r.price > entry * 1.005);
     if (nearestResistance && nearestResistance.price < sl * 1.03 && nearestResistance.price > entry * 1.01) {
       sl = nearestResistance.price * 1.002;
+      // Re-enforce minimum 1.5% after S/R adjustment
+      if (Math.abs(sl - entry) / entry < 0.015) sl = entry * 1.015;
     }
 
     const supBelow = supports.filter(s => s.price < entry * 0.995);
@@ -2006,16 +2016,16 @@ async function generateScalpSetup(symbol) {
 
   if (side === 'LONG') {
     const lowestLow = Math.min(...last10.map(c => c.low));
-    const ema20SL = m5Ema20Val * 0.992;
+    const ema20SL = m5Ema20Val * 0.995;
     stopLoss = Math.min(lowestLow, ema20SL);
-    if (Math.abs(entry - stopLoss) / entry < 0.008) stopLoss = entry * 0.992;
-    stopLoss *= 0.998; // margin buffer
+    if (Math.abs(entry - stopLoss) / entry < 0.005) stopLoss = entry * 0.995;
+    stopLoss *= 0.999; // margin buffer
   } else {
     const highestHigh = Math.max(...last10.map(c => c.high));
-    const ema20SL = m5Ema20Val * 1.008;
+    const ema20SL = m5Ema20Val * 1.005;
     stopLoss = Math.max(highestHigh, ema20SL);
-    if (Math.abs(stopLoss - entry) / entry < 0.008) stopLoss = entry * 1.008;
-    stopLoss *= 1.002; // margin buffer
+    if (Math.abs(stopLoss - entry) / entry < 0.005) stopLoss = entry * 1.005;
+    stopLoss *= 1.001; // margin buffer
   }
 
   const slDist = Math.abs(entry - stopLoss);
@@ -2030,7 +2040,7 @@ async function generateScalpSetup(symbol) {
   }
 
   // SL too tight penalty
-  if (slDist / entry < 0.006) confidence -= 10;
+  if (slDist / entry < 0.003) confidence -= 10;
   confidence = Math.min(98, Math.max(25, confidence));
 
   const rr = slDist > 0 ? Math.round((Math.abs(tp2 - entry) / slDist) * 10) / 10 : 1.5;

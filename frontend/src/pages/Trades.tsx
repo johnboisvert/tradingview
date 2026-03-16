@@ -1117,7 +1117,7 @@ export default function Trades() {
   const [filterSide, setFilterSide] = useState<"all" | "LONG" | "SHORT">("all");
   const [searchSymbol, setSearchSymbol] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [minConfidence, setMinConfidence] = useState(85);
+  const [minConfidence, setMinConfidence] = useState(88);
   const [perfStats, setPerfStats] = useState<PerformanceStats>({ total: 0, tp0Hits: 0, tp1Hits: 0, tp2Hits: 0, tp3Hits: 0, slHits: 0, pending: 0 });
   const [resetConfirm, setResetConfirm] = useState(false);
 
@@ -1360,7 +1360,7 @@ export default function Trades() {
               <option value={30}>≥ 30%</option>
               <option value={50}>≥ 50%</option>
               <option value={70}>≥ 70%</option>
-              <option value={85}>≥ 85%</option>
+              <option value={88}>≥ 88%</option>
               <option value={90}>≥ 90%</option>
               <option value={95}>≥ 95%</option>
             </select>

@@ -1202,7 +1202,7 @@ export default function ScalpTrading() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [filter, setFilter] = useState<"all" | "LONG" | "SHORT">("all");
-  const [minConfidence, setMinConfidence] = useState(85);
+  const [minConfidence, setMinConfidence] = useState(88);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -1322,9 +1322,9 @@ export default function ScalpTrading() {
         }
       }
 
-      // Register high-confidence calls (≥85%) — decoupled from main flow
+      // Register high-confidence calls (≥88%) — decoupled from main flow
       setTimeout(() => {
-        registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 85)).catch(() => {});
+        registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 88)).catch(() => {});
       }, 100);
     } catch (err: any) {
       if (err?.name === "AbortError" || signal.aborted) return;
@@ -1506,7 +1506,7 @@ export default function ScalpTrading() {
                 <option value={30}>≥ 30%</option>
                 <option value={50}>≥ 50%</option>
                 <option value={70}>≥ 70%</option>
-                <option value={85}>≥ 85%</option>
+                <option value={88}>≥ 88%</option>
                 <option value={90}>≥ 90%</option>
                 <option value={95}>≥ 95%</option>
               </select>

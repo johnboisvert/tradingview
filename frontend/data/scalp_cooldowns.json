@@ -274,5 +274,9 @@
   "ATOMUSDT_LONG": {
     "timestamp": "2026-03-16T20:59:55.679Z",
     "direction": "LONG"
+  },
+  "FORMUSDT_LONG": {
+    "timestamp": "2026-03-16T21:02:21.393Z",
+    "direction": "LONG"
   }
 }

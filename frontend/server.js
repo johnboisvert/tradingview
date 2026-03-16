@@ -1144,8 +1144,8 @@ async function checkAndSendAlerts() {
     const setups = Array.from(seenCoins.values());
     console.log(`[Telegram] After dedup: ${setups.length} unique coin setups`);
 
-    // Filter: only send signals with confidence >= 85%
-    const MIN_CONFIDENCE = 85;
+    // Filter: only send signals with confidence >= 88%
+    const MIN_CONFIDENCE = 88;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[Telegram] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 
@@ -2149,8 +2149,8 @@ async function checkAndSendScalpAlerts() {
       console.log(`[ScalpAlert] Setup confidences: ${confValues.join(", ")}`);
     }
 
-    // Filter: only send signals with confidence >= 85% (high-quality signals only)
-    const MIN_CONFIDENCE = 85;
+    // Filter: only send signals with confidence >= 88% (high-quality signals only)
+    const MIN_CONFIDENCE = 88;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[ScalpAlert] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 

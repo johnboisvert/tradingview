@@ -1576,6 +1576,9 @@ async function generateScalpSetup(symbol) {
   // Fetch 4H candles for higher timeframe trend filter
   const h4Candles = await fetchBinanceKlines(symbol, '4h', 50);
 
+  // Fetch Daily candles for macro trend filter
+  const d1Candles = await fetchBinanceKlines(symbol, '1d', 50);
+
   const m5Closes = m5Candles.map(c => c.close);
   const h1Closes = h1Candles.map(c => c.close);
   const currentPrice = m5Closes[m5Closes.length - 1];
@@ -1615,6 +1618,26 @@ async function generateScalpSetup(symbol) {
       h4Trend = 'bullish';
     } else {
       h4Trend = 'bearish';
+    }
+  }
+
+  // ─── Daily EMA 8 & EMA 20 (Macro Trend Filter) ───
+  let d1Trend = 'neutral';
+  let d1Ema8Val = null;
+  let d1Ema20Val = null;
+  if (d1Candles.length >= 25) {
+    const d1Closes = d1Candles.map(c => c.close);
+    const d1Ema8 = calcEMA(d1Closes, 8);
+    const d1Ema20 = calcEMA(d1Closes, 20);
+    d1Ema8Val = d1Ema8[d1Ema8.length - 1];
+    d1Ema20Val = d1Ema20[d1Ema20.length - 1];
+    const d1Spread = Math.abs(d1Ema8Val - d1Ema20Val) / d1Ema20Val;
+    if (d1Spread < 0.001) {
+      d1Trend = 'neutral';
+    } else if (d1Ema8Val > d1Ema20Val) {
+      d1Trend = 'bullish';
+    } else {
+      d1Trend = 'bearish';
     }
   }
 
@@ -2046,6 +2069,24 @@ async function generateScalpSetup(symbol) {
 
   // Apply 4H neutral penalty
   confidence -= h4NeutralPenalty;
+
+  // Daily trend penalty — penalize confidence when Daily conflicts (don't reject)
+  let d1Penalty = 0;
+  if (side === 'LONG' && d1Trend === 'bearish') {
+    d1Penalty = 12;
+    reasons.push(`⚠️ Daily Bearish — pénalité confiance -${d1Penalty}%`);
+  } else if (side === 'SHORT' && d1Trend === 'bullish') {
+    d1Penalty = 12;
+    reasons.push(`⚠️ Daily Bullish — pénalité confiance -${d1Penalty}%`);
+  } else if (side === 'LONG' && d1Trend === 'bullish') {
+    d1Penalty = -5;
+    reasons.push(`✅ Daily Bullish — bonus alignement +5%`);
+  } else if (side === 'SHORT' && d1Trend === 'bearish') {
+    d1Penalty = -5;
+    reasons.push(`✅ Daily Bearish — bonus alignement +5%`);
+  }
+  confidence -= d1Penalty;
+
   confidence = Math.min(98, Math.max(25, confidence));
 
   // ─── SL / TP Calculation ───
@@ -2107,6 +2148,9 @@ async function generateScalpSetup(symbol) {
     h4_trend: h4Trend,
     ema8_h4: h4Ema8Val,
     ema20_h4: h4Ema20Val,
+    d1_trend: d1Trend,
+    ema8_d1: d1Ema8Val,
+    ema20_d1: d1Ema20Val,
     currentPrice,
   };
 }
@@ -2184,6 +2228,7 @@ async function checkAndSendScalpAlerts() {
 
         const trendEmoji = setup.h1_trend === 'bullish' ? '🟢 Haussière' : setup.h1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
         const h4TrendEmoji = setup.h4_trend === 'bullish' ? '🟢 Haussière' : setup.h4_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
+        const d1TrendEmoji = setup.d1_trend === 'bullish' ? '🟢 Haussière' : setup.d1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
 
         // Escape HTML entities in reason text to prevent Telegram parse errors
         const safeReason = (setup.reason || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -2204,7 +2249,8 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 ├ EMA 20 H1 : <b>$${formatPrice(setup.ema20_h1)}</b>
 ├ VWAP H1 : <b>$${formatPrice(setup.vwap_h1)}</b>
 ├ Tendance H1 : ${trendEmoji}
-└ Tendance 4H : ${h4TrendEmoji}${setup.ema8_h4 != null ? ` (EMA8: $${formatPrice(setup.ema8_h4)}, EMA20: $${formatPrice(setup.ema20_h4)})` : ''}
+├ Tendance 4H : ${h4TrendEmoji}${setup.ema8_h4 != null ? ` (EMA8: $${formatPrice(setup.ema8_h4)}, EMA20: $${formatPrice(setup.ema20_h4)})` : ''}
+└ Tendance Daily : ${d1TrendEmoji}${setup.ema8_d1 != null ? ` (EMA8: $${formatPrice(setup.ema8_d1)}, EMA20: $${formatPrice(setup.ema20_d1)})` : ''}
 
 🎯 <b>Plan de Trade :</b>
 ├ Entry : <b>$${formatPrice(setup.entry)}</b>

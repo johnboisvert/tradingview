@@ -278,5 +278,9 @@
   "FORMUSDT_LONG": {
     "timestamp": "2026-03-16T21:02:21.393Z",
     "direction": "LONG"
+  },
+  "THEUSDT_SHORT": {
+    "timestamp": "2026-03-17T14:40:58.822Z",
+    "direction": "SHORT"
   }
 }

@@ -19,31 +19,67 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-03-16T21:01:33.100Z",
+  "lastCheck": "2026-03-17T12:56:42.107Z",
   "lastAlerts": [
     {
       "type": "coingecko_signal",
-      "coin": "bonk",
+      "coin": "zcash",
       "direction": "LONG",
-      "rr": 0.6,
-      "entry": 0.0000066,
-      "tp1": 0.000007,
-      "tp2": 0.000007,
-      "tp3": 0.000058,
-      "sl": 0.000006,
-      "confidence": 98
+      "rr": 1.1,
+      "entry": 267.91,
+      "tp1": 283.65,
+      "tp2": 287.54,
+      "tp3": 3185.55,
+      "sl": 250.71,
+      "confidence": 96
     },
     {
       "type": "coingecko_signal",
-      "coin": "fetch-ai",
+      "coin": "grass",
+      "direction": "LONG",
+      "rr": 0.8,
+      "entry": 0.44862,
+      "tp1": 0.468,
+      "tp2": 0.4727,
+      "tp3": 3.8822,
+      "sl": 0.4185,
+      "confidence": 96
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "siren-2",
       "direction": "LONG",
       "rr": 2,
-      "entry": 0.239712,
-      "tp1": 0.2533,
-      "tp2": 0.2758,
-      "tp3": 0.2939,
-      "sl": 0.2217,
-      "confidence": 98
+      "entry": 0.748003,
+      "tp1": 0.7861,
+      "tp2": 0.8701,
+      "tp3": 0.9312,
+      "sl": 0.6869,
+      "confidence": 93
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "fartcoin",
+      "direction": "LONG",
+      "rr": 3.2,
+      "entry": 0.199978,
+      "tp1": 0.2112,
+      "tp2": 0.2141,
+      "tp3": 2.475,
+      "sl": 0.1956,
+      "confidence": 91
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "lighter",
+      "direction": "LONG",
+      "rr": 2.8,
+      "entry": 1.12,
+      "tp1": 1.17,
+      "tp2": 1.18,
+      "tp3": 1.2,
+      "sl": 1.1,
+      "confidence": 89
     }
   ]
 }

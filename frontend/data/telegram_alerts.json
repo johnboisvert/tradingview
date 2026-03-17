@@ -19,33 +19,43 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-03-17T18:30:39.094Z",
+  "lastCheck": "2026-03-17T18:41:01.262Z",
   "lastAlerts": [
     {
       "type": "coingecko_signal",
-      "coin": "sun-token",
+      "coin": "grass",
       "direction": "LONG",
-      "rr": 0.8,
-      "entry": 0.01727907,
-      "tp1": 0.0175,
-      "tp2": 0.0178,
-      "tp3": 0.0181,
-      "sl": 0.0166,
-      "confidence": 89
-    }
-  ],
-  "cooldowns": {
-    "grass_signal": {
-      "timestamp": "2026-03-17T18:41:06.548Z",
-      "direction": "LONG"
+      "rr": 2.3,
+      "entry": 0.443929,
+      "tp1": 0.468,
+      "tp2": 0.4727,
+      "tp3": 3.8822,
+      "sl": 0.4314,
+      "confidence": 98
     },
-    "fartcoin_signal": {
-      "timestamp": "2026-03-17T18:41:08.871Z",
-      "direction": "LONG"
+    {
+      "type": "coingecko_signal",
+      "coin": "fartcoin",
+      "direction": "LONG",
+      "rr": 2,
+      "entry": 0.212984,
+      "tp1": 0.227,
+      "tp2": 0.2363,
+      "tp3": 0.248,
+      "sl": 0.2015,
+      "confidence": 96
     },
-    "pepe_signal": {
-      "timestamp": "2026-03-17T18:41:11.182Z",
-      "direction": "SHORT"
+    {
+      "type": "coingecko_signal",
+      "coin": "pepe",
+      "direction": "SHORT",
+      "rr": 3.5,
+      "entry": 0.0000037,
+      "tp1": 0.000004,
+      "tp2": 0.000003,
+      "tp3": 0.000003,
+      "sl": 0.000004,
+      "confidence": 91
     }
-  }
+  ]
 }

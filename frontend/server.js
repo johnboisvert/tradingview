@@ -2002,6 +2002,39 @@ async function generateScalpSetup(symbol) {
         if (kVal >= 99) { confidence -= 5; }
       }
     }
+
+    // ─── LONG Signal — Type F: Breakout Detector ───
+    // Previous M5 candle close was BELOW both EMA20 and VWAP, current candle close is ABOVE both.
+    // Catches the initial breakout moment for earlier entries.
+    if (!side && h1Trend === 'bullish') {
+      const prevClose = m5Closes[m5Closes.length - 2];
+      const prevEma20 = m5Ema20[m5Ema20.length - 2];
+      const prevVwap = m5Vwap; // VWAP is cumulative, use same value as approximation
+      const prevBelowBoth = prevClose < prevEma20 && prevClose < prevVwap;
+      const currAboveBoth = currentPrice > m5Ema20Val && currentPrice > m5Vwap;
+
+      if (prevBelowBoth && currAboveBoth) {
+        side = 'LONG';
+        confidence = 55;
+        reasons.push(`H1: Biais haussier ✓`);
+        reasons.push(`M5: Breakout — bougie précédente sous EMA20+VWAP, actuelle au-dessus ✓`);
+
+        // Volume surge bonus
+        const recentVol = m5Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
+        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+        if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; reasons.push(`Volume: Surge x${(recentVol / avgVol).toFixed(1)} ✓`); }
+        else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; reasons.push('Volume M5 supérieur'); }
+
+        // H1 EMA spread bonus
+        const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
+        if (h1Spread > 0.005) { confidence += 5; reasons.push('H1: Tendance forte (EMA8/20 écartées)'); }
+
+        // 4H alignment bonus
+        if (h4Trend === 'bullish') { confidence += 5; reasons.push('4H: Alignement haussier ✓'); }
+
+        reasons.push(`Stoch: K=${kVal.toFixed(1)}`);
+      }
+    }
   }
 
   // ─── SHORT Signal — Type A: Pullback Entry (original, relaxed) ───
@@ -2158,11 +2191,62 @@ async function generateScalpSetup(symbol) {
         if (kVal <= 1) { confidence -= 5; }
       }
     }
+
+    // ─── SHORT Signal — Type F: Breakdown Detector ───
+    // Previous M5 candle close was ABOVE both EMA20 and VWAP, current candle close is BELOW both.
+    // Catches the initial breakdown moment for earlier entries.
+    if (!side && h1Trend === 'bearish') {
+      const prevClose = m5Closes[m5Closes.length - 2];
+      const prevEma20 = m5Ema20[m5Ema20.length - 2];
+      const prevVwap = m5Vwap; // VWAP is cumulative, use same value as approximation
+      const prevAboveBoth = prevClose > prevEma20 && prevClose > prevVwap;
+      const currBelowBoth = currentPrice < m5Ema20Val && currentPrice < m5Vwap;
+
+      if (prevAboveBoth && currBelowBoth) {
+        side = 'SHORT';
+        confidence = 55;
+        reasons.push(`H1: Biais baissier ✓`);
+        reasons.push(`M5: Breakdown — bougie précédente au-dessus EMA20+VWAP, actuelle en-dessous ✓`);
+
+        // Volume surge bonus
+        const recentVol = m5Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
+        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+        if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; reasons.push(`Volume: Surge x${(recentVol / avgVol).toFixed(1)} ✓`); }
+        else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; reasons.push('Volume M5 supérieur'); }
+
+        // H1 EMA spread bonus
+        const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
+        if (h1Spread > 0.005) { confidence += 5; reasons.push('H1: Tendance forte (EMA8/20 écartées)'); }
+
+        // 4H alignment bonus
+        if (h4Trend === 'bearish') { confidence += 5; reasons.push('4H: Alignement baissier ✓'); }
+
+        reasons.push(`Stoch: K=${kVal.toFixed(1)}`);
+      }
+    }
   }
 
   if (!side) {
     console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: no Suivi de Flux signal (H1=${h1Trend}, 4H=${h4Trend}, EMA8>${m5Ema8Val.toFixed(2)}, EMA20>${m5Ema20Val.toFixed(2)}, StochK=${kVal.toFixed(1)}, VWAP=${m5Vwap.toFixed(2)})`);
     return null;
+  }
+
+  // ─── "Move Already Advanced" Filter ───
+  // Check last 12 M5 candles (~60 min). If price has already moved >2% in the signal
+  // direction, the move is likely already advanced and entry is late → penalize confidence.
+  const lookbackCandles = Math.min(12, m5Candles.length);
+  const priceAgo = m5Candles[m5Candles.length - lookbackCandles].close;
+  const movePercent = ((currentPrice - priceAgo) / priceAgo) * 100;
+  const ADVANCED_MOVE_THRESHOLD = 2.0; // 2% threshold
+
+  if (side === 'LONG' && movePercent > ADVANCED_MOVE_THRESHOLD) {
+    confidence -= 20;
+    reasons.push(`⚠️ Mouvement déjà avancé (+${movePercent.toFixed(1)}% en 60min) — pénalité -20%`);
+    console.log(`[ScalpAlert] ⚠️ ${symbol} LONG: move already advanced +${movePercent.toFixed(1)}% in ~60min, confidence -20`);
+  } else if (side === 'SHORT' && movePercent < -ADVANCED_MOVE_THRESHOLD) {
+    confidence -= 20;
+    reasons.push(`⚠️ Mouvement déjà avancé (${movePercent.toFixed(1)}% en 60min) — pénalité -20%`);
+    console.log(`[ScalpAlert] ⚠️ ${symbol} SHORT: move already advanced ${movePercent.toFixed(1)}% in ~60min, confidence -20`);
   }
 
   // Apply 4H neutral penalty

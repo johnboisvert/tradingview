@@ -974,10 +974,11 @@ function roundPrice(value, reference) {
 /**
  * Generate trade setups from CoinGecko market data.
  * (Same algorithm as Trades.tsx generateRealSetups)
+ * Now returns raw setups without Daily filter — Daily filter applied async in checkAndSendAlerts.
  */
 function generateRealSetups(coins) {
   const setups = [];
-  const triggerTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const triggerTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Montreal' });
 
   for (const c of coins) {
     if (!c || !c.current_price || !c.market_cap) continue;
@@ -1083,6 +1084,76 @@ function generateRealSetups(coins) {
 }
 
 /**
+ * Apply Daily (1D) EMA8/EMA20 trend filter to a swing setup.
+ * Fetches Daily candles from Binance, calculates trend, adjusts confidence.
+ * Returns the setup with d1_trend, ema8_d1, ema20_d1 fields added, or null if blocked.
+ */
+async function applyDailyFilterToSwingSetup(setup) {
+  try {
+    const d1Candles = await fetchBinanceKlines(setup.symbol, '1d', 50);
+
+    let d1Trend = 'neutral';
+    let d1Ema8Val = null;
+    let d1Ema20Val = null;
+
+    if (d1Candles.length >= 25) {
+      const d1Closes = d1Candles.map(c => c.close);
+      const d1Ema8 = calcEMA(d1Closes, 8);
+      const d1Ema20 = calcEMA(d1Closes, 20);
+      d1Ema8Val = d1Ema8[d1Ema8.length - 1];
+      d1Ema20Val = d1Ema20[d1Ema20.length - 1];
+      const d1Spread = Math.abs(d1Ema8Val - d1Ema20Val) / d1Ema20Val;
+      if (d1Spread < 0.001) {
+        d1Trend = 'neutral';
+      } else if (d1Ema8Val > d1Ema20Val) {
+        d1Trend = 'bullish';
+      } else {
+        d1Trend = 'bearish';
+      }
+    }
+
+    // Apply Daily trend penalty/bonus
+    let d1Penalty = 0;
+    let d1Reason = '';
+    if (setup.side === 'LONG' && d1Trend === 'bearish') {
+      d1Penalty = 12;
+      d1Reason = `⚠️ Daily Bearish — pénalité confiance -${d1Penalty}%`;
+    } else if (setup.side === 'SHORT' && d1Trend === 'bullish') {
+      d1Penalty = 12;
+      d1Reason = `⚠️ Daily Bullish — pénalité confiance -${d1Penalty}%`;
+    } else if (setup.side === 'LONG' && d1Trend === 'bullish') {
+      d1Penalty = -5;
+      d1Reason = `✅ Daily Bullish — bonus alignement +5%`;
+    } else if (setup.side === 'SHORT' && d1Trend === 'bearish') {
+      d1Penalty = -5;
+      d1Reason = `✅ Daily Bearish — bonus alignement +5%`;
+    }
+
+    let newConfidence = setup.confidence - d1Penalty;
+    newConfidence = Math.min(98, Math.max(25, newConfidence));
+
+    // Add Daily info to reason
+    let newReason = setup.reason;
+    if (d1Reason) {
+      newReason += ` | ${d1Reason}`;
+    }
+
+    return {
+      ...setup,
+      confidence: newConfidence,
+      reason: newReason,
+      d1_trend: d1Trend,
+      ema8_d1: d1Ema8Val,
+      ema20_d1: d1Ema20Val,
+    };
+  } catch (err) {
+    console.error(`[Telegram] Daily filter error for ${setup.symbol}:`, err.message);
+    // On error, return setup unchanged (no filter applied)
+    return { ...setup, d1_trend: 'unknown', ema8_d1: null, ema20_d1: null };
+  }
+}
+
+/**
  * Fetch top 200 coins from CoinGecko via our own proxy (with sparkline for S/R).
  */
 async function fetchCoinGeckoMarkets() {
@@ -1141,11 +1212,32 @@ async function checkAndSendAlerts() {
         seenCoins.set(setup.id, setup);
       }
     }
-    const setups = Array.from(seenCoins.values());
-    console.log(`[Telegram] After dedup: ${setups.length} unique coin setups`);
+    const dedupedSetups = Array.from(seenCoins.values());
+    console.log(`[Telegram] After dedup: ${dedupedSetups.length} unique coin setups`);
 
-    // Filter: only send signals with confidence >= 88%
-    const MIN_CONFIDENCE = 88;
+    // Apply Daily (1D) EMA8/EMA20 trend filter to each setup
+    console.log(`[Telegram] 📊 Applying Daily trend filter to ${dedupedSetups.length} setups...`);
+    const setups = [];
+    const D1_BATCH_SIZE = 5;
+    for (let i = 0; i < dedupedSetups.length; i += D1_BATCH_SIZE) {
+      const batch = dedupedSetups.slice(i, i + D1_BATCH_SIZE);
+      const filtered = await Promise.all(batch.map(s => applyDailyFilterToSwingSetup(s)));
+      for (const s of filtered) {
+        if (s) setups.push(s);
+      }
+      if (i + D1_BATCH_SIZE < dedupedSetups.length) {
+        await new Promise(r => setTimeout(r, 300));
+      }
+    }
+
+    // Debug: log confidences after Daily filter
+    if (setups.length > 0) {
+      const confValues = setups.slice(0, 15).map(s => `${s.symbol}:${s.confidence}%${s.side}(D1:${s.d1_trend || '?'})`);
+      console.log(`[Telegram] After Daily filter confidences: ${confValues.join(", ")}`);
+    }
+
+    // Filter: only send signals with confidence >= 85% (post-Daily-filter)
+    const MIN_CONFIDENCE = 85;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[Telegram] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 
@@ -1185,6 +1277,10 @@ async function checkAndSendAlerts() {
         srSection += `└ (aucun support identifié)\n`;
       }
 
+      // Daily trend display
+      const d1TrendEmoji = setup.d1_trend === 'bullish' ? '🟢 Haussière' : setup.d1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
+      const d1Info = setup.ema8_d1 != null ? ` (EMA8: $${formatPrice(setup.ema8_d1)}, EMA20: $${formatPrice(setup.ema20_d1)})` : '';
+
       const text = `🔵🔵🔵 <b>🔄 SWING TRADING — SIGNAL CRYPTO</b> 🔵🔵🔵
 🌐 https://CryptoIA.ca
 📊 Entry sur le timeframe <b>H1</b> | Analyse : <b>CoinGecko 24h</b> + <b>S/R 7j</b> + <b>Confirmation H1</b>
@@ -1201,6 +1297,8 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 
 📐 <b>Supports &amp; Résistances :</b>
 ${srSection}
+📊 Tendance Daily : ${d1TrendEmoji}${d1Info}
+
 ⚖️ Risk/Reward : <b>1:${setup.rr}</b>
 📈 24h : <b>${setup.change24h >= 0 ? '+' : ''}${setup.change24h.toFixed(2)}%</b>
 🧠 Confiance : <b>${setup.confidence}%</b>

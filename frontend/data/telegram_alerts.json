@@ -33,5 +33,19 @@
       "sl": 0.0166,
       "confidence": 89
     }
-  ]
+  ],
+  "cooldowns": {
+    "grass_signal": {
+      "timestamp": "2026-03-17T18:41:06.548Z",
+      "direction": "LONG"
+    },
+    "fartcoin_signal": {
+      "timestamp": "2026-03-17T18:41:08.871Z",
+      "direction": "LONG"
+    },
+    "pepe_signal": {
+      "timestamp": "2026-03-17T18:41:11.182Z",
+      "direction": "SHORT"
+    }
+  }
 }

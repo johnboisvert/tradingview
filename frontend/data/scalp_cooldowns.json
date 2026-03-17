@@ -282,5 +282,9 @@
   "THEUSDT_SHORT": {
     "timestamp": "2026-03-17T14:40:58.822Z",
     "direction": "SHORT"
+  },
+  "ENSUSDT_LONG": {
+    "timestamp": "2026-03-17T18:28:00.352Z",
+    "direction": "LONG"
   }
 }

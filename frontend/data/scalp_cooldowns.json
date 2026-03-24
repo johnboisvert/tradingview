@@ -244,7 +244,7 @@
     "direction": "LONG"
   },
   "ZECUSDT_LONG": {
-    "timestamp": "2026-03-02T16:56:38.212Z",
+    "timestamp": "2026-03-17T18:44:21.966Z",
     "direction": "LONG"
   },
   "JUPUSDT_LONG": {
@@ -285,6 +285,10 @@
   },
   "ENSUSDT_LONG": {
     "timestamp": "2026-03-17T18:28:00.352Z",
+    "direction": "LONG"
+  },
+  "SUNUSDT_LONG": {
+    "timestamp": "2026-03-17T18:47:22.693Z",
     "direction": "LONG"
   }
 }

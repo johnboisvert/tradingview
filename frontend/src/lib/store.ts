@@ -383,9 +383,12 @@ export function savePlanAccess(plan: string, routes: string[]): void {
 }
 
 // ============================================================
-// Admins
+// Admins — SERVER-SIDE ONLY (via /api/v1/admin/* endpoints)
+// No localStorage for admin credentials. All auth is server-side.
 // ============================================================
-const SUPER_ADMIN_KEY = "cryptoia_super_admin";
+
+// Key used to store the admin session token in localStorage
+const ADMIN_TOKEN_KEY = "cryptoia_admin_token";
 
 export interface Admin {
   email: string;
@@ -401,213 +404,165 @@ export interface AdminLogEntry {
   timestamp: string;
 }
 
-// SHA-256 hash using Web Crypto API
-// NOTE: No caching of password hashes in memory for security
-export async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  return hashHex;
-}
+// --- Admin Session Token (stored in localStorage, verified server-side) ---
 
-// --- Super Admin (localStorage-based, no env vars dependency) ---
-
-interface StoredSuperAdmin {
-  email: string;
-  passwordHash: string;
-  name: string;
-  created_at: string;
-}
-
-// SECURITY: Admin credentials are NO LONGER read from VITE_ env vars
-// (those would be exposed in the frontend bundle).
-// All admin accounts are stored in localStorage with hashed passwords.
-function getEnvSuperAdminEmail(): string {
-  return "";
-}
-
-function getEnvSuperAdminPassword(): string {
-  return "";
-}
-
-function getStoredSuperAdmin(): StoredSuperAdmin | null {
+function getAdminToken(): string | null {
   try {
-    const raw = localStorage.getItem(SUPER_ADMIN_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch { /* ignore */ }
-  return null;
+    return localStorage.getItem(ADMIN_TOKEN_KEY);
+  } catch {
+    return null;
+  }
 }
 
-function saveStoredSuperAdmin(admin: StoredSuperAdmin): void {
-  localStorage.setItem(SUPER_ADMIN_KEY, JSON.stringify(admin));
+function setAdminToken(token: string): void {
+  localStorage.setItem(ADMIN_TOKEN_KEY, token);
+  // Also set sessionStorage flag for backward compatibility with components
+  // that check isAdminSessionActive synchronously
+  sessionStorage.setItem("cryptoia_admin_auth", "true");
 }
 
-/** Check if a super-admin is configured (either env vars or localStorage) */
+function removeAdminToken(): void {
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  sessionStorage.removeItem("cryptoia_admin_auth");
+  sessionStorage.removeItem("cryptoia_admin_session");
+}
+
+/** Check if a super-admin is configured — calls server endpoint */
+export async function checkAdminStatus(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/v1/admin/status");
+    if (res.ok) {
+      const data = await res.json();
+      return !!data.configured;
+    }
+  } catch (err) {
+    console.error("[checkAdminStatus] Error:", err);
+  }
+  return false;
+}
+
+/**
+ * Synchronous check — uses localStorage token + sessionStorage flag.
+ * For backward compatibility with ProtectedAdminRoute and other sync checks.
+ * The actual server verification happens asynchronously via verifyAdminSession().
+ */
 export function isSuperAdminConfigured(): boolean {
-  const envEmail = getEnvSuperAdminEmail();
-  const envPassword = getEnvSuperAdminPassword();
-  if (envEmail && envPassword) return true;
-  return getStoredSuperAdmin() !== null;
+  // This is now a best-effort sync check.
+  // The real check is async via checkAdminStatus().
+  // Return true to prevent showing setup form by default (server decides).
+  return true;
 }
 
-/** Get the super-admin email (env vars take priority, then localStorage) */
+/** Get the super-admin email — from cached session data */
 export function getSuperAdminEmail(): string {
-  const envEmail = getEnvSuperAdminEmail();
-  if (envEmail) return envEmail;
-  const stored = getStoredSuperAdmin();
-  return stored?.email || "";
+  try {
+    const raw = sessionStorage.getItem("cryptoia_admin_session");
+    if (raw) {
+      const session = JSON.parse(raw);
+      return session.email || "";
+    }
+  } catch { /* ignore */ }
+  return "";
 }
 
-/** Create the initial super-admin (stored in localStorage with hashed password) */
+/** Create the initial super-admin — calls server endpoint */
 export async function initSuperAdmin(
   email: string,
   name: string,
   password: string
 ): Promise<{ success: boolean; message: string }> {
-  // Don't allow if already configured
-  if (isSuperAdminConfigured()) {
-    return { success: false, message: "Un super-admin est déjà configuré." };
+  try {
+    const res = await fetch("/api/v1/admin/setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, name, password }),
+    });
+    const data = await res.json();
+    return { success: !!data.success, message: data.message || "" };
+  } catch (err) {
+    console.error("[initSuperAdmin] Error:", err);
+    return { success: false, message: "Erreur de connexion au serveur." };
   }
-
-  const passwordHash = await hashPassword(password);
-  saveStoredSuperAdmin({
-    email,
-    passwordHash,
-    name: name || "Super Admin",
-    created_at: new Date().toISOString(),
-  });
-
-  addAdminLog(email, "Création du compte super-admin (setup initial)");
-  return { success: true, message: "Super-admin créé avec succès." };
 }
 
-/** Update the super-admin password (localStorage-based super-admin only) */
-export async function updateSuperAdminPassword(newPassword: string): Promise<{ success: boolean; message: string }> {
-  const stored = getStoredSuperAdmin();
-  if (!stored) {
-    return { success: false, message: "Aucun super-admin localStorage trouvé. Le super-admin env ne peut pas être modifié ici." };
-  }
-  stored.passwordHash = await hashPassword(newPassword);
-  saveStoredSuperAdmin(stored);
-  addAdminLog(stored.email, "Mot de passe super-admin réinitialisé");
-  return { success: true, message: "Mot de passe super-admin mis à jour." };
-}
-
-/** Update the super-admin email (localStorage-based super-admin only) */
-export async function updateSuperAdminEmail(newEmail: string): Promise<{ success: boolean; message: string }> {
-  const stored = getStoredSuperAdmin();
-  if (!stored) {
-    return { success: false, message: "Aucun super-admin localStorage trouvé." };
-  }
-  const oldEmail = stored.email;
-  stored.email = newEmail;
-  saveStoredSuperAdmin(stored);
-  addAdminLog(newEmail, `Email super-admin changé de ${oldEmail} à ${newEmail}`);
-  return { success: true, message: "Email super-admin mis à jour." };
-}
-
-// --- Secondary Admins ---
-
-export function getAdmins(): Admin[] {
-  return getItem<Admin[]>(KEYS.ADMINS, []);
-}
-
-export function saveAdmins(admins: Admin[]): void {
-  setItem(KEYS.ADMINS, admins);
-}
-
-export async function addAdmin(email: string, name: string, password: string): Promise<{ success: boolean; message: string }> {
-  const admins = getAdmins();
-  const superEmail = getSuperAdminEmail();
-
-  if (superEmail && email.toLowerCase() === superEmail.toLowerCase()) {
-    return { success: false, message: "Cet email est réservé au super-admin." };
-  }
-  if (admins.find((a) => a.email.toLowerCase() === email.toLowerCase())) {
-    return { success: false, message: "Un admin avec cet email existe déjà." };
-  }
-
-  const passwordHash = await hashPassword(password);
-  admins.push({
-    email,
-    passwordHash,
-    name,
-    role: "admin",
-    created_at: new Date().toISOString(),
-  });
-  saveAdmins(admins);
-  addAdminLog(superEmail || "system", `Ajout admin: ${email}`);
-  return { success: true, message: "Admin ajouté avec succès." };
-}
-
-export function deleteAdmin(email: string): { success: boolean; message: string } {
-  const admins = getAdmins();
-  const superEmail = getSuperAdminEmail();
-
-  if (superEmail && email.toLowerCase() === superEmail.toLowerCase()) {
-    return { success: false, message: "Impossible de supprimer le super-admin." };
-  }
-
-  const filtered = admins.filter((a) => a.email.toLowerCase() !== email.toLowerCase());
-  if (filtered.length === admins.length) {
-    return { success: false, message: "Admin introuvable." };
-  }
-
-  saveAdmins(filtered);
-  addAdminLog(superEmail || "system", `Suppression admin: ${email}`);
-  return { success: true, message: "Admin supprimé." };
-}
-
-export async function updateAdminPassword(email: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-  // Check if it's the localStorage super-admin
-  const stored = getStoredSuperAdmin();
-  if (stored && email.toLowerCase() === stored.email.toLowerCase()) {
-    return updateSuperAdminPassword(newPassword);
-  }
-
-  const admins = getAdmins();
-  const admin = admins.find((a) => a.email.toLowerCase() === email.toLowerCase());
-  if (!admin) return { success: false, message: "Admin introuvable." };
-
-  admin.passwordHash = await hashPassword(newPassword);
-  saveAdmins(admins);
-  addAdminLog(email, "Mot de passe réinitialisé");
-  return { success: true, message: "Mot de passe mis à jour." };
-}
-
-export async function loginAdmin(email: string, password: string): Promise<{ success: boolean; role: "super-admin" | "admin" | null; name: string }> {
-  const trimmedEmail = email.trim().toLowerCase();
-  const trimmedPassword = password.trim();
-
-  // 1. Check localStorage super-admin
-  const storedSuperAdmin = getStoredSuperAdmin();
-  if (storedSuperAdmin && trimmedEmail === storedSuperAdmin.email.trim().toLowerCase()) {
-    const passwordHash = await hashPassword(trimmedPassword);
-    if (passwordHash === storedSuperAdmin.passwordHash) {
-      setAdminSession(storedSuperAdmin.email, "super-admin", storedSuperAdmin.name);
-      addAdminLog(storedSuperAdmin.email, "Connexion (super-admin)");
-      return { success: true, role: "super-admin", name: storedSuperAdmin.name };
+/** Login admin — calls server endpoint, stores token */
+export async function loginAdmin(
+  email: string,
+  password: string
+): Promise<{ success: boolean; role: "super-admin" | "admin" | null; name: string }> {
+  try {
+    const res = await fetch("/api/v1/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (data.success && data.token) {
+      // Store token in localStorage for persistence across tabs
+      setAdminToken(data.token);
+      // Cache admin info in sessionStorage for quick access
+      const adminInfo = data.admin || {};
+      const role = adminInfo.role === "super_admin" ? "super-admin" : (adminInfo.role || "admin");
+      sessionStorage.setItem(
+        "cryptoia_admin_session",
+        JSON.stringify({
+          email: adminInfo.email || email,
+          role,
+          name: adminInfo.name || "",
+        })
+      );
+      addAdminLog(adminInfo.email || email, `Connexion (${role})`);
+      return { success: true, role: role as "super-admin" | "admin", name: adminInfo.name || "" };
     }
+    return { success: false, role: null, name: "" };
+  } catch (err) {
+    console.error("[loginAdmin] Error:", err);
+    return { success: false, role: null, name: "" };
   }
-
-  // 2. Check secondary admins
-  const admins = getAdmins();
-  const admin = admins.find((a) => a.email.trim().toLowerCase() === trimmedEmail);
-  if (admin) {
-    const passwordHash = await hashPassword(trimmedPassword);
-    if (passwordHash === admin.passwordHash) {
-      setAdminSession(admin.email, admin.role, admin.name);
-      addAdminLog(admin.email, `Connexion (${admin.role})`);
-      return { success: true, role: admin.role, name: admin.name };
-    }
-  }
-
-  return { success: false, role: null, name: "" };
 }
 
-// --- Admin Session ---
+/** Verify the current admin session token with the server */
+export async function verifyAdminSession(): Promise<{
+  valid: boolean;
+  admin?: { email: string; name: string; role: string };
+}> {
+  const token = getAdminToken();
+  if (!token) {
+    return { valid: false };
+  }
+  try {
+    const res = await fetch("/api/v1/admin/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    const data = await res.json();
+    if (data.valid) {
+      // Update cached session info
+      const adminInfo = data.admin || {};
+      const role = adminInfo.role === "super_admin" ? "super-admin" : (adminInfo.role || "admin");
+      sessionStorage.setItem("cryptoia_admin_auth", "true");
+      sessionStorage.setItem(
+        "cryptoia_admin_session",
+        JSON.stringify({
+          email: adminInfo.email || "",
+          role,
+          name: adminInfo.name || "",
+        })
+      );
+      return { valid: true, admin: { ...adminInfo, role } };
+    }
+    // Token is invalid — clean up
+    removeAdminToken();
+    return { valid: false };
+  } catch (err) {
+    console.error("[verifyAdminSession] Error:", err);
+    // On network error, don't invalidate — allow offline access with cached session
+    return { valid: sessionStorage.getItem("cryptoia_admin_auth") === "true" };
+  }
+}
+
+// --- Admin Session (backward-compatible sync API) ---
 export interface AdminSession {
   email: string;
   role: "super-admin" | "admin";
@@ -627,16 +582,32 @@ export function setAdminSession(email: string, role: "super-admin" | "admin", na
   sessionStorage.setItem("cryptoia_admin_session", JSON.stringify({ email, role, name }));
 }
 
-export function clearAdminSession(): void {
-  sessionStorage.removeItem("cryptoia_admin_auth");
-  sessionStorage.removeItem("cryptoia_admin_session");
+export async function clearAdminSession(): Promise<void> {
+  const token = getAdminToken();
+  // Notify server to invalidate the token
+  if (token) {
+    try {
+      await fetch("/api/v1/admin/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+    } catch {
+      // Ignore network errors on logout
+    }
+  }
+  removeAdminToken();
 }
 
 export function isAdminSessionActive(): boolean {
+  // Quick sync check: is there a token stored?
+  const token = getAdminToken();
+  if (!token) return false;
+  // Also check sessionStorage flag (set during login/verify)
   return sessionStorage.getItem("cryptoia_admin_auth") === "true";
 }
 
-// --- Admin Activity Log ---
+// --- Admin Activity Log (localStorage — non-sensitive) ---
 export function getAdminLog(): AdminLogEntry[] {
   return getItem<AdminLogEntry[]>(KEYS.ADMIN_LOG, []);
 }
@@ -647,6 +618,53 @@ export function addAdminLog(email: string, action: string): void {
   // Keep last 100 entries
   if (log.length > 100) log.length = 100;
   setItem(KEYS.ADMIN_LOG, log);
+}
+
+// --- Legacy functions kept for backward compatibility ---
+// These are no longer used for admin auth but may be referenced elsewhere
+
+/** @deprecated Use loginAdmin instead */
+export async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** @deprecated Admin management is now server-side only */
+export function getAdmins(): Admin[] {
+  return [];
+}
+
+/** @deprecated Admin management is now server-side only */
+export function saveAdmins(_admins: Admin[]): void {
+  // No-op — admin management is server-side
+}
+
+/** @deprecated Use initSuperAdmin (server-side) instead */
+export async function addAdmin(_email: string, _name: string, _password: string): Promise<{ success: boolean; message: string }> {
+  return { success: false, message: "La gestion des admins est maintenant côté serveur." };
+}
+
+/** @deprecated Admin management is now server-side only */
+export function deleteAdmin(_email: string): { success: boolean; message: string } {
+  return { success: false, message: "La gestion des admins est maintenant côté serveur." };
+}
+
+/** @deprecated Use server endpoint instead */
+export async function updateAdminPassword(_email: string, _newPassword: string): Promise<{ success: boolean; message: string }> {
+  return { success: false, message: "La gestion des mots de passe est maintenant côté serveur." };
+}
+
+/** @deprecated Use server endpoint instead */
+export async function updateSuperAdminPassword(_newPassword: string): Promise<{ success: boolean; message: string }> {
+  return { success: false, message: "La gestion des mots de passe est maintenant côté serveur." };
+}
+
+/** @deprecated Use server endpoint instead */
+export async function updateSuperAdminEmail(_newEmail: string): Promise<{ success: boolean; message: string }> {
+  return { success: false, message: "La gestion de l'email est maintenant côté serveur." };
 }
 
 // ============================================================

@@ -57,5 +57,27 @@
       "sl": 0.000004,
       "confidence": 91
     }
-  ]
+  ],
+  "cooldowns": {
+    "aptos_signal": {
+      "timestamp": "2026-03-24T03:13:30.344Z",
+      "direction": "LONG"
+    },
+    "fetch-ai_signal": {
+      "timestamp": "2026-03-24T03:13:32.677Z",
+      "direction": "LONG"
+    },
+    "aerodrome-finance_signal": {
+      "timestamp": "2026-03-24T03:13:34.987Z",
+      "direction": "LONG"
+    },
+    "bittensor_signal": {
+      "timestamp": "2026-03-24T03:13:37.365Z",
+      "direction": "LONG"
+    },
+    "render-token_signal": {
+      "timestamp": "2026-03-24T03:13:39.695Z",
+      "direction": "LONG"
+    }
+  }
 }

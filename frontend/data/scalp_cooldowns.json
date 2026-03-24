@@ -290,5 +290,13 @@
   "SUNUSDT_LONG": {
     "timestamp": "2026-03-17T18:47:22.693Z",
     "direction": "LONG"
+  },
+  "MBLUSDT_LONG": {
+    "timestamp": "2026-03-24T03:16:44.086Z",
+    "direction": "LONG"
+  },
+  "ZAMAUSDT_LONG": {
+    "timestamp": "2026-03-24T03:19:43.949Z",
+    "direction": "LONG"
   }
 }

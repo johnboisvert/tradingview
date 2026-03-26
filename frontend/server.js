@@ -1034,63 +1034,61 @@ function calculateSRLevels(coin) {
 
 /**
  * Align TP levels with S/R for higher probability.
- * (Same algorithm as Trades.tsx alignTPWithSR)
+ * v4: Wider SL (4-8%) + conservative TP ratios for swing trading
  */
 function alignTPWithSR(side, entry, slPercent, supports, resistances) {
-  // Enforce minimum 1.5% SL for swing trades
-  const effectiveSlPercent = Math.max(slPercent, 1.5);
+  // v4: Enforce minimum 4% SL for swing trades
+  const effectiveSlPercent = Math.max(slPercent, 4.0);
   const slDistance = entry * (effectiveSlPercent / 100);
 
   let tp1, tp2, tp3, sl;
 
   if (side === 'LONG') {
     sl = entry - slDistance;
-    // Enforce minimum 1.5% SL distance
-    if (Math.abs(entry - sl) / entry < 0.015) sl = entry * 0.985;
-    tp1 = entry + slDistance * 1.2;   // 1.2:1 ratio
-    tp2 = entry + slDistance * 2.0;   // 2.0:1 ratio
-    tp3 = entry + slDistance * 3.0;   // 3.0:1 ratio
+    // Enforce minimum 4% SL distance
+    if (Math.abs(entry - sl) / entry < 0.04) sl = entry * 0.96;
+    // v4: Conservative TP ratios
+    tp1 = entry + slDistance * 0.8;   // 0.8:1 — quick profit, high probability
+    tp2 = entry + slDistance * 1.5;   // 1.5:1 — moderate target
+    tp3 = entry + slDistance * 2.5;   // 2.5:1 — extended target
 
     const nearestSupport = supports.find(s => s.price < entry * 0.995);
-    if (nearestSupport && nearestSupport.price > sl * 0.97 && nearestSupport.price < entry * 0.99) {
-      sl = nearestSupport.price * 0.998;
-      // Re-enforce minimum 1.5% after S/R adjustment
-      if (Math.abs(entry - sl) / entry < 0.015) sl = entry * 0.985;
+    if (nearestSupport && nearestSupport.price > sl * 0.95 && nearestSupport.price < entry * 0.98) {
+      sl = nearestSupport.price * 0.997;
+      if (Math.abs(entry - sl) / entry < 0.04) sl = entry * 0.96;
     }
 
     const resAbove = resistances.filter(r => r.price > entry * 1.005);
-    if (resAbove.length >= 1 && resAbove[0].price > tp1 * 0.95 && resAbove[0].price < tp1 * 1.15) {
+    if (resAbove.length >= 1 && resAbove[0].price > tp1 * 0.90 && resAbove[0].price < tp1 * 1.20) {
       tp1 = resAbove[0].price * 0.998;
     }
-    if (resAbove.length >= 2 && resAbove[1].price > tp2 * 0.85 && resAbove[1].price < tp2 * 1.2) {
+    if (resAbove.length >= 2 && resAbove[1].price > tp2 * 0.85 && resAbove[1].price < tp2 * 1.25) {
       tp2 = resAbove[1].price * 0.998;
     }
-    if (resAbove.length >= 3 && resAbove[2].price > tp3 * 0.8) {
+    if (resAbove.length >= 3 && resAbove[2].price > tp3 * 0.80) {
       tp3 = resAbove[2].price * 0.998;
     }
   } else {
     sl = entry + slDistance;
-    // Enforce minimum 1.5% SL distance
-    if (Math.abs(sl - entry) / entry < 0.015) sl = entry * 1.015;
-    tp1 = entry - slDistance * 1.2;   // 1.2:1 ratio
-    tp2 = entry - slDistance * 2.0;   // 2.0:1 ratio
-    tp3 = entry - slDistance * 3.0;   // 3.0:1 ratio
+    if (Math.abs(sl - entry) / entry < 0.04) sl = entry * 1.04;
+    tp1 = entry - slDistance * 0.8;
+    tp2 = entry - slDistance * 1.5;
+    tp3 = entry - slDistance * 2.5;
 
     const nearestResistance = resistances.find(r => r.price > entry * 1.005);
-    if (nearestResistance && nearestResistance.price < sl * 1.03 && nearestResistance.price > entry * 1.01) {
-      sl = nearestResistance.price * 1.002;
-      // Re-enforce minimum 1.5% after S/R adjustment
-      if (Math.abs(sl - entry) / entry < 0.015) sl = entry * 1.015;
+    if (nearestResistance && nearestResistance.price < sl * 1.05 && nearestResistance.price > entry * 1.02) {
+      sl = nearestResistance.price * 1.003;
+      if (Math.abs(sl - entry) / entry < 0.04) sl = entry * 1.04;
     }
 
     const supBelow = supports.filter(s => s.price < entry * 0.995);
-    if (supBelow.length >= 1 && supBelow[0].price < tp1 * 1.05 && supBelow[0].price > tp1 * 0.85) {
+    if (supBelow.length >= 1 && supBelow[0].price < tp1 * 1.10 && supBelow[0].price > tp1 * 0.80) {
       tp1 = supBelow[0].price * 1.002;
     }
-    if (supBelow.length >= 2 && supBelow[1].price < tp2 * 1.15 && supBelow[1].price > tp2 * 0.8) {
+    if (supBelow.length >= 2 && supBelow[1].price < tp2 * 1.15 && supBelow[1].price > tp2 * 0.80) {
       tp2 = supBelow[1].price * 1.002;
     }
-    if (supBelow.length >= 3 && supBelow[2].price < tp3 * 1.2) {
+    if (supBelow.length >= 3 && supBelow[2].price < tp3 * 1.20) {
       tp3 = supBelow[2].price * 1.002;
     }
   }
@@ -1132,33 +1130,38 @@ function generateRealSetups(coins) {
     const mcap = c.market_cap || 1;
     const volMcapRatio = volume / mcap;
 
+    // v4: Skip low volume coins
+    if (volMcapRatio < 0.05) continue;
+
     const { supports, resistances } = calculateSRLevels(c);
 
-    const volatility = Math.max(Math.abs(change24h) * 0.5, 1.5);
-    const slPercent = volatility * 0.8;
+    // v4: Wider SL for swing (4-8%)
+    const rawVolatility = Math.abs(change24h);
+    const slPercent = Math.max(4.0, Math.min(rawVolatility * 0.7, 8.0));
 
     let side;
     let confidence = 0;
     let reason;
 
-    if (change24h > 2 && volMcapRatio > 0.08) {
-      side = 'LONG';
-    confidence = 50;
-      if (change24h > 5) confidence += 15; else confidence += 8;
-      if (volMcapRatio > 0.2) confidence += 15; else if (volMcapRatio > 0.1) confidence += 10;
-      if (change24h > 8) confidence += 10;
-      reason = `Momentum haussier (+${change24h.toFixed(1)}%) avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
-    } else if (change24h < -8) {
+    // v4: Tighter entry conditions (same as Trades.tsx)
+    if (change24h > 4 && change24h < 12 && volMcapRatio > 0.12) {
       side = 'LONG';
       confidence = 45;
-      if (change24h < -15) confidence += 15; else if (change24h < -10) confidence += 10;
-      if (volMcapRatio > 0.15) confidence += 10;
+      if (change24h > 6) confidence += 12; else confidence += 5;
+      if (volMcapRatio > 0.25) confidence += 12; else if (volMcapRatio > 0.15) confidence += 8;
+      if (change24h > 8) confidence += 8;
+      reason = `Momentum haussier (+${change24h.toFixed(1)}%) avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
+    } else if (change24h < -8 && change24h > -18 && volMcapRatio > 0.10) {
+      side = 'LONG';
+      confidence = 40;
+      if (change24h < -14) confidence += 12; else if (change24h < -10) confidence += 8;
+      if (volMcapRatio > 0.18) confidence += 8;
       reason = `Survente potentielle (${change24h.toFixed(1)}%) — rebond technique possible`;
-    } else if (change24h < -3 && volMcapRatio > 0.1) {
+    } else if (change24h < -5 && change24h > -20 && volMcapRatio > 0.15) {
       side = 'SHORT';
-    confidence = 50;
-      if (change24h < -5) confidence += 10; else confidence += 5;
-      if (volMcapRatio > 0.2) confidence += 15; else confidence += 8;
+      confidence = 45;
+      if (change24h < -8) confidence += 10; else confidence += 5;
+      if (volMcapRatio > 0.25) confidence += 12; else confidence += 6;
       reason = `Tendance baissière (${change24h.toFixed(1)}%) avec volume de distribution (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
     } else {
       continue;
@@ -1170,16 +1173,16 @@ function generateRealSetups(coins) {
     const nearestResistance = resistances[0];
 
     if (side === 'LONG') {
-      if (nearestSupport && Math.abs(price - nearestSupport.price) / price < 0.02) {
-        confidence += 10;
+      if (nearestSupport && Math.abs(price - nearestSupport.price) / price < 0.025) {
+        confidence += 8;
         reason += ` | Proche du support $${formatPrice(nearestSupport.price)}`;
       }
       if (nearestResistance && Math.abs(tp1 - nearestResistance.price) / tp1 < 0.02) {
         confidence += 5;
       }
     } else {
-      if (nearestResistance && Math.abs(price - nearestResistance.price) / price < 0.02) {
-        confidence += 10;
+      if (nearestResistance && Math.abs(price - nearestResistance.price) / price < 0.025) {
+        confidence += 8;
         reason += ` | Proche de la résistance $${formatPrice(nearestResistance.price)}`;
       }
       if (nearestSupport && Math.abs(tp1 - nearestSupport.price) / tp1 < 0.02) {
@@ -1187,12 +1190,12 @@ function generateRealSetups(coins) {
       }
     }
 
-    if (Math.abs(sl - price) / price < 0.005) {
+    if (Math.abs(sl - price) / price < 0.035) {
       confidence -= 10;
     }
 
-    if (supports.length >= 2) confidence += 3;
-    if (resistances.length >= 2) confidence += 3;
+    if (supports.length >= 2) confidence += 2;
+    if (resistances.length >= 2) confidence += 2;
 
     confidence = Math.min(98, Math.max(25, confidence));
 

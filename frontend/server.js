@@ -2068,139 +2068,7 @@ async function generateScalpSetup(symbol) {
       }
     }
 
-    // ─── LONG Signal — Type C: VWAP Bounce ───
-    // Price bouncing off VWAP in bullish trend with stoch turning up
-    if (!side && h1Trend === 'bullish') {
-      const vwapProximity = Math.abs(currentPrice - m5Vwap) / currentPrice < 0.003;
-      const priceAboveVwap = currentPrice >= m5Vwap;
-      const stochTurningUp = stochCrossUp || (stochRising && kVal < 50);
-      const emaAligned = ema8AboveEma20;
-
-      if (vwapProximity && priceAboveVwap && stochTurningUp && emaAligned) {
-        side = 'LONG';
-        confidence = 48;
-        reasons.push(`H1: Biais haussier ✓`);
-        reasons.push(`M5: Rebond VWAP ($${m5Vwap.toFixed(2)}) ✓`);
-        reasons.push(`Stoch: ${stochCrossUp ? 'Croisement K↑D' : 'K en hausse'} (K:${kVal.toFixed(1)})`);
-        reasons.push('M5: EMA8 > EMA20 ✓');
-
-        const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
-        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.3) { confidence += 6; reasons.push('Volume M5 supérieur'); }
-
-        const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-        if (h1Spread > 0.005) { confidence += 5; reasons.push('H1: Tendance forte'); }
-      }
-    }
-
-    // ─── LONG Signal — Type D: Strong Trend Micro-Pullback ───
-    // Works when stoch is high (80-100) but price pulls back slightly to EMA or stoch dips
-    // This is the most common scenario in strong uptrends
-    if (!side && h1Trend === 'bullish') {
-      const h1Strong = h1Ema8Val > h1Ema20Val;
-      const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-      const emaAligned = ema8AboveEma20;
-      const aboveVwap = currentPrice > m5Vwap;
-
-      // Stoch micro-pullback: was very high, now slightly pulling back (still above 50)
-      // OR stoch is high and crossing up (re-entering overbought after brief dip)
-      const stochMicroPullback = (kVal >= 50 && kVal <= 90 && kPrev > kVal + 2) || // Stoch pulling back from higher
-                                  (kVal >= 60 && stochCrossUp) || // Stoch crossing up in upper zone
-                                  (kPrev >= 95 && kVal < 95 && kVal > 70); // Dropping from 100 zone
-
-      // Price near EMA8 (tight pullback in strong trend)
-      const priceNearEma8 = distToEma8 < 0.005;
-
-      if (h1Strong && h1Spread > 0.003 && emaAligned && aboveVwap && stochMicroPullback && priceNearEma8) {
-        side = 'LONG';
-        confidence = 55;
-        reasons.push(`H1: Tendance forte haussière (spread EMA: ${(h1Spread * 100).toFixed(2)}%) ✓`);
-        reasons.push('M5: EMA8 > EMA20 ✓');
-        reasons.push(`M5: Prix proche EMA8 (dist: ${(distToEma8 * 100).toFixed(3)}%)`);
-        reasons.push(`Stoch: Micro-pullback (K:${kVal.toFixed(1)}, prev:${kPrev.toFixed(1)})`);
-        reasons.push(`VWAP: Prix au-dessus ($${m5Vwap.toFixed(2)}) ✓`);
-
-        if (h1Spread > 0.008) { confidence += 8; reasons.push('H1: Tendance très forte'); }
-        else if (h1Spread > 0.005) { confidence += 4; }
-
-        if (stochCrossUp) { confidence += 6; reasons.push('Stoch: Croisement K↑D'); }
-
-        const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
-        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; reasons.push('Volume M5 en hausse forte'); }
-        else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; reasons.push('Volume M5 supérieur'); }
-
-        // Bonus: price making higher lows (last 3 candles)
-        const last3 = m5Candles.slice(-3);
-        if (last3.length === 3 && last3[1].low > last3[0].low && last3[2].low > last3[1].low) {
-          confidence += 5; reasons.push('M5: Higher lows (structure haussière)');
-        }
-      }
-    }
-
-    // ─── LONG Signal — Type E: EMA Alignment + Volume Surge ───
-    // Strong trend with volume spike, even if stoch is maxed out
-    if (!side && h1Trend === 'bullish') {
-      const emaAligned = ema8AboveEma20;
-      const aboveVwap = currentPrice > m5Vwap;
-      const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-
-      const recentVol = m5Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
-      const avgVol = m5Candles.slice(-30).reduce((s, c) => s + c.volume, 0) / 30;
-      const volumeSurge = avgVol > 0 && recentVol > avgVol * 2.0; // 2x average volume
-
-      // Price above both EMAs (strong momentum)
-      const priceAboveBothEmas = currentPrice > m5Ema8Val && currentPrice > m5Ema20Val;
-
-      if (emaAligned && aboveVwap && volumeSurge && priceAboveBothEmas && h1Spread > 0.004) {
-        side = 'LONG';
-        confidence = 58;
-        reasons.push(`H1: Tendance haussière forte (spread: ${(h1Spread * 100).toFixed(2)}%) ✓`);
-        reasons.push('M5: EMA8 > EMA20, prix au-dessus des deux ✓');
-        reasons.push(`Volume: Surge x${(recentVol / avgVol).toFixed(1)} ✓`);
-        reasons.push(`VWAP: Au-dessus ($${m5Vwap.toFixed(2)}) ✓`);
-        reasons.push(`Stoch: K=${kVal.toFixed(1)}`);
-
-        if (h1Spread > 0.008) { confidence += 8; }
-        if (recentVol > avgVol * 3) { confidence += 6; reasons.push('Volume: Surge extrême'); }
-
-        // Slight penalty if stoch is at absolute max (100) — less room to run
-        if (kVal >= 99) { confidence -= 5; }
-      }
-    }
-
-    // ─── LONG Signal — Type F: Breakout Detector ───
-    // Previous M5 candle close was BELOW both EMA20 and VWAP, current candle close is ABOVE both.
-    // Catches the initial breakout moment for earlier entries.
-    if (!side && h1Trend === 'bullish') {
-      const prevClose = m5Closes[m5Closes.length - 2];
-      const prevEma20 = m5Ema20[m5Ema20.length - 2];
-      const prevVwap = m5Vwap; // VWAP is cumulative, use same value as approximation
-      const prevBelowBoth = prevClose < prevEma20 && prevClose < prevVwap;
-      const currAboveBoth = currentPrice > m5Ema20Val && currentPrice > m5Vwap;
-
-      if (prevBelowBoth && currAboveBoth) {
-        side = 'LONG';
-        confidence = 55;
-        reasons.push(`H1: Biais haussier ✓`);
-        reasons.push(`M5: Breakout — bougie précédente sous EMA20+VWAP, actuelle au-dessus ✓`);
-
-        // Volume surge bonus
-        const recentVol = m5Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
-        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; reasons.push(`Volume: Surge x${(recentVol / avgVol).toFixed(1)} ✓`); }
-        else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; reasons.push('Volume M5 supérieur'); }
-
-        // H1 EMA spread bonus
-        const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-        if (h1Spread > 0.005) { confidence += 5; reasons.push('H1: Tendance forte (EMA8/20 écartées)'); }
-
-        // 4H alignment bonus
-        if (h4Trend === 'bullish') { confidence += 5; reasons.push('4H: Alignement haussier ✓'); }
-
-        reasons.push(`Stoch: K=${kVal.toFixed(1)}`);
-      }
-    }
+    // Types C, D, E, F removed — only Type A and Type B kept for scalp v3
   }
 
   // ─── SHORT Signal — Type A: Pullback Entry (original, relaxed) ───
@@ -2267,129 +2135,7 @@ async function generateScalpSetup(symbol) {
       }
     }
 
-    // ─── SHORT Signal — Type C: VWAP Rejection ───
-    if (!side && h1Trend === 'bearish') {
-      const vwapProximity = Math.abs(currentPrice - m5Vwap) / currentPrice < 0.003;
-      const priceBelowVwap = currentPrice <= m5Vwap;
-      const stochTurningDown = stochCrossDown || (stochFalling && kVal > 50);
-      const emaAligned = ema8BelowEma20;
-
-      if (vwapProximity && priceBelowVwap && stochTurningDown && emaAligned) {
-        side = 'SHORT';
-        confidence = 48;
-        reasons.push(`H1: Biais baissier ✓`);
-        reasons.push(`M5: Rejet VWAP ($${m5Vwap.toFixed(2)}) ✓`);
-        reasons.push(`Stoch: ${stochCrossDown ? 'Croisement K↓D' : 'K en baisse'} (K:${kVal.toFixed(1)})`);
-        reasons.push('M5: EMA8 < EMA20 ✓');
-
-        const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
-        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.3) { confidence += 6; reasons.push('Volume M5 supérieur'); }
-
-        const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-        if (h1Spread > 0.005) { confidence += 5; reasons.push('H1: Tendance forte'); }
-      }
-    }
-
-    // ─── SHORT Signal — Type D: Strong Trend Micro-Bounce ───
-    if (!side && h1Trend === 'bearish') {
-      const h1Strong = h1Ema8Val < h1Ema20Val;
-      const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-      const emaAligned = ema8BelowEma20;
-      const belowVwap = currentPrice < m5Vwap;
-
-      const stochMicroBounce = (kVal <= 50 && kVal >= 10 && kPrev < kVal - 2) ||
-                                (kVal <= 40 && stochCrossDown) ||
-                                (kPrev <= 5 && kVal > 5 && kVal < 30);
-
-      const priceNearEma8 = distToEma8 < 0.005;
-
-      if (h1Strong && h1Spread > 0.003 && emaAligned && belowVwap && stochMicroBounce && priceNearEma8) {
-        side = 'SHORT';
-        confidence = 55;
-        reasons.push(`H1: Tendance forte baissière (spread EMA: ${(h1Spread * 100).toFixed(2)}%) ✓`);
-        reasons.push('M5: EMA8 < EMA20 ✓');
-        reasons.push(`M5: Prix proche EMA8 (dist: ${(distToEma8 * 100).toFixed(3)}%)`);
-        reasons.push(`Stoch: Micro-rebond (K:${kVal.toFixed(1)}, prev:${kPrev.toFixed(1)})`);
-        reasons.push(`VWAP: Prix en-dessous ($${m5Vwap.toFixed(2)}) ✓`);
-
-        if (h1Spread > 0.008) { confidence += 8; }
-        else if (h1Spread > 0.005) { confidence += 4; }
-
-        if (stochCrossDown) { confidence += 6; reasons.push('Stoch: Croisement K↓D'); }
-
-        const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
-        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; }
-        else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; }
-
-        const last3 = m5Candles.slice(-3);
-        if (last3.length === 3 && last3[1].high < last3[0].high && last3[2].high < last3[1].high) {
-          confidence += 5; reasons.push('M5: Lower highs (structure baissière)');
-        }
-      }
-    }
-
-    // ─── SHORT Signal — Type E: EMA Alignment + Volume Surge ───
-    if (!side && h1Trend === 'bearish') {
-      const emaAligned = ema8BelowEma20;
-      const belowVwap = currentPrice < m5Vwap;
-      const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-
-      const recentVol = m5Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
-      const avgVol = m5Candles.slice(-30).reduce((s, c) => s + c.volume, 0) / 30;
-      const volumeSurge = avgVol > 0 && recentVol > avgVol * 2.0;
-
-      const priceBelowBothEmas = currentPrice < m5Ema8Val && currentPrice < m5Ema20Val;
-
-      if (emaAligned && belowVwap && volumeSurge && priceBelowBothEmas && h1Spread > 0.004) {
-        side = 'SHORT';
-        confidence = 58;
-        reasons.push(`H1: Tendance baissière forte (spread: ${(h1Spread * 100).toFixed(2)}%) ✓`);
-        reasons.push('M5: EMA8 < EMA20, prix en-dessous des deux ✓');
-        reasons.push(`Volume: Surge x${(recentVol / avgVol).toFixed(1)} ✓`);
-        reasons.push(`VWAP: En-dessous ($${m5Vwap.toFixed(2)}) ✓`);
-        reasons.push(`Stoch: K=${kVal.toFixed(1)}`);
-
-        if (h1Spread > 0.008) { confidence += 8; }
-        if (recentVol > avgVol * 3) { confidence += 6; }
-
-        if (kVal <= 1) { confidence -= 5; }
-      }
-    }
-
-    // ─── SHORT Signal — Type F: Breakdown Detector ───
-    // Previous M5 candle close was ABOVE both EMA20 and VWAP, current candle close is BELOW both.
-    // Catches the initial breakdown moment for earlier entries.
-    if (!side && h1Trend === 'bearish') {
-      const prevClose = m5Closes[m5Closes.length - 2];
-      const prevEma20 = m5Ema20[m5Ema20.length - 2];
-      const prevVwap = m5Vwap; // VWAP is cumulative, use same value as approximation
-      const prevAboveBoth = prevClose > prevEma20 && prevClose > prevVwap;
-      const currBelowBoth = currentPrice < m5Ema20Val && currentPrice < m5Vwap;
-
-      if (prevAboveBoth && currBelowBoth) {
-        side = 'SHORT';
-        confidence = 55;
-        reasons.push(`H1: Biais baissier ✓`);
-        reasons.push(`M5: Breakdown — bougie précédente au-dessus EMA20+VWAP, actuelle en-dessous ✓`);
-
-        // Volume surge bonus
-        const recentVol = m5Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
-        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; reasons.push(`Volume: Surge x${(recentVol / avgVol).toFixed(1)} ✓`); }
-        else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; reasons.push('Volume M5 supérieur'); }
-
-        // H1 EMA spread bonus
-        const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-        if (h1Spread > 0.005) { confidence += 5; reasons.push('H1: Tendance forte (EMA8/20 écartées)'); }
-
-        // 4H alignment bonus
-        if (h4Trend === 'bearish') { confidence += 5; reasons.push('4H: Alignement baissier ✓'); }
-
-        reasons.push(`Stoch: K=${kVal.toFixed(1)}`);
-      }
-    }
+    // Types C, D, E, F removed — only Type A and Type B kept for scalp v3
   }
 
   if (!side) {
@@ -2472,15 +2218,15 @@ async function generateScalpSetup(symbol) {
 
   slDist = Math.abs(entry - stopLoss);
 
-  // v2: Conservative TP ratios
+  // v3: Adjusted TP ratios for scalp
   if (side === 'LONG') {
-    tp1 = entry + slDist * 0.6;  // 0.6:1 — quick profit
+    tp1 = entry + slDist * 0.5;  // 0.5:1 — quick profit
     tp2 = entry + slDist * 1.0;  // 1:1
-    tp3 = entry + slDist * 1.5;  // 1.5:1
+    tp3 = entry + slDist * 1.8;  // 1.8:1
   } else {
-    tp1 = entry - slDist * 0.6;
+    tp1 = entry - slDist * 0.5;
     tp2 = entry - slDist * 1.0;
-    tp3 = entry - slDist * 1.5;
+    tp3 = entry - slDist * 1.8;
   }
 
   // SL too tight penalty (now 0.8% threshold)
@@ -2642,7 +2388,7 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
           try {
             const calls = loadScalpCalls();
             scalpCallIdCounter++;
-            const expiresAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+            const expiresAt = new Date(now.getTime() + 45 * 60 * 1000); // 45 minutes for scalp v3
             calls.push({
               id: scalpCallIdCounter,
               symbol: setup.symbol, side: setup.side,
@@ -3747,7 +3493,7 @@ app.post('/api/v1/scalp-calls', (req, res) => {
   }
 
   const calls = loadScalpCalls();
-  const cutoff = Date.now() - 1 * 60 * 60 * 1000; // 1h dedup for scalping
+  const cutoff = Date.now() - 45 * 60 * 1000; // 45min dedup for scalp v3
 
   const dup = calls.find(c =>
     c.symbol === symbol &&
@@ -3761,7 +3507,7 @@ app.post('/api/v1/scalp-calls', (req, res) => {
 
   scalpCallIdCounter++;
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 4 * 60 * 60 * 1000); // 4h expiry
+  const expiresAt = new Date(now.getTime() + 45 * 60 * 1000); // 45min expiry for scalp v3
 
   const newCall = {
     id: scalpCallIdCounter,

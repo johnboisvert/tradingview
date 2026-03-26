@@ -57,24 +57,25 @@ interface ScalpSetup {
 /* ─── Winrate Estimates for Scalp ─── */
 
 function getScalpWinrateForTP(confidence: number, tpLevel: number): number {
+  // v2: Updated estimates for ATR SL (1-3%) + conservative TP (0.6:1 / 1:1 / 1.5:1)
   if (confidence >= 90) {
-    if (tpLevel === 1) return 68;
+    if (tpLevel === 1) return 78;  // 0.6:1 — very close target
+    if (tpLevel === 2) return 58;  // 1:1
+    return 40;                      // 1.5:1
+  }
+  if (confidence >= 80) {
+    if (tpLevel === 1) return 72;
     if (tpLevel === 2) return 50;
     return 33;
   }
-  if (confidence >= 80) {
-    if (tpLevel === 1) return 58;
-    if (tpLevel === 2) return 40;
-    return 25;
-  }
   if (confidence >= 70) {
-    if (tpLevel === 1) return 50;
-    if (tpLevel === 2) return 32;
-    return 20;
+    if (tpLevel === 1) return 65;
+    if (tpLevel === 2) return 42;
+    return 28;
   }
-  if (tpLevel === 1) return 42;
-  if (tpLevel === 2) return 25;
-  return 15;
+  if (tpLevel === 1) return 55;
+  if (tpLevel === 2) return 35;
+  return 22;
 }
 
 function ScalpWinrateBadge({ confidence, tp }: { confidence: number; tp: number }) {
@@ -176,19 +177,29 @@ function updateScalpSignalsWithPrices(currentPrices: Map<string, number>): Scalp
     if (price == null) continue;
 
     if (sig.side === "LONG") {
-      if (price <= sig.sl && !sig.slHit) { sig.slHit = true; sig.resolved = true; changed = true; }
+      // Check TPs FIRST — partial win protection
       if (price >= sig.tp1 && !sig.tp1Hit) { sig.tp1Hit = true; changed = true; }
       if (price >= sig.tp2 && !sig.tp2Hit) { sig.tp2Hit = true; changed = true; }
       if (price >= sig.tp3 && !sig.tp3Hit) { sig.tp3Hit = true; sig.resolved = true; changed = true; }
+      // SL only resolves if NO TP1+ was hit (partial win protection)
+      if (price <= sig.sl && !sig.slHit) {
+        sig.slHit = true;
+        if (!sig.tp1Hit) { sig.resolved = true; } // Only full loss if TP1 never hit
+        changed = true;
+      }
     } else {
-      if (price >= sig.sl && !sig.slHit) { sig.slHit = true; sig.resolved = true; changed = true; }
       if (price <= sig.tp1 && !sig.tp1Hit) { sig.tp1Hit = true; changed = true; }
       if (price <= sig.tp2 && !sig.tp2Hit) { sig.tp2Hit = true; changed = true; }
       if (price <= sig.tp3 && !sig.tp3Hit) { sig.tp3Hit = true; sig.resolved = true; changed = true; }
+      if (price >= sig.sl && !sig.slHit) {
+        sig.slHit = true;
+        if (!sig.tp1Hit) { sig.resolved = true; }
+        changed = true;
+      }
     }
 
-    // Auto-expire after 2 hours (scalp timeframe)
-    if (Date.now() - sig.timestamp > 2 * 60 * 60 * 1000 && !sig.resolved) {
+    // Auto-expire after 4 hours (extended scalp timeframe)
+    if (Date.now() - sig.timestamp > 4 * 60 * 60 * 1000 && !sig.resolved) {
       sig.resolved = true;
       changed = true;
     }
@@ -526,6 +537,27 @@ function calcStochastic(klines: KlineWithVol[], kPeriod = 9, dPeriod = 3, _kSmoo
   return { kArr, dArr };
 }
 
+/* ─── ATR Calculation for M5 klines ─── */
+
+function calcATR_M5(klines: KlineWithVol[], period = 14): number | null {
+  if (klines.length < period + 1) return null;
+  const trs: number[] = [];
+  for (let i = 1; i < klines.length; i++) {
+    const tr = Math.max(
+      klines[i].high - klines[i].low,
+      Math.abs(klines[i].high - klines[i - 1].close),
+      Math.abs(klines[i].low - klines[i - 1].close)
+    );
+    trs.push(tr);
+  }
+  if (trs.length < period) return null;
+  let atr = trs.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < trs.length; i++) {
+    atr = (atr * (period - 1) + trs[i]) / period;
+  }
+  return atr;
+}
+
 /* ─── M5 S/R from pivots ─── */
 
 function calculateM5SR(klines: KlineWithVol[], currentPrice: number): { supports: SRLevel[]; resistances: SRLevel[] } {
@@ -736,11 +768,11 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
     const priceNearEma = distToEma8 < 0.003 || distToEma20 < 0.003;
     const priceBetweenEmas = (price >= Math.min(m5Ema8, m5Ema20) && price <= Math.max(m5Ema8, m5Ema20));
 
-    // Stochastic conditions — relaxed thresholds matching server
-    const stochOversold = stochK < 35;        // Relaxed from 20 to 35
-    const stochDeepOversold = stochK < 20;    // Original strict threshold
-    const stochOverbought = stochK > 65;      // Relaxed from 80 to 65
-    const stochDeepOverbought = stochK > 80;  // Original strict threshold
+    // Stochastic conditions — v2: tightened thresholds for better winrate
+    const stochOversold = stochK < 25;        // Tightened from 35 to 25
+    const stochDeepOversold = stochK < 15;    // Tightened from 20 to 15
+    const stochOverbought = stochK > 75;      // Tightened from 65 to 75
+    const stochDeepOverbought = stochK > 85;  // Tightened from 80 to 85
     const stochCrossUp = stochKPrev <= stochDPrev && stochK > stochD;
     const stochCrossDown = stochKPrev >= stochDPrev && stochK < stochD;
     const stochRising = stochK > stochKPrev;
@@ -1061,51 +1093,64 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
 
     if (!side) continue;
 
-    /* ─── SL / TP Calculation ─── */
+    /* ─── SL / TP Calculation — v2: ATR-based SL + conservative TP ─── */
     const m5SR = calculateM5SR(m5K, price);
+    const atrM5 = calcATR_M5(m5K);
 
-    // SL: dernier plus bas/haut local M5 (5-10 bougies) OU sous/au-dessus EMA20
-    const last10 = m5K.slice(-10);
+    // v2: ATR-based SL (1.5x ATR M5, min 1%, max 3%)
+    let slDist: number;
+    if (atrM5 && atrM5 > 0) {
+      slDist = atrM5 * 1.5;
+      const minSl = price * 0.01;  // min 1%
+      const maxSl = price * 0.03;  // max 3%
+      slDist = Math.max(minSl, Math.min(slDist, maxSl));
+    } else {
+      // Fallback: use last 10 candles range
+      const last10 = m5K.slice(-10);
+      if (side === "LONG") {
+        const lowestLow = Math.min(...last10.map(k => k.low));
+        slDist = Math.max(price - lowestLow, price * 0.01);
+      } else {
+        const highestHigh = Math.max(...last10.map(k => k.high));
+        slDist = Math.max(highestHigh - price, price * 0.01);
+      }
+      slDist = Math.max(price * 0.01, Math.min(slDist, price * 0.03));
+    }
+
     let sl: number;
     if (side === "LONG") {
-      const lowestLow = Math.min(...last10.map(k => k.low));
-      const ema20SL = m5Ema20 * 0.995; // 0.5% sous EMA20
-      sl = Math.min(lowestLow, ema20SL);
-      // Ensure SL is not too tight — minimum 0.5%
-      if (Math.abs(price - sl) / price < 0.005) {
-        sl = price * 0.995; // Minimum 0.5%
-      }
-      // Add margin buffer
-      sl = sl * 0.999;
+      sl = price - slDist;
+      // Snap to nearest support if close
+      const nearSup = m5SR.supports.find(s => s.price < price * 0.995 && s.price > sl * 0.95);
+      if (nearSup) sl = nearSup.price * 0.998;
+      // Re-enforce minimum 1%
+      if (Math.abs(price - sl) / price < 0.01) sl = price * 0.99;
     } else {
-      const highestHigh = Math.max(...last10.map(k => k.high));
-      const ema20SL = m5Ema20 * 1.005;
-      sl = Math.max(highestHigh, ema20SL);
-      if (Math.abs(sl - price) / price < 0.005) {
-        sl = price * 1.005;
-      }
-      sl = sl * 1.001;
+      sl = price + slDist;
+      const nearRes = m5SR.resistances.find(r => r.price > price * 1.005 && r.price < sl * 1.05);
+      if (nearRes) sl = nearRes.price * 1.002;
+      if (Math.abs(sl - price) / price < 0.01) sl = price * 1.01;
     }
 
-    const slDist = Math.abs(price - sl);
+    // Recalculate actual slDist after snapping
+    slDist = Math.abs(price - sl);
 
-    // TP based on SL distance (ratio-based)
+    // v2: Conservative TP ratios — TP1 close for high winrate
     let tp1: number, tp2: number, tp3: number;
     if (side === "LONG") {
-      tp1 = price + slDist * 1.0;  // 1:1
-      tp2 = price + slDist * 1.5;  // 1:1.5
-      // TP3 = next resistance or 1:2
+      tp1 = price + slDist * 0.6;  // 0.6:1 — quick profit, high probability
+      tp2 = price + slDist * 1.0;  // 1.0:1 — breakeven ratio
       const nextRes = m5SR.resistances[0];
-      tp3 = nextRes && nextRes.price > tp2 ? nextRes.price * 0.999 : price + slDist * 2.0;
+      tp3 = nextRes && nextRes.price > tp2 ? nextRes.price * 0.999 : price + slDist * 1.5;
     } else {
-      tp1 = price - slDist * 1.0;
-      tp2 = price - slDist * 1.5;
+      tp1 = price - slDist * 0.6;
+      tp2 = price - slDist * 1.0;
       const nextSup = m5SR.supports[0];
-      tp3 = nextSup && nextSup.price < tp2 ? nextSup.price * 1.001 : price - slDist * 2.0;
+      tp3 = nextSup && nextSup.price < tp2 ? nextSup.price * 1.001 : price - slDist * 1.5;
     }
 
-    // SL too tight penalty
-    if (slDist / price < 0.003) confidence -= 10;
+    // SL too tight penalty (now based on 0.8% threshold)
+    if (slDist / price < 0.008) confidence -= 10;
 
     // Apply 4H neutral penalty
     confidence -= h4NeutralPenalty;
@@ -1343,6 +1388,14 @@ export default function ScalpTrading() {
   useEffect(() => {
     mountedRef.current = true;
 
+    // v2: Clear old tracking data from previous algorithm version
+    const SCALP_ALGO_VERSION_KEY = "scalp_algo_version";
+    const SCALP_CURRENT_VERSION = "v2_atr_conservative";
+    if (localStorage.getItem(SCALP_ALGO_VERSION_KEY) !== SCALP_CURRENT_VERSION) {
+      localStorage.removeItem(SCALP_SIGNAL_KEY);
+      localStorage.setItem(SCALP_ALGO_VERSION_KEY, SCALP_CURRENT_VERSION);
+    }
+
     // Load existing signals on mount
     const signals = loadScalpSignals();
     setPerfStats(computeScalpPerfStats(signals));
@@ -1381,8 +1434,8 @@ export default function ScalpTrading() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
         <PageHeader
           icon={<Zap className="w-7 h-7" />}
-          title="Scalp Trading — Suivi de Flux"
-          subtitle="EMA 8/20 + VWAP + Stochastique (9,3,1) — Filtre 4H, Biais H1, Entrée M5"
+          title="Scalp Trading v2 — Suivi de Flux"
+          subtitle="ATR SL (1-3%) + EMA 8/20 + VWAP + Stoch (9,3,1) tightened — TP1 conservateur (0.6:1)"
           accentColor="amber"
         />
 
@@ -1421,7 +1474,7 @@ export default function ScalpTrading() {
               <div className="flex items-center gap-2 mb-3">
                 <Trophy className="w-5 h-5 text-purple-400" />
                 <h3 className="text-sm font-bold text-purple-400">Suivi des Signaux Scalp (localStorage)</h3>
-                <span className="text-[10px] text-gray-500 ml-2">{perfStats.total} signaux • {perfStats.pending} en cours • expire après 2h</span>
+                <span className="text-[10px] text-gray-500 ml-2">{perfStats.total} signaux • {perfStats.pending} en cours • expire après 4h</span>
                 <button
                   onClick={handleClearTracking}
                   className="ml-auto flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-[10px] font-semibold text-red-400 transition-all"
@@ -1435,17 +1488,17 @@ export default function ScalpTrading() {
                   <p className="text-lg font-black text-white">{perfStats.total}</p>
                 </div>
                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">TP1 Hit (1:1)</p>
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">TP1 Hit (0.6:1)</p>
                   <p className="text-lg font-black text-emerald-300">{perfStats.tp1Hits}</p>
                   <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp1Hits / resolvedTotal * 100)}%` : "—"}</p>
                 </div>
                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">TP2 Hit (1:1.5)</p>
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">TP2 Hit (1:1)</p>
                   <p className="text-lg font-black text-emerald-400">{perfStats.tp2Hits}</p>
                   <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp2Hits / resolvedTotal * 100)}%` : "—"}</p>
                 </div>
                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-500 font-semibold">TP3 Hit (1:2)</p>
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-500 font-semibold">TP3 Hit (1:1.5)</p>
                   <p className="text-lg font-black text-emerald-500">{perfStats.tp3Hits}</p>
                   <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp3Hits / resolvedTotal * 100)}%` : "—"}</p>
                 </div>
@@ -1520,8 +1573,8 @@ export default function ScalpTrading() {
             <p className="text-xs text-amber-300/80 flex items-center gap-2">
               <Zap className="w-4 h-4 flex-shrink-0" />
               <span>
-                <strong>Stratégie "Suivi de Flux" :</strong> Filtre 4H (EMA8/20 — rejet si tendance contraire) → Biais H1 (prix vs EMA20 + VWAP) → Entrée M5 (rebond EMA8/20 + prix vs VWAP M5 + Stochastique 9,3,1 en survente/surachat avec croisement).
-                SL sous dernier creux / EMA20 (min 0.5%). TP1 = 1:1, TP2 = 1:1.5, TP3 = résistance/support ou 1:2.
+                <strong>Stratégie "Suivi de Flux" v2 :</strong> Filtre 4H (EMA8/20 — rejet si tendance contraire) → Biais H1 (prix vs EMA20 + VWAP) → Entrée M5 (rebond EMA8/20 + prix vs VWAP M5 + Stochastique 9,3,1 seuils resserrés 25/75).
+                SL basé sur ATR M5 (1.5x, min 1%, max 3%). TP1 = 0.6:1 (max WR), TP2 = 1:1, TP3 = résistance/support ou 1.5:1. Expiration 4h.
               </span>
             </p>
           </div>
@@ -1645,7 +1698,7 @@ export default function ScalpTrading() {
                                 <span className="font-mono text-xs text-emerald-300 font-semibold">${formatPrice(trade.tp1)}</span>
                               </div>
                               <div className="flex items-center">
-                                <span className="text-[9px] text-emerald-300/60">1:1</span>
+                                <span className="text-[9px] text-emerald-300/60">0.6:1</span>
                                 <ScalpWinrateBadge confidence={trade.confidence} tp={1} />
                               </div>
                             </td>
@@ -1656,7 +1709,7 @@ export default function ScalpTrading() {
                                 <span className="font-mono text-xs text-emerald-400 font-semibold">${formatPrice(trade.tp2)}</span>
                               </div>
                               <div className="flex items-center">
-                                <span className="text-[9px] text-emerald-400/60">1:1.5</span>
+                                <span className="text-[9px] text-emerald-400/60">1:1</span>
                                 <ScalpWinrateBadge confidence={trade.confidence} tp={2} />
                               </div>
                             </td>
@@ -1667,7 +1720,7 @@ export default function ScalpTrading() {
                                 <span className="font-mono text-xs text-emerald-500 font-semibold">${formatPrice(trade.tp3)}</span>
                               </div>
                               <div className="flex items-center">
-                                <span className="text-[9px] text-emerald-500/60">1:2</span>
+                                <span className="text-[9px] text-emerald-500/60">1.5:1</span>
                                 <ScalpWinrateBadge confidence={trade.confidence} tp={3} />
                               </div>
                             </td>
@@ -1941,13 +1994,13 @@ export default function ScalpTrading() {
                                   <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">📈 Estimation Winrate (Confiance {trade.confidence}%)</p>
                                   <div className="flex items-center gap-3 flex-wrap text-[10px]">
                                     <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 font-mono">
-                                      TP1 (1:1): WR ~{getScalpWinrateForTP(trade.confidence, 1)}%
+                                      TP1 (0.6:1): WR ~{getScalpWinrateForTP(trade.confidence, 1)}%
                                     </span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-400 font-mono">
-                                      TP2 (1:1.5): WR ~{getScalpWinrateForTP(trade.confidence, 2)}%
+                                      TP2 (1:1): WR ~{getScalpWinrateForTP(trade.confidence, 2)}%
                                     </span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 font-mono">
-                                      TP3 (1:2): WR ~{getScalpWinrateForTP(trade.confidence, 3)}%
+                                      TP3 (1.5:1): WR ~{getScalpWinrateForTP(trade.confidence, 3)}%
                                     </span>
                                   </div>
                                 </div>
@@ -1965,15 +2018,15 @@ export default function ScalpTrading() {
                                     </span>
                                     <span className="text-gray-600">→</span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 font-mono">
-                                      TP1: ${formatPrice(trade.tp1)} (1:1) <ScalpWinrateBadge confidence={trade.confidence} tp={1} />
+                                      TP1: ${formatPrice(trade.tp1)} (0.6:1) <ScalpWinrateBadge confidence={trade.confidence} tp={1} />
                                     </span>
                                     <span className="text-gray-600">→</span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-400 font-mono">
-                                      TP2: ${formatPrice(trade.tp2)} (1:1.5) <ScalpWinrateBadge confidence={trade.confidence} tp={2} />
+                                      TP2: ${formatPrice(trade.tp2)} (1:1) <ScalpWinrateBadge confidence={trade.confidence} tp={2} />
                                     </span>
                                     <span className="text-gray-600">→</span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 font-mono font-bold">
-                                      TP3: ${formatPrice(trade.tp3)} (1:2) <ScalpWinrateBadge confidence={trade.confidence} tp={3} />
+                                      TP3: ${formatPrice(trade.tp3)} (1.5:1) <ScalpWinrateBadge confidence={trade.confidence} tp={3} />
                                     </span>
                                   </div>
                                 </div>
@@ -2000,8 +2053,8 @@ export default function ScalpTrading() {
           {/* Disclaimer */}
           <div className="mt-6 bg-amber-500/[0.06] border border-amber-500/15 rounded-2xl p-4">
             <p className="text-xs text-amber-300/80 text-center">
-              ⚠️ <strong>Avertissement :</strong> Stratégie "Suivi de Flux" — EMA 8/20 + VWAP + Stochastique (9,3,1).
-              Filtre 4H (rejet si tendance contraire), biais directionnel H1, entrée précise M5. SL sous dernier creux/EMA20 (min 0.5%), TP ratio 1:1 à 1:2.
+              ⚠️ <strong>Avertissement :</strong> Stratégie "Suivi de Flux" v2 — ATR SL (1.5x M5, 1-3%) + EMA 8/20 + VWAP + Stochastique (9,3,1) seuils resserrés (25/75).
+              Filtre 4H (rejet si tendance contraire), biais directionnel H1, entrée précise M5. TP1 conservateur à 0.6:1 pour maximiser le winrate. Expiration 4h.
               Le VWAP est utilisé par les algorithmes institutionnels — trader avec le VWAP = trader avec "l'argent intelligent".
               Les winrates estimés sont basés sur des moyennes historiques indicatives.
               Ces signaux ne constituent pas des conseils financiers.

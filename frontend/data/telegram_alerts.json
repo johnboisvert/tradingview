@@ -19,103 +19,19 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-03-24T03:13:22.938Z",
+  "lastCheck": "2026-03-26T15:21:09.329Z",
   "lastAlerts": [
-    {
-      "type": "coingecko_signal",
-      "coin": "aptos",
-      "direction": "LONG",
-      "rr": 1.4,
-      "entry": 1.047,
-      "tp1": 1.07,
-      "tp2": 1.13,
-      "tp3": 1.18,
-      "sl": 0.99,
-      "confidence": 98
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "fetch-ai",
-      "direction": "LONG",
-      "rr": 0.7,
-      "entry": 0.235391,
-      "tp1": 0.2378,
-      "tp2": 0.2402,
-      "tp3": 3.4431,
-      "sl": 0.229,
-      "confidence": 98
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "aerodrome-finance",
-      "direction": "LONG",
-      "rr": 2.8,
-      "entry": 0.344624,
-      "tp1": 0.3493,
-      "tp2": 0.3663,
-      "tp3": 2.3154,
-      "sl": 0.3368,
-      "confidence": 86
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "bittensor",
-      "direction": "LONG",
-      "rr": 2,
-      "entry": 306.01,
-      "tp1": 307.2,
-      "tp2": 335.94,
-      "tp3": 350.91,
-      "sl": 291.04,
-      "confidence": 98
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "render-token",
-      "direction": "LONG",
-      "rr": 2.4,
-      "entry": 1.72,
-      "tp1": 1.75,
-      "tp2": 1.79,
-      "tp3": 1.83,
-      "sl": 1.69,
-      "confidence": 98
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "layerzero",
-      "direction": "LONG",
-      "rr": 1.5,
-      "entry": 2.19,
-      "tp1": 2.22,
-      "tp2": 2.38,
-      "tp3": 7.46,
-      "sl": 2.06,
-      "confidence": 98
-    },
     {
       "type": "coingecko_signal",
       "coin": "midnight-3",
       "direction": "LONG",
-      "rr": 2.1,
-      "entry": 0.04668615,
-      "tp1": 0.0488,
-      "tp2": 0.0496,
-      "tp3": 0.0528,
-      "sl": 0.0453,
-      "confidence": 91
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "solana",
-      "direction": "LONG",
-      "rr": 3.5,
-      "entry": 90.04,
-      "tp1": 91.78,
-      "tp2": 95.11,
-      "tp3": 292.72,
-      "sl": 88.6,
-      "confidence": 94
+      "rr": 1.5,
+      "entry": 0.04691076,
+      "tp1": 0.0484,
+      "tp2": 0.0499,
+      "tp3": 0.0519,
+      "sl": 0.0449,
+      "confidence": 86
     }
   ]
 }

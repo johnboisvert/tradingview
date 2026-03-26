@@ -1687,6 +1687,26 @@ function calcEMA(data, period) {
   return ema;
 }
 
+/** ATR calculation for M5 klines (scalp v2) */
+function calcATR_M5(klines, period = 14) {
+  if (!klines || klines.length < period + 1) return null;
+  const trs = [];
+  for (let i = 1; i < klines.length; i++) {
+    const tr = Math.max(
+      klines[i].high - klines[i].low,
+      Math.abs(klines[i].high - klines[i - 1].close),
+      Math.abs(klines[i].low - klines[i - 1].close)
+    );
+    trs.push(tr);
+  }
+  if (trs.length < period) return null;
+  let atr = trs.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < trs.length; i++) {
+    atr = (atr * (period - 1) + trs[i]) / period;
+  }
+  return atr;
+}
+
 function calcRSI(closes, period = 14) {
   const rsi = new Array(closes.length).fill(50);
   if (closes.length < period + 1) return rsi;
@@ -1964,10 +1984,10 @@ async function generateScalpSetup(symbol) {
   const priceBetweenEmas = (currentPrice >= Math.min(m5Ema8Val, m5Ema20Val) && currentPrice <= Math.max(m5Ema8Val, m5Ema20Val));
 
   // Stochastic conditions — relaxed thresholds for more signals
-  const stochOversold = kVal < 35;        // Was 20, relaxed to 35
-  const stochDeepOversold = kVal < 20;    // Original strict threshold
-  const stochOverbought = kVal > 65;      // Was 80, relaxed to 65
-  const stochDeepOverbought = kVal > 80;  // Original strict threshold
+  const stochOversold = kVal < 25;        // v2: Tightened from 35 to 25
+  const stochDeepOversold = kVal < 15;    // v2: Tightened from 20 to 15
+  const stochOverbought = kVal > 75;      // v2: Tightened from 65 to 75
+  const stochDeepOverbought = kVal > 85;  // v2: Tightened from 80 to 85
   const stochCrossUp = kPrev <= dPrev && kVal > dVal;
   const stochCrossDown = kPrev >= dPrev && kVal < dVal;
   const stochRising = kVal > kPrev;
@@ -2417,39 +2437,54 @@ async function generateScalpSetup(symbol) {
 
   confidence = Math.min(98, Math.max(25, confidence));
 
-  // ─── SL / TP Calculation ───
-  // SL: dernier plus bas/haut local M5 (10 bougies) ou sous/au-dessus EMA20
-  const last10 = m5Candles.slice(-10);
+  // ─── SL / TP Calculation — v2: ATR-based SL + conservative TP ───
   let entry = currentPrice;
   let stopLoss, tp1, tp2, tp3;
 
-  if (side === 'LONG') {
-    const lowestLow = Math.min(...last10.map(c => c.low));
-    const ema20SL = m5Ema20Val * 0.995;
-    stopLoss = Math.min(lowestLow, ema20SL);
-    if (Math.abs(entry - stopLoss) / entry < 0.005) stopLoss = entry * 0.995;
-    stopLoss *= 0.999; // margin buffer
+  // v2: ATR-based SL (1.5x ATR M5, min 1%, max 3%)
+  let slDist;
+  const atrM5 = calcATR_M5(m5Candles);
+  if (atrM5 && atrM5 > 0) {
+    slDist = atrM5 * 1.5;
+    const minSl = entry * 0.01;
+    const maxSl = entry * 0.03;
+    slDist = Math.max(minSl, Math.min(slDist, maxSl));
   } else {
-    const highestHigh = Math.max(...last10.map(c => c.high));
-    const ema20SL = m5Ema20Val * 1.005;
-    stopLoss = Math.max(highestHigh, ema20SL);
-    if (Math.abs(stopLoss - entry) / entry < 0.005) stopLoss = entry * 1.005;
-    stopLoss *= 1.001; // margin buffer
+    // Fallback
+    const last10 = m5Candles.slice(-10);
+    if (side === 'LONG') {
+      const lowestLow = Math.min(...last10.map(c => c.low));
+      slDist = Math.max(entry - lowestLow, entry * 0.01);
+    } else {
+      const highestHigh = Math.max(...last10.map(c => c.high));
+      slDist = Math.max(highestHigh - entry, entry * 0.01);
+    }
+    slDist = Math.max(entry * 0.01, Math.min(slDist, entry * 0.03));
   }
 
-  const slDist = Math.abs(entry - stopLoss);
   if (side === 'LONG') {
-    tp1 = entry + slDist * 1.0;  // 1:1
-    tp2 = entry + slDist * 1.5;  // 1:1.5
-    tp3 = entry + slDist * 2.0;  // 1:2
+    stopLoss = entry - slDist;
+    if (Math.abs(entry - stopLoss) / entry < 0.01) stopLoss = entry * 0.99;
   } else {
-    tp1 = entry - slDist * 1.0;
-    tp2 = entry - slDist * 1.5;
-    tp3 = entry - slDist * 2.0;
+    stopLoss = entry + slDist;
+    if (Math.abs(stopLoss - entry) / entry < 0.01) stopLoss = entry * 1.01;
   }
 
-  // SL too tight penalty
-  if (slDist / entry < 0.003) confidence -= 10;
+  slDist = Math.abs(entry - stopLoss);
+
+  // v2: Conservative TP ratios
+  if (side === 'LONG') {
+    tp1 = entry + slDist * 0.6;  // 0.6:1 — quick profit
+    tp2 = entry + slDist * 1.0;  // 1:1
+    tp3 = entry + slDist * 1.5;  // 1.5:1
+  } else {
+    tp1 = entry - slDist * 0.6;
+    tp2 = entry - slDist * 1.0;
+    tp3 = entry - slDist * 1.5;
+  }
+
+  // SL too tight penalty (now 0.8% threshold)
+  if (slDist / entry < 0.008) confidence -= 10;
   confidence = Math.min(98, Math.max(25, confidence));
 
   const rr = slDist > 0 ? Math.round((Math.abs(tp2 - entry) / slDist) * 10) / 10 : 1.5;

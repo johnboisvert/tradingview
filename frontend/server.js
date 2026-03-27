@@ -2183,54 +2183,60 @@ async function generateScalpSetup(symbol) {
 
   confidence = Math.min(98, Math.max(25, confidence));
 
-  // ─── SL / TP Calculation — v2: ATR-based SL + conservative TP ───
+  // ─── SL / TP Calculation — v3: Wider ATR-based SL + better TP ratios ───
   let entry = currentPrice;
   let stopLoss, tp1, tp2, tp3;
 
-  // v2: ATR-based SL (1.5x ATR M5, min 1%, max 3%)
+  // v3: ATR-based SL (2.5x ATR M5, min 2%, max 5%) — wider SL to reduce false stops
   let slDist;
   const atrM5 = calcATR_M5(m5Candles);
+
+  // Volatility filter: skip signal if ATR_M5/price > 2.5% (too volatile)
+  if (atrM5 && atrM5 > 0 && (atrM5 / entry) > 0.025) {
+    return null; // Market too volatile for scalp
+  }
+
   if (atrM5 && atrM5 > 0) {
-    slDist = atrM5 * 1.5;
-    const minSl = entry * 0.01;
-    const maxSl = entry * 0.03;
+    slDist = atrM5 * 2.5;
+    const minSl = entry * 0.02;
+    const maxSl = entry * 0.05;
     slDist = Math.max(minSl, Math.min(slDist, maxSl));
   } else {
     // Fallback
     const last10 = m5Candles.slice(-10);
     if (side === 'LONG') {
       const lowestLow = Math.min(...last10.map(c => c.low));
-      slDist = Math.max(entry - lowestLow, entry * 0.01);
+      slDist = Math.max(entry - lowestLow, entry * 0.02);
     } else {
       const highestHigh = Math.max(...last10.map(c => c.high));
-      slDist = Math.max(highestHigh - entry, entry * 0.01);
+      slDist = Math.max(highestHigh - entry, entry * 0.02);
     }
-    slDist = Math.max(entry * 0.01, Math.min(slDist, entry * 0.03));
+    slDist = Math.max(entry * 0.02, Math.min(slDist, entry * 0.05));
   }
 
   if (side === 'LONG') {
     stopLoss = entry - slDist;
-    if (Math.abs(entry - stopLoss) / entry < 0.01) stopLoss = entry * 0.99;
+    if (Math.abs(entry - stopLoss) / entry < 0.02) stopLoss = entry * 0.98;
   } else {
     stopLoss = entry + slDist;
-    if (Math.abs(stopLoss - entry) / entry < 0.01) stopLoss = entry * 1.01;
+    if (Math.abs(stopLoss - entry) / entry < 0.02) stopLoss = entry * 1.02;
   }
 
   slDist = Math.abs(entry - stopLoss);
 
-  // v3: Adjusted TP ratios for scalp
+  // v3: Better TP ratios — 1:1, 1.5:1, 2.5:1 for improved R:R
   if (side === 'LONG') {
-    tp1 = entry + slDist * 0.5;  // 0.5:1 — quick profit
-    tp2 = entry + slDist * 1.0;  // 1:1
-    tp3 = entry + slDist * 1.8;  // 1.8:1
+    tp1 = entry + slDist * 1.0;  // 1:1 — quick profit
+    tp2 = entry + slDist * 1.5;  // 1.5:1
+    tp3 = entry + slDist * 2.5;  // 2.5:1
   } else {
-    tp1 = entry - slDist * 0.5;
-    tp2 = entry - slDist * 1.0;
-    tp3 = entry - slDist * 1.8;
+    tp1 = entry - slDist * 1.0;
+    tp2 = entry - slDist * 1.5;
+    tp3 = entry - slDist * 2.5;
   }
 
-  // SL too tight penalty (now 0.8% threshold)
-  if (slDist / entry < 0.008) confidence -= 10;
+  // SL too tight penalty (1.5% threshold)
+  if (slDist / entry < 0.015) confidence -= 10;
   confidence = Math.min(98, Math.max(25, confidence));
 
   const rr = slDist > 0 ? Math.round((Math.abs(tp2 - entry) / slDist) * 10) / 10 : 1.5;

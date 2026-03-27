@@ -19,19 +19,6 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-03-26T15:21:09.329Z",
-  "lastAlerts": [
-    {
-      "type": "coingecko_signal",
-      "coin": "midnight-3",
-      "direction": "LONG",
-      "rr": 1.5,
-      "entry": 0.04691076,
-      "tp1": 0.0484,
-      "tp2": 0.0499,
-      "tp3": 0.0519,
-      "sl": 0.0449,
-      "confidence": 86
-    }
-  ]
+  "lastCheck": "2026-03-27T23:13:45.805Z",
+  "lastAlerts": []
 }

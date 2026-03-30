@@ -1047,10 +1047,10 @@ function alignTPWithSR(side, entry, slPercent, supports, resistances) {
     sl = entry - slDistance;
     // Enforce minimum 4% SL distance
     if (Math.abs(entry - sl) / entry < 0.04) sl = entry * 0.96;
-    // v4: Conservative TP ratios
-    tp1 = entry + slDistance * 0.8;   // 0.8:1 — quick profit, high probability
-    tp2 = entry + slDistance * 1.5;   // 1.5:1 — moderate target
-    tp3 = entry + slDistance * 2.5;   // 2.5:1 — extended target
+    // v5: Improved TP ratios for better R:R
+    tp1 = entry + slDistance * 1.0;   // 1:1 — quick profit
+    tp2 = entry + slDistance * 2.0;   // 2:1 — moderate target
+    tp3 = entry + slDistance * 3.5;   // 3.5:1 — extended target
 
     const nearestSupport = supports.find(s => s.price < entry * 0.995);
     if (nearestSupport && nearestSupport.price > sl * 0.95 && nearestSupport.price < entry * 0.98) {
@@ -1071,9 +1071,9 @@ function alignTPWithSR(side, entry, slPercent, supports, resistances) {
   } else {
     sl = entry + slDistance;
     if (Math.abs(sl - entry) / entry < 0.04) sl = entry * 1.04;
-    tp1 = entry - slDistance * 0.8;
-    tp2 = entry - slDistance * 1.5;
-    tp3 = entry - slDistance * 2.5;
+    tp1 = entry - slDistance * 1.0;
+    tp2 = entry - slDistance * 2.0;
+    tp3 = entry - slDistance * 3.5;
 
     const nearestResistance = resistances.find(r => r.price > entry * 1.005);
     if (nearestResistance && nearestResistance.price < sl * 1.05 && nearestResistance.price > entry * 1.02) {
@@ -1143,27 +1143,41 @@ function generateRealSetups(coins) {
     let confidence = 0;
     let reason;
 
-    // v4: Tighter entry conditions (same as Trades.tsx)
-    if (change24h > 4 && change24h < 12 && volMcapRatio > 0.12) {
+    // v5: Balanced LONG/SHORT entry conditions
+    // LONG — Momentum: moderate uptrend with volume
+    if (change24h > 3 && change24h < 15 && volMcapRatio > 0.10) {
       side = 'LONG';
       confidence = 45;
-      if (change24h > 6) confidence += 12; else confidence += 5;
-      if (volMcapRatio > 0.25) confidence += 12; else if (volMcapRatio > 0.15) confidence += 8;
+      if (change24h > 6) confidence += 12; else if (change24h > 4) confidence += 8; else confidence += 5;
+      if (volMcapRatio > 0.25) confidence += 12; else if (volMcapRatio > 0.15) confidence += 8; else confidence += 4;
       if (change24h > 8) confidence += 8;
       reason = `Momentum haussier (+${change24h.toFixed(1)}%) avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
-    } else if (change24h < -8 && change24h > -18 && volMcapRatio > 0.10) {
+    }
+    // LONG — Oversold bounce: deep drop with volume (reversal play)
+    else if (change24h < -10 && change24h > -25 && volMcapRatio > 0.12) {
       side = 'LONG';
       confidence = 40;
-      if (change24h < -14) confidence += 12; else if (change24h < -10) confidence += 8;
-      if (volMcapRatio > 0.18) confidence += 8;
+      if (change24h < -18) confidence += 12; else if (change24h < -14) confidence += 10; else confidence += 6;
+      if (volMcapRatio > 0.20) confidence += 8; else confidence += 4;
       reason = `Survente potentielle (${change24h.toFixed(1)}%) — rebond technique possible`;
-    } else if (change24h < -5 && change24h > -20 && volMcapRatio > 0.15) {
+    }
+    // SHORT — Bearish momentum: moderate downtrend with distribution volume (balanced range)
+    else if (change24h < -3 && change24h > -15 && volMcapRatio > 0.10) {
       side = 'SHORT';
       confidence = 45;
-      if (change24h < -8) confidence += 10; else confidence += 5;
-      if (volMcapRatio > 0.25) confidence += 12; else confidence += 6;
+      if (change24h < -8) confidence += 12; else if (change24h < -5) confidence += 8; else confidence += 5;
+      if (volMcapRatio > 0.25) confidence += 12; else if (volMcapRatio > 0.15) confidence += 8; else confidence += 4;
       reason = `Tendance baissière (${change24h.toFixed(1)}%) avec volume de distribution (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
-    } else {
+    }
+    // SHORT — Overbought rejection: strong pump likely to retrace
+    else if (change24h > 15 && change24h < 40 && volMcapRatio > 0.12) {
+      side = 'SHORT';
+      confidence = 40;
+      if (change24h > 25) confidence += 12; else if (change24h > 20) confidence += 10; else confidence += 6;
+      if (volMcapRatio > 0.20) confidence += 8; else confidence += 4;
+      reason = `Surachat potentiel (+${change24h.toFixed(1)}%) — retracement probable`;
+    }
+    else {
       continue;
     }
 
@@ -1197,7 +1211,8 @@ function generateRealSetups(coins) {
     if (supports.length >= 2) confidence += 2;
     if (resistances.length >= 2) confidence += 2;
 
-    confidence = Math.min(98, Math.max(25, confidence));
+    // v5: Raised confidence floor from 25 to 55
+    confidence = Math.min(98, Math.max(55, confidence));
 
     const riskDistance = Math.abs(price - sl);
     const rewardDistance = Math.abs(tp2 - price);
@@ -1383,7 +1398,8 @@ async function checkAndSendAlerts() {
     }
 
     // Filter: only send signals with confidence >= 85% (post-Daily-filter)
-    const MIN_CONFIDENCE = 85;
+    // v5: Lowered from 85% to 75% to allow more swing signals
+    const MIN_CONFIDENCE = 75;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[Telegram] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 
@@ -1915,14 +1931,15 @@ async function generateScalpSetup(symbol) {
     return null;
   }
 
-  // ─── Step 1b: 4H Trend Filter — Reject signals conflicting with 4H trend ───
+  // ─── Step 1b: 4H Trend Filter — Penalize (don't reject) conflicting 4H trend ───
+  // v5: No longer hard-reject on 4H conflict — apply penalty instead to allow counter-trend scalps
+  let h4ConflictPenalty = 0;
   if (h1Trend === 'bullish' && h4Trend === 'bearish') {
-    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: 4H trend Bearish conflicts with LONG signal (4H EMA8=${h4Ema8Val?.toFixed(2)}, EMA20=${h4Ema20Val?.toFixed(2)})`);
-    return null;
-  }
-  if (h1Trend === 'bearish' && h4Trend === 'bullish') {
-    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: 4H trend Bullish conflicts with SHORT signal (4H EMA8=${h4Ema8Val?.toFixed(2)}, EMA20=${h4Ema20Val?.toFixed(2)})`);
-    return null;
+    h4ConflictPenalty = 10;
+    console.log(`[ScalpAlert] ⚠️ ${symbol}: 4H Bearish conflicts with H1 Bullish — penalty -10`);
+  } else if (h1Trend === 'bearish' && h4Trend === 'bullish') {
+    h4ConflictPenalty = 10;
+    console.log(`[ScalpAlert] ⚠️ ${symbol}: 4H Bullish conflicts with H1 Bearish — penalty -10`);
   }
 
   // 4H neutral: allow signal but will reduce confidence by 5 later
@@ -2068,7 +2085,32 @@ async function generateScalpSetup(symbol) {
       }
     }
 
-    // Types C, D, E, F removed — only Type A and Type B kept for scalp v3
+    // ─── LONG Signal — Type C: Counter-Trend Scalp (H1 bearish but deep oversold reversal) ───
+    if (!side && h1Trend === 'bearish') {
+      const deepOversold = kVal < 12;
+      const stochTurning = stochCrossUp || (stochRising && kVal < 20);
+      const emaTurning = emaCrossUp || (currentPrice > m5Ema8Val && m5Ema8Val < m5Ema20Val);
+      const volumeSpike = (() => {
+        const recentVol = m5Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
+        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+        return avgVol > 0 && recentVol > avgVol * 1.5;
+      })();
+
+      if (deepOversold && stochTurning && emaTurning && volumeSpike) {
+        side = 'LONG';
+        confidence = 42;
+        reasons.push(`⚡ CONTRE-TENDANCE: H1 baissière mais survente extrême M5`);
+        reasons.push(`Stoch: Survente profonde (K:${kVal.toFixed(1)}) + retournement`);
+        if (emaCrossUp) { confidence += 10; reasons.push('M5: Croisement EMA8 > EMA20 ↑'); }
+        else { confidence += 5; reasons.push('M5: Prix repasse au-dessus EMA8'); }
+        if (stochCrossUp) { confidence += 8; reasons.push('Stoch: Croisement K↑D confirmé'); }
+        confidence += 5; reasons.push('Volume: Spike de volume (>1.5x moyenne)');
+
+        // Counter-trend penalty
+        confidence -= 8;
+        reasons.push('⚠️ Contre-tendance H1 — pénalité -8%');
+      }
+    }
   }
 
   // ─── SHORT Signal — Type A: Pullback Entry (original, relaxed) ───
@@ -2135,7 +2177,60 @@ async function generateScalpSetup(symbol) {
       }
     }
 
-    // Types C, D, E, F removed — only Type A and Type B kept for scalp v3
+    // ─── SHORT Signal — Type C: Counter-Trend Scalp (H1 bullish but deep overbought reversal) ───
+    if (!side && h1Trend === 'bullish') {
+      const deepOverbought = kVal > 88;
+      const stochTurning = stochCrossDown || (stochFalling && kVal > 80);
+      const emaTurning = emaCrossDown || (currentPrice < m5Ema8Val && m5Ema8Val > m5Ema20Val);
+      const volumeSpike = (() => {
+        const recentVol = m5Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
+        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+        return avgVol > 0 && recentVol > avgVol * 1.5;
+      })();
+
+      if (deepOverbought && stochTurning && emaTurning && volumeSpike) {
+        side = 'SHORT';
+        confidence = 42;
+        reasons.push(`⚡ CONTRE-TENDANCE: H1 haussière mais surachat extrême M5`);
+        reasons.push(`Stoch: Surachat profond (K:${kVal.toFixed(1)}) + retournement`);
+        if (emaCrossDown) { confidence += 10; reasons.push('M5: Croisement EMA8 < EMA20 ↓'); }
+        else { confidence += 5; reasons.push('M5: Prix repasse en-dessous EMA8'); }
+        if (stochCrossDown) { confidence += 8; reasons.push('Stoch: Croisement K↓D confirmé'); }
+        confidence += 5; reasons.push('Volume: Spike de volume (>1.5x moyenne)');
+
+        // Counter-trend penalty
+        confidence -= 8;
+        reasons.push('⚠️ Contre-tendance H1 — pénalité -8%');
+      }
+    }
+  }
+
+  // ─── LONG Counter-Trend Type D: H1 bearish + deep oversold stoch + cross up + above VWAP ───
+  if (!side && h1Trend === 'bearish') {
+    if (stochDeepOversold && stochCrossUp && currentPrice > m5Vwap) {
+      side = 'LONG';
+      confidence = 40;
+      reasons.push(`⚡ CONTRE-TENDANCE D: H1 baissière mais Stoch survente extrême (K:${kVal.toFixed(1)} < 15)`);
+      reasons.push(`Stoch: Croisement K↑D en zone de survente profonde`);
+      reasons.push(`Prix au-dessus du VWAP M5 ($${m5Vwap.toFixed(2)})`);
+      if (emaCrossUp) { confidence += 8; reasons.push('M5: Croisement EMA8 > EMA20 ↑'); }
+      if (stochCrossUp) { confidence += 5; reasons.push('Stoch: Croisement K↑D confirmé'); }
+      // Mark as counter-trend for pre-send validation bypass
+    }
+  }
+
+  // ─── SHORT Counter-Trend Type D: H1 bullish + deep overbought stoch + cross down + below VWAP ───
+  if (!side && h1Trend === 'bullish') {
+    if (stochDeepOverbought && stochCrossDown && currentPrice < m5Vwap) {
+      side = 'SHORT';
+      confidence = 40;
+      reasons.push(`⚡ CONTRE-TENDANCE D: H1 haussière mais Stoch surachat extrême (K:${kVal.toFixed(1)} > 85)`);
+      reasons.push(`Stoch: Croisement K↓D en zone de surachat profond`);
+      reasons.push(`Prix en-dessous du VWAP M5 ($${m5Vwap.toFixed(2)})`);
+      if (emaCrossDown) { confidence += 8; reasons.push('M5: Croisement EMA8 < EMA20 ↓'); }
+      if (stochCrossDown) { confidence += 5; reasons.push('Stoch: Croisement K↓D confirmé'); }
+      // Mark as counter-trend for pre-send validation bypass
+    }
   }
 
   if (!side) {
@@ -2161,6 +2256,12 @@ async function generateScalpSetup(symbol) {
     console.log(`[ScalpAlert] ⚠️ ${symbol} SHORT: move already advanced ${movePercent.toFixed(1)}% in ~60min, confidence -20`);
   }
 
+  // Apply 4H conflict penalty (v5: penalty instead of rejection)
+  confidence -= h4ConflictPenalty;
+  if (h4ConflictPenalty > 0) {
+    reasons.push(`⚠️ 4H conflit tendance — pénalité -${h4ConflictPenalty}%`);
+  }
+
   // Apply 4H neutral penalty
   confidence -= h4NeutralPenalty;
 
@@ -2181,65 +2282,69 @@ async function generateScalpSetup(symbol) {
   }
   confidence -= d1Penalty;
 
-  confidence = Math.min(98, Math.max(25, confidence));
+  // v5: Minimum confidence floor raised to 55 (from 25)
+  confidence = Math.min(98, Math.max(55, confidence));
 
   // ─── SL / TP Calculation — v3: Wider ATR-based SL + better TP ratios ───
   let entry = currentPrice;
   let stopLoss, tp1, tp2, tp3;
 
-  // v3: ATR-based SL (2.5x ATR M5, min 2%, max 5%) — wider SL to reduce false stops
+  // v5: ATR-based SL (3.0x ATR M5, min 2.5%, max 6%) — wider SL to reduce false stops
   let slDist;
   const atrM5 = calcATR_M5(m5Candles);
 
-  // Volatility filter: skip signal if ATR_M5/price > 2.5% (too volatile)
-  if (atrM5 && atrM5 > 0 && (atrM5 / entry) > 0.025) {
+  // Volatility filter: skip signal if ATR_M5/price > 3% (too volatile for scalp)
+  if (atrM5 && atrM5 > 0 && (atrM5 / entry) > 0.03) {
     return null; // Market too volatile for scalp
   }
 
   if (atrM5 && atrM5 > 0) {
-    slDist = atrM5 * 2.5;
-    const minSl = entry * 0.02;
-    const maxSl = entry * 0.05;
+    slDist = atrM5 * 3.0; // v5: increased from 2.5x to 3.0x
+    const minSl = entry * 0.025; // v5: increased from 2% to 2.5%
+    const maxSl = entry * 0.06;  // v5: increased from 5% to 6%
     slDist = Math.max(minSl, Math.min(slDist, maxSl));
   } else {
     // Fallback
     const last10 = m5Candles.slice(-10);
     if (side === 'LONG') {
       const lowestLow = Math.min(...last10.map(c => c.low));
-      slDist = Math.max(entry - lowestLow, entry * 0.02);
+      slDist = Math.max(entry - lowestLow, entry * 0.025);
     } else {
       const highestHigh = Math.max(...last10.map(c => c.high));
-      slDist = Math.max(highestHigh - entry, entry * 0.02);
+      slDist = Math.max(highestHigh - entry, entry * 0.025);
     }
-    slDist = Math.max(entry * 0.02, Math.min(slDist, entry * 0.05));
+    slDist = Math.max(entry * 0.025, Math.min(slDist, entry * 0.06));
   }
 
   if (side === 'LONG') {
     stopLoss = entry - slDist;
-    if (Math.abs(entry - stopLoss) / entry < 0.02) stopLoss = entry * 0.98;
+    if (Math.abs(entry - stopLoss) / entry < 0.025) stopLoss = entry * 0.975;
   } else {
     stopLoss = entry + slDist;
-    if (Math.abs(stopLoss - entry) / entry < 0.02) stopLoss = entry * 1.02;
+    if (Math.abs(stopLoss - entry) / entry < 0.025) stopLoss = entry * 1.025;
   }
 
   slDist = Math.abs(entry - stopLoss);
 
-  // v3: Better TP ratios — 1:1, 1.5:1, 2.5:1 for improved R:R
+  // v5: Improved TP ratios — 1.2:1, 2:1, 3:1 for better R:R
   if (side === 'LONG') {
-    tp1 = entry + slDist * 1.0;  // 1:1 — quick profit
-    tp2 = entry + slDist * 1.5;  // 1.5:1
-    tp3 = entry + slDist * 2.5;  // 2.5:1
+    tp1 = entry + slDist * 1.2;  // 1.2:1 — quick profit
+    tp2 = entry + slDist * 2.0;  // 2:1
+    tp3 = entry + slDist * 3.0;  // 3:1
   } else {
-    tp1 = entry - slDist * 1.0;
-    tp2 = entry - slDist * 1.5;
-    tp3 = entry - slDist * 2.5;
+    tp1 = entry - slDist * 1.2;
+    tp2 = entry - slDist * 2.0;
+    tp3 = entry - slDist * 3.0;
   }
 
-  // SL too tight penalty (1.5% threshold)
-  if (slDist / entry < 0.015) confidence -= 10;
-  confidence = Math.min(98, Math.max(25, confidence));
+  // SL too tight penalty (2% threshold, v5: raised from 1.5%)
+  if (slDist / entry < 0.02) confidence -= 10;
+  confidence = Math.min(98, Math.max(55, confidence));
 
   const rr = slDist > 0 ? Math.round((Math.abs(tp2 - entry) / slDist) * 10) / 10 : 1.5;
+
+  // Detect if this is a counter-trend signal
+  const isCounterTrend = reasons.some(r => r.includes('CONTRE-TENDANCE'));
 
   return {
     symbol,
@@ -2251,6 +2356,7 @@ async function generateScalpSetup(symbol) {
     rr,
     confidence,
     reason: reasons.join(' | '),
+    counter_trend: isCounterTrend,
     stoch_k: kVal,
     stoch_d: dVal,
     ema8_m5: m5Ema8Val,
@@ -2308,17 +2414,28 @@ async function checkAndSendScalpAlerts() {
       console.log(`[ScalpAlert] Setup confidences: ${confValues.join(", ")}`);
     }
 
-    // Filter: only send signals with confidence >= 88% (high-quality signals only)
-    const MIN_CONFIDENCE = 88;
+    // Filter: only send signals with confidence >= 75% (v5: lowered from 88% since floor is now 55%)
+    const MIN_CONFIDENCE = 75;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[ScalpAlert] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 
     // Sort by confidence descending
     qualifiedSetups.sort((a, b) => b.confidence - a.confidence);
 
-    console.log(`[ScalpAlert] Starting to send ${qualifiedSetups.length} scalp alerts to Telegram...`);
+    // v5: Max 15 active scalp calls limit
+    const MAX_ACTIVE_SCALP_CALLS = 15;
+    const currentScalpCalls = loadScalpCalls();
+    const activeScalpCallCount = currentScalpCalls.filter(c => c.status === 'active').length;
+    if (activeScalpCallCount >= MAX_ACTIVE_SCALP_CALLS) {
+      console.log(`[ScalpAlert] ⛔ Max active scalp calls reached (${activeScalpCallCount}/${MAX_ACTIVE_SCALP_CALLS}) — skipping new signals`);
+      return sentAlerts;
+    }
+    const remainingSlots = MAX_ACTIVE_SCALP_CALLS - activeScalpCallCount;
+    console.log(`[ScalpAlert] Active scalp calls: ${activeScalpCallCount}/${MAX_ACTIVE_SCALP_CALLS} — ${remainingSlots} slots available`);
 
-    for (let idx = 0; idx < qualifiedSetups.length; idx++) {
+    console.log(`[ScalpAlert] Starting to send ${Math.min(qualifiedSetups.length, remainingSlots)} scalp alerts to Telegram...`);
+
+    for (let idx = 0; idx < qualifiedSetups.length && sentAlerts.length < remainingSlots; idx++) {
       const setup = qualifiedSetups[idx];
       try {
         if (isScalpCooldownActive(cooldowns, setup.symbol, setup.side)) {
@@ -2329,9 +2446,13 @@ async function checkAndSendScalpAlerts() {
         console.log(`[ScalpAlert] 📤 Sending ${idx + 1}/${qualifiedSetups.length}: ${setup.symbol} ${setup.side} (${setup.confidence}%)...`);
 
         // ─── Pre-send trend coherence validation ───
+        // v5: Allow counter-trend signals through (only log warning, don't skip)
         if ((setup.side === 'LONG' && setup.h1_trend !== 'bullish') || (setup.side === 'SHORT' && setup.h1_trend !== 'bearish')) {
-          console.log(`[ScalpAlert] ⚠️ PRE-SEND VALIDATION FAILED for ${setup.symbol}: side=${setup.side} but h1_trend=${setup.h1_trend} — SKIPPING`);
-          continue;
+          if (setup.counter_trend) {
+            console.log(`[ScalpAlert] ⚡ Counter-trend signal allowed for ${setup.symbol}: side=${setup.side}, h1_trend=${setup.h1_trend}`);
+          } else {
+            console.log(`[ScalpAlert] ⚠️ PRE-SEND WARNING for ${setup.symbol}: side=${setup.side} but h1_trend=${setup.h1_trend} — allowing anyway (v5)`);
+          }
         }
 
         const dirEmoji = setup.side === 'LONG' ? '🟢 LONG' : '🔴 SHORT';

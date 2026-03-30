@@ -1,1 +1,34 @@
-[]
+[
+  {
+    "id": 53,
+    "symbol": "PENGUUSDT",
+    "side": "SHORT",
+    "entry_price": 0.00639,
+    "stop_loss": 0.00654975,
+    "trailing_sl": 0.00654975,
+    "tp1": 0.0061982999999999995,
+    "tp2": 0.0060704999999999995,
+    "tp3": 0.005910749999999999,
+    "confidence": 77,
+    "reason": "H1: Prix < EMA20 ($0.01) & VWAP ($0.01) ✓ | M5: EMA8 < EMA20 ✓ | M5: Rejet parfait EMA20 | Stoch: Surachat extrême (K:91.3) | VWAP M5: bien en-dessous ✓ | ✅ Daily Bearish — bonus alignement +5%",
+    "stoch_k": 91.30434782608597,
+    "stoch_d": 68.7681159420283,
+    "ema8_m5": 0.006383304242974428,
+    "ema20_m5": 0.006384619901869342,
+    "vwap_m5": 0.00647524308821379,
+    "vwap_h1": 0.006403369857939487,
+    "h1_trend": "bearish",
+    "rr": 2,
+    "status": "active",
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "sl_hit": false,
+    "best_tp_reached": 0,
+    "exit_price": null,
+    "profit_pct": null,
+    "created_at": "2026-03-30T21:09:57.100Z",
+    "resolved_at": null,
+    "expires_at": "2026-03-30T21:54:57.100Z"
+  }
+]

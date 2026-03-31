@@ -348,7 +348,7 @@
     "direction": "SHORT"
   },
   "FLOKIUSDT_SHORT": {
-    "timestamp": "2026-03-30T19:58:28.115Z",
+    "timestamp": "2026-03-30T21:16:18.763Z",
     "direction": "SHORT"
   },
   "WBTCUSDT_SHORT": {
@@ -404,7 +404,7 @@
     "direction": "LONG"
   },
   "MORPHOUSDT_SHORT": {
-    "timestamp": "2026-03-30T20:10:22.074Z",
+    "timestamp": "2026-03-30T21:16:16.440Z",
     "direction": "SHORT"
   },
   "PLUMEUSDT_SHORT": {
@@ -432,7 +432,7 @@
     "direction": "SHORT"
   },
   "DOTUSDT_SHORT": {
-    "timestamp": "2026-03-30T20:19:18.686Z",
+    "timestamp": "2026-03-30T21:19:21.173Z",
     "direction": "SHORT"
   },
   "LUNCUSDT_SHORT": {
@@ -457,6 +457,18 @@
   },
   "ICPUSDT_SHORT": {
     "timestamp": "2026-03-30T21:07:17.003Z",
+    "direction": "SHORT"
+  },
+  "BCHUSDT_SHORT": {
+    "timestamp": "2026-03-30T21:19:16.520Z",
+    "direction": "SHORT"
+  },
+  "TWTUSDT_SHORT": {
+    "timestamp": "2026-03-30T21:19:18.847Z",
+    "direction": "SHORT"
+  },
+  "LUMIAUSDT_SHORT": {
+    "timestamp": "2026-03-30T21:19:23.500Z",
     "direction": "SHORT"
   }
 }

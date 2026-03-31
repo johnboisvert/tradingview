@@ -1519,7 +1519,7 @@ async function checkAndSendAlerts() {
     }
 
     // v6: Raised MIN_CONFIDENCE to 70 (post-Daily-filter + Binance 4H confirmation)
-    const MIN_CONFIDENCE = 70;
+    const MIN_CONFIDENCE = 80;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[Telegram] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 
@@ -1539,7 +1539,7 @@ async function checkAndSendAlerts() {
 
       // Build Telegram message matching /trades card format
       const dirEmoji = setup.side === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
-      const confEmoji = setup.confidence >= 70 ? '🔥' : setup.confidence >= 50 ? '⚡' : '📊';
+      const confEmoji = setup.confidence >= 80 ? '🔥' : setup.confidence >= 50 ? '⚡' : '📊';
 
       // TP/SL percentages
       const pctTP1 = ((setup.tp1 - setup.entry) / setup.entry * 100);

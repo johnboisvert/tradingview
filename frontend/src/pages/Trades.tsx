@@ -238,6 +238,92 @@ function formatPrice(p: number): string {
   return p.toFixed(6);
 }
 
+/* ─── Trade Progress Helper ─── */
+interface TradeProgress {
+  entryHit: boolean;
+  slHit: boolean;
+  tp0Hit: boolean;
+  tp1Hit: boolean;
+  tp2Hit: boolean;
+  tp3Hit: boolean;
+  bestTp: number; // 0 = none, 1/2/3
+  status: "pending" | "active" | "tp0" | "tp1" | "tp2" | "tp3" | "sl";
+  statusLabel: string;
+  statusColor: string;
+  statusBg: string;
+  statusIcon: string;
+}
+
+function getTradeProgress(trade: TradeSetup): TradeProgress {
+  const price = trade.currentPrice;
+  const entry = trade.entry;
+  const sl = trade.stopLoss;
+  const tp0 = trade.tp0;
+  const tp1 = trade.tp1;
+  const tp2 = trade.tp2;
+  const tp3 = trade.tp3;
+  const isLong = trade.side === "LONG";
+
+  const entryHit = isLong ? price <= entry || price >= entry * 0.998 : price >= entry || price <= entry * 1.002;
+  const slHit = isLong ? price <= sl : price >= sl;
+  const tp0Hit = tp0 != null ? (isLong ? price >= tp0 : price <= tp0) : false;
+  const tp1Hit = isLong ? price >= tp1 : price <= tp1;
+  const tp2Hit = isLong ? price >= tp2 : price <= tp2;
+  const tp3Hit = isLong ? price >= tp3 : price <= tp3;
+
+  let bestTp = 0;
+  if (tp3Hit) bestTp = 3;
+  else if (tp2Hit) bestTp = 2;
+  else if (tp1Hit) bestTp = 1;
+  else if (tp0Hit) bestTp = 0.5; // tp0 partial
+
+  let status: TradeProgress["status"] = "pending";
+  let statusLabel = "⏳ En attente";
+  let statusColor = "text-gray-400";
+  let statusBg = "bg-gray-500/10 border-gray-500/20";
+  let statusIcon = "⏳";
+
+  if (slHit && bestTp === 0) {
+    status = "sl";
+    statusLabel = "SL Hit";
+    statusColor = "text-red-400";
+    statusBg = "bg-red-500/15 border-red-500/25";
+    statusIcon = "❌";
+  } else if (bestTp === 3) {
+    status = "tp3";
+    statusLabel = "TP3 Hit";
+    statusColor = "text-emerald-400";
+    statusBg = "bg-emerald-500/15 border-emerald-500/25";
+    statusIcon = "🎯";
+  } else if (bestTp === 2) {
+    status = "tp2";
+    statusLabel = "TP2 Hit";
+    statusColor = "text-emerald-400";
+    statusBg = "bg-emerald-500/15 border-emerald-500/25";
+    statusIcon = "✅";
+  } else if (bestTp === 1) {
+    status = "tp1";
+    statusLabel = "TP1 Hit";
+    statusColor = "text-emerald-300";
+    statusBg = "bg-emerald-500/10 border-emerald-500/20";
+    statusIcon = "✅";
+  } else if (tp0Hit) {
+    status = "tp0";
+    statusLabel = "TP0 Hit";
+    statusColor = "text-teal-300";
+    statusBg = "bg-teal-500/10 border-teal-500/20";
+    statusIcon = "✅";
+  } else if (entryHit) {
+    status = "active";
+    statusLabel = "Actif";
+    statusColor = "text-amber-400";
+    statusBg = "bg-amber-500/15 border-amber-500/25";
+    statusIcon = "🟢";
+  }
+
+  return { entryHit, slHit, tp0Hit, tp1Hit, tp2Hit, tp3Hit, bestTp, status, statusLabel, statusColor, statusBg, statusIcon };
+}
+
 function roundPrice(value: number, reference: number): number {
   if (reference >= 1000) return Math.round(value * 100) / 100;
   if (reference >= 1) return Math.round(value * 100) / 100;
@@ -1607,19 +1693,19 @@ export default function Trades() {
             <table className="w-full min-w-[1300px]">
               <thead>
                 <tr className="border-b border-white/[0.06]">
-                  {["Heure", "Symbole", "Type", "Entry", "SL", "TP0", "TP1", "TP2", "TP3", "R:R", "24h", "Score Tech.", ""].map((h) => (
-                    <th key={h} className={`px-3 py-3 text-left text-[10px] uppercase tracking-wider font-semibold ${h === "TP0" ? "text-amber-400" : "text-gray-500"}`}>{h}</th>
+                  {["Heure", "Symbole", "Type", "Entry", "SL", "TP0", "TP1", "TP2", "TP3", "R:R", "24h", "Score Tech.", "Status", ""].map((h) => (
+                    <th key={h} className={`px-3 py-3 text-left text-[10px] uppercase tracking-wider font-semibold ${h === "TP0" ? "text-amber-400" : h === "Status" ? "text-blue-400" : "text-gray-500"}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={13} className="text-center py-12">
+                  <tr><td colSpan={14} className="text-center py-12">
                     <RefreshCw className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-2" />
                     <p className="text-sm text-gray-500">Analyse EMA + MACD + RSI + Volume en cours...</p>
                   </td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={13} className="text-center py-12 text-gray-500">
+                  <tr><td colSpan={14} className="text-center py-12 text-gray-500">
                     {`Aucun setup avec score technique ≥ ${minConfidence}%. Essayez de baisser le filtre de confiance.`}
                   </td></tr>
                 ) : (
@@ -1763,13 +1849,34 @@ export default function Trades() {
                             </div>
                           </td>
                           <td className="px-3 py-3">
+                            {(() => {
+                              const prog = getTradeProgress(trade);
+                              return (
+                                <div className="flex flex-col items-start gap-1">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${prog.statusBg} ${prog.statusColor}`}>
+                                    {prog.statusIcon} {prog.statusLabel}
+                                  </span>
+                                  {/* Mini progress dots */}
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <div className={`w-1.5 h-1.5 rounded-full ${prog.entryHit ? "bg-blue-400" : "bg-gray-600"}`} title="Entry" />
+                                    {trade.tp0 !== null && <div className={`w-1.5 h-1.5 rounded-full ${prog.tp0Hit ? "bg-amber-400" : "bg-gray-600"}`} title="TP0" />}
+                                    <div className={`w-1.5 h-1.5 rounded-full ${prog.tp1Hit ? "bg-emerald-300" : "bg-gray-600"}`} title="TP1" />
+                                    <div className={`w-1.5 h-1.5 rounded-full ${prog.tp2Hit ? "bg-emerald-400" : "bg-gray-600"}`} title="TP2" />
+                                    <div className={`w-1.5 h-1.5 rounded-full ${prog.tp3Hit ? "bg-emerald-500" : "bg-gray-600"}`} title="TP3" />
+                                    <div className={`w-1.5 h-1.5 rounded-full ${prog.slHit ? "bg-red-500" : "bg-gray-600"}`} title="SL" />
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </td>
+                          <td className="px-3 py-3">
                             {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
                           </td>
                         </tr>
 
                         {isExpanded && (
                           <tr className="border-b border-white/[0.03]">
-                            <td colSpan={13} className="px-4 py-4 bg-white/[0.01]">
+                            <td colSpan={14} className="px-4 py-4 bg-white/[0.01]">
                               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
                                   <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">📋 Raison du Signal</p>

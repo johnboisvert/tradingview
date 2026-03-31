@@ -257,6 +257,83 @@ interface ServerScalpCall {
   expires_at: string;
 }
 
+/* ─── Trade Progress Helper ─── */
+interface TradeProgress {
+  entryHit: boolean;
+  slHit: boolean;
+  tp1Hit: boolean;
+  tp2Hit: boolean;
+  tp3Hit: boolean;
+  bestTp: number; // 0 = none, 1/2/3
+  status: "pending" | "active" | "tp1" | "tp2" | "tp3" | "sl";
+  statusLabel: string;
+  statusColor: string;
+  statusBg: string;
+  statusIcon: string;
+}
+
+function getScalpTradeProgress(trade: ScalpSetup): TradeProgress {
+  const price = trade.currentPrice;
+  const entry = trade.entry;
+  const sl = trade.stopLoss;
+  const tp1 = trade.tp1;
+  const tp2 = trade.tp2;
+  const tp3 = trade.tp3;
+  const isLong = trade.side === "LONG";
+
+  // Determine which levels have been hit based on current price
+  const entryHit = isLong ? price <= entry || price >= entry * 0.998 : price >= entry || price <= entry * 1.002;
+  const slHit = isLong ? price <= sl : price >= sl;
+  const tp1Hit = isLong ? price >= tp1 : price <= tp1;
+  const tp2Hit = isLong ? price >= tp2 : price <= tp2;
+  const tp3Hit = isLong ? price >= tp3 : price <= tp3;
+
+  let bestTp = 0;
+  if (tp3Hit) bestTp = 3;
+  else if (tp2Hit) bestTp = 2;
+  else if (tp1Hit) bestTp = 1;
+
+  let status: TradeProgress["status"] = "pending";
+  let statusLabel = "⏳ En attente";
+  let statusColor = "text-gray-400";
+  let statusBg = "bg-gray-500/10 border-gray-500/20";
+  let statusIcon = "⏳";
+
+  if (slHit && bestTp === 0) {
+    status = "sl";
+    statusLabel = "SL Hit";
+    statusColor = "text-red-400";
+    statusBg = "bg-red-500/15 border-red-500/25";
+    statusIcon = "❌";
+  } else if (bestTp === 3) {
+    status = "tp3";
+    statusLabel = "TP3 Hit";
+    statusColor = "text-emerald-400";
+    statusBg = "bg-emerald-500/15 border-emerald-500/25";
+    statusIcon = "🎯";
+  } else if (bestTp === 2) {
+    status = "tp2";
+    statusLabel = "TP2 Hit";
+    statusColor = "text-emerald-400";
+    statusBg = "bg-emerald-500/15 border-emerald-500/25";
+    statusIcon = "✅";
+  } else if (bestTp === 1) {
+    status = "tp1";
+    statusLabel = "TP1 Hit";
+    statusColor = "text-emerald-300";
+    statusBg = "bg-emerald-500/10 border-emerald-500/20";
+    statusIcon = "✅";
+  } else if (entryHit) {
+    status = "active";
+    statusLabel = "Actif";
+    statusColor = "text-amber-400";
+    statusBg = "bg-amber-500/15 border-amber-500/25";
+    statusIcon = "🟢";
+  }
+
+  return { entryHit, slHit, tp1Hit, tp2Hit, tp3Hit, bestTp, status, statusLabel, statusColor, statusBg, statusIcon };
+}
+
 function serverCallToSetup(call: ServerScalpCall): ScalpSetup {
   const createdAt = new Date(call.created_at);
   const triggerTime = createdAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -1613,15 +1690,15 @@ export default function ScalpTrading() {
               <table className="w-full min-w-[1400px]">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
-                    {["#", "Crypto", "Type", "Entry", "SL", "TP1", "TP2", "TP3", "Biais H1", "Biais 4H", "Stoch (9,3,1)", "EMA M5", "VWAP", "Confiance", "R:R", ""].map(h => (
-                      <th key={h} className="px-3 py-3 text-left text-[10px] uppercase tracking-wider font-semibold text-gray-500">{h}</th>
+                    {["#", "Crypto", "Type", "Statut", "Entry", "SL", "TP1", "TP2", "TP3", "Biais H1", "Biais 4H", "Stoch (9,3,1)", "EMA M5", "VWAP", "Confiance", "R:R", ""].map(h => (
+                      <th key={h} className={`px-3 py-3 text-left text-[10px] uppercase tracking-wider font-semibold ${h === "Statut" ? "text-amber-400" : "text-gray-500"}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loading && trades.length === 0 ? (
                     <tr>
-                      <td colSpan={16} className="text-center py-16">
+                      <td colSpan={17} className="text-center py-16">
                         <RefreshCw className="w-6 h-6 text-amber-400 animate-spin mx-auto mb-2" />
                         <p className="text-sm text-gray-500">Analyse EMA + VWAP + Stochastique en cours...</p>
                         <p className="text-xs text-gray-600 mt-1">Calcul sur 4H + H1 + M5 pour 30 cryptos</p>
@@ -1629,7 +1706,7 @@ export default function ScalpTrading() {
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={16} className="text-center py-16">
+                      <td colSpan={17} className="text-center py-16">
                         <p className="text-sm text-gray-500">Aucun signal détecté avec ces filtres</p>
                         <p className="text-xs text-gray-600 mt-1">Essayez de réduire le filtre de confiance</p>
                       </td>
@@ -1637,10 +1714,13 @@ export default function ScalpTrading() {
                   ) : (
                     filtered.map((trade, idx) => {
                       const isExpanded = expandedRow === trade.id;
+                      const progress = getScalpTradeProgress(trade);
                       return (
                         <Fragment key={trade.id}>
                           <tr
-                            className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer"
+                            className={`border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer ${
+                              progress.status === "sl" ? "bg-red-500/[0.03]" : progress.bestTp >= 2 ? "bg-emerald-500/[0.03]" : ""
+                            }`}
                             onClick={() => setExpandedRow(isExpanded ? null : trade.id)}
                           >
                             <td className="px-3 py-3 text-xs text-gray-500 font-mono">{idx + 1}</td>
@@ -1678,17 +1758,46 @@ export default function ScalpTrading() {
                                 {trade.side}
                               </span>
                             </td>
+                            {/* Statut */}
+                            <td className="px-3 py-3">
+                              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${progress.statusBg} ${progress.statusColor}`}>
+                                <span>{progress.statusIcon}</span>
+                                <span>{progress.statusLabel}</span>
+                              </div>
+                              {progress.status === "active" && (
+                                <div className="flex items-center gap-0.5 mt-1">
+                                  {[progress.tp1Hit, progress.tp2Hit, progress.tp3Hit].map((hit, i) => (
+                                    <div key={i} className={`h-1.5 w-4 rounded-full ${hit ? "bg-emerald-400" : "bg-white/[0.08]"}`} />
+                                  ))}
+                                </div>
+                              )}
+                              {(progress.status === "tp1" || progress.status === "tp2" || progress.status === "tp3") && (
+                                <div className="flex items-center gap-0.5 mt-1">
+                                  {[progress.tp1Hit, progress.tp2Hit, progress.tp3Hit].map((hit, i) => (
+                                    <div key={i} className={`h-1.5 w-4 rounded-full ${hit ? "bg-emerald-400" : "bg-white/[0.08]"}`} />
+                                  ))}
+                                </div>
+                              )}
+                            </td>
                             {/* Entry */}
                             <td className="px-3 py-3">
-                              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-2 py-1 inline-block">
-                                <span className="font-mono text-sm font-bold text-blue-300">${formatPrice(trade.entry)}</span>
+                              <div className={`rounded-lg px-2 py-1 inline-flex items-center gap-1.5 border ${
+                                progress.entryHit
+                                  ? "bg-emerald-500/10 border-emerald-500/20"
+                                  : "bg-blue-500/10 border-blue-500/20"
+                              }`}>
+                                {progress.entryHit && <span className="text-[10px]">✅</span>}
+                                <span className={`font-mono text-sm font-bold ${progress.entryHit ? "text-emerald-300" : "text-blue-300"}`}>${formatPrice(trade.entry)}</span>
                               </div>
+                              {!progress.entryHit && (
+                                <span className="text-[9px] text-gray-500 block mt-0.5">⏳ non touché</span>
+                              )}
                             </td>
                             {/* SL */}
                             <td className="px-3 py-3">
-                              <div className="flex items-center gap-1">
-                                <Shield className="w-3 h-3 text-red-400" />
-                                <span className="font-mono text-xs text-red-400 font-semibold">${formatPrice(trade.stopLoss)}</span>
+                              <div className={`flex items-center gap-1 ${progress.slHit ? "bg-red-500/15 rounded-lg px-1.5 py-0.5 border border-red-500/25" : ""}`}>
+                                {progress.slHit ? <span className="text-[10px]">❌</span> : <Shield className="w-3 h-3 text-red-400" />}
+                                <span className={`font-mono text-xs font-semibold ${progress.slHit ? "text-red-300" : "text-red-400"}`}>${formatPrice(trade.stopLoss)}</span>
                               </div>
                               <span className="text-[9px] text-red-400/60">
                                 {trade.side === "LONG" ? "-" : "+"}{trade.entry ? Math.abs((trade.stopLoss - trade.entry) / trade.entry * 100).toFixed(2) : "0.00"}%
@@ -1696,9 +1805,9 @@ export default function ScalpTrading() {
                             </td>
                             {/* TP1 */}
                             <td className="px-3 py-3">
-                              <div className="flex items-center gap-1">
-                                <Target className="w-3 h-3 text-emerald-300" />
-                                <span className="font-mono text-xs text-emerald-300 font-semibold">${formatPrice(trade.tp1)}</span>
+                              <div className={`flex items-center gap-1 ${progress.tp1Hit ? "bg-emerald-500/15 rounded-lg px-1.5 py-0.5 border border-emerald-500/25" : ""}`}>
+                                {progress.tp1Hit ? <span className="text-[10px]">✅</span> : <Target className="w-3 h-3 text-emerald-300" />}
+                                <span className={`font-mono text-xs font-semibold ${progress.tp1Hit ? "text-emerald-200" : "text-emerald-300"}`}>${formatPrice(trade.tp1)}</span>
                               </div>
                               <div className="flex items-center">
                                 <span className="text-[9px] text-emerald-300/60">0.8:1</span>
@@ -1707,9 +1816,9 @@ export default function ScalpTrading() {
                             </td>
                             {/* TP2 */}
                             <td className="px-3 py-3">
-                              <div className="flex items-center gap-1">
-                                <Target className="w-3 h-3 text-emerald-400" />
-                                <span className="font-mono text-xs text-emerald-400 font-semibold">${formatPrice(trade.tp2)}</span>
+                              <div className={`flex items-center gap-1 ${progress.tp2Hit ? "bg-emerald-500/15 rounded-lg px-1.5 py-0.5 border border-emerald-500/25" : ""}`}>
+                                {progress.tp2Hit ? <span className="text-[10px]">✅</span> : <Target className="w-3 h-3 text-emerald-400" />}
+                                <span className={`font-mono text-xs font-semibold ${progress.tp2Hit ? "text-emerald-200" : "text-emerald-400"}`}>${formatPrice(trade.tp2)}</span>
                               </div>
                               <div className="flex items-center">
                                 <span className="text-[9px] text-emerald-400/60">1.5:1</span>
@@ -1718,9 +1827,9 @@ export default function ScalpTrading() {
                             </td>
                             {/* TP3 */}
                             <td className="px-3 py-3">
-                              <div className="flex items-center gap-1">
-                                <Target className="w-3 h-3 text-emerald-500" />
-                                <span className="font-mono text-xs text-emerald-500 font-semibold">${formatPrice(trade.tp3)}</span>
+                              <div className={`flex items-center gap-1 ${progress.tp3Hit ? "bg-emerald-500/15 rounded-lg px-1.5 py-0.5 border border-emerald-500/25" : ""}`}>
+                                {progress.tp3Hit ? <span className="text-[10px]">🎯</span> : <Target className="w-3 h-3 text-emerald-500" />}
+                                <span className={`font-mono text-xs font-semibold ${progress.tp3Hit ? "text-emerald-200" : "text-emerald-500"}`}>${formatPrice(trade.tp3)}</span>
                               </div>
                               <div className="flex items-center">
                                 <span className="text-[9px] text-emerald-500/60">2.5:1</span>
@@ -1841,7 +1950,7 @@ export default function ScalpTrading() {
                           {/* Expanded Detail Row */}
                           {isExpanded && (
                             <tr className="border-b border-white/[0.04]">
-                              <td colSpan={16} className="px-4 py-4 bg-white/[0.01]">
+                              <td colSpan={17} className="px-4 py-4 bg-white/[0.01]">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                   {/* Reason */}
                                   <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
-import { TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3, Clock, Shield, Target, ChevronDown, ChevronUp, Link2, Zap, Trophy, Info } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3, Clock, Shield, Target, ChevronDown, ChevronUp, Link2, Zap, Trophy, Info, BookOpen } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -1172,6 +1172,7 @@ export default function Trades() {
   const [minConfidence, setMinConfidence] = useState(88);
   const [perfStats, setPerfStats] = useState<PerformanceStats>({ total: 0, tp0Hits: 0, tp1Hits: 0, tp2Hits: 0, tp3Hits: 0, slHits: 0, pending: 0 });
   const [resetConfirm, setResetConfirm] = useState(false);
+  const [showMethodology, setShowMethodology] = useState(false);
 
   const handleResetTracking = useCallback(() => {
     if (!resetConfirm) {
@@ -1255,15 +1256,186 @@ export default function Trades() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
         <PageHeader
           icon={<BarChart3 className="w-6 h-6" />}
-          title="Suggestions de Swing Trading v4"
-          subtitle="ATR-based SL (4-8%) + EMA parfait + MACD + RSI strict — TP1 conservateur (0.8:1) pour winrate maximum"
+          title="Suggestions de Swing Trading v6"
+          subtitle="RSI/EMA 4H + Filtre Daily + ATR SL (6-12%) — TP1: 1.2:1 • TP2: 2.5:1 • TP3: 4:1 — Envoi Telegram auto ≥ 80%"
           accentColor="blue"
           steps={[
-            { n: "1", title: "EMA Parfait + MACD", desc: "LONG: prix > EMA8 > EMA21 > EMA50 + MACD haussier. SHORT: inverse. Filtrage ultra-strict." },
-            { n: "2", title: "ATR SL + Volume", desc: "SL basé sur ATR 1h (2.5x, min 4%, max 8%). Volume spike bonus. RSI filtre les entrées contre-tendance." },
-            { n: "3", title: "TP Conservateur", desc: "TP1: 0.8:1 (max WR) • TP2: 1.5:1 • TP3: 2.5:1. Expiration 72h. TP0 Quick Profit sur S/R 1h." },
+            { n: "1", title: "Pré-filtre CoinGecko", desc: "Top 200 cryptos analysées. Momentum (+4/+12%), survente (-8/-18%), ou distribution (-5/-20%) avec volume suffisant." },
+            { n: "2", title: "Confirmation Binance 4H", desc: "RSI(4H) + EMA 8/20(4H) + Volume spike. Rejet strict si indicateurs en conflit avec la direction." },
+            { n: "3", title: "Filtre Daily + Risk", desc: "Blocage dur contre-tendance Daily. SL: 6-12% (ATR). TP1: 1.2:1 • TP2: 2.5:1 • TP3: 4:1. Cooldown 12h." },
           ]}
         />
+
+        {/* Methodology Explanation Section — Collapsible */}
+        <div className="mb-6">
+          <button
+            onClick={() => setShowMethodology(!showMethodology)}
+            className="w-full flex items-center justify-between px-5 py-4 rounded-2xl bg-gradient-to-r from-indigo-500/[0.06] via-blue-500/[0.06] to-cyan-500/[0.06] border border-indigo-500/15 hover:border-indigo-500/30 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-indigo-400" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-sm font-bold text-indigo-300">Comment sont générés nos signaux de Swing Trading ?</h3>
+                <p className="text-[11px] text-gray-500 mt-0.5">Processus en 3 phases • Filtres techniques multi-timeframes • Gestion du risque automatisée</p>
+              </div>
+            </div>
+            <div className={`w-8 h-8 rounded-lg bg-white/[0.05] flex items-center justify-center transition-transform duration-300 ${showMethodology ? "rotate-180" : ""}`}>
+              <ChevronDown className="w-4 h-4 text-gray-400" />
+            </div>
+          </button>
+
+          {showMethodology && (
+            <div className="mt-3 rounded-2xl bg-[#0D1225] border border-indigo-500/10 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+              {/* Phase 1 */}
+              <div className="p-5 border-b border-white/[0.04]">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center text-xs font-black text-blue-400">1</span>
+                  <h4 className="text-sm font-bold text-blue-300">Pré-filtrage CoinGecko — Sélection des candidats</h4>
+                </div>
+                <div className="ml-10 space-y-2 text-xs text-gray-400 leading-relaxed">
+                  <p>
+                    L'algorithme analyse les <span className="text-white font-semibold">Top 200 cryptos par capitalisation</span> via l'API CoinGecko toutes les 90 secondes.
+                    Seules les cryptos présentant un <span className="text-blue-300 font-semibold">momentum significatif</span> et un <span className="text-blue-300 font-semibold">volume suffisant</span> passent cette première étape :
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                    <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-1">🟢 LONG — Momentum</p>
+                      <p className="text-[11px] text-gray-400">Variation 24h entre <span className="text-white font-mono">+4%</span> et <span className="text-white font-mono">+12%</span> avec ratio Volume/MCap &gt; 12%</p>
+                    </div>
+                    <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-1">🟢 LONG — Rebond</p>
+                      <p className="text-[11px] text-gray-400">Survente entre <span className="text-white font-mono">-8%</span> et <span className="text-white font-mono">-18%</span> avec ratio Volume/MCap &gt; 10%</p>
+                    </div>
+                    <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-[10px] uppercase tracking-wider text-red-400 font-semibold mb-1">🔴 SHORT — Distribution</p>
+                      <p className="text-[11px] text-gray-400">Baisse entre <span className="text-white font-mono">-5%</span> et <span className="text-white font-mono">-20%</span> avec ratio Volume/MCap &gt; 15%</p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Les niveaux de Support/Résistance sont calculés à partir du sparkline 7 jours (pivots locaux clusterisés) + High/Low 24h + ATH.
+                  </p>
+                </div>
+              </div>
+
+              {/* Phase 2 */}
+              <div className="p-5 border-b border-white/[0.04]">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="w-7 h-7 rounded-lg bg-purple-500/15 border border-purple-500/25 flex items-center justify-center text-xs font-black text-purple-400">2</span>
+                  <h4 className="text-sm font-bold text-purple-300">Confirmation Binance 4H — Filtres techniques stricts</h4>
+                </div>
+                <div className="ml-10 space-y-2 text-xs text-gray-400 leading-relaxed">
+                  <p>
+                    Chaque candidat est ensuite validé via les <span className="text-white font-semibold">klines 4H de Binance</span>.
+                    Un signal doit passer <span className="text-purple-300 font-semibold">tous les filtres</span> suivants pour être retenu (un seul échec = rejet) :
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                    <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-[10px] uppercase tracking-wider text-cyan-400 font-semibold mb-1">📈 RSI (4H)</p>
+                      <p className="text-[11px] text-gray-400">
+                        LONG rejeté si RSI &gt; 65 (suracheté) • SHORT rejeté si RSI &lt; 35 (survendu).
+                        Zone favorable LONG : 35-55 • Zone favorable SHORT : 45-65.
+                      </p>
+                    </div>
+                    <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-[10px] uppercase tracking-wider text-orange-400 font-semibold mb-1">📊 EMA 8/20 (4H)</p>
+                      <p className="text-[11px] text-gray-400">
+                        LONG : prix doit être au-dessus de EMA8 ET EMA8 &gt; EMA20.
+                        SHORT : prix sous EMA8 ET EMA8 &lt; EMA20. Rejet si conflit.
+                      </p>
+                    </div>
+                    <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold mb-1">⚡ Volume (4H)</p>
+                      <p className="text-[11px] text-gray-400">
+                        Volume spike (&gt;1.5x moyenne) = bonus de confiance +8%.
+                        Volume faible (&lt;0.7x) = pénalité -5%. Confirme la conviction du mouvement.
+                      </p>
+                    </div>
+                    <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-[10px] uppercase tracking-wider text-pink-400 font-semibold mb-1">🔗 Convergence S/R</p>
+                      <p className="text-[11px] text-gray-400">
+                        Les niveaux S/R du sparkline 7j sont croisés avec les pivots 1H Binance.
+                        Convergence détectée = +10% confiance. Renforce la fiabilité des niveaux.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Phase 3 */}
+              <div className="p-5 border-b border-white/[0.04]">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-xs font-black text-amber-400">3</span>
+                  <h4 className="text-sm font-bold text-amber-300">Filtre Daily — Blocage des contre-tendances</h4>
+                </div>
+                <div className="ml-10 space-y-2 text-xs text-gray-400 leading-relaxed">
+                  <p>
+                    Dernière barrière avant l'envoi sur Telegram : le <span className="text-white font-semibold">filtre de tendance Daily</span> (serveur uniquement).
+                    C'est un <span className="text-red-400 font-semibold">blocage dur</span> — aucun signal ne peut passer s'il va contre la tendance journalière :
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                    <div className="bg-red-500/[0.04] rounded-lg p-3 border border-red-500/10">
+                      <p className="text-[10px] uppercase tracking-wider text-red-400 font-semibold mb-1">🚫 BLOQUÉ</p>
+                      <p className="text-[11px] text-gray-400">
+                        LONG bloqué si tendance Daily baissière • SHORT bloqué si tendance Daily haussière.
+                        Aucune exception — protège contre les faux signaux.
+                      </p>
+                    </div>
+                    <div className="bg-emerald-500/[0.04] rounded-lg p-3 border border-emerald-500/10">
+                      <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-1">✅ ALIGNÉ</p>
+                      <p className="text-[11px] text-gray-400">
+                        Signal aligné avec la tendance Daily = bonus de confiance +8%.
+                        Seuls les trades dans le sens du marché sont envoyés.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Risk Management */}
+              <div className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-xs font-black text-emerald-400">⚙</span>
+                  <h4 className="text-sm font-bold text-emerald-300">Gestion du Risque & Envoi Telegram</h4>
+                </div>
+                <div className="ml-10">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-[10px] uppercase tracking-wider text-red-400 font-semibold mb-1">🛡️ Stop-Loss (ATR)</p>
+                      <p className="text-[11px] text-gray-400">
+                        SL basé sur la volatilité réelle : <span className="text-white font-mono">6% — 12%</span> du prix d'entrée.
+                        Calculé via ATR 1h × 2.5, avec minimum 6% et maximum 12% pour les swing trades.
+                      </p>
+                    </div>
+                    <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-1">🎯 Take-Profit</p>
+                      <p className="text-[11px] text-gray-400">
+                        <span className="text-amber-400 font-mono">TP1: 1.2:1</span> (profit rapide) •
+                        <span className="text-emerald-300 font-mono"> TP2: 2.5:1</span> (modéré) •
+                        <span className="text-emerald-400 font-mono"> TP3: 4:1</span> (étendu).
+                        Alignés sur les niveaux S/R quand possible.
+                      </p>
+                    </div>
+                    <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold mb-1">📡 Envoi Telegram</p>
+                      <p className="text-[11px] text-gray-400">
+                        Confiance minimum : <span className="text-white font-mono">≥ 80%</span> pour être envoyé.
+                        Cooldown : <span className="text-white font-mono">12h</span> par crypto+direction.
+                        Maximum : <span className="text-white font-mono">10 trades actifs</span> simultanément.
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-3 leading-relaxed">
+                    💡 <strong className="text-gray-400">Note :</strong> Cette page affiche tous les setups détectés (y compris ceux sous 80% de confiance).
+                    Seuls les signaux avec un score ≥ 80% et validés par le filtre Daily sont automatiquement envoyés sur Telegram.
+                    Le cooldown de 12h empêche le renvoi du même signal. Les signaux expirent après 72h.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Header */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
@@ -1272,9 +1444,9 @@ export default function Trades() {
           <div className="relative z-10 h-full flex items-center justify-between px-8">
             <div>
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                📊 Swing Trading v4 — ATR + Max Winrate
+                📊 Swing Trading v6 — Filtres Pro
               </h1>
-              <p className="text-sm text-gray-400 mt-1">ATR SL (4-8%) + EMA parfait + MACD + TP1 conservateur (0.8:1)</p>
+              <p className="text-sm text-gray-400 mt-1">RSI/EMA 4H + Daily filter + ATR SL (6-12%) + TP 1.2:1 / 2.5:1 / 4:1</p>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-500">MAJ: {lastUpdate}</span>
@@ -1299,15 +1471,15 @@ export default function Trades() {
             <div className="flex flex-wrap gap-4 text-xs">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 font-semibold">📊 Filtres</span>
-                <span className="text-gray-400">EMA 8/21/50 alignées + MACD confirmé + RSI strict</span>
+                <span className="text-gray-400">RSI(4H) + EMA 8/20(4H) + Volume 4H + Filtre Daily (blocage dur)</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-semibold">⚡ Volume</span>
-                <span className="text-gray-400">Bonus pour volume spike (&gt;1.5x moyenne 1h)</span>
+                <span className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-semibold">🛡️ Risk</span>
+                <span className="text-gray-400">SL: 6-12% (ATR) • Cooldown 12h • Max 10 trades actifs</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold">🎯 TP</span>
-                <span className="text-gray-400">TP0: Quick • TP1: 0.8:1 (max WR) • TP2: 1.5:1 • TP3: 2.5:1 • Expiration 72h</span>
+                <span className="text-gray-400">TP1: 1.2:1 • TP2: 2.5:1 • TP3: 4:1 • Envoi Telegram auto ≥ 80% • Expiration 72h</span>
               </div>
             </div>
           </div>
@@ -1318,7 +1490,7 @@ export default function Trades() {
           <div className="mb-6 bg-gradient-to-r from-amber-500/[0.04] to-orange-500/[0.04] border border-amber-500/15 rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <Trophy className="w-5 h-5 text-amber-400" />
-              <h3 className="text-sm font-bold text-amber-400">Suivi des Signaux v4 (localStorage)</h3>
+              <h3 className="text-sm font-bold text-amber-400">Suivi des Signaux v6 (localStorage)</h3>
               <span className="text-[10px] text-gray-500 ml-2">{perfStats.total} signaux suivis • {perfStats.pending} en cours</span>
               <button
                 onClick={(e) => { e.stopPropagation(); handleResetTracking(); }}
@@ -1425,8 +1597,8 @@ export default function Trades() {
         <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3">
             <BarChart3 className="w-5 h-5 text-blue-400" />
-            <h2 className="text-lg font-bold">Setups Détectés v4</h2>
-            <span className="text-xs text-gray-500 ml-2">ATR SL + EMA parfait + MACD + Volume • Cliquez pour les détails</span>
+            <h2 className="text-lg font-bold">Setups Détectés v6</h2>
+            <span className="text-xs text-gray-500 ml-2">RSI/EMA 4H + Daily filter + ATR SL • Cliquez pour les détails</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1300px]">
@@ -1821,9 +1993,8 @@ export default function Trades() {
         {/* Disclaimer */}
         <div className="mt-6 bg-amber-500/[0.06] border border-amber-500/15 rounded-2xl p-4">
           <p className="text-xs text-amber-300/80 text-center">
-            ⚠️ <strong>Avertissement :</strong> Algorithme v4 — SL basé sur ATR 1h (2.5x, 4-8%) + EMA parfait (8/21/50) + MACD confirmé + RSI strict.
-            TP1 conservateur à 0.8:1 pour maximiser le winrate. Expiration 72h pour les swing trades.
-            Seuls les setups avec tous les indicateurs alignés sont retenus.
+            ⚠️ <strong>Avertissement :</strong> Algorithme v6 — Filtres RSI/EMA sur 4H (Binance) + blocage dur contre-tendance Daily + SL ATR 6-12%.
+            TP1: 1.2:1 • TP2: 2.5:1 • TP3: 4:1. Cooldown 12h par crypto. Max 10 trades actifs. Envoi Telegram auto ≥ 80%.
             Ces suggestions ne constituent pas des conseils financiers. Faites toujours votre propre analyse avant de trader.
           </p>
         </div>

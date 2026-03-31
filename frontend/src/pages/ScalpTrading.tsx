@@ -57,11 +57,11 @@ interface ScalpSetup {
 /* ─── Winrate Estimates for Scalp ─── */
 
 function getScalpWinrateForTP(confidence: number, tpLevel: number): number {
-  // v2: Updated estimates for ATR SL (1-3%) + conservative TP (0.6:1 / 1:1 / 1.5:1)
+  // v3: Updated estimates for ATR SL (0.5-2%) + realistic TP (0.8:1 / 1.5:1 / 2.5:1)
   if (confidence >= 90) {
-    if (tpLevel === 1) return 78;  // 0.6:1 — very close target
-    if (tpLevel === 2) return 58;  // 1:1
-    return 40;                      // 1.5:1
+    if (tpLevel === 1) return 75;  // 0.8:1 — close target
+    if (tpLevel === 2) return 52;  // 1.5:1
+    return 35;                      // 2.5:1
   }
   if (confidence >= 80) {
     if (tpLevel === 1) return 72;
@@ -473,8 +473,8 @@ async function fetchKlines(symbolUpper: string, interval: string, limit: number,
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   INDICATOR CALCULATIONS — "Suivi de Flux" Strategy
-   EMA 8 + EMA 20 + VWAP + Stochastique (9, 3, 1)
+   INDICATOR CALCULATIONS — "Précision" v3 Strategy
+   EMA 8 + EMA 20 + VWAP + Stochastique (9, 3, 1) + RSI M5
    ═══════════════════════════════════════════════════════════════ */
 
 /** EMA series — returns array of EMA values (same length as input, first `period-1` are SMA-seeded) */
@@ -611,7 +611,7 @@ function calculateM5SR(klines: KlineWithVol[], currentPrice: number): { supports
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   GENERATE SCALP SETUPS — "Suivi de Flux" Strategy
+   GENERATE SCALP SETUPS — "Précision" v3 Strategy
    ═══════════════════════════════════════════════════════════════ */
 
 async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<ScalpSetup[]> {
@@ -1135,18 +1135,18 @@ async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<
     // Recalculate actual slDist after snapping
     slDist = Math.abs(price - sl);
 
-    // v2: Conservative TP ratios — TP1 close for high winrate
+    // v3: Realistic TP ratios — 0.8:1, 1.5:1, 2.5:1
     let tp1: number, tp2: number, tp3: number;
     if (side === "LONG") {
-      tp1 = price + slDist * 0.6;  // 0.6:1 — quick profit, high probability
-      tp2 = price + slDist * 1.0;  // 1.0:1 — breakeven ratio
+      tp1 = price + slDist * 0.8;  // 0.8:1 — quick profit, high probability
+      tp2 = price + slDist * 1.5;  // 1.5:1
       const nextRes = m5SR.resistances[0];
-      tp3 = nextRes && nextRes.price > tp2 ? nextRes.price * 0.999 : price + slDist * 1.5;
+      tp3 = nextRes && nextRes.price > tp2 ? nextRes.price * 0.999 : price + slDist * 2.5;
     } else {
-      tp1 = price - slDist * 0.6;
-      tp2 = price - slDist * 1.0;
+      tp1 = price - slDist * 0.8;
+      tp2 = price - slDist * 1.5;
       const nextSup = m5SR.supports[0];
-      tp3 = nextSup && nextSup.price < tp2 ? nextSup.price * 1.001 : price - slDist * 1.5;
+      tp3 = nextSup && nextSup.price < tp2 ? nextSup.price * 1.001 : price - slDist * 2.5;
     }
 
     // SL too tight penalty (now based on 0.8% threshold)
@@ -1434,8 +1434,8 @@ export default function ScalpTrading() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
         <PageHeader
           icon={<Zap className="w-7 h-7" />}
-          title="Scalp Trading v2 — Suivi de Flux"
-          subtitle="ATR SL (1-3%) + EMA 8/20 + VWAP + Stoch (9,3,1) tightened — TP1 conservateur (0.6:1)"
+          title="Scalp Trading v3 — Précision"
+          subtitle="ATR SL (0.5-2%) + EMA 8/20 + VWAP + Stoch (9,3,1) + RSI M5 — TP1 rapide (0.8:1)"
           accentColor="amber"
         />
 
@@ -1474,7 +1474,7 @@ export default function ScalpTrading() {
               <div className="flex items-center gap-2 mb-3">
                 <Trophy className="w-5 h-5 text-purple-400" />
                 <h3 className="text-sm font-bold text-purple-400">Suivi des Signaux Scalp (localStorage)</h3>
-                <span className="text-[10px] text-gray-500 ml-2">{perfStats.total} signaux • {perfStats.pending} en cours • expire après 4h</span>
+                <span className="text-[10px] text-gray-500 ml-2">{perfStats.total} signaux • {perfStats.pending} en cours • expire après 30min</span>
                 <button
                   onClick={handleClearTracking}
                   className="ml-auto flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-[10px] font-semibold text-red-400 transition-all"
@@ -1488,17 +1488,17 @@ export default function ScalpTrading() {
                   <p className="text-lg font-black text-white">{perfStats.total}</p>
                 </div>
                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">TP1 Hit (0.6:1)</p>
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">TP1 Hit (0.8:1)</p>
                   <p className="text-lg font-black text-emerald-300">{perfStats.tp1Hits}</p>
                   <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp1Hits / resolvedTotal * 100)}%` : "—"}</p>
                 </div>
                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">TP2 Hit (1:1)</p>
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">TP2 Hit (1.5:1)</p>
                   <p className="text-lg font-black text-emerald-400">{perfStats.tp2Hits}</p>
                   <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp2Hits / resolvedTotal * 100)}%` : "—"}</p>
                 </div>
                 <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-500 font-semibold">TP3 Hit (1:1.5)</p>
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-500 font-semibold">TP3 Hit (2.5:1)</p>
                   <p className="text-lg font-black text-emerald-500">{perfStats.tp3Hits}</p>
                   <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp3Hits / resolvedTotal * 100)}%` : "—"}</p>
                 </div>
@@ -1573,8 +1573,8 @@ export default function ScalpTrading() {
             <p className="text-xs text-amber-300/80 flex items-center gap-2">
               <Zap className="w-4 h-4 flex-shrink-0" />
               <span>
-                <strong>Stratégie "Suivi de Flux" v2 :</strong> Filtre 4H (EMA8/20 — rejet si tendance contraire) → Biais H1 (prix vs EMA20 + VWAP) → Entrée M5 (rebond EMA8/20 + prix vs VWAP M5 + Stochastique 9,3,1 seuils resserrés 25/75).
-                SL basé sur ATR M5 (1.5x, min 1%, max 3%). TP1 = 0.6:1 (max WR), TP2 = 1:1, TP3 = résistance/support ou 1.5:1. Expiration 4h.
+                <strong>Stratégie "Précision" v3 :</strong> Top 50 cryptos liquides ($50M+ vol) → Filtre 4H (EMA8/20) → Biais H1 (prix vs EMA20 + VWAP) → Entrée M5 (rebond EMA8/20 + VWAP + Stoch 9,3,1 seuils 20/80 + RSI M5 &lt;40 LONG / &gt;60 SHORT + momentum 2/3 bougies + pattern rejet).
+                SL basé sur ATR M5 (1.5x, min 0.5%, max 2%). TP1 = 0.8:1 (quick profit), TP2 = 1.5:1, TP3 = 2.5:1. Expiration 30min. Max 8 trades actifs.
               </span>
             </p>
           </div>
@@ -1603,7 +1603,7 @@ export default function ScalpTrading() {
           <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3">
               <Zap className="w-5 h-5 text-amber-400" />
-              <h2 className="text-lg font-bold">Signaux Scalp — Suivi de Flux</h2>
+              <h2 className="text-lg font-bold">Signaux Scalp — Précision v3</h2>
               <span className="text-xs text-gray-500 ml-2">Cliquez sur une ligne pour les détails</span>
             </div>
             <div className="overflow-x-auto">
@@ -1698,7 +1698,7 @@ export default function ScalpTrading() {
                                 <span className="font-mono text-xs text-emerald-300 font-semibold">${formatPrice(trade.tp1)}</span>
                               </div>
                               <div className="flex items-center">
-                                <span className="text-[9px] text-emerald-300/60">0.6:1</span>
+                                <span className="text-[9px] text-emerald-300/60">0.8:1</span>
                                 <ScalpWinrateBadge confidence={trade.confidence} tp={1} />
                               </div>
                             </td>
@@ -1709,7 +1709,7 @@ export default function ScalpTrading() {
                                 <span className="font-mono text-xs text-emerald-400 font-semibold">${formatPrice(trade.tp2)}</span>
                               </div>
                               <div className="flex items-center">
-                                <span className="text-[9px] text-emerald-400/60">1:1</span>
+                                <span className="text-[9px] text-emerald-400/60">1.5:1</span>
                                 <ScalpWinrateBadge confidence={trade.confidence} tp={2} />
                               </div>
                             </td>
@@ -1720,7 +1720,7 @@ export default function ScalpTrading() {
                                 <span className="font-mono text-xs text-emerald-500 font-semibold">${formatPrice(trade.tp3)}</span>
                               </div>
                               <div className="flex items-center">
-                                <span className="text-[9px] text-emerald-500/60">1.5:1</span>
+                                <span className="text-[9px] text-emerald-500/60">2.5:1</span>
                                 <ScalpWinrateBadge confidence={trade.confidence} tp={3} />
                               </div>
                             </td>
@@ -1994,13 +1994,13 @@ export default function ScalpTrading() {
                                   <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">📈 Estimation Winrate (Confiance {trade.confidence}%)</p>
                                   <div className="flex items-center gap-3 flex-wrap text-[10px]">
                                     <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 font-mono">
-                                      TP1 (0.6:1): WR ~{getScalpWinrateForTP(trade.confidence, 1)}%
+                                      TP1 (0.8:1): WR ~{getScalpWinrateForTP(trade.confidence, 1)}%
                                     </span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-400 font-mono">
-                                      TP2 (1:1): WR ~{getScalpWinrateForTP(trade.confidence, 2)}%
+                                      TP2 (1.5:1): WR ~{getScalpWinrateForTP(trade.confidence, 2)}%
                                     </span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 font-mono">
-                                      TP3 (1.5:1): WR ~{getScalpWinrateForTP(trade.confidence, 3)}%
+                                      TP3 (2.5:1): WR ~{getScalpWinrateForTP(trade.confidence, 3)}%
                                     </span>
                                   </div>
                                 </div>
@@ -2018,15 +2018,15 @@ export default function ScalpTrading() {
                                     </span>
                                     <span className="text-gray-600">→</span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 font-mono">
-                                      TP1: ${formatPrice(trade.tp1)} (0.6:1) <ScalpWinrateBadge confidence={trade.confidence} tp={1} />
+                                      TP1: ${formatPrice(trade.tp1)} (0.8:1) <ScalpWinrateBadge confidence={trade.confidence} tp={1} />
                                     </span>
                                     <span className="text-gray-600">→</span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-400 font-mono">
-                                      TP2: ${formatPrice(trade.tp2)} (1:1) <ScalpWinrateBadge confidence={trade.confidence} tp={2} />
+                                      TP2: ${formatPrice(trade.tp2)} (1.5:1) <ScalpWinrateBadge confidence={trade.confidence} tp={2} />
                                     </span>
                                     <span className="text-gray-600">→</span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 font-mono font-bold">
-                                      TP3: ${formatPrice(trade.tp3)} (1.5:1) <ScalpWinrateBadge confidence={trade.confidence} tp={3} />
+                                      TP3: ${formatPrice(trade.tp3)} (2.5:1) <ScalpWinrateBadge confidence={trade.confidence} tp={3} />
                                     </span>
                                   </div>
                                 </div>
@@ -2053,8 +2053,8 @@ export default function ScalpTrading() {
           {/* Disclaimer */}
           <div className="mt-6 bg-amber-500/[0.06] border border-amber-500/15 rounded-2xl p-4">
             <p className="text-xs text-amber-300/80 text-center">
-              ⚠️ <strong>Avertissement :</strong> Stratégie "Suivi de Flux" v2 — ATR SL (1.5x M5, 1-3%) + EMA 8/20 + VWAP + Stochastique (9,3,1) seuils resserrés (25/75).
-              Filtre 4H (rejet si tendance contraire), biais directionnel H1, entrée précise M5. TP1 conservateur à 0.6:1 pour maximiser le winrate. Expiration 4h.
+              ⚠️ <strong>Avertissement :</strong> Stratégie "Précision" v3 — ATR SL (1.5x M5, 0.5-2%) + EMA 8/20 + VWAP + Stoch (9,3,1) seuils 20/80 + RSI M5 + momentum M5 + patterns de rejet. Top 50 cryptos. Expiration 30min. Cooldown 45min. Max 8 trades actifs.
+              Filtre 4H (pénalité si tendance contraire), biais directionnel H1, entrée précise M5. TP1 rapide à 0.8:1. Expiration 30min.
               Le VWAP est utilisé par les algorithmes institutionnels — trader avec le VWAP = trader avec "l'argent intelligent".
               Les winrates estimés sont basés sur des moyennes historiques indicatives.
               Ces signaux ne constituent pas des conseils financiers.

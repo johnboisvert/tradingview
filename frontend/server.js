@@ -4089,6 +4089,746 @@ setInterval(async () => {
   }
 }, 2 * 60 * 1000);
 
+// ============================================================
+// RANGE TRADING — Telegram Alert System (Bollinger Bands + RSI + ADX)
+// ============================================================
+
+const RANGE_COOLDOWN_MS = 60 * 60 * 1000; // 60 minutes cooldown for range
+const RANGE_COOLDOWNS_FILE = path.join(DATA_DIR, 'range_cooldowns.json');
+const RANGE_CALLS_FILE = path.join(DATA_DIR, 'range_calls.json');
+const inMemoryRangeCooldowns = new Map();
+
+function loadRangeCooldowns() {
+  try {
+    if (existsSync(RANGE_COOLDOWNS_FILE)) {
+      return JSON.parse(readFileSync(RANGE_COOLDOWNS_FILE, 'utf8'));
+    }
+  } catch (_e) { /* ignore */ }
+  return {};
+}
+
+function saveRangeCooldowns(cooldowns) {
+  try {
+    writeFileSync(RANGE_COOLDOWNS_FILE, JSON.stringify(cooldowns, null, 2));
+  } catch (err) {
+    console.error('[RangeAlert] Error saving cooldowns:', err);
+  }
+}
+
+function isRangeCooldownActive(cooldowns, symbol, direction) {
+  const now = Date.now();
+  const memKey = `${symbol}_${direction}`;
+  const memTs = inMemoryRangeCooldowns.get(memKey);
+  if (memTs && (now - memTs) < RANGE_COOLDOWN_MS) return true;
+  const fileEntry = cooldowns[memKey];
+  if (fileEntry) {
+    const elapsed = now - new Date(fileEntry.timestamp).getTime();
+    if (elapsed < RANGE_COOLDOWN_MS && fileEntry.direction === direction) {
+      inMemoryRangeCooldowns.set(memKey, new Date(fileEntry.timestamp).getTime());
+      return true;
+    }
+  }
+  return false;
+}
+
+function setRangeCooldown(cooldowns, symbol, direction) {
+  const now = Date.now();
+  const memKey = `${symbol}_${direction}`;
+  inMemoryRangeCooldowns.set(memKey, now);
+  cooldowns[memKey] = { timestamp: new Date(now).toISOString(), direction };
+}
+
+// Initialize range cooldowns from file on boot
+(function initRangeCooldownsFromFile() {
+  const cooldowns = loadRangeCooldowns();
+  const now = Date.now();
+  for (const [key, entry] of Object.entries(cooldowns)) {
+    if (entry && entry.timestamp) {
+      const elapsed = now - new Date(entry.timestamp).getTime();
+      if (elapsed < RANGE_COOLDOWN_MS) {
+        inMemoryRangeCooldowns.set(key, new Date(entry.timestamp).getTime());
+      }
+    }
+  }
+  console.log(`[RangeAlert] Loaded ${inMemoryRangeCooldowns.size} active range cooldowns from file`);
+})();
+
+// Range calls persistence
+function loadRangeCalls() {
+  try {
+    if (existsSync(RANGE_CALLS_FILE)) {
+      return JSON.parse(readFileSync(RANGE_CALLS_FILE, 'utf-8'));
+    }
+  } catch (err) {
+    console.error('Error loading range calls:', err);
+  }
+  return [];
+}
+
+function saveRangeCalls(calls) {
+  try {
+    writeFileSync(RANGE_CALLS_FILE, JSON.stringify(calls, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving range calls:', err);
+  }
+}
+
+let rangeCallIdCounter = 0;
+try {
+  const existingRangeCalls = loadRangeCalls();
+  if (existingRangeCalls.length > 0) {
+    rangeCallIdCounter = Math.max(...existingRangeCalls.map(c => c.id || 0));
+  }
+} catch (_e) { /* ignore */ }
+
+// ─── Bollinger Bands calculation ───
+function calcBollingerBands(closes, period = 20, stdDev = 2) {
+  if (closes.length < period) return null;
+  const sma = [];
+  const upper = [];
+  const lower = [];
+  for (let i = period - 1; i < closes.length; i++) {
+    const slice = closes.slice(i - period + 1, i + 1);
+    const mean = slice.reduce((a, b) => a + b, 0) / period;
+    const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period;
+    const sd = Math.sqrt(variance);
+    sma.push(mean);
+    upper.push(mean + stdDev * sd);
+    lower.push(mean - stdDev * sd);
+  }
+  return { sma, upper, lower };
+}
+
+// ─── ADX calculation ───
+function calcADX(klines, period = 14) {
+  if (!klines || klines.length < period * 2 + 1) return null;
+  const plusDM = [];
+  const minusDM = [];
+  const tr = [];
+  for (let i = 1; i < klines.length; i++) {
+    const highDiff = klines[i].high - klines[i - 1].high;
+    const lowDiff = klines[i - 1].low - klines[i].low;
+    plusDM.push(highDiff > lowDiff && highDiff > 0 ? highDiff : 0);
+    minusDM.push(lowDiff > highDiff && lowDiff > 0 ? lowDiff : 0);
+    tr.push(Math.max(
+      klines[i].high - klines[i].low,
+      Math.abs(klines[i].high - klines[i - 1].close),
+      Math.abs(klines[i].low - klines[i - 1].close)
+    ));
+  }
+  // Smoothed TR, +DM, -DM
+  let smoothTR = tr.slice(0, period).reduce((a, b) => a + b, 0);
+  let smoothPlusDM = plusDM.slice(0, period).reduce((a, b) => a + b, 0);
+  let smoothMinusDM = minusDM.slice(0, period).reduce((a, b) => a + b, 0);
+  const dx = [];
+  for (let i = period; i < tr.length; i++) {
+    if (i > period) {
+      smoothTR = smoothTR - smoothTR / period + tr[i];
+      smoothPlusDM = smoothPlusDM - smoothPlusDM / period + plusDM[i];
+      smoothMinusDM = smoothMinusDM - smoothMinusDM / period + minusDM[i];
+    }
+    const plusDI = smoothTR > 0 ? (smoothPlusDM / smoothTR) * 100 : 0;
+    const minusDI = smoothTR > 0 ? (smoothMinusDM / smoothTR) * 100 : 0;
+    const diSum = plusDI + minusDI;
+    dx.push(diSum > 0 ? Math.abs(plusDI - minusDI) / diSum * 100 : 0);
+  }
+  if (dx.length < period) return null;
+  let adx = dx.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < dx.length; i++) {
+    adx = (adx * (period - 1) + dx[i]) / period;
+  }
+  return adx;
+}
+
+// ─── Generate Range Setup for a single symbol ───
+async function generateRangeSetup(symbol) {
+  // Fetch M15 candles (100 candles = ~25h of data)
+  const m15Candles = await fetchBinanceKlines(symbol, '15m', 100);
+  if (m15Candles.length < 30) return null;
+
+  // Fetch H1 candles for bias
+  const h1Candles = await fetchBinanceKlines(symbol, '1h', 50);
+  if (h1Candles.length < 25) return null;
+
+  const m15Closes = m15Candles.map(c => c.close);
+  const h1Closes = h1Candles.map(c => c.close);
+  const currentPrice = m15Closes[m15Closes.length - 1];
+
+  // ─── ADX on M15 — must be < 25 to confirm range ───
+  const adxM15 = calcADX(m15Candles, 14);
+  if (adxM15 === null || adxM15 >= 25) {
+    return null; // Not in a range — trending market
+  }
+
+  // ─── Bollinger Bands on M15 (20, 2) ───
+  const bb = calcBollingerBands(m15Closes, 20, 2);
+  if (!bb || bb.sma.length === 0) return null;
+  const bbUpper = bb.upper[bb.upper.length - 1];
+  const bbMiddle = bb.sma[bb.sma.length - 1];
+  const bbLower = bb.lower[bb.lower.length - 1];
+  const bbWidth = (bbUpper - bbLower) / bbMiddle;
+
+  // Skip if BB width is too narrow (no room for profit)
+  if (bbWidth < 0.008) return null;
+
+  // ─── RSI(14) on M15 ───
+  const rsiArr = calcRSI(m15Closes, 14);
+  const rsiM15 = rsiArr[rsiArr.length - 1];
+
+  // ─── H1 EMA 8 & EMA 20 for bias ───
+  const h1Ema8 = calcEMA(h1Closes, 8);
+  const h1Ema20 = calcEMA(h1Closes, 20);
+  const h1Ema8Val = h1Ema8[h1Ema8.length - 1];
+  const h1Ema20Val = h1Ema20[h1Ema20.length - 1];
+  const h1Price = h1Closes[h1Closes.length - 1];
+
+  let h1Trend = 'neutral';
+  const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
+  if (h1Spread < 0.002) h1Trend = 'neutral';
+  else if (h1Ema8Val > h1Ema20Val) h1Trend = 'bullish';
+  else h1Trend = 'bearish';
+
+  // ─── Price position relative to BB ───
+  const distToLower = (currentPrice - bbLower) / (bbUpper - bbLower);
+  const distToUpper = (bbUpper - currentPrice) / (bbUpper - bbLower);
+
+  let side = null;
+  let confidence = 0;
+  const reasons = [];
+
+  // ─── LONG: Price near lower BB + RSI < 35 ───
+  if (distToLower < 0.15 && rsiM15 < 35) {
+    side = 'LONG';
+    confidence = 50;
+    reasons.push(`Prix proche BB inférieure ($${formatPrice(bbLower)})`);
+    reasons.push(`RSI M15: ${rsiM15.toFixed(1)} — zone de survente`);
+
+    if (rsiM15 < 25) { confidence += 10; reasons.push('RSI extrêmement bas'); }
+    else if (rsiM15 < 30) { confidence += 6; }
+
+    if (distToLower < 0.05) { confidence += 10; reasons.push('Prix touche BB inférieure'); }
+    else if (distToLower < 0.10) { confidence += 5; }
+
+    if (adxM15 < 15) { confidence += 8; reasons.push(`ADX très bas (${adxM15.toFixed(1)}) — range fort`); }
+    else if (adxM15 < 20) { confidence += 4; reasons.push(`ADX bas (${adxM15.toFixed(1)}) — range confirmé`); }
+    else { reasons.push(`ADX: ${adxM15.toFixed(1)}`); }
+
+    if (h1Trend === 'bullish') { confidence += 5; reasons.push('H1 haussière — alignement'); }
+    else if (h1Trend === 'bearish') { confidence -= 8; reasons.push('⚠️ H1 baissière — contre-tendance'); }
+
+    // Volume confirmation
+    const recentVol = m15Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
+    const avgVol = m15Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+    if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 5; reasons.push('Volume M15 supérieur'); }
+
+    // Candle rejection (pin bar at lower BB)
+    const lastCandle = m15Candles[m15Candles.length - 1];
+    const body = Math.abs(lastCandle.close - lastCandle.open);
+    const lowerWick = Math.min(lastCandle.open, lastCandle.close) - lastCandle.low;
+    if (lowerWick > body * 2 && body > 0) { confidence += 8; reasons.push('📌 Mèche de rejet haussière'); }
+  }
+
+  // ─── SHORT: Price near upper BB + RSI > 65 ───
+  else if (distToUpper < 0.15 && rsiM15 > 65) {
+    side = 'SHORT';
+    confidence = 50;
+    reasons.push(`Prix proche BB supérieure ($${formatPrice(bbUpper)})`);
+    reasons.push(`RSI M15: ${rsiM15.toFixed(1)} — zone de surachat`);
+
+    if (rsiM15 > 75) { confidence += 10; reasons.push('RSI extrêmement haut'); }
+    else if (rsiM15 > 70) { confidence += 6; }
+
+    if (distToUpper < 0.05) { confidence += 10; reasons.push('Prix touche BB supérieure'); }
+    else if (distToUpper < 0.10) { confidence += 5; }
+
+    if (adxM15 < 15) { confidence += 8; reasons.push(`ADX très bas (${adxM15.toFixed(1)}) — range fort`); }
+    else if (adxM15 < 20) { confidence += 4; reasons.push(`ADX bas (${adxM15.toFixed(1)}) — range confirmé`); }
+    else { reasons.push(`ADX: ${adxM15.toFixed(1)}`); }
+
+    if (h1Trend === 'bearish') { confidence += 5; reasons.push('H1 baissière — alignement'); }
+    else if (h1Trend === 'bullish') { confidence -= 8; reasons.push('⚠️ H1 haussière — contre-tendance'); }
+
+    // Volume confirmation
+    const recentVol = m15Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
+    const avgVol = m15Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+    if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 5; reasons.push('Volume M15 supérieur'); }
+
+    // Candle rejection (pin bar at upper BB)
+    const lastCandle = m15Candles[m15Candles.length - 1];
+    const body = Math.abs(lastCandle.close - lastCandle.open);
+    const upperWick = lastCandle.high - Math.max(lastCandle.open, lastCandle.close);
+    if (upperWick > body * 2 && body > 0) { confidence += 8; reasons.push('📌 Mèche de rejet baissière'); }
+  }
+
+  if (!side) return null;
+
+  // BB bandwidth bonus
+  if (bbWidth > 0.03) { confidence += 5; reasons.push('BB large — bon potentiel de profit'); }
+  else if (bbWidth > 0.015) { confidence += 2; }
+
+  confidence = Math.min(98, Math.max(30, confidence));
+
+  // ─── SL / TP Calculation ───
+  let stopLoss, tp1, tp2;
+  const bbRange = bbUpper - bbLower;
+
+  if (side === 'LONG') {
+    // SL: 0.5-1.5% beyond lower BB
+    const slBuffer = Math.max(currentPrice * 0.005, Math.min(currentPrice * 0.015, bbRange * 0.15));
+    stopLoss = bbLower - slBuffer;
+    // TP1: BB midline, TP2: upper BB
+    tp1 = bbMiddle;
+    tp2 = bbUpper * 0.998; // Slightly inside upper BB
+  } else {
+    // SL: 0.5-1.5% beyond upper BB
+    const slBuffer = Math.max(currentPrice * 0.005, Math.min(currentPrice * 0.015, bbRange * 0.15));
+    stopLoss = bbUpper + slBuffer;
+    // TP1: BB midline, TP2: lower BB
+    tp1 = bbMiddle;
+    tp2 = bbLower * 1.002; // Slightly inside lower BB
+  }
+
+  const slDist = Math.abs(currentPrice - stopLoss);
+  const tp1Dist = Math.abs(tp1 - currentPrice);
+  const rr = slDist > 0 ? Math.round((tp1Dist / slDist) * 10) / 10 : 1;
+
+  // Skip if R:R is too low
+  if (rr < 0.8) return null;
+
+  return {
+    symbol,
+    name: symbol.replace('USDT', ''),
+    side,
+    entry: currentPrice,
+    stopLoss: roundPrice(stopLoss, currentPrice),
+    tp1: roundPrice(tp1, currentPrice),
+    tp2: roundPrice(tp2, currentPrice),
+    rr,
+    confidence,
+    reason: reasons.join(' | '),
+    rsi_m15: rsiM15,
+    adx_m15: adxM15,
+    bb_upper: bbUpper,
+    bb_middle: bbMiddle,
+    bb_lower: bbLower,
+    bb_width: bbWidth,
+    ema8_h1: h1Ema8Val,
+    ema20_h1: h1Ema20Val,
+    h1_trend: h1Trend,
+    currentPrice,
+  };
+}
+
+// ─── Check and send Range alerts ───
+async function checkAndSendRangeAlerts() {
+  const config = loadTelegramAlerts();
+  if (!config.enabled) return [];
+
+  const sentAlerts = [];
+  const now = new Date();
+  const nowStr = now.toLocaleString('fr-CA', { timeZone: 'America/Montreal' });
+  const cooldowns = loadRangeCooldowns();
+
+  try {
+    // Use same dynamic symbol list as scalp
+    const symbols = await fetchTop200USDTSymbols();
+    console.log(`[RangeAlert] 📡 Analyzing ${symbols.length} symbols for range setups...`);
+
+    const setups = [];
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
+      const batch = symbols.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(batch.map(sym => generateRangeSetup(sym)));
+      for (const setup of results) {
+        if (setup) setups.push(setup);
+      }
+      if (i + BATCH_SIZE < symbols.length) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+
+    console.log(`[RangeAlert] Generated ${setups.length} range setups`);
+    if (setups.length > 0) {
+      const confValues = setups.map(s => `${s.symbol}:${s.confidence}%${s.side}`);
+      console.log(`[RangeAlert] Setup confidences: ${confValues.join(', ')}`);
+    }
+
+    const MIN_CONFIDENCE = 80;
+    const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
+    console.log(`[RangeAlert] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
+
+    qualifiedSetups.sort((a, b) => b.confidence - a.confidence);
+
+    const MAX_ACTIVE_RANGE_CALLS = 10;
+    const currentRangeCalls = loadRangeCalls();
+    const activeRangeCallCount = currentRangeCalls.filter(c => c.status === 'active').length;
+    if (activeRangeCallCount >= MAX_ACTIVE_RANGE_CALLS) {
+      console.log(`[RangeAlert] ⛔ Max active range calls reached (${activeRangeCallCount}/${MAX_ACTIVE_RANGE_CALLS})`);
+      return sentAlerts;
+    }
+    const remainingSlots = MAX_ACTIVE_RANGE_CALLS - activeRangeCallCount;
+
+    for (let idx = 0; idx < qualifiedSetups.length && sentAlerts.length < remainingSlots; idx++) {
+      const setup = qualifiedSetups[idx];
+      try {
+        if (isRangeCooldownActive(cooldowns, setup.symbol, setup.side)) {
+          continue;
+        }
+
+        const dirEmoji = setup.side === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
+        const pctTP1 = ((setup.tp1 - setup.entry) / setup.entry * 100);
+        const pctTP2 = ((setup.tp2 - setup.entry) / setup.entry * 100);
+        const pctSL = ((setup.stopLoss - setup.entry) / setup.entry * 100);
+
+        const h1TrendEmoji = setup.h1_trend === 'bullish' ? '🟢 Haussière' : setup.h1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
+        const safeReason = (setup.reason || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const text = `🔵🔵🔵 <b>📊 RANGE TRADING — SIGNAL CRYPTO</b> 🔵🔵🔵
+🌐 https://CryptoIA.ca
+📊 Entry sur le timeframe <b>M15</b> | Biais : <b>H1</b> | Stratégie : <b>Bollinger Bands + RSI + ADX</b>
+━━━━━━━━━━━━━━━━━━━━━
+
+${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
+
+📐 <b>Indicateurs :</b>
+├ BB Supérieure : <b>$${formatPrice(setup.bb_upper)}</b>
+├ BB Médiane : <b>$${formatPrice(setup.bb_middle)}</b>
+├ BB Inférieure : <b>$${formatPrice(setup.bb_lower)}</b>
+├ BB Width : <b>${(setup.bb_width * 100).toFixed(2)}%</b>
+├ RSI M15 : <b>${setup.rsi_m15.toFixed(1)}</b>
+├ ADX M15 : <b>${setup.adx_m15.toFixed(1)}</b> (Range confirmé < 25)
+├ Tendance H1 : ${h1TrendEmoji}
+└ EMA H1 : 8=${setup.ema8_h1 ? '$' + formatPrice(setup.ema8_h1) : 'N/A'} / 20=${setup.ema20_h1 ? '$' + formatPrice(setup.ema20_h1) : 'N/A'}
+
+🎯 <b>Plan de Trade :</b>
+├ Entry : <b>$${formatPrice(setup.entry)}</b>
+├ TP1 (BB Mid) : <b>$${formatPrice(setup.tp1)}</b> (${pctTP1 >= 0 ? '+' : ''}${pctTP1.toFixed(2)}%)
+├ TP2 (BB Opp) : <b>$${formatPrice(setup.tp2)}</b> (${pctTP2 >= 0 ? '+' : ''}${pctTP2.toFixed(2)}%)
+└ SL : <b>$${formatPrice(setup.stopLoss)}</b> (${pctSL >= 0 ? '+' : ''}${pctSL.toFixed(2)}%)
+
+⚖️ Risk/Reward : <b>1:${setup.rr}</b>
+🧠 Confiance : <b>${setup.confidence}%</b>
+
+📋 <b>Raison :</b>
+<i>${safeReason}</i>
+
+⏰ Timeframe : M15 — ${nowStr} (Montréal)
+⚠️ <i>Range trade — Ceci n'est pas un conseil financier. DYOR.</i>`;
+
+        const result = await sendTelegramMessage(text);
+        if (result.ok) {
+          setRangeCooldown(cooldowns, setup.symbol, setup.side);
+          saveRangeCooldowns(cooldowns);
+
+          // Auto-register as range call
+          rangeCallIdCounter++;
+          const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2h expiry
+          const calls = loadRangeCalls();
+          calls.push({
+            id: rangeCallIdCounter,
+            symbol: setup.symbol, side: setup.side,
+            entry_price: setup.entry, stop_loss: setup.stopLoss,
+            trailing_sl: setup.stopLoss,
+            tp1: setup.tp1, tp2: setup.tp2,
+            confidence: setup.confidence, reason: setup.reason,
+            rsi_m15: setup.rsi_m15, adx_m15: setup.adx_m15,
+            bb_upper: setup.bb_upper, bb_middle: setup.bb_middle, bb_lower: setup.bb_lower,
+            bb_width: setup.bb_width,
+            ema8_h1: setup.ema8_h1, ema20_h1: setup.ema20_h1,
+            h1_trend: setup.h1_trend,
+            rr: setup.rr, status: 'active',
+            tp1_hit: false, tp2_hit: false, sl_hit: false,
+            best_tp_reached: 0, exit_price: null, profit_pct: null,
+            created_at: now.toISOString(), resolved_at: null,
+            expires_at: expiresAt.toISOString(),
+          });
+          saveRangeCalls(calls);
+
+          sentAlerts.push({
+            type: 'range_signal', symbol: setup.symbol,
+            direction: setup.side, rr: setup.rr,
+            entry: setup.entry, confidence: setup.confidence,
+          });
+          console.log(`[RangeAlert] ✅ Sent ${setup.side} range signal for ${setup.name} (confidence: ${setup.confidence}%)`);
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      } catch (sendErr) {
+        console.error(`[RangeAlert] ❌ Exception sending ${setup.symbol}:`, sendErr.message || sendErr);
+      }
+    }
+  } catch (err) {
+    console.error('[RangeAlert] Check error:', err);
+  }
+
+  return sentAlerts;
+}
+
+// ─── Periodic range alert checker (every 5 minutes) ───
+let rangeAlertInterval = null;
+
+function startRangeAlertChecker() {
+  const config = loadTelegramAlerts();
+  if (rangeAlertInterval) clearInterval(rangeAlertInterval);
+  if (config.enabled) {
+    const interval = 5 * 60 * 1000;
+    console.log(`[RangeAlert] Range alert checker started — checking every ${interval / 1000}s`);
+    rangeAlertInterval = setInterval(async () => {
+      console.log('[RangeAlert] Running periodic range alert check...');
+      const alerts = await checkAndSendRangeAlerts();
+      if (alerts.length > 0) {
+        console.log(`[RangeAlert] Sent ${alerts.length} range alerts`);
+      }
+    }, interval);
+    // Run initial check after 60s delay
+    setTimeout(() => {
+      checkAndSendRangeAlerts().then(alerts => {
+        if (alerts.length > 0) console.log(`[RangeAlert] Initial check sent ${alerts.length} range alerts`);
+      });
+    }, 60000);
+  }
+}
+
+startRangeAlertChecker();
+
+// ─── Range call resolver ───
+async function resolveActiveRangeCalls() {
+  const calls = loadRangeCalls();
+  const activeCalls = calls.filter(c => c.status === 'active');
+  if (activeCalls.length === 0) return { resolved: 0, expired: 0, checked: 0 };
+
+  const symbols = [...new Set(activeCalls.map(c => c.symbol))];
+  const prices = {};
+  for (const sym of symbols) {
+    try {
+      if (BYBIT_FALLBACK_SYMBOLS.has(sym)) {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; continue; }
+      }
+      const resp = await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${sym}`, { signal: AbortSignal.timeout(8000) });
+      if (resp.ok) { const data = await resp.json(); prices[sym] = parseFloat(data.price); }
+      else {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; BYBIT_FALLBACK_SYMBOLS.add(sym); }
+      }
+    } catch (_e) {
+      try { const bp = await fetchBybitPrice(sym); if (bp != null) prices[sym] = bp; } catch (__e) { /* skip */ }
+    }
+  }
+
+  const now = new Date();
+  let resolvedCount = 0, expiredCount = 0;
+
+  for (const call of activeCalls) {
+    if (call.expires_at && new Date(call.expires_at) <= now) {
+      call.status = 'expired';
+      call.resolved_at = now.toISOString();
+      if (call.tp1_hit) { call.exit_price = call.entry_price; call.profit_pct = 0; }
+      expiredCount++;
+      continue;
+    }
+
+    const currentPrice = prices[call.symbol];
+    if (currentPrice == null) continue;
+
+    if (call.trailing_sl == null) call.trailing_sl = call.stop_loss;
+
+    if (call.side === 'LONG') {
+      if (currentPrice >= call.tp1 && !call.tp1_hit) {
+        call.tp1_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 1);
+        call.trailing_sl = call.entry_price; // Move SL to breakeven
+      }
+      if (currentPrice >= call.tp2) {
+        call.tp2_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 2);
+        call.status = 'resolved';
+        call.exit_price = currentPrice;
+        call.profit_pct = Math.round((currentPrice - call.entry_price) / call.entry_price * 10000) / 100;
+        call.resolved_at = now.toISOString();
+        resolvedCount++;
+        continue;
+      }
+      const effectiveSL = call.trailing_sl != null ? call.trailing_sl : call.stop_loss;
+      if (currentPrice <= effectiveSL) {
+        call.sl_hit = true;
+        call.status = 'resolved';
+        call.exit_price = currentPrice;
+        if (call.tp1_hit) { call.profit_pct = 0; call.exit_price = call.entry_price; }
+        else { call.profit_pct = Math.round((currentPrice - call.entry_price) / call.entry_price * 10000) / 100; }
+        call.resolved_at = now.toISOString();
+        resolvedCount++;
+        continue;
+      }
+    } else {
+      if (currentPrice <= call.tp1 && !call.tp1_hit) {
+        call.tp1_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 1);
+        call.trailing_sl = call.entry_price;
+      }
+      if (currentPrice <= call.tp2) {
+        call.tp2_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 2);
+        call.status = 'resolved';
+        call.exit_price = currentPrice;
+        call.profit_pct = Math.round((call.entry_price - currentPrice) / call.entry_price * 10000) / 100;
+        call.resolved_at = now.toISOString();
+        resolvedCount++;
+        continue;
+      }
+      const effectiveSL = call.trailing_sl != null ? call.trailing_sl : call.stop_loss;
+      if (currentPrice >= effectiveSL) {
+        call.sl_hit = true;
+        call.status = 'resolved';
+        call.exit_price = currentPrice;
+        if (call.tp1_hit) { call.profit_pct = 0; call.exit_price = call.entry_price; }
+        else { call.profit_pct = Math.round((call.entry_price - currentPrice) / call.entry_price * 10000) / 100; }
+        call.resolved_at = now.toISOString();
+        resolvedCount++;
+        continue;
+      }
+    }
+  }
+
+  saveRangeCalls(calls);
+  return { resolved: resolvedCount, expired: expiredCount, checked: activeCalls.length };
+}
+
+// Periodic range call resolver (every 3 min)
+setInterval(async () => {
+  try {
+    const result = await resolveActiveRangeCalls();
+    if (result.resolved > 0 || result.expired > 0) {
+      console.log(`[RangeCall] Periodic: ${result.resolved} resolved, ${result.expired} expired`);
+    }
+  } catch (err) {
+    console.error('[RangeCall] Periodic error:', err.message);
+  }
+}, 3 * 60 * 1000);
+
+// ─── Range Trading API endpoints ───
+
+app.get('/api/v1/range-calls', (req, res) => {
+  const { status: filterStatus, limit = '100', offset = '0' } = req.query;
+  let calls = loadRangeCalls();
+  if (filterStatus) calls = calls.filter(c => c.status === filterStatus);
+  calls.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const lim = Math.min(parseInt(limit) || 100, 500);
+  const off = parseInt(offset) || 0;
+  res.json(calls.slice(off, off + lim));
+});
+
+app.get('/api/v1/range-calls/stats', (req, res) => {
+  const calls = loadRangeCalls();
+  const total = calls.length;
+  const activeCalls = calls.filter(c => c.status === 'active').length;
+  const resolvedCalls = calls.filter(c => c.status === 'resolved').length;
+  const expiredCalls = calls.filter(c => c.status === 'expired').length;
+  const closedCalls = calls.filter(c => c.status === 'resolved' || c.status === 'expired');
+  const totalClosed = closedCalls.length;
+
+  let wins = 0, tp1Hits = 0, tp2Hits = 0, slHits = 0;
+  let longWins = 0, longTotal = 0, shortWins = 0, shortTotal = 0;
+  let totalProfit = 0;
+  const profits = [];
+  const confBuckets = { low: { wins: 0, total: 0 }, mid: { wins: 0, total: 0 }, high: { wins: 0, total: 0 }, very_high: { wins: 0, total: 0 } };
+  const weeklyData = {};
+
+  for (const c of closedCalls) {
+    const isWin = c.tp1_hit;
+    if (isWin) wins++;
+    if (c.tp1_hit) tp1Hits++;
+    if (c.tp2_hit) tp2Hits++;
+    if (c.sl_hit) slHits++;
+
+    let effectiveProfit = c.profit_pct;
+    if (c.tp1_hit && c.sl_hit && (effectiveProfit == null || effectiveProfit < 0)) effectiveProfit = 0;
+    if (effectiveProfit != null) { totalProfit += effectiveProfit; profits.push(effectiveProfit); }
+
+    if (c.side === 'LONG') { longTotal++; if (isWin) longWins++; }
+    else { shortTotal++; if (isWin) shortWins++; }
+
+    let bucket;
+    if (c.confidence < 50) bucket = 'low';
+    else if (c.confidence < 65) bucket = 'mid';
+    else if (c.confidence < 80) bucket = 'high';
+    else bucket = 'very_high';
+    confBuckets[bucket].total++;
+    if (isWin) confBuckets[bucket].wins++;
+
+    if (c.created_at) {
+      const d = new Date(c.created_at);
+      const weekNum = getWeekNumber(d);
+      const weekKey = `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+      if (!weeklyData[weekKey]) weeklyData[weekKey] = { wins: 0, total: 0 };
+      weeklyData[weekKey].total++;
+      if (isWin) weeklyData[weekKey].wins++;
+    }
+  }
+
+  const safeRate = (w, t) => t > 0 ? Math.round(w / t * 1000) / 10 : 0;
+  const winRate = safeRate(wins, totalClosed);
+  const avgProfit = profits.length > 0 ? Math.round(totalProfit / profits.length * 100) / 100 : 0;
+
+  const weeklySorted = Object.keys(weeklyData).sort().map(wk => ({
+    week: wk, wins: weeklyData[wk].wins, total: weeklyData[wk].total,
+    win_rate: safeRate(weeklyData[wk].wins, weeklyData[wk].total),
+  }));
+
+  res.json({
+    total_calls: total, active_calls: activeCalls, resolved_calls: resolvedCalls, expired_calls: expiredCalls,
+    win_rate: winRate, tp1_rate: safeRate(tp1Hits, totalClosed), tp2_rate: safeRate(tp2Hits, totalClosed),
+    sl_rate: safeRate(slHits, totalClosed), avg_profit_pct: avgProfit,
+    long_win_rate: safeRate(longWins, longTotal), short_win_rate: safeRate(shortWins, shortTotal),
+    long_total: longTotal, short_total: shortTotal,
+    confidence_buckets: {
+      '<50%': { win_rate: safeRate(confBuckets.low.wins, confBuckets.low.total), total: confBuckets.low.total },
+      '50-65%': { win_rate: safeRate(confBuckets.mid.wins, confBuckets.mid.total), total: confBuckets.mid.total },
+      '65-80%': { win_rate: safeRate(confBuckets.high.wins, confBuckets.high.total), total: confBuckets.high.total },
+      '>80%': { win_rate: safeRate(confBuckets.very_high.wins, confBuckets.very_high.total), total: confBuckets.very_high.total },
+    },
+    weekly_win_rate: weeklySorted,
+  });
+});
+
+app.post('/api/v1/range-calls/reset', (req, res) => {
+  const { confirm } = req.body || {};
+  if (!confirm) return res.status(400).json({ error: 'Missing { "confirm": true }' });
+  saveRangeCalls([]);
+  rangeCallIdCounter = 0;
+  console.log('[RangeCall] All range calls have been reset');
+  res.json({ reset: true, message: 'Toutes les données de performance range ont été réinitialisées.' });
+});
+
+app.post('/api/v1/range-calls/resolve', async (req, res) => {
+  try {
+    const result = await resolveActiveRangeCalls();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/telegram/range-check', async (req, res) => {
+  try {
+    const alerts = await checkAndSendRangeAlerts();
+    res.json({ success: true, alerts_sent: alerts.length, alerts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/telegram/range-toggle', (req, res) => {
+  const { enabled } = req.body;
+  if (enabled) {
+    startRangeAlertChecker();
+  } else if (rangeAlertInterval) {
+    clearInterval(rangeAlertInterval);
+    rangeAlertInterval = null;
+    console.log('[RangeAlert] Range alert checker stopped');
+  }
+  res.json({ success: true, range_alerts_enabled: !!enabled });
+});
+
 // ─── CryptoPanic News API proxy ───
 app.get('/api/news', async (req, res) => {
   const targetUrl = `https://cryptopanic.com/api/free/v1/posts/?auth_token=free&public=true&kind=news`;

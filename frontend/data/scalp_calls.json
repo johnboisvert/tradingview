@@ -19,7 +19,7 @@
     "vwap_h1": 0.006403369857939487,
     "h1_trend": "bearish",
     "rr": 2,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -28,7 +28,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-30T21:09:57.100Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:53:36.803Z",
     "expires_at": "2026-03-30T21:54:57.100Z"
   },
   {
@@ -51,7 +51,7 @@
     "vwap_h1": 1.5096436533412099,
     "h1_trend": "bearish",
     "rr": 2,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -60,7 +60,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-30T21:15:57.043Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:53:36.803Z",
     "expires_at": "2026-03-30T22:00:57.043Z"
   },
   {
@@ -83,7 +83,7 @@
     "vwap_h1": 0.000027736444471439702,
     "h1_trend": "bearish",
     "rr": 2,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -92,7 +92,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-30T21:15:57.043Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:53:36.803Z",
     "expires_at": "2026-03-30T22:00:57.043Z"
   },
   {
@@ -115,7 +115,7 @@
     "vwap_h1": 463.9842711349211,
     "h1_trend": "bearish",
     "rr": 2,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -124,7 +124,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-30T21:18:57.088Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:53:36.803Z",
     "expires_at": "2026-03-30T22:03:57.088Z"
   },
   {
@@ -147,7 +147,7 @@
     "vwap_h1": 0.436343480117887,
     "h1_trend": "bearish",
     "rr": 2,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -156,7 +156,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-30T21:18:57.088Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:53:36.803Z",
     "expires_at": "2026-03-30T22:03:57.088Z"
   },
   {
@@ -179,7 +179,7 @@
     "vwap_h1": 1.2643814752110085,
     "h1_trend": "bearish",
     "rr": 2,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -188,7 +188,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-30T21:18:57.088Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:53:36.803Z",
     "expires_at": "2026-03-30T22:03:57.088Z"
   },
   {
@@ -211,7 +211,7 @@
     "vwap_h1": 0.06720890558530093,
     "h1_trend": "bearish",
     "rr": 2,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -220,7 +220,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-30T21:18:57.088Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:53:36.803Z",
     "expires_at": "2026-03-30T22:03:57.088Z"
   }
 ]

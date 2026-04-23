@@ -416,7 +416,34 @@ export default function MagicStrategy() {
             </h2>
           </div>
 
-          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Bandeau Prix de lancement */}
+          <div className="mt-6 relative overflow-hidden rounded-2xl border-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 p-6 shadow-lg shadow-amber-500/20">
+            <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_30%_50%,rgba(251,191,36,0.4),transparent_60%),radial-gradient(circle_at_70%_50%,rgba(16,185,129,0.3),transparent_60%)]" />
+            <div className="relative flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+              <div className="flex-1">
+                <div className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900 shadow">
+                  🚀 Offre de lancement — Durée limitée
+                </div>
+                <div className="mt-3 text-2xl sm:text-3xl font-black text-white">
+                  Prix de lancement :{" "}
+                  <span className="bg-gradient-to-r from-amber-300 to-emerald-300 bg-clip-text text-transparent">
+                    39$/mois
+                  </span>
+                </div>
+                <div className="mt-1 text-sm text-white/70">
+                  Profitez du tarif de lancement avant la hausse officielle — offre réservée aux premiers utilisateurs.
+                </div>
+              </div>
+              <a
+                href="mailto:cryptoia2026@gmail.com?subject=Prix%20de%20lancement%2039%24%2Fmois%20-%20Magic%20JB%20IA"
+                className="shrink-0 inline-flex items-center justify-center rounded-lg bg-amber-400 px-6 py-3 text-sm font-bold text-slate-900 hover:bg-amber-300 transition shadow-lg shadow-amber-500/30"
+              >
+                Je profite du lancement
+              </a>
+            </div>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {/* Mensuel */}
             <div className="relative rounded-2xl border border-white/10 bg-[#0d1526] p-7 text-center flex flex-col">
               <div className="text-xl font-semibold text-white">Mensuel</div>
@@ -441,10 +468,10 @@ export default function MagicStrategy() {
                 </span>
               </div>
               <div className="text-xl font-semibold text-white">Trimestriel</div>
-              <div className="mt-6 text-5xl font-black text-emerald-400">129$</div>
+              <div className="mt-6 text-5xl font-black text-emerald-400">130$</div>
               <div className="mt-1 text-sm text-white/50">/3 mois</div>
               <div className="mt-6 text-sm text-white/70 flex-1">
-                Économisez 12% — le plus populaire
+                Économisez ~12% — le plus populaire
               </div>
               <a
                 href="mailto:cryptoia2026@gmail.com?subject=Abonnement%20Trimestriel%20-%20Magic%20JB%20IA"
@@ -454,10 +481,31 @@ export default function MagicStrategy() {
               </a>
             </div>
 
+            {/* Annuel */}
+            <div className="relative rounded-2xl border border-cyan-400/40 bg-gradient-to-b from-cyan-500/10 via-[#0d1526] to-[#0d1526] p-7 text-center flex flex-col shadow-lg shadow-cyan-500/10">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="inline-flex items-center rounded-full bg-cyan-400 px-4 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900">
+                  Meilleur rapport
+                </span>
+              </div>
+              <div className="text-xl font-semibold text-white">Annuel</div>
+              <div className="mt-6 text-5xl font-black text-cyan-300">450$</div>
+              <div className="mt-1 text-sm text-white/50">/an</div>
+              <div className="mt-6 text-sm text-white/70 flex-1">
+                Économisez ~23% — idéal pour les traders engagés
+              </div>
+              <a
+                href="mailto:cryptoia2026@gmail.com?subject=Abonnement%20Annuel%20-%20Magic%20JB%20IA"
+                className="mt-6 inline-flex items-center justify-center rounded-lg border-2 border-cyan-400 bg-transparent px-5 py-2.5 text-sm font-semibold text-cyan-300 hover:bg-cyan-400 hover:text-slate-900 transition"
+              >
+                Obtenir l'accès
+              </a>
+            </div>
+
             {/* À vie */}
             <div className="relative rounded-2xl border border-white/10 bg-[#0d1526] p-7 text-center flex flex-col">
               <div className="text-xl font-semibold text-white">À vie</div>
-              <div className="mt-6 text-5xl font-black text-white">299$</div>
+              <div className="mt-6 text-5xl font-black text-white">699$</div>
               <div className="mt-1 text-sm text-white/50">one-time</div>
               <div className="mt-6 text-sm text-white/70 flex-1">
                 Paiement unique, mises à jour incluses à vie
@@ -467,6 +515,25 @@ export default function MagicStrategy() {
                 className="mt-6 inline-flex items-center justify-center rounded-lg border-2 border-emerald-400 bg-transparent px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-400 hover:text-slate-900 transition"
               >
                 Obtenir l'accès
+              </a>
+            </div>
+          </div>
+
+          {/* CTA Essai gratuit 24h */}
+          <div className="mt-8 relative overflow-hidden rounded-2xl border-2 border-emerald-400/50 bg-gradient-to-r from-emerald-500/20 via-cyan-500/15 to-emerald-500/20 p-6 sm:p-8 text-center shadow-lg shadow-emerald-500/20">
+            <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_20%_50%,rgba(16,185,129,0.5),transparent_60%),radial-gradient(circle_at_80%_50%,rgba(6,182,212,0.5),transparent_60%)]" />
+            <div className="relative">
+              <h3 className="text-2xl sm:text-3xl font-black text-white">
+                🎁 Obtenez un essai gratuit de 24h !
+              </h3>
+              <p className="mt-2 text-sm sm:text-base text-white/80">
+                Testez Magic JB IA pendant 24h gratuitement — zéro engagement, zéro carte bancaire.
+              </p>
+              <a
+                href="mailto:cryptoia2026@gmail.com?subject=Demande%20d%27essai%20gratuit%2024h%20-%20Magic%20JB%20IA&body=Bonjour%2C%0A%0AJe%20souhaite%20profiter%20de%20l%27essai%20gratuit%20de%2024h%20pour%20tester%20l%27indicateur%20Magic%20JB%20IA.%0A%0AMon%20pseudo%20TradingView%20%3A%20%0A%0AMerci%20!"
+                className="mt-5 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-8 py-3.5 text-base font-bold text-slate-900 hover:from-emerald-300 hover:to-cyan-300 transition shadow-xl shadow-emerald-500/30"
+              >
+                Contactez-nous pour l'essai gratuit →
               </a>
             </div>
           </div>

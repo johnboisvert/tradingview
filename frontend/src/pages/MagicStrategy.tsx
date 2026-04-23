@@ -226,7 +226,7 @@ export default function MagicStrategy() {
                 </div>
                 <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight">
                   <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-emerald-300 bg-clip-text text-transparent">
-                    Magic Strategy
+                    Magic JB IA
                   </span>
                 </h1>
                 <p className="mt-3 max-w-2xl text-base sm:text-lg text-white/70">
@@ -479,6 +479,40 @@ export default function MagicStrategy() {
                 <div className="text-sm text-white/85 leading-relaxed">{rule}</div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* ── Indicateur externe (Trader Assistant AI) ──── */}
+        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+          <SectionTitle
+            icon={<TrendingUp className="h-5 w-5 text-fuchsia-300" />}
+            eyebrow="Indicateur IA"
+            title="Signal Sell — Trader Assistant AI"
+            subtitle="Indicateur externe intégré pour surveiller les signaux de vente en temps réel."
+          />
+
+          <div className="mt-6 rounded-2xl border border-white/10 bg-[#0f1420] overflow-hidden backdrop-blur-sm">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02]">
+              <div className="flex items-center gap-2 text-xs font-semibold text-white/70">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                trader-assistant-ai.preview.emergentagent.com/sell
+              </div>
+              <a
+                href="https://trader-assistant-ai.preview.emergentagent.com/sell"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/70 hover:bg-white/10 transition"
+              >
+                Ouvrir en plein écran ↗
+              </a>
+            </div>
+            <iframe
+              src="https://trader-assistant-ai.preview.emergentagent.com/sell"
+              title="Trader Assistant AI — Sell Signal"
+              className="w-full h-[720px] bg-[#0a0e17]"
+              loading="lazy"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+            />
           </div>
         </section>
 

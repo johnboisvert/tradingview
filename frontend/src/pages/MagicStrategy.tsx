@@ -226,6 +226,29 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
 ];
 
+const SCREENSHOTS: { src: string; title: string; caption: string }[] = [
+  {
+    src: "/magic-screenshots/bico-long.png",
+    title: "BICO / USDT — LONG en cours (TP1 touché)",
+    caption: "Signal LONG 15M, Score 5/10, Trend 4H BULL — TP1 atteint, SL déplacé au Break Even automatiquement.",
+  },
+  {
+    src: "/magic-screenshots/apt-short.png",
+    title: "APT / USDT — SHORT exécuté (TP2 atteint)",
+    caption: "Signal SHORT 15M, Winrate 77.5% (62W / 18L), R:R TP2 = 1:2.12 — Momentum négatif confirmé.",
+  },
+  {
+    src: "/magic-screenshots/tarifs.png",
+    title: "MASK / USDT — LONG (TP1 + SL -> BE)",
+    caption: "Signal LONG 15M, Score 7/10, Trend 4H BULL — Preset Crypto RR Safe 15min, Winrate 78.8%.",
+  },
+  {
+    src: "/magic-screenshots/fonctionnalites.png",
+    title: "Dashboard Fonctionnalités — Magic JB IA",
+    caption: "Vue d'ensemble des 8 fonctionnalités clés de l'indicateur : signaux, TP, SL, Multi-Timeframe, Kill Zones, PVSRA…",
+  },
+];
+
 const GOLDEN_RULES: string[] = [
   "Ne risquez JAMAIS plus de 1-2% de votre capital par trade",
   "Maximum 3 trades ouverts en même temps",
@@ -317,6 +340,168 @@ export default function MagicStrategy() {
                 </button>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ── Fonctionnalités ───────────────────────────── */}
+        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+          <div className="text-center">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-cyan-300">
+              Fonctionnalités
+            </h2>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {FEATURES.map((f, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-white/10 bg-[#0d1526] p-5 hover:border-cyan-400/30 hover:bg-[#0f182c] transition"
+              >
+                <div className="text-lg font-semibold text-cyan-300">{f.title}</div>
+                <div className="mt-2 text-sm text-white/75 leading-relaxed">{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Preuves en direct ─────────────────────────── */}
+        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200 backdrop-blur-sm">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Preuves en direct
+            </div>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-bold tracking-tight text-emerald-300">
+              📊 L'indicateur en action
+            </h2>
+            <p className="mt-2 text-sm text-white/60 max-w-2xl mx-auto">
+              Signaux LONG/SHORT, TP/SL, Score et momentum en temps réel sur TradingView.
+            </p>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5">
+            {SCREENSHOTS.map((s, i) => (
+              <a
+                key={i}
+                href={s.src}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative overflow-hidden rounded-2xl border border-emerald-400/20 bg-[#0d1526] hover:border-emerald-400/60 transition shadow-lg shadow-emerald-500/5 hover:shadow-emerald-500/20"
+              >
+                <div className="aspect-[16/10] overflow-hidden bg-[#0a0e17]">
+                  <img
+                    src={s.src}
+                    alt={s.caption}
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                  />
+                </div>
+                <div className="absolute top-3 right-3 rounded-md bg-black/60 backdrop-blur-sm px-2 py-1 text-[10px] font-semibold text-white/80 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition">
+                  Agrandir ↗
+                </div>
+                <div className="px-5 py-4 border-t border-white/5">
+                  <div className="text-sm font-semibold text-white">{s.title}</div>
+                  <div className="mt-1 text-xs text-white/60 leading-relaxed">{s.caption}</div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Tarifs ────────────────────────────────────── */}
+        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+          <div className="text-center">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-amber-300">
+              Tarifs
+            </h2>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Mensuel */}
+            <div className="relative rounded-2xl border border-white/10 bg-[#0d1526] p-7 text-center flex flex-col">
+              <div className="text-xl font-semibold text-white">Mensuel</div>
+              <div className="mt-6 text-5xl font-black text-white">49$</div>
+              <div className="mt-1 text-sm text-white/50">/mois</div>
+              <div className="mt-6 text-sm text-white/70 flex-1">
+                Accès complet, annulez quand vous voulez
+              </div>
+              <a
+                href="mailto:cryptoia2026@gmail.com?subject=Abonnement%20Mensuel%20-%20Magic%20JB%20IA"
+                className="mt-6 inline-flex items-center justify-center rounded-lg border-2 border-emerald-400 bg-transparent px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-400 hover:text-slate-900 transition"
+              >
+                Obtenir l'accès
+              </a>
+            </div>
+
+            {/* Trimestriel - POPULAIRE */}
+            <div className="relative rounded-2xl border-2 border-emerald-400 bg-gradient-to-b from-emerald-500/10 via-[#0d1526] to-[#0d1526] p-7 text-center flex flex-col shadow-lg shadow-emerald-500/20">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="inline-flex items-center rounded-full bg-emerald-400 px-4 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900">
+                  Populaire
+                </span>
+              </div>
+              <div className="text-xl font-semibold text-white">Trimestriel</div>
+              <div className="mt-6 text-5xl font-black text-emerald-400">129$</div>
+              <div className="mt-1 text-sm text-white/50">/3 mois</div>
+              <div className="mt-6 text-sm text-white/70 flex-1">
+                Économisez 12% — le plus populaire
+              </div>
+              <a
+                href="mailto:cryptoia2026@gmail.com?subject=Abonnement%20Trimestriel%20-%20Magic%20JB%20IA"
+                className="mt-6 inline-flex items-center justify-center rounded-lg bg-emerald-400 px-5 py-2.5 text-sm font-bold text-slate-900 hover:bg-emerald-300 transition"
+              >
+                Obtenir l'accès
+              </a>
+            </div>
+
+            {/* À vie */}
+            <div className="relative rounded-2xl border border-white/10 bg-[#0d1526] p-7 text-center flex flex-col">
+              <div className="text-xl font-semibold text-white">À vie</div>
+              <div className="mt-6 text-5xl font-black text-white">299$</div>
+              <div className="mt-1 text-sm text-white/50">one-time</div>
+              <div className="mt-6 text-sm text-white/70 flex-1">
+                Paiement unique, mises à jour incluses à vie
+              </div>
+              <a
+                href="mailto:cryptoia2026@gmail.com?subject=Licence%20A%20Vie%20-%20Magic%20JB%20IA"
+                className="mt-6 inline-flex items-center justify-center rounded-lg border-2 border-emerald-400 bg-transparent px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-400 hover:text-slate-900 transition"
+              >
+                Obtenir l'accès
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQ ──────────────────────────────────────── */}
+        <section className="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+          <div className="text-center">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-cyan-300">
+              Questions fréquentes
+            </h2>
+          </div>
+
+          <div className="mt-8 space-y-3">
+            {FAQ_ITEMS.map((item, i) => (
+              <FAQItem key={i} question={item.q} answer={item.a} />
+            ))}
+          </div>
+        </section>
+
+        {/* ── Contactez-moi ────────────────────────────── */}
+        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+          <div className="text-center">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-emerald-400">
+              Contactez-moi
+            </h2>
+            <p className="mt-3 text-sm text-white/60">
+              Pour obtenir l'accès ou poser vos questions :
+            </p>
+            <a
+              href="mailto:cryptoia2026@gmail.com"
+              className="mt-6 inline-flex items-center justify-center rounded-lg bg-emerald-400 px-8 py-3 text-base font-bold text-slate-900 hover:bg-emerald-300 transition shadow-lg shadow-emerald-500/20"
+            >
+              cryptoia2026@gmail.com
+            </a>
           </div>
         </section>
 
@@ -539,124 +724,6 @@ export default function MagicStrategy() {
                 <CheckCircle2 className="h-5 w-5 shrink-0 text-amber-300 mt-0.5" />
                 <div className="text-sm text-white/85 leading-relaxed">{rule}</div>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Fonctionnalités ───────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-cyan-300">
-              Fonctionnalités
-            </h2>
-          </div>
-
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {FEATURES.map((f, i) => (
-              <div
-                key={i}
-                className="rounded-xl border border-white/10 bg-[#0d1526] p-5 hover:border-cyan-400/30 hover:bg-[#0f182c] transition"
-              >
-                <div className="text-lg font-semibold text-cyan-300">{f.title}</div>
-                <div className="mt-2 text-sm text-white/75 leading-relaxed">{f.desc}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Tarifs ────────────────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-amber-300">
-              Tarifs
-            </h2>
-          </div>
-
-          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* Mensuel */}
-            <div className="relative rounded-2xl border border-white/10 bg-[#0d1526] p-7 text-center flex flex-col">
-              <div className="text-xl font-semibold text-white">Mensuel</div>
-              <div className="mt-6 text-5xl font-black text-white">49$</div>
-              <div className="mt-1 text-sm text-white/50">/mois</div>
-              <div className="mt-6 text-sm text-white/70 flex-1">
-                Accès complet, annulez quand vous voulez
-              </div>
-              <a
-                href="mailto:cryptoia2026@gmail.com?subject=Abonnement%20Mensuel%20-%20Magic%20JB%20IA"
-                className="mt-6 inline-flex items-center justify-center rounded-lg border-2 border-emerald-400 bg-transparent px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-400 hover:text-slate-900 transition"
-              >
-                Obtenir l'accès
-              </a>
-            </div>
-
-            {/* Trimestriel - POPULAIRE */}
-            <div className="relative rounded-2xl border-2 border-emerald-400 bg-gradient-to-b from-emerald-500/10 via-[#0d1526] to-[#0d1526] p-7 text-center flex flex-col shadow-lg shadow-emerald-500/20">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="inline-flex items-center rounded-full bg-emerald-400 px-4 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900">
-                  Populaire
-                </span>
-              </div>
-              <div className="text-xl font-semibold text-white">Trimestriel</div>
-              <div className="mt-6 text-5xl font-black text-emerald-400">129$</div>
-              <div className="mt-1 text-sm text-white/50">/3 mois</div>
-              <div className="mt-6 text-sm text-white/70 flex-1">
-                Économisez 12% — le plus populaire
-              </div>
-              <a
-                href="mailto:cryptoia2026@gmail.com?subject=Abonnement%20Trimestriel%20-%20Magic%20JB%20IA"
-                className="mt-6 inline-flex items-center justify-center rounded-lg bg-emerald-400 px-5 py-2.5 text-sm font-bold text-slate-900 hover:bg-emerald-300 transition"
-              >
-                Obtenir l'accès
-              </a>
-            </div>
-
-            {/* À vie */}
-            <div className="relative rounded-2xl border border-white/10 bg-[#0d1526] p-7 text-center flex flex-col">
-              <div className="text-xl font-semibold text-white">À vie</div>
-              <div className="mt-6 text-5xl font-black text-white">299$</div>
-              <div className="mt-1 text-sm text-white/50">one-time</div>
-              <div className="mt-6 text-sm text-white/70 flex-1">
-                Paiement unique, mises à jour incluses à vie
-              </div>
-              <a
-                href="mailto:cryptoia2026@gmail.com?subject=Licence%20A%20Vie%20-%20Magic%20JB%20IA"
-                className="mt-6 inline-flex items-center justify-center rounded-lg border-2 border-emerald-400 bg-transparent px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-400 hover:text-slate-900 transition"
-              >
-                Obtenir l'accès
-              </a>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Contactez-moi ────────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-emerald-400">
-              Contactez-moi
-            </h2>
-            <p className="mt-3 text-sm text-white/60">
-              Pour obtenir l'accès ou poser vos questions :
-            </p>
-            <a
-              href="mailto:cryptoia2026@gmail.com"
-              className="mt-6 inline-flex items-center justify-center rounded-lg bg-emerald-400 px-8 py-3 text-base font-bold text-slate-900 hover:bg-emerald-300 transition shadow-lg shadow-emerald-500/20"
-            >
-              cryptoia2026@gmail.com
-            </a>
-          </div>
-        </section>
-
-        {/* ── FAQ ──────────────────────────────────────── */}
-        <section className="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-cyan-300">
-              Questions fréquentes
-            </h2>
-          </div>
-
-          <div className="mt-8 space-y-3">
-            {FAQ_ITEMS.map((item, i) => (
-              <FAQItem key={i} question={item.q} answer={item.a} />
             ))}
           </div>
         </section>

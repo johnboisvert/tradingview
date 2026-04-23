@@ -408,6 +408,214 @@ export default function MagicStrategy() {
           </div>
         </section>
 
+        {/* ── Pourquoi nous choisir ? ──────────────────── */}
+        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-200 backdrop-blur-sm">
+              <Sparkles className="h-3.5 w-3.5" />
+              Notre approche
+            </div>
+            <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight">
+              <span className="bg-gradient-to-r from-cyan-300 via-emerald-300 to-cyan-300 bg-clip-text text-transparent">
+                🎯 Pourquoi nous choisir ?
+              </span>
+            </h2>
+          </div>
+
+          {/* Storytelling */}
+          <div className="mt-8 max-w-3xl mx-auto rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-6 sm:p-8 backdrop-blur-sm">
+            <div className="space-y-4 text-base sm:text-lg leading-relaxed text-slate-300">
+              <p>
+                Vous avez essayé les signaux Telegram. Vous avez suivi les "gurus"
+                Twitter. Vous avez perdu de l'argent avec des indicateurs à 15$ qui
+                promettent la lune.
+              </p>
+              <p className="text-white font-bold">
+                On est passés par là aussi.
+              </p>
+              <p>
+                C'est pour ça qu'on a construit{" "}
+                <span className="font-bold text-cyan-300">Magic JB IA</span>. Pas un
+                indicateur de plus. Un système complet, testé sur 100+ cryptos,
+                optimisé bougie par bougie.
+              </p>
+              <p>
+                <span className="font-black text-emerald-300">81% de winrate.</span>{" "}
+                Pas une promesse. Un fait. Backtesté. Vérifié. Reproductible.
+              </p>
+            </div>
+          </div>
+
+          {/* Quand l'alerte sonne */}
+          <div className="mt-10">
+            <h3 className="text-center text-xl sm:text-2xl font-bold text-white">
+              Quand l'alerte sonne, vous savez exactement :
+            </h3>
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
+              {[
+                { icon: <Target className="h-5 w-5" />, label: "Où entrer", value: "E1, E2, E3", color: "emerald" },
+                { icon: <TrendingUp className="h-5 w-5" />, label: "Où prendre profit", value: "TP1 à TP5", color: "cyan" },
+                { icon: <Shield className="h-5 w-5" />, label: "Où couper", value: "SL automatique", color: "rose" },
+                { icon: <Award className="h-5 w-5" />, label: "Combien risquer", value: "Risk Calculator intégré", color: "amber" },
+              ].map((item, i) => {
+                const colorMap: Record<string, string> = {
+                  emerald: "border-emerald-400/40 bg-emerald-500/10 text-emerald-300",
+                  cyan: "border-cyan-400/40 bg-cyan-500/10 text-cyan-300",
+                  rose: "border-rose-400/40 bg-rose-500/10 text-rose-300",
+                  amber: "border-amber-400/40 bg-amber-500/10 text-amber-300",
+                };
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.03] p-5 hover:bg-white/[0.05] transition"
+                  >
+                    <div className={`shrink-0 h-12 w-12 rounded-xl grid place-items-center border ${colorMap[item.color]}`}>
+                      {item.icon}
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-wider text-white/50 font-semibold">
+                        {item.label}
+                      </div>
+                      <div className="mt-1 text-lg font-bold text-white">{item.value}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="mt-8 text-center text-base sm:text-lg text-slate-300 max-w-3xl mx-auto leading-relaxed">
+              Vous n'avez pas besoin d'être un expert. Vous n'avez pas besoin de
+              regarder le chart 12h par jour.{" "}
+              <span className="font-bold text-cyan-300">
+                L'indicateur fait le travail. Vous exécutez.
+              </span>
+            </p>
+          </div>
+
+          {/* Stats punchy */}
+          <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div className="relative overflow-hidden rounded-2xl border border-rose-400/30 bg-gradient-to-br from-rose-500/10 via-[#0d1526] to-[#0d1526] p-6 text-center">
+              <div className="text-6xl sm:text-7xl font-black bg-gradient-to-b from-rose-300 to-rose-400 bg-clip-text text-transparent">
+                3
+              </div>
+              <div className="mt-2 text-sm font-semibold text-white/80">
+                pertes d'affilée maximum
+              </div>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl border border-emerald-400/40 bg-gradient-to-br from-emerald-500/15 via-[#0d1526] to-[#0d1526] p-6 text-center shadow-lg shadow-emerald-500/10">
+              <div className="text-6xl sm:text-7xl font-black bg-gradient-to-b from-emerald-300 to-emerald-400 bg-clip-text text-transparent">
+                80%
+              </div>
+              <div className="mt-2 text-sm font-semibold text-white/80">
+                des trades touchent le TP1
+              </div>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl border border-cyan-400/30 bg-gradient-to-br from-cyan-500/10 via-[#0d1526] to-[#0d1526] p-6 text-center">
+              <div className="text-4xl sm:text-5xl font-black bg-gradient-to-b from-cyan-300 to-cyan-400 bg-clip-text text-transparent leading-tight">
+                Gain moyen
+                <br />
+                <span className="text-3xl sm:text-4xl">&gt; perte moyenne</span>
+              </div>
+              <div className="mt-2 text-sm font-semibold text-white/80">
+                profitabilité positive
+              </div>
+            </div>
+          </div>
+
+          <p className="mt-6 text-center text-sm sm:text-base italic text-white/60">
+            Les chiffres ne mentent pas. Votre portefeuille non plus.
+          </p>
+
+          {/* Ce que vous obtenez */}
+          <div className="mt-14">
+            <div className="text-center">
+              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                Ce que vous obtenez en vous inscrivant :
+              </h3>
+            </div>
+
+            <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* Card 1 */}
+              <div className="relative overflow-hidden rounded-2xl border border-cyan-400/30 bg-gradient-to-b from-cyan-500/10 via-[#0d1526] to-[#0d1526] p-6 flex flex-col">
+                <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-cyan-500/20 blur-3xl" />
+                <div className="relative">
+                  <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-cyan-500/20 border border-cyan-400/40 text-2xl">
+                    🤖
+                  </div>
+                  <div className="mt-4 text-xs font-bold uppercase tracking-wider text-cyan-300">
+                    1. L'indicateur principal
+                  </div>
+                  <div className="mt-2 text-xl font-bold text-white">
+                    Magic JB IA
+                  </div>
+                  <p className="mt-3 text-sm text-white/75 leading-relaxed">
+                    Votre copilote de trading. Signaux LONG/SHORT en temps réel,
+                    5 niveaux de Take Profit, Stop Loss dynamique, Trailing Stop
+                    automatique, scoring IA de 1 à 10, confirmation Trend 4H, 8
+                    alertes push configurables, et des presets optimisés pour
+                    chaque timeframe (5M, 15M, 1H, 4H).{" "}
+                    <span className="text-cyan-300 font-semibold">
+                      Vous recevez l'alerte sur votre téléphone. Vous exécutez.
+                      C'est tout.
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 2 */}
+              <div className="relative overflow-hidden rounded-2xl border border-emerald-400/30 bg-gradient-to-b from-emerald-500/10 via-[#0d1526] to-[#0d1526] p-6 flex flex-col">
+                <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-500/20 blur-3xl" />
+                <div className="relative">
+                  <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-2xl">
+                    📊
+                  </div>
+                  <div className="mt-4 text-xs font-bold uppercase tracking-wider text-emerald-300">
+                    2. Votre tableau de bord
+                  </div>
+                  <div className="mt-2 text-xl font-bold text-white">
+                    Magic JB IA Performance
+                  </div>
+                  <p className="mt-3 text-sm text-white/75 leading-relaxed">
+                    Mesurez tout. Winrate, taux de TP1 à TP5, Stop Loss, gain
+                    moyen vs perte moyenne, max drawdown, meilleure et pire
+                    série — le tout par paire, par direction (Long/Short), par
+                    session (Londres, New York, Overlap). Chaque crypto reçoit
+                    une note A, B, C ou D.{" "}
+                    <span className="text-emerald-300 font-semibold">
+                      Vous tradez les A, vous ignorez le reste.
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 3 */}
+              <div className="relative overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-b from-amber-500/10 via-[#0d1526] to-[#0d1526] p-6 flex flex-col">
+                <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-amber-500/20 blur-3xl" />
+                <div className="relative">
+                  <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-amber-500/20 border border-amber-400/40 text-2xl">
+                    📋
+                  </div>
+                  <div className="mt-4 text-xs font-bold uppercase tracking-wider text-amber-300">
+                    3. Sélectionnées pour vous
+                  </div>
+                  <div className="mt-2 text-xl font-bold text-white">
+                    Watchlist de 100 cryptos
+                  </div>
+                  <p className="mt-3 text-sm text-white/75 leading-relaxed">
+                    Pas besoin de chercher quoi trader. Notre watchlist de 100
+                    cryptos perpétuelles est optimisée pour Magic JB IA. Chaque
+                    paire a été testée et validée.{" "}
+                    <span className="text-amber-300 font-semibold">
+                      Ajoutez la watchlist, activez vos alertes, et laissez
+                      l'indicateur scanner pour vous.
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── Tarifs ────────────────────────────────────── */}
         <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
           <div className="text-center">

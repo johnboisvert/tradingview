@@ -365,8 +365,8 @@ async function fetchBinanceKlines(symbol: string, interval: string, limit = 250)
   openTimes: number[];
 } | null> {
   try {
-    const url = `https://api.binance.com/api/v3/klines?symbol=${symbol.toUpperCase()}USDT&interval=${interval}&limit=${limit}`;
-    const res = await fetchWithCorsProxy(url);
+    const url = `/api/binance/klines?symbol=${symbol.toUpperCase()}USDT&interval=${interval}&limit=${limit}`;
+    const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
     if (!Array.isArray(data) || data.length === 0) return null;

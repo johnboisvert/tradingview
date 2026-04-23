@@ -19,43 +19,6 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-04-23T15:38:35.840Z",
-  "lastAlerts": [
-    {
-      "type": "coingecko_signal",
-      "coin": "humanity",
-      "direction": "LONG",
-      "rr": 1.7,
-      "entry": 0.138829,
-      "tp1": 0.1501,
-      "tp2": 0.1576,
-      "tp3": 0.1689,
-      "sl": 0.1279,
-      "confidence": 96
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "starknet",
-      "direction": "LONG",
-      "rr": 6.5,
-      "entry": 0.04350039,
-      "tp1": 0.05,
-      "tp2": 0.0505,
-      "tp3": 0.051,
-      "sl": 0.0424,
-      "confidence": 91
-    },
-    {
-      "type": "coingecko_signal",
-      "coin": "genius-3",
-      "direction": "LONG",
-      "rr": 1.7,
-      "entry": 0.692134,
-      "tp1": 0.7614,
-      "tp2": 0.769,
-      "tp3": 0.9075,
-      "sl": 0.646,
-      "confidence": 91
-    }
-  ]
+  "lastCheck": "2026-03-30T21:15:56.445Z",
+  "lastAlerts": []
 }

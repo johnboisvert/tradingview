@@ -17,9 +17,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
 
-// ─── CoinGecko response cache (in-memory, 60s TTL) ───
+// ─── CoinGecko response cache (in-memory, 5min TTL) ───
 const cgCache = new Map(); // key → { data, status, timestamp }
-const CG_CACHE_TTL = 60_000; // 60 seconds
+const CG_CACHE_TTL = 300_000; // 5 minutes — reduced rate limit hits
 
 // Stripe webhook needs raw body for signature verification — must be before json parser
 app.use('/api/v1/payment/stripe_webhook', express.raw({ type: 'application/json' }));
@@ -218,6 +218,149 @@ app.put('/api/users/:username/plan', (req, res) => {
   res.json({ success: true, subscription_end: user.subscription_end });
 });
 
+// ============================================================
+// Super Admin Management — Server-side JSON file persistence
+// ============================================================
+const SUPER_ADMIN_FILE = path.join(DATA_DIR, 'super_admin.json');
+const adminSessions = new Map(); // token → { email, name, role, created_at }
+const ADMIN_SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+function loadSuperAdmin() {
+  try {
+    if (existsSync(SUPER_ADMIN_FILE)) {
+      return JSON.parse(readFileSync(SUPER_ADMIN_FILE, 'utf-8'));
+    }
+  } catch (err) {
+    console.error('Error loading super admin:', err);
+  }
+  return null;
+}
+
+function saveSuperAdmin(admin) {
+  try {
+    writeFileSync(SUPER_ADMIN_FILE, JSON.stringify(admin, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving super admin:', err);
+  }
+}
+
+function generateSessionToken() {
+  return createHash('sha256').update(Math.random().toString() + Date.now().toString() + Math.random().toString()).digest('hex');
+}
+
+// Clean expired sessions periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, session] of adminSessions) {
+    if (now - new Date(session.created_at).getTime() > ADMIN_SESSION_TTL) {
+      adminSessions.delete(token);
+    }
+  }
+}, 30 * 60 * 1000); // Every 30 minutes
+
+// ─── GET /api/v1/admin/status — Check if super admin is configured ───
+app.get('/api/v1/admin/status', (req, res) => {
+  const admin = loadSuperAdmin();
+  res.json({ configured: !!admin });
+});
+
+// ─── POST /api/v1/admin/setup — Initialize super admin (one-time only) ───
+app.post('/api/v1/admin/setup', (req, res) => {
+  const existing = loadSuperAdmin();
+  if (existing) {
+    return res.status(403).json({ success: false, message: 'Super admin déjà configuré.' });
+  }
+
+  const { email, name, password } = req.body;
+  if (!email || !name || !password) {
+    return res.status(400).json({ success: false, message: 'Email, nom et mot de passe requis.' });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ success: false, message: 'Adresse email invalide.' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ success: false, message: 'Le mot de passe doit contenir au moins 6 caractères.' });
+  }
+
+  const admin = {
+    email: email.trim().toLowerCase(),
+    name: name.trim(),
+    passwordHash: hashPwd(password),
+    role: 'super_admin',
+    created_at: new Date().toISOString(),
+  };
+
+  saveSuperAdmin(admin);
+  console.log(`[Admin] Super admin created: ${admin.email}`);
+  res.json({ success: true, message: 'Super admin créé avec succès.' });
+});
+
+// ─── POST /api/v1/admin/login — Authenticate admin ───
+app.post('/api/v1/admin/login', (req, res) => {
+  const admin = loadSuperAdmin();
+  if (!admin) {
+    return res.status(403).json({ success: false, message: 'Super admin non configuré.' });
+  }
+
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: 'Email et mot de passe requis.' });
+  }
+
+  if (admin.email !== email.trim().toLowerCase() || admin.passwordHash !== hashPwd(password)) {
+    return res.json({ success: false, message: 'Email ou mot de passe incorrect.' });
+  }
+
+  // Generate session token
+  const token = generateSessionToken();
+  adminSessions.set(token, {
+    email: admin.email,
+    name: admin.name,
+    role: admin.role,
+    created_at: new Date().toISOString(),
+  });
+
+  console.log(`[Admin] Login successful: ${admin.email}`);
+  res.json({
+    success: true,
+    token,
+    admin: { email: admin.email, name: admin.name, role: admin.role },
+  });
+});
+
+// ─── POST /api/v1/admin/verify — Verify session token ───
+app.post('/api/v1/admin/verify', (req, res) => {
+  const { token } = req.body;
+  if (!token) {
+    return res.json({ valid: false });
+  }
+
+  const session = adminSessions.get(token);
+  if (!session) {
+    return res.json({ valid: false });
+  }
+
+  // Check expiry
+  if (Date.now() - new Date(session.created_at).getTime() > ADMIN_SESSION_TTL) {
+    adminSessions.delete(token);
+    return res.json({ valid: false });
+  }
+
+  res.json({ valid: true, admin: { email: session.email, name: session.name, role: session.role } });
+});
+
+// ─── POST /api/v1/admin/logout — Invalidate session ───
+app.post('/api/v1/admin/logout', (req, res) => {
+  const { token } = req.body;
+  if (token) {
+    adminSessions.delete(token);
+  }
+  res.json({ success: true });
+});
+
 // ─── Gemini AI Chat proxy ───
 app.post('/api/ai-chat', async (req, res) => {
   if (!GEMINI_API_KEY) {
@@ -332,13 +475,73 @@ app.get('/api/coingecko/{*path}', async (req, res) => {
   }
 });
 
-// ─── Binance Klines API proxy (with symbol validation) ───
-const INVALID_BINANCE_SYMBOLS = new Set(); // Cache of known-bad symbols
+// ─── Binance Klines API proxy (with symbol validation + Bybit fallback) ───
+const INVALID_BINANCE_SYMBOLS = new Set([
+  'POWERUSDT', 'SIRENUSDT', 'PIPPINUSDT', 'RIVERUSDT', 'APEPEUSDT',
+  'XAUTUSDT', 'FFUSDT', 'XPLUSDT', 'BARDUSDT', 'VVVUSDT', 'MONUSDT', 'KITEUSDT',
+]); // Pre-populated known-bad symbols + runtime cache
+const BYBIT_FALLBACK_SYMBOLS = new Set(); // Cache of symbols that need Bybit
 const STABLECOIN_BASES = new Set([
   'USDT', 'USDC', 'BUSD', 'TUSD', 'DAI', 'FDUSD', 'USDP', 'USDD', 'GUSD',
   'FRAX', 'LUSD', 'SUSD', 'EURS', 'EURT', 'USDJ', 'UST', 'AUSD', 'PYUSD',
   'CRVUSD', 'EURC', 'USDE', 'EUR', 'GBP', 'AUD',
 ]);
+
+// ─── Bybit interval mapping (Binance → Bybit) ───
+function binanceToBybitInterval(interval) {
+  const map = { '1m': '1', '3m': '3', '5m': '5', '15m': '15', '30m': '30', '1h': '60', '2h': '120', '4h': '240', '6h': '360', '12h': '720', '1d': 'D', '1w': 'W', '1M': 'M' };
+  return map[interval] || '60';
+}
+
+// ─── Convert Bybit klines to Binance klines format ───
+function bybitKlinesToBinanceFormat(bybitList) {
+  // Bybit returns: [[timestamp, open, high, low, close, volume, turnover], ...]
+  // Bybit returns newest first, so reverse
+  const reversed = [...bybitList].reverse();
+  return reversed.map(k => [
+    parseInt(k[0]),        // 0: Open time (timestamp ms)
+    k[1],                  // 1: Open
+    k[2],                  // 2: High
+    k[3],                  // 3: Low
+    k[4],                  // 4: Close
+    k[5],                  // 5: Volume
+    parseInt(k[0]) + 60000, // 6: Close time (approx)
+    k[6] || '0',           // 7: Quote asset volume (turnover)
+    '0',                   // 8: Number of trades
+    '0',                   // 9: Taker buy base
+    '0',                   // 10: Taker buy quote
+    '0',                   // 11: Ignore
+  ]);
+}
+
+// ─── Fetch klines from Bybit as fallback ───
+async function fetchBybitKlines(symbol, interval, limit) {
+  const bybitInterval = binanceToBybitInterval(interval);
+  const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${bybitInterval}&limit=${limit}`;
+  const resp = await fetch(url, {
+    method: 'GET',
+    headers: { 'Accept': 'application/json', 'User-Agent': 'CryptoIA/1.0' },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!resp.ok) return null;
+  const json = await resp.json();
+  if (json.retCode !== 0 || !json.result?.list?.length) return null;
+  return json.result.list;
+}
+
+// ─── Fetch ticker price from Bybit as fallback ───
+async function fetchBybitPrice(symbol) {
+  const url = `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`;
+  const resp = await fetch(url, {
+    method: 'GET',
+    headers: { 'Accept': 'application/json' },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!resp.ok) return null;
+  const json = await resp.json();
+  if (json.retCode !== 0 || !json.result?.list?.length) return null;
+  return parseFloat(json.result.list[0].lastPrice);
+}
 
 app.get('/api/binance/klines', async (req, res) => {
   const { symbol, interval, limit } = req.query;
@@ -354,12 +557,29 @@ app.get('/api/binance/klines', async (req, res) => {
     return res.status(400).json({ error: 'Invalid or stablecoin symbol', symbol });
   }
 
-  // Check cached invalid symbols
-  if (INVALID_BINANCE_SYMBOLS.has(symbol)) {
-    return res.status(400).json({ error: 'Known invalid Binance symbol', symbol });
+  const effectiveInterval = interval || '1h';
+  const effectiveLimit = limit || '168';
+
+  // If we know this symbol needs Bybit, go directly to Bybit
+  if (BYBIT_FALLBACK_SYMBOLS.has(symbol)) {
+    try {
+      const bybitList = await fetchBybitKlines(symbol, effectiveInterval, effectiveLimit);
+      if (bybitList) {
+        const binanceFormat = bybitKlinesToBinanceFormat(bybitList);
+        return res.status(200).set('Content-Type', 'application/json').json(binanceFormat);
+      }
+    } catch (err) {
+      console.error(`[Bybit] Klines fallback error for ${symbol}:`, err.message);
+    }
+    return res.status(400).json({ error: 'Symbol not available on Binance or Bybit', symbol });
   }
 
-  const targetUrl = `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${interval || '1h'}&limit=${limit || '168'}`;
+  // Check cached invalid symbols (not on Binance AND not on Bybit)
+  if (INVALID_BINANCE_SYMBOLS.has(symbol)) {
+    return res.status(400).json({ error: 'Known invalid symbol', symbol });
+  }
+
+  const targetUrl = `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${effectiveInterval}&limit=${effectiveLimit}`;
 
   try {
     const upstreamRes = await fetch(targetUrl, {
@@ -368,18 +588,39 @@ app.get('/api/binance/klines', async (req, res) => {
       signal: AbortSignal.timeout(15000),
     });
 
-    const data = await upstreamRes.text();
-
-    // Cache 400 responses to avoid repeated requests
-    if (upstreamRes.status === 400) {
+    // If Binance returns 400 (invalid symbol), try Bybit as fallback
+    if (upstreamRes.status === 400 || upstreamRes.status === 451) {
+      console.log(`[Binance] ${symbol} returned ${upstreamRes.status}, trying Bybit fallback...`);
+      try {
+        const bybitList = await fetchBybitKlines(symbol, effectiveInterval, effectiveLimit);
+        if (bybitList) {
+          BYBIT_FALLBACK_SYMBOLS.add(symbol); // Cache for future requests
+          console.log(`[Bybit] ✅ ${symbol} found on Bybit (${bybitList.length} klines)`);
+          const binanceFormat = bybitKlinesToBinanceFormat(bybitList);
+          return res.status(200).set('Content-Type', 'application/json').json(binanceFormat);
+        }
+      } catch (bybitErr) {
+        console.error(`[Bybit] Fallback error for ${symbol}:`, bybitErr.message);
+      }
+      // Neither Binance nor Bybit has this symbol
       INVALID_BINANCE_SYMBOLS.add(symbol);
+      return res.status(400).json({ error: 'Symbol not available on Binance or Bybit', symbol });
     }
 
+    const data = await upstreamRes.text();
     res.status(upstreamRes.status)
       .set('Content-Type', 'application/json')
       .send(data);
   } catch (err) {
     console.error('Binance proxy error:', err);
+    // On network error, also try Bybit
+    try {
+      const bybitList = await fetchBybitKlines(symbol, effectiveInterval, effectiveLimit);
+      if (bybitList) {
+        const binanceFormat = bybitKlinesToBinanceFormat(bybitList);
+        return res.status(200).set('Content-Type', 'application/json').json(binanceFormat);
+      }
+    } catch (_e) { /* ignore */ }
     res.status(502).json({ error: 'Binance proxy failed', message: err?.message });
   }
 });
@@ -557,9 +798,9 @@ function formatPrice(price) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// COOLDOWN SYSTEM — In-memory primary + file backup, 4h per crypto+direction
+// COOLDOWN SYSTEM — In-memory primary + file backup, 12h per crypto+direction (v6)
 // ═══════════════════════════════════════════════════════════════════════════════
-const COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours in ms
+const COOLDOWN_MS = 12 * 60 * 60 * 1000; // v6: 12 hours in ms (swing trade cooldown)
 
 // PRIMARY: In-memory cooldown Map — survives as long as the process runs
 // key: `${coinId}_${direction}` → timestamp (ms)
@@ -793,53 +1034,61 @@ function calculateSRLevels(coin) {
 
 /**
  * Align TP levels with S/R for higher probability.
- * (Same algorithm as Trades.tsx alignTPWithSR)
+ * v6: Wider SL (6-12%) + adjusted TP ratios for swing trading
  */
 function alignTPWithSR(side, entry, slPercent, supports, resistances) {
-  const slDistance = entry * (slPercent / 100);
+  // v6: Enforce minimum 6% SL for swing trades
+  const effectiveSlPercent = Math.max(slPercent, 6.0);
+  const slDistance = entry * (effectiveSlPercent / 100);
 
   let tp1, tp2, tp3, sl;
 
   if (side === 'LONG') {
     sl = entry - slDistance;
-    tp1 = entry + slDistance * 1.5;
-    tp2 = entry + slDistance * 2.5;
-    tp3 = entry + slDistance * 4;
+    // Enforce minimum 6% SL distance
+    if (Math.abs(entry - sl) / entry < 0.06) sl = entry * 0.94;
+    // v6: Adjusted TP ratios for wider SL
+    tp1 = entry + slDistance * 1.2;   // 1.2:1 — slightly above 1:1 to account for fees
+    tp2 = entry + slDistance * 2.5;   // 2.5:1 — moderate target
+    tp3 = entry + slDistance * 4.0;   // 4:1 — extended target
 
     const nearestSupport = supports.find(s => s.price < entry * 0.995);
-    if (nearestSupport && nearestSupport.price > sl * 0.97 && nearestSupport.price < entry * 0.99) {
-      sl = nearestSupport.price * 0.998;
+    if (nearestSupport && nearestSupport.price > sl * 0.95 && nearestSupport.price < entry * 0.96) {
+      sl = nearestSupport.price * 0.997;
+      if (Math.abs(entry - sl) / entry < 0.06) sl = entry * 0.94;
     }
 
     const resAbove = resistances.filter(r => r.price > entry * 1.005);
-    if (resAbove.length >= 1 && resAbove[0].price > tp1 * 0.95 && resAbove[0].price < tp1 * 1.15) {
+    if (resAbove.length >= 1 && resAbove[0].price > tp1 * 0.90 && resAbove[0].price < tp1 * 1.20) {
       tp1 = resAbove[0].price * 0.998;
     }
-    if (resAbove.length >= 2 && resAbove[1].price > tp2 * 0.85 && resAbove[1].price < tp2 * 1.2) {
+    if (resAbove.length >= 2 && resAbove[1].price > tp2 * 0.85 && resAbove[1].price < tp2 * 1.25) {
       tp2 = resAbove[1].price * 0.998;
     }
-    if (resAbove.length >= 3 && resAbove[2].price > tp3 * 0.8) {
+    if (resAbove.length >= 3 && resAbove[2].price > tp3 * 0.80) {
       tp3 = resAbove[2].price * 0.998;
     }
   } else {
     sl = entry + slDistance;
-    tp1 = entry - slDistance * 1.5;
+    if (Math.abs(sl - entry) / entry < 0.06) sl = entry * 1.06;
+    tp1 = entry - slDistance * 1.2;
     tp2 = entry - slDistance * 2.5;
-    tp3 = entry - slDistance * 4;
+    tp3 = entry - slDistance * 4.0;
 
     const nearestResistance = resistances.find(r => r.price > entry * 1.005);
-    if (nearestResistance && nearestResistance.price < sl * 1.03 && nearestResistance.price > entry * 1.01) {
-      sl = nearestResistance.price * 1.002;
+    if (nearestResistance && nearestResistance.price < sl * 1.05 && nearestResistance.price > entry * 1.04) {
+      sl = nearestResistance.price * 1.003;
+      if (Math.abs(sl - entry) / entry < 0.06) sl = entry * 1.06;
     }
 
     const supBelow = supports.filter(s => s.price < entry * 0.995);
-    if (supBelow.length >= 1 && supBelow[0].price < tp1 * 1.05 && supBelow[0].price > tp1 * 0.85) {
+    if (supBelow.length >= 1 && supBelow[0].price < tp1 * 1.10 && supBelow[0].price > tp1 * 0.80) {
       tp1 = supBelow[0].price * 1.002;
     }
-    if (supBelow.length >= 2 && supBelow[1].price < tp2 * 1.15 && supBelow[1].price > tp2 * 0.8) {
+    if (supBelow.length >= 2 && supBelow[1].price < tp2 * 1.15 && supBelow[1].price > tp2 * 0.80) {
       tp2 = supBelow[1].price * 1.002;
     }
-    if (supBelow.length >= 3 && supBelow[2].price < tp3 * 1.2) {
+    if (supBelow.length >= 3 && supBelow[2].price < tp3 * 1.20) {
       tp3 = supBelow[2].price * 1.002;
     }
   }
@@ -865,12 +1114,15 @@ function roundPrice(value, reference) {
 
 /**
  * Generate trade setups from CoinGecko market data.
- * (Same algorithm as Trades.tsx generateRealSetups)
+ * v6: Now async — fetches Binance 4H klines for RSI + EMA confirmation.
+ * Returns raw setups without Daily filter — Daily filter applied async in checkAndSendAlerts.
  */
-function generateRealSetups(coins) {
+async function generateRealSetups(coins) {
   const setups = [];
-  const triggerTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const triggerTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Montreal' });
 
+  // Phase 1: CoinGecko-based pre-filter (fast)
+  const candidates = [];
   for (const c of coins) {
     if (!c || !c.current_price || !c.market_cap) continue;
 
@@ -880,98 +1132,296 @@ function generateRealSetups(coins) {
     const mcap = c.market_cap || 1;
     const volMcapRatio = volume / mcap;
 
-    const { supports, resistances } = calculateSRLevels(c);
-
-    const volatility = Math.max(Math.abs(change24h) * 0.5, 1.5);
-    const slPercent = volatility * 0.8;
+    // v4: Skip low volume coins
+    if (volMcapRatio < 0.05) continue;
 
     let side;
     let confidence = 0;
     let reason;
 
-    if (change24h > 2 && volMcapRatio > 0.08) {
-      side = 'LONG';
-    confidence = 50;
-      if (change24h > 5) confidence += 15; else confidence += 8;
-      if (volMcapRatio > 0.2) confidence += 15; else if (volMcapRatio > 0.1) confidence += 10;
-      if (change24h > 8) confidence += 10;
-      reason = `Momentum haussier (+${change24h.toFixed(1)}%) avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
-    } else if (change24h < -8) {
+    // v5: Balanced LONG/SHORT entry conditions
+    // LONG — Momentum: moderate uptrend with volume
+    if (change24h > 3 && change24h < 15 && volMcapRatio > 0.10) {
       side = 'LONG';
       confidence = 45;
-      if (change24h < -15) confidence += 15; else if (change24h < -10) confidence += 10;
-      if (volMcapRatio > 0.15) confidence += 10;
+      if (change24h > 6) confidence += 12; else if (change24h > 4) confidence += 8; else confidence += 5;
+      if (volMcapRatio > 0.25) confidence += 12; else if (volMcapRatio > 0.15) confidence += 8; else confidence += 4;
+      if (change24h > 8) confidence += 8;
+      reason = `Momentum haussier (+${change24h.toFixed(1)}%) avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
+    }
+    // LONG — Oversold bounce: deep drop with volume (reversal play)
+    else if (change24h < -10 && change24h > -25 && volMcapRatio > 0.12) {
+      side = 'LONG';
+      confidence = 40;
+      if (change24h < -18) confidence += 12; else if (change24h < -14) confidence += 10; else confidence += 6;
+      if (volMcapRatio > 0.20) confidence += 8; else confidence += 4;
       reason = `Survente potentielle (${change24h.toFixed(1)}%) — rebond technique possible`;
-    } else if (change24h < -3 && volMcapRatio > 0.1) {
+    }
+    // SHORT — Bearish momentum: moderate downtrend with distribution volume (balanced range)
+    else if (change24h < -3 && change24h > -15 && volMcapRatio > 0.10) {
       side = 'SHORT';
-    confidence = 50;
-      if (change24h < -5) confidence += 10; else confidence += 5;
-      if (volMcapRatio > 0.2) confidence += 15; else confidence += 8;
+      confidence = 45;
+      if (change24h < -8) confidence += 12; else if (change24h < -5) confidence += 8; else confidence += 5;
+      if (volMcapRatio > 0.25) confidence += 12; else if (volMcapRatio > 0.15) confidence += 8; else confidence += 4;
       reason = `Tendance baissière (${change24h.toFixed(1)}%) avec volume de distribution (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
-    } else {
+    }
+    // SHORT — Overbought rejection: strong pump likely to retrace
+    else if (change24h > 15 && change24h < 40 && volMcapRatio > 0.12) {
+      side = 'SHORT';
+      confidence = 40;
+      if (change24h > 25) confidence += 12; else if (change24h > 20) confidence += 10; else confidence += 6;
+      if (volMcapRatio > 0.20) confidence += 8; else confidence += 4;
+      reason = `Surachat potentiel (+${change24h.toFixed(1)}%) — retracement probable`;
+    }
+    else {
       continue;
     }
 
-    const { tp1, tp2, tp3, sl } = alignTPWithSR(side, price, slPercent, supports, resistances);
-
-    const nearestSupport = supports[0];
-    const nearestResistance = resistances[0];
-
-    if (side === 'LONG') {
-      if (nearestSupport && Math.abs(price - nearestSupport.price) / price < 0.02) {
-        confidence += 10;
-        reason += ` | Proche du support $${formatPrice(nearestSupport.price)}`;
-      }
-      if (nearestResistance && Math.abs(tp1 - nearestResistance.price) / tp1 < 0.02) {
-        confidence += 5;
-      }
-    } else {
-      if (nearestResistance && Math.abs(price - nearestResistance.price) / price < 0.02) {
-        confidence += 10;
-        reason += ` | Proche de la résistance $${formatPrice(nearestResistance.price)}`;
-      }
-      if (nearestSupport && Math.abs(tp1 - nearestSupport.price) / tp1 < 0.02) {
-        confidence += 5;
-      }
-    }
-
-    if (Math.abs(sl - price) / price < 0.005) {
-      confidence -= 10;
-    }
-
-    if (supports.length >= 2) confidence += 3;
-    if (resistances.length >= 2) confidence += 3;
-
-    confidence = Math.min(98, Math.max(25, confidence));
-
-    const riskDistance = Math.abs(price - sl);
-    const rewardDistance = Math.abs(tp2 - price);
-    const rr = riskDistance > 0 ? Math.round((rewardDistance / riskDistance) * 10) / 10 : 2;
-
-    setups.push({
-      id: c.id,
-      symbol: ((c.symbol || '').toUpperCase()) + 'USDT',
-      name: c.name || 'Unknown',
-      side,
-      currentPrice: price,
-      entry: price,
-      stopLoss: roundPrice(sl, price),
-      tp1: roundPrice(tp1, price),
-      tp2: roundPrice(tp2, price),
-      tp3: roundPrice(tp3, price),
-      rr,
-      change24h,
-      volume,
-      marketCap: mcap,
-      confidence,
-      reason,
-      triggerTime,
-      supports: supports.slice(0, 3),
-      resistances: resistances.slice(0, 3),
-    });
+    candidates.push({ coin: c, side, confidence, reason, price, change24h, volume, mcap, volMcapRatio });
   }
 
+  console.log(`[Telegram] Phase 1: ${candidates.length} CoinGecko candidates passed pre-filter`);
+
+  // Phase 2: Binance 4H technical confirmation (RSI + EMA + Volume)
+  const SWING_BATCH_SIZE = 5;
+  for (let i = 0; i < candidates.length; i += SWING_BATCH_SIZE) {
+    const batch = candidates.slice(i, i + SWING_BATCH_SIZE);
+    const results = await Promise.all(batch.map(async (cand) => {
+      const { coin: c, side, reason: baseReason, price, change24h, volume, mcap, volMcapRatio } = cand;
+      let { confidence } = cand;
+      let reason = baseReason;
+      const symbol = ((c.symbol || '').toUpperCase()) + 'USDT';
+
+      // ─── Fetch Binance 4H klines for RSI + EMA confirmation ───
+      try {
+        const h4Candles = await fetchBinanceKlines(symbol, '4h', 50);
+        if (h4Candles.length >= 20) {
+          const h4Closes = h4Candles.map(k => k.close);
+
+          // RSI(14) on 4H
+          const rsiArr = calcRSI(h4Closes, 14);
+          const rsi4h = rsiArr[rsiArr.length - 1];
+
+          // v6: HARD REJECT if RSI conflicts with direction
+          if (side === 'LONG' && rsi4h > 65) {
+            console.log(`[Telegram] ❌ ${symbol} LONG rejected: RSI(4H)=${rsi4h.toFixed(1)} > 65 (overbought)`);
+            return null;
+          }
+          if (side === 'SHORT' && rsi4h < 35) {
+            console.log(`[Telegram] ❌ ${symbol} SHORT rejected: RSI(4H)=${rsi4h.toFixed(1)} < 35 (oversold)`);
+            return null;
+          }
+
+          // EMA8/EMA20 on 4H — require trend alignment
+          const h4Ema8 = calcEMA(h4Closes, 8);
+          const h4Ema20 = calcEMA(h4Closes, 20);
+          const h4Ema8Val = h4Ema8[h4Ema8.length - 1];
+          const h4Ema20Val = h4Ema20[h4Ema20.length - 1];
+
+          if (side === 'LONG' && h4Ema8Val < h4Ema20Val) {
+            console.log(`[Telegram] ❌ ${symbol} LONG rejected: 4H EMA8 (${h4Ema8Val.toFixed(4)}) < EMA20 (${h4Ema20Val.toFixed(4)}) — bearish trend`);
+            return null;
+          }
+          if (side === 'SHORT' && h4Ema8Val > h4Ema20Val) {
+            console.log(`[Telegram] ❌ ${symbol} SHORT rejected: 4H EMA8 (${h4Ema8Val.toFixed(4)}) > EMA20 (${h4Ema20Val.toFixed(4)}) — bullish trend`);
+            return null;
+          }
+
+          // Volume confirmation: recent 4H volume above average
+          const recentVols = h4Candles.slice(-3).map(k => k.volume);
+          const avgVol = h4Candles.slice(-20).reduce((s, k) => s + k.volume, 0) / 20;
+          const recentAvgVol = recentVols.reduce((s, v) => s + v, 0) / recentVols.length;
+
+          if (avgVol > 0 && recentAvgVol > avgVol * 1.2) {
+            confidence += 8;
+            reason += ` | Volume 4H confirmé (${(recentAvgVol / avgVol).toFixed(1)}x moyenne)`;
+          } else if (avgVol > 0 && recentAvgVol > avgVol * 0.8) {
+            confidence += 3;
+            reason += ` | Volume 4H normal`;
+          } else {
+            confidence -= 5;
+            reason += ` | ⚠️ Volume 4H faible`;
+          }
+
+          // RSI bonus/penalty
+          if (side === 'LONG') {
+            if (rsi4h < 40) { confidence += 8; reason += ` | RSI(4H): ${rsi4h.toFixed(0)} — zone de survente`; }
+            else if (rsi4h < 50) { confidence += 4; reason += ` | RSI(4H): ${rsi4h.toFixed(0)} — neutre-bas`; }
+            else { reason += ` | RSI(4H): ${rsi4h.toFixed(0)}`; }
+          } else {
+            if (rsi4h > 60) { confidence += 8; reason += ` | RSI(4H): ${rsi4h.toFixed(0)} — zone de surachat`; }
+            else if (rsi4h > 50) { confidence += 4; reason += ` | RSI(4H): ${rsi4h.toFixed(0)} — neutre-haut`; }
+            else { reason += ` | RSI(4H): ${rsi4h.toFixed(0)}`; }
+          }
+
+          // EMA alignment bonus
+          const emaSpread = Math.abs(h4Ema8Val - h4Ema20Val) / h4Ema20Val;
+          if (emaSpread > 0.01) { confidence += 5; reason += ` | 4H EMA fortement alignées`; }
+          else if (emaSpread > 0.003) { confidence += 2; reason += ` | 4H EMA alignées`; }
+
+        } else {
+          // Not enough 4H data — penalize
+          confidence -= 10;
+          reason += ` | ⚠️ Données 4H insuffisantes`;
+        }
+      } catch (err) {
+        console.warn(`[Telegram] 4H fetch error for ${symbol}:`, err.message);
+        confidence -= 10;
+        reason += ` | ⚠️ Erreur données 4H`;
+      }
+
+      const { supports, resistances } = calculateSRLevels(c);
+
+      // v6: Wider SL for swing (6-12%)
+      const rawVolatility = Math.abs(change24h);
+      const slPercent = Math.max(6.0, Math.min(rawVolatility * 0.9, 12.0));
+
+      const { tp1, tp2, tp3, sl } = alignTPWithSR(side, price, slPercent, supports, resistances);
+
+      const nearestSupport = supports[0];
+      const nearestResistance = resistances[0];
+
+      if (side === 'LONG') {
+        if (nearestSupport && Math.abs(price - nearestSupport.price) / price < 0.025) {
+          confidence += 8;
+          reason += ` | Proche du support $${formatPrice(nearestSupport.price)}`;
+        }
+        if (nearestResistance && Math.abs(tp1 - nearestResistance.price) / tp1 < 0.02) {
+          confidence += 5;
+        }
+      } else {
+        if (nearestResistance && Math.abs(price - nearestResistance.price) / price < 0.025) {
+          confidence += 8;
+          reason += ` | Proche de la résistance $${formatPrice(nearestResistance.price)}`;
+        }
+        if (nearestSupport && Math.abs(tp1 - nearestSupport.price) / tp1 < 0.02) {
+          confidence += 5;
+        }
+      }
+
+      if (Math.abs(sl - price) / price < 0.05) {
+        confidence -= 10;
+      }
+
+      if (supports.length >= 2) confidence += 2;
+      if (resistances.length >= 2) confidence += 2;
+
+      // v6: Lowered confidence floor to 30 (let weak signals stay weak so they get filtered)
+      confidence = Math.min(98, Math.max(30, confidence));
+
+      const riskDistance = Math.abs(price - sl);
+      const rewardDistance = Math.abs(tp2 - price);
+      const rr = riskDistance > 0 ? Math.round((rewardDistance / riskDistance) * 10) / 10 : 2;
+
+      return {
+        id: c.id,
+        symbol,
+        name: c.name || 'Unknown',
+        side,
+        currentPrice: price,
+        entry: price,
+        stopLoss: roundPrice(sl, price),
+        tp1: roundPrice(tp1, price),
+        tp2: roundPrice(tp2, price),
+        tp3: roundPrice(tp3, price),
+        rr,
+        change24h,
+        volume,
+        marketCap: mcap,
+        confidence,
+        reason,
+        triggerTime,
+        supports: supports.slice(0, 3),
+        resistances: resistances.slice(0, 3),
+      };
+    }));
+
+    for (const setup of results) {
+      if (setup) setups.push(setup);
+    }
+
+    // Delay between batches to respect Binance rate limits
+    if (i + SWING_BATCH_SIZE < candidates.length) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+
+  console.log(`[Telegram] Phase 2: ${setups.length} setups passed Binance 4H confirmation`);
   return setups.sort((a, b) => b.confidence - a.confidence);
+}
+
+/**
+ * Apply Daily (1D) EMA8/EMA20 trend filter to a swing setup.
+ * Fetches Daily candles from Binance, calculates trend, adjusts confidence.
+ * Returns the setup with d1_trend, ema8_d1, ema20_d1 fields added, or null if blocked.
+ */
+async function applyDailyFilterToSwingSetup(setup) {
+  try {
+    const d1Candles = await fetchBinanceKlines(setup.symbol, '1d', 50);
+
+    let d1Trend = 'neutral';
+    let d1Ema8Val = null;
+    let d1Ema20Val = null;
+
+    if (d1Candles.length >= 25) {
+      const d1Closes = d1Candles.map(c => c.close);
+      const d1Ema8 = calcEMA(d1Closes, 8);
+      const d1Ema20 = calcEMA(d1Closes, 20);
+      d1Ema8Val = d1Ema8[d1Ema8.length - 1];
+      d1Ema20Val = d1Ema20[d1Ema20.length - 1];
+      const d1Spread = Math.abs(d1Ema8Val - d1Ema20Val) / d1Ema20Val;
+      if (d1Spread < 0.001) {
+        d1Trend = 'neutral';
+      } else if (d1Ema8Val > d1Ema20Val) {
+        d1Trend = 'bullish';
+      } else {
+        d1Trend = 'bearish';
+      }
+    }
+
+    // v6: Daily trend HARD BLOCK — reject trades against daily trend
+    if (setup.side === 'LONG' && d1Trend === 'bearish') {
+      console.log(`[Telegram] ❌ ${setup.symbol} LONG BLOCKED: Daily trend is bearish — hard reject`);
+      return null;
+    }
+    if (setup.side === 'SHORT' && d1Trend === 'bullish') {
+      console.log(`[Telegram] ❌ ${setup.symbol} SHORT BLOCKED: Daily trend is bullish — hard reject`);
+      return null;
+    }
+
+    // Apply Daily trend bonus for alignment
+    let d1Penalty = 0;
+    let d1Reason = '';
+    if (setup.side === 'LONG' && d1Trend === 'bullish') {
+      d1Penalty = -8;
+      d1Reason = `✅ Daily Bullish — bonus alignement +8%`;
+    } else if (setup.side === 'SHORT' && d1Trend === 'bearish') {
+      d1Penalty = -8;
+      d1Reason = `✅ Daily Bearish — bonus alignement +8%`;
+    }
+
+    let newConfidence = setup.confidence - d1Penalty;
+    newConfidence = Math.min(98, Math.max(30, newConfidence));
+
+    // Add Daily info to reason
+    let newReason = setup.reason;
+    if (d1Reason) {
+      newReason += ` | ${d1Reason}`;
+    }
+
+    return {
+      ...setup,
+      confidence: newConfidence,
+      reason: newReason,
+      d1_trend: d1Trend,
+      ema8_d1: d1Ema8Val,
+      ema20_d1: d1Ema20Val,
+    };
+  } catch (err) {
+    console.error(`[Telegram] Daily filter error for ${setup.symbol}:`, err.message);
+    // On error, return setup unchanged (no filter applied)
+    return { ...setup, d1_trend: 'unknown', ema8_d1: null, ema20_d1: null };
+  }
 }
 
 /**
@@ -1021,8 +1471,19 @@ async function checkAndSendAlerts() {
       return [];
     }
 
-    // Generate setups using same logic as /trades page
-    const allSetups = generateRealSetups(coins);
+    // v6: Max 10 active trade calls limit
+    const MAX_ACTIVE_TRADE_CALLS = 10;
+    const currentTradeCalls = loadTradeCalls();
+    const activeTradeCallCount = currentTradeCalls.filter(c => c.status === 'active').length;
+    if (activeTradeCallCount >= MAX_ACTIVE_TRADE_CALLS) {
+      console.log(`[Telegram] ⛔ Max active trade calls reached (${activeTradeCallCount}/${MAX_ACTIVE_TRADE_CALLS}) — skipping new signals`);
+      return [];
+    }
+    const remainingTradeSlots = MAX_ACTIVE_TRADE_CALLS - activeTradeCallCount;
+    console.log(`[Telegram] Active trade calls: ${activeTradeCallCount}/${MAX_ACTIVE_TRADE_CALLS} — ${remainingTradeSlots} slots available`);
+
+    // Generate setups using same logic as /trades page (now async with Binance 4H confirmation)
+    const allSetups = await generateRealSetups(coins);
     console.log(`[Telegram] Generated ${allSetups.length} trade setups`);
 
     // Deduplicate: keep only the highest-confidence setup per coin
@@ -1033,24 +1494,52 @@ async function checkAndSendAlerts() {
         seenCoins.set(setup.id, setup);
       }
     }
-    const setups = Array.from(seenCoins.values());
-    console.log(`[Telegram] After dedup: ${setups.length} unique coin setups`);
+    const dedupedSetups = Array.from(seenCoins.values());
+    console.log(`[Telegram] After dedup: ${dedupedSetups.length} unique coin setups`);
 
-    // Filter: only send signals with confidence >= 90%
-    const MIN_CONFIDENCE = 90;
+    // Apply Daily (1D) EMA8/EMA20 trend filter to each setup
+    console.log(`[Telegram] 📊 Applying Daily trend filter to ${dedupedSetups.length} setups...`);
+    const setups = [];
+    const D1_BATCH_SIZE = 5;
+    for (let i = 0; i < dedupedSetups.length; i += D1_BATCH_SIZE) {
+      const batch = dedupedSetups.slice(i, i + D1_BATCH_SIZE);
+      const filtered = await Promise.all(batch.map(s => applyDailyFilterToSwingSetup(s)));
+      for (const s of filtered) {
+        if (s) setups.push(s);
+      }
+      if (i + D1_BATCH_SIZE < dedupedSetups.length) {
+        await new Promise(r => setTimeout(r, 300));
+      }
+    }
+
+    // Debug: log confidences after Daily filter
+    if (setups.length > 0) {
+      const confValues = setups.slice(0, 15).map(s => `${s.symbol}:${s.confidence}%${s.side}(D1:${s.d1_trend || '?'})`);
+      console.log(`[Telegram] After Daily filter confidences: ${confValues.join(", ")}`);
+    }
+
+    // v6: Raised MIN_CONFIDENCE to 70 (post-Daily-filter + Binance 4H confirmation)
+    const MIN_CONFIDENCE = 80;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[Telegram] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 
-    // Send alerts for each qualified setup (respecting per-crypto cooldowns)
+    // Send alerts for each qualified setup (respecting per-crypto cooldowns + slot limit)
+    let sentCount = 0;
     for (const setup of qualifiedSetups) {
-      // Check cooldown: skip if same direction was sent within 4 hours
+      // v6: Respect remaining trade call slots
+      if (sentCount >= remainingTradeSlots) {
+        console.log(`[Telegram] ⛔ Trade call slots exhausted (${sentCount}/${remainingTradeSlots}), stopping`);
+        break;
+      }
+
+      // v6: 12-hour swing cooldown per symbol+side (using existing cooldown system with 12h TTL)
       if (isCooldownActive(cooldowns, setup.id, setup.side)) {
         continue;
       }
 
       // Build Telegram message matching /trades card format
       const dirEmoji = setup.side === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
-      const confEmoji = setup.confidence >= 70 ? '🔥' : setup.confidence >= 50 ? '⚡' : '📊';
+      const confEmoji = setup.confidence >= 80 ? '🔥' : setup.confidence >= 50 ? '⚡' : '📊';
 
       // TP/SL percentages
       const pctTP1 = ((setup.tp1 - setup.entry) / setup.entry * 100);
@@ -1077,8 +1566,13 @@ async function checkAndSendAlerts() {
         srSection += `└ (aucun support identifié)\n`;
       }
 
+      // Daily trend display
+      const d1TrendEmoji = setup.d1_trend === 'bullish' ? '🟢 Haussière' : setup.d1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
+      const d1Info = setup.ema8_d1 != null ? ` (EMA8: $${formatPrice(setup.ema8_d1)}, EMA20: $${formatPrice(setup.ema20_d1)})` : '';
+
       const text = `🔵🔵🔵 <b>🔄 SWING TRADING — SIGNAL CRYPTO</b> 🔵🔵🔵
 🌐 https://CryptoIA.ca
+📊 Entry sur le timeframe <b>H1</b> | Analyse : <b>CoinGecko 24h</b> + <b>S/R 7j</b> + <b>Confirmation H1</b>
 ━━━━━━━━━━━━━━━━━━━━━
 
 ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
@@ -1092,6 +1586,8 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 
 📐 <b>Supports &amp; Résistances :</b>
 ${srSection}
+📊 Tendance Daily : ${d1TrendEmoji}${d1Info}
+
 ⚖️ Risk/Reward : <b>1:${setup.rr}</b>
 📈 24h : <b>${setup.change24h >= 0 ? '+' : ''}${setup.change24h.toFixed(2)}%</b>
 🧠 Confiance : <b>${setup.confidence}%</b>
@@ -1123,7 +1619,8 @@ ${srSection}
           sl: setup.stopLoss,
           confidence: setup.confidence,
         });
-        console.log(`[Telegram] ✅ Sent ${setup.side} signal for ${setup.name} (confidence: ${setup.confidence}%)`);
+        sentCount++;
+        console.log(`[Telegram] ✅ Sent ${setup.side} signal for ${setup.name} (confidence: ${setup.confidence}%, slot ${sentCount}/${remainingTradeSlots})`);
 
         // Small delay between messages to avoid Telegram rate limit
         await new Promise(r => setTimeout(r, 2000));
@@ -1201,7 +1698,7 @@ startAlertChecker();
 // SCALP TRADING — Telegram Alert System (EMA + VWAP + Stochastic)
 // ============================================================
 
-const SCALP_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes cooldown for scalp
+const SCALP_COOLDOWN_MS = 45 * 60 * 1000; // v3: 45 minutes cooldown for scalp (was 30min)
 const SCALP_COOLDOWNS_FILE = path.join(DATA_DIR, 'scalp_cooldowns.json');
 const inMemoryScalpCooldowns = new Map();
 
@@ -1231,7 +1728,7 @@ async function fetchTop200USDTSymbols() {
     return _cachedScalpSymbols;
   }
   try {
-    const resp = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+    const resp = await fetch('https://data-api.binance.vision/api/v3/ticker/24hr');
     if (!resp.ok) throw new Error(`Binance API error: ${resp.status}`);
     const tickers = await resp.json();
     // Filter USDT pairs, exclude stablecoins and leveraged tokens
@@ -1246,8 +1743,9 @@ async function fetchTop200USDTSymbols() {
         !t.symbol.includes('BULL') &&
         parseFloat(t.quoteVolume) > 0
       )
+      .filter(t => parseFloat(t.quoteVolume) > 50000000) // v3: min $50M quote volume for liquidity
       .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-      .slice(0, 200)
+      .slice(0, 50) // v3: Top 50 only (was 200) — focus on most liquid pairs
       .map(t => t.symbol);
 
     if (usdtPairs.length >= 50) {
@@ -1334,6 +1832,26 @@ function calcEMA(data, period) {
   return ema;
 }
 
+/** ATR calculation for M5 klines (scalp v2) */
+function calcATR_M5(klines, period = 14) {
+  if (!klines || klines.length < period + 1) return null;
+  const trs = [];
+  for (let i = 1; i < klines.length; i++) {
+    const tr = Math.max(
+      klines[i].high - klines[i].low,
+      Math.abs(klines[i].high - klines[i - 1].close),
+      Math.abs(klines[i].low - klines[i - 1].close)
+    );
+    trs.push(tr);
+  }
+  if (trs.length < period) return null;
+  let atr = trs.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < trs.length; i++) {
+    atr = (atr * (period - 1) + trs[i]) / period;
+  }
+  return atr;
+}
+
 function calcRSI(closes, period = 14) {
   const rsi = new Array(closes.length).fill(50);
   if (closes.length < period + 1) return rsi;
@@ -1389,14 +1907,54 @@ function calcMACD(closes, fast = 12, slow = 26, signal = 9) {
   return { macd: macdLine, signal: signalLine, histogram };
 }
 
-// ─── Fetch Binance klines for a symbol ───
+// ─── Fetch Binance klines for a symbol (with Bybit fallback) ───
 async function fetchBinanceKlines(symbol, interval, limit = 100) {
+  // If known Bybit symbol, go directly to Bybit
+  if (BYBIT_FALLBACK_SYMBOLS.has(symbol)) {
+    try {
+      const bybitList = await fetchBybitKlines(symbol, interval, String(limit));
+      if (bybitList) {
+        const reversed = [...bybitList].reverse();
+        return reversed.map(k => ({
+          open: parseFloat(k[1]),
+          high: parseFloat(k[2]),
+          low: parseFloat(k[3]),
+          close: parseFloat(k[4]),
+          volume: parseFloat(k[5]),
+          time: parseInt(k[0]),
+        }));
+      }
+    } catch (err) {
+      console.error(`[ScalpAlert] Bybit klines error for ${symbol} ${interval}:`, err.message);
+    }
+    return [];
+  }
+
   try {
     const resp = await fetch(
-      `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+      `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
       { signal: AbortSignal.timeout(10000) }
     );
-    if (!resp.ok) return [];
+    if (!resp.ok) {
+      // Try Bybit fallback
+      try {
+        const bybitList = await fetchBybitKlines(symbol, interval, String(limit));
+        if (bybitList) {
+          BYBIT_FALLBACK_SYMBOLS.add(symbol);
+          console.log(`[ScalpAlert] ${symbol} found on Bybit (fallback)`);
+          const reversed = [...bybitList].reverse();
+          return reversed.map(k => ({
+            open: parseFloat(k[1]),
+            high: parseFloat(k[2]),
+            low: parseFloat(k[3]),
+            close: parseFloat(k[4]),
+            volume: parseFloat(k[5]),
+            time: parseInt(k[0]),
+          }));
+        }
+      } catch (_e) { /* ignore */ }
+      return [];
+    }
     const data = await resp.json();
     return data.map(k => ({
       open: parseFloat(k[1]),
@@ -1414,7 +1972,7 @@ async function fetchBinanceKlines(symbol, interval, limit = 100) {
 
 // ─── Generate Scalp Setup for a single symbol ───
 async function generateScalpSetup(symbol) {
-  // ═══ "Suivi de Flux" Strategy: EMA 8/20 + VWAP + Stochastique (9,3,1) ═══
+  // ═══ "Précision" v3 Strategy: EMA 8/20 + VWAP + Stochastique (9,3,1) + RSI M5 ═══
 
   // Fetch M5 candles (100 candles = ~8h of data)
   const m5Candles = await fetchBinanceKlines(symbol, '5m', 100);
@@ -1423,6 +1981,12 @@ async function generateScalpSetup(symbol) {
   // Fetch H1 candles for bias
   const h1Candles = await fetchBinanceKlines(symbol, '1h', 50);
   if (h1Candles.length < 25) return null;
+
+  // Fetch 4H candles for higher timeframe trend filter
+  const h4Candles = await fetchBinanceKlines(symbol, '4h', 50);
+
+  // Fetch Daily candles for macro trend filter
+  const d1Candles = await fetchBinanceKlines(symbol, '1d', 50);
 
   const m5Closes = m5Candles.map(c => c.close);
   const h1Closes = h1Candles.map(c => c.close);
@@ -1445,6 +2009,47 @@ async function generateScalpSetup(symbol) {
   const h1Vwap = h1CumVol > 0 ? h1CumTPV / h1CumVol : null;
   if (h1Vwap === null) return null;
 
+  // ─── 4H EMA 8 & EMA 20 (Higher Timeframe Trend Filter) ───
+  let h4Trend = 'neutral';
+  let h4Ema8Val = null;
+  let h4Ema20Val = null;
+  if (h4Candles.length >= 25) {
+    const h4Closes = h4Candles.map(c => c.close);
+    const h4Ema8 = calcEMA(h4Closes, 8);
+    const h4Ema20 = calcEMA(h4Closes, 20);
+    h4Ema8Val = h4Ema8[h4Ema8.length - 1];
+    h4Ema20Val = h4Ema20[h4Ema20.length - 1];
+    const h4Spread = Math.abs(h4Ema8Val - h4Ema20Val) / h4Ema20Val;
+    // If EMAs are within 0.1%, consider neutral
+    if (h4Spread < 0.001) {
+      h4Trend = 'neutral';
+    } else if (h4Ema8Val > h4Ema20Val) {
+      h4Trend = 'bullish';
+    } else {
+      h4Trend = 'bearish';
+    }
+  }
+
+  // ─── Daily EMA 8 & EMA 20 (Macro Trend Filter) ───
+  let d1Trend = 'neutral';
+  let d1Ema8Val = null;
+  let d1Ema20Val = null;
+  if (d1Candles.length >= 25) {
+    const d1Closes = d1Candles.map(c => c.close);
+    const d1Ema8 = calcEMA(d1Closes, 8);
+    const d1Ema20 = calcEMA(d1Closes, 20);
+    d1Ema8Val = d1Ema8[d1Ema8.length - 1];
+    d1Ema20Val = d1Ema20[d1Ema20.length - 1];
+    const d1Spread = Math.abs(d1Ema8Val - d1Ema20Val) / d1Ema20Val;
+    if (d1Spread < 0.001) {
+      d1Trend = 'neutral';
+    } else if (d1Ema8Val > d1Ema20Val) {
+      d1Trend = 'bullish';
+    } else {
+      d1Trend = 'bearish';
+    }
+  }
+
   // ─── Step 1: H1 Bias ───
   let h1Trend = 'neutral';
   if (h1Price > h1Ema20Val && h1Price > h1Vwap) h1Trend = 'bullish';
@@ -1454,6 +2059,20 @@ async function generateScalpSetup(symbol) {
     console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: H1 bias neutral (price=${h1Price.toFixed(2)}, EMA20=${h1Ema20Val.toFixed(2)}, VWAP=${h1Vwap.toFixed(2)})`);
     return null;
   }
+
+  // ─── Step 1b: 4H Trend Filter — Penalize (don't reject) conflicting 4H trend ───
+  // v5: No longer hard-reject on 4H conflict — apply penalty instead to allow counter-trend scalps
+  let h4ConflictPenalty = 0;
+  if (h1Trend === 'bullish' && h4Trend === 'bearish') {
+    h4ConflictPenalty = 10;
+    console.log(`[ScalpAlert] ⚠️ ${symbol}: 4H Bearish conflicts with H1 Bullish — penalty -10`);
+  } else if (h1Trend === 'bearish' && h4Trend === 'bullish') {
+    h4ConflictPenalty = 10;
+    console.log(`[ScalpAlert] ⚠️ ${symbol}: 4H Bullish conflicts with H1 Bearish — penalty -10`);
+  }
+
+  // 4H neutral: allow signal but will reduce confidence by 5 later
+  const h4NeutralPenalty = (h4Trend === 'neutral') ? 5 : 0;
 
   // ─── M5 EMA 8 & EMA 20 ───
   const m5Ema8 = calcEMA(m5Closes, 8);
@@ -1510,11 +2129,11 @@ async function generateScalpSetup(symbol) {
   const priceNearEma = distToEma8 < 0.003 || distToEma20 < 0.003;
   const priceBetweenEmas = (currentPrice >= Math.min(m5Ema8Val, m5Ema20Val) && currentPrice <= Math.max(m5Ema8Val, m5Ema20Val));
 
-  // Stochastic conditions — relaxed thresholds for more signals
-  const stochOversold = kVal < 35;        // Was 20, relaxed to 35
-  const stochDeepOversold = kVal < 20;    // Original strict threshold
-  const stochOverbought = kVal > 65;      // Was 80, relaxed to 65
-  const stochDeepOverbought = kVal > 80;  // Original strict threshold
+  // Stochastic conditions — v3: ultra-tight thresholds for precision
+  const stochOversold = kVal < 20;        // v3: Tightened from 25 to 20
+  const stochDeepOversold = kVal < 10;    // v3: Tightened from 15 to 10
+  const stochOverbought = kVal > 80;      // v3: Tightened from 75 to 80
+  const stochDeepOverbought = kVal > 90;  // v3: Tightened from 85 to 90
   const stochCrossUp = kPrev <= dPrev && kVal > dVal;
   const stochCrossDown = kPrev >= dPrev && kVal < dVal;
   const stochRising = kVal > kPrev;
@@ -1523,19 +2142,72 @@ async function generateScalpSetup(symbol) {
   // Extended price proximity — relaxed from 0.003 to 0.006
   const priceNearEmaWide = distToEma8 < 0.006 || distToEma20 < 0.006;
 
+  // ─── RSI(14) on M5 closes — v3: confirmation filter ───
+  let rsiM5 = null;
+  if (m5Closes.length >= 15) {
+    let gainSum = 0, lossSum = 0;
+    for (let i = 1; i <= 14; i++) {
+      const diff = m5Closes[i] - m5Closes[i - 1];
+      if (diff >= 0) gainSum += diff; else lossSum += Math.abs(diff);
+    }
+    let avgGain = gainSum / 14, avgLoss = lossSum / 14;
+    for (let i = 15; i < m5Closes.length; i++) {
+      const diff = m5Closes[i] - m5Closes[i - 1];
+      if (diff >= 0) { avgGain = (avgGain * 13 + diff) / 14; avgLoss = (avgLoss * 13) / 14; }
+      else { avgGain = (avgGain * 13) / 14; avgLoss = (avgLoss * 13 + Math.abs(diff)) / 14; }
+    }
+    rsiM5 = avgLoss === 0 ? 100 : Math.round((100 - 100 / (1 + avgGain / avgLoss)) * 10) / 10;
+  }
+
+  // ─── Candle Pattern Detection — v3: pin bars & engulfing ───
+  function detectRejectionCandle(candles, direction) {
+    const last3 = candles.slice(-3);
+    for (const c of last3) {
+      const body = Math.abs(c.close - c.open);
+      const lowerWick = Math.min(c.open, c.close) - c.low;
+      const upperWick = c.high - Math.max(c.open, c.close);
+      // Pin bar detection
+      if (direction === 'LONG' && lowerWick > body * 2 && body > 0) return true;
+      if (direction === 'SHORT' && upperWick > body * 2 && body > 0) return true;
+    }
+    // Engulfing pattern (last 2 candles)
+    if (last3.length >= 2) {
+      const prev = last3[last3.length - 2];
+      const curr = last3[last3.length - 1];
+      const prevBody = Math.abs(prev.close - prev.open);
+      const currBody = Math.abs(curr.close - curr.open);
+      if (direction === 'LONG' && curr.close > curr.open && prev.close < prev.open && currBody > prevBody * 1.2) return true;
+      if (direction === 'SHORT' && curr.close < curr.open && prev.close > prev.open && currBody > prevBody * 1.2) return true;
+    }
+    return false;
+  }
+
+  // ─── M5 Momentum Filter — v3: at least 2 of last 3 candles must close in signal direction ───
+  function checkM5Momentum(candles, direction) {
+    const last3 = candles.slice(-3);
+    let count = 0;
+    for (const c of last3) {
+      if (direction === 'LONG' && c.close > c.open) count++;
+      if (direction === 'SHORT' && c.close < c.open) count++;
+    }
+    return count >= 2;
+  }
+
   // ─── Signal Detection ───
   let side = null;
   let confidence = 0;
   const reasons = [];
 
-  // ─── LONG Signal — Type A: Pullback Entry (original, relaxed) ───
+  // ─── LONG Signal — Type A: Pullback Entry (v3: strict filters) ───
   if (h1Trend === 'bullish') {
     const cond2 = ema8AboveEma20 || emaCrossUp;
     const cond3 = priceNearEma || priceBetweenEmas || priceNearEmaWide;
     const cond4 = currentPrice > m5Vwap;
     const cond5 = stochOversold && (stochCrossUp || stochRising);
+    const cond6 = rsiM5 !== null ? rsiM5 < 40 : true; // v3: RSI M5 must be < 40 for LONG
+    const cond7 = checkM5Momentum(m5Candles, 'LONG'); // v3: 2/3 candles bullish
 
-    if (cond2 && cond3 && cond4 && cond5) {
+    if (cond2 && cond3 && cond4 && cond5 && cond6 && cond7) {
       side = 'LONG';
       confidence = 50;
       reasons.push(`H1: Prix > EMA20 ($${h1Ema20Val.toFixed(2)}) & VWAP ($${h1Vwap.toFixed(2)}) ✓`);
@@ -1548,46 +2220,58 @@ async function generateScalpSetup(symbol) {
       else if (priceNearEmaWide) { confidence += 2; reasons.push('M5: Prix zone EMA'); }
 
       if (stochDeepOversold) { confidence += 10; reasons.push(`Stoch: Survente extrême (K:${kVal.toFixed(1)})`); }
-      else if (kVal < 25) { confidence += 7; reasons.push(`Stoch: Survente (K:${kVal.toFixed(1)})`); }
+      else if (kVal < 20) { confidence += 7; reasons.push(`Stoch: Survente (K:${kVal.toFixed(1)})`); }
       else { confidence += 4; reasons.push(`Stoch: Zone basse (K:${kVal.toFixed(1)})`); }
 
       if (stochCrossUp) { confidence += 8; reasons.push(`Stoch: Croisement K↑D`); }
 
+      if (rsiM5 !== null) { reasons.push(`RSI M5: ${rsiM5} (zone favorable LONG)`); if (rsiM5 < 30) confidence += 5; }
+
       const vwapDist = (currentPrice - m5Vwap) / currentPrice;
       if (vwapDist > 0.002) { confidence += 4; reasons.push('VWAP M5: bien au-dessus ✓'); }
 
-      // Volume bonus
+      // v3: Stronger volume filter — 2.0x base, 3.0x bonus
       const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
       const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-      if (avgVol > 0 && recentVol > avgVol * 1.3) { confidence += 5; reasons.push('Volume M5 supérieur'); }
+      if (avgVol > 0 && recentVol > avgVol * 3.0) { confidence += 8; reasons.push('Volume M5 spike fort (>3x)'); }
+      else if (avgVol > 0 && recentVol > avgVol * 2.0) { confidence += 5; reasons.push('Volume M5 supérieur (>2x)'); }
+
+      // v3: Candle pattern bonus
+      if (detectRejectionCandle(m5Candles, 'LONG')) { confidence += 10; reasons.push('📌 Pattern de rejet haussier détecté'); }
 
       // H1 EMA spread bonus
       const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
       if (h1Spread > 0.005) { confidence += 5; reasons.push('H1: Tendance forte (EMA8/20 écartées)'); }
     }
 
-    // ─── LONG Signal — Type B: Momentum Continuation ───
-    // Strong trend + EMA cross + stoch rising from mid-zone (not necessarily oversold)
+    // ─── LONG Signal — Type B: Momentum Continuation (v3: with RSI + momentum) ───
     if (!side && h1Trend === 'bullish') {
       const strongH1 = h1Ema8Val > h1Ema20Val && h1Price > h1Ema8Val;
       const emaCrossRecent = emaCrossUp;
       const stochMidRising = kVal > 40 && kVal < 75 && stochCrossUp;
       const aboveVwap = currentPrice > m5Vwap;
+      const rsiOk = rsiM5 !== null ? rsiM5 < 40 : true; // v3: RSI filter
+      const momentumOk = checkM5Momentum(m5Candles, 'LONG'); // v3: momentum filter
 
-      if (strongH1 && emaCrossRecent && stochMidRising && aboveVwap) {
+      if (strongH1 && emaCrossRecent && stochMidRising && aboveVwap && rsiOk && momentumOk) {
         side = 'LONG';
         confidence = 45;
         reasons.push(`H1: Tendance forte haussière (EMA8 > EMA20, prix > EMA8) ✓`);
         reasons.push('M5: Croisement EMA8 > EMA20 récent ↑');
         reasons.push(`Stoch: Croisement K↑D en zone médiane (K:${kVal.toFixed(1)})`);
+        if (rsiM5 !== null) reasons.push(`RSI M5: ${rsiM5}`);
 
         const vwapDist = (currentPrice - m5Vwap) / currentPrice;
         if (vwapDist > 0.003) { confidence += 5; reasons.push('VWAP M5: bien au-dessus ✓'); }
 
+        // v3: Stronger volume filter
         const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
         const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; reasons.push('Volume M5 en hausse forte'); }
-        else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; reasons.push('Volume M5 supérieur'); }
+        if (avgVol > 0 && recentVol > avgVol * 3.0) { confidence += 8; reasons.push('Volume M5 spike fort (>3x)'); }
+        else if (avgVol > 0 && recentVol > avgVol * 2.0) { confidence += 5; reasons.push('Volume M5 supérieur (>2x)'); }
+
+        // v3: Candle pattern bonus
+        if (detectRejectionCandle(m5Candles, 'LONG')) { confidence += 10; reasons.push('📌 Pattern de rejet haussier détecté'); }
 
         const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
         if (h1Spread > 0.008) { confidence += 8; reasons.push('H1: Tendance très forte (EMA8/20 très écartées)'); }
@@ -1595,116 +2279,19 @@ async function generateScalpSetup(symbol) {
       }
     }
 
-    // ─── LONG Signal — Type C: VWAP Bounce ───
-    // Price bouncing off VWAP in bullish trend with stoch turning up
-    if (!side && h1Trend === 'bullish') {
-      const vwapProximity = Math.abs(currentPrice - m5Vwap) / currentPrice < 0.003;
-      const priceAboveVwap = currentPrice >= m5Vwap;
-      const stochTurningUp = stochCrossUp || (stochRising && kVal < 50);
-      const emaAligned = ema8AboveEma20;
-
-      if (vwapProximity && priceAboveVwap && stochTurningUp && emaAligned) {
-        side = 'LONG';
-        confidence = 48;
-        reasons.push(`H1: Biais haussier ✓`);
-        reasons.push(`M5: Rebond VWAP ($${m5Vwap.toFixed(2)}) ✓`);
-        reasons.push(`Stoch: ${stochCrossUp ? 'Croisement K↑D' : 'K en hausse'} (K:${kVal.toFixed(1)})`);
-        reasons.push('M5: EMA8 > EMA20 ✓');
-
-        const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
-        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.3) { confidence += 6; reasons.push('Volume M5 supérieur'); }
-
-        const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-        if (h1Spread > 0.005) { confidence += 5; reasons.push('H1: Tendance forte'); }
-      }
-    }
-
-    // ─── LONG Signal — Type D: Strong Trend Micro-Pullback ───
-    // Works when stoch is high (80-100) but price pulls back slightly to EMA or stoch dips
-    // This is the most common scenario in strong uptrends
-    if (!side && h1Trend === 'bullish') {
-      const h1Strong = h1Ema8Val > h1Ema20Val;
-      const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-      const emaAligned = ema8AboveEma20;
-      const aboveVwap = currentPrice > m5Vwap;
-
-      // Stoch micro-pullback: was very high, now slightly pulling back (still above 50)
-      // OR stoch is high and crossing up (re-entering overbought after brief dip)
-      const stochMicroPullback = (kVal >= 50 && kVal <= 90 && kPrev > kVal + 2) || // Stoch pulling back from higher
-                                  (kVal >= 60 && stochCrossUp) || // Stoch crossing up in upper zone
-                                  (kPrev >= 95 && kVal < 95 && kVal > 70); // Dropping from 100 zone
-
-      // Price near EMA8 (tight pullback in strong trend)
-      const priceNearEma8 = distToEma8 < 0.005;
-
-      if (h1Strong && h1Spread > 0.003 && emaAligned && aboveVwap && stochMicroPullback && priceNearEma8) {
-        side = 'LONG';
-        confidence = 55;
-        reasons.push(`H1: Tendance forte haussière (spread EMA: ${(h1Spread * 100).toFixed(2)}%) ✓`);
-        reasons.push('M5: EMA8 > EMA20 ✓');
-        reasons.push(`M5: Prix proche EMA8 (dist: ${(distToEma8 * 100).toFixed(3)}%)`);
-        reasons.push(`Stoch: Micro-pullback (K:${kVal.toFixed(1)}, prev:${kPrev.toFixed(1)})`);
-        reasons.push(`VWAP: Prix au-dessus ($${m5Vwap.toFixed(2)}) ✓`);
-
-        if (h1Spread > 0.008) { confidence += 8; reasons.push('H1: Tendance très forte'); }
-        else if (h1Spread > 0.005) { confidence += 4; }
-
-        if (stochCrossUp) { confidence += 6; reasons.push('Stoch: Croisement K↑D'); }
-
-        const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
-        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; reasons.push('Volume M5 en hausse forte'); }
-        else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; reasons.push('Volume M5 supérieur'); }
-
-        // Bonus: price making higher lows (last 3 candles)
-        const last3 = m5Candles.slice(-3);
-        if (last3.length === 3 && last3[1].low > last3[0].low && last3[2].low > last3[1].low) {
-          confidence += 5; reasons.push('M5: Higher lows (structure haussière)');
-        }
-      }
-    }
-
-    // ─── LONG Signal — Type E: EMA Alignment + Volume Surge ───
-    // Strong trend with volume spike, even if stoch is maxed out
-    if (!side && h1Trend === 'bullish') {
-      const emaAligned = ema8AboveEma20;
-      const aboveVwap = currentPrice > m5Vwap;
-      const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-
-      const recentVol = m5Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
-      const avgVol = m5Candles.slice(-30).reduce((s, c) => s + c.volume, 0) / 30;
-      const volumeSurge = avgVol > 0 && recentVol > avgVol * 2.0; // 2x average volume
-
-      // Price above both EMAs (strong momentum)
-      const priceAboveBothEmas = currentPrice > m5Ema8Val && currentPrice > m5Ema20Val;
-
-      if (emaAligned && aboveVwap && volumeSurge && priceAboveBothEmas && h1Spread > 0.004) {
-        side = 'LONG';
-        confidence = 58;
-        reasons.push(`H1: Tendance haussière forte (spread: ${(h1Spread * 100).toFixed(2)}%) ✓`);
-        reasons.push('M5: EMA8 > EMA20, prix au-dessus des deux ✓');
-        reasons.push(`Volume: Surge x${(recentVol / avgVol).toFixed(1)} ✓`);
-        reasons.push(`VWAP: Au-dessus ($${m5Vwap.toFixed(2)}) ✓`);
-        reasons.push(`Stoch: K=${kVal.toFixed(1)}`);
-
-        if (h1Spread > 0.008) { confidence += 8; }
-        if (recentVol > avgVol * 3) { confidence += 6; reasons.push('Volume: Surge extrême'); }
-
-        // Slight penalty if stoch is at absolute max (100) — less room to run
-        if (kVal >= 99) { confidence -= 5; }
-      }
-    }
+    // v3: Type C (LONG counter-trend) REMOVED — counter-trend signals eliminated for precision
   }
 
-  // ─── SHORT Signal — Type A: Pullback Entry (original, relaxed) ───
+  // ─── SHORT Signal — Type A: Pullback Entry (v3: strict filters) ───
   if (h1Trend === 'bearish' && !side) {
     const cond2 = ema8BelowEma20 || emaCrossDown;
     const cond3 = priceNearEma || priceBetweenEmas || priceNearEmaWide;
     const cond4 = currentPrice < m5Vwap;
     const cond5 = stochOverbought && (stochCrossDown || stochFalling);
+    const cond6 = rsiM5 !== null ? rsiM5 > 60 : true; // v3: RSI M5 must be > 60 for SHORT
+    const cond7 = checkM5Momentum(m5Candles, 'SHORT'); // v3: 2/3 candles bearish
 
-    if (cond2 && cond3 && cond4 && cond5) {
+    if (cond2 && cond3 && cond4 && cond5 && cond6 && cond7) {
       side = 'SHORT';
       confidence = 50;
       reasons.push(`H1: Prix < EMA20 ($${h1Ema20Val.toFixed(2)}) & VWAP ($${h1Vwap.toFixed(2)}) ✓`);
@@ -1717,43 +2304,57 @@ async function generateScalpSetup(symbol) {
       else if (priceNearEmaWide) { confidence += 2; reasons.push('M5: Prix zone EMA'); }
 
       if (stochDeepOverbought) { confidence += 10; reasons.push(`Stoch: Surachat extrême (K:${kVal.toFixed(1)})`); }
-      else if (kVal > 75) { confidence += 7; reasons.push(`Stoch: Surachat (K:${kVal.toFixed(1)})`); }
+      else if (kVal > 80) { confidence += 7; reasons.push(`Stoch: Surachat (K:${kVal.toFixed(1)})`); }
       else { confidence += 4; reasons.push(`Stoch: Zone haute (K:${kVal.toFixed(1)})`); }
 
       if (stochCrossDown) { confidence += 8; reasons.push(`Stoch: Croisement K↓D`); }
 
+      if (rsiM5 !== null) { reasons.push(`RSI M5: ${rsiM5} (zone favorable SHORT)`); if (rsiM5 > 70) confidence += 5; }
+
       const vwapDist = (m5Vwap - currentPrice) / currentPrice;
       if (vwapDist > 0.002) { confidence += 4; reasons.push('VWAP M5: bien en-dessous ✓'); }
 
+      // v3: Stronger volume filter — 2.0x base, 3.0x bonus
       const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
       const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-      if (avgVol > 0 && recentVol > avgVol * 1.3) { confidence += 5; reasons.push('Volume M5 supérieur'); }
+      if (avgVol > 0 && recentVol > avgVol * 3.0) { confidence += 8; reasons.push('Volume M5 spike fort (>3x)'); }
+      else if (avgVol > 0 && recentVol > avgVol * 2.0) { confidence += 5; reasons.push('Volume M5 supérieur (>2x)'); }
+
+      // v3: Candle pattern bonus
+      if (detectRejectionCandle(m5Candles, 'SHORT')) { confidence += 10; reasons.push('📌 Pattern de rejet baissier détecté'); }
 
       const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
       if (h1Spread > 0.005) { confidence += 5; reasons.push('H1: Tendance forte (EMA8/20 écartées)'); }
     }
 
-    // ─── SHORT Signal — Type B: Momentum Continuation ───
+    // ─── SHORT Signal — Type B: Momentum Continuation (v3: with RSI + momentum) ───
     if (!side && h1Trend === 'bearish') {
       const strongH1 = h1Ema8Val < h1Ema20Val && h1Price < h1Ema8Val;
       const emaCrossRecent = emaCrossDown;
       const stochMidFalling = kVal > 25 && kVal < 60 && stochCrossDown;
       const belowVwap = currentPrice < m5Vwap;
+      const rsiOk = rsiM5 !== null ? rsiM5 > 60 : true; // v3: RSI filter
+      const momentumOk = checkM5Momentum(m5Candles, 'SHORT'); // v3: momentum filter
 
-      if (strongH1 && emaCrossRecent && stochMidFalling && belowVwap) {
+      if (strongH1 && emaCrossRecent && stochMidFalling && belowVwap && rsiOk && momentumOk) {
         side = 'SHORT';
         confidence = 45;
         reasons.push(`H1: Tendance forte baissière (EMA8 < EMA20, prix < EMA8) ✓`);
         reasons.push('M5: Croisement EMA8 < EMA20 récent ↓');
         reasons.push(`Stoch: Croisement K↓D en zone médiane (K:${kVal.toFixed(1)})`);
+        if (rsiM5 !== null) reasons.push(`RSI M5: ${rsiM5}`);
 
         const vwapDist = (m5Vwap - currentPrice) / currentPrice;
         if (vwapDist > 0.003) { confidence += 5; reasons.push('VWAP M5: bien en-dessous ✓'); }
 
+        // v3: Stronger volume filter
         const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
         const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; reasons.push('Volume M5 en hausse forte'); }
-        else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; reasons.push('Volume M5 supérieur'); }
+        if (avgVol > 0 && recentVol > avgVol * 3.0) { confidence += 8; reasons.push('Volume M5 spike fort (>3x)'); }
+        else if (avgVol > 0 && recentVol > avgVol * 2.0) { confidence += 5; reasons.push('Volume M5 supérieur (>2x)'); }
+
+        // v3: Candle pattern bonus
+        if (detectRejectionCandle(m5Candles, 'SHORT')) { confidence += 10; reasons.push('📌 Pattern de rejet baissier détecté'); }
 
         const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
         if (h1Spread > 0.008) { confidence += 8; reasons.push('H1: Tendance très forte (EMA8/20 très écartées)'); }
@@ -1761,139 +2362,118 @@ async function generateScalpSetup(symbol) {
       }
     }
 
-    // ─── SHORT Signal — Type C: VWAP Rejection ───
-    if (!side && h1Trend === 'bearish') {
-      const vwapProximity = Math.abs(currentPrice - m5Vwap) / currentPrice < 0.003;
-      const priceBelowVwap = currentPrice <= m5Vwap;
-      const stochTurningDown = stochCrossDown || (stochFalling && kVal > 50);
-      const emaAligned = ema8BelowEma20;
-
-      if (vwapProximity && priceBelowVwap && stochTurningDown && emaAligned) {
-        side = 'SHORT';
-        confidence = 48;
-        reasons.push(`H1: Biais baissier ✓`);
-        reasons.push(`M5: Rejet VWAP ($${m5Vwap.toFixed(2)}) ✓`);
-        reasons.push(`Stoch: ${stochCrossDown ? 'Croisement K↓D' : 'K en baisse'} (K:${kVal.toFixed(1)})`);
-        reasons.push('M5: EMA8 < EMA20 ✓');
-
-        const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
-        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.3) { confidence += 6; reasons.push('Volume M5 supérieur'); }
-
-        const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-        if (h1Spread > 0.005) { confidence += 5; reasons.push('H1: Tendance forte'); }
-      }
-    }
-
-    // ─── SHORT Signal — Type D: Strong Trend Micro-Bounce ───
-    if (!side && h1Trend === 'bearish') {
-      const h1Strong = h1Ema8Val < h1Ema20Val;
-      const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-      const emaAligned = ema8BelowEma20;
-      const belowVwap = currentPrice < m5Vwap;
-
-      const stochMicroBounce = (kVal <= 50 && kVal >= 10 && kPrev < kVal - 2) ||
-                                (kVal <= 40 && stochCrossDown) ||
-                                (kPrev <= 5 && kVal > 5 && kVal < 30);
-
-      const priceNearEma8 = distToEma8 < 0.005;
-
-      if (h1Strong && h1Spread > 0.003 && emaAligned && belowVwap && stochMicroBounce && priceNearEma8) {
-        side = 'SHORT';
-        confidence = 55;
-        reasons.push(`H1: Tendance forte baissière (spread EMA: ${(h1Spread * 100).toFixed(2)}%) ✓`);
-        reasons.push('M5: EMA8 < EMA20 ✓');
-        reasons.push(`M5: Prix proche EMA8 (dist: ${(distToEma8 * 100).toFixed(3)}%)`);
-        reasons.push(`Stoch: Micro-rebond (K:${kVal.toFixed(1)}, prev:${kPrev.toFixed(1)})`);
-        reasons.push(`VWAP: Prix en-dessous ($${m5Vwap.toFixed(2)}) ✓`);
-
-        if (h1Spread > 0.008) { confidence += 8; }
-        else if (h1Spread > 0.005) { confidence += 4; }
-
-        if (stochCrossDown) { confidence += 6; reasons.push('Stoch: Croisement K↓D'); }
-
-        const recentVol = m5Candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
-        const avgVol = m5Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; }
-        else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; }
-
-        const last3 = m5Candles.slice(-3);
-        if (last3.length === 3 && last3[1].high < last3[0].high && last3[2].high < last3[1].high) {
-          confidence += 5; reasons.push('M5: Lower highs (structure baissière)');
-        }
-      }
-    }
-
-    // ─── SHORT Signal — Type E: EMA Alignment + Volume Surge ───
-    if (!side && h1Trend === 'bearish') {
-      const emaAligned = ema8BelowEma20;
-      const belowVwap = currentPrice < m5Vwap;
-      const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
-
-      const recentVol = m5Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
-      const avgVol = m5Candles.slice(-30).reduce((s, c) => s + c.volume, 0) / 30;
-      const volumeSurge = avgVol > 0 && recentVol > avgVol * 2.0;
-
-      const priceBelowBothEmas = currentPrice < m5Ema8Val && currentPrice < m5Ema20Val;
-
-      if (emaAligned && belowVwap && volumeSurge && priceBelowBothEmas && h1Spread > 0.004) {
-        side = 'SHORT';
-        confidence = 58;
-        reasons.push(`H1: Tendance baissière forte (spread: ${(h1Spread * 100).toFixed(2)}%) ✓`);
-        reasons.push('M5: EMA8 < EMA20, prix en-dessous des deux ✓');
-        reasons.push(`Volume: Surge x${(recentVol / avgVol).toFixed(1)} ✓`);
-        reasons.push(`VWAP: En-dessous ($${m5Vwap.toFixed(2)}) ✓`);
-        reasons.push(`Stoch: K=${kVal.toFixed(1)}`);
-
-        if (h1Spread > 0.008) { confidence += 8; }
-        if (recentVol > avgVol * 3) { confidence += 6; }
-
-        if (kVal <= 1) { confidence -= 5; }
-      }
-    }
+    // v3: Type C (SHORT counter-trend) REMOVED — counter-trend signals eliminated for precision
   }
 
+  // v3: Type D (LONG & SHORT counter-trend) REMOVED — all counter-trend signals eliminated for precision
+
   if (!side) {
-    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: no Suivi de Flux signal (H1=${h1Trend}, EMA8>${m5Ema8Val.toFixed(2)}, EMA20>${m5Ema20Val.toFixed(2)}, StochK=${kVal.toFixed(1)}, VWAP=${m5Vwap.toFixed(2)})`);
+    console.log(`[ScalpAlert] ⏭️ ${symbol} rejected: no Précision v3 signal (H1=${h1Trend}, 4H=${h4Trend}, EMA8>${m5Ema8Val.toFixed(2)}, EMA20>${m5Ema20Val.toFixed(2)}, StochK=${kVal.toFixed(1)}, VWAP=${m5Vwap.toFixed(2)})`);
     return null;
   }
 
-  confidence = Math.min(98, Math.max(25, confidence));
+  // ─── "Move Already Advanced" Filter ───
+  // Check last 12 M5 candles (~60 min). If price has already moved >2% in the signal
+  // direction, the move is likely already advanced and entry is late → penalize confidence.
+  const lookbackCandles = Math.min(12, m5Candles.length);
+  const priceAgo = m5Candles[m5Candles.length - lookbackCandles].close;
+  const movePercent = ((currentPrice - priceAgo) / priceAgo) * 100;
+  const ADVANCED_MOVE_THRESHOLD = 1.5; // v3: reduced from 2.0% to 1.5%
 
-  // ─── SL / TP Calculation ───
-  // SL: dernier plus bas/haut local M5 (10 bougies) ou sous/au-dessus EMA20
-  const last10 = m5Candles.slice(-10);
+  if (side === 'LONG' && movePercent > ADVANCED_MOVE_THRESHOLD) {
+    confidence -= 25; // v3: increased penalty from -20 to -25
+    reasons.push(`⚠️ Mouvement déjà avancé (+${movePercent.toFixed(1)}% en 60min) — pénalité -25%`);
+    console.log(`[ScalpAlert] ⚠️ ${symbol} LONG: move already advanced +${movePercent.toFixed(1)}% in ~60min, confidence -25`);
+  } else if (side === 'SHORT' && movePercent < -ADVANCED_MOVE_THRESHOLD) {
+    confidence -= 25;
+    reasons.push(`⚠️ Mouvement déjà avancé (${movePercent.toFixed(1)}% en 60min) — pénalité -25%`);
+    console.log(`[ScalpAlert] ⚠️ ${symbol} SHORT: move already advanced ${movePercent.toFixed(1)}% in ~60min, confidence -25`);
+  }
+
+  // Apply 4H conflict penalty (v5: penalty instead of rejection)
+  confidence -= h4ConflictPenalty;
+  if (h4ConflictPenalty > 0) {
+    reasons.push(`⚠️ 4H conflit tendance — pénalité -${h4ConflictPenalty}%`);
+  }
+
+  // Apply 4H neutral penalty
+  confidence -= h4NeutralPenalty;
+
+  // Daily trend penalty — penalize confidence when Daily conflicts (don't reject)
+  let d1Penalty = 0;
+  if (side === 'LONG' && d1Trend === 'bearish') {
+    d1Penalty = 12;
+    reasons.push(`⚠️ Daily Bearish — pénalité confiance -${d1Penalty}%`);
+  } else if (side === 'SHORT' && d1Trend === 'bullish') {
+    d1Penalty = 12;
+    reasons.push(`⚠️ Daily Bullish — pénalité confiance -${d1Penalty}%`);
+  } else if (side === 'LONG' && d1Trend === 'bullish') {
+    d1Penalty = -5;
+    reasons.push(`✅ Daily Bullish — bonus alignement +5%`);
+  } else if (side === 'SHORT' && d1Trend === 'bearish') {
+    d1Penalty = -5;
+    reasons.push(`✅ Daily Bearish — bonus alignement +5%`);
+  }
+  confidence -= d1Penalty;
+
+  // v3: Minimum confidence floor raised to 60 (from 55)
+  confidence = Math.min(98, Math.max(60, confidence));
+
+  // ─── SL / TP Calculation — v3: Tighter ATR-based SL + realistic TP ratios ───
   let entry = currentPrice;
   let stopLoss, tp1, tp2, tp3;
 
-  if (side === 'LONG') {
-    const lowestLow = Math.min(...last10.map(c => c.low));
-    const ema20SL = m5Ema20Val * 0.997;
-    stopLoss = Math.min(lowestLow, ema20SL);
-    if (Math.abs(entry - stopLoss) / entry < 0.002) stopLoss = entry * 0.997;
-    stopLoss *= 0.999; // margin
-  } else {
-    const highestHigh = Math.max(...last10.map(c => c.high));
-    const ema20SL = m5Ema20Val * 1.003;
-    stopLoss = Math.max(highestHigh, ema20SL);
-    if (Math.abs(stopLoss - entry) / entry < 0.002) stopLoss = entry * 1.003;
-    stopLoss *= 1.001;
+  // v3: Tight ATR-based SL (1.5x ATR M5, min 0.5%, max 2%) — precision scalp
+  let slDist;
+  const atrM5 = calcATR_M5(m5Candles);
+
+  // Volatility filter: skip signal if ATR_M5/price > 3% (too volatile for scalp)
+  if (atrM5 && atrM5 > 0 && (atrM5 / entry) > 0.03) {
+    return null; // Market too volatile for scalp
   }
 
-  const slDist = Math.abs(entry - stopLoss);
-  if (side === 'LONG') {
-    tp1 = entry + slDist * 1.0;  // 1:1
-    tp2 = entry + slDist * 1.5;  // 1:1.5
-    tp3 = entry + slDist * 2.0;  // 1:2
+  if (atrM5 && atrM5 > 0) {
+    slDist = atrM5 * 1.5; // v3: reduced from 3.0x to 1.5x for tight scalp SL
+    const minSl = entry * 0.005; // v3: min 0.5% (was 2.5%)
+    const maxSl = entry * 0.02;  // v3: max 2% (was 6%)
+    slDist = Math.max(minSl, Math.min(slDist, maxSl));
   } else {
-    tp1 = entry - slDist * 1.0;
+    // Fallback
+    const last10 = m5Candles.slice(-10);
+    if (side === 'LONG') {
+      const lowestLow = Math.min(...last10.map(c => c.low));
+      slDist = Math.max(entry - lowestLow, entry * 0.005);
+    } else {
+      const highestHigh = Math.max(...last10.map(c => c.high));
+      slDist = Math.max(highestHigh - entry, entry * 0.005);
+    }
+    slDist = Math.max(entry * 0.005, Math.min(slDist, entry * 0.02));
+  }
+
+  if (side === 'LONG') {
+    stopLoss = entry - slDist;
+    if (Math.abs(entry - stopLoss) / entry < 0.005) stopLoss = entry * 0.995;
+  } else {
+    stopLoss = entry + slDist;
+    if (Math.abs(stopLoss - entry) / entry < 0.005) stopLoss = entry * 1.005;
+  }
+
+  slDist = Math.abs(entry - stopLoss);
+
+  // v3: Realistic TP ratios — 0.8:1, 1.5:1, 2.5:1 for higher winrate
+  if (side === 'LONG') {
+    tp1 = entry + slDist * 0.8;  // 0.8:1 — quick profit, high probability
+    tp2 = entry + slDist * 1.5;  // 1.5:1
+    tp3 = entry + slDist * 2.5;  // 2.5:1
+  } else {
+    tp1 = entry - slDist * 0.8;
     tp2 = entry - slDist * 1.5;
-    tp3 = entry - slDist * 2.0;
+    tp3 = entry - slDist * 2.5;
   }
 
-  // SL too tight penalty
-  if (slDist / entry < 0.002) confidence -= 10;
-  confidence = Math.min(98, Math.max(25, confidence));
+  // SL too tight penalty (0.3% threshold for scalp)
+  if (slDist / entry < 0.003) confidence -= 10;
+  confidence = Math.min(98, Math.max(60, confidence));
 
   const rr = slDist > 0 ? Math.round((Math.abs(tp2 - entry) / slDist) * 10) / 10 : 1.5;
 
@@ -1916,6 +2496,12 @@ async function generateScalpSetup(symbol) {
     vwap_m5: m5Vwap,
     vwap_h1: h1Vwap,
     h1_trend: h1Trend,
+    h4_trend: h4Trend,
+    ema8_h4: h4Ema8Val,
+    ema20_h4: h4Ema20Val,
+    d1_trend: d1Trend,
+    ema8_d1: d1Ema8Val,
+    ema20_d1: d1Ema20Val,
     currentPrice,
   };
 }
@@ -1958,17 +2544,28 @@ async function checkAndSendScalpAlerts() {
       console.log(`[ScalpAlert] Setup confidences: ${confValues.join(", ")}`);
     }
 
-    // Filter: only send signals with confidence >= 60% (scalp trades are short-term)
-    const MIN_CONFIDENCE = 60;
+    // v3: Only send signals with confidence >= 85% (raised from 75%)
+    const MIN_CONFIDENCE = 85;
     const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
     console.log(`[ScalpAlert] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
 
     // Sort by confidence descending
     qualifiedSetups.sort((a, b) => b.confidence - a.confidence);
 
-    console.log(`[ScalpAlert] Starting to send ${qualifiedSetups.length} scalp alerts to Telegram...`);
+    // v3: Max 8 active scalp calls (reduced from 15)
+    const MAX_ACTIVE_SCALP_CALLS = 8;
+    const currentScalpCalls = loadScalpCalls();
+    const activeScalpCallCount = currentScalpCalls.filter(c => c.status === 'active').length;
+    if (activeScalpCallCount >= MAX_ACTIVE_SCALP_CALLS) {
+      console.log(`[ScalpAlert] ⛔ Max active scalp calls reached (${activeScalpCallCount}/${MAX_ACTIVE_SCALP_CALLS}) — skipping new signals`);
+      return sentAlerts;
+    }
+    const remainingSlots = MAX_ACTIVE_SCALP_CALLS - activeScalpCallCount;
+    console.log(`[ScalpAlert] Active scalp calls: ${activeScalpCallCount}/${MAX_ACTIVE_SCALP_CALLS} — ${remainingSlots} slots available`);
 
-    for (let idx = 0; idx < qualifiedSetups.length; idx++) {
+    console.log(`[ScalpAlert] Starting to send ${Math.min(qualifiedSetups.length, remainingSlots)} scalp alerts to Telegram...`);
+
+    for (let idx = 0; idx < qualifiedSetups.length && sentAlerts.length < remainingSlots; idx++) {
       const setup = qualifiedSetups[idx];
       try {
         if (isScalpCooldownActive(cooldowns, setup.symbol, setup.side)) {
@@ -1978,9 +2575,9 @@ async function checkAndSendScalpAlerts() {
 
         console.log(`[ScalpAlert] 📤 Sending ${idx + 1}/${qualifiedSetups.length}: ${setup.symbol} ${setup.side} (${setup.confidence}%)...`);
 
-        // ─── Pre-send trend coherence validation ───
+        // ─── Pre-send trend coherence validation (v3: strict — reject mismatches) ───
         if ((setup.side === 'LONG' && setup.h1_trend !== 'bullish') || (setup.side === 'SHORT' && setup.h1_trend !== 'bearish')) {
-          console.log(`[ScalpAlert] ⚠️ PRE-SEND VALIDATION FAILED for ${setup.symbol}: side=${setup.side} but h1_trend=${setup.h1_trend} — SKIPPING`);
+          console.log(`[ScalpAlert] 🚫 REJECTED ${setup.symbol}: side=${setup.side} but h1_trend=${setup.h1_trend} — trend mismatch`);
           continue;
         }
 
@@ -1992,12 +2589,15 @@ async function checkAndSendScalpAlerts() {
         const pctSL = ((setup.stopLoss - setup.entry) / setup.entry * 100);
 
         const trendEmoji = setup.h1_trend === 'bullish' ? '🟢 Haussière' : setup.h1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
+        const h4TrendEmoji = setup.h4_trend === 'bullish' ? '🟢 Haussière' : setup.h4_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
+        const d1TrendEmoji = setup.d1_trend === 'bullish' ? '🟢 Haussière' : setup.d1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
 
         // Escape HTML entities in reason text to prevent Telegram parse errors
         const safeReason = (setup.reason || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
         const text = `🔴🔴🔴 <b>⚡ SCALP TRADING — SIGNAL CRYPTO</b> 🔴🔴🔴
 🌐 https://CryptoIA.ca
+📊 Entry sur le timeframe <b>M5</b> | Biais directionnel : <b>H1</b> + <b>4H</b>
 ━━━━━━━━━━━━━━━━━━━━━
 
 ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
@@ -2010,7 +2610,9 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 ├ Stoch D : <b>${setup.stoch_d.toFixed(1)}</b>
 ├ EMA 20 H1 : <b>$${formatPrice(setup.ema20_h1)}</b>
 ├ VWAP H1 : <b>$${formatPrice(setup.vwap_h1)}</b>
-└ Tendance H1 : ${trendEmoji}
+├ Tendance H1 : ${trendEmoji}
+├ Tendance 4H : ${h4TrendEmoji}${setup.ema8_h4 != null ? ` (EMA8: $${formatPrice(setup.ema8_h4)}, EMA20: $${formatPrice(setup.ema20_h4)})` : ''}
+└ Tendance Daily : ${d1TrendEmoji}${setup.ema8_d1 != null ? ` (EMA8: $${formatPrice(setup.ema8_d1)}, EMA20: $${formatPrice(setup.ema20_d1)})` : ''}
 
 🎯 <b>Plan de Trade :</b>
 ├ Entry : <b>$${formatPrice(setup.entry)}</b>
@@ -2039,7 +2641,7 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
           try {
             const calls = loadScalpCalls();
             scalpCallIdCounter++;
-            const expiresAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+            const expiresAt = new Date(now.getTime() + 30 * 60 * 1000); // v3: 30 minutes expiry (was 45min)
             calls.push({
               id: scalpCallIdCounter,
               symbol: setup.symbol, side: setup.side,
@@ -2650,6 +3252,11 @@ function loadTradeCalls() {
   } catch (err) {
     console.error('Error loading trade calls:', err);
   }
+  // Initialize file if missing
+  try {
+    writeFileSync(TRADE_CALLS_FILE, '[]', 'utf-8');
+    console.log('[TradeCall] Initialized empty trade_calls.json');
+  } catch (_e) { /* ignore */ }
   return [];
 }
 
@@ -2909,19 +3516,36 @@ async function resolveActiveTradeCalls() {
   // Unique symbols
   const symbols = [...new Set(activeCalls.map(c => c.symbol))];
 
-  // Fetch prices from Binance
+  // Fetch prices from Binance (with Bybit fallback)
   const prices = {};
   for (const sym of symbols) {
     try {
-      const resp = await fetch(`https://api.binance.us/api/v3/ticker/price?symbol=${sym}`, {
+      // If known Bybit symbol, go directly to Bybit
+      if (BYBIT_FALLBACK_SYMBOLS.has(sym)) {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; continue; }
+      }
+      const resp = await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${sym}`, {
         signal: AbortSignal.timeout(8000),
       });
       if (resp.ok) {
         const data = await resp.json();
         prices[sym] = parseFloat(data.price);
+      } else {
+        // Binance failed, try Bybit
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) {
+          prices[sym] = bybitPrice;
+          BYBIT_FALLBACK_SYMBOLS.add(sym);
+        }
       }
     } catch (err) {
       console.warn(`[TradeCall] Failed to fetch price for ${sym}:`, err.message);
+      // Try Bybit on network error
+      try {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; }
+      } catch (_e) { /* skip */ }
     }
   }
 
@@ -3069,7 +3693,7 @@ async function resolveActiveTradeCalls() {
   return { resolved: resolvedCount, expired: expiredCount, checked: activeCalls.length };
 }
 
-// ─── Periodic trade call resolver (every 15 minutes) ───
+// ─── Periodic trade call resolver (every 5 minutes — faster for accurate SL/TP tracking) ───
 setInterval(async () => {
   try {
     const result = await resolveActiveTradeCalls();
@@ -3079,7 +3703,7 @@ setInterval(async () => {
   } catch (err) {
     console.error('[TradeCall] Periodic resolve error:', err.message);
   }
-}, 15 * 60 * 1000); // 15 minutes
+}, 5 * 60 * 1000); // 5 minutes
 
 // ============================================================
 // Scalp Trading Calls — JSON file persistence
@@ -3122,7 +3746,7 @@ app.post('/api/v1/scalp-calls', (req, res) => {
   }
 
   const calls = loadScalpCalls();
-  const cutoff = Date.now() - 1 * 60 * 60 * 1000; // 1h dedup for scalping
+  const cutoff = Date.now() - 30 * 60 * 1000; // v3: 30min dedup for scalp
 
   const dup = calls.find(c =>
     c.symbol === symbol &&
@@ -3136,7 +3760,7 @@ app.post('/api/v1/scalp-calls', (req, res) => {
 
   scalpCallIdCounter++;
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 4 * 60 * 60 * 1000); // 4h expiry
+  const expiresAt = new Date(now.getTime() + 30 * 60 * 1000); // v3: 30min expiry for scalp
 
   const newCall = {
     id: scalpCallIdCounter,
@@ -3296,9 +3920,25 @@ async function resolveActiveScalpCalls() {
   const prices = {};
   for (const sym of symbols) {
     try {
-      const resp = await fetch(`https://api.binance.us/api/v3/ticker/price?symbol=${sym}`, { signal: AbortSignal.timeout(8000) });
+      // If known Bybit symbol, go directly to Bybit
+      if (BYBIT_FALLBACK_SYMBOLS.has(sym)) {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; continue; }
+      }
+      const resp = await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${sym}`, { signal: AbortSignal.timeout(8000) });
       if (resp.ok) { const data = await resp.json(); prices[sym] = parseFloat(data.price); }
-    } catch (_e) { /* skip */ }
+      else {
+        // Binance failed, try Bybit
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; BYBIT_FALLBACK_SYMBOLS.add(sym); }
+      }
+    } catch (_e) {
+      // Try Bybit on network error
+      try {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; }
+      } catch (__e) { /* skip */ }
+    }
   }
 
   const now = new Date();
@@ -3437,7 +4077,7 @@ async function resolveActiveScalpCalls() {
   return { resolved: resolvedCount, expired: expiredCount, checked: activeCalls.length };
 }
 
-// ─── Periodic scalp call resolver (every 5 min) ───
+// ─── Periodic scalp call resolver (every 2 min — fast enough for scalp SL/TP checks) ───
 setInterval(async () => {
   try {
     const result = await resolveActiveScalpCalls();
@@ -3447,7 +4087,747 @@ setInterval(async () => {
   } catch (err) {
     console.error('[ScalpCall] Periodic error:', err.message);
   }
-}, 5 * 60 * 1000);
+}, 2 * 60 * 1000);
+
+// ============================================================
+// RANGE TRADING — Telegram Alert System (Bollinger Bands + RSI + ADX)
+// ============================================================
+
+const RANGE_COOLDOWN_MS = 60 * 60 * 1000; // 60 minutes cooldown for range
+const RANGE_COOLDOWNS_FILE = path.join(DATA_DIR, 'range_cooldowns.json');
+const RANGE_CALLS_FILE = path.join(DATA_DIR, 'range_calls.json');
+const inMemoryRangeCooldowns = new Map();
+
+function loadRangeCooldowns() {
+  try {
+    if (existsSync(RANGE_COOLDOWNS_FILE)) {
+      return JSON.parse(readFileSync(RANGE_COOLDOWNS_FILE, 'utf8'));
+    }
+  } catch (_e) { /* ignore */ }
+  return {};
+}
+
+function saveRangeCooldowns(cooldowns) {
+  try {
+    writeFileSync(RANGE_COOLDOWNS_FILE, JSON.stringify(cooldowns, null, 2));
+  } catch (err) {
+    console.error('[RangeAlert] Error saving cooldowns:', err);
+  }
+}
+
+function isRangeCooldownActive(cooldowns, symbol, direction) {
+  const now = Date.now();
+  const memKey = `${symbol}_${direction}`;
+  const memTs = inMemoryRangeCooldowns.get(memKey);
+  if (memTs && (now - memTs) < RANGE_COOLDOWN_MS) return true;
+  const fileEntry = cooldowns[memKey];
+  if (fileEntry) {
+    const elapsed = now - new Date(fileEntry.timestamp).getTime();
+    if (elapsed < RANGE_COOLDOWN_MS && fileEntry.direction === direction) {
+      inMemoryRangeCooldowns.set(memKey, new Date(fileEntry.timestamp).getTime());
+      return true;
+    }
+  }
+  return false;
+}
+
+function setRangeCooldown(cooldowns, symbol, direction) {
+  const now = Date.now();
+  const memKey = `${symbol}_${direction}`;
+  inMemoryRangeCooldowns.set(memKey, now);
+  cooldowns[memKey] = { timestamp: new Date(now).toISOString(), direction };
+}
+
+// Initialize range cooldowns from file on boot
+(function initRangeCooldownsFromFile() {
+  const cooldowns = loadRangeCooldowns();
+  const now = Date.now();
+  for (const [key, entry] of Object.entries(cooldowns)) {
+    if (entry && entry.timestamp) {
+      const elapsed = now - new Date(entry.timestamp).getTime();
+      if (elapsed < RANGE_COOLDOWN_MS) {
+        inMemoryRangeCooldowns.set(key, new Date(entry.timestamp).getTime());
+      }
+    }
+  }
+  console.log(`[RangeAlert] Loaded ${inMemoryRangeCooldowns.size} active range cooldowns from file`);
+})();
+
+// Range calls persistence
+function loadRangeCalls() {
+  try {
+    if (existsSync(RANGE_CALLS_FILE)) {
+      return JSON.parse(readFileSync(RANGE_CALLS_FILE, 'utf-8'));
+    }
+  } catch (err) {
+    console.error('Error loading range calls:', err);
+  }
+  return [];
+}
+
+function saveRangeCalls(calls) {
+  try {
+    writeFileSync(RANGE_CALLS_FILE, JSON.stringify(calls, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving range calls:', err);
+  }
+}
+
+let rangeCallIdCounter = 0;
+try {
+  const existingRangeCalls = loadRangeCalls();
+  if (existingRangeCalls.length > 0) {
+    rangeCallIdCounter = Math.max(...existingRangeCalls.map(c => c.id || 0));
+  }
+} catch (_e) { /* ignore */ }
+
+// ─── Bollinger Bands calculation ───
+function calcBollingerBands(closes, period = 20, stdDev = 2) {
+  if (closes.length < period) return null;
+  const sma = [];
+  const upper = [];
+  const lower = [];
+  for (let i = period - 1; i < closes.length; i++) {
+    const slice = closes.slice(i - period + 1, i + 1);
+    const mean = slice.reduce((a, b) => a + b, 0) / period;
+    const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period;
+    const sd = Math.sqrt(variance);
+    sma.push(mean);
+    upper.push(mean + stdDev * sd);
+    lower.push(mean - stdDev * sd);
+  }
+  return { sma, upper, lower };
+}
+
+// ─── ADX calculation ───
+function calcADX(klines, period = 14) {
+  if (!klines || klines.length < period * 2 + 1) return null;
+  const plusDM = [];
+  const minusDM = [];
+  const tr = [];
+  for (let i = 1; i < klines.length; i++) {
+    const highDiff = klines[i].high - klines[i - 1].high;
+    const lowDiff = klines[i - 1].low - klines[i].low;
+    plusDM.push(highDiff > lowDiff && highDiff > 0 ? highDiff : 0);
+    minusDM.push(lowDiff > highDiff && lowDiff > 0 ? lowDiff : 0);
+    tr.push(Math.max(
+      klines[i].high - klines[i].low,
+      Math.abs(klines[i].high - klines[i - 1].close),
+      Math.abs(klines[i].low - klines[i - 1].close)
+    ));
+  }
+  // Smoothed TR, +DM, -DM
+  let smoothTR = tr.slice(0, period).reduce((a, b) => a + b, 0);
+  let smoothPlusDM = plusDM.slice(0, period).reduce((a, b) => a + b, 0);
+  let smoothMinusDM = minusDM.slice(0, period).reduce((a, b) => a + b, 0);
+  const dx = [];
+  for (let i = period; i < tr.length; i++) {
+    if (i > period) {
+      smoothTR = smoothTR - smoothTR / period + tr[i];
+      smoothPlusDM = smoothPlusDM - smoothPlusDM / period + plusDM[i];
+      smoothMinusDM = smoothMinusDM - smoothMinusDM / period + minusDM[i];
+    }
+    const plusDI = smoothTR > 0 ? (smoothPlusDM / smoothTR) * 100 : 0;
+    const minusDI = smoothTR > 0 ? (smoothMinusDM / smoothTR) * 100 : 0;
+    const diSum = plusDI + minusDI;
+    dx.push(diSum > 0 ? Math.abs(plusDI - minusDI) / diSum * 100 : 0);
+  }
+  if (dx.length < period) return null;
+  let adx = dx.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < dx.length; i++) {
+    adx = (adx * (period - 1) + dx[i]) / period;
+  }
+  return adx;
+}
+
+// ─── Generate Range Setup for a single symbol ───
+async function generateRangeSetup(symbol) {
+  // Fetch M15 candles (100 candles = ~25h of data)
+  const m15Candles = await fetchBinanceKlines(symbol, '15m', 100);
+  if (m15Candles.length < 30) return null;
+
+  // Fetch H1 candles for bias
+  const h1Candles = await fetchBinanceKlines(symbol, '1h', 50);
+  if (h1Candles.length < 25) return null;
+
+  const m15Closes = m15Candles.map(c => c.close);
+  const h1Closes = h1Candles.map(c => c.close);
+  const currentPrice = m15Closes[m15Closes.length - 1];
+
+  // ─── ADX on M15 — must be < 25 to confirm range ───
+  const adxM15 = calcADX(m15Candles, 14);
+  if (adxM15 === null || adxM15 >= 25) {
+    return null; // Not in a range — trending market
+  }
+
+  // ─── Bollinger Bands on M15 (20, 2) ───
+  const bb = calcBollingerBands(m15Closes, 20, 2);
+  if (!bb || bb.sma.length === 0) return null;
+  const bbUpper = bb.upper[bb.upper.length - 1];
+  const bbMiddle = bb.sma[bb.sma.length - 1];
+  const bbLower = bb.lower[bb.lower.length - 1];
+  const bbWidth = (bbUpper - bbLower) / bbMiddle;
+
+  // Skip if BB width is too narrow (no room for profit)
+  if (bbWidth < 0.008) return null;
+
+  // ─── RSI(14) on M15 ───
+  const rsiArr = calcRSI(m15Closes, 14);
+  const rsiM15 = rsiArr[rsiArr.length - 1];
+
+  // ─── H1 EMA 8 & EMA 20 for bias ───
+  const h1Ema8 = calcEMA(h1Closes, 8);
+  const h1Ema20 = calcEMA(h1Closes, 20);
+  const h1Ema8Val = h1Ema8[h1Ema8.length - 1];
+  const h1Ema20Val = h1Ema20[h1Ema20.length - 1];
+  const h1Price = h1Closes[h1Closes.length - 1];
+
+  let h1Trend = 'neutral';
+  const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
+  if (h1Spread < 0.002) h1Trend = 'neutral';
+  else if (h1Ema8Val > h1Ema20Val) h1Trend = 'bullish';
+  else h1Trend = 'bearish';
+
+  // ─── Price position relative to BB ───
+  const distToLower = (currentPrice - bbLower) / (bbUpper - bbLower);
+  const distToUpper = (bbUpper - currentPrice) / (bbUpper - bbLower);
+
+  let side = null;
+  let confidence = 0;
+  const reasons = [];
+
+  // ─── LONG: Price near lower BB + RSI < 35 ───
+  if (distToLower < 0.15 && rsiM15 < 35) {
+    side = 'LONG';
+    confidence = 50;
+    reasons.push(`Prix proche BB inférieure ($${formatPrice(bbLower)})`);
+    reasons.push(`RSI M15: ${rsiM15.toFixed(1)} — zone de survente`);
+
+    if (rsiM15 < 25) { confidence += 10; reasons.push('RSI extrêmement bas'); }
+    else if (rsiM15 < 30) { confidence += 6; }
+
+    if (distToLower < 0.05) { confidence += 10; reasons.push('Prix touche BB inférieure'); }
+    else if (distToLower < 0.10) { confidence += 5; }
+
+    if (adxM15 < 15) { confidence += 8; reasons.push(`ADX très bas (${adxM15.toFixed(1)}) — range fort`); }
+    else if (adxM15 < 20) { confidence += 4; reasons.push(`ADX bas (${adxM15.toFixed(1)}) — range confirmé`); }
+    else { reasons.push(`ADX: ${adxM15.toFixed(1)}`); }
+
+    if (h1Trend === 'bullish') { confidence += 5; reasons.push('H1 haussière — alignement'); }
+    else if (h1Trend === 'bearish') { confidence -= 8; reasons.push('⚠️ H1 baissière — contre-tendance'); }
+
+    // Volume confirmation
+    const recentVol = m15Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
+    const avgVol = m15Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+    if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 5; reasons.push('Volume M15 supérieur'); }
+
+    // Candle rejection (pin bar at lower BB)
+    const lastCandle = m15Candles[m15Candles.length - 1];
+    const body = Math.abs(lastCandle.close - lastCandle.open);
+    const lowerWick = Math.min(lastCandle.open, lastCandle.close) - lastCandle.low;
+    if (lowerWick > body * 2 && body > 0) { confidence += 8; reasons.push('📌 Mèche de rejet haussière'); }
+  }
+
+  // ─── SHORT: Price near upper BB + RSI > 65 ───
+  else if (distToUpper < 0.15 && rsiM15 > 65) {
+    side = 'SHORT';
+    confidence = 50;
+    reasons.push(`Prix proche BB supérieure ($${formatPrice(bbUpper)})`);
+    reasons.push(`RSI M15: ${rsiM15.toFixed(1)} — zone de surachat`);
+
+    if (rsiM15 > 75) { confidence += 10; reasons.push('RSI extrêmement haut'); }
+    else if (rsiM15 > 70) { confidence += 6; }
+
+    if (distToUpper < 0.05) { confidence += 10; reasons.push('Prix touche BB supérieure'); }
+    else if (distToUpper < 0.10) { confidence += 5; }
+
+    if (adxM15 < 15) { confidence += 8; reasons.push(`ADX très bas (${adxM15.toFixed(1)}) — range fort`); }
+    else if (adxM15 < 20) { confidence += 4; reasons.push(`ADX bas (${adxM15.toFixed(1)}) — range confirmé`); }
+    else { reasons.push(`ADX: ${adxM15.toFixed(1)}`); }
+
+    if (h1Trend === 'bearish') { confidence += 5; reasons.push('H1 baissière — alignement'); }
+    else if (h1Trend === 'bullish') { confidence -= 8; reasons.push('⚠️ H1 haussière — contre-tendance'); }
+
+    // Volume confirmation
+    const recentVol = m15Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
+    const avgVol = m15Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+    if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 5; reasons.push('Volume M15 supérieur'); }
+
+    // Candle rejection (pin bar at upper BB)
+    const lastCandle = m15Candles[m15Candles.length - 1];
+    const body = Math.abs(lastCandle.close - lastCandle.open);
+    const upperWick = lastCandle.high - Math.max(lastCandle.open, lastCandle.close);
+    if (upperWick > body * 2 && body > 0) { confidence += 8; reasons.push('📌 Mèche de rejet baissière'); }
+  }
+
+  if (!side) return null;
+
+  // BB bandwidth bonus
+  if (bbWidth > 0.03) { confidence += 5; reasons.push('BB large — bon potentiel de profit'); }
+  else if (bbWidth > 0.015) { confidence += 2; }
+
+  confidence = Math.min(98, Math.max(30, confidence));
+
+  // ─── SL / TP Calculation ───
+  let stopLoss, tp1, tp2;
+  const bbRange = bbUpper - bbLower;
+
+  if (side === 'LONG') {
+    // SL: 0.5-1.5% beyond lower BB
+    const slBuffer = Math.max(currentPrice * 0.005, Math.min(currentPrice * 0.015, bbRange * 0.15));
+    stopLoss = bbLower - slBuffer;
+    // TP1: BB midline, TP2: upper BB
+    tp1 = bbMiddle;
+    tp2 = bbUpper * 0.998; // Slightly inside upper BB
+  } else {
+    // SL: 0.5-1.5% beyond upper BB
+    const slBuffer = Math.max(currentPrice * 0.005, Math.min(currentPrice * 0.015, bbRange * 0.15));
+    stopLoss = bbUpper + slBuffer;
+    // TP1: BB midline, TP2: lower BB
+    tp1 = bbMiddle;
+    tp2 = bbLower * 1.002; // Slightly inside lower BB
+  }
+
+  const slDist = Math.abs(currentPrice - stopLoss);
+  const tp1Dist = Math.abs(tp1 - currentPrice);
+  const rr = slDist > 0 ? Math.round((tp1Dist / slDist) * 10) / 10 : 1;
+
+  // Skip if R:R is too low
+  if (rr < 0.8) return null;
+
+  return {
+    symbol,
+    name: symbol.replace('USDT', ''),
+    side,
+    entry: currentPrice,
+    stopLoss: roundPrice(stopLoss, currentPrice),
+    tp1: roundPrice(tp1, currentPrice),
+    tp2: roundPrice(tp2, currentPrice),
+    rr,
+    confidence,
+    reason: reasons.join(' | '),
+    rsi_m15: rsiM15,
+    adx_m15: adxM15,
+    bb_upper: bbUpper,
+    bb_middle: bbMiddle,
+    bb_lower: bbLower,
+    bb_width: bbWidth,
+    ema8_h1: h1Ema8Val,
+    ema20_h1: h1Ema20Val,
+    h1_trend: h1Trend,
+    currentPrice,
+  };
+}
+
+// ─── Check and send Range alerts ───
+async function checkAndSendRangeAlerts() {
+  const config = loadTelegramAlerts();
+  if (!config.enabled) return [];
+
+  const sentAlerts = [];
+  const now = new Date();
+  const nowStr = now.toLocaleString('fr-CA', { timeZone: 'America/Montreal' });
+  const cooldowns = loadRangeCooldowns();
+
+  try {
+    // Use same dynamic symbol list as scalp
+    const symbols = await fetchTop200USDTSymbols();
+    console.log(`[RangeAlert] 📡 Analyzing ${symbols.length} symbols for range setups...`);
+
+    const setups = [];
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
+      const batch = symbols.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(batch.map(sym => generateRangeSetup(sym)));
+      for (const setup of results) {
+        if (setup) setups.push(setup);
+      }
+      if (i + BATCH_SIZE < symbols.length) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+
+    console.log(`[RangeAlert] Generated ${setups.length} range setups`);
+    if (setups.length > 0) {
+      const confValues = setups.map(s => `${s.symbol}:${s.confidence}%${s.side}`);
+      console.log(`[RangeAlert] Setup confidences: ${confValues.join(', ')}`);
+    }
+
+    const MIN_CONFIDENCE = 80;
+    const qualifiedSetups = setups.filter(s => s.confidence >= MIN_CONFIDENCE);
+    console.log(`[RangeAlert] After confidence filter (>=${MIN_CONFIDENCE}%): ${qualifiedSetups.length} setups`);
+
+    qualifiedSetups.sort((a, b) => b.confidence - a.confidence);
+
+    const MAX_ACTIVE_RANGE_CALLS = 10;
+    const currentRangeCalls = loadRangeCalls();
+    const activeRangeCallCount = currentRangeCalls.filter(c => c.status === 'active').length;
+    if (activeRangeCallCount >= MAX_ACTIVE_RANGE_CALLS) {
+      console.log(`[RangeAlert] ⛔ Max active range calls reached (${activeRangeCallCount}/${MAX_ACTIVE_RANGE_CALLS})`);
+      return sentAlerts;
+    }
+    const remainingSlots = MAX_ACTIVE_RANGE_CALLS - activeRangeCallCount;
+
+    for (let idx = 0; idx < qualifiedSetups.length && sentAlerts.length < remainingSlots; idx++) {
+      const setup = qualifiedSetups[idx];
+      try {
+        if (isRangeCooldownActive(cooldowns, setup.symbol, setup.side)) {
+          continue;
+        }
+
+        const dirEmoji = setup.side === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
+        const pctTP1 = ((setup.tp1 - setup.entry) / setup.entry * 100);
+        const pctTP2 = ((setup.tp2 - setup.entry) / setup.entry * 100);
+        const pctSL = ((setup.stopLoss - setup.entry) / setup.entry * 100);
+
+        const h1TrendEmoji = setup.h1_trend === 'bullish' ? '🟢 Haussière' : setup.h1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
+        const safeReason = (setup.reason || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const text = `🔵🔵🔵 <b>📊 RANGE TRADING — SIGNAL CRYPTO</b> 🔵🔵🔵
+🌐 https://CryptoIA.ca
+📊 Entry sur le timeframe <b>M15</b> | Biais : <b>H1</b> | Stratégie : <b>Bollinger Bands + RSI + ADX</b>
+━━━━━━━━━━━━━━━━━━━━━
+
+${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
+
+📐 <b>Indicateurs :</b>
+├ BB Supérieure : <b>$${formatPrice(setup.bb_upper)}</b>
+├ BB Médiane : <b>$${formatPrice(setup.bb_middle)}</b>
+├ BB Inférieure : <b>$${formatPrice(setup.bb_lower)}</b>
+├ BB Width : <b>${(setup.bb_width * 100).toFixed(2)}%</b>
+├ RSI M15 : <b>${setup.rsi_m15.toFixed(1)}</b>
+├ ADX M15 : <b>${setup.adx_m15.toFixed(1)}</b> (Range confirmé < 25)
+├ Tendance H1 : ${h1TrendEmoji}
+└ EMA H1 : 8=${setup.ema8_h1 ? '$' + formatPrice(setup.ema8_h1) : 'N/A'} / 20=${setup.ema20_h1 ? '$' + formatPrice(setup.ema20_h1) : 'N/A'}
+
+🎯 <b>Plan de Trade :</b>
+├ Entry : <b>$${formatPrice(setup.entry)}</b>
+├ TP1 (BB Mid) : <b>$${formatPrice(setup.tp1)}</b> (${pctTP1 >= 0 ? '+' : ''}${pctTP1.toFixed(2)}%)
+├ TP2 (BB Opp) : <b>$${formatPrice(setup.tp2)}</b> (${pctTP2 >= 0 ? '+' : ''}${pctTP2.toFixed(2)}%)
+└ SL : <b>$${formatPrice(setup.stopLoss)}</b> (${pctSL >= 0 ? '+' : ''}${pctSL.toFixed(2)}%)
+
+⚖️ Risk/Reward : <b>1:${setup.rr}</b>
+🧠 Confiance : <b>${setup.confidence}%</b>
+
+📋 <b>Raison :</b>
+<i>${safeReason}</i>
+
+⏰ Timeframe : M15 — ${nowStr} (Montréal)
+⚠️ <i>Range trade — Ceci n'est pas un conseil financier. DYOR.</i>`;
+
+        const result = await sendTelegramMessage(text);
+        if (result.ok) {
+          setRangeCooldown(cooldowns, setup.symbol, setup.side);
+          saveRangeCooldowns(cooldowns);
+
+          // Auto-register as range call
+          rangeCallIdCounter++;
+          const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2h expiry
+          const calls = loadRangeCalls();
+          calls.push({
+            id: rangeCallIdCounter,
+            symbol: setup.symbol, side: setup.side,
+            entry_price: setup.entry, stop_loss: setup.stopLoss,
+            trailing_sl: setup.stopLoss,
+            tp1: setup.tp1, tp2: setup.tp2,
+            confidence: setup.confidence, reason: setup.reason,
+            rsi_m15: setup.rsi_m15, adx_m15: setup.adx_m15,
+            bb_upper: setup.bb_upper, bb_middle: setup.bb_middle, bb_lower: setup.bb_lower,
+            bb_width: setup.bb_width,
+            ema8_h1: setup.ema8_h1, ema20_h1: setup.ema20_h1,
+            h1_trend: setup.h1_trend,
+            rr: setup.rr, status: 'active',
+            tp1_hit: false, tp2_hit: false, sl_hit: false,
+            best_tp_reached: 0, exit_price: null, profit_pct: null,
+            created_at: now.toISOString(), resolved_at: null,
+            expires_at: expiresAt.toISOString(),
+          });
+          saveRangeCalls(calls);
+
+          sentAlerts.push({
+            type: 'range_signal', symbol: setup.symbol,
+            direction: setup.side, rr: setup.rr,
+            entry: setup.entry, confidence: setup.confidence,
+          });
+          console.log(`[RangeAlert] ✅ Sent ${setup.side} range signal for ${setup.name} (confidence: ${setup.confidence}%)`);
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      } catch (sendErr) {
+        console.error(`[RangeAlert] ❌ Exception sending ${setup.symbol}:`, sendErr.message || sendErr);
+      }
+    }
+  } catch (err) {
+    console.error('[RangeAlert] Check error:', err);
+  }
+
+  return sentAlerts;
+}
+
+// ─── Periodic range alert checker (every 5 minutes) ───
+let rangeAlertInterval = null;
+
+function startRangeAlertChecker() {
+  const config = loadTelegramAlerts();
+  if (rangeAlertInterval) clearInterval(rangeAlertInterval);
+  if (config.enabled) {
+    const interval = 5 * 60 * 1000;
+    console.log(`[RangeAlert] Range alert checker started — checking every ${interval / 1000}s`);
+    rangeAlertInterval = setInterval(async () => {
+      console.log('[RangeAlert] Running periodic range alert check...');
+      const alerts = await checkAndSendRangeAlerts();
+      if (alerts.length > 0) {
+        console.log(`[RangeAlert] Sent ${alerts.length} range alerts`);
+      }
+    }, interval);
+    // Run initial check after 60s delay
+    setTimeout(() => {
+      checkAndSendRangeAlerts().then(alerts => {
+        if (alerts.length > 0) console.log(`[RangeAlert] Initial check sent ${alerts.length} range alerts`);
+      });
+    }, 60000);
+  }
+}
+
+startRangeAlertChecker();
+
+// ─── Range call resolver ───
+async function resolveActiveRangeCalls() {
+  const calls = loadRangeCalls();
+  const activeCalls = calls.filter(c => c.status === 'active');
+  if (activeCalls.length === 0) return { resolved: 0, expired: 0, checked: 0 };
+
+  const symbols = [...new Set(activeCalls.map(c => c.symbol))];
+  const prices = {};
+  for (const sym of symbols) {
+    try {
+      if (BYBIT_FALLBACK_SYMBOLS.has(sym)) {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; continue; }
+      }
+      const resp = await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${sym}`, { signal: AbortSignal.timeout(8000) });
+      if (resp.ok) { const data = await resp.json(); prices[sym] = parseFloat(data.price); }
+      else {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; BYBIT_FALLBACK_SYMBOLS.add(sym); }
+      }
+    } catch (_e) {
+      try { const bp = await fetchBybitPrice(sym); if (bp != null) prices[sym] = bp; } catch (__e) { /* skip */ }
+    }
+  }
+
+  const now = new Date();
+  let resolvedCount = 0, expiredCount = 0;
+
+  for (const call of activeCalls) {
+    if (call.expires_at && new Date(call.expires_at) <= now) {
+      call.status = 'expired';
+      call.resolved_at = now.toISOString();
+      if (call.tp1_hit) { call.exit_price = call.entry_price; call.profit_pct = 0; }
+      expiredCount++;
+      continue;
+    }
+
+    const currentPrice = prices[call.symbol];
+    if (currentPrice == null) continue;
+
+    if (call.trailing_sl == null) call.trailing_sl = call.stop_loss;
+
+    if (call.side === 'LONG') {
+      if (currentPrice >= call.tp1 && !call.tp1_hit) {
+        call.tp1_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 1);
+        call.trailing_sl = call.entry_price; // Move SL to breakeven
+      }
+      if (currentPrice >= call.tp2) {
+        call.tp2_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 2);
+        call.status = 'resolved';
+        call.exit_price = currentPrice;
+        call.profit_pct = Math.round((currentPrice - call.entry_price) / call.entry_price * 10000) / 100;
+        call.resolved_at = now.toISOString();
+        resolvedCount++;
+        continue;
+      }
+      const effectiveSL = call.trailing_sl != null ? call.trailing_sl : call.stop_loss;
+      if (currentPrice <= effectiveSL) {
+        call.sl_hit = true;
+        call.status = 'resolved';
+        call.exit_price = currentPrice;
+        if (call.tp1_hit) { call.profit_pct = 0; call.exit_price = call.entry_price; }
+        else { call.profit_pct = Math.round((currentPrice - call.entry_price) / call.entry_price * 10000) / 100; }
+        call.resolved_at = now.toISOString();
+        resolvedCount++;
+        continue;
+      }
+    } else {
+      if (currentPrice <= call.tp1 && !call.tp1_hit) {
+        call.tp1_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 1);
+        call.trailing_sl = call.entry_price;
+      }
+      if (currentPrice <= call.tp2) {
+        call.tp2_hit = true;
+        call.best_tp_reached = Math.max(call.best_tp_reached, 2);
+        call.status = 'resolved';
+        call.exit_price = currentPrice;
+        call.profit_pct = Math.round((call.entry_price - currentPrice) / call.entry_price * 10000) / 100;
+        call.resolved_at = now.toISOString();
+        resolvedCount++;
+        continue;
+      }
+      const effectiveSL = call.trailing_sl != null ? call.trailing_sl : call.stop_loss;
+      if (currentPrice >= effectiveSL) {
+        call.sl_hit = true;
+        call.status = 'resolved';
+        call.exit_price = currentPrice;
+        if (call.tp1_hit) { call.profit_pct = 0; call.exit_price = call.entry_price; }
+        else { call.profit_pct = Math.round((call.entry_price - currentPrice) / call.entry_price * 10000) / 100; }
+        call.resolved_at = now.toISOString();
+        resolvedCount++;
+        continue;
+      }
+    }
+  }
+
+  saveRangeCalls(calls);
+  return { resolved: resolvedCount, expired: expiredCount, checked: activeCalls.length };
+}
+
+// Periodic range call resolver (every 3 min)
+setInterval(async () => {
+  try {
+    const result = await resolveActiveRangeCalls();
+    if (result.resolved > 0 || result.expired > 0) {
+      console.log(`[RangeCall] Periodic: ${result.resolved} resolved, ${result.expired} expired`);
+    }
+  } catch (err) {
+    console.error('[RangeCall] Periodic error:', err.message);
+  }
+}, 3 * 60 * 1000);
+
+// ─── Range Trading API endpoints ───
+
+app.get('/api/v1/range-calls', (req, res) => {
+  const { status: filterStatus, limit = '100', offset = '0' } = req.query;
+  let calls = loadRangeCalls();
+  if (filterStatus) calls = calls.filter(c => c.status === filterStatus);
+  calls.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const lim = Math.min(parseInt(limit) || 100, 500);
+  const off = parseInt(offset) || 0;
+  res.json(calls.slice(off, off + lim));
+});
+
+app.get('/api/v1/range-calls/stats', (req, res) => {
+  const calls = loadRangeCalls();
+  const total = calls.length;
+  const activeCalls = calls.filter(c => c.status === 'active').length;
+  const resolvedCalls = calls.filter(c => c.status === 'resolved').length;
+  const expiredCalls = calls.filter(c => c.status === 'expired').length;
+  const closedCalls = calls.filter(c => c.status === 'resolved' || c.status === 'expired');
+  const totalClosed = closedCalls.length;
+
+  let wins = 0, tp1Hits = 0, tp2Hits = 0, slHits = 0;
+  let longWins = 0, longTotal = 0, shortWins = 0, shortTotal = 0;
+  let totalProfit = 0;
+  const profits = [];
+  const confBuckets = { low: { wins: 0, total: 0 }, mid: { wins: 0, total: 0 }, high: { wins: 0, total: 0 }, very_high: { wins: 0, total: 0 } };
+  const weeklyData = {};
+
+  for (const c of closedCalls) {
+    const isWin = c.tp1_hit;
+    if (isWin) wins++;
+    if (c.tp1_hit) tp1Hits++;
+    if (c.tp2_hit) tp2Hits++;
+    if (c.sl_hit) slHits++;
+
+    let effectiveProfit = c.profit_pct;
+    if (c.tp1_hit && c.sl_hit && (effectiveProfit == null || effectiveProfit < 0)) effectiveProfit = 0;
+    if (effectiveProfit != null) { totalProfit += effectiveProfit; profits.push(effectiveProfit); }
+
+    if (c.side === 'LONG') { longTotal++; if (isWin) longWins++; }
+    else { shortTotal++; if (isWin) shortWins++; }
+
+    let bucket;
+    if (c.confidence < 50) bucket = 'low';
+    else if (c.confidence < 65) bucket = 'mid';
+    else if (c.confidence < 80) bucket = 'high';
+    else bucket = 'very_high';
+    confBuckets[bucket].total++;
+    if (isWin) confBuckets[bucket].wins++;
+
+    if (c.created_at) {
+      const d = new Date(c.created_at);
+      const weekNum = getWeekNumber(d);
+      const weekKey = `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+      if (!weeklyData[weekKey]) weeklyData[weekKey] = { wins: 0, total: 0 };
+      weeklyData[weekKey].total++;
+      if (isWin) weeklyData[weekKey].wins++;
+    }
+  }
+
+  const safeRate = (w, t) => t > 0 ? Math.round(w / t * 1000) / 10 : 0;
+  const winRate = safeRate(wins, totalClosed);
+  const avgProfit = profits.length > 0 ? Math.round(totalProfit / profits.length * 100) / 100 : 0;
+
+  const weeklySorted = Object.keys(weeklyData).sort().map(wk => ({
+    week: wk, wins: weeklyData[wk].wins, total: weeklyData[wk].total,
+    win_rate: safeRate(weeklyData[wk].wins, weeklyData[wk].total),
+  }));
+
+  res.json({
+    total_calls: total, active_calls: activeCalls, resolved_calls: resolvedCalls, expired_calls: expiredCalls,
+    win_rate: winRate, tp1_rate: safeRate(tp1Hits, totalClosed), tp2_rate: safeRate(tp2Hits, totalClosed),
+    sl_rate: safeRate(slHits, totalClosed), avg_profit_pct: avgProfit,
+    long_win_rate: safeRate(longWins, longTotal), short_win_rate: safeRate(shortWins, shortTotal),
+    long_total: longTotal, short_total: shortTotal,
+    confidence_buckets: {
+      '<50%': { win_rate: safeRate(confBuckets.low.wins, confBuckets.low.total), total: confBuckets.low.total },
+      '50-65%': { win_rate: safeRate(confBuckets.mid.wins, confBuckets.mid.total), total: confBuckets.mid.total },
+      '65-80%': { win_rate: safeRate(confBuckets.high.wins, confBuckets.high.total), total: confBuckets.high.total },
+      '>80%': { win_rate: safeRate(confBuckets.very_high.wins, confBuckets.very_high.total), total: confBuckets.very_high.total },
+    },
+    weekly_win_rate: weeklySorted,
+  });
+});
+
+app.post('/api/v1/range-calls/reset', (req, res) => {
+  const { confirm } = req.body || {};
+  if (!confirm) return res.status(400).json({ error: 'Missing { "confirm": true }' });
+  saveRangeCalls([]);
+  rangeCallIdCounter = 0;
+  console.log('[RangeCall] All range calls have been reset');
+  res.json({ reset: true, message: 'Toutes les données de performance range ont été réinitialisées.' });
+});
+
+app.post('/api/v1/range-calls/resolve', async (req, res) => {
+  try {
+    const result = await resolveActiveRangeCalls();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/telegram/range-check', async (req, res) => {
+  try {
+    const alerts = await checkAndSendRangeAlerts();
+    res.json({ success: true, alerts_sent: alerts.length, alerts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/telegram/range-toggle', (req, res) => {
+  const { enabled } = req.body;
+  if (enabled) {
+    startRangeAlertChecker();
+  } else if (rangeAlertInterval) {
+    clearInterval(rangeAlertInterval);
+    rangeAlertInterval = null;
+    console.log('[RangeAlert] Range alert checker stopped');
+  }
+  res.json({ success: true, range_alerts_enabled: !!enabled });
+});
 
 // ─── CryptoPanic News API proxy ───
 app.get('/api/news', async (req, res) => {

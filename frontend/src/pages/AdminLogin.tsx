@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Shield,
@@ -9,12 +9,13 @@ import {
   AlertCircle,
   User,
   CheckCircle,
+  Loader2,
 } from "lucide-react";
 import {
   loginAdmin,
   clearAdminSession,
   isAdminSessionActive,
-  isSuperAdminConfigured,
+  checkAdminStatus,
   initSuperAdmin,
 } from "@/lib/store";
 
@@ -22,14 +23,16 @@ export function isAdminAuthenticated(): boolean {
   return isAdminSessionActive();
 }
 
-export function adminLogout(): void {
-  clearAdminSession();
+export async function adminLogout(): Promise<void> {
+  await clearAdminSession();
 }
 
 export default function AdminLogin() {
   const navigate = useNavigate();
 
-  const [isSetupMode] = useState(() => !isSuperAdminConfigured());
+  // Loading state while checking server admin status
+  const [checkingStatus, setCheckingStatus] = useState(true);
+  const [isSetupMode, setIsSetupMode] = useState(false);
 
   // Login state
   const [email, setEmail] = useState("");
@@ -49,6 +52,28 @@ export default function AdminLogin() {
   const [setupError, setSetupError] = useState("");
   const [setupSuccess, setSetupSuccess] = useState("");
   const [setupLoading, setSetupLoading] = useState(false);
+
+  // Check server admin status on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function check() {
+      try {
+        const configured = await checkAdminStatus();
+        if (!cancelled) {
+          setIsSetupMode(!configured);
+          setCheckingStatus(false);
+        }
+      } catch {
+        if (!cancelled) {
+          // On error, assume configured (show login form)
+          setIsSetupMode(false);
+          setCheckingStatus(false);
+        }
+      }
+    }
+    check();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,8 +154,7 @@ export default function AdminLogin() {
             navigate("/admin");
           } else {
             setSetupError("Compte créé mais erreur lors de la connexion automatique. Veuillez vous connecter manuellement.");
-            // Force page reload to switch to login mode
-            window.location.reload();
+            setIsSetupMode(false);
           }
         }, 1500);
       } else {
@@ -142,6 +166,18 @@ export default function AdminLogin() {
       setSetupLoading(false);
     }
   };
+
+  // Show loading spinner while checking server status
+  if (checkingStatus) {
+    return (
+      <div className="min-h-screen bg-[#0A0E1A] text-white flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mx-auto mb-4" />
+          <p className="text-sm text-gray-400">Vérification du statut admin...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isSetupMode) {
     return (

@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback, Fragment } from "react";
+import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import {
-  TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3,
-  Shield, Target, ChevronDown, ChevronUp, Zap, Trophy,
+  TrendingUp, TrendingDown, RefreshCw, Filter,
+  Shield, Target, ChevronDown, ChevronUp, Zap, Trophy, Trash2,
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -48,7 +48,180 @@ interface ScalpSetup {
   stoch_k: number | null;
   stoch_d: number | null;
   h1Bias: "bullish" | "bearish" | "neutral";
+  h4Bias: "bullish" | "bearish" | "neutral";
+  ema8_h4: number | null;
+  ema20_h4: number | null;
   source?: "client" | "server";
+}
+
+/* ─── Winrate Estimates for Scalp ─── */
+
+function getScalpWinrateForTP(confidence: number, tpLevel: number): number {
+  // v3: Updated estimates for ATR SL (0.5-2%) + realistic TP (0.8:1 / 1.5:1 / 2.5:1)
+  if (confidence >= 90) {
+    if (tpLevel === 1) return 75;  // 0.8:1 — close target
+    if (tpLevel === 2) return 52;  // 1.5:1
+    return 35;                      // 2.5:1
+  }
+  if (confidence >= 80) {
+    if (tpLevel === 1) return 72;
+    if (tpLevel === 2) return 50;
+    return 33;
+  }
+  if (confidence >= 70) {
+    if (tpLevel === 1) return 65;
+    if (tpLevel === 2) return 42;
+    return 28;
+  }
+  if (tpLevel === 1) return 55;
+  if (tpLevel === 2) return 35;
+  return 22;
+}
+
+function ScalpWinrateBadge({ confidence, tp }: { confidence: number; tp: number }) {
+  const wr = getScalpWinrateForTP(confidence, tp);
+  const color = wr >= 55 ? "text-emerald-400 bg-emerald-500/10" : wr >= 35 ? "text-amber-400 bg-amber-500/10" : "text-gray-400 bg-gray-500/10";
+  return (
+    <span className={`text-[8px] px-1 py-0.5 rounded font-semibold ${color} ml-1`}>
+      WR ~{wr}%
+    </span>
+  );
+}
+
+/* ─── Signal Tracking System ─── */
+
+interface ScalpTrackedSignal {
+  symbol: string;
+  side: "LONG" | "SHORT";
+  entry: number;
+  tp1: number;
+  tp2: number;
+  tp3: number;
+  sl: number;
+  confidence: number;
+  id: string;
+  timestamp: number;
+  tp1Hit?: boolean;
+  tp2Hit?: boolean;
+  tp3Hit?: boolean;
+  slHit?: boolean;
+  resolved?: boolean;
+}
+
+interface ScalpPerfStats {
+  total: number;
+  tp1Hits: number;
+  tp2Hits: number;
+  tp3Hits: number;
+  slHits: number;
+  pending: number;
+}
+
+const SCALP_SIGNAL_KEY = "scalp_tracked_signals";
+
+function loadScalpSignals(): ScalpTrackedSignal[] {
+  try {
+    const raw = localStorage.getItem(SCALP_SIGNAL_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveScalpSignals(signals: ScalpTrackedSignal[]) {
+  try {
+    const trimmed = signals.slice(-300);
+    localStorage.setItem(SCALP_SIGNAL_KEY, JSON.stringify(trimmed));
+  } catch {
+    // Silent fail
+  }
+}
+
+function storeNewScalpSignals(setups: ScalpSetup[]) {
+  const existing = loadScalpSignals();
+  const existingKeys = new Set(existing.map(s => `${s.symbol}-${s.side}-${s.entry}`));
+  const newSignals: ScalpTrackedSignal[] = [];
+
+  for (const s of setups) {
+    const key = `${s.symbol}-${s.side}-${s.entry}`;
+    if (!existingKeys.has(key)) {
+      newSignals.push({
+        symbol: s.symbol,
+        side: s.side,
+        entry: s.entry,
+        tp1: s.tp1,
+        tp2: s.tp2,
+        tp3: s.tp3,
+        sl: s.stopLoss,
+        confidence: s.confidence,
+        id: s.id,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  if (newSignals.length > 0) {
+    saveScalpSignals([...existing, ...newSignals]);
+  }
+}
+
+function updateScalpSignalsWithPrices(currentPrices: Map<string, number>): ScalpTrackedSignal[] {
+  const signals = loadScalpSignals();
+  let changed = false;
+
+  for (const sig of signals) {
+    if (sig.resolved) continue;
+    const price = currentPrices.get(sig.symbol);
+    if (price == null) continue;
+
+    if (sig.side === "LONG") {
+      // Check TPs FIRST — partial win protection
+      if (price >= sig.tp1 && !sig.tp1Hit) { sig.tp1Hit = true; changed = true; }
+      if (price >= sig.tp2 && !sig.tp2Hit) { sig.tp2Hit = true; changed = true; }
+      if (price >= sig.tp3 && !sig.tp3Hit) { sig.tp3Hit = true; sig.resolved = true; changed = true; }
+      // SL only resolves if NO TP1+ was hit (partial win protection)
+      if (price <= sig.sl && !sig.slHit) {
+        sig.slHit = true;
+        if (!sig.tp1Hit) { sig.resolved = true; } // Only full loss if TP1 never hit
+        changed = true;
+      }
+    } else {
+      if (price <= sig.tp1 && !sig.tp1Hit) { sig.tp1Hit = true; changed = true; }
+      if (price <= sig.tp2 && !sig.tp2Hit) { sig.tp2Hit = true; changed = true; }
+      if (price <= sig.tp3 && !sig.tp3Hit) { sig.tp3Hit = true; sig.resolved = true; changed = true; }
+      if (price >= sig.sl && !sig.slHit) {
+        sig.slHit = true;
+        if (!sig.tp1Hit) { sig.resolved = true; }
+        changed = true;
+      }
+    }
+
+    // Auto-expire after 4 hours (extended scalp timeframe)
+    if (Date.now() - sig.timestamp > 4 * 60 * 60 * 1000 && !sig.resolved) {
+      sig.resolved = true;
+      changed = true;
+    }
+  }
+
+  if (changed) saveScalpSignals(signals);
+  return signals;
+}
+
+function computeScalpPerfStats(signals: ScalpTrackedSignal[]): ScalpPerfStats {
+  return {
+    total: signals.length,
+    tp1Hits: signals.filter(s => s.tp1Hit).length,
+    tp2Hits: signals.filter(s => s.tp2Hit).length,
+    tp3Hits: signals.filter(s => s.tp3Hit).length,
+    slHits: signals.filter(s => s.slHit).length,
+    pending: signals.filter(s => !s.resolved).length,
+  };
+}
+
+function clearScalpSignals() {
+  localStorage.removeItem(SCALP_SIGNAL_KEY);
 }
 
 /* ─── Server-side scalp call type ─── */
@@ -64,15 +237,101 @@ interface ServerScalpCall {
   tp3: number;
   confidence: number;
   reason: string;
-  stoch_rsi_k: number | null;
-  stoch_rsi_d: number | null;
+  stoch_k: number | null;
+  stoch_d: number | null;
+  stoch_rsi_k?: number | null;
+  stoch_rsi_d?: number | null;
+  ema8_m5: number | null;
+  ema20_m5: number | null;
+  vwap_m5: number | null;
+  vwap_h1: number | null;
   macd_signal: string;
   h1_macd_signal: string;
   h1_trend: string;
+  h4_trend?: string;
+  ema8_h4?: number | null;
+  ema20_h4?: number | null;
   rr: number;
   status: string;
   created_at: string;
   expires_at: string;
+}
+
+/* ─── Trade Progress Helper ─── */
+interface TradeProgress {
+  entryHit: boolean;
+  slHit: boolean;
+  tp1Hit: boolean;
+  tp2Hit: boolean;
+  tp3Hit: boolean;
+  bestTp: number; // 0 = none, 1/2/3
+  status: "pending" | "active" | "tp1" | "tp2" | "tp3" | "sl";
+  statusLabel: string;
+  statusColor: string;
+  statusBg: string;
+  statusIcon: string;
+}
+
+function getScalpTradeProgress(trade: ScalpSetup): TradeProgress {
+  const price = trade.currentPrice;
+  const entry = trade.entry;
+  const sl = trade.stopLoss;
+  const tp1 = trade.tp1;
+  const tp2 = trade.tp2;
+  const tp3 = trade.tp3;
+  const isLong = trade.side === "LONG";
+
+  // Determine which levels have been hit based on current price
+  const entryHit = isLong ? price <= entry || price >= entry * 0.998 : price >= entry || price <= entry * 1.002;
+  const slHit = isLong ? price <= sl : price >= sl;
+  const tp1Hit = isLong ? price >= tp1 : price <= tp1;
+  const tp2Hit = isLong ? price >= tp2 : price <= tp2;
+  const tp3Hit = isLong ? price >= tp3 : price <= tp3;
+
+  let bestTp = 0;
+  if (tp3Hit) bestTp = 3;
+  else if (tp2Hit) bestTp = 2;
+  else if (tp1Hit) bestTp = 1;
+
+  let status: TradeProgress["status"] = "pending";
+  let statusLabel = "⏳ En attente";
+  let statusColor = "text-gray-400";
+  let statusBg = "bg-gray-500/10 border-gray-500/20";
+  let statusIcon = "⏳";
+
+  if (slHit && bestTp === 0) {
+    status = "sl";
+    statusLabel = "SL Hit";
+    statusColor = "text-red-400";
+    statusBg = "bg-red-500/15 border-red-500/25";
+    statusIcon = "❌";
+  } else if (bestTp === 3) {
+    status = "tp3";
+    statusLabel = "TP3 Hit";
+    statusColor = "text-emerald-400";
+    statusBg = "bg-emerald-500/15 border-emerald-500/25";
+    statusIcon = "🎯";
+  } else if (bestTp === 2) {
+    status = "tp2";
+    statusLabel = "TP2 Hit";
+    statusColor = "text-emerald-400";
+    statusBg = "bg-emerald-500/15 border-emerald-500/25";
+    statusIcon = "✅";
+  } else if (bestTp === 1) {
+    status = "tp1";
+    statusLabel = "TP1 Hit";
+    statusColor = "text-emerald-300";
+    statusBg = "bg-emerald-500/10 border-emerald-500/20";
+    statusIcon = "✅";
+  } else if (entryHit) {
+    status = "active";
+    statusLabel = "Actif";
+    statusColor = "text-amber-400";
+    statusBg = "bg-amber-500/15 border-amber-500/25";
+    statusIcon = "🟢";
+  }
+
+  return { entryHit, slHit, tp1Hit, tp2Hit, tp3Hit, bestTp, status, statusLabel, statusColor, statusBg, statusIcon };
 }
 
 function serverCallToSetup(call: ServerScalpCall): ScalpSetup {
@@ -100,22 +359,25 @@ function serverCallToSetup(call: ServerScalpCall): ScalpSetup {
     triggerTime,
     supports: [],
     resistances: [],
-    ema8_m5: null,
-    ema20_m5: null,
+    ema8_m5: call.ema8_m5 ?? null,
+    ema20_m5: call.ema20_m5 ?? null,
     ema8_h1: null,
     ema20_h1: null,
-    vwap_h1: null,
-    vwap_m5: null,
-    stoch_k: call.stoch_rsi_k,
-    stoch_d: call.stoch_rsi_d,
+    vwap_h1: call.vwap_h1 ?? null,
+    vwap_m5: call.vwap_m5 ?? null,
+    stoch_k: call.stoch_k ?? call.stoch_rsi_k ?? null,
+    stoch_d: call.stoch_d ?? call.stoch_rsi_d ?? null,
     h1Bias: (call.h1_trend as "bullish" | "bearish" | "neutral") || "neutral",
+    h4Bias: (call.h4_trend as "bullish" | "bearish" | "neutral") || "neutral",
+    ema8_h4: call.ema8_h4 ?? null,
+    ema20_h4: call.ema20_h4 ?? null,
     source: "server",
   };
 }
 
-async function fetchServerScalpCalls(): Promise<ScalpSetup[]> {
+async function fetchServerScalpCalls(signal?: AbortSignal): Promise<ScalpSetup[]> {
   try {
-    const res = await fetch("/api/v1/scalp-calls?status=active&limit=50", { signal: AbortSignal.timeout(8000) });
+    const res = await fetch("/api/v1/scalp-calls?status=active&limit=50", { signal: signal ?? AbortSignal.timeout(8000) });
     if (!res.ok) return [];
     const data: ServerScalpCall[] = await res.json();
     if (!Array.isArray(data)) return [];
@@ -139,6 +401,7 @@ function mergeSetups(clientSetups: ScalpSetup[], serverSetups: ScalpSetup[]): Sc
 /* ─── Formatters ─── */
 
 function formatUsd(v: number): string {
+  if (v == null || isNaN(v)) return "$0.00";
   if (Math.abs(v) >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
   if (Math.abs(v) >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
   if (Math.abs(v) >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
@@ -146,6 +409,7 @@ function formatUsd(v: number): string {
 }
 
 function formatPrice(p: number): string {
+  if (p == null || isNaN(p)) return "0.00";
   if (p >= 1000) return p.toLocaleString("en-US", { maximumFractionDigits: 2 });
   if (p >= 1) return p.toFixed(2);
   if (p >= 0.01) return p.toFixed(4);
@@ -157,6 +421,54 @@ function roundPrice(value: number, reference: number): number {
   if (reference >= 1) return Math.round(value * 100) / 100;
   if (reference >= 0.01) return Math.round(value * 10000) / 10000;
   return Math.round(value * 1000000) / 1000000;
+}
+
+/* ─── Fallback symbols when CoinGecko is unavailable ─── */
+
+const FALLBACK_SYMBOLS = [
+  { symbol: "BTCUSDT", id: "bitcoin", name: "Bitcoin" },
+  { symbol: "ETHUSDT", id: "ethereum", name: "Ethereum" },
+  { symbol: "SOLUSDT", id: "solana", name: "Solana" },
+  { symbol: "BNBUSDT", id: "binancecoin", name: "BNB" },
+  { symbol: "XRPUSDT", id: "ripple", name: "XRP" },
+  { symbol: "ADAUSDT", id: "cardano", name: "Cardano" },
+  { symbol: "DOGEUSDT", id: "dogecoin", name: "Dogecoin" },
+  { symbol: "AVAXUSDT", id: "avalanche-2", name: "Avalanche" },
+  { symbol: "DOTUSDT", id: "polkadot", name: "Polkadot" },
+  { symbol: "LINKUSDT", id: "chainlink", name: "Chainlink" },
+  { symbol: "MATICUSDT", id: "matic-network", name: "Polygon" },
+  { symbol: "UNIUSDT", id: "uniswap", name: "Uniswap" },
+  { symbol: "ATOMUSDT", id: "cosmos", name: "Cosmos" },
+  { symbol: "NEARUSDT", id: "near", name: "NEAR" },
+  { symbol: "APTUSDT", id: "aptos", name: "Aptos" },
+  { symbol: "ARBUSDT", id: "arbitrum", name: "Arbitrum" },
+  { symbol: "OPUSDT", id: "optimism", name: "Optimism" },
+  { symbol: "INJUSDT", id: "injective-protocol", name: "Injective" },
+  { symbol: "SUIUSDT", id: "sui", name: "Sui" },
+  { symbol: "SEIUSDT", id: "sei-network", name: "Sei" },
+  { symbol: "TIAUSDT", id: "celestia", name: "Celestia" },
+  { symbol: "JUPUSDT", id: "jupiter-exchange-solana", name: "Jupiter" },
+  { symbol: "WIFUSDT", id: "dogwifcoin", name: "dogwifhat" },
+  { symbol: "PEPEUSDT", id: "pepe", name: "Pepe" },
+  { symbol: "BONKUSDT", id: "bonk", name: "Bonk" },
+  { symbol: "RENDERUSDT", id: "render-token", name: "Render" },
+  { symbol: "FETUSDT", id: "fetch-ai", name: "Fetch.ai" },
+  { symbol: "TAOUSDT", id: "bittensor", name: "Bittensor" },
+  { symbol: "ONDOUSDT", id: "ondo-finance", name: "Ondo" },
+  { symbol: "FTMUSDT", id: "fantom", name: "Fantom" },
+];
+
+function buildFallbackCoins(): any[] {
+  return FALLBACK_SYMBOLS.map(fb => ({
+    id: fb.id,
+    symbol: fb.symbol.replace(/USDT$/, "").toLowerCase(),
+    name: fb.name,
+    current_price: 0,
+    market_cap: 100_000_000,
+    total_volume: 10_000_000,
+    price_change_percentage_24h: 0,
+    image: "",
+  }));
 }
 
 /* ─── Binance Klines with Volume ─── */
@@ -187,6 +499,12 @@ const COINGECKO_TO_BINANCE: Record<string, string> = {
   "vvv": "",  // not a valid Binance pair
   "mon": "",  // not a valid Binance pair
   "kite": "", // not a valid Binance pair
+  "power": "", // not on Binance
+  "siren": "", // not on Binance
+  "pippin": "", // not on Binance
+  "river": "", // not on Binance
+  "apepe": "", // not on Binance
+  "m": "",     // not on Binance (single letter, invalid)
 };
 
 /** Convert CoinGecko symbol to Binance USDT pair. Returns empty string if invalid. */
@@ -205,13 +523,13 @@ function cgSymbolToBinancePair(cgSymbol: string): string {
 // Cache of known-bad Binance symbols to avoid repeated 400 errors
 const _badBinanceSymbols = new Set<string>();
 
-async function fetchKlines(symbolUpper: string, interval: string, limit: number): Promise<KlineWithVol[]> {
+async function fetchKlines(symbolUpper: string, interval: string, limit: number, signal?: AbortSignal): Promise<KlineWithVol[]> {
   const base = symbolUpper.replace(/USDT$/, "");
   const pair = `${base}USDT`;
   // Skip if we already know this symbol is invalid
   if (!base || base.length < 2 || _badBinanceSymbols.has(pair)) return [];
   try {
-    const res = await fetch(`/api/binance/klines?symbol=${pair}&interval=${interval}&limit=${limit}`, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(`/api/binance/klines?symbol=${pair}&interval=${interval}&limit=${limit}`, { signal: signal ?? AbortSignal.timeout(5000) });
     if (!res.ok) {
       // Mark as bad so we don't retry
       if (res.status === 400) _badBinanceSymbols.add(pair);
@@ -232,8 +550,8 @@ async function fetchKlines(symbolUpper: string, interval: string, limit: number)
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   INDICATOR CALCULATIONS — "Suivi de Flux" Strategy
-   EMA 8 + EMA 20 + VWAP + Stochastique (9, 3, 1)
+   INDICATOR CALCULATIONS — "Précision" v3 Strategy
+   EMA 8 + EMA 20 + VWAP + Stochastique (9, 3, 1) + RSI M5
    ═══════════════════════════════════════════════════════════════ */
 
 /** EMA series — returns array of EMA values (same length as input, first `period-1` are SMA-seeded) */
@@ -296,6 +614,27 @@ function calcStochastic(klines: KlineWithVol[], kPeriod = 9, dPeriod = 3, _kSmoo
   return { kArr, dArr };
 }
 
+/* ─── ATR Calculation for M5 klines ─── */
+
+function calcATR_M5(klines: KlineWithVol[], period = 14): number | null {
+  if (klines.length < period + 1) return null;
+  const trs: number[] = [];
+  for (let i = 1; i < klines.length; i++) {
+    const tr = Math.max(
+      klines[i].high - klines[i].low,
+      Math.abs(klines[i].high - klines[i - 1].close),
+      Math.abs(klines[i].low - klines[i - 1].close)
+    );
+    trs.push(tr);
+  }
+  if (trs.length < period) return null;
+  let atr = trs.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < trs.length; i++) {
+    atr = (atr * (period - 1) + trs[i]) / period;
+  }
+  return atr;
+}
+
 /* ─── M5 S/R from pivots ─── */
 
 function calculateM5SR(klines: KlineWithVol[], currentPrice: number): { supports: SRLevel[]; resistances: SRLevel[] } {
@@ -349,10 +688,10 @@ function calculateM5SR(klines: KlineWithVol[], currentPrice: number): { supports
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   GENERATE SCALP SETUPS — "Suivi de Flux" Strategy
+   GENERATE SCALP SETUPS — "Précision" v3 Strategy
    ═══════════════════════════════════════════════════════════════ */
 
-async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
+async function generateScalpSetups(coins: any[], signal?: AbortSignal): Promise<ScalpSetup[]> {
   const triggerTime = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const setups: ScalpSetup[] = [];
 
@@ -360,18 +699,19 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
     if (!c || !c.current_price || !c.market_cap) return false;
     const vol = c.total_volume || 0;
     const mcap = c.market_cap || 1;
-    return vol / mcap > 0.05 && mcap > 50_000_000;
+    return vol / mcap > 0.03 && mcap > 30_000_000;
   });
 
   const sorted = [...candidates].sort((a, b) => {
     const rA = (a.total_volume || 0) / (a.market_cap || 1);
     const rB = (b.total_volume || 0) / (b.market_cap || 1);
     return rB - rA;
-  }).slice(0, 30);
+  }).slice(0, 120);
 
-  /* Fetch H1 and M5 klines in batches — only for coins with valid Binance pairs */
+  /* Fetch H1, 4H and M5 klines in batches — only for coins with valid Binance pairs */
   const BATCH = 10;
   const h1Map = new Map<string, KlineWithVol[]>();
+  const h4Map = new Map<string, KlineWithVol[]>();
   const m5Map = new Map<string, KlineWithVol[]>();
 
   // Pre-filter: only keep coins with valid Binance pairs
@@ -385,16 +725,18 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
     await Promise.all(batch.flatMap(c => {
       const sym = ((c.symbol || "") as string).toUpperCase();
       return [
-        fetchKlines(sym, "1h", 100).then(d => h1Map.set(sym, d)),
-        fetchKlines(sym, "5m", 100).then(d => m5Map.set(sym, d)),
+        fetchKlines(sym, "1h", 100, signal).then(d => h1Map.set(sym, d)),
+        fetchKlines(sym, "4h", 50, signal).then(d => h4Map.set(sym, d)),
+        fetchKlines(sym, "5m", 100, signal).then(d => m5Map.set(sym, d)),
       ];
     }));
     if (i + BATCH < validSorted.length) await new Promise(r => setTimeout(r, 300));
   }
 
   for (const c of validSorted) {
+    try {
     const sym = ((c.symbol || "") as string).toUpperCase();
-    const price = c.current_price;
+    let price = c.current_price;
     const change24h = c.price_change_percentage_24h || 0;
     const volume = c.total_volume || 0;
     const mcap = c.market_cap || 1;
@@ -402,6 +744,12 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
     const h1K = h1Map.get(sym) || [];
     const m5K = m5Map.get(sym) || [];
     if (h1K.length < 25 || m5K.length < 50) continue;
+
+    // If price is 0 (fallback mode), get it from the latest M5 candle
+    if (!price || price <= 0) {
+      price = m5K[m5K.length - 1]?.close || 0;
+      if (price <= 0) continue;
+    }
 
     const h1Closes = h1K.map(k => k.close);
     const m5Closes = m5K.map(k => k.close);
@@ -422,6 +770,36 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
     else if (h1Price < h1Ema20 && h1Price < h1Vwap) h1Bias = "bearish";
 
     if (h1Bias === "neutral") continue; // No signal without clear H1 bias
+
+    /* ─── 4H Indicators (Higher Timeframe Trend Filter) ─── */
+    const h4K = h4Map.get(sym) || [];
+    let h4Bias: "bullish" | "bearish" | "neutral" = "neutral";
+    let h4Ema8Val: number | null = null;
+    let h4Ema20Val: number | null = null;
+    if (h4K.length >= 25) {
+      const h4Closes = h4K.map(k => k.close);
+      const h4Ema8Arr = calcEMASeries(h4Closes, 8);
+      const h4Ema20Arr = calcEMASeries(h4Closes, 20);
+      h4Ema8Val = h4Ema8Arr[h4Ema8Arr.length - 1];
+      h4Ema20Val = h4Ema20Arr[h4Ema20Arr.length - 1];
+      if (!isNaN(h4Ema8Val) && !isNaN(h4Ema20Val)) {
+        const h4Spread = Math.abs(h4Ema8Val - h4Ema20Val) / h4Ema20Val;
+        if (h4Spread < 0.001) {
+          h4Bias = "neutral";
+        } else if (h4Ema8Val > h4Ema20Val) {
+          h4Bias = "bullish";
+        } else {
+          h4Bias = "bearish";
+        }
+      }
+    }
+
+    // Reject signals conflicting with 4H trend
+    if (h1Bias === "bullish" && h4Bias === "bearish") continue;
+    if (h1Bias === "bearish" && h4Bias === "bullish") continue;
+
+    // 4H neutral penalty applied later
+    const h4NeutralPenalty = h4Bias === "neutral" ? 5 : 0;
 
     /* ─── M5 Indicators ─── */
     const m5Ema8Arr = calcEMASeries(m5Closes, 8);
@@ -467,197 +845,392 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
     const priceNearEma = distToEma8 < 0.003 || distToEma20 < 0.003;
     const priceBetweenEmas = (price >= Math.min(m5Ema8, m5Ema20) && price <= Math.max(m5Ema8, m5Ema20));
 
-    // Stochastic conditions
-    const stochOversold = stochK < 20;
-    const stochOverbought = stochK > 80;
+    // Stochastic conditions — v2: tightened thresholds for better winrate
+    const stochOversold = stochK < 25;        // Tightened from 35 to 25
+    const stochDeepOversold = stochK < 15;    // Tightened from 20 to 15
+    const stochOverbought = stochK > 75;      // Tightened from 65 to 75
+    const stochDeepOverbought = stochK > 85;  // Tightened from 80 to 85
     const stochCrossUp = stochKPrev <= stochDPrev && stochK > stochD;
     const stochCrossDown = stochKPrev >= stochDPrev && stochK < stochD;
     const stochRising = stochK > stochKPrev;
     const stochFalling = stochK < stochKPrev;
 
-    /* ─── LONG Signal ─── */
+    // Extended price proximity — relaxed from 0.003 to 0.006
+    const priceNearEmaWide = distToEma8 < 0.006 || distToEma20 < 0.006;
+
+    /* ─── LONG Signal — Type A: Pullback Entry (relaxed) ─── */
     if (h1Bias === "bullish") {
-      const cond1 = true; // H1 bias already checked
       const cond2 = ema8AboveEma20 || emaCrossUp;
-      const cond3 = priceNearEma || priceBetweenEmas;
+      const cond3 = priceNearEma || priceBetweenEmas || priceNearEmaWide;
       const cond4 = price > m5Vwap;
       const cond5 = stochOversold && (stochCrossUp || stochRising);
 
-      if (cond1 && cond2 && cond3 && cond4 && cond5) {
+      if (cond2 && cond3 && cond4 && cond5) {
         side = "LONG";
         confidence = 50;
         reasons.push(`H1: Prix > EMA20 ($${h1Ema20.toFixed(2)}) & VWAP ($${h1Vwap.toFixed(2)}) ✓`);
 
-        // EMA crossover bonus
-        if (emaCrossUp) {
-          confidence += 10;
-          reasons.push("M5: Croisement EMA8 > EMA20 récent ↑");
-        } else {
-          reasons.push("M5: EMA8 > EMA20 ✓");
-        }
+        if (emaCrossUp) { confidence += 10; reasons.push("M5: Croisement EMA8 > EMA20 récent ↑"); }
+        else { reasons.push("M5: EMA8 > EMA20 ✓"); }
 
-        // Rebond EMA
-        if (distToEma20 < 0.001) {
-          confidence += 8;
-          reasons.push(`M5: Rebond parfait EMA20 ($${m5Ema20.toFixed(2)})`);
-        } else if (priceNearEma) {
-          confidence += 4;
-          reasons.push("M5: Prix proche EMA");
-        }
+        if (distToEma20 < 0.001) { confidence += 8; reasons.push("M5: Rebond parfait EMA20"); }
+        else if (priceNearEma) { confidence += 4; reasons.push("M5: Prix proche EMA"); }
+        else if (priceNearEmaWide) { confidence += 2; reasons.push("M5: Prix zone EMA"); }
 
-        // Stochastic
-        if (stochK < 10) {
-          confidence += 10;
-          reasons.push(`Stoch: Survente extrême (K:${stochK.toFixed(1)})`);
-        } else {
-          confidence += 5;
-          reasons.push(`Stoch: Survente (K:${stochK.toFixed(1)})`);
-        }
-        if (stochCrossUp) {
-          confidence += 8;
-          reasons.push(`Stoch: Croisement K↑D (${stochK.toFixed(1)}→${stochD.toFixed(1)})`);
-        } else {
-          reasons.push(`Stoch: K remonte (${stochKPrev.toFixed(1)}→${stochK.toFixed(1)})`);
-        }
+        if (stochDeepOversold) { confidence += 10; reasons.push(`Stoch: Survente extrême (K:${stochK.toFixed(1)})`); }
+        else if (stochK < 25) { confidence += 7; reasons.push(`Stoch: Survente (K:${stochK.toFixed(1)})`); }
+        else { confidence += 4; reasons.push(`Stoch: Zone basse (K:${stochK.toFixed(1)})`); }
 
-        // VWAP M5 alignment
+        if (stochCrossUp) { confidence += 8; reasons.push("Stoch: Croisement K↑D"); }
+
         const vwapDist = (price - m5Vwap) / price;
-        if (vwapDist > 0.002) {
-          confidence += 4;
-          reasons.push("VWAP M5: bien au-dessus ✓");
-        } else {
-          reasons.push("VWAP M5 ✓");
-        }
+        if (vwapDist > 0.002) { confidence += 4; reasons.push("VWAP M5: bien au-dessus ✓"); }
 
-        // Volume bonus
         const recentVol = m5K.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
         const avgVol = m5K.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.3) {
-          confidence += 5;
-          reasons.push("Volume M5 supérieur à la moyenne");
-        }
+        if (avgVol > 0 && recentVol > avgVol * 1.3) { confidence += 5; reasons.push("Volume M5 supérieur"); }
 
-        // H1 EMA spread bonus (strong trend)
-        const h1EmaSpread = Math.abs(h1Ema8 - h1Ema20) / h1Ema20;
-        if (!isNaN(h1Ema8) && h1EmaSpread > 0.005) {
-          confidence += 5;
-          reasons.push("H1: Tendance forte (EMA8/20 écartées)");
+        const h1Spread = Math.abs(h1Ema8 - h1Ema20) / h1Ema20;
+        if (!isNaN(h1Ema8) && h1Spread > 0.005) { confidence += 5; reasons.push("H1: Tendance forte (EMA8/20 écartées)"); }
+      }
+
+      /* ─── LONG Signal — Type B: Momentum Continuation ─── */
+      if (!side && h1Bias === "bullish") {
+        const strongH1 = !isNaN(h1Ema8) && h1Ema8 > h1Ema20 && h1Closes[h1Closes.length - 1] > h1Ema8;
+        const emaCrossRecent = emaCrossUp;
+        const stochMidRising = stochK > 40 && stochK < 75 && stochCrossUp;
+        const aboveVwap = price > m5Vwap;
+
+        if (strongH1 && emaCrossRecent && stochMidRising && aboveVwap) {
+          side = "LONG";
+          confidence = 45;
+          reasons.push("H1: Tendance forte haussière (EMA8 > EMA20, prix > EMA8) ✓");
+          reasons.push("M5: Croisement EMA8 > EMA20 récent ↑");
+          reasons.push(`Stoch: Croisement K↑D en zone médiane (K:${stochK.toFixed(1)})`);
+
+          const vwapDist = (price - m5Vwap) / price;
+          if (vwapDist > 0.003) { confidence += 5; reasons.push("VWAP M5: bien au-dessus ✓"); }
+
+          const recentVol = m5K.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+          const avgVol = m5K.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+          if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; reasons.push("Volume M5 en hausse forte"); }
+          else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; reasons.push("Volume M5 supérieur"); }
+
+          const h1Spread = Math.abs(h1Ema8 - h1Ema20) / h1Ema20;
+          if (h1Spread > 0.008) { confidence += 8; reasons.push("H1: Tendance très forte (EMA8/20 très écartées)"); }
+          else if (h1Spread > 0.004) { confidence += 4; reasons.push("H1: Tendance forte"); }
+        }
+      }
+
+      /* ─── LONG Signal — Type C: VWAP Bounce ─── */
+      if (!side && h1Bias === "bullish") {
+        const vwapProximity = Math.abs(price - m5Vwap) / price < 0.003;
+        const priceAboveVwap = price >= m5Vwap;
+        const stochTurningUp = stochCrossUp || (stochRising && stochK < 50);
+        const emaAligned = ema8AboveEma20;
+
+        if (vwapProximity && priceAboveVwap && stochTurningUp && emaAligned) {
+          side = "LONG";
+          confidence = 48;
+          reasons.push("H1: Biais haussier ✓");
+          reasons.push(`M5: Rebond VWAP ($${m5Vwap.toFixed(2)}) ✓`);
+          reasons.push(`Stoch: ${stochCrossUp ? "Croisement K↑D" : "K en hausse"} (K:${stochK.toFixed(1)})`);
+          reasons.push("M5: EMA8 > EMA20 ✓");
+
+          const recentVol = m5K.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+          const avgVol = m5K.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+          if (avgVol > 0 && recentVol > avgVol * 1.3) { confidence += 6; reasons.push("Volume M5 supérieur"); }
+
+          const h1Spread = Math.abs(h1Ema8 - h1Ema20) / h1Ema20;
+          if (!isNaN(h1Ema8) && h1Spread > 0.005) { confidence += 5; reasons.push("H1: Tendance forte"); }
+        }
+      }
+
+      /* ─── LONG Signal — Type D: Strong Trend Micro-Pullback ─── */
+      if (!side && h1Bias === "bullish") {
+        const h1Strong = !isNaN(h1Ema8) && h1Ema8 > h1Ema20;
+        const h1Spread = !isNaN(h1Ema8) ? Math.abs(h1Ema8 - h1Ema20) / h1Ema20 : 0;
+        const emaAligned = ema8AboveEma20;
+        const aboveVwap = price > m5Vwap;
+
+        const stochMicroPullback = (stochK >= 50 && stochK <= 90 && stochKPrev > stochK + 2) ||
+                                    (stochK >= 60 && stochCrossUp) ||
+                                    (stochKPrev >= 95 && stochK < 95 && stochK > 70);
+
+        const priceNearEma8 = distToEma8 < 0.005;
+
+        if (h1Strong && h1Spread > 0.003 && emaAligned && aboveVwap && stochMicroPullback && priceNearEma8) {
+          side = "LONG";
+          confidence = 55;
+          reasons.push(`H1: Tendance forte haussière (spread EMA: ${(h1Spread * 100).toFixed(2)}%) ✓`);
+          reasons.push("M5: EMA8 > EMA20 ✓");
+          reasons.push(`M5: Prix proche EMA8 (dist: ${(distToEma8 * 100).toFixed(3)}%)`);
+          reasons.push(`Stoch: Micro-pullback (K:${stochK.toFixed(1)}, prev:${stochKPrev.toFixed(1)})`);
+          reasons.push(`VWAP: Prix au-dessus ($${m5Vwap.toFixed(2)}) ✓`);
+
+          if (h1Spread > 0.008) { confidence += 8; reasons.push("H1: Tendance très forte"); }
+          else if (h1Spread > 0.005) { confidence += 4; }
+
+          if (stochCrossUp) { confidence += 6; reasons.push("Stoch: Croisement K↑D"); }
+
+          const recentVol = m5K.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+          const avgVol = m5K.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+          if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; reasons.push("Volume M5 en hausse forte"); }
+          else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; reasons.push("Volume M5 supérieur"); }
+
+          const last3 = m5K.slice(-3);
+          if (last3.length === 3 && last3[1].low > last3[0].low && last3[2].low > last3[1].low) {
+            confidence += 5; reasons.push("M5: Higher lows (structure haussière)");
+          }
+        }
+      }
+
+      /* ─── LONG Signal — Type E: EMA Alignment + Volume Surge ─── */
+      if (!side && h1Bias === "bullish") {
+        const emaAligned = ema8AboveEma20;
+        const aboveVwap = price > m5Vwap;
+        const h1Spread = !isNaN(h1Ema8) ? Math.abs(h1Ema8 - h1Ema20) / h1Ema20 : 0;
+
+        const recentVol = m5K.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
+        const avgVol = m5K.slice(-30).reduce((s, c) => s + c.volume, 0) / 30;
+        const volumeSurge = avgVol > 0 && recentVol > avgVol * 2.0;
+
+        const priceAboveBothEmas = price > m5Ema8 && price > m5Ema20;
+
+        if (emaAligned && aboveVwap && volumeSurge && priceAboveBothEmas && h1Spread > 0.004) {
+          side = "LONG";
+          confidence = 58;
+          reasons.push(`H1: Tendance haussière forte (spread: ${(h1Spread * 100).toFixed(2)}%) ✓`);
+          reasons.push("M5: EMA8 > EMA20, prix au-dessus des deux ✓");
+          reasons.push(`Volume: Surge x${(recentVol / avgVol).toFixed(1)} ✓`);
+          reasons.push(`VWAP: Au-dessus ($${m5Vwap.toFixed(2)}) ✓`);
+          reasons.push(`Stoch: K=${stochK.toFixed(1)}`);
+
+          if (h1Spread > 0.008) { confidence += 8; }
+          if (recentVol > avgVol * 3) { confidence += 6; reasons.push("Volume: Surge extrême"); }
+          if (stochK >= 99) { confidence -= 5; }
         }
       }
     }
 
-    /* ─── SHORT Signal ─── */
+    /* ─── SHORT Signal — Type A: Pullback Entry (relaxed) ─── */
     if (h1Bias === "bearish" && !side) {
-      const cond1 = true;
       const cond2 = ema8BelowEma20 || emaCrossDown;
-      const cond3 = priceNearEma || priceBetweenEmas;
+      const cond3 = priceNearEma || priceBetweenEmas || priceNearEmaWide;
       const cond4 = price < m5Vwap;
       const cond5 = stochOverbought && (stochCrossDown || stochFalling);
 
-      if (cond1 && cond2 && cond3 && cond4 && cond5) {
+      if (cond2 && cond3 && cond4 && cond5) {
         side = "SHORT";
         confidence = 50;
         reasons.push(`H1: Prix < EMA20 ($${h1Ema20.toFixed(2)}) & VWAP ($${h1Vwap.toFixed(2)}) ✓`);
 
-        if (emaCrossDown) {
-          confidence += 10;
-          reasons.push("M5: Croisement EMA8 < EMA20 récent ↓");
-        } else {
-          reasons.push("M5: EMA8 < EMA20 ✓");
-        }
+        if (emaCrossDown) { confidence += 10; reasons.push("M5: Croisement EMA8 < EMA20 récent ↓"); }
+        else { reasons.push("M5: EMA8 < EMA20 ✓"); }
 
-        if (distToEma20 < 0.001) {
-          confidence += 8;
-          reasons.push(`M5: Rejet parfait EMA20 ($${m5Ema20.toFixed(2)})`);
-        } else if (priceNearEma) {
-          confidence += 4;
-          reasons.push("M5: Prix proche EMA");
-        }
+        if (distToEma20 < 0.001) { confidence += 8; reasons.push("M5: Rejet parfait EMA20"); }
+        else if (priceNearEma) { confidence += 4; reasons.push("M5: Prix proche EMA"); }
+        else if (priceNearEmaWide) { confidence += 2; reasons.push("M5: Prix zone EMA"); }
 
-        if (stochK > 90) {
-          confidence += 10;
-          reasons.push(`Stoch: Surachat extrême (K:${stochK.toFixed(1)})`);
-        } else {
-          confidence += 5;
-          reasons.push(`Stoch: Surachat (K:${stochK.toFixed(1)})`);
-        }
-        if (stochCrossDown) {
-          confidence += 8;
-          reasons.push(`Stoch: Croisement K↓D (${stochK.toFixed(1)}→${stochD.toFixed(1)})`);
-        } else {
-          reasons.push(`Stoch: K redescend (${stochKPrev.toFixed(1)}→${stochK.toFixed(1)})`);
-        }
+        if (stochDeepOverbought) { confidence += 10; reasons.push(`Stoch: Surachat extrême (K:${stochK.toFixed(1)})`); }
+        else if (stochK > 75) { confidence += 7; reasons.push(`Stoch: Surachat (K:${stochK.toFixed(1)})`); }
+        else { confidence += 4; reasons.push(`Stoch: Zone haute (K:${stochK.toFixed(1)})`); }
+
+        if (stochCrossDown) { confidence += 8; reasons.push("Stoch: Croisement K↓D"); }
 
         const vwapDist = (m5Vwap - price) / price;
-        if (vwapDist > 0.002) {
-          confidence += 4;
-          reasons.push("VWAP M5: bien en-dessous ✓");
-        } else {
-          reasons.push("VWAP M5 ✓");
-        }
+        if (vwapDist > 0.002) { confidence += 4; reasons.push("VWAP M5: bien en-dessous ✓"); }
 
         const recentVol = m5K.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
         const avgVol = m5K.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-        if (avgVol > 0 && recentVol > avgVol * 1.3) {
-          confidence += 5;
-          reasons.push("Volume M5 supérieur à la moyenne");
-        }
+        if (avgVol > 0 && recentVol > avgVol * 1.3) { confidence += 5; reasons.push("Volume M5 supérieur"); }
 
-        const h1EmaSpread = Math.abs(h1Ema8 - h1Ema20) / h1Ema20;
-        if (!isNaN(h1Ema8) && h1EmaSpread > 0.005) {
-          confidence += 5;
-          reasons.push("H1: Tendance forte (EMA8/20 écartées)");
+        const h1Spread = Math.abs(h1Ema8 - h1Ema20) / h1Ema20;
+        if (!isNaN(h1Ema8) && h1Spread > 0.005) { confidence += 5; reasons.push("H1: Tendance forte (EMA8/20 écartées)"); }
+      }
+
+      /* ─── SHORT Signal — Type B: Momentum Continuation ─── */
+      if (!side && h1Bias === "bearish") {
+        const strongH1 = !isNaN(h1Ema8) && h1Ema8 < h1Ema20 && h1Closes[h1Closes.length - 1] < h1Ema8;
+        const emaCrossRecent = emaCrossDown;
+        const stochMidFalling = stochK > 25 && stochK < 60 && stochCrossDown;
+        const belowVwap = price < m5Vwap;
+
+        if (strongH1 && emaCrossRecent && stochMidFalling && belowVwap) {
+          side = "SHORT";
+          confidence = 45;
+          reasons.push("H1: Tendance forte baissière (EMA8 < EMA20, prix < EMA8) ✓");
+          reasons.push("M5: Croisement EMA8 < EMA20 récent ↓");
+          reasons.push(`Stoch: Croisement K↓D en zone médiane (K:${stochK.toFixed(1)})`);
+
+          const vwapDist = (m5Vwap - price) / price;
+          if (vwapDist > 0.003) { confidence += 5; reasons.push("VWAP M5: bien en-dessous ✓"); }
+
+          const recentVol = m5K.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+          const avgVol = m5K.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+          if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; reasons.push("Volume M5 en hausse forte"); }
+          else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; reasons.push("Volume M5 supérieur"); }
+
+          const h1Spread = Math.abs(h1Ema8 - h1Ema20) / h1Ema20;
+          if (h1Spread > 0.008) { confidence += 8; reasons.push("H1: Tendance très forte (EMA8/20 très écartées)"); }
+          else if (h1Spread > 0.004) { confidence += 4; reasons.push("H1: Tendance forte"); }
+        }
+      }
+
+      /* ─── SHORT Signal — Type C: VWAP Rejection ─── */
+      if (!side && h1Bias === "bearish") {
+        const vwapProximity = Math.abs(price - m5Vwap) / price < 0.003;
+        const priceBelowVwap = price <= m5Vwap;
+        const stochTurningDown = stochCrossDown || (stochFalling && stochK > 50);
+        const emaAligned = ema8BelowEma20;
+
+        if (vwapProximity && priceBelowVwap && stochTurningDown && emaAligned) {
+          side = "SHORT";
+          confidence = 48;
+          reasons.push("H1: Biais baissier ✓");
+          reasons.push(`M5: Rejet VWAP ($${m5Vwap.toFixed(2)}) ✓`);
+          reasons.push(`Stoch: ${stochCrossDown ? "Croisement K↓D" : "K en baisse"} (K:${stochK.toFixed(1)})`);
+          reasons.push("M5: EMA8 < EMA20 ✓");
+
+          const recentVol = m5K.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+          const avgVol = m5K.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+          if (avgVol > 0 && recentVol > avgVol * 1.3) { confidence += 6; reasons.push("Volume M5 supérieur"); }
+
+          const h1Spread = Math.abs(h1Ema8 - h1Ema20) / h1Ema20;
+          if (!isNaN(h1Ema8) && h1Spread > 0.005) { confidence += 5; reasons.push("H1: Tendance forte"); }
+        }
+      }
+
+      /* ─── SHORT Signal — Type D: Strong Trend Micro-Bounce ─── */
+      if (!side && h1Bias === "bearish") {
+        const h1Strong = !isNaN(h1Ema8) && h1Ema8 < h1Ema20;
+        const h1Spread = !isNaN(h1Ema8) ? Math.abs(h1Ema8 - h1Ema20) / h1Ema20 : 0;
+        const emaAligned = ema8BelowEma20;
+        const belowVwap = price < m5Vwap;
+
+        const stochMicroBounce = (stochK <= 50 && stochK >= 10 && stochKPrev < stochK - 2) ||
+                                  (stochK <= 40 && stochCrossDown) ||
+                                  (stochKPrev <= 5 && stochK > 5 && stochK < 30);
+
+        const priceNearEma8 = distToEma8 < 0.005;
+
+        if (h1Strong && h1Spread > 0.003 && emaAligned && belowVwap && stochMicroBounce && priceNearEma8) {
+          side = "SHORT";
+          confidence = 55;
+          reasons.push(`H1: Tendance forte baissière (spread EMA: ${(h1Spread * 100).toFixed(2)}%) ✓`);
+          reasons.push("M5: EMA8 < EMA20 ✓");
+          reasons.push(`M5: Prix proche EMA8 (dist: ${(distToEma8 * 100).toFixed(3)}%)`);
+          reasons.push(`Stoch: Micro-rebond (K:${stochK.toFixed(1)}, prev:${stochKPrev.toFixed(1)})`);
+          reasons.push(`VWAP: Prix en-dessous ($${m5Vwap.toFixed(2)}) ✓`);
+
+          if (h1Spread > 0.008) { confidence += 8; }
+          else if (h1Spread > 0.005) { confidence += 4; }
+
+          if (stochCrossDown) { confidence += 6; reasons.push("Stoch: Croisement K↓D"); }
+
+          const recentVol = m5K.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+          const avgVol = m5K.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+          if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 8; }
+          else if (avgVol > 0 && recentVol > avgVol * 1.2) { confidence += 4; }
+
+          const last3 = m5K.slice(-3);
+          if (last3.length === 3 && last3[1].high < last3[0].high && last3[2].high < last3[1].high) {
+            confidence += 5; reasons.push("M5: Lower highs (structure baissière)");
+          }
+        }
+      }
+
+      /* ─── SHORT Signal — Type E: EMA Alignment + Volume Surge ─── */
+      if (!side && h1Bias === "bearish") {
+        const emaAligned = ema8BelowEma20;
+        const belowVwap = price < m5Vwap;
+        const h1Spread = !isNaN(h1Ema8) ? Math.abs(h1Ema8 - h1Ema20) / h1Ema20 : 0;
+
+        const recentVol = m5K.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
+        const avgVol = m5K.slice(-30).reduce((s, c) => s + c.volume, 0) / 30;
+        const volumeSurge = avgVol > 0 && recentVol > avgVol * 2.0;
+
+        const priceBelowBothEmas = price < m5Ema8 && price < m5Ema20;
+
+        if (emaAligned && belowVwap && volumeSurge && priceBelowBothEmas && h1Spread > 0.004) {
+          side = "SHORT";
+          confidence = 58;
+          reasons.push(`H1: Tendance baissière forte (spread: ${(h1Spread * 100).toFixed(2)}%) ✓`);
+          reasons.push("M5: EMA8 < EMA20, prix en-dessous des deux ✓");
+          reasons.push(`Volume: Surge x${(recentVol / avgVol).toFixed(1)} ✓`);
+          reasons.push(`VWAP: En-dessous ($${m5Vwap.toFixed(2)}) ✓`);
+          reasons.push(`Stoch: K=${stochK.toFixed(1)}`);
+
+          if (h1Spread > 0.008) { confidence += 8; }
+          if (recentVol > avgVol * 3) { confidence += 6; }
+          if (stochK <= 1) { confidence -= 5; }
         }
       }
     }
 
     if (!side) continue;
 
-    /* ─── SL / TP Calculation ─── */
+    /* ─── SL / TP Calculation — v2: ATR-based SL + conservative TP ─── */
     const m5SR = calculateM5SR(m5K, price);
+    const atrM5 = calcATR_M5(m5K);
 
-    // SL: dernier plus bas/haut local M5 (5-10 bougies) OU sous/au-dessus EMA20
-    const last10 = m5K.slice(-10);
+    // v2: ATR-based SL (1.5x ATR M5, min 1%, max 3%)
+    let slDist: number;
+    if (atrM5 && atrM5 > 0) {
+      slDist = atrM5 * 1.5;
+      const minSl = price * 0.01;  // min 1%
+      const maxSl = price * 0.03;  // max 3%
+      slDist = Math.max(minSl, Math.min(slDist, maxSl));
+    } else {
+      // Fallback: use last 10 candles range
+      const last10 = m5K.slice(-10);
+      if (side === "LONG") {
+        const lowestLow = Math.min(...last10.map(k => k.low));
+        slDist = Math.max(price - lowestLow, price * 0.01);
+      } else {
+        const highestHigh = Math.max(...last10.map(k => k.high));
+        slDist = Math.max(highestHigh - price, price * 0.01);
+      }
+      slDist = Math.max(price * 0.01, Math.min(slDist, price * 0.03));
+    }
+
     let sl: number;
     if (side === "LONG") {
-      const lowestLow = Math.min(...last10.map(k => k.low));
-      const ema20SL = m5Ema20 * 0.997; // 0.3% sous EMA20
-      sl = Math.min(lowestLow, ema20SL);
-      // Ensure SL is not too tight
-      if (Math.abs(price - sl) / price < 0.002) {
-        sl = price * 0.997; // Minimum 0.3%
-      }
-      // Add margin
-      sl = sl * 0.999;
+      sl = price - slDist;
+      // Snap to nearest support if close
+      const nearSup = m5SR.supports.find(s => s.price < price * 0.995 && s.price > sl * 0.95);
+      if (nearSup) sl = nearSup.price * 0.998;
+      // Re-enforce minimum 1%
+      if (Math.abs(price - sl) / price < 0.01) sl = price * 0.99;
     } else {
-      const highestHigh = Math.max(...last10.map(k => k.high));
-      const ema20SL = m5Ema20 * 1.003;
-      sl = Math.max(highestHigh, ema20SL);
-      if (Math.abs(sl - price) / price < 0.002) {
-        sl = price * 1.003;
-      }
-      sl = sl * 1.001;
+      sl = price + slDist;
+      const nearRes = m5SR.resistances.find(r => r.price > price * 1.005 && r.price < sl * 1.05);
+      if (nearRes) sl = nearRes.price * 1.002;
+      if (Math.abs(sl - price) / price < 0.01) sl = price * 1.01;
     }
 
-    const slDist = Math.abs(price - sl);
+    // Recalculate actual slDist after snapping
+    slDist = Math.abs(price - sl);
 
-    // TP based on SL distance (ratio-based)
+    // v3: Realistic TP ratios — 0.8:1, 1.5:1, 2.5:1
     let tp1: number, tp2: number, tp3: number;
     if (side === "LONG") {
-      tp1 = price + slDist * 1.0;  // 1:1
-      tp2 = price + slDist * 1.5;  // 1:1.5
-      // TP3 = next resistance or 1:2
+      tp1 = price + slDist * 0.8;  // 0.8:1 — quick profit, high probability
+      tp2 = price + slDist * 1.5;  // 1.5:1
       const nextRes = m5SR.resistances[0];
-      tp3 = nextRes && nextRes.price > tp2 ? nextRes.price * 0.999 : price + slDist * 2.0;
+      tp3 = nextRes && nextRes.price > tp2 ? nextRes.price * 0.999 : price + slDist * 2.5;
     } else {
-      tp1 = price - slDist * 1.0;
+      tp1 = price - slDist * 0.8;
       tp2 = price - slDist * 1.5;
       const nextSup = m5SR.supports[0];
-      tp3 = nextSup && nextSup.price < tp2 ? nextSup.price * 1.001 : price - slDist * 2.0;
+      tp3 = nextSup && nextSup.price < tp2 ? nextSup.price * 1.001 : price - slDist * 2.5;
     }
 
-    // SL too tight penalty
-    if (slDist / price < 0.002) confidence -= 10;
+    // SL too tight penalty (now based on 0.8% threshold)
+    if (slDist / price < 0.008) confidence -= 10;
+
+    // Apply 4H neutral penalty
+    confidence -= h4NeutralPenalty;
 
     confidence = Math.min(98, Math.max(25, confidence));
 
@@ -694,7 +1267,14 @@ async function generateScalpSetups(coins: any[]): Promise<ScalpSetup[]> {
       stoch_k: stochK,
       stoch_d: stochD,
       h1Bias,
+      h4Bias,
+      ema8_h4: h4Ema8Val,
+      ema20_h4: h4Ema20Val,
     });
+    } catch (coinErr) {
+      console.warn(`Scalp setup error for ${c?.symbol || "unknown"}:`, coinErr);
+      continue;
+    }
   }
 
   return setups.sort((a, b) => b.confidence - a.confidence);
@@ -718,8 +1298,12 @@ async function registerScalpCallsToBackend(setups: ScalpSetup[]) {
           tp3: s.tp3,
           confidence: s.confidence,
           reason: s.reason,
-          stoch_rsi_k: s.stoch_k,
-          stoch_rsi_d: s.stoch_d,
+          stoch_k: s.stoch_k,
+          stoch_d: s.stoch_d,
+          ema8_m5: s.ema8_m5,
+          ema20_m5: s.ema20_m5,
+          vwap_m5: s.vwap_m5,
+          vwap_h1: s.vwap_h1,
           macd_signal: s.h1Bias === "bullish" ? "bullish" : "bearish",
           h1_trend: s.h1Bias,
           rr: s.rr,
@@ -740,66 +1324,172 @@ export default function ScalpTrading() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [filter, setFilter] = useState<"all" | "LONG" | "SHORT">("all");
-  const [minConfidence, setMinConfidence] = useState(60);
+  const [minConfidence, setMinConfidence] = useState(70);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [perfStats, setPerfStats] = useState<ScalpPerfStats>({ total: 0, tp1Hits: 0, tp2Hits: 0, tp3Hits: 0, slHits: 0, pending: 0 });
+
+  // Refs for safe async cleanup
+  const mountedRef = useRef(true);
+  const abortRef = useRef<AbortController | null>(null);
+
+  /* Catch stray unhandled promise rejections so they don't bubble to ErrorBoundary */
+  useEffect(() => {
+    const handler = (e: PromiseRejectionEvent) => {
+      e.preventDefault();
+      console.warn("Unhandled rejection caught in ScalpTrading:", e.reason);
+    };
+    window.addEventListener("unhandledrejection", handler);
+    return () => window.removeEventListener("unhandledrejection", handler);
+  }, []);
 
   const fetchData = useCallback(async () => {
+    // Abort any previous in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const { signal } = controller;
+
+    if (!mountedRef.current) return;
     setLoading(true);
     setFetchError(null);
     setDataWarning(null);
     try {
-      const allCoins: any[] = [];
+      let allCoins: any[] = [];
+      let usedFallback = false;
+
+      // Attempt CoinGecko fetch with retry on 429
       for (let page = 1; page <= 2; page++) {
-        try {
-          const res = await fetch(
-            `/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${page}&sparkline=true&price_change_percentage=24h`,
-            { signal: AbortSignal.timeout(15000) }
-          );
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data)) allCoins.push(...data);
+        if (signal.aborted) return;
+        let fetched = false;
+        for (let attempt = 0; attempt < 2 && !fetched; attempt++) {
+          try {
+            const res = await fetch(
+              `/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${page}&sparkline=true&price_change_percentage=24h`,
+              { signal }
+            );
+            if (res.ok) {
+              const data = await res.json();
+              if (Array.isArray(data)) { allCoins.push(...data); fetched = true; }
+            } else if (res.status === 429 && attempt === 0) {
+              console.warn(`CoinGecko page ${page} rate limited (429), retrying in 2s...`);
+              await new Promise(r => setTimeout(r, 2000));
+            } else {
+              console.warn(`CoinGecko page ${page} returned ${res.status}`);
+              break;
+            }
+          } catch (e: any) {
+            if (e?.name === "AbortError" || signal.aborted) return;
+            console.warn(`CoinGecko page ${page} attempt ${attempt + 1} failed:`, e);
+            if (attempt === 0) {
+              await new Promise(r => setTimeout(r, 2000));
+            }
           }
-        } catch (e) {
-          console.warn(`CoinGecko page ${page} fetch failed:`, e);
         }
-        if (page < 2) await new Promise(r => setTimeout(r, 500));
+        if (page < 2 && allCoins.length > 0) await new Promise(r => setTimeout(r, 500));
       }
 
+      if (signal.aborted || !mountedRef.current) return;
+
+      // If CoinGecko failed entirely, use fallback symbols
       if (allCoins.length === 0) {
-        setFetchError("Impossible de récupérer les données de marché. Vérifiez votre connexion et réessayez.");
-        setLoading(false);
-        return;
+        console.warn("CoinGecko unavailable — using fallback symbol list for Binance-only analysis");
+        allCoins = buildFallbackCoins();
+        usedFallback = true;
       }
 
       // Quick Binance check
-      const testK = await fetchKlines("BTC", "1h", 5);
+      const testK = await fetchKlines("BTC", "1h", 5, signal);
+      if (signal.aborted || !mountedRef.current) return;
+
       if (testK.length === 0) {
-        setDataWarning("Les données Binance ne sont pas disponibles. Les alertes Telegram côté serveur continuent de fonctionner.");
+        if (usedFallback) {
+          if (mountedRef.current) {
+            setFetchError("Impossible de récupérer les données de marché. Vérifiez votre connexion et réessayez.");
+            setLoading(false);
+          }
+          return;
+        }
+        if (mountedRef.current) {
+          setDataWarning("Les données Binance ne sont pas disponibles. Les alertes Telegram côté serveur continuent de fonctionner.");
+        }
       }
 
-      const clientSetups = await generateScalpSetups(allCoins);
-      const serverSetups = await fetchServerScalpCalls();
-      const merged = mergeSetups(clientSetups, serverSetups);
-      setTrades(merged);
-      setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
+      const clientSetups = await generateScalpSetups(allCoins, signal);
+      if (signal.aborted || !mountedRef.current) return;
 
-      // Register high-confidence calls (≥90%)
-      registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 90)).catch(() => {});
-    } catch (err) {
+      const serverSetups = await fetchServerScalpCalls(signal);
+      if (signal.aborted || !mountedRef.current) return;
+
+      const merged = mergeSetups(clientSetups, serverSetups);
+
+      if (mountedRef.current) {
+        setTrades(merged);
+        setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
+
+        // Signal tracking
+        storeNewScalpSignals(merged);
+        const priceMap = new Map<string, number>();
+        for (const s of merged) {
+          priceMap.set(s.symbol, s.currentPrice);
+        }
+        const updatedSignals = updateScalpSignalsWithPrices(priceMap);
+        setPerfStats(computeScalpPerfStats(updatedSignals));
+
+        if (usedFallback && merged.length > 0) {
+          setDataWarning("⚠️ Données CoinGecko indisponibles — Analyse basée sur les données Binance uniquement");
+        } else if (usedFallback && merged.length === 0) {
+          setFetchError("Aucun signal n'a pu être généré. Les données de marché sont temporairement indisponibles.");
+        }
+      }
+
+      // Register high-confidence calls (≥88%) — decoupled from main flow
+      setTimeout(() => {
+        registerScalpCallsToBackend(clientSetups.filter(s => s.confidence >= 88)).catch(() => {});
+      }, 100);
+    } catch (err: any) {
+      if (err?.name === "AbortError" || signal.aborted) return;
       console.error("Scalp fetch error:", err);
-      setFetchError("Une erreur est survenue lors de l'analyse. Veuillez réessayer.");
+      if (mountedRef.current) {
+        setFetchError("Une erreur est survenue lors de l'analyse. Veuillez réessayer.");
+        setTrades([]);
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
+
+    // v2: Clear old tracking data from previous algorithm version
+    const SCALP_ALGO_VERSION_KEY = "scalp_algo_version";
+    const SCALP_CURRENT_VERSION = "v2_atr_conservative";
+    if (localStorage.getItem(SCALP_ALGO_VERSION_KEY) !== SCALP_CURRENT_VERSION) {
+      localStorage.removeItem(SCALP_SIGNAL_KEY);
+      localStorage.setItem(SCALP_ALGO_VERSION_KEY, SCALP_CURRENT_VERSION);
+    }
+
+    // Load existing signals on mount
+    const signals = loadScalpSignals();
+    setPerfStats(computeScalpPerfStats(signals));
+
     fetchData();
     const interval = setInterval(fetchData, 3 * 60 * 1000);
-    return () => clearInterval(interval);
+    return () => {
+      mountedRef.current = false;
+      abortRef.current?.abort();
+      clearInterval(interval);
+    };
   }, [fetchData]);
+
+  const handleClearTracking = () => {
+    clearScalpSignals();
+    setPerfStats({ total: 0, tp1Hits: 0, tp2Hits: 0, tp3Hits: 0, slHits: 0, pending: 0 });
+  };
 
   const filtered = trades.filter(t => {
     if (filter !== "all" && t.side !== filter) return false;
@@ -813,14 +1503,16 @@ export default function ScalpTrading() {
   const highConfCount = trades.filter(t => t.confidence >= 90).length;
   const avgConfidence = trades.length > 0 ? Math.round(trades.reduce((s, t) => s + t.confidence, 0) / trades.length) : 0;
 
+  const resolvedTotal = perfStats.tp1Hits + perfStats.tp2Hits + perfStats.tp3Hits + perfStats.slHits;
+
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
         <PageHeader
           icon={<Zap className="w-7 h-7" />}
-          title="Scalp Trading — Suivi de Flux"
-          subtitle="EMA 8/20 + VWAP + Stochastique (9,3,1) — Biais H1, Entrée M5"
+          title="Scalp Trading v3 — Précision"
+          subtitle="ATR SL (0.5-2%) + EMA 8/20 + VWAP + Stoch (9,3,1) + RSI M5 — TP1 rapide (0.8:1)"
           accentColor="amber"
         />
 
@@ -852,6 +1544,53 @@ export default function ScalpTrading() {
               <p className="text-xl font-black text-amber-400">{avgConfidence}%</p>
             </div>
           </div>
+
+          {/* Performance Tracking Section */}
+          {perfStats.total > 0 && (
+            <div className="mb-6 bg-gradient-to-r from-purple-500/[0.04] to-amber-500/[0.04] border border-purple-500/15 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Trophy className="w-5 h-5 text-purple-400" />
+                <h3 className="text-sm font-bold text-purple-400">Suivi des Signaux Scalp (localStorage)</h3>
+                <span className="text-[10px] text-gray-500 ml-2">{perfStats.total} signaux • {perfStats.pending} en cours • expire après 30min</span>
+                <button
+                  onClick={handleClearTracking}
+                  className="ml-auto flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-[10px] font-semibold text-red-400 transition-all"
+                >
+                  <Trash2 className="w-3 h-3" /> Réinitialiser
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Total</p>
+                  <p className="text-lg font-black text-white">{perfStats.total}</p>
+                </div>
+                <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">TP1 Hit (0.8:1)</p>
+                  <p className="text-lg font-black text-emerald-300">{perfStats.tp1Hits}</p>
+                  <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp1Hits / resolvedTotal * 100)}%` : "—"}</p>
+                </div>
+                <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">TP2 Hit (1.5:1)</p>
+                  <p className="text-lg font-black text-emerald-400">{perfStats.tp2Hits}</p>
+                  <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp2Hits / resolvedTotal * 100)}%` : "—"}</p>
+                </div>
+                <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-500 font-semibold">TP3 Hit (2.5:1)</p>
+                  <p className="text-lg font-black text-emerald-500">{perfStats.tp3Hits}</p>
+                  <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.tp3Hits / resolvedTotal * 100)}%` : "—"}</p>
+                </div>
+                <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">SL Hit</p>
+                  <p className="text-lg font-black text-red-400">{perfStats.slHits}</p>
+                  <p className="text-[9px] text-gray-500">{resolvedTotal > 0 ? `${Math.round(perfStats.slHits / resolvedTotal * 100)}%` : "—"}</p>
+                </div>
+                <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06] text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">En Cours</p>
+                  <p className="text-lg font-black text-blue-400">{perfStats.pending}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -896,12 +1635,17 @@ export default function ScalpTrading() {
               >
                 <option value={30}>≥ 30%</option>
                 <option value={50}>≥ 50%</option>
-                <option value={60}>≥ 60%</option>
                 <option value={70}>≥ 70%</option>
+                <option value={75}>≥ 75%</option>
                 <option value={80}>≥ 80%</option>
+                <option value={85}>≥ 85%</option>
+                <option value={88}>≥ 88%</option>
                 <option value={90}>≥ 90%</option>
+                <option value={95}>≥ 95%</option>
               </select>
             </div>
+
+            <span className="text-xs text-gray-500 ml-auto">MAJ: {lastUpdate}</span>
           </div>
 
           {/* Strategy Info */}
@@ -909,8 +1653,8 @@ export default function ScalpTrading() {
             <p className="text-xs text-amber-300/80 flex items-center gap-2">
               <Zap className="w-4 h-4 flex-shrink-0" />
               <span>
-                <strong>Stratégie "Suivi de Flux" :</strong> Biais H1 (prix vs EMA20 + VWAP) → Entrée M5 (rebond EMA8/20 + prix vs VWAP M5 + Stochastique 9,3,1 en survente/surachat avec croisement).
-                SL sous dernier creux / EMA20. TP1 = 1:1, TP2 = 1:1.5, TP3 = résistance/support ou 1:2.
+                <strong>Stratégie "Précision" v3 :</strong> Top 50 cryptos liquides ($50M+ vol) → Filtre 4H (EMA8/20) → Biais H1 (prix vs EMA20 + VWAP) → Entrée M5 (rebond EMA8/20 + VWAP + Stoch 9,3,1 seuils 20/80 + RSI M5 &lt;40 LONG / &gt;60 SHORT + momentum 2/3 bougies + pattern rejet).
+                SL basé sur ATR M5 (1.5x, min 0.5%, max 2%). TP1 = 0.8:1 (quick profit), TP2 = 1.5:1, TP3 = 2.5:1. Expiration 30min. Max 8 trades actifs.
               </span>
             </p>
           </div>
@@ -939,30 +1683,30 @@ export default function ScalpTrading() {
           <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3">
               <Zap className="w-5 h-5 text-amber-400" />
-              <h2 className="text-lg font-bold">Signaux Scalp — Suivi de Flux</h2>
+              <h2 className="text-lg font-bold">Signaux Scalp — Précision v3</h2>
               <span className="text-xs text-gray-500 ml-2">Cliquez sur une ligne pour les détails</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1400px]">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
-                    {["#", "Crypto", "Type", "Entry", "SL", "TP1", "TP2", "TP3", "Biais H1", "Stoch (9,3,1)", "EMA M5", "VWAP", "Confiance", "R:R", ""].map(h => (
-                      <th key={h} className="px-3 py-3 text-left text-[10px] uppercase tracking-wider font-semibold text-gray-500">{h}</th>
+                    {["#", "Crypto", "Type", "Statut", "Entry", "SL", "TP1", "TP2", "TP3", "Biais H1", "Biais 4H", "Stoch (9,3,1)", "EMA M5", "VWAP", "Confiance", "R:R", ""].map(h => (
+                      <th key={h} className={`px-3 py-3 text-left text-[10px] uppercase tracking-wider font-semibold ${h === "Statut" ? "text-amber-400" : "text-gray-500"}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loading && trades.length === 0 ? (
                     <tr>
-                      <td colSpan={15} className="text-center py-16">
+                      <td colSpan={17} className="text-center py-16">
                         <RefreshCw className="w-6 h-6 text-amber-400 animate-spin mx-auto mb-2" />
                         <p className="text-sm text-gray-500">Analyse EMA + VWAP + Stochastique en cours...</p>
-                        <p className="text-xs text-gray-600 mt-1">Calcul sur H1 + M5 pour 30 cryptos</p>
+                        <p className="text-xs text-gray-600 mt-1">Calcul sur 4H + H1 + M5 pour 30 cryptos</p>
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={15} className="text-center py-16">
+                      <td colSpan={17} className="text-center py-16">
                         <p className="text-sm text-gray-500">Aucun signal détecté avec ces filtres</p>
                         <p className="text-xs text-gray-600 mt-1">Essayez de réduire le filtre de confiance</p>
                       </td>
@@ -970,10 +1714,13 @@ export default function ScalpTrading() {
                   ) : (
                     filtered.map((trade, idx) => {
                       const isExpanded = expandedRow === trade.id;
+                      const progress = getScalpTradeProgress(trade);
                       return (
                         <Fragment key={trade.id}>
                           <tr
-                            className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer"
+                            className={`border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer ${
+                              progress.status === "sl" ? "bg-red-500/[0.03]" : progress.bestTp >= 2 ? "bg-emerald-500/[0.03]" : ""
+                            }`}
                             onClick={() => setExpandedRow(isExpanded ? null : trade.id)}
                           >
                             <td className="px-3 py-3 text-xs text-gray-500 font-mono">{idx + 1}</td>
@@ -1011,45 +1758,83 @@ export default function ScalpTrading() {
                                 {trade.side}
                               </span>
                             </td>
+                            {/* Statut */}
+                            <td className="px-3 py-3">
+                              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${progress.statusBg} ${progress.statusColor}`}>
+                                <span>{progress.statusIcon}</span>
+                                <span>{progress.statusLabel}</span>
+                              </div>
+                              {progress.status === "active" && (
+                                <div className="flex items-center gap-0.5 mt-1">
+                                  {[progress.tp1Hit, progress.tp2Hit, progress.tp3Hit].map((hit, i) => (
+                                    <div key={i} className={`h-1.5 w-4 rounded-full ${hit ? "bg-emerald-400" : "bg-white/[0.08]"}`} />
+                                  ))}
+                                </div>
+                              )}
+                              {(progress.status === "tp1" || progress.status === "tp2" || progress.status === "tp3") && (
+                                <div className="flex items-center gap-0.5 mt-1">
+                                  {[progress.tp1Hit, progress.tp2Hit, progress.tp3Hit].map((hit, i) => (
+                                    <div key={i} className={`h-1.5 w-4 rounded-full ${hit ? "bg-emerald-400" : "bg-white/[0.08]"}`} />
+                                  ))}
+                                </div>
+                              )}
+                            </td>
                             {/* Entry */}
                             <td className="px-3 py-3">
-                              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-2 py-1 inline-block">
-                                <span className="font-mono text-sm font-bold text-blue-300">${formatPrice(trade.entry)}</span>
+                              <div className={`rounded-lg px-2 py-1 inline-flex items-center gap-1.5 border ${
+                                progress.entryHit
+                                  ? "bg-emerald-500/10 border-emerald-500/20"
+                                  : "bg-blue-500/10 border-blue-500/20"
+                              }`}>
+                                {progress.entryHit && <span className="text-[10px]">✅</span>}
+                                <span className={`font-mono text-sm font-bold ${progress.entryHit ? "text-emerald-300" : "text-blue-300"}`}>${formatPrice(trade.entry)}</span>
                               </div>
+                              {!progress.entryHit && (
+                                <span className="text-[9px] text-gray-500 block mt-0.5">⏳ non touché</span>
+                              )}
                             </td>
                             {/* SL */}
                             <td className="px-3 py-3">
-                              <div className="flex items-center gap-1">
-                                <Shield className="w-3 h-3 text-red-400" />
-                                <span className="font-mono text-xs text-red-400 font-semibold">${formatPrice(trade.stopLoss)}</span>
+                              <div className={`flex items-center gap-1 ${progress.slHit ? "bg-red-500/15 rounded-lg px-1.5 py-0.5 border border-red-500/25" : ""}`}>
+                                {progress.slHit ? <span className="text-[10px]">❌</span> : <Shield className="w-3 h-3 text-red-400" />}
+                                <span className={`font-mono text-xs font-semibold ${progress.slHit ? "text-red-300" : "text-red-400"}`}>${formatPrice(trade.stopLoss)}</span>
                               </div>
                               <span className="text-[9px] text-red-400/60">
-                                {trade.side === "LONG" ? "-" : "+"}{Math.abs((trade.stopLoss - trade.entry) / trade.entry * 100).toFixed(2)}%
+                                {trade.side === "LONG" ? "-" : "+"}{trade.entry ? Math.abs((trade.stopLoss - trade.entry) / trade.entry * 100).toFixed(2) : "0.00"}%
                               </span>
                             </td>
                             {/* TP1 */}
                             <td className="px-3 py-3">
-                              <div className="flex items-center gap-1">
-                                <Target className="w-3 h-3 text-emerald-300" />
-                                <span className="font-mono text-xs text-emerald-300 font-semibold">${formatPrice(trade.tp1)}</span>
+                              <div className={`flex items-center gap-1 ${progress.tp1Hit ? "bg-emerald-500/15 rounded-lg px-1.5 py-0.5 border border-emerald-500/25" : ""}`}>
+                                {progress.tp1Hit ? <span className="text-[10px]">✅</span> : <Target className="w-3 h-3 text-emerald-300" />}
+                                <span className={`font-mono text-xs font-semibold ${progress.tp1Hit ? "text-emerald-200" : "text-emerald-300"}`}>${formatPrice(trade.tp1)}</span>
                               </div>
-                              <span className="text-[9px] text-emerald-300/60">1:1</span>
+                              <div className="flex items-center">
+                                <span className="text-[9px] text-emerald-300/60">0.8:1</span>
+                                <ScalpWinrateBadge confidence={trade.confidence} tp={1} />
+                              </div>
                             </td>
                             {/* TP2 */}
                             <td className="px-3 py-3">
-                              <div className="flex items-center gap-1">
-                                <Target className="w-3 h-3 text-emerald-400" />
-                                <span className="font-mono text-xs text-emerald-400 font-semibold">${formatPrice(trade.tp2)}</span>
+                              <div className={`flex items-center gap-1 ${progress.tp2Hit ? "bg-emerald-500/15 rounded-lg px-1.5 py-0.5 border border-emerald-500/25" : ""}`}>
+                                {progress.tp2Hit ? <span className="text-[10px]">✅</span> : <Target className="w-3 h-3 text-emerald-400" />}
+                                <span className={`font-mono text-xs font-semibold ${progress.tp2Hit ? "text-emerald-200" : "text-emerald-400"}`}>${formatPrice(trade.tp2)}</span>
                               </div>
-                              <span className="text-[9px] text-emerald-400/60">1:1.5</span>
+                              <div className="flex items-center">
+                                <span className="text-[9px] text-emerald-400/60">1.5:1</span>
+                                <ScalpWinrateBadge confidence={trade.confidence} tp={2} />
+                              </div>
                             </td>
                             {/* TP3 */}
                             <td className="px-3 py-3">
-                              <div className="flex items-center gap-1">
-                                <Target className="w-3 h-3 text-emerald-500" />
-                                <span className="font-mono text-xs text-emerald-500 font-semibold">${formatPrice(trade.tp3)}</span>
+                              <div className={`flex items-center gap-1 ${progress.tp3Hit ? "bg-emerald-500/15 rounded-lg px-1.5 py-0.5 border border-emerald-500/25" : ""}`}>
+                                {progress.tp3Hit ? <span className="text-[10px]">🎯</span> : <Target className="w-3 h-3 text-emerald-500" />}
+                                <span className={`font-mono text-xs font-semibold ${progress.tp3Hit ? "text-emerald-200" : "text-emerald-500"}`}>${formatPrice(trade.tp3)}</span>
                               </div>
-                              <span className="text-[9px] text-emerald-500/60">1:2</span>
+                              <div className="flex items-center">
+                                <span className="text-[9px] text-emerald-500/60">2.5:1</span>
+                                <ScalpWinrateBadge confidence={trade.confidence} tp={3} />
+                              </div>
                             </td>
                             {/* H1 Bias */}
                             <td className="px-3 py-3">
@@ -1062,16 +1847,29 @@ export default function ScalpTrading() {
                                 {trade.h1Bias === "bullish" ? "Bull" : "Bear"}
                               </span>
                             </td>
+                            {/* 4H Bias */}
+                            <td className="px-3 py-3">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                trade.h4Bias === "bullish"
+                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  : trade.h4Bias === "bearish"
+                                  ? "bg-red-500/10 text-red-400"
+                                  : "bg-gray-500/10 text-gray-400"
+                              }`}>
+                                {trade.h4Bias === "bullish" ? <TrendingUp className="w-3 h-3" /> : trade.h4Bias === "bearish" ? <TrendingDown className="w-3 h-3" /> : null}
+                                {trade.h4Bias === "bullish" ? "Bull" : trade.h4Bias === "bearish" ? "Bear" : "Neutre"}
+                              </span>
+                            </td>
                             {/* Stochastic */}
                             <td className="px-3 py-3">
-                              {trade.stoch_k !== null ? (
+                              {trade.stoch_k != null && !isNaN(trade.stoch_k) ? (
                                 <div className="flex flex-col">
                                   <span className={`text-xs font-bold ${
                                     trade.stoch_k < 20 ? "text-emerald-400" : trade.stoch_k > 80 ? "text-red-400" : "text-gray-300"
                                   }`}>
                                     K: {trade.stoch_k.toFixed(1)}
                                   </span>
-                                  {trade.stoch_d !== null && (
+                                  {trade.stoch_d != null && !isNaN(trade.stoch_d) && (
                                     <span className="text-[10px] text-gray-500">D: {trade.stoch_d.toFixed(1)}</span>
                                   )}
                                   <span className={`text-[9px] mt-0.5 ${
@@ -1152,7 +1950,7 @@ export default function ScalpTrading() {
                           {/* Expanded Detail Row */}
                           {isExpanded && (
                             <tr className="border-b border-white/[0.04]">
-                              <td colSpan={15} className="px-4 py-4 bg-white/[0.01]">
+                              <td colSpan={17} className="px-4 py-4 bg-white/[0.01]">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                   {/* Reason */}
                                   <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
@@ -1209,6 +2007,25 @@ export default function ScalpTrading() {
                                     <p className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold mb-2">📊 Indicateurs</p>
                                     <div className="space-y-2">
                                       <div className="flex items-center justify-between">
+                                        <span className="text-xs text-gray-400">Biais 4H</span>
+                                        <span className={`text-xs font-bold ${trade.h4Bias === "bullish" ? "text-emerald-400" : trade.h4Bias === "bearish" ? "text-red-400" : "text-gray-400"}`}>
+                                          {trade.h4Bias === "bullish" ? "🟢 Haussier" : trade.h4Bias === "bearish" ? "🔴 Baissier" : "⚪ Neutre"}
+                                        </span>
+                                      </div>
+                                      {trade.ema8_h4 !== null && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-gray-400">EMA8 4H</span>
+                                          <span className="text-xs font-mono text-cyan-400">${formatPrice(trade.ema8_h4)}</span>
+                                        </div>
+                                      )}
+                                      {trade.ema20_h4 !== null && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-gray-400">EMA20 4H</span>
+                                          <span className="text-xs font-mono text-orange-400">${formatPrice(trade.ema20_h4)}</span>
+                                        </div>
+                                      )}
+                                      <div className="border-t border-white/[0.06] pt-2 mt-2" />
+                                      <div className="flex items-center justify-between">
                                         <span className="text-xs text-gray-400">Biais H1</span>
                                         <span className={`text-xs font-bold ${trade.h1Bias === "bullish" ? "text-emerald-400" : "text-red-400"}`}>
                                           {trade.h1Bias === "bullish" ? "🟢 Haussier" : "🔴 Baissier"}
@@ -1256,15 +2073,15 @@ export default function ScalpTrading() {
                                         <div className="flex items-center justify-between">
                                           <span className="text-xs text-gray-400">Stoch K (9,3,1)</span>
                                           <span className={`text-xs font-bold ${
-                                            trade.stoch_k !== null && trade.stoch_k < 20 ? "text-emerald-400" : trade.stoch_k !== null && trade.stoch_k > 80 ? "text-red-400" : "text-gray-300"
+                                            trade.stoch_k != null && !isNaN(trade.stoch_k) && trade.stoch_k < 20 ? "text-emerald-400" : trade.stoch_k != null && !isNaN(trade.stoch_k) && trade.stoch_k > 80 ? "text-red-400" : "text-gray-300"
                                           }`}>
-                                            {trade.stoch_k !== null ? trade.stoch_k.toFixed(1) : "N/A"}
+                                            {trade.stoch_k != null && !isNaN(trade.stoch_k) ? trade.stoch_k.toFixed(1) : "N/A"}
                                           </span>
                                         </div>
                                         <div className="flex items-center justify-between mt-1">
                                           <span className="text-xs text-gray-400">Stoch D</span>
                                           <span className="text-xs font-mono text-gray-300">
-                                            {trade.stoch_d !== null ? trade.stoch_d.toFixed(1) : "N/A"}
+                                            {trade.stoch_d != null && !isNaN(trade.stoch_d) ? trade.stoch_d.toFixed(1) : "N/A"}
                                           </span>
                                         </div>
                                       </div>
@@ -1275,12 +2092,28 @@ export default function ScalpTrading() {
                                         </div>
                                         <div className="flex items-center justify-between mt-1">
                                           <span className="text-xs text-gray-400">Variation 24h</span>
-                                          <span className={`text-xs font-bold ${trade.change24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                                            {trade.change24h >= 0 ? "+" : ""}{trade.change24h.toFixed(2)}%
+                                          <span className={`text-xs font-bold ${(trade.change24h ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                                            {(trade.change24h ?? 0) >= 0 ? "+" : ""}{(trade.change24h != null && !isNaN(trade.change24h)) ? trade.change24h.toFixed(2) : "0.00"}%
                                           </span>
                                         </div>
                                       </div>
                                     </div>
+                                  </div>
+                                </div>
+
+                                {/* Winrate Estimates Detail */}
+                                <div className="mt-3 bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
+                                  <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">📈 Estimation Winrate (Confiance {trade.confidence}%)</p>
+                                  <div className="flex items-center gap-3 flex-wrap text-[10px]">
+                                    <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 font-mono">
+                                      TP1 (0.8:1): WR ~{getScalpWinrateForTP(trade.confidence, 1)}%
+                                    </span>
+                                    <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-400 font-mono">
+                                      TP2 (1.5:1): WR ~{getScalpWinrateForTP(trade.confidence, 2)}%
+                                    </span>
+                                    <span className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 font-mono">
+                                      TP3 (2.5:1): WR ~{getScalpWinrateForTP(trade.confidence, 3)}%
+                                    </span>
                                   </div>
                                 </div>
 
@@ -1297,15 +2130,15 @@ export default function ScalpTrading() {
                                     </span>
                                     <span className="text-gray-600">→</span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 font-mono">
-                                      TP1: ${formatPrice(trade.tp1)} (1:1)
+                                      TP1: ${formatPrice(trade.tp1)} (0.8:1) <ScalpWinrateBadge confidence={trade.confidence} tp={1} />
                                     </span>
                                     <span className="text-gray-600">→</span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-400 font-mono">
-                                      TP2: ${formatPrice(trade.tp2)} (1:1.5)
+                                      TP2: ${formatPrice(trade.tp2)} (1.5:1) <ScalpWinrateBadge confidence={trade.confidence} tp={2} />
                                     </span>
                                     <span className="text-gray-600">→</span>
                                     <span className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 font-mono font-bold">
-                                      TP3: ${formatPrice(trade.tp3)} (1:2)
+                                      TP3: ${formatPrice(trade.tp3)} (2.5:1) <ScalpWinrateBadge confidence={trade.confidence} tp={3} />
                                     </span>
                                   </div>
                                 </div>
@@ -1332,9 +2165,10 @@ export default function ScalpTrading() {
           {/* Disclaimer */}
           <div className="mt-6 bg-amber-500/[0.06] border border-amber-500/15 rounded-2xl p-4">
             <p className="text-xs text-amber-300/80 text-center">
-              ⚠️ <strong>Avertissement :</strong> Stratégie "Suivi de Flux" — EMA 8/20 + VWAP + Stochastique (9,3,1).
-              Biais directionnel H1, entrée précise M5. SL sous dernier creux/EMA20, TP ratio 1:1 à 1:2.
+              ⚠️ <strong>Avertissement :</strong> Stratégie "Précision" v3 — ATR SL (1.5x M5, 0.5-2%) + EMA 8/20 + VWAP + Stoch (9,3,1) seuils 20/80 + RSI M5 + momentum M5 + patterns de rejet. Top 50 cryptos. Expiration 30min. Cooldown 45min. Max 8 trades actifs.
+              Filtre 4H (pénalité si tendance contraire), biais directionnel H1, entrée précise M5. TP1 rapide à 0.8:1. Expiration 30min.
               Le VWAP est utilisé par les algorithmes institutionnels — trader avec le VWAP = trader avec "l'argent intelligent".
+              Les winrates estimés sont basés sur des moyennes historiques indicatives.
               Ces signaux ne constituent pas des conseils financiers.
             </p>
           </div>

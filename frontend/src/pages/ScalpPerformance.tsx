@@ -425,17 +425,35 @@ export default function ScalpPerformance() {
                                 {call.stoch_rsi_k != null ? `K:${call.stoch_rsi_k}` : "—"}
                               </td>
                               <td className="px-3 py-3 font-mono text-xs text-blue-300">${formatPrice(call.entry_price)}</td>
-                              <td className="px-3 py-3">
-                                <div className="font-mono text-xs text-red-400">${formatPrice(call.stop_loss)}</div>
+                              <td className={`px-3 py-3 ${call.sl_hit ? "bg-red-500/[0.08] border-l-2 border-l-red-500" : ""}`}>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-mono text-xs text-red-400">${formatPrice(call.stop_loss)}</span>
+                                  {call.sl_hit && <span className="text-[9px] px-1 py-0.5 rounded bg-red-500/20 text-red-400 font-bold">✗</span>}
+                                </div>
                                 {call.trailing_sl != null && call.trailing_sl !== call.stop_loss && (
                                   <div className="font-mono text-[9px] text-amber-400 mt-0.5" title="Trailing Stop">
                                     ↳ TS: ${formatPrice(call.trailing_sl)}
                                   </div>
                                 )}
                               </td>
-                              <td className="px-3 py-3 font-mono text-xs text-emerald-300">${formatPrice(call.tp1)}</td>
-                              <td className="px-3 py-3 font-mono text-xs text-emerald-400">${formatPrice(call.tp2)}</td>
-                              <td className="px-3 py-3 font-mono text-xs text-emerald-500">${formatPrice(call.tp3)}</td>
+                              <td className={`px-3 py-3 ${call.tp1_hit ? "bg-emerald-500/[0.08] border-l-2 border-l-emerald-400" : ""}`}>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-mono text-xs text-emerald-300">${formatPrice(call.tp1)}</span>
+                                  {call.tp1_hit && <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">✓</span>}
+                                </div>
+                              </td>
+                              <td className={`px-3 py-3 ${call.tp2_hit ? "bg-emerald-500/[0.08] border-l-2 border-l-emerald-400" : ""}`}>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-mono text-xs text-emerald-400">${formatPrice(call.tp2)}</span>
+                                  {call.tp2_hit && <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">✓</span>}
+                                </div>
+                              </td>
+                              <td className={`px-3 py-3 ${call.tp3_hit ? "bg-emerald-500/[0.08] border-l-2 border-l-emerald-500" : ""}`}>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-mono text-xs text-emerald-500">${formatPrice(call.tp3)}</span>
+                                  {call.tp3_hit && <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-bold">✓</span>}
+                                </div>
+                              </td>
                               <td className="px-3 py-3">
                                 <span className="text-xs font-bold text-gray-400">{call.confidence}%</span>
                               </td>

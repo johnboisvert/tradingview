@@ -80,6 +80,7 @@ const ScalpTrading = React.lazy(() => import("./pages/ScalpTrading"));
 const ScalpPerformance = React.lazy(() => import("./pages/ScalpPerformance"));
 const RangeTrading = React.lazy(() => import("./pages/RangeTrading"));
 const RangePerformance = React.lazy(() => import("./pages/RangePerformance"));
+const MagicStrategy = React.lazy(() => import("./pages/MagicStrategy"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 // ── Non-lazy components (needed immediately for route protection) ─────────────
@@ -117,6 +118,7 @@ function App() {
           <Route path="/scalp/performance" element={<PlanProtected path="/scalp"><ScalpPerformance /></PlanProtected>} />
           <Route path="/range" element={<PlanProtected path="/range"><RangeTrading /></PlanProtected>} />
           <Route path="/range/performance" element={<PlanProtected path="/range"><RangePerformance /></PlanProtected>} />
+          <Route path="/magic-strategy" element={<PlanProtected path="/magic-strategy"><MagicStrategy /></PlanProtected>} />
           <Route path="/risk-management" element={<PlanProtected path="/risk-management"><RiskManagement /></PlanProtected>} />
           <Route path="/watchlist" element={<PlanProtected path="/watchlist"><Watchlist /></PlanProtected>} />
           <Route path="/graphiques" element={<PlanProtected path="/graphiques"><Graphiques /></PlanProtected>} />

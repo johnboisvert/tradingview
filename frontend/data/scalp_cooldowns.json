@@ -220,7 +220,7 @@
     "direction": "LONG"
   },
   "NEARUSDT_LONG": {
-    "timestamp": "2026-03-02T16:50:37.909Z",
+    "timestamp": "2026-03-02T20:58:47.896Z",
     "direction": "LONG"
   },
   "IOTAUSDT_SHORT": {
@@ -252,7 +252,7 @@
     "direction": "LONG"
   },
   "POLUSDT_SHORT": {
-    "timestamp": "2026-03-02T18:46:15.221Z",
+    "timestamp": "2026-03-02T20:58:43.219Z",
     "direction": "SHORT"
   },
   "TIAUSDT_LONG": {
@@ -269,6 +269,10 @@
   },
   "APTUSDT_LONG": {
     "timestamp": "2026-03-02T20:30:15.318Z",
+    "direction": "LONG"
+  },
+  "ALGOUSDT_LONG": {
+    "timestamp": "2026-03-02T20:58:45.550Z",
     "direction": "LONG"
   }
 }

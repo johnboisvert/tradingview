@@ -230,8 +230,7 @@ export default function MagicStrategy() {
                   </span>
                 </h1>
                 <p className="mt-3 max-w-2xl text-base sm:text-lg text-white/70">
-                  Tout votre playbook de trading en une seule page — presets gagnants,
-                  règles d'entrée, gestion des trades, capital et routine quotidienne.
+                  Arretez de deviner. Arretez de perdre. L'indicateur Magic JB IA vous dit exactement quand entrer, ou sortir, et combien prendre. 81% de winrate prouve sur 100+ cryptos.
                 </p>
                 <div className="mt-3 text-xs text-white/50 flex items-center gap-2">
                   <Clock className="h-3.5 w-3.5" />

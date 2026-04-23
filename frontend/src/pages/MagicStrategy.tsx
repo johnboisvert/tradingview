@@ -164,6 +164,68 @@ const ROUTINE: RoutineRow[] = [
   { hour: "16h+", action: "STOP — Ne tradez plus. Revenez demain matin." },
 ];
 
+const FEATURES: { title: string; desc: string }[] = [
+  {
+    title: "Signaux automatiques",
+    desc: "EMA crossover + scoring IA (1-10) pour identifier les meilleures entrées LONG et SHORT.",
+  },
+  {
+    title: "5 niveaux Take Profit",
+    desc: "TP1 à TP5 calculés dynamiquement avec ATR. Prise de profit progressive : 30%, 25%, 20%, 15%, 10%.",
+  },
+  {
+    title: "Stop Loss intelligent",
+    desc: "SL dynamique basé sur ATR + passage automatique au Break Even dès que TP1 est touché.",
+  },
+  {
+    title: "Multi-Timeframe",
+    desc: "Presets automatiques : Scalp 5M, Intraday 15M, Swing 1H, Swing 4H. S'adapte à votre style.",
+  },
+  {
+    title: "Kill Zones",
+    desc: "Détection automatique des sessions Londres et New York + alerte OVERLAP pour les meilleurs moments.",
+  },
+  {
+    title: "PVSRA + Trend 4H",
+    desc: "Volume analysis (Climax/Rising) et confirmation de tendance sur le 4H pour des signaux fiables.",
+  },
+  {
+    title: "8 alertes configurables",
+    desc: "LONG, SHORT, TP1-TP5, SL. Notifications push, email, webhook.",
+  },
+  {
+    title: "Dashboard Performance",
+    desc: "Indicateur séparé pour tracker winrate, TP%, profit estimé sur chaque paire.",
+  },
+];
+
+const FAQ_ITEMS: { q: string; a: string }[] = [
+  {
+    q: "Sur quelle plateforme fonctionne Magic JB IA ?",
+    a: "Magic JB IA est un indicateur Pine Script qui fonctionne directement sur TradingView. Une fois l'accès obtenu, il suffit de l'ajouter à votre graphique en quelques clics.",
+  },
+  {
+    q: "Est-ce que ça marche sur toutes les cryptos ?",
+    a: "Oui, l'indicateur a été testé et optimisé sur plus de 100 paires crypto (BTC, ETH, SOL, altcoins majeurs…). Il fonctionne aussi sur les timeframes 5M, 15M, 1H et 4H.",
+  },
+  {
+    q: "Comment je reçois les alertes ?",
+    a: "Vous recevez les alertes directement via TradingView : notifications push mobile, email, SMS, et webhooks (Discord, Telegram, bots de trading automatisés).",
+  },
+  {
+    q: "Est-ce que je peux annuler à tout moment ?",
+    a: "Oui. Les abonnements Mensuel et Trimestriel sont sans engagement — vous pouvez annuler quand vous voulez. La licence À vie est un paiement unique, aucun renouvellement nécessaire.",
+  },
+  {
+    q: "Quel est le winrate réel ?",
+    a: "Le winrate moyen est de 81% sur backtest de plus de 100 cryptos, avec une profitabilité positive sur tous les timeframes testés. Les performances passées ne garantissent cependant pas les résultats futurs.",
+  },
+  {
+    q: "Y a-t-il un essai gratuit ?",
+    a: "Contactez-moi directement par email à cryptoia2026@gmail.com — je serai ravi de discuter de vos besoins et des options disponibles.",
+  },
+];
+
 const GOLDEN_RULES: string[] = [
   "Ne risquez JAMAIS plus de 1-2% de votre capital par trade",
   "Maximum 3 trades ouverts en même temps",
@@ -481,37 +543,121 @@ export default function MagicStrategy() {
           </div>
         </section>
 
-        {/* ── Indicateur externe (Trader Assistant AI) ──── */}
+        {/* ── Fonctionnalités ───────────────────────────── */}
         <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <SectionTitle
-            icon={<TrendingUp className="h-5 w-5 text-fuchsia-300" />}
-            eyebrow="Indicateur IA"
-            title="Signal Sell — Trader Assistant AI"
-            subtitle="Indicateur externe intégré pour surveiller les signaux de vente en temps réel."
-          />
+          <div className="text-center">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-cyan-300">
+              Fonctionnalités
+            </h2>
+          </div>
 
-          <div className="mt-6 rounded-2xl border border-white/10 bg-[#0f1420] overflow-hidden backdrop-blur-sm">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02]">
-              <div className="flex items-center gap-2 text-xs font-semibold text-white/70">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                trader-assistant-ai.preview.emergentagent.com/sell
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {FEATURES.map((f, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-white/10 bg-[#0d1526] p-5 hover:border-cyan-400/30 hover:bg-[#0f182c] transition"
+              >
+                <div className="text-lg font-semibold text-cyan-300">{f.title}</div>
+                <div className="mt-2 text-sm text-white/75 leading-relaxed">{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Tarifs ────────────────────────────────────── */}
+        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+          <div className="text-center">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-amber-300">
+              Tarifs
+            </h2>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Mensuel */}
+            <div className="relative rounded-2xl border border-white/10 bg-[#0d1526] p-7 text-center flex flex-col">
+              <div className="text-xl font-semibold text-white">Mensuel</div>
+              <div className="mt-6 text-5xl font-black text-white">49$</div>
+              <div className="mt-1 text-sm text-white/50">/mois</div>
+              <div className="mt-6 text-sm text-white/70 flex-1">
+                Accès complet, annulez quand vous voulez
               </div>
               <a
-                href="https://trader-assistant-ai.preview.emergentagent.com/sell"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/70 hover:bg-white/10 transition"
+                href="mailto:cryptoia2026@gmail.com?subject=Abonnement%20Mensuel%20-%20Magic%20JB%20IA"
+                className="mt-6 inline-flex items-center justify-center rounded-lg border-2 border-emerald-400 bg-transparent px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-400 hover:text-slate-900 transition"
               >
-                Ouvrir en plein écran ↗
+                Obtenir l'accès
               </a>
             </div>
-            <iframe
-              src="https://trader-assistant-ai.preview.emergentagent.com/sell"
-              title="Trader Assistant AI — Sell Signal"
-              className="w-full h-[720px] bg-[#0a0e17]"
-              loading="lazy"
-              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-            />
+
+            {/* Trimestriel - POPULAIRE */}
+            <div className="relative rounded-2xl border-2 border-emerald-400 bg-gradient-to-b from-emerald-500/10 via-[#0d1526] to-[#0d1526] p-7 text-center flex flex-col shadow-lg shadow-emerald-500/20">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="inline-flex items-center rounded-full bg-emerald-400 px-4 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900">
+                  Populaire
+                </span>
+              </div>
+              <div className="text-xl font-semibold text-white">Trimestriel</div>
+              <div className="mt-6 text-5xl font-black text-emerald-400">129$</div>
+              <div className="mt-1 text-sm text-white/50">/3 mois</div>
+              <div className="mt-6 text-sm text-white/70 flex-1">
+                Économisez 12% — le plus populaire
+              </div>
+              <a
+                href="mailto:cryptoia2026@gmail.com?subject=Abonnement%20Trimestriel%20-%20Magic%20JB%20IA"
+                className="mt-6 inline-flex items-center justify-center rounded-lg bg-emerald-400 px-5 py-2.5 text-sm font-bold text-slate-900 hover:bg-emerald-300 transition"
+              >
+                Obtenir l'accès
+              </a>
+            </div>
+
+            {/* À vie */}
+            <div className="relative rounded-2xl border border-white/10 bg-[#0d1526] p-7 text-center flex flex-col">
+              <div className="text-xl font-semibold text-white">À vie</div>
+              <div className="mt-6 text-5xl font-black text-white">299$</div>
+              <div className="mt-1 text-sm text-white/50">one-time</div>
+              <div className="mt-6 text-sm text-white/70 flex-1">
+                Paiement unique, mises à jour incluses à vie
+              </div>
+              <a
+                href="mailto:cryptoia2026@gmail.com?subject=Licence%20A%20Vie%20-%20Magic%20JB%20IA"
+                className="mt-6 inline-flex items-center justify-center rounded-lg border-2 border-emerald-400 bg-transparent px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-400 hover:text-slate-900 transition"
+              >
+                Obtenir l'accès
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Contactez-moi ────────────────────────────── */}
+        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+          <div className="text-center">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-emerald-400">
+              Contactez-moi
+            </h2>
+            <p className="mt-3 text-sm text-white/60">
+              Pour obtenir l'accès ou poser vos questions :
+            </p>
+            <a
+              href="mailto:cryptoia2026@gmail.com"
+              className="mt-6 inline-flex items-center justify-center rounded-lg bg-emerald-400 px-8 py-3 text-base font-bold text-slate-900 hover:bg-emerald-300 transition shadow-lg shadow-emerald-500/20"
+            >
+              cryptoia2026@gmail.com
+            </a>
+          </div>
+        </section>
+
+        {/* ── FAQ ──────────────────────────────────────── */}
+        <section className="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+          <div className="text-center">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-cyan-300">
+              Questions fréquentes
+            </h2>
+          </div>
+
+          <div className="mt-8 space-y-3">
+            {FAQ_ITEMS.map((item, i) => (
+              <FAQItem key={i} question={item.q} answer={item.a} />
+            ))}
           </div>
         </section>
 
@@ -725,6 +871,32 @@ function AlertCard({
           <div className="mt-1 text-xs text-white/70 leading-relaxed">{text}</div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function FAQItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#0d1526] overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-white/[0.02] transition"
+      >
+        <span className="text-sm sm:text-base font-semibold text-white">{question}</span>
+        <span
+          className={`shrink-0 h-6 w-6 rounded-full border border-emerald-400/40 bg-emerald-500/10 grid place-items-center text-emerald-300 text-sm font-bold transition-transform ${
+            open ? "rotate-45" : ""
+          }`}
+        >
+          +
+        </span>
+      </button>
+      {open && (
+        <div className="px-5 pb-4 text-sm text-white/70 leading-relaxed border-t border-white/5 pt-3">
+          {answer}
+        </div>
+      )}
     </div>
   );
 }

@@ -160,6 +160,7 @@ const NAV_SECTIONS = [
 
 const BOTTOM_ITEMS = [
   { path: "/abonnements", label: "Abonnements", icon: CreditCard, color: "indigo" },
+  { path: "/magic-strategy", label: "Indicateur Magic JB IA", icon: Sparkles, color: "cyan" },
   { path: "/admin", label: "Admin Panel", icon: Shield, color: "amber" },
   { path: "/mon-compte", label: "Mon Compte", icon: User, color: "emerald" },
 ];
@@ -222,6 +223,7 @@ export default function Sidebar() {
       indigo: "bg-gradient-to-r from-indigo-500/15 to-blue-500/10 text-white",
       amber: "bg-gradient-to-r from-amber-500/15 to-orange-500/10 text-white",
       emerald: "bg-gradient-to-r from-emerald-500/15 to-green-500/10 text-white",
+      cyan: "bg-gradient-to-r from-cyan-500/15 to-emerald-500/10 text-white",
     };
     return map[color] || "";
   };
@@ -232,6 +234,7 @@ export default function Sidebar() {
       indigo: "bg-indigo-500/20 text-indigo-400",
       amber: "bg-amber-500/20 text-amber-400",
       emerald: "bg-emerald-500/20 text-emerald-400",
+      cyan: "bg-cyan-500/20 text-cyan-400",
     };
     return map[color] || "";
   };
@@ -241,6 +244,7 @@ export default function Sidebar() {
       indigo: "from-indigo-400 to-blue-500",
       amber: "from-amber-400 to-orange-500",
       emerald: "from-emerald-400 to-green-500",
+      cyan: "from-cyan-400 to-emerald-500",
     };
     return map[color] || "from-indigo-400 to-purple-500";
   };

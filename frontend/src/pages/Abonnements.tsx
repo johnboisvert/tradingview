@@ -500,11 +500,13 @@ export default function Abonnements() {
 
   const proFeatures = [
     "Tout du plan Advanced",
+    "✨ Indicateur Magic JB IA (TradingView) — NOUVEAU",
     ...getPlanFeatures("pro", "advanced"),
   ];
 
   const eliteFeatures = [
     "Tout du plan Pro",
+    "✨ Indicateur Magic JB IA (TradingView) — Inclus",
     ...getPlanFeatures("elite", "pro"),
   ];
 
@@ -715,12 +717,34 @@ export default function Abonnements() {
                 {!isAnnual && <div className="mb-3" />}
 
                 <ul className="space-y-2 mb-5">
-                  {plan.features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs">
-                      <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-300">{f}</span>
-                    </li>
-                  ))}
+                  {plan.features.map((f, i) => {
+                    const isMagic = f.includes("Magic JB IA");
+                    return (
+                      <li
+                        key={i}
+                        className={`flex items-start gap-2 text-xs ${
+                          isMagic
+                            ? "rounded-lg border border-cyan-400/30 bg-gradient-to-r from-cyan-500/10 to-emerald-500/10 px-2 py-1.5"
+                            : ""
+                        }`}
+                      >
+                        <Check
+                          className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${
+                            isMagic ? "text-cyan-300" : "text-emerald-400"
+                          }`}
+                        />
+                        <span
+                          className={
+                            isMagic
+                              ? "font-bold text-cyan-200"
+                              : "text-gray-300"
+                          }
+                        >
+                          {f}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
 
                 <button

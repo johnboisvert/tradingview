@@ -78,6 +78,7 @@ const PredictionCrypto = React.lazy(() => import("./pages/PredictionCrypto"));
 const TradesPerformance = React.lazy(() => import("./pages/TradesPerformance"));
 const ScalpTrading = React.lazy(() => import("./pages/ScalpTrading"));
 const ScalpPerformance = React.lazy(() => import("./pages/ScalpPerformance"));
+const MagicStrategy = React.lazy(() => import("./pages/MagicStrategy"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 // ── Non-lazy components (needed immediately for route protection) ─────────────
@@ -107,6 +108,7 @@ function App() {
 
           {/* Trading */}
           <Route path="/strategy" element={<PlanProtected path="/strategy"><Strategy /></PlanProtected>} />
+          <Route path="/magic-strategy" element={<MagicStrategy />} />
           <Route path="/spot-trading" element={<PlanProtected path="/spot-trading"><SpotTrading /></PlanProtected>} />
           <Route path="/calculatrice" element={<PlanProtected path="/calculatrice"><Calculatrice /></PlanProtected>} />
           <Route path="/trades" element={<PlanProtected path="/trades"><Trades /></PlanProtected>} />

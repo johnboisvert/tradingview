@@ -118,6 +118,7 @@ const NAV_SECTIONS = [
     title: "Trading",
     items: [
       { path: "/strategy", label: "Stratégie", icon: BarChart3 },
+      { path: "/magic-strategy", label: "Magic Strategy", icon: BarChart3 },
       { path: "/spot-trading", label: "Spot Trading", icon: Gem },
       { path: "/calculatrice", label: "Calculatrice", icon: Calculator },
       { path: "/trades", label: "Swing Trading", icon: TrendingUp },

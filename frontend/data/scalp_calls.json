@@ -3117,7 +3117,7 @@
     "vwap_h1": 0.16843333333333332,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3126,7 +3126,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:24:47.237Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:19:05.753Z",
     "expires_at": "2026-03-02T22:24:47.237Z"
   },
   {
@@ -3149,7 +3149,7 @@
     "vwap_h1": 1.3825190653372765,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3158,7 +3158,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:36:17.319Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:19:05.753Z",
     "expires_at": "2026-03-02T22:36:17.319Z"
   },
   {
@@ -3181,7 +3181,7 @@
     "vwap_h1": 0.10503051359226565,
     "h1_trend": "bearish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3190,7 +3190,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:46:01.406Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:19:05.753Z",
     "expires_at": "2026-03-02T22:46:01.406Z"
   },
   {
@@ -3245,7 +3245,7 @@
     "vwap_h1": 0.32572305876665386,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3254,7 +3254,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:51:31.449Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:19:05.753Z",
     "expires_at": "2026-03-02T22:51:31.449Z"
   },
   {
@@ -3309,7 +3309,7 @@
     "vwap_h1": 0.6761176217850835,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3318,7 +3318,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:57:31.474Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:19:05.753Z",
     "expires_at": "2026-03-02T22:57:31.474Z"
   },
   {
@@ -3341,7 +3341,7 @@
     "vwap_h1": 0.14997576476363966,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3350,7 +3350,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T18:57:31.474Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:19:05.753Z",
     "expires_at": "2026-03-02T22:57:31.474Z"
   },
   {
@@ -3373,7 +3373,7 @@
     "vwap_h1": 0.9713324672884507,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3382,7 +3382,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T20:30:11.258Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:19:05.753Z",
     "expires_at": "2026-03-03T00:30:11.258Z"
   },
   {
@@ -3405,7 +3405,7 @@
     "vwap_h1": 66928.93768979252,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3414,7 +3414,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T20:55:59.394Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:19:05.753Z",
     "expires_at": "2026-03-03T00:55:59.394Z"
   },
   {
@@ -3437,7 +3437,7 @@
     "vwap_h1": 0.10478291104167324,
     "h1_trend": "bearish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3446,7 +3446,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T20:58:29.410Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:19:05.753Z",
     "expires_at": "2026-03-03T00:58:29.410Z"
   },
   {
@@ -3469,7 +3469,7 @@
     "vwap_h1": 0.086942280021573,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3478,7 +3478,7 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T20:58:29.410Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:19:05.753Z",
     "expires_at": "2026-03-03T00:58:29.410Z"
   },
   {
@@ -3501,7 +3501,7 @@
     "vwap_h1": 1.2118207738014246,
     "h1_trend": "bullish",
     "rr": 1.5,
-    "status": "active",
+    "status": "expired",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
@@ -3510,7 +3510,39 @@
     "exit_price": null,
     "profit_pct": null,
     "created_at": "2026-03-02T20:58:29.410Z",
-    "resolved_at": null,
+    "resolved_at": "2026-04-23T15:19:05.753Z",
     "expires_at": "2026-03-03T00:58:29.410Z"
+  },
+  {
+    "id": 116,
+    "symbol": "FLOKIUSDT",
+    "side": "LONG",
+    "entry_price": 0.00003425,
+    "stop_loss": 0.00003309687,
+    "trailing_sl": 0.00003309687,
+    "tp1": 0.000035403129999999995,
+    "tp2": 0.00003597969499999999,
+    "tp3": 0.00003655625999999999,
+    "confidence": 67,
+    "reason": "H1: Tendance haussière forte (spread: 1.18%) ✓ | M5: EMA8 > EMA20, prix au-dessus des deux ✓ | Volume: Surge x8.7 ✓ | VWAP: Au-dessus ($0.00) ✓ | Stoch: K=100.0 | Volume: Surge extrême",
+    "stoch_k": 100,
+    "stoch_d": 100,
+    "ema8_m5": 0.00003392514726051835,
+    "ema20_m5": 0.00003359378837455455,
+    "vwap_m5": 0.00003314430114562898,
+    "vwap_h1": 0.00003313215586464021,
+    "h1_trend": "bullish",
+    "rr": 1.5,
+    "status": "active",
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "sl_hit": false,
+    "best_tp_reached": 0,
+    "exit_price": null,
+    "profit_pct": null,
+    "created_at": "2026-04-23T15:26:04.749Z",
+    "resolved_at": null,
+    "expires_at": "2026-04-23T19:26:04.749Z"
   }
 ]

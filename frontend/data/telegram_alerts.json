@@ -33,5 +33,15 @@
       "sl": 0.1904,
       "confidence": 93
     }
-  ]
+  ],
+  "cooldowns": {
+    "humanity_signal": {
+      "timestamp": "2026-04-23T15:38:38.416Z",
+      "direction": "LONG"
+    },
+    "starknet_signal": {
+      "timestamp": "2026-04-23T15:38:40.758Z",
+      "direction": "LONG"
+    }
+  }
 }

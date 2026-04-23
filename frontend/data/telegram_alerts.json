@@ -19,29 +19,43 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-04-23T15:29:04.547Z",
+  "lastCheck": "2026-04-23T15:38:35.840Z",
   "lastAlerts": [
     {
       "type": "coingecko_signal",
-      "coin": "skyai",
+      "coin": "humanity",
       "direction": "LONG",
-      "rr": 2.5,
-      "entry": 0.198381,
-      "tp1": 0.2013,
-      "tp2": 0.2184,
-      "tp3": 0.2303,
-      "sl": 0.1904,
-      "confidence": 93
-    }
-  ],
-  "cooldowns": {
-    "humanity_signal": {
-      "timestamp": "2026-04-23T15:38:38.416Z",
-      "direction": "LONG"
+      "rr": 1.7,
+      "entry": 0.138829,
+      "tp1": 0.1501,
+      "tp2": 0.1576,
+      "tp3": 0.1689,
+      "sl": 0.1279,
+      "confidence": 96
     },
-    "starknet_signal": {
-      "timestamp": "2026-04-23T15:38:40.758Z",
-      "direction": "LONG"
+    {
+      "type": "coingecko_signal",
+      "coin": "starknet",
+      "direction": "LONG",
+      "rr": 6.5,
+      "entry": 0.04350039,
+      "tp1": 0.05,
+      "tp2": 0.0505,
+      "tp3": 0.051,
+      "sl": 0.0424,
+      "confidence": 91
+    },
+    {
+      "type": "coingecko_signal",
+      "coin": "genius-3",
+      "direction": "LONG",
+      "rr": 1.7,
+      "entry": 0.692134,
+      "tp1": 0.7614,
+      "tp2": 0.769,
+      "tp3": 0.9075,
+      "sl": 0.646,
+      "confidence": 91
     }
-  }
+  ]
 }

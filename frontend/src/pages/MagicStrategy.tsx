@@ -12,12 +12,17 @@ import {
   AlertTriangle,
   CheckCircle2,
   TrendingUp,
+  TrendingDown,
   Crown,
   Award,
   Flame,
   BookOpen,
   Sparkles,
   Printer,
+  Compass,
+  Activity,
+  Globe,
+  Eye,
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────────────────────
@@ -612,6 +617,260 @@ export default function MagicStrategy() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── NOUVEAU : Lecture des 3 TOTAL (BULL / BEAR) ───────────── */}
+        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200 backdrop-blur-sm">
+              <Sparkles className="h-3.5 w-3.5" />
+              Nouveauté de l&apos;indicateur
+            </div>
+            <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight">
+              <span className="bg-gradient-to-r from-emerald-300 via-cyan-300 to-rose-300 bg-clip-text text-transparent">
+                📊 Lire le marché avec TOTAL, TOTAL2 &amp; TOTAL3
+              </span>
+            </h2>
+            <p className="mt-3 mx-auto max-w-3xl text-sm sm:text-base text-gray-300">
+              Le Magic JB IA affiche désormais <span className="font-bold text-white">directement sur le graphique</span> l&apos;état{" "}
+              <span className="font-bold text-emerald-300">BULL 🟢</span> ou{" "}
+              <span className="font-bold text-rose-300">BEAR 🔴</span> des trois grands indices de capitalisation crypto.
+              Vous voyez d&apos;un coup d&apos;œil où va l&apos;argent dans le marché — sans analyser quoi que ce soit vous-même.
+            </p>
+          </div>
+
+          {/* Explication des 3 TOTAL */}
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {/* TOTAL */}
+            <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-500/10 via-white/[0.02] to-transparent p-5 backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/20 ring-1 ring-indigo-400/30">
+                  <Globe className="h-4.5 w-4.5 text-indigo-300" />
+                </div>
+                <h3 className="text-lg font-bold text-white">TOTAL</h3>
+              </div>
+              <p className="mt-3 text-sm text-gray-300">
+                La <span className="font-semibold text-white">capitalisation totale</span> de toute la crypto :
+                BTC + ETH + alts + memecoins + stablecoins confondus.
+              </p>
+              <ul className="mt-3 space-y-1.5 text-xs text-gray-400">
+                <li className="flex gap-2"><span className="text-indigo-300">›</span> Montre où va l&apos;argent global dans la crypto</li>
+                <li className="flex gap-2"><span className="text-emerald-300">↑</span> Monte = l&apos;argent <strong className="text-white">entre</strong> dans le marché</li>
+                <li className="flex gap-2"><span className="text-rose-300">↓</span> Descend = l&apos;argent <strong className="text-white">sort</strong> vers cash / actions</li>
+              </ul>
+            </div>
+
+            {/* TOTAL2 */}
+            <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-purple-500/10 via-white/[0.02] to-transparent p-5 backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-500/20 ring-1 ring-purple-400/30">
+                  <BarChart3 className="h-4.5 w-4.5 text-purple-300" />
+                </div>
+                <h3 className="text-lg font-bold text-white">TOTAL2 <span className="text-xs font-normal text-gray-400">= TOTAL − BTC</span></h3>
+              </div>
+              <p className="mt-3 text-sm text-gray-300">
+                Tout le marché <span className="font-semibold text-white">sauf Bitcoin</span> : ETH + l&apos;ensemble des altcoins.
+              </p>
+              <ul className="mt-3 space-y-1.5 text-xs text-gray-400">
+                <li className="flex gap-2"><span className="text-purple-300">›</span> Mesure la <strong className="text-white">force des alts</strong> face à BTC</li>
+                <li className="flex gap-2"><span className="text-emerald-300">↑</span> Monte plus vite que TOTAL = début d&apos;altseason</li>
+                <li className="flex gap-2"><span className="text-amber-300">≈</span> Stagne pendant que BTC pump = BTC dominance forte</li>
+              </ul>
+            </div>
+
+            {/* TOTAL3 */}
+            <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-pink-500/10 via-white/[0.02] to-transparent p-5 backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-pink-500/20 ring-1 ring-pink-400/30">
+                  <Flame className="h-4.5 w-4.5 text-pink-300" />
+                </div>
+                <h3 className="text-lg font-bold text-white">TOTAL3 <span className="text-xs font-normal text-gray-400">= TOTAL − BTC − ETH</span></h3>
+              </div>
+              <p className="mt-3 text-sm text-gray-300">
+                Uniquement les <span className="font-semibold text-white">alts mineurs</span> : SOL, XRP, ADA, AVAX, memecoins, petites caps…
+              </p>
+              <ul className="mt-3 space-y-1.5 text-xs text-gray-400">
+                <li className="flex gap-2"><span className="text-pink-300">›</span> Mesure la <strong className="text-white">vraie altseason</strong></li>
+                <li className="flex gap-2"><span className="text-emerald-300">↑</span> Explose = moment des <strong className="text-white">petites caps</strong> et memecoins</li>
+                <li className="flex gap-2"><span className="text-rose-300">↓</span> Dégringole = les alts mineurs saignent même si BTC tient</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Le statut BULL / BEAR en direct */}
+          <div className="mt-10 rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/[0.06] via-white/[0.02] to-rose-500/[0.06] p-6 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/30 to-cyan-500/30 ring-1 ring-emerald-400/30">
+                <Eye className="h-5 w-5 text-emerald-200" />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-white">
+                🎯 Statut <span className="text-emerald-300">BULL</span> / <span className="text-rose-300">BEAR</span> affiché en temps réel
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-gray-300 max-w-3xl">
+              Plus besoin d&apos;ouvrir 3 onglets et d&apos;analyser les graphiques un par un. L&apos;indicateur Magic JB IA détecte
+              automatiquement la tendance de chaque TOTAL et l&apos;affiche avec un badge coloré directement sur votre graphique
+              TradingView. Un coup d&apos;œil, et vous savez si le marché est porteur ou dangereux.
+            </p>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="flex items-start gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4">
+                <TrendingUp className="h-5 w-5 text-emerald-300 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-emerald-200">Badge BULL 🟢</p>
+                  <p className="text-xs text-gray-300 mt-1">
+                    Tendance haussière confirmée sur l&apos;indice. Feu vert pour chercher des <strong className="text-white">LONG</strong>.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-xl border border-rose-400/30 bg-rose-500/10 p-4">
+                <TrendingDown className="h-5 w-5 text-rose-300 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-rose-200">Badge BEAR 🔴</p>
+                  <p className="text-xs text-gray-300 mt-1">
+                    Tendance baissière confirmée. Prudence sur les longs, envisager le <strong className="text-white">cash</strong> ou les shorts.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-gray-400">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">⚡ Gain de temps</span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">🧠 Moins d&apos;erreurs d&apos;analyse</span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">📈 Meilleures décisions de trading</span>
+            </div>
+          </div>
+
+          {/* Scénarios */}
+          <div className="mt-10">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <Compass className="h-5 w-5 text-cyan-300" />
+              <h3 className="text-2xl sm:text-3xl font-black text-white">
+                🧭 Comment lire les 3 ensemble
+              </h3>
+            </div>
+            <p className="text-center text-sm text-gray-400 max-w-2xl mx-auto mb-6">
+              Les combinaisons de statuts racontent l&apos;histoire du marché. Voici les 4 scénarios clés à reconnaître.
+            </p>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Scénario 1 : BULL TOTAL */}
+              <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 to-emerald-500/[0.02] p-5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🟢</span>
+                  <h4 className="text-lg font-bold text-emerald-200">Scénario &quot;BULL TOTAL&quot; — Marché en confiance</h4>
+                </div>
+                <div className="mt-3 space-y-1.5 font-mono text-xs">
+                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
+                    <span className="text-gray-400">TOTAL</span>
+                    <span className="font-bold text-emerald-300">BULL ✅</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
+                    <span className="text-gray-400">TOTAL2</span>
+                    <span className="font-bold text-emerald-300">BULL ✅</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
+                    <span className="text-gray-400">TOTAL3</span>
+                    <span className="font-bold text-emerald-300">BULL ✅</span>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-gray-300">
+                  <strong className="text-white">Signification :</strong> tout monte ensemble, l&apos;argent afflue dans la crypto.
+                  <br />
+                  <strong className="text-white">Stratégie :</strong> 🚀 Privilégier les <strong className="text-emerald-300">LONG</strong> sur BTC, ETH <em>et</em> alts.
+                </p>
+              </div>
+
+              {/* Scénario 2 : Bitcoin Season */}
+              <div className="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 to-amber-500/[0.02] p-5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🟢 🟡</span>
+                  <h4 className="text-lg font-bold text-amber-200">Scénario &quot;Bitcoin Season&quot;</h4>
+                </div>
+                <div className="mt-3 space-y-1.5 font-mono text-xs">
+                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
+                    <span className="text-gray-400">TOTAL</span>
+                    <span className="font-bold text-emerald-300">BULL ✅</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
+                    <span className="text-gray-400">TOTAL2</span>
+                    <span className="font-bold text-emerald-300">BULL ✅</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
+                    <span className="text-gray-400">TOTAL3</span>
+                    <span className="font-bold text-rose-300">BEAR ❌</span>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-gray-300">
+                  <strong className="text-white">Signification :</strong> BTC et les gros alts montent, mais les petites caps souffrent.
+                  <br />
+                  <strong className="text-white">Stratégie :</strong> 👑 Rester sur <strong className="text-amber-300">BTC, ETH et top alts</strong>. Éviter les memecoins et petites caps.
+                </p>
+              </div>
+
+              {/* Scénario 3 : Altseason */}
+              <div className="rounded-2xl border border-cyan-400/30 bg-gradient-to-br from-cyan-500/10 to-purple-500/[0.05] p-5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🟢 🟢 🔥</span>
+                  <h4 className="text-lg font-bold text-cyan-200">Scénario &quot;Altseason naissante&quot;</h4>
+                </div>
+                <div className="mt-3 space-y-1.5 font-mono text-xs">
+                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
+                    <span className="text-gray-400">TOTAL</span>
+                    <span className="font-bold text-emerald-300">BULL ✅</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
+                    <span className="text-gray-400">TOTAL2</span>
+                    <span className="font-bold text-emerald-300">BULL ✅ <span className="text-[10px] text-cyan-300">(plus fort que TOTAL)</span></span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
+                    <span className="text-gray-400">TOTAL3</span>
+                    <span className="font-bold text-emerald-300">BULL ✅</span>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-gray-300">
+                  <strong className="text-white">Signification :</strong> les alts surperforment BTC, même les petites caps décollent.
+                  <br />
+                  <strong className="text-white">Stratégie :</strong> 🔥 Moment idéal pour les <strong className="text-cyan-300">altcoins et petites caps</strong>. Rotation BTC → alts recommandée.
+                </p>
+              </div>
+
+              {/* Scénario 4 : Marché baissier */}
+              <div className="rounded-2xl border border-rose-400/30 bg-gradient-to-br from-rose-500/10 to-rose-500/[0.02] p-5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🔴</span>
+                  <h4 className="text-lg font-bold text-rose-200">Scénario &quot;Marché baissier&quot;</h4>
+                </div>
+                <div className="mt-3 space-y-1.5 font-mono text-xs">
+                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
+                    <span className="text-gray-400">TOTAL</span>
+                    <span className="font-bold text-rose-300">BEAR ❌</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
+                    <span className="text-gray-400">TOTAL2</span>
+                    <span className="font-bold text-rose-300">BEAR ❌</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
+                    <span className="text-gray-400">TOTAL3</span>
+                    <span className="font-bold text-rose-300">BEAR ❌</span>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-gray-300">
+                  <strong className="text-white">Signification :</strong> l&apos;argent sort du marché, tout baisse ensemble.
+                  <br />
+                  <strong className="text-white">Stratégie :</strong> 🛡️ Privilégier le <strong className="text-rose-300">cash</strong> ou les <strong className="text-rose-300">SHORTS</strong>. Éviter les longs spéculatifs.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center">
+              <p className="text-xs text-gray-400">
+                <Activity className="inline h-3.5 w-3.5 text-cyan-300 mr-1" />
+                Règle d&apos;or : <strong className="text-white">alignez toujours vos trades avec le macro affiché par les 3 TOTAL</strong>.
+                Trader contre la tendance globale = multiplier les risques inutilement.
+              </p>
             </div>
           </div>
         </section>

@@ -86,6 +86,8 @@ const NotFound = React.lazy(() => import("./pages/NotFound"));
 // ── Non-lazy components (needed immediately for route protection) ─────────────
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ProtectedPlanRoute from "./components/ProtectedPlanRoute";
+import ProtectionLayer from "./components/ProtectionLayer";
+import { AuthProvider } from "./contexts/AuthContext";
 
 // Helper to wrap a page component with plan protection
 function PlanProtected({ path, children }: { path: string; children: React.ReactNode }) {
@@ -95,8 +97,10 @@ function PlanProtected({ path, children }: { path: string; children: React.React
 function App() {
   return (
     <ErrorBoundary>
+    <AuthProvider>
     <Router>
       <PageTracker />
+      <ProtectionLayer />
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           {/* Main Pages - Marché */}
@@ -202,6 +206,7 @@ function App() {
         </Routes>
       </Suspense>
     </Router>
+    </AuthProvider>
     </ErrorBoundary>
   );
 }

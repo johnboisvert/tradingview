@@ -99,3 +99,54 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ────────────────────────────────────────────────────────────
+ * Anti-copy protections (dissuasive, admin-bypassed via JS)
+ * ──────────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Prevent image drag & native save shortcuts on media assets */
+  img,
+  video {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Default: text is selectable only in inputs/editable fields.
+     Non-form content is not selectable, which makes screenshot-based
+     OCR + copy/paste harder. */
+  body {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Keep form controls fully usable */
+  input,
+  textarea,
+  [contenteditable="true"],
+  [contenteditable=""] {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+  }
+
+  /* Explicit opt-in class for content that MUST be selectable
+     (e.g. code snippets, copy-to-clipboard blocks) */
+  .allow-select,
+  .allow-select * {
+    -webkit-user-select: text !important;
+    user-select: text !important;
+  }
+
+  /* Reusable helper to harden specific blocks even further */
+  .protected-content {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}

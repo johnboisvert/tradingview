@@ -883,6 +883,49 @@ export default function MagicStrategy() {
             </h2>
           </div>
 
+          {/* 🎁 Bandeau "Déjà membre Pro ou Elite ?" */}
+          <div className="mt-6 relative overflow-hidden rounded-2xl border-2 border-violet-400/60 bg-gradient-to-r from-violet-500/15 via-fuchsia-500/10 to-violet-500/15 p-6 shadow-lg shadow-violet-500/20">
+            <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_25%_50%,rgba(139,92,246,0.45),transparent_60%),radial-gradient(circle_at_75%_50%,rgba(217,70,239,0.35),transparent_60%)]" />
+            <div className="relative flex flex-col sm:flex-row items-center justify-between gap-5 text-center sm:text-left">
+              <div className="flex items-start gap-4 flex-1">
+                <div className="shrink-0 hidden sm:grid place-items-center h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/40 ring-1 ring-white/20">
+                  <Crown className="h-7 w-7 text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900 shadow">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Inclus dans votre abonnement
+                  </div>
+                  <div className="mt-3 text-xl sm:text-2xl font-black text-white leading-snug">
+                    🎁 Déjà membre{" "}
+                    <span className="bg-gradient-to-r from-violet-300 to-fuchsia-300 bg-clip-text text-transparent">
+                      Pro
+                    </span>{" "}
+                    ou{" "}
+                    <span className="bg-gradient-to-r from-amber-300 to-fuchsia-300 bg-clip-text text-transparent">
+                      Elite
+                    </span>{" "}
+                    ? L&apos;indicateur est inclus <span className="underline decoration-emerald-400 decoration-2 underline-offset-4">gratuitement</span> !
+                  </div>
+                  <div className="mt-2 text-sm text-white/80 max-w-2xl">
+                    Si vous êtes abonné au plan{" "}
+                    <span className="font-bold text-violet-200">Pro</span> ou{" "}
+                    <span className="font-bold text-fuchsia-200">Elite</span> sur cryptoia.ca, l&apos;indicateur{" "}
+                    <span className="font-bold text-white">Magic JB IA</span> est inclus dans votre abonnement —{" "}
+                    <span className="font-semibold text-emerald-300">aucun paiement supplémentaire</span>. Rendez-vous dans votre espace membre pour l&apos;activer.
+                  </div>
+                </div>
+              </div>
+              <a
+                href="/abonnements"
+                className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-3 text-sm font-bold text-white hover:from-violet-400 hover:to-fuchsia-400 transition shadow-lg shadow-violet-500/40 ring-1 ring-white/20"
+              >
+                <Crown className="h-4 w-4" />
+                Voir mon abonnement
+              </a>
+            </div>
+          </div>
+
           {/* Bandeau Prix de lancement */}
           <div className="mt-6 relative overflow-hidden rounded-2xl border-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 p-6 shadow-lg shadow-amber-500/20">
             <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_30%_50%,rgba(251,191,36,0.4),transparent_60%),radial-gradient(circle_at_70%_50%,rgba(16,185,129,0.3),transparent_60%)]" />

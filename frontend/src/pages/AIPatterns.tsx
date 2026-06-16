@@ -110,12 +110,9 @@ export default function AIPatterns() {
           <div className="absolute w-[500px] h-[500px] rounded-full bg-pink-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />
         </div>
         <div className="relative z-10 max-w-[1440px] mx-auto">
-          <div className="text-center mb-8 pt-8">
-            <h1 className="text-5xl font-black bg-gradient-to-r from-indigo-400 via-pink-500 to-indigo-400 bg-[length:300%_auto] bg-clip-text text-transparent">
-              🧠 Patterns IA
-            </h1>
-            <p className="text-gray-500 mt-3 text-lg">Détection automatique de patterns — Top 200 cryptos</p>
-            <div className="inline-flex items-center gap-2 mt-4 bg-indigo-500/10 border border-indigo-500/25 rounded-full px-5 py-1.5 text-xs text-indigo-400 font-bold uppercase tracking-widest">
+          {/* Live counter pill */}
+          <div className="flex justify-center mb-6 -mt-2">
+            <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/25 rounded-full px-5 py-1.5 text-xs text-indigo-400 font-bold uppercase tracking-widest">
               <span className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_#6366f1] animate-pulse" />
               {patterns.length} patterns détectés • {lastUpdate || "..."}
             </div>

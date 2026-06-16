@@ -99,59 +99,100 @@ export default function PortfolioTracker() {
             { n: "3", title: "Analysez la répartition", desc: "Le graphique de répartition vous montre votre exposition par actif pour identifier les concentrations de risque." },
           ]}
         />
-        <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute w-[600px] h-[600px] rounded-full bg-indigo-500/5 blur-[80px] top-[-200px] left-[-100px]" />
-          <div className="absolute w-[500px] h-[500px] rounded-full bg-emerald-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />
-        </div>
-        <div className="relative z-10 max-w-[1440px] mx-auto">
-          <div className="text-center mb-10 pt-8">
-            <h1 className="text-5xl font-black bg-gradient-to-r from-indigo-400 via-emerald-400 to-amber-400 bg-[length:300%_auto] bg-clip-text text-transparent animate-gradient">
-              💼 Portfolio Tracker
-            </h1>
-            <p className="text-gray-500 mt-3 text-lg">Suivez vos investissements crypto avec des prix temps réel</p>
+        <div className="relative z-10 max-w-[1440px] mx-auto p-4 md:p-6">
+          {/* ===== HERO ===== */}
+          <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+            <div className="absolute inset-0 bg-[#0A0E1A]" />
+            <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-indigo-500/22 blur-3xl" style={{ animation: "pt-pulse 6s ease-in-out infinite" }} />
+            <div className="absolute -bottom-24 right-1/4 w-80 h-80 rounded-full bg-emerald-500/22 blur-3xl" style={{ animation: "pt-pulse 8s ease-in-out infinite reverse" }} />
+            <div className="absolute -top-12 right-1/2 w-72 h-72 rounded-full bg-amber-500/15 blur-3xl" style={{ animation: "pt-pulse 7s ease-in-out infinite" }} />
+            <div className="absolute inset-0 opacity-[0.04]" style={{
+              backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+              backgroundSize: "44px 44px",
+            }} />
+            <div className="relative z-10 flex items-center gap-4 px-6 md:px-10 py-6">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/40 flex items-center justify-center text-2xl" style={{ boxShadow: "0 0 30px rgba(99,102,241,0.3)" }}>
+                💼
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-indigo-400 via-emerald-400 to-amber-400 bg-clip-text text-transparent">
+                    Portfolio Tracker
+                  </h1>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Prix Live
+                  </span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-400">
+                  Suivez vos investissements crypto avec des prix temps réel · {enriched.length} actifs
+                </p>
+              </div>
+            </div>
           </div>
 
+          <style>{`
+            @keyframes pt-pulse {
+              0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+              50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+            }
+            @keyframes pt-fadeUp {
+              from { opacity: 0; transform: translateY(12px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .pt-anim { animation: pt-fadeUp 0.6s ease-out both; }
+          `}</style>
+
           {/* Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 mb-6">
             {[
-              { icon: "💰", label: "Valeur Totale", value: `$${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}` },
-              { icon: "📈", label: "P&L Total", value: `${totalPnl >= 0 ? "+" : ""}$${totalPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: totalPnl >= 0 ? "text-emerald-400" : "text-red-400" },
-              { icon: "🪙", label: "Actifs", value: enriched.length.toString() },
-              { icon: "🏆", label: "Meilleur", value: best ? best.symbol : "—" },
-            ].map((s) => (
-              <div key={s.label} className="bg-slate-900/70 border border-white/5 rounded-2xl p-5 text-center hover:-translate-y-1 transition-all">
-                <div className="text-2xl mb-1">{s.icon}</div>
-                <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">{s.label}</div>
-                <div className={`text-xl font-black font-mono mt-1 ${s.color || "text-white"}`}>{s.value}</div>
+              { icon: "💰", label: "Valeur Totale", value: `$${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: "#a78bfa" },
+              { icon: "📈", label: "P&L Total", value: `${totalPnl >= 0 ? "+" : ""}$${totalPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: totalPnl >= 0 ? "#22c55e" : "#ef4444" },
+              { icon: "🪙", label: "Actifs", value: enriched.length.toString(), color: "#22d3ee" },
+              { icon: "🏆", label: "Meilleur", value: best ? best.symbol : "—", color: "#fbbf24" },
+            ].map((s, i) => (
+              <div key={s.label}
+                className="pt-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl p-4 md:p-5 text-center hover:-translate-y-1 transition-all overflow-hidden"
+                style={{ animationDelay: `${i * 70}ms` }}
+              >
+                <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-25" style={{ background: s.color }} />
+                <div className="relative">
+                  <div className="text-2xl mb-1">{s.icon}</div>
+                  <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">{s.label}</div>
+                  <div className="text-xl md:text-2xl font-black font-mono mt-1" style={{ color: s.color, textShadow: `0 0 14px ${s.color}40` }}>{s.value}</div>
+                </div>
               </div>
             ))}
           </div>
 
           {/* Add Form */}
-          <div className="bg-slate-900/70 border border-white/5 rounded-3xl p-6 mb-6">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">➕ Ajouter un Actif</h2>
+          <div className="pt-anim bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 mb-6" style={{ animationDelay: "320ms" }}>
+            <h2 className="text-base md:text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" /> Ajouter un Actif
+            </h2>
             <form onSubmit={addHolding} className="flex flex-wrap gap-3 items-end">
               <div className="flex flex-col gap-1.5 flex-1 min-w-[150px]">
-                <label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Symbole</label>
-                <input type="text" value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value })} placeholder="BTC, ETH, SOL..." required className="px-4 py-3 bg-slate-800/50 border border-white/5 rounded-xl text-white text-sm focus:border-indigo-500 outline-none" />
+                <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Symbole</label>
+                <input type="text" value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value })} placeholder="BTC, ETH, SOL..." required className="px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:border-indigo-500 focus:bg-white/[0.06] outline-none transition-all" />
               </div>
               <div className="flex flex-col gap-1.5 flex-1 min-w-[150px]">
-                <label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Quantité</label>
-                <input type="number" step="any" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0.5" required className="px-4 py-3 bg-slate-800/50 border border-white/5 rounded-xl text-white text-sm focus:border-indigo-500 outline-none" />
+                <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Quantité</label>
+                <input type="number" step="any" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0.5" required className="px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:border-indigo-500 focus:bg-white/[0.06] outline-none transition-all" />
               </div>
               <div className="flex flex-col gap-1.5 flex-1 min-w-[150px]">
-                <label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Prix d&apos;achat ($)</label>
-                <input type="number" step="any" value={form.buyPrice} onChange={(e) => setForm({ ...form, buyPrice: e.target.value })} placeholder="45000" required className="px-4 py-3 bg-slate-800/50 border border-white/5 rounded-xl text-white text-sm focus:border-indigo-500 outline-none" />
+                <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Prix d&apos;achat ($)</label>
+                <input type="number" step="any" value={form.buyPrice} onChange={(e) => setForm({ ...form, buyPrice: e.target.value })} placeholder="45000" required className="px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:border-indigo-500 focus:bg-white/[0.06] outline-none transition-all" />
               </div>
-              <button type="submit" className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-indigo-500/20 transition-all whitespace-nowrap">
+              <button type="submit" className="px-6 py-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all whitespace-nowrap" style={{ boxShadow: "0 0 24px rgba(99,102,241,0.25)" }}>
                 ➕ Ajouter
               </button>
             </form>
           </div>
 
           {/* Holdings Table */}
-          <div className="bg-slate-900/70 border border-white/5 rounded-3xl p-6 overflow-x-auto">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">📋 Mes Holdings</h2>
+          <div className="pt-anim bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 overflow-x-auto" style={{ animationDelay: "400ms" }}>
+            <h2 className="text-base md:text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Mes Holdings
+            </h2>
             {enriched.length === 0 ? (
               <div className="text-center py-16 text-gray-500">
                 <div className="text-6xl mb-4">💼</div>

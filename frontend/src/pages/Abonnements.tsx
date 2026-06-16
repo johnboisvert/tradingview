@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import { getPlanPrices, getAnnualPlanPrices, getAnnualDiscount, type PlanPrices } from "@/lib/api";
 import { getPlanAccess } from "@/lib/store";
 import { getUserPlan } from "@/lib/subscription";
+import { trackEvent } from "@/lib/analytics";
 import {
   CreditCard, Check, Star, Zap, Crown, Rocket, ArrowRight,
   X, Bitcoin, Banknote, Loader2, Copy, CheckCheck, ExternalLink,
@@ -167,6 +168,22 @@ function BillingToggle({
   );
 }
 
+// ─── Promo codes (client-side, simple registry) ──────────────────────────────
+// 🔧 Pour ajouter/modifier des codes, éditez cette table. Le rabais est en %.
+// ⚠️ Note : la validation finale est effectuée par le backend. Le client peut
+//          uniquement réduire l'amount_cad envoyé — l'admin doit vérifier
+//          côté Stripe les sessions reçues pour repérer un abus.
+const PROMO_CODES: Record<string, { discount: number; label: string }> = {
+  BIENVENUE20: { discount: 20, label: "Bienvenue — 20% de rabais" },
+  LAUNCH30: { discount: 30, label: "Lancement — 30% de rabais" },
+  BFRIDAY40: { discount: 40, label: "Black Friday — 40% de rabais" },
+};
+
+function applyPromo(code: string): { discount: number; label: string } | null {
+  const normalized = code.trim().toUpperCase();
+  return PROMO_CODES[normalized] ?? null;
+}
+
 // ─── Payment Modal ────────────────────────────────────────────────────────────
 function PaymentModal({
   plan,
@@ -181,10 +198,40 @@ function PaymentModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // ─── Promo code state ──────────────────────────────────────────────────────
+  const [promoInput, setPromoInput] = useState("");
+  const [promoApplied, setPromoApplied] = useState<{ code: string; discount: number; label: string } | null>(null);
+  const [promoError, setPromoError] = useState("");
+
   const isAnnual = billing === "annual";
-  const displayPrice = isAnnual ? plan.annualMonthlyPrice : plan.monthlyPrice;
-  const totalPrice = isAnnual ? plan.annualTotalPrice : plan.monthlyPrice;
+  const basePrice = isAnnual ? plan.annualMonthlyPrice : plan.monthlyPrice;
+  const baseTotal = isAnnual ? plan.annualTotalPrice : plan.monthlyPrice;
+
+  // Apply discount if any
+  const promoDiscount = promoApplied ? promoApplied.discount / 100 : 0;
+  const displayPrice = basePrice * (1 - promoDiscount);
+  const totalPrice = baseTotal * (1 - promoDiscount);
   const periodLabel = isAnnual ? "/mois (facturé annuellement)" : "/mois";
+
+  const handleApplyPromo = () => {
+    setPromoError("");
+    const result = applyPromo(promoInput);
+    if (!result) {
+      setPromoError("Code promo invalide ou expiré.");
+      setPromoApplied(null);
+      trackEvent("promo_invalid", { code: promoInput.trim().toUpperCase(), plan: plan.key });
+      return;
+    }
+    const code = promoInput.trim().toUpperCase();
+    setPromoApplied({ code, ...result });
+    trackEvent("promo_applied", { code, discount: result.discount, plan: plan.key, billing });
+  };
+
+  const handleRemovePromo = () => {
+    setPromoApplied(null);
+    setPromoInput("");
+    setPromoError("");
+  };
 
   const handleStripe = async () => {
     setLoading(true);
@@ -195,8 +242,9 @@ function PaymentModal({
         headers: { "Content-Type": "application/json", "App-Host": window.location.origin },
         body: JSON.stringify({
           plan: plan.key,
-          amount_cad: totalPrice,
+          amount_cad: Number(totalPrice.toFixed(2)),
           billing_period: billing,
+          promo_code: promoApplied?.code ?? null,
         }),
       });
       const data = await res.json();
@@ -218,8 +266,9 @@ function PaymentModal({
         headers: { "Content-Type": "application/json", "App-Host": window.location.origin },
         body: JSON.stringify({
           plan: plan.key,
-          amount_cad: totalPrice,
+          amount_cad: Number(totalPrice.toFixed(2)),
           billing_period: billing,
+          promo_code: promoApplied?.code ?? null,
         }),
       });
       const data = await res.json();
@@ -291,6 +340,76 @@ function PaymentModal({
               );
             })}
           </div>
+        </div>
+
+        {/* ─── Promo code section ─── */}
+        <div className="px-5 pt-5 pb-1">
+          <p className="text-xs text-gray-400 mb-2 font-medium uppercase tracking-wider flex items-center gap-1.5">
+            <Star className="w-3 h-3 text-amber-400" /> Code promo
+          </p>
+          {!promoApplied ? (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  data-testid="promo-code-input"
+                  type="text"
+                  value={promoInput}
+                  onChange={(e) => { setPromoInput(e.target.value); setPromoError(""); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleApplyPromo(); }}
+                  placeholder="Entrez votre code"
+                  className="flex-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-amber-400/60 focus:ring-1 focus:ring-amber-400/40 text-sm text-white placeholder:text-gray-500 font-mono uppercase tracking-wider outline-none transition-all"
+                />
+                <button
+                  data-testid="promo-code-apply-btn"
+                  onClick={handleApplyPromo}
+                  disabled={!promoInput.trim()}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Appliquer
+                </button>
+              </div>
+              {promoError && (
+                <p data-testid="promo-code-error" className="text-xs text-red-400 flex items-center gap-1.5">
+                  <X className="w-3 h-3" /> {promoError}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div
+              data-testid="promo-code-applied"
+              className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/30"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-emerald-300 font-mono truncate">{promoApplied.code}</p>
+                  <p className="text-[10px] text-emerald-400/80 truncate">{promoApplied.label}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-[10px] font-black text-emerald-300">
+                  -{promoApplied.discount}%
+                </span>
+                <button
+                  data-testid="promo-code-remove-btn"
+                  onClick={handleRemovePromo}
+                  className="p-1 rounded-lg hover:bg-white/[0.08] transition-colors"
+                  aria-label="Retirer le code promo"
+                >
+                  <X className="w-3.5 h-3.5 text-gray-400" />
+                </button>
+              </div>
+            </div>
+          )}
+          {promoApplied && (
+            <div className="mt-3 px-3 py-2 rounded-lg bg-amber-400/[0.06] border border-amber-400/20 text-xs text-amber-200 flex items-center justify-between">
+              <span>Nouveau total :</span>
+              <span>
+                <span className="text-gray-500 line-through mr-2">${baseTotal.toFixed(2)}</span>
+                <strong className="text-amber-300 text-sm">${totalPrice.toFixed(2)} CAD</strong>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Method content */}

@@ -591,6 +591,53 @@ export default function RapportHebdomadaireIA() {
       <Sidebar />
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
         <div className="relative z-10 max-w-[1440px] mx-auto px-6 py-6">
+          {/* ===== Premium IA Hero Banner ===== */}
+          <div className="relative rounded-3xl overflow-hidden mb-6 border border-indigo-500/20">
+            <div className="absolute inset-0 bg-[#030712]" />
+            <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-indigo-500/25 blur-3xl" style={{ animation: "rep-pulse 6s ease-in-out infinite" }} />
+            <div className="absolute -bottom-24 right-1/4 w-80 h-80 rounded-full bg-violet-500/25 blur-3xl" style={{ animation: "rep-pulse 8s ease-in-out infinite reverse" }} />
+            <div className="absolute -top-12 right-1/2 w-72 h-72 rounded-full bg-pink-500/15 blur-3xl" style={{ animation: "rep-pulse 7s ease-in-out infinite" }} />
+            <div className="absolute inset-0 opacity-[0.04]" style={{
+              backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+              backgroundSize: "44px 44px",
+            }} />
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-6 md:px-10 py-7">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/40 flex items-center justify-center" style={{ boxShadow: "0 0 30px rgba(99,102,241,0.3)" }}>
+                  <Brain className="w-7 h-7 text-indigo-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-indigo-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
+                      Rapport Hebdomadaire IA
+                    </h1>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-violet-500/40 bg-violet-500/10 text-violet-300">
+                      <Zap className="w-2.5 h-2.5" /> Premium IA
+                    </span>
+                  </div>
+                  <p className="text-xs md:text-sm text-gray-400">
+                    Analyse de marché complète générée par l&apos;IA · Opportunités · Signaux · Performance
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 text-[11px] text-gray-500">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  IA active
+                </div>
+                <span className="text-gray-700">·</span>
+                <span>MAJ chaque lundi</span>
+              </div>
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes rep-pulse {
+              0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+              50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+            }
+          `}</style>
+
           {/* Page Header */}
           <PageHeader
             icon={<FileText className="w-6 h-6" />}
@@ -698,20 +745,23 @@ export default function RapportHebdomadaireIA() {
             {/* ── Right: Report content ── */}
             <div className="space-y-5">
               {/* Report header */}
-              <div className="bg-gradient-to-r from-indigo-900/30 to-violet-900/20 border border-indigo-500/20 rounded-2xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="relative overflow-hidden bg-gradient-to-r from-indigo-900/30 via-violet-900/20 to-pink-900/20 border border-indigo-500/25 rounded-2xl p-5 flex items-center justify-between">
+                <div className="absolute -top-12 -left-12 w-32 h-32 rounded-full bg-indigo-500/20 blur-3xl" />
+                <div className="absolute -top-12 right-1/3 w-32 h-32 rounded-full bg-violet-500/15 blur-3xl" />
+                <div className="relative flex items-center gap-3">
                   {trendIcon}
                   <div>
-                    <h2 className="text-base font-black text-white">{report.weekLabel}</h2>
+                    <h2 className="text-base md:text-lg font-black text-white">{report.weekLabel}</h2>
                     <p className="text-xs text-gray-400">{report.dateRange}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="relative flex items-center gap-3">
                   {!generating && (
                     <button
                       onClick={handleDownloadPDF}
                       disabled={downloading}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/25 text-indigo-300 text-xs font-bold transition-all disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600/25 hover:bg-indigo-600/40 border border-indigo-500/40 text-indigo-200 text-xs font-bold transition-all disabled:opacity-50"
+                      style={{ boxShadow: "0 0 16px rgba(99,102,241,0.2)" }}
                     >
                       {downloading ? (
                         <>

@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Sparkles } from "lucide-react";
 import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -100,6 +100,29 @@ function getPhase(score: number): PhaseData {
     if (score >= p.range[0] && score < p.range[1]) return p;
   }
   return score >= 100 ? PHASES[5] : PHASES[0];
+}
+
+function useAnimatedNumber(target: number, duration = 1200): number {
+  const [val, setVal] = useState(0);
+  const startRef = useRef<number | null>(null);
+  const fromRef = useRef(0);
+  useEffect(() => {
+    fromRef.current = val;
+    startRef.current = null;
+    let raf = 0;
+    const step = (ts: number) => {
+      if (startRef.current === null) startRef.current = ts;
+      const elapsed = ts - startRef.current;
+      const t = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setVal(Math.round(fromRef.current + (target - fromRef.current) * eased));
+      if (t < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target]);
+  return val;
 }
 
 export default function BullrunPhase() {
@@ -424,66 +447,120 @@ export default function BullrunPhase() {
           />
         </div>
 
-        <div className="relative z-10 max-w-[1440px] mx-auto p-7 pb-20">
-          {/* Header */}
-          <div className="text-center mb-9 pt-10">
-            <h1 className="text-[clamp(32px,5vw,52px)] font-black tracking-[-2px] bg-gradient-to-r from-[#f59e0b] via-[#ef4444] to-[#3b82f6] bg-clip-text text-transparent">
-              📊 Suivi des Phases du Cycle Crypto
-            </h1>
-            <p className="text-[#64748b] text-[17px] mt-3 font-medium max-w-[700px] mx-auto">
-              Analyse multi-facteurs en temps réel basée sur les données de marché, le sentiment et les indicateurs on-chain
-            </p>
-            <div className="inline-flex items-center gap-2 bg-[rgba(99,102,241,0.1)] border border-[rgba(99,102,241,0.25)] rounded-full px-[18px] py-1.5 text-xs text-[#818cf8] font-bold mt-4 uppercase tracking-[1.5px]">
-              <span className="w-2 h-2 rounded-full bg-[#818cf8] shadow-[0_0_8px_#818cf8] animate-pulse" />
-              EN DIRECT — Données 100% réelles
+        <div className="relative z-10 max-w-[1440px] mx-auto p-4 md:p-6 pb-20">
+          {/* ===== HERO ===== */}
+          <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08] mt-2">
+            <div className="absolute inset-0 bg-[#0A0E1A]" />
+            <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl" style={{ background: phase.color, opacity: 0.2, animation: "br-pulse 6s ease-in-out infinite" }} />
+            <div className="absolute -bottom-24 right-1/3 w-80 h-80 rounded-full bg-indigo-500/20 blur-3xl" style={{ animation: "br-pulse 8s ease-in-out infinite reverse" }} />
+            <div
+              className="absolute inset-0 opacity-[0.04]"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+                backgroundSize: "44px 44px",
+              }}
+            />
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-6 md:px-10 py-6">
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-14 h-14 rounded-2xl border flex items-center justify-center text-3xl"
+                  style={{ background: `${phase.color}1a`, borderColor: `${phase.color}55`, boxShadow: `0 0 30px ${phase.color}40` }}
+                >
+                  {phase.icon}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-[#f59e0b] via-[#ef4444] to-[#3b82f6] bg-clip-text text-transparent">
+                      Bullrun Phase Tracker
+                    </h1>
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border"
+                      style={{ color: phase.color, borderColor: `${phase.color}55`, background: `${phase.color}10` }}
+                    >
+                      <Sparkles className="w-2.5 h-2.5" /> {phase.name}
+                    </span>
+                  </div>
+                  <p className="text-xs md:text-sm text-gray-400">
+                    Analyse multi-facteurs • Données 100% réelles (CoinGecko, Alternative.me)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-sm font-semibold transition-all disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline">{lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}</span>
+              </button>
             </div>
           </div>
 
+          <style>{`
+            @keyframes br-pulse {
+              0%, 100% { transform: scale(1) translate(0,0); opacity: 0.2; }
+              50% { transform: scale(1.15) translate(15px,-8px); opacity: 0.35; }
+            }
+            @keyframes br-fadeUp {
+              from { opacity: 0; transform: translateY(12px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .br-anim { animation: br-fadeUp 0.6s ease-out both; }
+          `}</style>
+
           {/* Phase Principale */}
-          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6 relative overflow-hidden">
+          <div className="br-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 md:p-8 mb-6 overflow-hidden" style={{ animationDelay: "100ms" }}>
+            <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full blur-3xl opacity-25" style={{ background: phase.color }} />
             {loading && indicators.length === 0 ? (
               <div className="flex justify-center items-center py-16">
                 <div className="w-11 h-11 border-[3px] border-[rgba(245,158,11,0.15)] border-t-[#f59e0b] rounded-full animate-spin" />
               </div>
             ) : (
-              <div className="text-center py-5">
-                <div className="text-[80px] mb-4">{phase.icon}</div>
-                <div className="text-4xl font-black tracking-[-1px] mb-2" style={{ color: phase.color }}>
+              <div className="relative text-center py-3">
+                <div className="text-[80px] mb-2 leading-none" style={{ filter: `drop-shadow(0 0 30px ${phase.color}80)` }}>{phase.icon}</div>
+                <div className="text-3xl md:text-4xl font-black tracking-tight mb-2" style={{ color: phase.color, textShadow: `0 0 30px ${phase.color}50` }}>
                   {phase.name}
                 </div>
-                <p className="text-[#94a3b8] text-base max-w-[600px] mx-auto leading-relaxed mb-2">
+                <p className="text-gray-400 text-sm md:text-base max-w-[600px] mx-auto leading-relaxed mb-3">
                   {phase.desc}
                 </p>
-                <div className="bg-[rgba(99,102,241,0.08)] border border-[rgba(99,102,241,0.2)] rounded-xl p-3 max-w-[500px] mx-auto mb-6">
-                  <p className="text-sm text-[#818cf8] font-medium">
-                    💡 Action recommandée : {phase.action}
+                <div className="inline-flex items-center gap-2 bg-indigo-500/[0.08] border border-indigo-500/25 rounded-xl px-4 py-2 mb-6">
+                  <span className="text-base">💡</span>
+                  <p className="text-sm text-indigo-300 font-semibold">
+                    Action recommandée : <span className="text-white">{phase.action}</span>
                   </p>
                 </div>
 
                 <p
-                  className="font-mono text-[64px] font-bold my-3"
-                  style={{ color: phase.color, textShadow: `0 0 40px ${phase.color}50` }}
+                  className="font-mono text-5xl md:text-6xl font-black my-3"
+                  style={{ color: phase.color, textShadow: `0 0 40px ${phase.color}60` }}
                 >
-                  {score}<span className="text-[28px] text-[#64748b]">/100</span>
+                  {useAnimatedNumber(score)}<span className="text-2xl text-gray-500">/100</span>
                 </p>
 
                 {/* Progress bar with phase markers */}
-                <div className="max-w-[700px] mx-auto">
-                  <div className="h-5 bg-[rgba(148,163,184,0.08)] rounded-xl overflow-hidden relative">
+                <div className="max-w-[700px] mx-auto mt-5">
+                  <div className="h-6 bg-white/[0.04] rounded-2xl overflow-hidden relative ring-1 ring-white/[0.06]">
                     {PHASES.map((p) => (
                       <div
                         key={p.id}
-                        className="absolute top-0 h-full opacity-40"
+                        className="absolute top-0 h-full"
                         style={{
                           left: `${p.range[0]}%`,
                           width: `${p.range[1] - p.range[0]}%`,
-                          background: p.color,
+                          background: `linear-gradient(180deg, ${p.color}99, ${p.color}55)`,
+                          opacity: p.id === phase.id ? 1 : 0.35,
                         }}
                       />
                     ))}
                     <div
-                      className="absolute top-[-3px] w-2 h-[calc(100%+6px)] bg-white rounded-sm shadow-[0_0_12px_rgba(255,255,255,0.8)] transition-all duration-[1500ms] z-10"
-                      style={{ left: `${score}%` }}
+                      className="absolute top-[-4px] w-1 h-[calc(100%+8px)] bg-white rounded-sm z-10"
+                      style={{
+                        left: `${score}%`,
+                        boxShadow: `0 0 14px 2px white, 0 0 24px 4px ${phase.color}`,
+                        transition: "left 1.2s cubic-bezier(.34,1.56,.64,1)",
+                      }}
                     />
                   </div>
                   <div className="flex justify-between mt-2 text-[9px] font-bold">
@@ -497,12 +574,12 @@ export default function BullrunPhase() {
                 </div>
 
                 {/* Score breakdown */}
-                <div className="mt-6 bg-[rgba(0,0,0,0.3)] rounded-xl p-4 max-w-[600px] mx-auto">
-                  <p className="text-[11px] text-[#64748b] font-bold uppercase tracking-wider mb-2">
+                <div className="mt-6 bg-white/[0.02] rounded-2xl p-4 max-w-[600px] mx-auto border border-white/[0.05]">
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1.5">
                     Décomposition du Score
                   </p>
-                  <p className="text-[11px] text-[#475569] font-mono">{debugInfo}</p>
-                  <p className="text-[10px] text-[#475569] mt-2">
+                  <p className="text-[11px] text-gray-400 font-mono">{debugInfo}</p>
+                  <p className="text-[10px] text-gray-600 mt-2">
                     Formule : Fear&Greed (30%) + Distance ATH (30%) + Momentum 30j (25%) + Dominance BTC (10%) + Volume (5%)
                   </p>
                 </div>
@@ -511,9 +588,9 @@ export default function BullrunPhase() {
           </div>
 
           {/* Chronologie des Phases */}
-          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6 relative overflow-hidden">
-            <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
-              <span className="text-[22px]">🗺️</span> Phases du Cycle
+          <div className="br-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 mb-6 overflow-hidden" style={{ animationDelay: "200ms" }}>
+            <div className="flex items-center gap-2 text-base md:text-lg font-bold mb-5">
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: phase.color }} /> Phases du Cycle
             </div>
             <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
               {PHASES.map((p) => {
@@ -521,32 +598,33 @@ export default function BullrunPhase() {
                 return (
                   <div
                     key={p.id}
-                    className={`py-4 px-2 rounded-[14px] text-center transition-all relative overflow-hidden ${isActive ? "scale-105 z-10" : ""}`}
+                    className={`py-4 px-2 rounded-2xl text-center transition-all relative overflow-hidden ${isActive ? "scale-[1.05] z-10" : "hover:scale-[1.02]"}`}
                     style={{
-                      background: isActive ? `${p.color}20` : "rgba(15,23,42,0.5)",
-                      border: `2px solid ${isActive ? `${p.color}60` : "rgba(148,163,184,0.08)"}`,
-                      boxShadow: isActive ? `0 0 30px ${p.color}20` : "none",
+                      background: isActive ? `${p.color}15` : "rgba(255,255,255,0.02)",
+                      border: `1px solid ${isActive ? `${p.color}66` : "rgba(255,255,255,0.05)"}`,
+                      boxShadow: isActive ? `0 0 40px ${p.color}33, inset 0 0 24px ${p.color}11` : "none",
                     }}
                   >
-                    <div
-                      className="absolute bottom-0 left-0 right-0 h-[3px]"
-                      style={{ background: p.color, opacity: isActive ? 1 : 0.2 }}
-                    />
-                    <div className="text-2xl mb-1.5">{p.icon}</div>
-                    <div
-                      className="text-[10px] font-extrabold uppercase tracking-wider"
-                      style={{ color: isActive ? p.color : "#64748b" }}
-                    >
-                      {p.name}
-                    </div>
-                    <div className="text-[9px] text-[#475569] mt-1">
-                      Score {p.range[0]}-{p.range[1]}
-                    </div>
                     {isActive && (
-                      <div className="text-[9px] font-bold mt-1" style={{ color: p.color }}>
-                        ← NOUS SOMMES ICI
-                      </div>
+                      <div className="absolute -top-12 -right-8 w-24 h-24 rounded-full blur-2xl" style={{ background: p.color, opacity: 0.4 }} />
                     )}
+                    <div className="relative">
+                      <div className="text-2xl mb-1.5" style={{ filter: isActive ? `drop-shadow(0 0 8px ${p.color})` : "none" }}>{p.icon}</div>
+                      <div
+                        className="text-[10px] font-black uppercase tracking-wider"
+                        style={{ color: isActive ? p.color : "#94a3b8" }}
+                      >
+                        {p.name}
+                      </div>
+                      <div className="text-[9px] text-gray-500 mt-1 font-semibold">
+                        {p.range[0]}-{p.range[1]}
+                      </div>
+                      {isActive && (
+                        <div className="text-[9px] font-black mt-1.5 uppercase tracking-wider animate-pulse" style={{ color: p.color }}>
+                          ◉ Actif
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -554,33 +632,42 @@ export default function BullrunPhase() {
           </div>
 
           {/* Indicateurs Clés */}
-          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 mb-6 relative overflow-hidden">
-            <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
-              <span className="text-[22px]">📊</span> Indicateurs Clés — Données Réelles
+          <div className="br-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 mb-6 overflow-hidden" style={{ animationDelay: "280ms" }}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="flex items-center gap-2 text-base md:text-lg font-bold">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" /> Indicateurs Clés
+              </h2>
+              <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Données réelles</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
               {indicators.map((ind) => (
                 <div
                   key={ind.name}
-                  className="bg-gradient-to-br from-[rgba(15,23,42,0.9)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 transition-all hover:translate-y-[-4px] hover:border-[rgba(148,163,184,0.18)]"
+                  className="group relative bg-gradient-to-br from-white/[0.03] to-white/[0.005] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl p-5 transition-all overflow-hidden"
                 >
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2 text-sm font-bold">
-                      <span>{ind.icon}</span> {ind.name}
+                  <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity" style={{ background: ind.signalColor }} />
+                  <div className="relative">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center gap-2 text-sm font-bold">
+                        <span className="text-lg">{ind.icon}</span> {ind.name}
+                      </div>
+                      <span className="font-mono text-lg font-black" style={{ color: ind.signalColor, textShadow: `0 0 12px ${ind.signalColor}40` }}>
+                        {ind.rawValue}
+                      </span>
                     </div>
-                    <span className="font-mono text-lg font-bold" style={{ color: ind.signalColor }}>
-                      {ind.rawValue}
-                    </span>
-                  </div>
-                  <div className="bg-[rgba(148,163,184,0.06)] rounded-lg px-3 py-1.5 mb-2">
-                    <p className="text-xs font-bold" style={{ color: ind.signalColor }}>
-                      {ind.signal}
-                    </p>
-                  </div>
-                  <p className="text-xs text-[#94a3b8] leading-relaxed">{ind.desc}</p>
-                  <div className="flex justify-between items-center mt-2">
-                    <p className="text-[10px] text-[#475569]">Source : {ind.source}</p>
-                    <p className="text-[10px] text-[#475569]">{ind.contribution}</p>
+                    <div
+                      className="rounded-lg px-3 py-1.5 mb-3 border"
+                      style={{ background: `${ind.signalColor}10`, borderColor: `${ind.signalColor}33` }}
+                    >
+                      <p className="text-xs font-bold" style={{ color: ind.signalColor }}>
+                        {ind.signal}
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-400 leading-relaxed">{ind.desc}</p>
+                    <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/[0.05]">
+                      <p className="text-[10px] text-gray-600">Source : {ind.source}</p>
+                      <p className="text-[10px] text-gray-500 font-semibold">{ind.contribution}</p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -588,42 +675,36 @@ export default function BullrunPhase() {
           </div>
 
           {/* Guide des Phases */}
-          <div className="bg-[rgba(15,23,42,0.95)] border border-[rgba(148,163,184,0.08)] rounded-3xl p-8 relative overflow-hidden">
-            <div className="flex items-center gap-2.5 text-lg font-extrabold mb-6">
-              <span className="text-[22px]">📖</span> Guide des Phases du Cycle
+          <div className="br-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 overflow-hidden" style={{ animationDelay: "360ms" }}>
+            <div className="flex items-center gap-2 text-base md:text-lg font-bold mb-5">
+              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" /> Guide des Phases du Cycle
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
               {PHASES.map((p) => (
-                <div key={p.id} className="bg-gradient-to-br from-[rgba(15,23,42,0.85)] to-[rgba(30,41,59,0.5)] border border-[rgba(148,163,184,0.08)] rounded-2xl p-6 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full" style={{ background: p.color }} />
-                  <h3 className="text-[15px] font-extrabold mb-2.5" style={{ color: p.color }}>
-                    {p.icon} {p.name}
+                <div
+                  key={p.id}
+                  className="relative bg-gradient-to-br from-white/[0.03] to-white/[0.005] border border-white/[0.06] rounded-2xl p-5 overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 w-1 h-full" style={{ background: p.color, boxShadow: `0 0 12px ${p.color}` }} />
+                  <h3 className="text-sm font-black mb-2 flex items-center gap-2" style={{ color: p.color }}>
+                    <span className="text-lg">{p.icon}</span> {p.name}
                   </h3>
-                  <p className="text-[#94a3b8] text-[13px] leading-relaxed mb-2">{p.desc}</p>
-                  <p className="text-[11px] text-[#64748b] mb-2">Score : {p.range[0]} — {p.range[1]}</p>
-                  <p className="text-[13px]">
+                  <p className="text-gray-400 text-xs leading-relaxed mb-2">{p.desc}</p>
+                  <p className="text-[10px] text-gray-500 mb-2 font-semibold">Score : {p.range[0]} — {p.range[1]}</p>
+                  <p className="text-xs">
                     💡 <strong className="text-white">{p.action}</strong>
                   </p>
                 </div>
               ))}
             </div>
 
-            <p className="text-[#64748b] text-xs mt-5 text-center">
+            <p className="text-gray-500 text-[11px] mt-5 text-center leading-relaxed">
               ⚠️ Tous les indicateurs sont calculés à partir de données réelles (CoinGecko, Alternative.me). Aucune donnée simulée ou hardcodée.
               <br />
-              Ce n'est pas un conseil financier. Faites toujours vos propres recherches (DYOR).
+              Ce n&apos;est pas un conseil financier. Faites toujours vos propres recherches (DYOR).
             </p>
           </div>
 
-          {/* Refresh */}
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 rounded-2xl bg-[rgba(15,23,42,0.9)] backdrop-blur-xl border border-[rgba(148,163,184,0.15)] text-sm font-bold hover:border-[rgba(148,163,184,0.3)] transition-all shadow-2xl"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            {lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}
-          </button>
         </div>
         <Footer />
       </main>

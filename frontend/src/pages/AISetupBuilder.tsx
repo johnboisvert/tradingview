@@ -366,15 +366,6 @@ export default function AISetupBuilder() {
           <div className="absolute w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />
         </div>
         <div className="relative z-10 max-w-[1440px] mx-auto">
-          <div className="text-center mb-10 pt-8">
-            <h1 className="text-5xl font-black bg-gradient-to-r from-violet-400 via-cyan-400 to-violet-400 bg-[length:300%_auto] bg-clip-text text-transparent animate-gradient">
-              🏗️ AI Setup Builder
-            </h1>
-            <p className="text-gray-500 mt-3 text-lg">
-              Générez des setups de trading LONG ou SHORT personnalisés par IA
-            </p>
-          </div>
-
           {/* Custom Generator */}
           <div className="bg-slate-900/70 border border-white/5 rounded-3xl p-8 mb-6">
             <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">

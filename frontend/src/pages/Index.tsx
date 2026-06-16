@@ -199,6 +199,79 @@ export default function DashboardPage() {
       {/* pt-14 on mobile for the fixed top bar, md:pt-0 on desktop */}
       <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
 
+        {/* ===== AI MARKET SCORE WIDGET (Conversion Booster) ===== */}
+        <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]" style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)" }}>
+          {(() => {
+            // Compute AI score from real data
+            const aiScore = Math.max(0, Math.min(100, Math.round(
+              fearGreed * 0.45 +
+              Math.max(0, Math.min(100, 50 + global.market_cap_change_24h * 5)) * 0.35 +
+              Math.max(0, Math.min(100, 50 + (global.btc_dominance - 50) * 0.5)) * 0.2
+            )));
+            const aiColor = aiScore >= 75 ? "#22c55e" : aiScore >= 55 ? "#84cc16" : aiScore >= 40 ? "#eab308" : aiScore >= 25 ? "#f97316" : "#ef4444";
+            const aiLabel = aiScore >= 75 ? "🚀 BULL EXTRÊME" : aiScore >= 55 ? "📈 HAUSSIER" : aiScore >= 40 ? "⚖️ NEUTRE" : aiScore >= 25 ? "📉 BAISSIER" : "🐻 BEAR EXTRÊME";
+            const aiAction = aiScore >= 75 ? "Marché euphorique — prendre des profits" : aiScore >= 55 ? "Conditions favorables au long" : aiScore >= 40 ? "Marché indécis — attendre" : aiScore >= 25 ? "Prudence — réduire exposition" : "Opportunité d'accumulation long terme";
+            return (
+              <>
+                <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full blur-3xl opacity-30" style={{ background: aiColor, animation: "ai-mega 4s ease-in-out infinite" }} />
+                <div className="absolute -bottom-32 -right-32 w-[450px] h-[450px] rounded-full blur-3xl opacity-25" style={{ background: aiColor, animation: "ai-mega 5s ease-in-out infinite reverse" }} />
+                <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)", backgroundSize: "30px 30px" }} />
+                <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 md:gap-10">
+                  {/* Big animated score */}
+                  <div className="flex-shrink-0 text-center">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.08] border border-white/[0.15] mb-3">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white">Score IA temps réel</span>
+                    </div>
+                    <div className="relative">
+                      <div className="text-[110px] md:text-[140px] font-black leading-none tracking-tight font-mono" style={{ color: aiColor, textShadow: `0 0 60px ${aiColor}, 0 0 100px ${aiColor}66` }}>
+                        {aiScore}
+                      </div>
+                      <div className="absolute -top-2 right-0 text-2xl md:text-3xl font-bold text-gray-500">/100</div>
+                    </div>
+                    <div className="text-xl md:text-2xl font-black tracking-tight mt-2" style={{ color: aiColor, textShadow: `0 0 20px ${aiColor}66` }}>
+                      {aiLabel}
+                    </div>
+                  </div>
+
+                  {/* Bar + action */}
+                  <div className="flex-1 w-full">
+                    <div className="text-xs md:text-sm text-gray-300 mb-3 font-semibold flex items-center gap-2 flex-wrap">
+                      <span>💡 <strong className="text-white">Analyse IA combinée :</strong></span>
+                      <span className="px-2 py-0.5 rounded-md bg-white/[0.06] text-gray-300">Fear&amp;Greed {fearGreed}</span>
+                      <span className="px-2 py-0.5 rounded-md bg-white/[0.06] text-gray-300">MCap {global.market_cap_change_24h >= 0 ? "+" : ""}{global.market_cap_change_24h.toFixed(1)}%</span>
+                      <span className="px-2 py-0.5 rounded-md bg-white/[0.06] text-gray-300">BTC Dom {global.btc_dominance.toFixed(1)}%</span>
+                    </div>
+                    <div className="relative h-5 bg-white/[0.04] rounded-2xl overflow-hidden ring-1 ring-white/[0.08] mb-3">
+                      <div className="absolute inset-0 flex">
+                        <div className="h-full" style={{ width: "20%", background: "linear-gradient(90deg, rgba(239,68,68,0.4), rgba(239,68,68,0.2))" }} />
+                        <div className="h-full" style={{ width: "20%", background: "linear-gradient(90deg, rgba(249,115,22,0.4), rgba(249,115,22,0.2))" }} />
+                        <div className="h-full" style={{ width: "20%", background: "linear-gradient(90deg, rgba(234,179,8,0.4), rgba(234,179,8,0.2))" }} />
+                        <div className="h-full" style={{ width: "20%", background: "linear-gradient(90deg, rgba(132,204,22,0.4), rgba(132,204,22,0.2))" }} />
+                        <div className="h-full" style={{ width: "20%", background: "linear-gradient(90deg, rgba(34,197,94,0.4), rgba(34,197,94,0.2))" }} />
+                      </div>
+                      <div className="absolute top-[-2px] w-1 h-[calc(100%+4px)] bg-white rounded-sm z-10" style={{ left: `${aiScore}%`, boxShadow: `0 0 14px white, 0 0 28px ${aiColor}`, transition: "left 1s cubic-bezier(.34,1.56,.64,1)" }} />
+                    </div>
+                    <div className="flex items-start gap-2 p-3 rounded-xl border" style={{ background: `${aiColor}10`, borderColor: `${aiColor}33` }}>
+                      <span className="text-xl">🎯</span>
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: aiColor }}>Recommandation IA</div>
+                        <div className="text-sm font-bold text-white mt-0.5">{aiAction}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <style>{`
+                  @keyframes ai-mega {
+                    0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+                    50% { transform: scale(1.25) translate(30px,-15px); opacity: 0.5; }
+                  }
+                `}</style>
+              </>
+            );
+          })()}
+        </div>
+
         {/* Hero (premium CSS-only) */}
         <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
           <div className="absolute inset-0 bg-[#0A0E1A]" />

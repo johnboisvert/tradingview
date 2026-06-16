@@ -143,43 +143,56 @@ export default function News() {
             { n: "3", title: "Réagissez rapidement", desc: "Les grandes news peuvent créer des opportunités de trading. Croisez toujours l'info avec l'analyse technique avant d'agir." },
           ]}
         />
-        {/* Hero */}
-        <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
-          <img src={NEWS_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/75 to-transparent" />
-          <div className="relative z-10 h-full flex items-center justify-between px-8">
+        {/* ===== HERO premium ===== */}
+        <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+          <div className="absolute inset-0 bg-[#0A0E1A]" />
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-blue-500/22 blur-3xl" style={{ animation: "nw-pulse 6s ease-in-out infinite" }} />
+          <div className="absolute -bottom-24 right-1/3 w-80 h-80 rounded-full bg-indigo-500/22 blur-3xl" style={{ animation: "nw-pulse 8s ease-in-out infinite reverse" }} />
+          <div className="absolute inset-0 opacity-[0.04]" style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+          }} />
+          <div className="relative z-10 flex items-center gap-4 px-6 md:px-10 py-6">
+            <div className="w-14 h-14 rounded-2xl bg-blue-500/15 border border-blue-500/40 flex items-center justify-center" style={{ boxShadow: "0 0 30px rgba(59,130,246,0.3)" }}>
+              <Newspaper className="w-7 h-7 text-blue-300" />
+            </div>
             <div>
-              <div className="flex items-center gap-3 mb-1">
-                <Newspaper className="w-7 h-7 text-blue-400" />
-                <h1 className="text-2xl font-extrabold">Actualités Crypto</h1>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                  Actualités Crypto
+                </h1>
                 {dataSource === "live" && (
-                  <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
-                    <Wifi className="w-3 h-3" />
-                    EN DIRECT
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-300">
+                    <Wifi className="w-3 h-3" /> EN DIRECT
                   </span>
                 )}
                 {dataSource === "fallback" && (
-                  <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold border border-amber-500/30">
-                    <AlertTriangle className="w-3 h-3" />
-                    TENDANCES
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-amber-500/40 bg-amber-500/10 text-amber-300">
+                    <AlertTriangle className="w-3 h-3" /> TENDANCES
                   </span>
                 )}
               </div>
-              <p className="text-sm text-gray-400">
+              <p className="text-xs md:text-sm text-gray-400">
                 {dataSource === "live"
-                  ? "Dernières nouvelles du marché crypto • Source: CryptoCompare"
+                  ? "Dernières nouvelles du marché crypto · Source: CryptoCompare"
                   : dataSource === "fallback"
-                  ? "Cryptos en tendance • Source: CoinGecko Trending"
+                  ? "Cryptos en tendance · Source: CoinGecko Trending"
                   : "Chargement des actualités..."}
               </p>
             </div>
             <button onClick={fetchNews} disabled={loading}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-sm font-semibold transition-all">
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-sm font-semibold transition-all disabled:opacity-50">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              {lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}
+              <span className="hidden sm:inline">{lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}</span>
             </button>
           </div>
         </div>
+        <style>{`
+          @keyframes nw-pulse {
+            0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+            50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+          }
+        `}</style>
 
         {/* Data source info banner */}
         {dataSource === "fallback" && (

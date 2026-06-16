@@ -37,6 +37,7 @@ const BullrunPhase = React.lazy(() => import("./pages/BullrunPhase"));
 const Graphiques = React.lazy(() => import("./pages/Graphiques"));
 
 const Abonnements = React.lazy(() => import("./pages/Abonnements"));
+const Affiliation = React.lazy(() => import("./pages/Affiliation"));
 const MonCompte = React.lazy(() => import("./pages/MonCompte"));
 const AdminDashboard = React.lazy(() => import("./pages/AdminDashboard"));
 const Analytics = React.lazy(() => import("./pages/Analytics"));
@@ -182,6 +183,7 @@ function App() {
 
           {/* Compte - always accessible */}
           <Route path="/abonnements" element={<Abonnements />} />
+          <Route path="/affiliation" element={<Affiliation />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/mon-compte" element={<MonCompte />} />
 

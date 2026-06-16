@@ -416,6 +416,8 @@ export default function BullrunPhase() {
   }, [fetchData]);
 
   const phase = getPhase(score);
+  // Hook must be at top level (not inside conditional JSX)
+  const animatedScore = useAnimatedNumber(score);
 
   return (
     <div className="min-h-screen bg-[#030712] text-white">
@@ -536,7 +538,7 @@ export default function BullrunPhase() {
                   className="font-mono text-5xl md:text-6xl font-black my-3"
                   style={{ color: phase.color, textShadow: `0 0 40px ${phase.color}60` }}
                 >
-                  {useAnimatedNumber(score)}<span className="text-2xl text-gray-500">/100</span>
+                  {animatedScore}<span className="text-2xl text-gray-500">/100</span>
                 </p>
 
                 {/* Progress bar with phase markers */}

@@ -192,37 +192,57 @@ export default function Watchlist() {
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
       <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
-        {/* Hero */}
-        <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px] bg-gradient-to-r from-purple-900/40 to-indigo-900/40">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/90 via-[#0A0E1A]/60 to-transparent" />
-          <div className="relative z-10 h-full flex items-center justify-between px-8">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <Eye className="w-7 h-7 text-purple-400" />
-                <h1 className="text-2xl font-extrabold">Watchlist</h1>
+        {/* ===== HERO premium ===== */}
+        <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+          <div className="absolute inset-0 bg-[#0A0E1A]" />
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-purple-500/22 blur-3xl" style={{ animation: "wl-pulse 6s ease-in-out infinite" }} />
+          <div className="absolute -bottom-24 right-1/3 w-80 h-80 rounded-full bg-indigo-500/22 blur-3xl" style={{ animation: "wl-pulse 8s ease-in-out infinite reverse" }} />
+          <div className="absolute inset-0 opacity-[0.04]" style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+          }} />
+          <div className="relative z-10 flex items-center justify-between gap-4 px-6 md:px-10 py-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-purple-500/15 border border-purple-500/40 flex items-center justify-center" style={{ boxShadow: "0 0 30px rgba(168,85,247,0.3)" }}>
+                <Eye className="w-7 h-7 text-purple-300" />
               </div>
-              <p className="text-sm text-gray-400">
-                Suivez vos cryptos favorites • Données en temps réel • Sparklines 7j
-              </p>
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-purple-400 via-indigo-400 to-pink-400 bg-clip-text text-transparent">
+                    Watchlist
+                  </h1>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-purple-500/40 bg-purple-500/10 text-purple-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" /> Live · Sparklines 7j
+                  </span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-400">Suivez vos cryptos favorites · Données en temps réel</p>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowAdd(!showAdd)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 text-sm font-bold hover:brightness-110 transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 text-sm font-bold hover:brightness-110 hover:-translate-y-0.5 transition-all"
+                style={{ boxShadow: "0 0 24px rgba(168,85,247,0.25)" }}
               >
-                <Plus className="w-4 h-4" /> Ajouter
+                <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Ajouter</span>
               </button>
               <button
                 onClick={fetchData}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-sm font-semibold transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-sm font-semibold transition-all disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                {lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}
+                <span className="hidden sm:inline">{lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}</span>
               </button>
             </div>
           </div>
         </div>
+        <style>{`
+          @keyframes wl-pulse {
+            0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+            50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+          }
+        `}</style>
 
         {/* Add Panel */}
         {showAdd && (

@@ -4,11 +4,13 @@ import { getPlanPrices, getAnnualPlanPrices, getAnnualDiscount, type PlanPrices 
 import { getPlanAccess } from "@/lib/store";
 import { getUserPlan } from "@/lib/subscription";
 import { trackEvent } from "@/lib/analytics";
+import { getStoredRefCode } from "@/lib/affiliation";
 import {
   CreditCard, Check, Star, Zap, Crown, Rocket, ArrowRight,
   X, Bitcoin, Banknote, Loader2, Copy, CheckCheck, ExternalLink,
 } from "lucide-react";
 import Footer from "@/components/Footer";
+import Confetti from "@/components/Confetti";
 
 // ─── FAQ ────────────────────────────────────────────────────────────────────
 const FAQ = [
@@ -202,6 +204,7 @@ function PaymentModal({
   const [promoInput, setPromoInput] = useState("");
   const [promoApplied, setPromoApplied] = useState<{ code: string; discount: number; label: string } | null>(null);
   const [promoError, setPromoError] = useState("");
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const isAnnual = billing === "annual";
   const basePrice = isAnnual ? plan.annualMonthlyPrice : plan.monthlyPrice;
@@ -225,6 +228,8 @@ function PaymentModal({
     const code = promoInput.trim().toUpperCase();
     setPromoApplied({ code, ...result });
     trackEvent("promo_applied", { code, discount: result.discount, plan: plan.key, billing });
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 2500);
   };
 
   const handleRemovePromo = () => {
@@ -245,6 +250,7 @@ function PaymentModal({
           amount_cad: Number(totalPrice.toFixed(2)),
           billing_period: billing,
           promo_code: promoApplied?.code ?? null,
+          ref_code: getStoredRefCode(),
         }),
       });
       const data = await res.json();
@@ -269,6 +275,7 @@ function PaymentModal({
           amount_cad: Number(totalPrice.toFixed(2)),
           billing_period: billing,
           promo_code: promoApplied?.code ?? null,
+          ref_code: getStoredRefCode(),
         }),
       });
       const data = await res.json();
@@ -290,6 +297,7 @@ function PaymentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <Confetti active={showConfetti} count={50} />
       <div className="relative bg-[#0F1525] border border-white/[0.08] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import PageHeader from "@/components/PageHeader";
+import Confetti from "@/components/Confetti";
 import { trackEvent } from "@/lib/analytics";
 import { Users, Copy, Check, TrendingUp, DollarSign, Sparkles, Link2, ExternalLink } from "lucide-react";
 
@@ -32,6 +33,7 @@ export default function Affiliation() {
   const [affiliateCode, setAffiliateCode] = useState("");
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const [refsCount, setRefsCount] = useState(10);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Load stored code on mount if user already generated one
   useEffect(() => {
@@ -60,6 +62,8 @@ export default function Affiliation() {
     setAffiliateCode(code);
     localStorage.setItem(REF_STORAGE_KEY, JSON.stringify({ email, code }));
     trackEvent("affiliate_generated", { code });
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 2800);
   };
 
   const handleCopy = (text: string, type: "code" | "link") => {
@@ -86,6 +90,7 @@ export default function Affiliation() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
+      <Confetti active={showConfetti} count={70} />
       <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
         <PageHeader
           icon={<Users className="w-6 h-6" />}

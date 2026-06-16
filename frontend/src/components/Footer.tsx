@@ -53,11 +53,20 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Copyright */}
-        <div className="flex items-center justify-center pt-2 border-t border-white/[0.04]">
+        {/* Copyright + Affiliation link */}
+        <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/[0.04] flex-wrap">
           <p className="text-xs text-gray-600 font-medium tracking-wide">
             Tous droits réservés © 2026 CryptoIA
           </p>
+          <a
+            href="/affiliation"
+            data-testid="footer-affiliation-link"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-300/80 hover:text-emerald-200 transition-colors group"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            🎁 Programme d'affiliation — Gagnez 30% à vie
+            <span className="opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">→</span>
+          </a>
         </div>
 
       </div>

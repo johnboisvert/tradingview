@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Play, Star, Quote, X } from "lucide-react";
+import { trackEvent } from "@/lib/analytics";
 
 /**
  * Testimonials Section
@@ -220,6 +221,7 @@ export default function Testimonials() {
           <a
             href="/abonnements"
             data-testid="testimonials-cta"
+            onClick={() => trackEvent("testimonial_cta_click")}
             className="inline-flex items-center gap-2 px-7 py-3 rounded-2xl font-black text-sm uppercase tracking-wider text-white transition-all hover:brightness-110 hover:scale-[1.03]"
             style={{
               background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%)",

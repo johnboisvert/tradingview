@@ -129,36 +129,65 @@ export default function AISentiment() {
             { n: "3", title: "Tradez à contre-courant", desc: "Le sentiment extrême est souvent un signal contrarian : sentiment extrêmement positif = potentiel de correction, négatif = opportunité d’achat." },
           ]}
         />
-        <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute w-[600px] h-[600px] rounded-full bg-orange-500/5 blur-[80px] top-[-200px] left-[-100px]" />
-          <div className="absolute w-[500px] h-[500px] rounded-full bg-emerald-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />
-        </div>
-        <div className="relative z-10 max-w-[1440px] mx-auto">
-          <div className="text-center mb-8 pt-8">
-            <h1 className="text-5xl font-black bg-gradient-to-r from-orange-400 via-emerald-400 to-orange-400 bg-[length:300%_auto] bg-clip-text text-transparent">
-              💭 Sentiment IA
-            </h1>
-            <p className="text-gray-500 mt-3 text-lg">Analyse du sentiment — Top 200 cryptos</p>
-            <div className="inline-flex items-center gap-2 mt-3 bg-orange-500/10 border border-orange-500/25 rounded-full px-5 py-1.5 text-xs text-orange-400 font-bold uppercase tracking-widest">
-              <span className="w-2 h-2 rounded-full bg-orange-400 shadow-[0_0_8px_#f97316] animate-pulse" />
-              {data.length} cryptos • {lastUpdate || "..."}
+        <div className="relative z-10 max-w-[1440px] mx-auto p-4 md:p-6">
+          {/* ===== HERO ===== */}
+          <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+            <div className="absolute inset-0 bg-[#0A0E1A]" />
+            <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-orange-500/22 blur-3xl" style={{ animation: "se-pulse 6s ease-in-out infinite" }} />
+            <div className="absolute -bottom-24 right-1/3 w-80 h-80 rounded-full bg-emerald-500/22 blur-3xl" style={{ animation: "se-pulse 8s ease-in-out infinite reverse" }} />
+            <div className="absolute inset-0 opacity-[0.04]" style={{
+              backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+              backgroundSize: "44px 44px",
+            }} />
+            <div className="relative z-10 flex items-center gap-4 px-6 md:px-10 py-6">
+              <div className="w-14 h-14 rounded-2xl bg-orange-500/15 border border-orange-500/40 flex items-center justify-center text-2xl" style={{ boxShadow: "0 0 30px rgba(249,115,22,0.3)" }}>
+                💭
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-orange-400 via-amber-400 to-emerald-400 bg-clip-text text-transparent">
+                    Sentiment IA
+                  </h1>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-orange-500/40 bg-orange-500/10 text-orange-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" /> {data.length} cryptos · {lastUpdate || "..."}
+                  </span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-400">
+                  Analyse du sentiment · Top 200 cryptos · Mise à jour temps réel
+                </p>
+              </div>
             </div>
           </div>
 
+          <style>{`
+            @keyframes se-pulse {
+              0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+              50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+            }
+            @keyframes se-fadeUp {
+              from { opacity: 0; transform: translateY(12px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .se-anim { animation: se-fadeUp 0.6s ease-out both; }
+          `}</style>
+
           {loading && data.length === 0 ? (
             <div className="flex justify-center py-16">
-              <div className="w-11 h-11 border-3 border-orange-500/15 border-t-orange-400 rounded-full animate-spin" />
+              <div className="w-11 h-11 border-[3px] border-orange-500/15 border-t-orange-400 rounded-full animate-spin" />
             </div>
           ) : (
             <>
               {/* Global Sentiment */}
-              <div className="bg-slate-900/70 border border-white/5 rounded-3xl p-8 mb-6 text-center">
-                <h2 className="text-lg font-bold text-white mb-4">🌍 Sentiment Global du Marché</h2>
-                <div className="text-7xl font-black font-mono mb-3" style={{ color: getSentimentColor(globalSentiment) }}>
+              <div className="se-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 md:p-8 mb-6 text-center overflow-hidden" style={{ animationDelay: "100ms" }}>
+                <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full blur-3xl opacity-25" style={{ background: getSentimentColor(globalSentiment) }} />
+                <h2 className="relative text-base md:text-lg font-bold text-white mb-4 flex items-center justify-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" /> Sentiment Global du Marché
+                </h2>
+                <div className="relative text-7xl md:text-8xl font-black font-mono mb-3" style={{ color: getSentimentColor(globalSentiment), textShadow: `0 0 40px ${getSentimentColor(globalSentiment)}66` }}>
                   {globalSentiment}
                 </div>
-                <div className="h-3 bg-white/5 rounded-full overflow-hidden max-w-md mx-auto mb-4">
-                  <div className="h-full rounded-full" style={{ width: `${globalSentiment}%`, background: "linear-gradient(90deg, #ef4444, #f59e0b, #22c55e)" }} />
+                <div className="relative h-3 bg-white/[0.04] rounded-full overflow-hidden max-w-md mx-auto mb-4 ring-1 ring-white/[0.06]">
+                  <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${globalSentiment}%`, background: "linear-gradient(90deg, #ef4444, #f59e0b, #22c55e)", boxShadow: `0 0 12px ${getSentimentColor(globalSentiment)}66` }} />
                 </div>
                 <div className="flex justify-between max-w-md mx-auto text-xs text-gray-500">
                   <span>Extreme Fear</span><span>Fear</span><span>Neutral</span><span>Greed</span><span>Extreme Greed</span>

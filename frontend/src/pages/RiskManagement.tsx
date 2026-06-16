@@ -67,66 +67,94 @@ export default function RiskManagement() {
             { n: "3", title: "Surveillez l'exposition", desc: "Vérifiez régulièrement votre exposition totale. Ne jamais avoir plus de 10-15% de votre capital en risque simultanément." },
           ]}
         />
-        <div className="relative rounded-2xl overflow-hidden mb-6 h-[120px] bg-gradient-to-r from-emerald-900/40 to-teal-900/40">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/90 via-[#0A0E1A]/60 to-transparent" />
-          <div className="relative z-10 h-full flex items-center justify-between px-8">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <Shield className="w-7 h-7 text-emerald-400" />
-                <h1 className="text-2xl font-extrabold">Gestion des Risques</h1>
+        {/* ===== HERO premium ===== */}
+        <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+          <div className="absolute inset-0 bg-[#0A0E1A]" />
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-emerald-500/22 blur-3xl" style={{ animation: "rm-pulse 6s ease-in-out infinite" }} />
+          <div className="absolute -bottom-24 right-1/3 w-80 h-80 rounded-full bg-teal-500/22 blur-3xl" style={{ animation: "rm-pulse 8s ease-in-out infinite reverse" }} />
+          <div className="absolute inset-0 opacity-[0.04]" style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+          }} />
+          <div className="relative z-10 flex items-center justify-between gap-4 px-6 md:px-10 py-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center" style={{ boxShadow: "0 0 30px rgba(34,197,94,0.3)" }}>
+                <Shield className="w-7 h-7 text-emerald-300" />
               </div>
-              <p className="text-sm text-gray-400">Analyse de risque • Volatilité • Position sizing • Top 200 cryptos</p>
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
+                    Gestion des Risques
+                  </h1>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Risk Analysis
+                  </span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-400">Analyse de risque · Volatilité · Position sizing · Top 200 cryptos</p>
+              </div>
             </div>
             <button onClick={fetchData} disabled={loading}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-sm font-semibold transition-all">
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-sm font-semibold transition-all disabled:opacity-50">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              {lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}
+              <span className="hidden sm:inline">{lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}</span>
             </button>
           </div>
         </div>
+        <style>{`
+          @keyframes rm-pulse {
+            0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+            50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+          }
+        `}</style>
 
         {/* Position Sizer */}
-        <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <h2 className="text-lg font-bold mb-4">📐 Calculateur de Position</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 mb-6 overflow-hidden">
+          <div className="absolute -top-20 right-1/4 w-72 h-72 rounded-full blur-3xl opacity-15 bg-emerald-500" />
+          <h2 className="relative text-base md:text-lg font-bold mb-4 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> 📐 Calculateur de Position
+          </h2>
+          <div className="relative grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="text-xs text-gray-500 font-semibold mb-1 block">Capital ($)</label>
+              <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1.5 block">Capital ($)</label>
               <input type="number" value={capital} onChange={(e) => setCapital(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-sm text-white focus:outline-none" />
+                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-white/[0.06] transition-all" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 font-semibold mb-1 block">Risque par Trade (%)</label>
+              <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1.5 block">Risque par Trade (%)</label>
               <input type="number" value={riskPct} onChange={(e) => setRiskPct(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-sm text-white focus:outline-none" />
+                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-white/[0.06] transition-all" />
             </div>
-            <div className="bg-black/20 rounded-xl p-4 border border-white/[0.04] text-center">
-              <p className="text-xs text-gray-500 mb-1">Risque Max par Trade</p>
-              <p className="text-2xl font-extrabold text-amber-400">${riskAmount.toFixed(2)}</p>
+            <div className="relative bg-gradient-to-br from-amber-500/[0.06] to-transparent rounded-xl p-4 border border-amber-500/20 text-center overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full bg-amber-500/15 blur-2xl" />
+              <p className="relative text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-wider">Risque Max / Trade</p>
+              <p className="relative text-2xl font-black text-amber-400" style={{ textShadow: "0 0 14px rgba(251,191,36,0.4)" }}>${riskAmount.toFixed(2)}</p>
             </div>
-            <div className="bg-black/20 rounded-xl p-4 border border-white/[0.04] text-center">
-              <p className="text-xs text-gray-500 mb-1">Trades avant -50%</p>
-              <p className="text-2xl font-extrabold text-red-400">{rp > 0 ? Math.ceil(50 / rp) : "∞"}</p>
+            <div className="relative bg-gradient-to-br from-red-500/[0.06] to-transparent rounded-xl p-4 border border-red-500/20 text-center overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full bg-red-500/15 blur-2xl" />
+              <p className="relative text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-wider">Trades avant -50%</p>
+              <p className="relative text-2xl font-black text-red-400" style={{ textShadow: "0 0 14px rgba(239,68,68,0.4)" }}>{rp > 0 ? Math.ceil(50 / rp) : "∞"}</p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Risque Moyen Marché</p>
-            <p className="text-2xl font-extrabold" style={{ color: avgRisk < 40 ? "#22c55e" : avgRisk < 60 ? "#eab308" : "#ef4444" }}>{avgRisk.toFixed(0)}/100</p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Cryptos Risquées</p>
-            <p className="text-2xl font-extrabold text-red-400">{highRisk}</p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Cryptos Sûres</p>
-            <p className="text-2xl font-extrabold text-emerald-400">{coins.length - highRisk}</p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Analysées</p>
-            <p className="text-2xl font-extrabold">{coins.length}</p>
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 mb-6">
+          {[
+            { label: "Risque Moyen Marché", value: `${avgRisk.toFixed(0)}/100`, color: avgRisk < 40 ? "#22c55e" : avgRisk < 60 ? "#eab308" : "#ef4444", icon: "🎯" },
+            { label: "Cryptos Risquées", value: highRisk, color: "#ef4444", icon: "🔴" },
+            { label: "Cryptos Sûres", value: coins.length - highRisk, color: "#22c55e", icon: "🟢" },
+            { label: "Analysées", value: coins.length, color: "#22d3ee", icon: "📊" },
+          ].map((k, i) => (
+            <div key={i} className="relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl p-4 md:p-5 overflow-hidden transition-all">
+              <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-25" style={{ background: k.color }} />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{k.label}</p>
+                  <span className="text-base">{k.icon}</span>
+                </div>
+                <p className="text-2xl md:text-3xl font-black" style={{ color: k.color, textShadow: `0 0 14px ${k.color}40` }}>{k.value}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6">

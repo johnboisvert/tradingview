@@ -91,11 +91,46 @@ export default function PositionSizer() {
             ]}
           />
 
+          {/* ===== HERO premium ===== */}
+          <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+            <div className="absolute inset-0 bg-[#0A0E1A]" />
+            <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-blue-500/22 blur-3xl" style={{ animation: "ps-pulse 6s ease-in-out infinite" }} />
+            <div className="absolute -bottom-24 right-1/3 w-80 h-80 rounded-full bg-cyan-500/22 blur-3xl" style={{ animation: "ps-pulse 8s ease-in-out infinite reverse" }} />
+            <div className="absolute inset-0 opacity-[0.04]" style={{
+              backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+              backgroundSize: "44px 44px",
+            }} />
+            <div className="relative z-10 flex items-center gap-4 px-6 md:px-10 py-6">
+              <div className="w-14 h-14 rounded-2xl bg-blue-500/15 border border-blue-500/40 flex items-center justify-center" style={{ boxShadow: "0 0 30px rgba(59,130,246,0.3)" }}>
+                <Calculator className="w-7 h-7 text-blue-300" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
+                    AI Position Sizer
+                  </h1>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-blue-500/40 bg-blue-500/10 text-blue-300">
+                    <Shield className="w-2.5 h-2.5" /> Money Management
+                  </span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-400">Taille optimale · Capital · Risque · Stop Loss</p>
+              </div>
+            </div>
+          </div>
+          <style>{`
+            @keyframes ps-pulse {
+              0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+              50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+            }
+          `}</style>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Form */}
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6">
-            <h2 className="text-base font-bold mb-4 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-indigo-400" />
+          <div className="relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 overflow-hidden">
+            <div className="absolute -top-20 right-1/4 w-72 h-72 rounded-full blur-3xl opacity-15 bg-blue-500" />
+            <h2 className="relative text-base md:text-lg font-bold mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+              <Shield className="w-4 h-4 text-blue-400" />
               Paramètres
             </h2>
 

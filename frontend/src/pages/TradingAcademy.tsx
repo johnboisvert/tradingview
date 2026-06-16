@@ -81,22 +81,16 @@ export default function TradingAcademy() {
           <div className="absolute w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />
         </div>
         <div className="relative z-10 max-w-[1300px] mx-auto px-4">
-          {/* Header */}
-          <div className="text-center mb-8 pt-6">
-            <h1 className="text-5xl font-black bg-gradient-to-r from-blue-400 via-purple-400 to-amber-400 bg-[length:300%_auto] bg-clip-text text-transparent animate-gradient">
-              🎓 Trading Academy
-            </h1>
-            <p className="text-gray-500 mt-3 text-lg">La formation trading crypto la plus complète au monde — Du débutant à l&apos;expert</p>
-            <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
-              <span className="bg-blue-500/10 border border-blue-500/25 rounded-full px-4 py-1 text-xs text-blue-400 font-bold">{modules.length} Modules</span>
-              <span className="bg-purple-500/10 border border-purple-500/25 rounded-full px-4 py-1 text-xs text-purple-400 font-bold">{totalLessons} Leçons</span>
-              <span className="bg-amber-500/10 border border-amber-500/25 rounded-full px-4 py-1 text-xs text-amber-400 font-bold">
-                {getTotalSubLessons()} Chapitres
-              </span>
-              <span className="bg-emerald-500/10 border border-emerald-500/25 rounded-full px-4 py-1 text-xs text-emerald-400 font-bold">
-                {getTotalQuizQuestions()} Questions Quiz
-              </span>
-            </div>
+          {/* Stats badges row */}
+          <div className="flex items-center justify-center gap-3 mb-6 mt-2 flex-wrap">
+            <span className="bg-blue-500/10 border border-blue-500/25 rounded-full px-4 py-1 text-xs text-blue-400 font-bold">{modules.length} Modules</span>
+            <span className="bg-purple-500/10 border border-purple-500/25 rounded-full px-4 py-1 text-xs text-purple-400 font-bold">{totalLessons} Leçons</span>
+            <span className="bg-amber-500/10 border border-amber-500/25 rounded-full px-4 py-1 text-xs text-amber-400 font-bold">
+              {getTotalSubLessons()} Chapitres
+            </span>
+            <span className="bg-emerald-500/10 border border-emerald-500/25 rounded-full px-4 py-1 text-xs text-emerald-400 font-bold">
+              {getTotalQuizQuestions()} Questions Quiz
+            </span>
           </div>
 
           {/* Progress */}

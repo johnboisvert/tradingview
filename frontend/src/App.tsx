@@ -1,8 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import LoadingSpinner from "./components/LoadingSpinner";
 import PageTracker from "./components/PageTracker";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { captureRefFromUrl } from "./lib/affiliation";
 
 // ── Lazy-loaded pages ────────────────────────────────────────────────────────
 const Index = React.lazy(() => import("./pages/Index"));
@@ -97,6 +98,11 @@ function PlanProtected({ path, children }: { path: string; children: React.React
 }
 
 function App() {
+  // Capture ?ref=CODE on first page load (90-day cookie + localStorage)
+  useEffect(() => {
+    captureRefFromUrl();
+  }, []);
+
   return (
     <ErrorBoundary>
     <AuthProvider>

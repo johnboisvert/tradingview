@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import PageHeader from "@/components/PageHeader";
+import { trackEvent } from "@/lib/analytics";
 import { Users, Copy, Check, TrendingUp, DollarSign, Sparkles, Link2, ExternalLink } from "lucide-react";
 
 const REF_STORAGE_KEY = "cryptoia_ref_code";
@@ -58,11 +59,13 @@ export default function Affiliation() {
     const code = generateAffiliateCode(email.toLowerCase().trim());
     setAffiliateCode(code);
     localStorage.setItem(REF_STORAGE_KEY, JSON.stringify({ email, code }));
+    trackEvent("affiliate_generated", { code });
   };
 
   const handleCopy = (text: string, type: "code" | "link") => {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(type);
+      if (type === "link") trackEvent("affiliate_link_copied", { code: affiliateCode });
       setTimeout(() => setCopied(null), 2000);
     });
   };

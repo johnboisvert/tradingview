@@ -118,8 +118,8 @@ app.post('/api/users/login', (req, res) => {
 });
 
 // ─── POST /api/users/create ───
-app.post('/api/users/create', (req, res) => {
-  const { username, password, role, plan } = req.body;
+app.post('/api/users/create', async (req, res) => {
+  const { username, password, role, plan, email } = req.body;
   if (!username) {
     return res.status(400).json({ success: false, message: 'Nom d\'utilisateur requis.' });
   }
@@ -148,7 +148,40 @@ app.post('/api/users/create', (req, res) => {
   users.push(newUser);
   saveUsers(users);
 
-  res.json({ success: true, temp_password: tempPwd });
+  // ─── Send welcome email (fire & forget, never block the response) ───
+  const recipientEmail = (email && typeof email === 'string' && email.includes('@'))
+    ? email.trim()
+    : (username.includes('@') ? username.trim() : null);
+  if (recipientEmail) {
+    (async () => {
+      try {
+        const client = await getResendClient();
+        if (!client) return;
+        const sender = process.env.SENDER_EMAIL || 'CryptoIA <onboarding@resend.dev>';
+        const result = await client.emails.send({
+          from: sender,
+          to: [recipientEmail],
+          subject: '👋 Bienvenue sur CryptoIA — Votre code -20% à l\'intérieur',
+          html: buildWelcomeEmailHtml(newUser.username.split('@')[0]),
+        });
+        if (result?.error) {
+          console.error('[Resend] Auto-send error:', result.error?.message || result.error);
+          trackServerEvent('email_welcome_failed', { email: recipientEmail, error: result.error?.message || 'unknown' });
+        } else {
+          console.log(`[Resend] Auto welcome email sent to ${recipientEmail} (id=${result?.data?.id || 'n/a'})`);
+          trackServerEvent('email_welcome_sent', { email: recipientEmail, id: result?.data?.id || null });
+        }
+      } catch (e) {
+        console.error('[Resend] Auto-send exception:', e?.message);
+        trackServerEvent('email_welcome_failed', { email: recipientEmail, error: e?.message || 'exception' });
+      }
+    })();
+  }
+
+  // Also track signup completion regardless of email
+  trackServerEvent('signup_completed', { plan: newUser.plan, role: newUser.role });
+
+  res.json({ success: true, temp_password: tempPwd, email_sent: !!recipientEmail });
 });
 
 // ─── POST /api/users/reset-password ───
@@ -1013,7 +1046,7 @@ function calculateSRLevels(coin) {
   }
 
   // Sort: supports descending (nearest first), resistances ascending (nearest first)
-  supports.sort((a, b) => b.price - a.price);
+ supports.sort((a, b) => b.price - a.price);
   resistances.sort((a, b) => a.price - b.price);
 
   // Deduplicate very close levels (within 0.5%)
@@ -2061,7 +2094,7 @@ async function generateScalpSetup(symbol) {
   }
 
   // ─── Step 1b: 4H Trend Filter — Penalize (don't reject) conflicting 4H trend ───
-  // v5: No longer hard-reject on 4H conflict — apply penalty instead to allow counter-trend scalps
+// v5: No longer hard-reject on 4H conflict — apply penalty instead to allow counter-trend scalps
   let h4ConflictPenalty = 0;
   if (h1Trend === 'bullish' && h4Trend === 'bearish') {
     h4ConflictPenalty = 10;
@@ -3109,7 +3142,7 @@ app.post('/api/v1/payment/stripe_webhook', async (req, res) => {
     const invoice = event.data?.object || {};
     console.log(`[Payment] ✅ invoice.payment_succeeded: subscription=${invoice.subscription}`);
   } else if (eventType === 'customer.subscription.deleted') {
-    const sub = event.data?.object || {};
+       const sub = event.data?.object || {};
     console.log(`[Payment] ❌ subscription.deleted: customer=${sub.customer}`);
   }
 
@@ -4157,7 +4190,7 @@ function setRangeCooldown(cooldowns, symbol, direction) {
 function loadRangeCalls() {
   try {
     if (existsSync(RANGE_CALLS_FILE)) {
-      return JSON.parse(readFileSync(RANGE_CALLS_FILE, 'utf-8'));
+        return JSON.parse(readFileSync(RANGE_CALLS_FILE, 'utf-8'));
     }
   } catch (err) {
     console.error('Error loading range calls:', err);
@@ -4888,6 +4921,287 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// ─── Welcome Email Endpoint (Resend) ──────────────────────────────────────
+// POST /api/v1/email/welcome  { email, name? }  → envoie un email de bienvenue
+// Requiert RESEND_API_KEY dans l'env. SENDER_EMAIL optionnel (défaut: onboarding@resend.dev).
+let resendClient = null;
+async function getResendClient() {
+  if (resendClient !== null) return resendClient;
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('[Resend] RESEND_API_KEY not set — welcome emails disabled');
+    resendClient = false;
+    return false;
+  }
+  try {
+    const { Resend } = await import('resend');
+    resendClient = new Resend(apiKey);
+    console.log('[Resend] Client initialized');
+    return resendClient;
+  } catch (e) {
+    console.error('[Resend] Failed to load SDK:', e?.message);
+    resendClient = false;
+    return false;
+  }
+}
+
+function buildWelcomeEmailHtml(name) {
+  const displayName = (name && String(name).trim()) || 'trader';
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Bienvenue sur CryptoIA</title>
+</head>
+<body style="margin:0;padding:0;background:#0A0E1A;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0A0E1A;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:linear-gradient(140deg,#0f172a 0%,#1e1b4b 60%,#0f172a 100%);border-radius:24px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
+        <!-- Header -->
+        <tr>
+          <td style="padding:36px 32px 24px;text-align:center;background:linear-gradient(180deg,rgba(99,102,241,0.15) 0%,rgba(99,102,241,0) 100%);">
+            <div style="display:inline-block;width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef);text-align:center;line-height:64px;font-size:28px;margin-bottom:16px;box-shadow:0 0 32px rgba(99,102,241,0.5);">⚡</div>
+            <h1 style="margin:0;font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">Bienvenue sur CryptoIA 👋</h1>
+            <p style="margin:8px 0 0;color:#a5b4fc;font-size:15px;">Bonjour ${displayName}, votre compte est prêt.</p>
+          </td>
+        </tr>
+        <!-- Body -->
+        <tr>
+          <td style="padding:8px 32px 24px;">
+            <p style="margin:0 0 16px;font-size:15px;color:#cbd5e1;line-height:1.65;">
+              Vous avez maintenant accès à la plateforme de trading crypto IA la plus complète : Score IA temps réel, signaux automatiques, backtesting visuel, alertes Telegram, et plus de 50 outils pro.
+            </p>
+            <!-- Promo box -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:20px 0;">
+              <tr><td style="padding:20px;border-radius:16px;border:2px dashed rgba(245,158,11,0.45);background:rgba(245,158,11,0.06);text-align:center;">
+                <p style="margin:0;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#fbbf24;">🎁 Cadeau de bienvenue · -20%</p>
+                <p style="margin:8px 0;font-size:28px;font-weight:900;letter-spacing:6px;color:#fde047;font-family:'SF Mono',Menlo,monospace;">BIENVENUE20</p>
+                <p style="margin:0;font-size:12px;color:#94a3b8;">Sur votre 1<sup>er</sup> abonnement annuel</p>
+              </td></tr>
+            </table>
+            <!-- CTA -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr><td align="center" style="padding:8px 0 16px;">
+                <a href="https://www.cryptoia.app/?welcome=1" style="display:inline-block;padding:14px 32px;border-radius:14px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#d946ef 100%);color:#ffffff;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1.5px;text-decoration:none;box-shadow:0 12px 30px -8px rgba(99,102,241,0.6);">
+                  🚀 Accéder à mon dashboard
+                </a>
+              </td></tr>
+            </table>
+            <!-- Quick links -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:24px;">
+              <tr>
+                <td width="33%" align="center" style="padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.025);">
+                  <p style="margin:0;font-size:24px;">🧠</p>
+                  <p style="margin:4px 0 0;font-size:11px;color:#cbd5e1;font-weight:700;">Score IA</p>
+                </td>
+                <td width="2%"></td>
+                <td width="33%" align="center" style="padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.025);">
+                  <p style="margin:0;font-size:24px;">📊</p>
+                  <p style="margin:4px 0 0;font-size:11px;color:#cbd5e1;font-weight:700;">Backtesting</p>
+                </td>
+                <td width="2%"></td>
+                <td width="33%" align="center" style="padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.025);">
+                  <p style="margin:0;font-size:24px;">🎯</p>
+                  <p style="margin:4px 0 0;font-size:11px;color:#cbd5e1;font-weight:700;">Signaux IA</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="padding:24px 32px 32px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
+            <p style="margin:0 0 6px;font-size:11px;color:#64748b;">Une question ? Répondez simplement à cet email — notre équipe est là pour vous.</p>
+            <p style="margin:0;font-size:10px;color:#475569;">CryptoIA · La plateforme de trading IA crypto · Vous recevez cet email car vous venez de créer un compte.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+app.post('/api/v1/email/welcome', express.json(), async (req, res) => {
+  try {
+    const { email, name } = req.body || {};
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({ error: 'Invalid email' });
+    }
+    const client = await getResendClient();
+    if (!client) {
+      return res.status(503).json({ error: 'Email service not configured', detail: 'RESEND_API_KEY missing' });
+    }
+    const sender = process.env.SENDER_EMAIL || 'CryptoIA <onboarding@resend.dev>';
+    const result = await client.emails.send({
+      from: sender,
+      to: [email],
+      subject: '👋 Bienvenue sur CryptoIA — Votre code -20% à l\'intérieur',
+      html: buildWelcomeEmailHtml(name),
+    });
+    if (result?.error) {
+      console.error('[Resend] Send error:', result.error);
+      return res.status(500).json({ error: 'Send failed', detail: result.error?.message || 'Unknown' });
+    }
+    console.log(`[Resend] Welcome email sent to ${email} (id=${result?.data?.id || 'n/a'})`);
+    return res.json({ status: 'success', email_id: result?.data?.id || null });
+  } catch (e) {
+    console.error('[Resend] Endpoint error:', e?.message);
+    return res.status(500).json({ error: 'Internal error', detail: e?.message || 'Unknown' });
+  }
+});
+
+// ─── Analytics Tracking (events store) ──────────────────────────────────────
+const ANALYTICS_FILE = path.join(__dirname, 'data', 'analytics_events.json');
+
+function loadAnalyticsEvents() {
+  try {
+    if (!fs.existsSync(ANALYTICS_FILE)) return [];
+    const raw = fs.readFileSync(ANALYTICS_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveAnalyticsEvents(events) {
+  try {
+    fs.mkdirSync(path.dirname(ANALYTICS_FILE), { recursive: true });
+    // Keep only last 50k events to avoid unbounded growth
+    const trimmed = events.length > 50000 ? events.slice(-50000) : events;
+    fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(trimmed));
+  } catch (e) {
+    console.error('[Analytics] save error:', e?.message);
+  }
+}
+
+const ALLOWED_EVENTS = new Set([
+  'popup_shown', 'popup_copy_code', 'popup_cta_click', 'popup_dismiss',
+  'promo_applied', 'promo_invalid',
+  'affiliate_generated', 'affiliate_link_copied',
+  'onboarding_started', 'onboarding_completed', 'onboarding_skipped', 'onboarding_cta_click',
+  'testimonial_cta_click',
+  'email_welcome_sent', 'email_welcome_failed',
+  'signup_started', 'signup_completed',
+]);
+
+app.post('/api/v1/analytics/track', express.json(), (req, res) => {
+  try {
+    const { event, meta } = req.body || {};
+    if (!event || typeof event !== 'string') {
+      return res.status(400).json({ error: 'event required' });
+    }
+    if (!ALLOWED_EVENTS.has(event)) {
+      return res.status(400).json({ error: 'event not allowed', event });
+    }
+    const events = loadAnalyticsEvents();
+    events.push({
+      ts: new Date().toISOString(),
+      event,
+      meta: (meta && typeof meta === 'object') ? meta : {},
+    });
+    saveAnalyticsEvents(events);
+    return res.json({ status: 'ok' });
+  } catch (e) {
+    console.error('[Analytics] track error:', e?.message);
+    return res.status(500).json({ error: 'internal error' });
+  }
+});
+
+app.get('/api/v1/analytics/stats', (req, res) => {
+  try {
+    const range = String(req.query.range || '7d'); // 1d | 7d | 30d | all
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const cutoff = range === '1d' ? now - dayMs
+                 : range === '30d' ? now - 30 * dayMs
+                 : range === 'all' ? 0
+                 : now - 7 * dayMs;
+
+    const all = loadAnalyticsEvents();
+    const events = all.filter(e => new Date(e.ts).getTime() >= cutoff);
+
+    // Counts per event type
+    const counts = {};
+    for (const e of events) counts[e.event] = (counts[e.event] || 0) + 1;
+
+    // Top promo codes used
+    const promos = {};
+    for (const e of events.filter(e => e.event === 'promo_applied')) {
+      const code = e.meta?.code || 'UNKNOWN';
+      promos[code] = (promos[code] || 0) + 1;
+    }
+    const topPromos = Object.entries(promos)
+      .map(([code, count]) => ({ code, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Top affiliates generated
+    const affiliates = {};
+    for (const e of events.filter(e => e.event === 'affiliate_generated')) {
+      const code = e.meta?.code || 'UNKNOWN';
+      affiliates[code] = (affiliates[code] || 0) + 1;
+    }
+    const topAffiliates = Object.entries(affiliates)
+      .map(([code, count]) => ({ code, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Events per day (for chart)
+    const perDay = {};
+    for (const e of events) {
+      const day = e.ts.slice(0, 10); // YYYY-MM-DD
+      perDay[day] = (perDay[day] || 0) + 1;
+    }
+    const timeline = Object.entries(perDay)
+      .map(([day, count]) => ({ day, count }))
+      .sort((a, b) => a.day.localeCompare(b.day));
+
+    // Recent events (last 50)
+    const recent = events.slice(-50).reverse();
+
+    // Conversion rates
+    const popupShown = counts.popup_shown || 0;
+    const popupCta = counts.popup_cta_click || 0;
+    const popupConversion = popupShown > 0 ? (popupCta / popupShown * 100) : 0;
+
+    const onboardingStarted = counts.onboarding_started || 0;
+    const onboardingCompleted = counts.onboarding_completed || 0;
+    const onboardingCompletion = onboardingStarted > 0 ? (onboardingCompleted / onboardingStarted * 100) : 0;
+
+    return res.json({
+      range,
+      total_events: events.length,
+      counts,
+      top_promos: topPromos,
+      top_affiliates: topAffiliates,
+      timeline,
+      recent,
+      conversions: {
+        popup: { shown: popupShown, cta: popupCta, rate: Number(popupConversion.toFixed(1)) },
+        onboarding: { started: onboardingStarted, completed: onboardingCompleted, rate: Number(onboardingCompletion.toFixed(1)) },
+      },
+    });
+  } catch (e) {
+    console.error('[Analytics] stats error:', e?.message);
+    return res.status(500).json({ error: 'internal error' });
+  }
+});
+
+// Helper: tracker server-side (used by /api/users/create welcome email)
+function trackServerEvent(event, meta) {
+  try {
+    if (!ALLOWED_EVENTS.has(event)) return;
+    const events = loadAnalyticsEvents();
+    events.push({ ts: new Date().toISOString(), event, meta: meta || {} });
+    saveAnalyticsEvents(events);
+  } catch {
+    // never block
+  }
+}
 
 // Serve static files from dist
 app.use(express.static(path.join(__dirname, 'dist')));

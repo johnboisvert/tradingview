@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { X, Gift, Sparkles, Copy, Check } from "lucide-react";
+import { trackEvent } from "@/lib/analytics";
 
 const STORAGE_KEY = "cryptoia_exit_intent_shown";
 const PROMO_CODE = "BIENVENUE20";
@@ -27,6 +28,7 @@ export default function ExitIntentPopup() {
       triggered = true;
       localStorage.setItem(STORAGE_KEY, "1");
       setOpen(true);
+      trackEvent("popup_shown", { source: "exit_intent" });
     };
 
     // Desktop: mouse leaves the top of the viewport
@@ -70,12 +72,16 @@ export default function ExitIntentPopup() {
     };
   }, []);
 
-  const close = () => setOpen(false);
+  const close = () => {
+    trackEvent("popup_dismiss");
+    setOpen(false);
+  };
 
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(PROMO_CODE);
       setCopied(true);
+      trackEvent("popup_copy_code", { code: PROMO_CODE });
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // ignore — fallback impossible sur certains navigateurs
@@ -83,6 +89,7 @@ export default function ExitIntentPopup() {
   };
 
   const goToPricing = () => {
+    trackEvent("popup_cta_click", { code: PROMO_CODE });
     setOpen(false);
     // Redirection vers la page d'abonnements
     window.location.href = "/abonnements";

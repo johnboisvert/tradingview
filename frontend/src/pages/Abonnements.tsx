@@ -615,8 +615,62 @@ export default function Abonnements() {
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
       <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
-        {/* Header */}
-        <div className="text-center mb-6">
+        {/* ===== HERO premium (CSS-only) ===== */}
+        <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+          <div className="absolute inset-0 bg-[#0A0E1A]" />
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-indigo-500/25 blur-3xl" style={{ animation: "ab-pulse 6s ease-in-out infinite" }} />
+          <div className="absolute -bottom-24 right-1/4 w-80 h-80 rounded-full bg-pink-500/25 blur-3xl" style={{ animation: "ab-pulse 8s ease-in-out infinite reverse" }} />
+          <div className="absolute -top-12 right-1/2 w-72 h-72 rounded-full bg-purple-500/20 blur-3xl" style={{ animation: "ab-pulse 7s ease-in-out infinite" }} />
+          <div className="absolute inset-0 opacity-[0.04]" style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+          }} />
+          <div className="relative z-10 px-6 md:px-10 py-8 text-center">
+            <div className="inline-flex items-center justify-center w-14 h-14 mb-3 rounded-2xl bg-indigo-500/15 border border-indigo-500/40" style={{ boxShadow: "0 0 30px rgba(99,102,241,0.3)" }}>
+              <CreditCard className="w-7 h-7 text-indigo-300" />
+            </div>
+            <h1 className="text-3xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Choisissez votre plan
+            </h1>
+            <p className="text-sm md:text-base text-gray-400 max-w-xl mx-auto mt-3">
+              Trading data temps réel · IA prédictive · Outils pros. Tout pour passer au niveau supérieur.
+            </p>
+
+            {/* Marketing value proposition */}
+            <div className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-500/15 via-purple-500/15 to-pink-500/15 border border-indigo-500/30" style={{ boxShadow: "0 0 24px rgba(99,102,241,0.15)" }}>
+              <span className="text-lg">💡</span>
+              <span className="text-sm font-bold bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
+                Un seul abonnement remplace 5 outils · Économisez jusqu&apos;à 250$/mois
+              </span>
+            </div>
+
+            {/* Payment badges */}
+            <div className="flex items-center justify-center gap-2 md:gap-3 mt-5 flex-wrap">
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-300 font-semibold">
+                <CreditCard className="w-3.5 h-3.5" /> Carte bancaire (Stripe)
+              </span>
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 font-semibold">
+                <Banknote className="w-3.5 h-3.5" /> Interac e-Transfer
+              </span>
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 font-semibold">
+                <Bitcoin className="w-3.5 h-3.5" /> Crypto via NOWPayments (300+)
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes ab-pulse {
+            0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+            50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.5; }
+          }
+          @keyframes ab-fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .ab-anim { animation: ab-fadeUp 0.6s ease-out both; }
+        `}</style>
+        <div className="text-center hidden">
           <div className="flex items-center justify-center gap-3 mb-3">
             <CreditCard className="w-8 h-8 text-indigo-400" />
             <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">

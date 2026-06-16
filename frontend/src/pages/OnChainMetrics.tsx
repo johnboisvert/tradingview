@@ -22,8 +22,34 @@ export default function OnChainMetrics() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("/api/coingecko/coins/bitcoin?localization=false&tickers=false&community_data=true&developer_data=true", { signal: AbortSignal.timeout(15000) });
-        const data = await res.json();
+        // Helper: format hash rate (H/s -> EH/s/PH/s/TH/s)
+        const fmtHashRate = (hps: number): string => {
+          if (hps >= 1e18) return `${(hps / 1e18).toFixed(2)} EH/s`;
+          if (hps >= 1e15) return `${(hps / 1e15).toFixed(2)} PH/s`;
+          if (hps >= 1e12) return `${(hps / 1e12).toFixed(2)} TH/s`;
+          return `${hps.toFixed(0)} H/s`;
+        };
+        const fmtNum = (n: number): string => {
+          if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+          if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+          return n.toString();
+        };
+
+        // Parallel fetch: CoinGecko + mempool.space (free, real on-chain data)
+        const [cgRes, hashrateRes, statsRes, feesRes, blockRes] = await Promise.allSettled([
+          fetch("/api/coingecko/coins/bitcoin?localization=false&tickers=false&community_data=true&developer_data=true", { signal: AbortSignal.timeout(15000) }),
+          fetch("https://mempool.space/api/v1/mining/hashrate/3d", { signal: AbortSignal.timeout(10000) }),
+          fetch("https://mempool.space/api/mempool", { signal: AbortSignal.timeout(10000) }),
+          fetch("https://mempool.space/api/v1/fees/recommended", { signal: AbortSignal.timeout(10000) }),
+          fetch("https://mempool.space/api/blocks/tip/height", { signal: AbortSignal.timeout(10000) }),
+        ]);
+
+        const data = cgRes.status === "fulfilled" && cgRes.value.ok ? await cgRes.value.json() : {};
+        const hashData = hashrateRes.status === "fulfilled" && hashrateRes.value.ok ? await hashrateRes.value.json() : null;
+        const mempoolStats = statsRes.status === "fulfilled" && statsRes.value.ok ? await statsRes.value.json() : null;
+        const feesData = feesRes.status === "fulfilled" && feesRes.value.ok ? await feesRes.value.json() : null;
+        const blockHeight = blockRes.status === "fulfilled" && blockRes.value.ok ? await blockRes.value.text() : null;
+
         const price = data.market_data?.current_price?.usd || 97000;
         const mcap = data.market_data?.market_cap?.usd || 1900000000000;
         const vol24 = data.market_data?.total_volume?.usd || 35000000000;
@@ -31,6 +57,14 @@ export default function OnChainMetrics() {
         const maxSupply = data.market_data?.max_supply || 21000000;
         const priceChange24h = data.market_data?.price_change_percentage_24h || 0;
         const mcapChange24h = data.market_data?.market_cap_change_percentage_24h || 0;
+
+        // Real on-chain values from mempool.space
+        const currentHashrate = hashData?.currentHashrate as number | undefined;
+        const currentDifficulty = hashData?.currentDifficulty as number | undefined;
+        const mempoolCount = mempoolStats?.count as number | undefined;
+        const mempoolVsize = mempoolStats?.vsize as number | undefined;
+        const fastFee = feesData?.fastestFee as number | undefined;
+        const halfHourFee = feesData?.halfHourFee as number | undefined;
 
         // Exchange flows estimated from volume (deterministic)
         const inflow = Math.round(vol24 * 0.35 / 1e9 * 100) / 100;
@@ -42,22 +76,40 @@ export default function OnChainMetrics() {
 
         setMetrics([
           {
-            label: "Active Addresses (24h)",
-            icon: "👥",
-            value: "N/A",
-            change: "API premium requise",
+            label: "Hash Rate BTC (3j)",
+            icon: "⛏️",
+            value: currentHashrate ? fmtHashRate(currentHashrate) : "N/A",
+            change: currentHashrate ? "🟢 Réseau sécurisé" : "API indisponible",
+            changeType: currentHashrate ? "up" : "neutral",
+            desc: "Puissance de calcul totale du réseau Bitcoin (mempool.space — temps réel).",
+            color: "#22c55e",
+          },
+          {
+            label: "Block Height",
+            icon: "🧱",
+            value: blockHeight ? `#${parseInt(blockHeight).toLocaleString()}` : "N/A",
+            change: blockHeight ? "Latest" : "API indisponible",
             changeType: "neutral",
-            desc: "Données d'adresses actives non disponibles via CoinGecko gratuit. Nécessite Glassnode ou IntoTheBlock.",
+            desc: "Hauteur du dernier bloc miné. Indicateur de l'avancée de la blockchain (mempool.space).",
             color: "#00d4ff",
           },
           {
-            label: "Hash Rate",
-            icon: "⛏️",
-            value: "N/A",
-            change: "API premium requise",
-            changeType: "neutral",
-            desc: "Le hash rate nécessite une API blockchain dédiée (Blockchain.com, Glassnode).",
-            color: "#22c55e",
+            label: "Mempool (TXs)",
+            icon: "⏳",
+            value: mempoolCount ? fmtNum(mempoolCount) : "N/A",
+            change: mempoolCount ? (mempoolCount > 50000 ? "🔴 Congestion" : mempoolCount > 10000 ? "🟡 Modéré" : "🟢 Fluide") : "API indisponible",
+            changeType: mempoolCount && mempoolCount > 50000 ? "down" : mempoolCount && mempoolCount > 10000 ? "neutral" : "up",
+            desc: `Transactions en attente${mempoolVsize ? ` · ${(mempoolVsize / 1e6).toFixed(1)} MvB` : ""} (mempool.space).`,
+            color: "#f59e0b",
+          },
+          {
+            label: "Fee Recommandé",
+            icon: "💸",
+            value: fastFee ? `${fastFee} sat/vB` : "N/A",
+            change: halfHourFee ? `${halfHourFee} sat/vB pour 30 min` : "API indisponible",
+            changeType: fastFee && fastFee > 100 ? "down" : "neutral",
+            desc: "Frais de transaction recommandés pour confirmation rapide (mempool.space).",
+            color: "#ef4444",
           },
           {
             label: "Transaction Volume",
@@ -69,13 +121,22 @@ export default function OnChainMetrics() {
             color: "#6366f1",
           },
           {
+            label: "Difficulty",
+            icon: "🔐",
+            value: currentDifficulty ? `${(currentDifficulty / 1e12).toFixed(2)}T` : "N/A",
+            change: currentDifficulty ? "Mining difficulty" : "API indisponible",
+            changeType: "neutral",
+            desc: "Difficulté de minage actuelle. S'ajuste tous les 2016 blocks (mempool.space).",
+            color: "#a78bfa",
+          },
+          {
             label: "Supply Ratio",
             icon: "🪙",
             value: `${((supply / maxSupply) * 100).toFixed(2)}%`,
             change: "Mined",
             changeType: "neutral",
             desc: `${supply.toLocaleString()} / ${maxSupply.toLocaleString()} BTC`,
-            color: "#f59e0b",
+            color: "#fbbf24",
           },
           {
             label: "Market Cap",

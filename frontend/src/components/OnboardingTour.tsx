@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { X, ArrowRight, Sparkles, Brain, Target, Gift, CheckCircle } from "lucide-react";
+import { trackEvent } from "@/lib/analytics";
 
 const STORAGE_KEY = "cryptoia_onboarding_v1";
 
@@ -63,7 +64,10 @@ export default function OnboardingTour() {
     const completed = localStorage.getItem(STORAGE_KEY) === "1";
     if (forceShow || !completed) {
       // Delay 1.2s to let the page render fully
-      const t = setTimeout(() => setOpen(true), 1200);
+      const t = setTimeout(() => {
+        setOpen(true);
+        trackEvent("onboarding_started");
+      }, 1200);
       return () => clearTimeout(t);
     }
   }, []);
@@ -71,6 +75,7 @@ export default function OnboardingTour() {
   const complete = () => {
     localStorage.setItem(STORAGE_KEY, "1");
     setOpen(false);
+    trackEvent("onboarding_completed", { last_step: step + 1 });
     // Clean up URL param
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
@@ -81,7 +86,18 @@ export default function OnboardingTour() {
     }
   };
 
-  const skip = () => complete();
+  const skip = () => {
+    trackEvent("onboarding_skipped", { step: step + 1 });
+    localStorage.setItem(STORAGE_KEY, "1");
+    setOpen(false);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("welcome")) {
+        url.searchParams.delete("welcome");
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  };
 
   const next = () => {
     if (step < STEPS.length - 1) setStep(step + 1);
@@ -89,6 +105,7 @@ export default function OnboardingTour() {
   };
 
   const goToPricing = () => {
+    trackEvent("onboarding_cta_click", { step: step + 1 });
     complete();
     window.location.href = "/abonnements";
   };

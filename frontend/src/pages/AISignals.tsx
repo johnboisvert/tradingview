@@ -114,30 +114,63 @@ export default function AISignals() {
             { n: "3", title: "Gérez votre risque", desc: "Même les meilleurs signaux IA ne sont pas infaillibles. Utilisez toujours un stop loss et ne risquez pas plus de 1-2% par trade." },
           ]}
         />
-        <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute w-[600px] h-[600px] rounded-full bg-blue-500/5 blur-[80px] top-[-200px] left-[-100px]" />
-          <div className="absolute w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />
-        </div>
-        <div className="relative z-10 max-w-[1440px] mx-auto">
-          <div className="text-center mb-8 pt-8">
-            <h1 className="text-5xl font-black bg-gradient-to-r from-blue-400 via-purple-500 to-cyan-400 bg-[length:300%_auto] bg-clip-text text-transparent">
-              📡 AI Signals
-            </h1>
-            <p className="text-gray-500 mt-3 text-lg">Signaux de trading IA — Top 200 cryptos en temps réel</p>
-            <div className="inline-flex items-center gap-2 mt-4 bg-blue-500/10 border border-blue-500/25 rounded-full px-5 py-1.5 text-xs text-blue-400 font-bold uppercase tracking-widest">
-              <span className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_#3b82f6] animate-pulse" />
-              LIVE — {signals.length} cryptos analysées
+        <div className="relative z-10 max-w-[1440px] mx-auto p-4 md:p-6">
+          {/* ===== HERO ===== */}
+          <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+            <div className="absolute inset-0 bg-[#0A0E1A]" />
+            <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-blue-500/22 blur-3xl" style={{ animation: "ai-pulse 6s ease-in-out infinite" }} />
+            <div className="absolute -bottom-24 right-1/3 w-80 h-80 rounded-full bg-purple-500/22 blur-3xl" style={{ animation: "ai-pulse 8s ease-in-out infinite reverse" }} />
+            <div className="absolute -top-12 right-1/2 w-72 h-72 rounded-full bg-cyan-500/15 blur-3xl" style={{ animation: "ai-pulse 7s ease-in-out infinite" }} />
+            <div className="absolute inset-0 opacity-[0.04]" style={{
+              backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+              backgroundSize: "44px 44px",
+            }} />
+            <div className="relative z-10 flex items-center gap-4 px-6 md:px-10 py-6">
+              <div className="w-14 h-14 rounded-2xl bg-blue-500/15 border border-blue-500/40 flex items-center justify-center text-2xl" style={{ boxShadow: "0 0 30px rgba(59,130,246,0.3)" }}>
+                📡
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                    AI Signals
+                  </h1>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-blue-500/40 bg-blue-500/10 text-blue-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" /> LIVE · {signals.length} cryptos
+                  </span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-400">
+                  Signaux de trading IA · Top 200 cryptos en temps réel
+                </p>
+              </div>
             </div>
           </div>
 
+          <style>{`
+            @keyframes ai-pulse {
+              0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+              50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+            }
+            @keyframes ai-fadeUp {
+              from { opacity: 0; transform: translateY(12px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .ai-anim { animation: ai-fadeUp 0.6s ease-out both; }
+          `}</style>
+
           {/* Summary */}
           <div className="grid grid-cols-5 gap-3 mb-6">
-            {(Object.entries(counts) as [string, number][]).map(([key, count]) => {
+            {(Object.entries(counts) as [string, number][]).map(([key, count], i) => {
               const style = SIGNAL_STYLES[key];
               return (
-                <div key={key} className={`${style.bg} border ${style.border} rounded-xl p-3 text-center`}>
-                  <p className={`text-2xl font-black ${style.text}`}>{count}</p>
-                  <p className="text-[10px] text-gray-500 font-bold">{key}</p>
+                <div key={key}
+                  className={`ai-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border ${style.border} rounded-2xl p-4 text-center overflow-hidden hover:-translate-y-1 transition-all`}
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
+                  <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-25 ${style.bg.replace("bg-", "bg-").replace("/10", "")}`} />
+                  <div className="relative">
+                    <p className={`text-2xl md:text-3xl font-black ${style.text}`} style={{ textShadow: "0 0 14px currentColor" }}>{count}</p>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{key}</p>
+                  </div>
                 </div>
               );
             })}

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
-import { Flame, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
+import { Flame, RefreshCw, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -137,115 +137,147 @@ export default function Heatmap() {
           ]}
         />
         {/* Hero */}
-        <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px] bg-gradient-to-r from-orange-900/40 to-red-900/40">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/90 via-[#0A0E1A]/60 to-transparent" />
-          <div className="relative z-10 h-full flex items-center justify-between px-8">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
+        {/* ===== HERO (premium CSS) ===== */}
+        <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+          <div className="absolute inset-0 bg-[#0A0E1A]" />
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-orange-500/22 blur-3xl" style={{ animation: "hm-pulse 6s ease-in-out infinite" }} />
+          <div className="absolute -bottom-24 right-1/4 w-80 h-80 rounded-full bg-red-500/22 blur-3xl" style={{ animation: "hm-pulse 8s ease-in-out infinite reverse" }} />
+          <div className="absolute -top-12 right-1/2 w-72 h-72 rounded-full bg-emerald-500/12 blur-3xl" style={{ animation: "hm-pulse 7s ease-in-out infinite" }} />
+          <div className="absolute inset-0 opacity-[0.04]" style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+          }} />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-6 md:px-10 py-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-orange-500/15 border border-orange-500/40 flex items-center justify-center" style={{ boxShadow: "0 0 30px rgba(249,115,22,0.3)" }}>
                 <Flame className="w-7 h-7 text-orange-400" />
-                <h1 className="text-2xl font-extrabold">Heatmap Crypto</h1>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
-                  TOP 200 LIVE
-                </span>
               </div>
-              <p className="text-sm text-gray-400">
-                Carte thermique du marché • Top 200 cryptos en temps réel • MAJ
-                auto 60s
-              </p>
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">
+                    Heatmap Crypto
+                  </h1>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-orange-500/40 bg-orange-500/10 text-orange-300">
+                    <Sparkles className="w-2.5 h-2.5" /> Top 200 Live
+                  </span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-400">
+                  Carte thermique du marché · Vert = Hausse · Rouge = Baisse · MAJ auto 60s
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex rounded-xl overflow-hidden border border-white/[0.08]">
+              <div className="flex rounded-xl overflow-hidden border border-white/[0.1]">
                 <button
                   onClick={() => setView("heatmap")}
-                  className={`px-4 py-2 text-xs font-bold transition-all ${view === "heatmap" ? "bg-orange-500/20 text-orange-400" : "bg-white/[0.04] text-gray-500 hover:text-white"}`}
+                  className={`px-3 md:px-4 py-2 text-xs font-bold transition-all ${view === "heatmap" ? "bg-orange-500/25 text-orange-300" : "bg-white/[0.04] text-gray-500 hover:text-white"}`}
+                  style={view === "heatmap" ? { boxShadow: "inset 0 0 0 1px rgba(249,115,22,0.3)" } : {}}
                 >
-                  Heatmap
+                  🔥 Heatmap
                 </button>
                 <button
                   onClick={() => setView("table")}
-                  className={`px-4 py-2 text-xs font-bold transition-all ${view === "table" ? "bg-orange-500/20 text-orange-400" : "bg-white/[0.04] text-gray-500 hover:text-white"}`}
+                  className={`px-3 md:px-4 py-2 text-xs font-bold transition-all ${view === "table" ? "bg-orange-500/25 text-orange-300" : "bg-white/[0.04] text-gray-500 hover:text-white"}`}
+                  style={view === "table" ? { boxShadow: "inset 0 0 0 1px rgba(249,115,22,0.3)" } : {}}
                 >
-                  Tableau
+                  📊 Tableau
                 </button>
               </div>
               <button
                 onClick={fetchData}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-sm font-semibold transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-sm font-semibold transition-all disabled:opacity-50"
               >
                 <RefreshCw
                   className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
                 />
-                {lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}
+                <span className="hidden sm:inline">{lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}</span>
               </button>
             </div>
           </div>
         </div>
 
+        <style>{`
+          @keyframes hm-pulse {
+            0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+            50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+          }
+          @keyframes hm-fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .hm-anim { animation: hm-fadeUp 0.6s ease-out both; }
+        `}</style>
+
         {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-[10px] text-gray-500 font-semibold mb-1">
-              Cryptos
-            </p>
-            <p className="text-xl font-extrabold">{coins.length}</p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-[10px] text-gray-500 font-semibold mb-1">
-              Market Cap Total
-            </p>
-            <p className="text-xl font-extrabold text-purple-400">
-              {formatNum(totalMC)}
-            </p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-[10px] text-gray-500 font-semibold mb-1">
-              En Hausse
-            </p>
-            <p className="text-xl font-extrabold text-emerald-400">{gainers}</p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-[10px] text-gray-500 font-semibold mb-1">
-              En Baisse
-            </p>
-            <p className="text-xl font-extrabold text-red-400">{losers}</p>
-          </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-[10px] text-gray-500 font-semibold mb-1">
-              Top Gainer
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 mb-6">
+          {[
+            { label: "Cryptos", value: coins.length, color: "#cbd5e1", glow: "rgba(255,255,255,0.1)" },
+            { label: "Market Cap", value: formatNum(totalMC), color: "#a78bfa", glow: "rgba(167,139,250,0.3)" },
+            { label: "Variation Moy.", value: `${avgChange >= 0 ? "+" : ""}${avgChange.toFixed(2)}%`, color: avgChange >= 0 ? "#22c55e" : "#ef4444", glow: avgChange >= 0 ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)" },
+            { label: "Hausses", value: gainers, color: "#22c55e", glow: "rgba(34,197,94,0.3)" },
+            { label: "Baisses", value: losers, color: "#ef4444", glow: "rgba(239,68,68,0.3)" },
+            { label: "Ratio H/B", value: losers > 0 ? (gainers / losers).toFixed(2) : "—", color: "#22d3ee", glow: "rgba(34,211,238,0.3)" },
+          ].map((k, i) => (
+            <div key={i}
+              className="hm-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl p-4 transition-all overflow-hidden"
+              style={{ animationDelay: `${i * 50}ms` }}
+            >
+              <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full blur-3xl opacity-25" style={{ background: k.color }} />
+              <div className="relative">
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">{k.label}</p>
+                <p className="text-xl md:text-2xl font-black tracking-tight" style={{ color: k.color, textShadow: `0 0 14px ${k.glow}` }}>{k.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Top Gainer / Top Loser highlights */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-6">
+          <div className="hm-anim relative bg-gradient-to-br from-emerald-500/[0.06] to-transparent border border-emerald-500/20 rounded-2xl p-4 overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-emerald-500/20 blur-3xl" />
+            <p className="relative text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-2">
+              🥇 Top Gainer 24h
             </p>
             {topGainer && (
-              <div className="flex items-center gap-1.5">
+              <div className="relative flex items-center gap-3">
                 {topGainer.image && (
                   <img
                     src={topGainer.image}
                     alt=""
-                    className="w-4 h-4 rounded-full"
+                    className="w-9 h-9 rounded-full ring-1 ring-emerald-500/40"
                   />
                 )}
-                <span className="text-sm font-bold">{topGainer.symbol}</span>
-                <span className="text-xs font-bold text-emerald-400">
-                  +{topGainer.change24h.toFixed(1)}%
+                <div>
+                  <div className="text-base font-black">{topGainer.symbol}</div>
+                  <div className="text-[10px] text-gray-400">{topGainer.name}</div>
+                </div>
+                <span className="text-lg font-black text-emerald-400 ml-auto" style={{ textShadow: "0 0 12px rgba(34,197,94,0.4)" }}>
+                  +{topGainer.change24h.toFixed(2)}%
                 </span>
               </div>
             )}
           </div>
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-[10px] text-gray-500 font-semibold mb-1">
-              Top Loser
+          <div className="hm-anim relative bg-gradient-to-br from-red-500/[0.06] to-transparent border border-red-500/20 rounded-2xl p-4 overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-red-500/20 blur-3xl" />
+            <p className="relative text-[10px] text-red-400 font-bold uppercase tracking-wider mb-2">
+              🔻 Top Loser 24h
             </p>
             {topLoser && (
-              <div className="flex items-center gap-1.5">
+              <div className="relative flex items-center gap-3">
                 {topLoser.image && (
                   <img
                     src={topLoser.image}
                     alt=""
-                    className="w-4 h-4 rounded-full"
+                    className="w-9 h-9 rounded-full ring-1 ring-red-500/40"
                   />
                 )}
-                <span className="text-sm font-bold">{topLoser.symbol}</span>
-                <span className="text-xs font-bold text-red-400">
-                  {topLoser.change24h.toFixed(1)}%
+                <div>
+                  <div className="text-base font-black">{topLoser.symbol}</div>
+                  <div className="text-[10px] text-gray-400">{topLoser.name}</div>
+                </div>
+                <span className="text-lg font-black text-red-400 ml-auto" style={{ textShadow: "0 0 12px rgba(239,68,68,0.4)" }}>
+                  {topLoser.change24h.toFixed(2)}%
                 </span>
               </div>
             )}

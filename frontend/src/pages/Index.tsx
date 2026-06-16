@@ -15,6 +15,9 @@ import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import Footer from "@/components/Footer";
 import ShareButtons from "@/components/ShareButtons";
 import MarketHours from "@/components/MarketHours";
+import ExitIntentPopup from "@/components/ExitIntentPopup";
+import OnboardingTour from "@/components/OnboardingTour";
+import Testimonials from "@/components/Testimonials";
 
 interface CoinData {
   id: string;
@@ -540,9 +543,15 @@ export default function DashboardPage() {
             </table>
           </div>
         </div>
+
+        {/* ===== Testimonials Section ===== */}
+        <Testimonials />
+
         <Footer />
         <ShareButtons title="CryptoIA — Analyse Crypto IA & Signaux de Trading" />
       </main>
+      <ExitIntentPopup />
+      <OnboardingTour />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `cryptoia-static-${CACHE_VERSION}`;
 const API_CACHE = `cryptoia-api-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `cryptoia-runtime-${CACHE_VERSION}`;
@@ -31,9 +31,34 @@ const NETWORK_FIRST_PATTERNS = [
   /generativelanguage\.googleapis\.com/,
 ];
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Always returns a valid Response — never throws or returns null/undefined. */
+function offlineResponse(type = 'asset') {
+  if (type === 'json') {
+    return new Response(
+      JSON.stringify({ error: 'Offline', message: 'Network unavailable' }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+  return new Response('Offline — Resource unavailable', {
+    status: 503,
+    headers: { 'Content-Type': 'text/plain' },
+  });
+}
+
+/** Safely put a response in cache without throwing (quota, opaque, etc.). */
+function safeCachePut(cache, request, response) {
+  try {
+    cache.put(request, response).catch(() => {});
+  } catch {
+    // ignore — never block the fetch handler
+  }
+}
+
 // ── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing CryptoIA Service Worker v2...');
+  console.log('[SW] Installing CryptoIA Service Worker v3...');
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
       console.log('[SW] Pre-caching static assets');
@@ -47,7 +72,7 @@ self.addEventListener('install', (event) => {
 
 // ── Activate ─────────────────────────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating CryptoIA Service Worker v2...');
+  console.log('[SW] Activating CryptoIA Service Worker v3...');
   const currentCaches = [STATIC_CACHE, API_CACHE, RUNTIME_CACHE];
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -67,13 +92,21 @@ self.addEventListener('activate', (event) => {
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  const url = new URL(request.url);
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return; // invalid URL — let the browser handle it
+  }
 
-  // Skip non-GET requests
+  // Skip non-GET requests (POST/PUT/DELETE must go to network)
   if (request.method !== 'GET') return;
 
-  // Skip chrome-extension and non-http(s)
+  // Skip chrome-extension and non-http(s) (wallets, devtools, etc.)
   if (!url.protocol.startsWith('http')) return;
+
+  // Skip cross-origin POST-like preflights or browser-internal requests
+  if (request.cache === 'only-if-cached' && request.mode !== 'same-origin') return;
 
   // API calls → Network First with cache fallback
   if (NETWORK_FIRST_PATTERNS.some((p) => p.test(request.url))) {
@@ -107,143 +140,135 @@ self.addEventListener('fetch', (event) => {
 
 /**
  * Cache First: Serve from cache, fall back to network.
- * Best for static assets that rarely change.
+ * GUARANTEES a Response is always returned (never null/undefined).
  */
 async function cacheFirst(request, cacheName) {
-  const cached = await caches.match(request);
-  if (cached) return cached;
-
   try {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+
     const response = await fetch(request);
-    if (response.ok && response.status === 200) {
+    if (response && response.ok && response.status === 200) {
       const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
+      safeCachePut(cache, request, response.clone());
     }
-    return response;
+    return response || offlineResponse('asset');
   } catch {
-    return new Response('Offline — Asset indisponible', {
-      status: 503,
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    // network failed AND no cache → try one last time in any cache
+    const fallback = await caches.match(request);
+    return fallback || offlineResponse('asset');
   }
 }
 
 /**
  * Network First: Try network, fall back to cache.
- * Best for API calls and dynamic content.
+ * GUARANTEES a Response is always returned.
  */
 async function networkFirst(request, cacheName) {
   try {
     const response = await fetch(request);
-    if (response.ok && response.status === 200) {
+    if (response && response.ok && response.status === 200) {
       const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
+      safeCachePut(cache, request, response.clone());
     }
-    return response;
+    return response || offlineResponse('json');
   } catch {
     const cached = await caches.match(request);
-    if (cached) return cached;
-    return new Response(
-      JSON.stringify({ error: 'Offline', message: 'Données en cache indisponibles.' }),
-      {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return cached || offlineResponse('json');
   }
 }
 
 /**
  * Network First with HTML fallback for navigation requests.
- * Returns cached index.html when offline for SPA routing.
+ * GUARANTEES a Response is always returned.
  */
 async function networkFirstWithFallback(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
-      // Cache the HTML for offline use
+    if (response && response.ok) {
       const cache = await caches.open(STATIC_CACHE);
-      cache.put(request, response.clone());
+      safeCachePut(cache, request, response.clone());
     }
-    return response;
+    if (response) return response;
+    // fall through to cache lookup below
   } catch {
-    // Try to serve cached version of the page
-    const cached = await caches.match(request);
-    if (cached) return cached;
-
-    // Fall back to cached index.html (SPA routing)
-    const indexCached = await caches.match('/index.html');
-    if (indexCached) return indexCached;
-
-    // Ultimate fallback
-    return new Response(
-      `<!DOCTYPE html>
-      <html lang="fr">
-      <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-      <title>CryptoIA — Hors ligne</title>
-      <style>
-        body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#030712;color:#fff;font-family:Inter,system-ui,sans-serif}
-        .offline{text-align:center;padding:2rem}
-        h1{font-size:2rem;margin-bottom:1rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-        p{color:#9ca3af;margin-bottom:1.5rem}
-        button{padding:0.75rem 2rem;border-radius:0.75rem;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:700;cursor:pointer;font-size:0.875rem}
-        button:hover{opacity:0.9}
-      </style></head>
-      <body>
-        <div class="offline">
-          <h1>🔌 CryptoIA — Hors ligne</h1>
-          <p>Vous êtes actuellement hors ligne. Vérifiez votre connexion internet et réessayez.</p>
-          <button onclick="location.reload()">🔄 Réessayer</button>
-        </div>
-      </body></html>`,
-      { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-    );
+    // network failed — try cache below
   }
+
+  const cached = await caches.match(request);
+  if (cached) return cached;
+
+  const indexCached = await caches.match('/index.html');
+  if (indexCached) return indexCached;
+
+  return new Response(
+    `<!DOCTYPE html>
+    <html lang="fr">
+    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>CryptoIA — Hors ligne</title>
+    <style>
+      body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#030712;color:#fff;font-family:Inter,system-ui,sans-serif}
+      .offline{text-align:center;padding:2rem}
+      h1{font-size:2rem;margin-bottom:1rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+      p{color:#9ca3af;margin-bottom:1.5rem}
+      button{padding:0.75rem 2rem;border-radius:0.75rem;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:700;cursor:pointer;font-size:0.875rem}
+      button:hover{opacity:0.9}
+    </style></head>
+    <body>
+      <div class="offline">
+        <h1>🔌 CryptoIA — Hors ligne</h1>
+        <p>Vous êtes actuellement hors ligne. Vérifiez votre connexion et réessayez.</p>
+        <button onclick="location.reload()">🔄 Réessayer</button>
+      </div>
+    </body></html>`,
+    { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
 }
 
 /**
  * Stale While Revalidate: Serve from cache immediately, update in background.
- * Best for content that can be slightly stale.
+ * GUARANTEES a Response is always returned — fixes the "Failed to convert value to 'Response'" bug.
  */
 async function staleWhileRevalidate(request, cacheName) {
-  const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
+  let cache;
+  try {
+    cache = await caches.open(cacheName);
+  } catch {
+    cache = null;
+  }
+  const cached = cache ? await cache.match(request) : null;
 
   const fetchPromise = fetch(request)
     .then((response) => {
-      if (response.ok && response.status === 200) {
-        cache.put(request, response.clone());
+      if (response && response.ok && response.status === 200 && cache) {
+        safeCachePut(cache, request, response.clone());
       }
-      return response;
+      return response || cached || offlineResponse('asset');
     })
-    .catch(() => cached);
+    .catch(() => cached || offlineResponse('asset'));
 
+  // If we have cached, serve it instantly; otherwise wait for network.
   return cached || fetchPromise;
 }
 
-// ── Push Notifications (future) ───────────────────────────────────────────────
+// ── Messages from clients ─────────────────────────────────────────────────────
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  if (!event.data) return;
+  if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
   }
-});
-
-// ── Periodic cache cleanup ────────────────────────────────────────────────────
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'CLEANUP_CACHES') {
+  if (event.data.type === 'CLEANUP_CACHES') {
     caches.open(API_CACHE).then((cache) => {
       cache.keys().then((keys) => {
-        // Remove API cache entries older than 1 hour
-        const maxAge = 60 * 60 * 1000;
+        const maxAge = 60 * 60 * 1000; // 1h
         keys.forEach((key) => {
           cache.match(key).then((response) => {
             if (response) {
               const dateHeader = response.headers.get('date');
               if (dateHeader) {
                 const age = Date.now() - new Date(dateHeader).getTime();
-                if (age > maxAge) {
-                  cache.delete(key);
-                }
+                if (age > maxAge) cache.delete(key);
               }
             }
           });

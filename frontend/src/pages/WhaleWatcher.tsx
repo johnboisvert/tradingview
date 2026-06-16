@@ -151,28 +151,45 @@ export default function WhaleWatcher() {
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <Sidebar />
       <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
-        {/* Hero */}
-        <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
-          <img src={WHALE_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/75 to-transparent" />
-          <div className="relative z-10 h-full flex items-center justify-between px-8">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <Fish className="w-7 h-7 text-cyan-400" />
-                <h1 className="text-2xl font-extrabold">AI Whale Watcher</h1>
+        {/* ===== HERO premium ===== */}
+        <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+          <div className="absolute inset-0 bg-[#0A0E1A]" />
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-cyan-500/22 blur-3xl" style={{ animation: "ww-pulse 6s ease-in-out infinite" }} />
+          <div className="absolute -bottom-24 right-1/3 w-80 h-80 rounded-full bg-blue-500/22 blur-3xl" style={{ animation: "ww-pulse 8s ease-in-out infinite reverse" }} />
+          <div className="absolute inset-0 opacity-[0.04]" style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+          }} />
+          <div className="relative z-10 flex items-center justify-between gap-4 px-6 md:px-10 py-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center" style={{ boxShadow: "0 0 30px rgba(34,211,238,0.3)" }}>
+                <Fish className="w-7 h-7 text-cyan-300" />
               </div>
-              <p className="text-sm text-gray-400">Détection d&apos;activité whale basée sur les volumes réels CoinGecko</p>
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                    AI Whale Watcher
+                  </h1>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-cyan-500/40 bg-cyan-500/10 text-cyan-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" /> Whale Detection
+                  </span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-400">Détection d&apos;activité whale basée sur les volumes réels CoinGecko</p>
+              </div>
             </div>
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-sm font-semibold transition-all"
-            >
+            <button onClick={fetchData} disabled={loading}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-sm font-semibold transition-all disabled:opacity-50">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              {lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}
+              <span className="hidden sm:inline">{lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}</span>
             </button>
           </div>
         </div>
+        <style>{`
+          @keyframes ww-pulse {
+            0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+            50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+          }
+        `}</style>
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">

@@ -1688,11 +1688,11 @@ app.post('/api/telegram/toggle', (req, res) => {
   res.json({ success: true, enabled: config.enabled });
 });
 
-// Initialize in-memory cooldowns from file on boot
-initCooldownsFromFile();
+// Initialize in-memory cooldowns from file on boot (synchronous, fast)
+try { initCooldownsFromFile(); } catch (e) { console.error('[Boot] initCooldownsFromFile error:', e?.message); }
 
-// Start checker on boot if enabled
-startAlertChecker();
+// Defer Telegram alert checker to AFTER server is listening (see app.listen at EOF)
+// startAlertChecker() is now called inside app.listen callback
 
 // ============================================================
 // SCALP TRADING — Telegram Alert System (EMA + VWAP + Stochastic)
@@ -2717,8 +2717,8 @@ function startScalpAlertChecker() {
   }
 }
 
-// Start scalp checker on boot if enabled
-startScalpAlertChecker();
+// Defer scalp checker startup to AFTER server is listening (see app.listen at EOF)
+// startScalpAlertChecker() is now called inside app.listen callback
 
 // ─── POST /api/telegram/scalp-toggle — Enable/disable scalp alerts specifically ───
 app.post('/api/telegram/scalp-toggle', (req, res) => {
@@ -4588,7 +4588,8 @@ function startRangeAlertChecker() {
   }
 }
 
-startRangeAlertChecker();
+// Defer range checker startup to AFTER server is listening (see app.listen at EOF)
+// startRangeAlertChecker() is now called inside app.listen callback
 
 // ─── Range call resolver ───
 async function resolveActiveRangeCalls() {
@@ -4899,6 +4900,23 @@ app.get('{*path}', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Global error handlers — log without crashing
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught exception (continuing):', err?.stack || err?.message || err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Unhandled rejection (continuing):', reason?.stack || reason?.message || reason);
+});
+
+// CRITICAL: bind to 0.0.0.0 explicitly for Railway/Docker (otherwise IPv6-only on some setups)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT} (bound to 0.0.0.0)`);
+
+  // Start background alert checkers AFTER server is listening — so healthcheck on / always responds
+  // Any errors here won't prevent the server from being healthy
+  setImmediate(() => {
+    try { startAlertChecker(); } catch (e) { console.error('[Boot] startAlertChecker error:', e?.message); }
+    try { startScalpAlertChecker(); } catch (e) { console.error('[Boot] startScalpAlertChecker error:', e?.message); }
+    try { startRangeAlertChecker(); } catch (e) { console.error('[Boot] startRangeAlertChecker error:', e?.message); }
+  });
 });

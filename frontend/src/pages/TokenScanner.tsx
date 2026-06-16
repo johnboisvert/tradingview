@@ -106,22 +106,51 @@ export default function TokenScanner() {
             { n: "3", title: "Prenez une décision", desc: "Croisez le score IA avec votre analyse personnelle. Ne basez jamais une décision sur un seul indicateur." },
           ]}
         />
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <Search className="w-5 h-5" />
+        {/* ===== HERO (premium CSS) ===== */}
+        <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+          <div className="absolute inset-0 bg-[#0A0E1A]" />
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-indigo-500/22 blur-3xl" style={{ animation: "ts-pulse 6s ease-in-out infinite" }} />
+          <div className="absolute -bottom-24 right-1/3 w-80 h-80 rounded-full bg-purple-500/22 blur-3xl" style={{ animation: "ts-pulse 8s ease-in-out infinite reverse" }} />
+          <div className="absolute inset-0 opacity-[0.04]" style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+          }} />
+          <div className="relative z-10 flex items-center gap-4 px-6 md:px-10 py-6">
+            <div className="w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/40 flex items-center justify-center" style={{ boxShadow: "0 0 30px rgba(99,102,241,0.3)" }}>
+              <Search className="w-7 h-7 text-indigo-300" />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold">AI Token Scanner</h1>
-              <p className="text-sm text-gray-400">Analysez n'importe quel token avec des données en temps réel</p>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  AI Token Scanner
+                </h1>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-indigo-500/40 bg-indigo-500/10 text-indigo-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" /> IA · Analyse instantanée
+                </span>
+              </div>
+              <p className="text-xs md:text-sm text-gray-400">
+                Analysez n&apos;importe quel token · Données temps réel · Score liquidité, risque, momentum
+              </p>
             </div>
           </div>
         </div>
 
+        <style>{`
+          @keyframes ts-pulse {
+            0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+            50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+          }
+          @keyframes ts-fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .ts-anim { animation: ts-fadeUp 0.6s ease-out both; }
+        `}</style>
+
         {/* Search Bar */}
-        <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5 mb-6">
-          <div className="flex gap-3">
+        <div className="ts-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-5 mb-6 overflow-hidden" style={{ animationDelay: "100ms" }}>
+          <div className="absolute -top-20 right-1/4 w-72 h-72 rounded-full blur-3xl opacity-15 bg-indigo-500" />
+          <div className="relative flex gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input
@@ -130,13 +159,14 @@ export default function TokenScanner() {
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && searchTokens()}
                 placeholder="Rechercher un token (ex: Bitcoin, ETH, Solana...)"
-                className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-black/30 border border-white/[0.08] text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 transition-colors"
+                className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-all"
               />
             </div>
             <button
               onClick={searchTokens}
               disabled={loading}
-              className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 font-bold text-sm hover:brightness-110 transition-all disabled:opacity-50"
+              className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 font-bold text-sm hover:shadow-lg hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all disabled:opacity-50"
+              style={{ boxShadow: "0 0 24px rgba(99,102,241,0.25)" }}
             >
               {loading ? "Analyse..." : "Scanner"}
             </button>

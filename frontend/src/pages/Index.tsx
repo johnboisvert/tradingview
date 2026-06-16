@@ -16,9 +16,6 @@ import Footer from "@/components/Footer";
 import ShareButtons from "@/components/ShareButtons";
 import MarketHours from "@/components/MarketHours";
 
-const HERO_IMG =
-  "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/6e7996e5-3fd7-4958-9f83-5d5f09ef989f.png";
-
 interface CoinData {
   id: string;
   symbol: string;
@@ -202,77 +199,107 @@ export default function DashboardPage() {
       {/* pt-14 on mobile for the fixed top bar, md:pt-0 on desktop */}
       <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
 
-        {/* Hero */}
-        <div className="relative rounded-2xl overflow-hidden mb-6 h-[120px] md:h-[160px]">
-          <img src={HERO_IMG} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/70 to-transparent" />
-          <div className="relative z-10 h-full flex items-center justify-between px-4 md:px-8">
+        {/* Hero (premium CSS-only) */}
+        <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+          <div className="absolute inset-0 bg-[#0A0E1A]" />
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-indigo-500/25 blur-3xl" style={{ animation: "idx-pulse 6s ease-in-out infinite" }} />
+          <div className="absolute -bottom-24 right-1/4 w-80 h-80 rounded-full bg-cyan-500/25 blur-3xl" style={{ animation: "idx-pulse 8s ease-in-out infinite reverse" }} />
+          <div className="absolute -top-12 right-1/2 w-72 h-72 rounded-full bg-purple-500/15 blur-3xl" style={{ animation: "idx-pulse 7s ease-in-out infinite" }} />
+          <div className="absolute inset-0 opacity-[0.04]" style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+          }} />
+          <div className="relative z-10 flex items-center justify-between gap-4 px-6 md:px-10 py-7">
             <div>
-              <h1 className="text-xl md:text-3xl font-extrabold tracking-tight mb-1">
-                <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                  CryptoIA
-                </span>{" "}
-                <span className="hidden sm:inline">Trading Platform</span>
-              </h1>
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <h1 className="text-2xl md:text-4xl font-black tracking-tight">
+                  <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">CryptoIA</span>
+                  <span className="hidden sm:inline text-white"> Trading Platform</span>
+                </h1>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
+                </span>
+              </div>
               <p className="text-xs md:text-sm text-gray-400 hidden sm:block">
-                Données en temps réel • Analyse IA • Outils professionnels
+                📡 Données temps réel • 🤖 Analyse IA • 🛠️ Outils professionnels
               </p>
             </div>
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-xs md:text-sm font-semibold transition-all"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 md:w-4 md:h-4 ${loading ? "animate-spin" : ""}`} />
+            <button onClick={fetchData} disabled={loading}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-xs md:text-sm font-semibold transition-all disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">{lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}</span>
             </button>
           </div>
         </div>
 
+        <style>{`
+          @keyframes idx-pulse {
+            0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+            50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+          }
+          @keyframes idx-fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .idx-anim { animation: idx-fadeUp 0.6s ease-out both; }
+        `}</style>
+
         {/* Global Stats */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4 mb-6">
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5 hover:border-white/[0.12] transition-all">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Market Cap</p>
-                <p className="text-base md:text-xl font-extrabold">{formatNumber(global.total_market_cap)}</p>
+          <div className="idx-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl p-4 md:p-5 transition-all overflow-hidden" style={{ animationDelay: "60ms" }}>
+            <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-indigo-500/20 blur-3xl" />
+            <div className="relative">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Market Cap</p>
+                  <p className="text-base md:text-xl font-black" style={{ color: "#a78bfa", textShadow: "0 0 12px rgba(167,139,250,0.3)" }}>{formatNumber(global.total_market_cap)}</p>
+                </div>
+                <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center flex-shrink-0" style={{ boxShadow: "0 0 18px rgba(99,102,241,0.4)" }}>
+                  <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                </div>
               </div>
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-white" />
-              </div>
-            </div>
-            <div className={`flex items-center gap-1 mt-2 text-xs font-bold ${global.market_cap_change_24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              {global.market_cap_change_24h >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-              <span>{global.market_cap_change_24h.toFixed(1)}%</span>
-            </div>
-          </div>
-
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5 hover:border-white/[0.12] transition-all">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Volume 24h</p>
-                <p className="text-base md:text-xl font-extrabold">{formatNumber(global.total_volume)}</p>
-              </div>
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center flex-shrink-0">
-                <Activity className="w-4 h-4 md:w-5 md:h-5 text-white" />
+              <div className={`flex items-center gap-1 mt-2 text-xs font-bold ${global.market_cap_change_24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                {global.market_cap_change_24h >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                <span>{global.market_cap_change_24h.toFixed(1)}%</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5 hover:border-white/[0.12] transition-all">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">BTC Dom.</p>
-                <p className="text-base md:text-xl font-extrabold">{global.btc_dominance.toFixed(1)}%</p>
-              </div>
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0">
-                <BarChart3 className="w-4 h-4 md:w-5 md:h-5 text-white" />
+          <div className="idx-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl p-4 md:p-5 transition-all overflow-hidden" style={{ animationDelay: "120ms" }}>
+            <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-cyan-500/20 blur-3xl" />
+            <div className="relative">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Volume 24h</p>
+                  <p className="text-base md:text-xl font-black" style={{ color: "#22d3ee", textShadow: "0 0 12px rgba(34,211,238,0.3)" }}>{formatNumber(global.total_volume)}</p>
+                </div>
+                <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center flex-shrink-0" style={{ boxShadow: "0 0 18px rgba(6,182,212,0.4)" }}>
+                  <Activity className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5 hover:border-white/[0.12] transition-all col-span-2 xl:col-span-1">
-            <FearGreedGauge value={fearGreed} />
+          <div className="idx-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl p-4 md:p-5 transition-all overflow-hidden" style={{ animationDelay: "180ms" }}>
+            <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-amber-500/20 blur-3xl" />
+            <div className="relative">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">BTC Dom.</p>
+                  <p className="text-base md:text-xl font-black" style={{ color: "#fbbf24", textShadow: "0 0 12px rgba(251,191,36,0.3)" }}>{global.btc_dominance.toFixed(1)}%</p>
+                </div>
+                <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0" style={{ boxShadow: "0 0 18px rgba(245,158,11,0.4)" }}>
+                  <BarChart3 className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="idx-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl p-4 md:p-5 transition-all col-span-2 xl:col-span-1 overflow-hidden" style={{ animationDelay: "240ms" }}>
+            <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-pink-500/15 blur-3xl" />
+            <div className="relative">
+              <FearGreedGauge value={fearGreed} />
+            </div>
           </div>
         </div>
 

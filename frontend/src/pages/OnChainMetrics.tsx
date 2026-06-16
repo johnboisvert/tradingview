@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
-
+import { Link2, Sparkles, Activity, Database } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -143,72 +143,118 @@ export default function OnChainMetrics() {
             { n: "3", title: "Croisez les données", desc: "Combinez plusieurs métriques on-chain pour obtenir une image complète de la santé du réseau et du sentiment des holders." },
           ]}
         />
-        <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute w-[600px] h-[600px] rounded-full bg-cyan-500/5 blur-[80px] top-[-200px] left-[-100px]" />
-          <div className="absolute w-[500px] h-[500px] rounded-full bg-emerald-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />
-        </div>
-        <div className="relative z-10 max-w-[1440px] mx-auto">
-          <div className="text-center mb-10 pt-8">
-            <h1 className="text-5xl font-black bg-gradient-to-r from-cyan-400 via-emerald-400 to-indigo-400 bg-[length:300%_auto] bg-clip-text text-transparent animate-gradient">
-              ⛓️ Métriques On-Chain
-            </h1>
-            <p className="text-gray-500 mt-3 text-lg">Données blockchain réelles — Volume, NVT, Supply</p>
-            <div className="inline-flex items-center gap-2 mt-4 bg-cyan-500/10 border border-cyan-500/25 rounded-full px-5 py-1.5 text-xs text-cyan-400 font-bold uppercase tracking-widest">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00d4ff] animate-pulse" />
-              CoinGecko API — Données vérifiables
+        <div className="relative z-10 max-w-[1440px] mx-auto p-4 md:p-6">
+          {/* ===== HERO ===== */}
+          <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
+            <div className="absolute inset-0 bg-[#0A0E1A]" />
+            <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-cyan-500/22 blur-3xl" style={{ animation: "oc-pulse 6s ease-in-out infinite" }} />
+            <div className="absolute -bottom-24 right-1/4 w-80 h-80 rounded-full bg-emerald-500/22 blur-3xl" style={{ animation: "oc-pulse 8s ease-in-out infinite reverse" }} />
+            <div className="absolute inset-0 opacity-[0.04]" style={{
+              backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+              backgroundSize: "44px 44px",
+            }} />
+            <div className="relative z-10 flex items-center gap-4 px-6 md:px-10 py-6">
+              <div className="w-14 h-14 rounded-2xl bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center" style={{ boxShadow: "0 0 30px rgba(34,211,238,0.3)" }}>
+                <Link2 className="w-7 h-7 text-cyan-300" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-cyan-400 via-emerald-400 to-indigo-400 bg-clip-text text-transparent">
+                    Métriques On-Chain
+                  </h1>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-cyan-500/40 bg-cyan-500/10 text-cyan-300">
+                    <Sparkles className="w-2.5 h-2.5" /> CoinGecko API · Vérifiable
+                  </span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-400">
+                  Données blockchain réelles · Volume · NVT · Supply · Flux Exchanges
+                </p>
+              </div>
             </div>
           </div>
 
+          <style>{`
+            @keyframes oc-pulse {
+              0%, 100% { transform: scale(1) translate(0,0); opacity: 0.3; }
+              50% { transform: scale(1.2) translate(20px,-10px); opacity: 0.45; }
+            }
+            @keyframes oc-fadeUp {
+              from { opacity: 0; transform: translateY(12px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .oc-anim { animation: oc-fadeUp 0.6s ease-out both; }
+          `}</style>
+
           {loading ? (
             <div className="flex justify-center items-center py-16">
-              <div className="w-11 h-11 border-3 border-cyan-500/15 border-t-cyan-400 rounded-full animate-spin" />
+              <div className="w-11 h-11 border-[3px] border-cyan-500/15 border-t-cyan-400 rounded-full animate-spin" />
             </div>
           ) : (
             <>
               {/* Metrics Grid */}
-              <div className="bg-slate-900/70 backdrop-blur-xl border border-white/5 rounded-3xl p-8 mb-6">
-                <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">📊 Indicateurs Clés</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {metrics.map((m) => (
-                    <div key={m.label} className="bg-gradient-to-br from-slate-800/90 to-slate-700/30 border border-white/5 rounded-2xl p-6 hover:-translate-y-1 transition-all group">
-                      <div className="text-3xl mb-3">{m.icon}</div>
-                      <div className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-2">{m.label}</div>
-                      <div className="text-2xl font-black font-mono mb-2" style={{ color: m.value === "N/A" ? "#6b7280" : m.color }}>{m.value}</div>
-                      <span className={`text-xs font-bold px-2 py-1 rounded-lg ${m.changeType === "up" ? "bg-emerald-500/10 text-emerald-400" : m.changeType === "down" ? "bg-red-500/10 text-red-400" : "bg-gray-500/10 text-gray-400"}`}>
-                        {m.change}
-                      </span>
-                      <p className="text-xs text-gray-500 mt-3 leading-relaxed">{m.desc}</p>
+              <div className="oc-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 mb-6 overflow-hidden" style={{ animationDelay: "100ms" }}>
+                <div className="absolute -top-20 right-1/4 w-72 h-72 rounded-full blur-3xl opacity-20 bg-cyan-500" />
+                <h2 className="relative text-base md:text-lg font-bold mb-5 flex items-center gap-2">
+                  <Database className="w-4 h-4 text-cyan-400" /> Indicateurs Clés
+                </h2>
+                <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                  {metrics.map((m, i) => (
+                    <div key={m.label}
+                      className="oc-anim group relative bg-gradient-to-br from-white/[0.03] to-white/[0.005] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl p-5 transition-all hover:-translate-y-1 overflow-hidden"
+                      style={{ animationDelay: `${150 + i * 60}ms` }}
+                    >
+                      <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-0 group-hover:opacity-25 transition-opacity" style={{ background: m.color }} />
+                      <div className="relative">
+                        <div className="text-3xl mb-3" style={{ filter: m.value !== "N/A" ? `drop-shadow(0 0 10px ${m.color}55)` : "none" }}>{m.icon}</div>
+                        <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">{m.label}</div>
+                        <div className="text-2xl font-black font-mono mb-2" style={{ color: m.value === "N/A" ? "#6b7280" : m.color, textShadow: m.value !== "N/A" ? `0 0 14px ${m.color}30` : "none" }}>{m.value}</div>
+                        <span className={`inline-block text-[10px] font-bold px-2 py-1 rounded-lg border ${m.changeType === "up" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : m.changeType === "down" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-gray-500/10 text-gray-400 border-gray-500/20"}`}>
+                          {m.change}
+                        </span>
+                        <p className="text-xs text-gray-400 mt-3 leading-relaxed">{m.desc}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Exchange Flows */}
-              <div className="bg-slate-900/70 backdrop-blur-xl border border-white/5 rounded-3xl p-8 mb-6">
-                <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">🔄 Exchange Flows (Estimé)</h2>
-                <p className="text-xs text-gray-500 mb-4">⚠️ Estimations basées sur le volume CoinGecko (35% inflows, 42% outflows). Pour des données exactes, utilisez Glassnode ou CryptoQuant.</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                  <div className="bg-gradient-to-br from-slate-800/90 to-slate-700/30 border border-white/5 rounded-2xl p-6 text-center">
-                    <div className="text-3xl mb-2">📥</div>
-                    <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">Inflows (estimé)</div>
-                    <div className="text-3xl font-black font-mono text-red-400 my-2">${flowData.inflow}B</div>
-                    <p className="text-xs text-gray-500">Dépôts estimés vers exchanges</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-4xl text-gray-600 mb-2">⇄</div>
-                    <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">Net Flow (estimé)</div>
-                    <div className={`text-3xl font-black font-mono my-2 ${flowData.net > 0 ? "text-emerald-400" : "text-red-400"}`}>
-                      {flowData.net > 0 ? "+" : ""}{flowData.net}B
+              <div className="oc-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 mb-6 overflow-hidden" style={{ animationDelay: "320ms" }}>
+                <div className={`absolute -top-20 right-1/4 w-72 h-72 rounded-full blur-3xl opacity-20 ${flowData.net > 0 ? "bg-emerald-500" : "bg-red-500"}`} />
+                <div className="relative">
+                  <h2 className="text-base md:text-lg font-bold mb-2 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-cyan-400" /> Exchange Flows (Estimé)
+                  </h2>
+                  <p className="text-xs text-gray-500 mb-5">⚠️ Estimations basées sur le volume CoinGecko (35% inflows, 42% outflows). Pour des données exactes : Glassnode ou CryptoQuant.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    <div className="relative bg-gradient-to-br from-red-500/[0.06] to-transparent border border-red-500/20 rounded-2xl p-5 text-center overflow-hidden">
+                      <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-red-500/20 blur-3xl" />
+                      <div className="relative">
+                        <div className="text-3xl mb-2">📥</div>
+                        <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Inflows</div>
+                        <div className="text-3xl font-black font-mono text-red-400 my-2" style={{ textShadow: "0 0 16px rgba(239,68,68,0.3)" }}>${flowData.inflow}B</div>
+                        <p className="text-[11px] text-gray-500">Dépôts estimés vers exchanges</p>
+                      </div>
                     </div>
-                    <span className={`text-xs font-bold px-3 py-1.5 rounded-xl ${flowData.net > 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
-                      {flowData.net > 0 ? "🟢 Accumulation probable" : "🔴 Distribution probable"}
-                    </span>
-                  </div>
-                  <div className="bg-gradient-to-br from-slate-800/90 to-slate-700/30 border border-white/5 rounded-2xl p-6 text-center">
-                    <div className="text-3xl mb-2">📤</div>
-                    <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">Outflows (estimé)</div>
-                    <div className="text-3xl font-black font-mono text-emerald-400 my-2">${flowData.outflow}B</div>
-                    <p className="text-xs text-gray-500">Retraits estimés des exchanges</p>
+                    <div className="text-center py-4">
+                      <div className="text-5xl text-gray-600 mb-2 animate-pulse">⇄</div>
+                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Net Flow</div>
+                      <div className={`text-4xl font-black font-mono my-2 ${flowData.net > 0 ? "text-emerald-400" : "text-red-400"}`} style={{ textShadow: `0 0 24px ${flowData.net > 0 ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)"}` }}>
+                        {flowData.net > 0 ? "+" : ""}{flowData.net}B
+                      </div>
+                      <span className={`inline-block text-xs font-bold px-3 py-1.5 rounded-xl border ${flowData.net > 0 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-red-500/10 text-red-400 border-red-500/30"}`}>
+                        {flowData.net > 0 ? "🟢 Accumulation probable" : "🔴 Distribution probable"}
+                      </span>
+                    </div>
+                    <div className="relative bg-gradient-to-br from-emerald-500/[0.06] to-transparent border border-emerald-500/20 rounded-2xl p-5 text-center overflow-hidden">
+                      <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-emerald-500/20 blur-3xl" />
+                      <div className="relative">
+                        <div className="text-3xl mb-2">📤</div>
+                        <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Outflows</div>
+                        <div className="text-3xl font-black font-mono text-emerald-400 my-2" style={{ textShadow: "0 0 16px rgba(34,197,94,0.3)" }}>${flowData.outflow}B</div>
+                        <p className="text-[11px] text-gray-500">Retraits estimés des exchanges</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -216,13 +262,23 @@ export default function OnChainMetrics() {
               {/* Education */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                  { icon: "🐋", title: "Whale Tracking", desc: "Les mouvements de gros portefeuilles (>1000 BTC) sont un indicateur avancé des retournements de marché. Nécessite une API on-chain dédiée.", color: "border-l-cyan-500" },
-                  { icon: "🏦", title: "Exchange Flows", desc: "Des sorties nettes des exchanges indiquent une accumulation (bullish). Des entrées massives signalent une pression vendeuse.", color: "border-l-emerald-500" },
-                  { icon: "⛓️", title: "Network Health", desc: "Le hash rate et les adresses actives reflètent la santé fondamentale du réseau Bitcoin. Données disponibles via APIs premium.", color: "border-l-amber-500" },
-                ].map((info) => (
-                  <div key={info.title} className={`bg-slate-900/50 border border-white/5 ${info.color} border-l-4 rounded-2xl p-6`}>
-                    <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">{info.icon} {info.title}</h3>
-                    <p className="text-sm text-gray-400 leading-relaxed">{info.desc}</p>
+                  { icon: "🐋", title: "Whale Tracking", desc: "Les mouvements de gros portefeuilles (>1000 BTC) sont un indicateur avancé des retournements de marché.", color: "#22d3ee" },
+                  { icon: "🏦", title: "Exchange Flows", desc: "Des sorties nettes des exchanges indiquent une accumulation (bullish). Des entrées massives signalent une pression vendeuse.", color: "#22c55e" },
+                  { icon: "⛓️", title: "Network Health", desc: "Le hash rate et les adresses actives reflètent la santé fondamentale du réseau Bitcoin.", color: "#f59e0b" },
+                ].map((info, i) => (
+                  <div key={info.title}
+                    className="oc-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-2xl p-5 overflow-hidden hover:border-white/[0.14] transition-all"
+                    style={{ animationDelay: `${400 + i * 80}ms` }}
+                  >
+                    <div className="absolute top-0 left-0 w-1 h-full" style={{ background: info.color, boxShadow: `0 0 12px ${info.color}` }} />
+                    <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-20" style={{ background: info.color }} />
+                    <div className="relative">
+                      <h3 className="text-base font-black text-white mb-2 flex items-center gap-2">
+                        <span className="text-xl">{info.icon}</span>
+                        <span style={{ color: info.color }}>{info.title}</span>
+                      </h3>
+                      <p className="text-sm text-gray-400 leading-relaxed">{info.desc}</p>
+                    </div>
                   </div>
                 ))}
               </div>

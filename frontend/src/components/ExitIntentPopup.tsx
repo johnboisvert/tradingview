@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { X, Gift, Sparkles, Copy, Check } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
+import { getVariant } from "@/lib/abtest";
 
 const STORAGE_KEY = "cryptoia_exit_intent_shown";
 const PROMO_CODE = "BIENVENUE20";
@@ -16,6 +17,11 @@ const DISCOUNT_PCT = 20;
 export default function ExitIntentPopup() {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  // A/B test : 2 variants of the popup headline
+  const variant = getVariant("exit_intent_headline", ["A", "B"] as const);
+  const headline = variant === "A"
+    ? { badge: "Offre exclusive — disparaît dans quelques secondes", title: <>Attendez ! Voici <span className="bg-gradient-to-r from-amber-300 via-orange-300 to-amber-400 bg-clip-text text-transparent">-{DISCOUNT_PCT}%</span> sur votre 1<sup>er</sup> mois</>, cta: "🚀 J'en profite maintenant" }
+    : { badge: "Dernière chance avant de partir 🔥", title: <>Ne ratez pas vos <span className="bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-400 bg-clip-text text-transparent">-{DISCOUNT_PCT}%</span> de bienvenue !</>, cta: "💎 Activer ma réduction" };
 
   useEffect(() => {
     // Already shown? Skip.
@@ -28,7 +34,7 @@ export default function ExitIntentPopup() {
       triggered = true;
       localStorage.setItem(STORAGE_KEY, "1");
       setOpen(true);
-      trackEvent("popup_shown", { source: "exit_intent" });
+      trackEvent("popup_shown", { source: "exit_intent", variant });
     };
 
     // Desktop: mouse leaves the top of the viewport
@@ -73,7 +79,7 @@ export default function ExitIntentPopup() {
   }, []);
 
   const close = () => {
-    trackEvent("popup_dismiss");
+    trackEvent("popup_dismiss", { variant });
     setOpen(false);
   };
 
@@ -81,7 +87,7 @@ export default function ExitIntentPopup() {
     try {
       await navigator.clipboard.writeText(PROMO_CODE);
       setCopied(true);
-      trackEvent("popup_copy_code", { code: PROMO_CODE });
+      trackEvent("popup_copy_code", { code: PROMO_CODE, variant });
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // ignore — fallback impossible sur certains navigateurs
@@ -89,7 +95,7 @@ export default function ExitIntentPopup() {
   };
 
   const goToPricing = () => {
-    trackEvent("popup_cta_click", { code: PROMO_CODE });
+    trackEvent("popup_cta_click", { code: PROMO_CODE, variant });
     setOpen(false);
     // Redirection vers la page d'abonnements
     window.location.href = "/abonnements";
@@ -145,17 +151,13 @@ export default function ExitIntentPopup() {
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full mb-3 border border-amber-400/40 bg-amber-400/10">
             <Sparkles className="w-3 h-3 text-amber-300" />
             <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">
-              Offre exclusive — disparaît dans quelques secondes
+              {headline.badge}
             </span>
           </div>
 
           {/* Title */}
           <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
-            Attendez ! Voici{" "}
-            <span className="bg-gradient-to-r from-amber-300 via-orange-300 to-amber-400 bg-clip-text text-transparent">
-              -{DISCOUNT_PCT}%
-            </span>{" "}
-            sur votre 1<sup>er</sup> mois
+            {headline.title}
           </h2>
 
           {/* Description */}
@@ -205,7 +207,7 @@ export default function ExitIntentPopup() {
               boxShadow: "0 12px 30px -8px rgba(245,158,11,0.6), inset 0 1px 0 rgba(255,255,255,0.2)",
             }}
           >
-            🚀 J'en profite maintenant
+            {headline.cta}
           </button>
 
           {/* Trust line */}

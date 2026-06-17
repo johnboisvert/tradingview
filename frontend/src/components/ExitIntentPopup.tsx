@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { X, Gift, Sparkles, Copy, Check } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { getVariant } from "@/lib/abtest";
@@ -15,13 +16,38 @@ const DISCOUNT_PCT = 20;
  * - Offre un code promo pour réduire l'abandon de panier
  */
 export default function ExitIntentPopup() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   // A/B test : 2 variants of the popup headline
   const variant = getVariant("exit_intent_headline", ["A", "B"] as const);
   const headline = variant === "A"
-    ? { badge: "Offre exclusive — disparaît dans quelques secondes", title: <>Attendez ! Voici <span className="bg-gradient-to-r from-amber-300 via-orange-300 to-amber-400 bg-clip-text text-transparent">-{DISCOUNT_PCT}%</span> sur votre 1<sup>er</sup> mois</>, cta: "🚀 J'en profite maintenant" }
-    : { badge: "Dernière chance avant de partir 🔥", title: <>Ne ratez pas vos <span className="bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-400 bg-clip-text text-transparent">-{DISCOUNT_PCT}%</span> de bienvenue !</>, cta: "💎 Activer ma réduction" };
+    ? {
+        badge: t("exitIntent.badgeA"),
+        title: (
+          <>
+            {t("exitIntent.titleA1")}{" "}
+            <span className="bg-gradient-to-r from-amber-300 via-orange-300 to-amber-400 bg-clip-text text-transparent">
+              -{DISCOUNT_PCT}%
+            </span>{" "}
+            <span dangerouslySetInnerHTML={{ __html: t("exitIntent.titleA2") }} />
+          </>
+        ),
+        cta: t("exitIntent.ctaA"),
+      }
+    : {
+        badge: t("exitIntent.badgeB"),
+        title: (
+          <>
+            {t("exitIntent.titleB1")}{" "}
+            <span className="bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+              -{DISCOUNT_PCT}%
+            </span>{" "}
+            {t("exitIntent.titleB2")}
+          </>
+        ),
+        cta: t("exitIntent.ctaB"),
+      };
 
   useEffect(() => {
     // Already shown? Skip.
@@ -136,7 +162,7 @@ export default function ExitIntentPopup() {
           data-testid="exit-intent-close-btn"
           onClick={close}
           className="absolute top-4 right-4 z-20 p-2 rounded-full bg-white/[0.06] hover:bg-white/[0.14] border border-white/[0.1] transition-all"
-          aria-label="Fermer"
+          aria-label={t("exitIntent.close")}
         >
           <X className="w-4 h-4 text-white" />
         </button>
@@ -162,16 +188,16 @@ export default function ExitIntentPopup() {
 
           {/* Description */}
           <p className="text-sm text-gray-300 mb-6 leading-relaxed">
-            Débloquez tous nos outils IA premium :{" "}
-            <strong className="text-white">signaux temps réel</strong>,{" "}
-            <strong className="text-white">backtesting</strong>,{" "}
-            <strong className="text-white">Score Confiance IA</strong> et plus encore.
+            {t("exitIntent.description1")}{" "}
+            <strong className="text-white">{t("exitIntent.descSignals")}</strong>,{" "}
+            <strong className="text-white">{t("exitIntent.descBacktesting")}</strong>,{" "}
+            <strong className="text-white">{t("exitIntent.descScore")}</strong> {t("exitIntent.descMore")}
           </p>
 
           {/* Code box */}
           <div className="mb-6">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">
-              Votre code promo
+              {t("exitIntent.yourCode")}
             </p>
             <button
               data-testid="exit-intent-copy-code"
@@ -185,12 +211,12 @@ export default function ExitIntentPopup() {
                 {copied ? (
                   <>
                     <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    Copié
+                    {t("exitIntent.copiedShort")}
                   </>
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    Copier
+                    {t("exitIntent.copy")}
                   </>
                 )}
               </span>
@@ -212,7 +238,7 @@ export default function ExitIntentPopup() {
 
           {/* Trust line */}
           <p className="mt-4 text-[10px] text-gray-500 leading-relaxed">
-            Code valable sur tous les plans annuels • Annulable à tout moment • Activation immédiate
+            {t("exitIntent.trust")}
           </p>
         </div>
 

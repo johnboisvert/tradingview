@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getUserPlan, isRouteAccessible, getMinimumPlanForRoute, getPlanDisplayInfo } from "@/lib/subscription";
 import { getUserSession, clearUserSession } from "@/lib/store";
+import AnimatedLogo from "@/components/AnimatedLogo";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import {
   LayoutDashboard,
   Frown,
@@ -167,12 +170,88 @@ const BOTTOM_ITEMS = [
   { path: "/mon-compte", label: "Mon Compte", icon: User, color: "emerald" },
 ];
 
+// i18n mappings — section title FR → key, path → label key
+const SECTION_KEY: Record<string, string> = {
+  "Accueil": "nav.sections.home",
+  "Mon Espace": "nav.sections.myArea",
+  "Marché": "nav.sections.market",
+  "IA & Analyse": "nav.sections.aiAnalysis",
+  "Trading": "nav.sections.trading",
+  "Assistant": "nav.sections.assistant",
+  "Outils": "nav.sections.tools",
+};
+
+const PATH_KEY: Record<string, string> = {
+  "/": "nav.items.dashboard",
+  "/my-cryptoia": "nav.items.myCryptoia",
+  "/gamification": "nav.items.gamification",
+  "/fear-greed": "nav.items.fearGreed",
+  "/dominance": "nav.items.dominance",
+  "/altcoin-season": "nav.items.altcoinSeason",
+  "/heatmap": "nav.items.heatmap",
+  "/bullrun-phase": "nav.items.bullrunPhase",
+  "/market-regime": "nav.items.marketRegime",
+  "/alertes-ia": "nav.items.alertesIa",
+  "/score-confiance-ia": "nav.items.scoreConfianceIa",
+  "/simulateur-strategie-ia": "nav.items.simulateurStrategieIa",
+  "/rapport-hebdomadaire-ia": "nav.items.rapportHebdoIa",
+  "/backtesting-visuel": "nav.items.backtestingVisuel",
+  "/predictions": "nav.items.predictions",
+  "/prediction-ia": "nav.items.predictionIa",
+  "/crypto-ia": "nav.items.cryptoIa",
+  "/token-scanner": "nav.items.tokenScanner",
+  "/opportunity-scanner": "nav.items.opportunityScanner",
+  "/whale-watcher": "nav.items.whaleWatcher",
+  "/technical-analysis": "nav.items.technicalAnalysis",
+  "/gem-hunter": "nav.items.gemHunter",
+  "/ai-signals": "nav.items.aiSignals",
+  "/ai-patterns": "nav.items.aiPatterns",
+  "/ai-sentiment": "nav.items.aiSentiment",
+  "/position-sizer": "nav.items.positionSizer",
+  "/ai-setup-builder": "nav.items.aiSetupBuilder",
+  "/narrative-radar": "nav.items.narrativeRadar",
+  "/pepites-crypto": "nav.items.pepitesCrypto",
+  "/rug-scam-shield": "nav.items.rugScamShield",
+  "/strategy": "nav.items.strategy",
+  "/spot-trading": "nav.items.spotTrading",
+  "/calculatrice": "nav.items.calculatrice",
+  "/trades": "nav.items.swingTrading",
+  "/scalp": "nav.items.scalpTrading",
+  "/range": "nav.items.rangeTrading",
+  "/risk-management": "nav.items.riskManagement",
+  "/watchlist": "nav.items.watchlist",
+  "/graphiques": "nav.items.graphiques",
+  "/backtesting": "nav.items.backtesting",
+  "/portfolio-tracker": "nav.items.portfolio",
+  "/timeframe-analysis": "nav.items.timeframeAnalysis",
+  "/crypto-journal": "nav.items.cryptoJournal",
+  "/screener-technique": "nav.items.screenerTechnique",
+  "/dtrading-ia-pro": "nav.items.dtradingIaPro",
+  "/assistant-ia": "nav.items.assistantConversational",
+  "/stats-avancees": "nav.items.statsAvancees",
+  "/simulation": "nav.items.simulation",
+  "/convertisseur": "nav.items.convertisseur",
+  "/calendrier": "nav.items.calendrier",
+  "/news": "nav.items.news",
+  "/success-stories": "nav.items.successStories",
+  "/onchain-metrics": "nav.items.onchain",
+  "/defi-yield": "nav.items.defiYield",
+  "/trading-academy": "nav.items.tradingAcademy",
+  "/telechargement": "nav.items.telechargements",
+  "/contact": "nav.items.contact",
+  "/abonnements": "nav.items.abonnements",
+  "/affiliation": "nav.items.affiliation",
+  "/magic-strategy": "nav.items.magicStrategy",
+  "/admin": "nav.items.adminPanel",
+  "/mon-compte": "nav.items.monCompte",
+};
+
 // Mobile top bar shown only on small screens
 export function MobileTopBar({ onOpen }: { onOpen: () => void }) {
   return (
     <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 h-14 bg-[#0A0E1A]/95 backdrop-blur-xl border-b border-white/[0.06]">
       <div className="flex items-center gap-2">
-        <img src="/assets/logo1.png" alt="CryptoIA" className="w-8 h-8 rounded-xl object-contain" />
+        <AnimatedLogo size={32} oncePerSession />
         <span className="text-base font-extrabold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
           CryptoIA
         </span>
@@ -189,6 +268,7 @@ export function MobileTopBar({ onOpen }: { onOpen: () => void }) {
 }
 
 export default function Sidebar() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
@@ -256,7 +336,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="flex items-center justify-between px-5 h-16 border-b border-white/[0.06] flex-shrink-0">
         <div className="flex items-center gap-3">
-          <img src="https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-19/4ee17351-fcfd-422c-8a4f-5e9829ba23a7.png" alt="CryptoIA" className="w-9 h-9 rounded-xl object-contain flex-shrink-0" />
+          <AnimatedLogo size={36} className="rounded-xl" oncePerSession />
           {(!collapsed || isMobile) && (
             <div className="overflow-hidden">
               <h1 className="text-lg font-extrabold tracking-tight">
@@ -285,7 +365,7 @@ export default function Sidebar() {
         <div className="px-4 pt-3 pb-1">
           <Link to="/mon-compte" className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-all">
             <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${getPlanDisplayInfo(currentPlan).gradient}`} />
-            <span className="text-[10px] text-gray-500 font-semibold">Plan:</span>
+            <span className="text-[10px] text-gray-500 font-semibold">{t("common.plan")}:</span>
             <span className={`text-[11px] font-bold ${getPlanDisplayInfo(currentPlan).color}`}>
               {getPlanDisplayInfo(currentPlan).label}
             </span>
@@ -299,7 +379,7 @@ export default function Sidebar() {
           <div key={si} className={si > 0 ? "mt-4" : ""}>
             {(!collapsed || isMobile) && (
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-2">
-                {section.title}
+                {t(SECTION_KEY[section.title] || section.title, { defaultValue: section.title })}
               </p>
             )}
             {collapsed && !isMobile && si > 0 && <div className="my-2 border-t border-white/[0.06]" />}
@@ -341,7 +421,7 @@ export default function Sidebar() {
                       <span className={`text-[13px] font-semibold truncate flex-1 ${
                         !accessible ? "text-gray-600" : active ? "text-white" : ""
                       }`}>
-                        {item.label}
+                        {t(PATH_KEY[item.path] || item.label, { defaultValue: item.label })}
                       </span>
                       {!accessible && (
                         <div className="flex items-center gap-1">
@@ -369,7 +449,7 @@ export default function Sidebar() {
         {/* Bottom Items */}
         {(!collapsed || isMobile) && (
           <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-2 mt-4">
-            Compte
+            {t("nav.sections.account")}
           </p>
         )}
         {collapsed && !isMobile && <div className="my-2 border-t border-white/[0.06]" />}
@@ -390,7 +470,7 @@ export default function Sidebar() {
               </div>
               {(!collapsed || isMobile) && (
                 <span className={`text-[13px] font-semibold truncate ${active ? "text-white" : ""}`}>
-                  {item.label}
+                  {t(PATH_KEY[item.path] || item.label, { defaultValue: item.label })}
                 </span>
               )}
             </Link>
@@ -398,26 +478,46 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Login / Logout Button */}
-      <div className="px-3 pb-2 flex-shrink-0">
+      {/* Login / Logout Button + Tools row (lang + Cmd+K hint) */}
+      <div className="px-3 pb-2 flex-shrink-0 space-y-2">
         {userSession ? (
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all text-xs font-semibold border border-red-500/10"
-            title="Se déconnecter"
+            title={t("common.logout")}
           >
             <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
-            {(!collapsed || isMobile) && <span>Déconnexion ({userSession.username})</span>}
+            {(!collapsed || isMobile) && <span>{t("common.logout")} ({userSession.username})</span>}
           </button>
         ) : (
           <Link
             to="/login"
             className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 transition-all text-xs font-semibold border border-indigo-500/10"
-            title="Se connecter"
+            title={t("common.login")}
           >
             <LogIn className="w-3.5 h-3.5 flex-shrink-0" />
-            {(!collapsed || isMobile) && <span>Se connecter</span>}
+            {(!collapsed || isMobile) && <span>{t("common.login")}</span>}
           </Link>
+        )}
+
+        {(!collapsed || isMobile) && (
+          <div className="flex items-center justify-between gap-2 px-1">
+            <button
+              type="button"
+              onClick={() => {
+                const e = new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true, bubbles: true });
+                window.dispatchEvent(e);
+              }}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-[10px] text-gray-400 hover:text-white transition-all"
+              title={t("common.search")}
+              data-testid="sidebar-cmdk-hint"
+            >
+              <Search className="w-3 h-3" />
+              <span>{t("common.search")}</span>
+              <kbd className="ml-1 px-1 py-0.5 text-[9px] font-bold bg-white/[0.08] rounded border border-white/[0.06]">⌘K</kbd>
+            </button>
+            <LanguageSwitcher />
+          </div>
         )}
       </div>
 
@@ -433,7 +533,7 @@ export default function Sidebar() {
             ) : (
               <>
                 <ChevronLeft className="w-4 h-4" />
-                <span>Réduire</span>
+                <span>{t("nav.collapse")}</span>
               </>
             )}
           </button>

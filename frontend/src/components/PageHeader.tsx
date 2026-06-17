@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Step {
   n: string;
@@ -40,14 +41,16 @@ const ACCENTS: Record<
 
 export default function PageHeader({ icon, title, subtitle, steps = [], accentColor = "blue" }: PageHeaderProps) {
   const a = ACCENTS[accentColor] ?? ACCENTS.blue;
+  const { i18n } = useTranslation();
   const [now, setNow] = useState("");
 
   useEffect(() => {
-    const update = () => setNow(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+    const locale = i18n.resolvedLanguage?.startsWith("en") ? "en-US" : "fr-FR";
+    const update = () => setNow(new Date().toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [i18n.resolvedLanguage]);
 
   return (
     <div className="relative mb-6 rounded-3xl overflow-hidden border border-white/[0.08] bg-[#0A0E1A]/80 backdrop-blur-xl">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { X, ArrowRight, Sparkles, Brain, Target, Gift, CheckCircle } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 
@@ -13,47 +14,48 @@ const STORAGE_KEY = "cryptoia_onboarding_v1";
  */
 interface Step {
   icon: React.ReactNode;
-  title: string;
-  desc: string;
+  titleKey: string;
+  descKey: string;
   accent: string;
-  cta?: string;
+  ctaKey?: string;
 }
 
 const STEPS: Step[] = [
   {
     icon: <Sparkles className="w-8 h-8" />,
-    title: "Bienvenue dans CryptoIA 👋",
-    desc: "Vous avez maintenant accès à la plateforme de trading crypto IA la plus complète du marché. Laissez-nous vous guider en 30 secondes.",
+    titleKey: "onboarding.step1Title",
+    descKey: "onboarding.step1Desc",
     accent: "from-violet-400 via-fuchsia-400 to-indigo-400",
   },
   {
     icon: <Brain className="w-8 h-8" />,
-    title: "Score IA temps réel",
-    desc: "Votre Dashboard affiche en haut un Score IA qui analyse le marché en continu : peur/avidité, dominance BTC, momentum global. Une vue d'ensemble en 3 secondes.",
+    titleKey: "onboarding.step2Title",
+    descKey: "onboarding.step2Desc",
     accent: "from-cyan-400 via-blue-400 to-indigo-400",
   },
   {
     icon: <Target className="w-8 h-8" />,
-    title: "Signaux & Backtesting",
-    desc: "Dans la barre latérale, vous trouverez : AI Signals (alertes auto), Backtesting (test de stratégies), Patterns IA (détection auto), Score Confiance, et plus encore.",
+    titleKey: "onboarding.step3Title",
+    descKey: "onboarding.step3Desc",
     accent: "from-emerald-400 via-teal-400 to-cyan-400",
   },
   {
     icon: <Gift className="w-8 h-8" />,
-    title: "🎁 Code BIENVENUE20",
-    desc: "Profitez de -20% sur votre 1er abonnement annuel avec le code BIENVENUE20. Cliquez sur Abonnements depuis la sidebar pour débloquer toutes les features.",
+    titleKey: "onboarding.step4Title",
+    descKey: "onboarding.step4Desc",
     accent: "from-amber-300 via-orange-400 to-rose-400",
-    cta: "Voir les plans",
+    ctaKey: "onboarding.seePlans",
   },
   {
     icon: <CheckCircle className="w-8 h-8" />,
-    title: "Vous êtes prêt !",
-    desc: "Explorez librement la plateforme. Si besoin, le chat support est disponible en bas à droite. Bon trading ! 🚀",
+    titleKey: "onboarding.step5Title",
+    descKey: "onboarding.step5Desc",
     accent: "from-emerald-300 via-green-400 to-teal-400",
   },
 ];
 
 export default function OnboardingTour() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
 
@@ -138,9 +140,9 @@ export default function OnboardingTour() {
           data-testid="onboarding-skip-btn"
           onClick={skip}
           className="absolute top-4 right-4 z-20 px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.14] border border-white/[0.1] text-xs text-gray-300 transition-all"
-          aria-label="Passer le tour"
+          aria-label={t("onboarding.skip")}
         >
-          Passer
+          {t("onboarding.skip")}
         </button>
 
         <div className="relative z-10 p-7 md:p-9">
@@ -176,10 +178,10 @@ export default function OnboardingTour() {
             <h2
               className={`text-2xl md:text-3xl font-black bg-gradient-to-r ${current.accent} bg-clip-text text-transparent mb-3 leading-tight`}
             >
-              {current.title}
+              {t(current.titleKey)}
             </h2>
             <p className="text-sm md:text-[15px] text-gray-300 leading-relaxed max-w-md mx-auto">
-              {current.desc}
+              {t(current.descKey)}
             </p>
           </div>
 
@@ -202,10 +204,10 @@ export default function OnboardingTour() {
                 onClick={() => setStep(step - 1)}
                 className="px-5 py-3 rounded-2xl border border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.08] text-sm font-bold text-gray-300 transition-all"
               >
-                Précédent
+                {t("onboarding.prev")}
               </button>
             )}
-            {current.cta ? (
+            {current.ctaKey ? (
               <button
                 data-testid="onboarding-cta-btn"
                 onClick={goToPricing}
@@ -215,7 +217,7 @@ export default function OnboardingTour() {
                   boxShadow: "0 12px 30px -8px rgba(245,158,11,0.55), inset 0 1px 0 rgba(255,255,255,0.2)",
                 }}
               >
-                {current.cta} <ArrowRight className="w-4 h-4" />
+                {t(current.ctaKey)} <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
               <button
@@ -231,14 +233,14 @@ export default function OnboardingTour() {
                     : "0 12px 30px -8px rgba(99,102,241,0.55), inset 0 1px 0 rgba(255,255,255,0.2)",
                 }}
               >
-                {isLast ? "Commencer 🚀" : "Suivant"} {!isLast && <ArrowRight className="w-4 h-4" />}
+                {isLast ? t("onboarding.finish") : t("onboarding.next")} {!isLast && <ArrowRight className="w-4 h-4" />}
               </button>
             )}
           </div>
 
           {/* Bottom hint */}
           <p className="mt-5 text-[10px] text-center text-gray-500">
-            Étape {step + 1} sur {STEPS.length} · Vous pouvez relancer ce tour depuis vos paramètres
+            {t("onboarding.stepOf", { current: step + 1, total: STEPS.length })}
           </p>
         </div>
 

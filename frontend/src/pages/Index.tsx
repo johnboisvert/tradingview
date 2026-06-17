@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import {
   TrendingUp,
@@ -18,6 +19,7 @@ import MarketHours from "@/components/MarketHours";
 import ExitIntentPopup from "@/components/ExitIntentPopup";
 import OnboardingTour from "@/components/OnboardingTour";
 import Testimonials from "@/components/Testimonials";
+import MiniSparkline from "@/components/MiniSparkline";
 
 interface CoinData {
   id: string;
@@ -70,29 +72,6 @@ function formatPrice(p: number): string {
   return `$${p.toFixed(4)}`;
 }
 
-function MiniSparkline({ data, positive }: { data: number[]; positive: boolean }) {
-  if (!data || data.length < 2) return null;
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1;
-  const w = 80;
-  const h = 32;
-  const points = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * h}`).join(" ");
-
-  return (
-    <svg width={w} height={h} className="flex-shrink-0">
-      <polyline
-        points={points}
-        fill="none"
-        stroke={positive ? "#10B981" : "#EF4444"}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function FearGreedGauge({ value }: { value: number }) {
   const angleDeg = (value / 100) * 180 - 180;
   const angleRad = (angleDeg * Math.PI) / 180;
@@ -140,6 +119,7 @@ function FearGreedGauge({ value }: { value: number }) {
 }
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const [coins, setCoins] = useState<CoinData[]>(FALLBACK_COINS);
   const [global, setGlobal] = useState<GlobalData>(FALLBACK_GLOBAL);
   const [fearGreed, setFearGreed] = useState(65);
@@ -224,7 +204,7 @@ export default function DashboardPage() {
                   <div className="flex-shrink-0 text-center">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.08] border border-white/[0.15] mb-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-white">Score IA temps réel</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white">{t("index.aiScoreLive")}</span>
                     </div>
                     <div className="relative">
                       <div className="text-[110px] md:text-[140px] font-black leading-none tracking-tight font-mono" style={{ color: aiColor, textShadow: `0 0 60px ${aiColor}, 0 0 100px ${aiColor}66` }}>
@@ -240,7 +220,7 @@ export default function DashboardPage() {
                   {/* Bar + action */}
                   <div className="flex-1 w-full">
                     <div className="text-xs md:text-sm text-gray-300 mb-3 font-semibold flex items-center gap-2 flex-wrap">
-                      <span>💡 <strong className="text-white">Analyse IA combinée :</strong></span>
+                      <span>💡 <strong className="text-white">{t("index.aiAnalysisCombined").replace("💡 ", "")}</strong></span>
                       <span className="px-2 py-0.5 rounded-md bg-white/[0.06] text-gray-300">Fear&amp;Greed {fearGreed}</span>
                       <span className="px-2 py-0.5 rounded-md bg-white/[0.06] text-gray-300">MCap {global.market_cap_change_24h >= 0 ? "+" : ""}{global.market_cap_change_24h.toFixed(1)}%</span>
                       <span className="px-2 py-0.5 rounded-md bg-white/[0.06] text-gray-300">BTC Dom {global.btc_dominance.toFixed(1)}%</span>
@@ -258,7 +238,7 @@ export default function DashboardPage() {
                     <div className="flex items-start gap-2 p-3 rounded-xl border" style={{ background: `${aiColor}10`, borderColor: `${aiColor}33` }}>
                       <span className="text-xl">🎯</span>
                       <div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: aiColor }}>Recommandation IA</div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: aiColor }}>{t("index.aiRecommendation")}</div>
                         <div className="text-sm font-bold text-white mt-0.5">{aiAction}</div>
                       </div>
                     </div>
@@ -297,13 +277,13 @@ export default function DashboardPage() {
                 </span>
               </div>
               <p className="text-xs md:text-sm text-gray-400 hidden sm:block">
-                📡 Données temps réel • 🤖 Analyse IA • 🛠️ Outils professionnels
+                {t("index.heroSubline")}
               </p>
             </div>
             <button onClick={fetchData} disabled={loading}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-xs md:text-sm font-semibold transition-all disabled:opacity-50">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">{lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}</span>
+              <span className="hidden sm:inline">{lastUpdate ? t("index.lastUpdate", { time: lastUpdate }) : t("index.refresh")}</span>
             </button>
           </div>
         </div>
@@ -327,7 +307,7 @@ export default function DashboardPage() {
             <div className="relative">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Market Cap</p>
+                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{t("index.marketCapShort")}</p>
                   <p className="text-base md:text-xl font-black" style={{ color: "#a78bfa", textShadow: "0 0 12px rgba(167,139,250,0.3)" }}>{formatNumber(global.total_market_cap)}</p>
                 </div>
                 <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center flex-shrink-0" style={{ boxShadow: "0 0 18px rgba(99,102,241,0.4)" }}>
@@ -346,7 +326,7 @@ export default function DashboardPage() {
             <div className="relative">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Volume 24h</p>
+                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{t("index.volume24h")}</p>
                   <p className="text-base md:text-xl font-black" style={{ color: "#22d3ee", textShadow: "0 0 12px rgba(34,211,238,0.3)" }}>{formatNumber(global.total_volume)}</p>
                 </div>
                 <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center flex-shrink-0" style={{ boxShadow: "0 0 18px rgba(6,182,212,0.4)" }}>
@@ -361,7 +341,7 @@ export default function DashboardPage() {
             <div className="relative">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">BTC Dom.</p>
+                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{t("index.btcDomShort")}</p>
                   <p className="text-base md:text-xl font-black" style={{ color: "#fbbf24", textShadow: "0 0 12px rgba(251,191,36,0.3)" }}>{global.btc_dominance.toFixed(1)}%</p>
                 </div>
                 <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0" style={{ boxShadow: "0 0 18px rgba(245,158,11,0.4)" }}>
@@ -384,12 +364,12 @@ export default function DashboardPage() {
           <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="w-5 h-5 text-emerald-400" />
-              <h2 className="text-sm md:text-base font-bold">Top Gainers (24h)</h2>
+              <h2 className="text-sm md:text-base font-bold">{t("index.topGainers")}</h2>
             </div>
             <div className="space-y-2 md:space-y-3">
               {topGainers.map((c) => (
                 <div key={c.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-white/[0.03] transition-colors">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     {c.image ? (
                       <img src={c.image} alt={c.symbol} className="w-7 h-7 md:w-8 md:h-8 rounded-full" />
                     ) : (
@@ -397,11 +377,18 @@ export default function DashboardPage() {
                         {c.symbol.slice(0, 2).toUpperCase()}
                       </div>
                     )}
-                    <div>
-                      <p className="text-xs md:text-sm font-bold">{c.name}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs md:text-sm font-bold truncate">{c.name}</p>
                       <p className="text-[10px] md:text-xs text-gray-500 uppercase">{c.symbol}</p>
                     </div>
                   </div>
+                  <MiniSparkline
+                    data={c.sparkline_in_7d?.price?.slice(-24)}
+                    positive={true}
+                    width={56}
+                    height={22}
+                    className="hidden sm:block opacity-80"
+                  />
                   <div className="text-right">
                     <p className="text-xs md:text-sm font-bold">{formatPrice(c.current_price)}</p>
                     <p className="text-[10px] md:text-xs font-bold text-emerald-400">+{c.price_change_percentage_24h.toFixed(1)}%</p>
@@ -414,12 +401,12 @@ export default function DashboardPage() {
           <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5">
             <div className="flex items-center gap-2 mb-4">
               <TrendingDown className="w-5 h-5 text-red-400" />
-              <h2 className="text-sm md:text-base font-bold">Top Losers (24h)</h2>
+              <h2 className="text-sm md:text-base font-bold">{t("index.topLosers")}</h2>
             </div>
             <div className="space-y-2 md:space-y-3">
               {topLosers.map((c) => (
                 <div key={c.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-white/[0.03] transition-colors">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     {c.image ? (
                       <img src={c.image} alt={c.symbol} className="w-7 h-7 md:w-8 md:h-8 rounded-full" />
                     ) : (
@@ -427,11 +414,18 @@ export default function DashboardPage() {
                         {c.symbol.slice(0, 2).toUpperCase()}
                       </div>
                     )}
-                    <div>
-                      <p className="text-xs md:text-sm font-bold">{c.name}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs md:text-sm font-bold truncate">{c.name}</p>
                       <p className="text-[10px] md:text-xs text-gray-500 uppercase">{c.symbol}</p>
                     </div>
                   </div>
+                  <MiniSparkline
+                    data={c.sparkline_in_7d?.price?.slice(-24)}
+                    positive={false}
+                    width={56}
+                    height={22}
+                    className="hidden sm:block opacity-80"
+                  />
                   <div className="text-right">
                     <p className="text-xs md:text-sm font-bold">{formatPrice(c.current_price)}</p>
                     <p className="text-[10px] md:text-xs font-bold text-red-400">{c.price_change_percentage_24h.toFixed(1)}%</p>
@@ -450,18 +444,19 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-indigo-400" />
-              <h2 className="text-sm md:text-base font-bold">Marché Crypto</h2>
+              <h2 className="text-sm md:text-base font-bold">{t("index.marketCrypto")}</h2>
             </div>
-            <span className="text-xs text-gray-500">{coins.length} actifs</span>
+            <span className="text-xs text-gray-500">{t("index.assets", { count: coins.length })}</span>
           </div>
 
           {/* Mobile card list */}
           <div className="md:hidden space-y-2">
             {coins.slice(0, 10).map((c, i) => {
               const positive = c.price_change_percentage_24h >= 0;
+              const sparkData = c.sparkline_in_7d?.price;
               return (
                 <div key={c.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <span className="text-xs text-gray-600 font-bold w-4">{i + 1}</span>
                     {c.image ? (
                       <img src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full" />
@@ -470,11 +465,18 @@ export default function DashboardPage() {
                         {c.symbol.slice(0, 2).toUpperCase()}
                       </div>
                     )}
-                    <div>
-                      <p className="text-xs font-bold">{c.name}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold truncate">{c.name}</p>
                       <p className="text-[10px] text-gray-500 uppercase">{c.symbol}</p>
                     </div>
                   </div>
+                  <MiniSparkline
+                    data={sparkData?.slice(-24)}
+                    positive={positive}
+                    width={48}
+                    height={20}
+                    className="opacity-80 mr-2"
+                  />
                   <div className="text-right">
                     <p className="text-xs font-bold">{formatPrice(c.current_price)}</p>
                     <p className={`text-[10px] font-bold ${positive ? "text-emerald-400" : "text-red-400"}`}>
@@ -492,12 +494,12 @@ export default function DashboardPage() {
               <thead>
                 <tr className="border-b border-white/[0.06]">
                   <th className="text-left py-3 px-3 text-xs font-bold text-gray-500 uppercase">#</th>
-                  <th className="text-left py-3 px-3 text-xs font-bold text-gray-500 uppercase">Actif</th>
-                  <th className="text-right py-3 px-3 text-xs font-bold text-gray-500 uppercase">Prix</th>
-                  <th className="text-right py-3 px-3 text-xs font-bold text-gray-500 uppercase">24h</th>
-                  <th className="text-right py-3 px-3 text-xs font-bold text-gray-500 uppercase">Market Cap</th>
-                  <th className="text-right py-3 px-3 text-xs font-bold text-gray-500 uppercase">Volume</th>
-                  <th className="text-right py-3 px-3 text-xs font-bold text-gray-500 uppercase">7j</th>
+                  <th className="text-left py-3 px-3 text-xs font-bold text-gray-500 uppercase">{t("index.asset")}</th>
+                  <th className="text-right py-3 px-3 text-xs font-bold text-gray-500 uppercase">{t("index.price")}</th>
+                  <th className="text-right py-3 px-3 text-xs font-bold text-gray-500 uppercase">{t("index.change24h")}</th>
+                  <th className="text-right py-3 px-3 text-xs font-bold text-gray-500 uppercase">{t("index.marketCol")}</th>
+                  <th className="text-right py-3 px-3 text-xs font-bold text-gray-500 uppercase">{t("index.volumeCol")}</th>
+                  <th className="text-right py-3 px-3 text-xs font-bold text-gray-500 uppercase">{t("index.sparkline")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -531,7 +533,7 @@ export default function DashboardPage() {
                       <td className="py-3 px-3 text-right text-sm text-gray-300">{formatNumber(c.total_volume, 1)}</td>
                       <td className="py-3 px-3 text-right">
                         {sparkData && sparkData.length > 10 ? (
-                          <MiniSparkline data={sparkData.slice(-24)} positive={positive} />
+                          <MiniSparkline data={sparkData.slice(-24)} positive={positive} width={80} height={32} fill />
                         ) : (
                           <span className="text-xs text-gray-600">—</span>
                         )}

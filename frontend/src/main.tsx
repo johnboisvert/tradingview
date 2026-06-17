@@ -3,6 +3,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 import './index.css';
+import './i18n'; // initialise react-i18next (FR/EN) avant le 1er render
 import { loadRuntimeConfig } from './lib/config.ts';
 import { registerServiceWorker } from './registerSW.ts';
 

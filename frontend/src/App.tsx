@@ -3,6 +3,7 @@ import React, { Suspense, useEffect } from "react";
 import LoadingSpinner from "./components/LoadingSpinner";
 import PageTracker from "./components/PageTracker";
 import ErrorBoundary from "./components/ErrorBoundary";
+import CommandPalette from "./components/CommandPalette";
 import { captureRefFromUrl } from "./lib/affiliation";
 
 // ── Lazy-loaded pages ────────────────────────────────────────────────────────
@@ -109,6 +110,7 @@ function App() {
     <Router>
       <PageTracker />
       <ProtectionLayer />
+      <CommandPalette />
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           {/* Main Pages - Marché */}

@@ -119,7 +119,7 @@ app.post('/api/users/login', (req, res) => {
 
 // ─── POST /api/users/create ───
 app.post('/api/users/create', async (req, res) => {
-  const { username, password, role, plan, email } = req.body;
+  const { username, password, role, plan, email, ref_code } = req.body;
   if (!username) {
     return res.status(400).json({ success: false, message: 'Nom d\'utilisateur requis.' });
   }
@@ -180,6 +180,20 @@ app.post('/api/users/create', async (req, res) => {
 
   // Also track signup completion regardless of email
   trackServerEvent('signup_completed', { plan: newUser.plan, role: newUser.role });
+
+  // ─── 🤝 Affiliation conversion tracking ───
+  if (ref_code && typeof ref_code === 'string' && ref_code.trim().length >= 4) {
+    try {
+      recordAffiliationConversion({
+        code: ref_code,
+        type: 'signup',
+        email: recipientEmail || newUser.username,
+      });
+      console.log(`[Affiliation] Signup conversion tracked: ref=${ref_code} user=${newUser.username}`);
+    } catch (e) {
+      console.error('[Affiliation] tracking error:', e?.message);
+    }
+  }
 
   res.json({ success: true, temp_password: tempPwd, email_sent: !!recipientEmail });
 });
@@ -1077,10 +1091,10 @@ function alignTPWithSR(side, entry, slPercent, supports, resistances) {
   let tp1, tp2, tp3, sl;
 
   if (side === 'LONG') {
-    sl = entry - slDistance;
+      sl = entry - slDistance;
     // Enforce minimum 6% SL distance
     if (Math.abs(entry - sl) / entry < 0.06) sl = entry * 0.94;
-      // v6: Adjusted TP ratios for wider SL
+    // v6: Adjusted TP ratios for wider SL
     tp1 = entry + slDistance * 1.2;   // 1.2:1 — slightly above 1:1 to account for fees
     tp2 = entry + slDistance * 2.5;   // 2.5:1 — moderate target
     tp3 = entry + slDistance * 4.0;   // 4:1 — extended target
@@ -2161,7 +2175,8 @@ async function generateScalpSetup(symbol) {
   const distToEma20 = Math.abs(currentPrice - m5Ema20Val) / currentPrice;
   const priceNearEma = distToEma8 < 0.003 || distToEma20 < 0.003;
   const priceBetweenEmas = (currentPrice >= Math.min(m5Ema8Val, m5Ema20Val) && currentPrice <= Math.max(m5Ema8Val, m5Ema20Val));
- // Stochastic conditions — v3: ultra-tight thresholds for precision
+
+  // Stochastic conditions — v3: ultra-tight thresholds for precision
   const stochOversold = kVal < 20;        // v3: Tightened from 25 to 20
   const stochDeepOversold = kVal < 10;    // v3: Tightened from 15 to 10
   const stochOverbought = kVal > 80;      // v3: Tightened from 75 to 80
@@ -2169,7 +2184,7 @@ async function generateScalpSetup(symbol) {
   const stochCrossUp = kPrev <= dPrev && kVal > dVal;
   const stochCrossDown = kPrev >= dPrev && kVal < dVal;
   const stochRising = kVal > kPrev;
-  const stochFalling = kVal < kPrev;
+    const stochFalling = kVal < kPrev;
 
   // Extended price proximity — relaxed from 0.003 to 0.006
   const priceNearEmaWide = distToEma8 < 0.006 || distToEma20 < 0.006;
@@ -3020,15 +3035,45 @@ app.post('/api/v1/payment/create_payment_session', async (req, res) => {
 
   try {
     const stripe = await getStripeInstance();
-    const { plan, amount_cad, billing_period = 'monthly', promo_code } = req.body;
+    const { plan, billing_period = 'monthly', promo_code, ref_code } = req.body;
 
-    if (!plan || !amount_cad) {
-      return res.status(400).json({ error: 'plan et amount_cad requis' });
+    if (!plan) {
+      return res.status(400).json({ error: 'plan requis' });
+    }
+
+    // ─── 🛡️ SÉCURITÉ : Recalcul du prix CÔTÉ SERVEUR (jamais faire confiance au client) ───
+    const SERVER_PLAN_PRICES = {
+      premium:  { monthly: 49.99, annual: 34.99 },
+      vip:      { monthly: 79.99, annual: 56.99 },
+      ai:       { monthly: 99.99, annual: 69.99 },
+      // Add other plans here if needed
+    };
+    const PROMO_CODES_BACKEND = {
+      BIENVENUE20: 20,
+      LAUNCH30: 30,
+      BFRIDAY40: 40,
+    };
+
+    const planPrices = SERVER_PLAN_PRICES[plan] || SERVER_PLAN_PRICES.premium;
+    const isAnnual = billing_period === 'annual';
+    let basePrice = isAnnual ? planPrices.annual : planPrices.monthly;
+    if (isAnnual) basePrice = basePrice * 12;
+
+    let finalAmount = basePrice;
+    let appliedDiscount = 0;
+    if (promo_code && typeof promo_code === 'string') {
+      const code = promo_code.trim().toUpperCase();
+      if (PROMO_CODES_BACKEND[code]) {
+        appliedDiscount = PROMO_CODES_BACKEND[code];
+        finalAmount = basePrice * (1 - appliedDiscount / 100);
+        console.log(`[Payment] Promo ${code} validated: -${appliedDiscount}% (${basePrice} → ${finalAmount.toFixed(2)})`);
+      } else {
+        console.warn(`[Payment] Invalid promo code attempted: ${code}`);
+      }
     }
 
     const host = getFrontendHost(req);
-    const isAnnual = billing_period === 'annual';
-    const amountCents = Math.round(amount_cad * 100);
+    const amountCents = Math.round(finalAmount * 100);
     const interval = isAnnual ? 'year' : 'month';
 
     let label = PLAN_LABELS[plan] || `Abonnement ${plan.charAt(0).toUpperCase() + plan.slice(1)} — CryptoIA`;
@@ -3050,12 +3095,24 @@ app.post('/api/v1/payment/create_payment_session', async (req, res) => {
       mode: 'subscription',
       success_url: `${host}/payment-success?session_id={CHECKOUT_SESSION_ID}&plan=${plan}&billing=${billing_period}`,
       cancel_url: `${host}/abonnements`,
-      metadata: { plan, billing_period },
+      metadata: {
+        plan,
+        billing_period,
+        promo_code: promo_code || '',
+        discount_pct: String(appliedDiscount),
+        ref_code: ref_code || '',
+      },
       allow_promotion_codes: true,
     });
 
-    console.log(`[Payment] Stripe session created: ${session.id} for plan=${plan}, billing=${billing_period}`);
-    res.json({ session_id: session.id, url: session.url });
+    console.log(`[Payment] Stripe session created: ${session.id} plan=${plan} billing=${billing_period} amount=${finalAmount.toFixed(2)} promo=${promo_code || 'none'} ref=${ref_code || 'none'}`);
+
+    // Track conversion intent (will be confirmed by webhook on payment completion)
+    if (ref_code) {
+      recordAffiliationConversion({ code: ref_code, type: 'payment_intent', amount: finalAmount });
+    }
+
+    res.json({ session_id: session.id, url: session.url, final_amount: finalAmount });
   } catch (err) {
     console.error('[Payment] Stripe create session error:', err);
     const message = err?.raw?.message || err?.message || 'Erreur Stripe';
@@ -3220,7 +3277,7 @@ app.post('/api/v1/nowpayments/webhook', async (req, res) => {
   const paymentStatus = payload?.payment_status || '';
   const orderId = payload?.order_id || '';
   const paymentId = String(payload?.payment_id || '');
-
+  
   console.log(`[NOWPayments] IPN: payment_id=${paymentId}, status=${paymentStatus}, order_id=${orderId}`);
 
   // Extract plan from order_id (format: cryptoia_{plan}_{timestamp})
@@ -3243,7 +3300,7 @@ app.post('/api/v1/nowpayments/webhook', async (req, res) => {
 
 // ─── GET /api/v1/nowpayments/status ───
 app.get('/api/v1/nowpayments/status', async (req, res) => {
-    const apiKey = NOWPAYMENTS_API_KEY;
+  const apiKey = NOWPAYMENTS_API_KEY;
   if (!apiKey) {
     return res.status(503).json({ error: 'NOWPayments non configuré' });
   }
@@ -4313,8 +4370,7 @@ async function generateRangeSetup(symbol) {
   const h1Ema8Val = h1Ema8[h1Ema8.length - 1];
   const h1Ema20Val = h1Ema20[h1Ema20.length - 1];
   const h1Price = h1Closes[h1Closes.length - 1];
-
-  let h1Trend = 'neutral';
+   let h1Trend = 'neutral';
   const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
   if (h1Spread < 0.002) h1Trend = 'neutral';
   else if (h1Ema8Val > h1Ema20Val) h1Trend = 'bullish';
@@ -4325,7 +4381,7 @@ async function generateRangeSetup(symbol) {
   const distToUpper = (bbUpper - currentPrice) / (bbUpper - bbLower);
 
   let side = null;
-    let confidence = 0;
+  let confidence = 0;
   const reasons = [];
 
   // ─── LONG: Price near lower BB + RSI < 35 ───

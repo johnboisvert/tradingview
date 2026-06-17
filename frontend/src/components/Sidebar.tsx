@@ -5,6 +5,7 @@ import { getUserPlan, isRouteAccessible, getMinimumPlanForRoute, getPlanDisplayI
 import { getUserSession, clearUserSession } from "@/lib/store";
 import AnimatedLogo from "@/components/AnimatedLogo";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import PushSubscribeButton from "@/components/PushSubscribeButton";
 import {
   LayoutDashboard,
   Frown,
@@ -153,6 +154,7 @@ const NAV_SECTIONS = [
       { path: "/convertisseur", label: "Convertisseur", icon: ArrowLeftRight },
       { path: "/calendrier", label: "Calendrier", icon: Calendar },
       { path: "/news", label: "Nouvelles", icon: Newspaper },
+      { path: "/blog", label: "Blog SEO", icon: BookOpen },
       { path: "/success-stories", label: "Success Stories", icon: Award },
       { path: "/onchain-metrics", label: "On-Chain", icon: LinkIcon },
       { path: "/defi-yield", label: "DeFi Yield", icon: Landmark },
@@ -235,6 +237,7 @@ const PATH_KEY: Record<string, string> = {
   "/convertisseur": "nav.items.convertisseur",
   "/calendrier": "nav.items.calendrier",
   "/news": "nav.items.news",
+  "/blog": "nav.items.blog",
   "/success-stories": "nav.items.successStories",
   "/onchain-metrics": "nav.items.onchain",
   "/defi-yield": "nav.items.defiYield",
@@ -519,6 +522,11 @@ export default function Sidebar() {
               <kbd className="ml-1 px-1 py-0.5 text-[9px] font-bold bg-white/[0.08] rounded border border-white/[0.06]">⌘K</kbd>
             </button>
             <LanguageSwitcher />
+          </div>
+        )}
+        {(!collapsed || isMobile) && (
+          <div className="flex justify-center pt-1">
+            <PushSubscribeButton />
           </div>
         )}
       </div>

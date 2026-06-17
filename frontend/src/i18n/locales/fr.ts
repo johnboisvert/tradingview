@@ -92,6 +92,7 @@ const fr = {
       convertisseur: "Convertisseur",
       calendrier: "Calendrier",
       news: "Nouvelles",
+      blog: "Blog 📝",
       successStories: "Success Stories",
       onchain: "On-Chain",
       defiYield: "DeFi Yield",

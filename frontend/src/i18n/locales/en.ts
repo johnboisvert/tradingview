@@ -94,6 +94,7 @@ const en: TranslationDict = {
       convertisseur: "Converter",
       calendrier: "Calendar",
       news: "News",
+      blog: "Blog 📝",
       successStories: "Success Stories",
       onchain: "On-Chain",
       defiYield: "DeFi Yield",

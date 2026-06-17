@@ -74,6 +74,7 @@ const SimulateurStrategieIA = React.lazy(() => import("./pages/SimulateurStrateg
 const RapportHebdomadaireIA = React.lazy(() => import("./pages/RapportHebdomadaireIA"));
 const Gamification = React.lazy(() => import("./pages/Gamification"));
 const Leaderboard = React.lazy(() => import("./pages/Leaderboard"));
+const Blog = React.lazy(() => import("./pages/Blog"));
 const BacktestingVisuel = React.lazy(() => import("./pages/BacktestingVisuel"));
 const DtradingIaPro = React.lazy(() => import("./pages/DtradingIaPro"));
 const AlertesTelegram = React.lazy(() => import("./pages/AlertesTelegram"));
@@ -146,6 +147,8 @@ function App() {
           <Route path="/assistant-ia" element={<PlanProtected path="/assistant-ia"><AIAssistant /></PlanProtected>} />
           <Route path="/gamification" element={<PlanProtected path="/gamification"><Gamification /></PlanProtected>} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<Blog />} />
           <Route path="/backtesting-visuel" element={<PlanProtected path="/backtesting-visuel"><BacktestingVisuel /></PlanProtected>} />
           <Route path="/prediction-ia" element={<PlanProtected path="/prediction-ia"><PredictionIA /></PlanProtected>} />
           <Route path="/crypto-ia" element={<PlanProtected path="/crypto-ia"><CryptoIA /></PlanProtected>} />

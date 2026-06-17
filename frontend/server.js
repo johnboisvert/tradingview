@@ -5541,6 +5541,177 @@ app.get('{*path}', (req, res) => {
 process.on('uncaughtException', (err) => {
   console.error('[FATAL] Uncaught exception (continuing):', err?.stack || err?.message || err);
 });
+// ═══════════════════════════════════════════════════════════════════════════════
+// PWA PUSH NOTIFICATIONS — Web Push API (VAPID)
+// ═══════════════════════════════════════════════════════════════════════════════
+const webpush = require('web-push');
+const PUSH_SUBS_FILE = path.join(__dirname, 'data', 'push_subscriptions.json');
+const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@cryptoia.ca';
+let pushEnabled = false;
+if (VAPID_PUBLIC && VAPID_PRIVATE) {
+  try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
+    pushEnabled = true;
+    console.log('[Push] VAPID configured ✅ — push notifications enabled');
+  } catch (e) {
+    console.error('[Push] VAPID config error:', e?.message);
+  }
+} else {
+  console.log('[Push] VAPID keys missing (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY) — push notifications disabled');
+}
+function loadSubs() {
+  try { if (fs.existsSync(PUSH_SUBS_FILE)) return JSON.parse(fs.readFileSync(PUSH_SUBS_FILE, 'utf8')); } catch {}
+  return { subscriptions: [] };
+}
+function saveSubs(data) {
+  try { fs.mkdirSync(path.dirname(PUSH_SUBS_FILE), { recursive: true }); fs.writeFileSync(PUSH_SUBS_FILE, JSON.stringify(data, null, 2)); } catch (e) { console.error('[Push] save error:', e?.message); }
+}
+
+// GET /api/v1/push/vapid-public — Returns public VAPID key (for frontend subscribe)
+app.get('/api/v1/push/vapid-public', (req, res) => {
+  res.json({ ok: true, publicKey: VAPID_PUBLIC, enabled: pushEnabled });
+});
+
+// POST /api/v1/push/subscribe — Save subscription
+app.post('/api/v1/push/subscribe', (req, res) => {
+  const { subscription, userKey, topics } = req.body || {};
+  if (!subscription?.endpoint) return res.status(400).json({ ok: false, error: 'invalid subscription' });
+  const db = loadSubs();
+  const existing = db.subscriptions.findIndex(s => s.subscription.endpoint === subscription.endpoint);
+  const entry = { subscription, userKey: userKey || null, topics: topics || ['alerts', 'signals'], createdAt: new Date().toISOString() };
+  if (existing >= 0) db.subscriptions[existing] = entry;
+  else db.subscriptions.push(entry);
+  saveSubs(db);
+  res.json({ ok: true, total: db.subscriptions.length });
+});
+
+// POST /api/v1/push/unsubscribe — Remove subscription
+app.post('/api/v1/push/unsubscribe', (req, res) => {
+  const { endpoint } = req.body || {};
+  if (!endpoint) return res.status(400).json({ ok: false, error: 'endpoint required' });
+  const db = loadSubs();
+  const before = db.subscriptions.length;
+  db.subscriptions = db.subscriptions.filter(s => s.subscription.endpoint !== endpoint);
+  saveSubs(db);
+  res.json({ ok: true, removed: before - db.subscriptions.length });
+});
+
+// POST /api/v1/push/send — Send to all (admin-only — protect with token in production)
+app.post('/api/v1/push/send', async (req, res) => {
+  if (!pushEnabled) return res.status(503).json({ ok: false, error: 'push not configured' });
+  const { title, body, url, topic, adminToken } = req.body || {};
+  if (process.env.PUSH_ADMIN_TOKEN && adminToken !== process.env.PUSH_ADMIN_TOKEN) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+  if (!title || !body) return res.status(400).json({ ok: false, error: 'title and body required' });
+  const db = loadSubs();
+  const payload = JSON.stringify({ title, body, url: url || '/', icon: '/assets/logo1.png', badge: '/assets/logo1.png' });
+  let sent = 0, failed = 0;
+  const expired = [];
+  for (const s of db.subscriptions) {
+    if (topic && !s.topics.includes(topic)) continue;
+    try { await webpush.sendNotification(s.subscription, payload); sent++; }
+    catch (e) {
+      failed++;
+      if (e.statusCode === 410 || e.statusCode === 404) expired.push(s.subscription.endpoint);
+    }
+  }
+  // Clean up expired subs
+  if (expired.length) {
+    db.subscriptions = db.subscriptions.filter(s => !expired.includes(s.subscription.endpoint));
+    saveSubs(db);
+  }
+  res.json({ ok: true, sent, failed, expired: expired.length, total: db.subscriptions.length });
+});
+
+// GET /api/v1/push/stats — Admin stats
+app.get('/api/v1/push/stats', (req, res) => {
+  const db = loadSubs();
+  res.json({ ok: true, total: db.subscriptions.length, enabled: pushEnabled, publicKey: VAPID_PUBLIC.slice(0, 12) + '...' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BLOG SEO — Auto-generated articles for organic traffic
+// ═══════════════════════════════════════════════════════════════════════════════
+const BLOG_FILE = path.join(__dirname, 'data', 'blog.json');
+function loadBlog() {
+  try { if (fs.existsSync(BLOG_FILE)) return JSON.parse(fs.readFileSync(BLOG_FILE, 'utf8')); } catch {}
+  return { articles: [] };
+}
+function saveBlog(data) {
+  try { fs.mkdirSync(path.dirname(BLOG_FILE), { recursive: true }); fs.writeFileSync(BLOG_FILE, JSON.stringify(data, null, 2)); } catch (e) { console.error('[Blog] save error:', e?.message); }
+}
+
+// Slugify helper
+function slugify(s) {
+  return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+}
+
+// GET /api/v1/blog/list — List articles (paginated)
+app.get('/api/v1/blog/list', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+  const offset = parseInt(req.query.offset, 10) || 0;
+  const db = loadBlog();
+  const sorted = [...db.articles].sort((a, b) => (b.publishedAt || '').localeCompare(a.publishedAt || ''));
+  res.json({ ok: true, total: sorted.length, articles: sorted.slice(offset, offset + limit) });
+});
+
+// GET /api/v1/blog/article/:slug — Single article
+app.get('/api/v1/blog/article/:slug', (req, res) => {
+  const db = loadBlog();
+  const article = db.articles.find(a => a.slug === req.params.slug);
+  if (!article) return res.status(404).json({ ok: false, error: 'not found' });
+  // Increment views
+  article.views = (article.views || 0) + 1;
+  saveBlog(db);
+  res.json({ ok: true, article });
+});
+
+// POST /api/v1/blog/publish — Manual publish (or called by cron with auth)
+app.post('/api/v1/blog/publish', (req, res) => {
+  const { adminToken, title, content, excerpt, tags, coverImage, language } = req.body || {};
+  if (process.env.BLOG_ADMIN_TOKEN && adminToken !== process.env.BLOG_ADMIN_TOKEN) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+  if (!title || !content) return res.status(400).json({ ok: false, error: 'title and content required' });
+  const slug = slugify(title) + '-' + Date.now().toString(36);
+  const db = loadBlog();
+  const article = {
+    slug,
+    title,
+    excerpt: excerpt || content.slice(0, 200) + '...',
+    content,
+    tags: tags || ['crypto'],
+    coverImage: coverImage || null,
+    language: language || 'fr',
+    publishedAt: new Date().toISOString(),
+    views: 0,
+  };
+  db.articles.push(article);
+  saveBlog(db);
+  res.json({ ok: true, article });
+});
+
+// GET /sitemap.xml — Auto-generated sitemap including blog articles (SEO boost)
+app.get('/sitemap.xml', (req, res) => {
+  const baseUrl = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
+  const db = loadBlog();
+  const articles = db.articles.map(a => `  <url><loc>${baseUrl}/blog/${a.slug}</loc><lastmod>${(a.publishedAt || new Date().toISOString()).slice(0, 10)}</lastmod><priority>0.7</priority></url>`).join('\n');
+  const staticPaths = [
+    '/', '/abonnements', '/affiliation', '/leaderboard', '/blog',
+    '/heatmap', '/dominance', '/fear-greed', '/altcoin-season',
+    '/ai-signals', '/whale-watcher', '/gem-hunter', '/contact',
+  ];
+  const staticUrls = staticPaths.map(p => `  <url><loc>${baseUrl}${p}</loc><priority>${p === '/' ? '1.0' : '0.8'}</priority></url>`).join('\n');
+  res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap-0.9">
+${staticUrls}
+${articles}
+</urlset>`);
+});
+
 process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] Unhandled rejection (continuing):', reason?.stack || reason?.message || reason);
 });

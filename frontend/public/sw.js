@@ -277,3 +277,33 @@ self.addEventListener('message', (event) => {
     });
   }
 });
+
+// ─── Web Push handlers (Session 13) ─────────────────────────────────────
+self.addEventListener('push', (event) => {
+  let data = { title: 'CryptoIA', body: 'New notification', url: '/' };
+  try { if (event.data) data = { ...data, ...event.data.json() }; }
+  catch { if (event.data) data.body = event.data.text(); }
+  const options = {
+    body: data.body,
+    icon: data.icon || '/assets/logo1.png',
+    badge: data.badge || '/assets/logo1.png',
+    vibrate: [80, 40, 80],
+    data: { url: data.url || '/' },
+    tag: data.tag || 'cryptoia-push',
+    renotify: true,
+  };
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+      for (const w of wins) {
+        if (w.url.includes(url) && 'focus' in w) return w.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(url);
+    })
+  );
+});

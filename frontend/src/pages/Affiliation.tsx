@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import PageHeader from "@/components/PageHeader";
@@ -29,6 +30,7 @@ function generateAffiliateCode(seed: string): string {
 }
 
 export default function Affiliation() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [affiliateCode, setAffiliateCode] = useState("");
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
@@ -75,16 +77,16 @@ export default function Affiliation() {
   };
 
   const stats = [
-    { icon: <DollarSign className="w-5 h-5" />, value: "30%", label: "Commission récurrente", color: "from-emerald-400 to-teal-500", glow: "rgba(16,185,129,0.4)" },
-    { icon: <TrendingUp className="w-5 h-5" />, value: "À vie", label: "Sur chaque abonnement", color: "from-cyan-400 to-blue-500", glow: "rgba(34,211,238,0.4)" },
-    { icon: <Users className="w-5 h-5" />, value: "Illimité", label: "Nombre de filleuls", color: "from-fuchsia-400 to-purple-500", glow: "rgba(217,70,239,0.4)" },
-    { icon: <Sparkles className="w-5 h-5" />, value: "Mensuel", label: "Paiement automatique", color: "from-amber-400 to-orange-500", glow: "rgba(245,158,11,0.4)" },
+    { icon: <DollarSign className="w-5 h-5" />, value: "30%", label: t("affiliation.statRecurringComm"), color: "from-emerald-400 to-teal-500", glow: "rgba(16,185,129,0.4)" },
+    { icon: <TrendingUp className="w-5 h-5" />, value: t("affiliation.statForLife"), label: t("affiliation.statOnEverySub"), color: "from-cyan-400 to-blue-500", glow: "rgba(34,211,238,0.4)" },
+    { icon: <Users className="w-5 h-5" />, value: t("affiliation.statUnlimited"), label: t("affiliation.statRefsCount"), color: "from-fuchsia-400 to-purple-500", glow: "rgba(217,70,239,0.4)" },
+    { icon: <Sparkles className="w-5 h-5" />, value: t("affiliation.statMonthly"), label: t("affiliation.statAutoPay"), color: "from-amber-400 to-orange-500", glow: "rgba(245,158,11,0.4)" },
   ];
 
   const steps = [
-    { n: "1", title: "Génère ton lien", desc: "Saisis ton email et reçois ton code unique en 1 clic." },
-    { n: "2", title: "Partage", desc: "Diffuse ton lien sur tes réseaux, blog, YouTube, Discord, etc." },
-    { n: "3", title: "Encaisse 30%", desc: "Reçois 30% de chaque abonnement de tes filleuls, à vie." },
+    { n: "1", title: t("affiliation.stepGenerateTitle"), desc: t("affiliation.stepGenerateDesc") },
+    { n: "2", title: t("affiliation.stepShareTitle"), desc: t("affiliation.stepShareDesc") },
+    { n: "3", title: t("affiliation.stepEarnTitle"), desc: t("affiliation.stepEarnDesc") },
   ];
 
   return (
@@ -94,8 +96,8 @@ export default function Affiliation() {
       <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
         <PageHeader
           icon={<Users className="w-6 h-6" />}
-          title="Programme d'Affiliation"
-          subtitle="Gagne 30% à vie sur chaque abonnement de tes filleuls. Aucun plafond. Paiement automatique."
+          title={t("affiliation.header")}
+          subtitle={t("affiliation.headerSub")}
           accentColor="emerald"
           steps={steps}
         />
@@ -134,20 +136,20 @@ export default function Affiliation() {
               <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
 
               <h3 className="relative text-lg font-black text-white mb-1 flex items-center gap-2">
-                <Link2 className="w-5 h-5 text-emerald-400" /> Ton lien d'affiliation
+                <Link2 className="w-5 h-5 text-emerald-400" /> {t("affiliation.yourLinkTitle")}
               </h3>
-              <p className="relative text-xs text-gray-400 mb-5">Génère ton lien unique en 5 secondes. Aucune création de compte nécessaire pour le générer.</p>
+              <p className="relative text-xs text-gray-400 mb-5">{t("affiliation.yourLinkSub")}</p>
 
               {!affiliateCode ? (
                 <div className="relative space-y-3">
-                  <label className="text-xs font-semibold text-gray-300">Ton email</label>
+                  <label className="text-xs font-semibold text-gray-300">{t("affiliation.yourEmail")}</label>
                   <input
                     data-testid="affiliate-email-input"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") handleGenerate(); }}
-                    placeholder="jean@exemple.com"
+                    placeholder={t("affiliation.emailPlaceholder")}
                     className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-emerald-400/60 focus:ring-1 focus:ring-emerald-400/40 text-sm text-white placeholder:text-gray-500 outline-none transition-all"
                   />
                   <button
@@ -160,14 +162,14 @@ export default function Affiliation() {
                       boxShadow: "0 8px 24px -6px rgba(16,185,129,0.5), inset 0 1px 0 rgba(255,255,255,0.2)",
                     }}
                   >
-                    Générer mon lien
+                    {t("affiliation.generateBtn")}
                   </button>
                 </div>
               ) : (
                 <div className="relative space-y-4">
                   {/* Code */}
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Ton code affilié</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t("affiliation.yourCodeLabel")}</label>
                     <button
                       data-testid="affiliate-copy-code"
                       onClick={() => handleCopy(affiliateCode, "code")}
@@ -177,14 +179,14 @@ export default function Affiliation() {
                         {affiliateCode}
                       </span>
                       <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[10px] font-bold text-white">
-                        {copied === "code" ? <><Check className="w-3 h-3 text-emerald-400" /> Copié</> : <><Copy className="w-3 h-3" /> Copier</>}
+                        {copied === "code" ? <><Check className="w-3 h-3 text-emerald-400" /> {t("affiliation.copied")}</> : <><Copy className="w-3 h-3" /> {t("affiliation.copyLink")}</>}
                       </span>
                     </button>
                   </div>
 
                   {/* Link */}
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Ton lien complet</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t("affiliation.yourFullLink")}</label>
                     <div className="mt-1.5 flex items-center gap-2">
                       <div className="flex-1 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs text-gray-300 font-mono truncate" data-testid="affiliate-link-text">
                         {affiliateLink}
@@ -194,7 +196,7 @@ export default function Affiliation() {
                         onClick={() => handleCopy(affiliateLink, "link")}
                         className="px-3 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] hover:bg-white/[0.1] text-xs font-bold text-white transition-all flex items-center gap-1.5"
                       >
-                        {copied === "link" ? <><Check className="w-3 h-3 text-emerald-400" /> Copié</> : <><Copy className="w-3 h-3" /> Copier</>}
+                        {copied === "link" ? <><Check className="w-3 h-3 text-emerald-400" /> {t("affiliation.copied")}</> : <><Copy className="w-3 h-3" /> {t("affiliation.copyLink")}</>}
                       </button>
                     </div>
                   </div>
@@ -204,7 +206,7 @@ export default function Affiliation() {
                     className="text-[11px] text-gray-500 hover:text-white transition-colors"
                     data-testid="affiliate-reset-btn"
                   >
-                    ← Générer un nouveau lien
+                    {t("affiliation.generateNew")}
                   </button>
                 </div>
               )}
@@ -215,14 +217,14 @@ export default function Affiliation() {
               <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
 
               <h3 className="relative text-lg font-black text-white mb-1 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-amber-300" /> Combien tu peux gagner ?
+                <DollarSign className="w-5 h-5 text-amber-300" /> {t("affiliation.calculatorTitle")}
               </h3>
-              <p className="relative text-xs text-gray-400 mb-5">Estimation basée sur 30% du panier moyen mensuel (39 CAD).</p>
+              <p className="relative text-xs text-gray-400 mb-5">{t("affiliation.calculatorSub")}</p>
 
               <div className="relative space-y-5">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-semibold text-gray-300">Nombre de filleuls actifs</label>
+                    <label className="text-xs font-semibold text-gray-300">{t("affiliation.activeRefs")}</label>
                     <span data-testid="affiliate-refs-value" className="text-base font-black font-mono text-amber-300">{refsCount}</span>
                   </div>
                   <input
@@ -241,14 +243,14 @@ export default function Affiliation() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] p-4 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300/80 mb-1">Par mois</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300/80 mb-1">{t("affiliation.perMonthBox")}</p>
                     <p data-testid="affiliate-monthly" className="text-2xl md:text-3xl font-black text-emerald-300 font-mono">${monthlyEarnings.toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-400 mt-1">CAD récurrent</p>
+                    <p className="text-[10px] text-gray-400 mt-1">{t("affiliation.cadRecurring")}</p>
                   </div>
                   <div className="rounded-2xl border border-amber-400/30 bg-amber-400/[0.06] p-4 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-300/80 mb-1">Par an</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-300/80 mb-1">{t("affiliation.perYearBox")}</p>
                     <p data-testid="affiliate-yearly" className="text-2xl md:text-3xl font-black text-amber-300 font-mono">${yearlyEarnings.toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-400 mt-1">CAD récurrent</p>
+                    <p className="text-[10px] text-gray-400 mt-1">{t("affiliation.cadRecurring")}</p>
                   </div>
                 </div>
               </div>
@@ -258,14 +260,14 @@ export default function Affiliation() {
           {/* FAQ */}
           <div className="relative rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-6 md:p-8 overflow-hidden">
             <h3 className="text-xl font-black text-white mb-5 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-violet-400" /> Questions fréquentes
+              <Sparkles className="w-5 h-5 text-violet-400" /> {t("affiliation.faqTitle")}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {[
-                { q: "Quand suis-je payé(e) ?", a: "Chaque mois, le 15, par virement bancaire ou crypto (BTC, USDC) à partir de 50$ CAD accumulés." },
-                { q: "Combien de temps dure la commission ?", a: "À vie ! Tant que ton filleul reste abonné, tu touches 30% chaque mois — même 5 ans plus tard." },
-                { q: "Y a-t-il une limite ?", a: "Aucune. Tu peux parrainer 10 ou 10 000 personnes, la commission de 30% s'applique sur tous." },
-                { q: "Comment suivre mes filleuls ?", a: "Connecte-toi pour accéder à ton dashboard d'affiliation : clics, conversions, revenus en temps réel." },
+                { q: t("affiliation.faqWhenPaidQ"), a: t("affiliation.faqWhenPaidA") },
+                { q: t("affiliation.faqDurationQ"), a: t("affiliation.faqDurationA") },
+                { q: t("affiliation.faqLimitQ"), a: t("affiliation.faqLimitA") },
+                { q: t("affiliation.faqTrackingQ"), a: t("affiliation.faqTrackingA") },
               ].map((f, i) => (
                 <div key={i} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 hover:border-white/[0.12] transition-all">
                   <p className="text-sm font-bold text-white mb-1.5">{f.q}</p>
@@ -279,7 +281,7 @@ export default function Affiliation() {
                 data-testid="affiliate-contact-link"
                 className="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-white transition-colors"
               >
-                Une question spécifique ? Contacte-nous <ExternalLink className="w-3 h-3" />
+                {t("affiliation.contactCta")} <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           </div>

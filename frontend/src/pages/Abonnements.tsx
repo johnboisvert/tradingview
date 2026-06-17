@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { getPlanPrices, getAnnualPlanPrices, getAnnualDiscount, type PlanPrices } from "@/lib/api";
 import { getPlanAccess } from "@/lib/store";
@@ -595,6 +596,7 @@ function PaymentModal({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Abonnements() {
+  const { t } = useTranslation();
   const [prices, setPrices] = useState<PlanPrices | null>(null);
   const [annualPrices, setAnnualPrices] = useState<PlanPrices | null>(null);
   const [annualDiscount, setAnnualDiscount] = useState(20);
@@ -757,30 +759,30 @@ export default function Abonnements() {
               <CreditCard className="w-7 h-7 text-indigo-300" />
             </div>
             <h1 className="text-3xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Choisissez votre plan
+              {t("abonnements.heroTitle")}
             </h1>
             <p className="text-sm md:text-base text-gray-400 max-w-xl mx-auto mt-3">
-              Trading data temps réel · IA prédictive · Outils pros. Tout pour passer au niveau supérieur.
+              {t("abonnements.heroSubtitle")}
             </p>
 
             {/* Marketing value proposition */}
             <div className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-500/15 via-purple-500/15 to-pink-500/15 border border-indigo-500/30" style={{ boxShadow: "0 0 24px rgba(99,102,241,0.15)" }}>
               <span className="text-lg">💡</span>
               <span className="text-sm font-bold bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
-                Un seul abonnement remplace 5 outils · Économisez jusqu&apos;à 250$/mois
+                {t("abonnements.valueProp")}
               </span>
             </div>
 
             {/* Payment badges */}
             <div className="flex items-center justify-center gap-2 md:gap-3 mt-5 flex-wrap">
               <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-300 font-semibold">
-                <CreditCard className="w-3.5 h-3.5" /> Carte bancaire (Stripe)
+                <CreditCard className="w-3.5 h-3.5" /> {t("abonnements.paymentCard")}
               </span>
               <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 font-semibold">
-                <Banknote className="w-3.5 h-3.5" /> Interac e-Transfer
+                <Banknote className="w-3.5 h-3.5" /> {t("abonnements.paymentInterac")}
               </span>
               <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 font-semibold">
-                <Bitcoin className="w-3.5 h-3.5" /> Crypto via NOWPayments (300+)
+                <Bitcoin className="w-3.5 h-3.5" /> {t("abonnements.paymentCrypto")}
               </span>
             </div>
           </div>
@@ -856,14 +858,14 @@ export default function Abonnements() {
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-xs font-bold whitespace-nowrap">
-                    ⭐ Plus Populaire
+                    {t("abonnements.mostPopular")}
                   </div>
                 )}
 
                 {/* Annual savings badge */}
                 {isAnnual && plan.key !== "free" && plan.annualSavings > 0 && (
                   <div className="absolute -top-2.5 right-3 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-bold text-emerald-400 whitespace-nowrap">
-                    💰 -{plan.annualSavings.toFixed(2)}$/an
+                    💰 -{plan.annualSavings.toFixed(2)}${t("abonnements.annualSavingsSuffix")}
                   </div>
                 )}
 

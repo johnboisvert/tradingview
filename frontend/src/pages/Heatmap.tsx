@@ -157,14 +157,14 @@ export default function Heatmap() {
               <div>
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">
-                    Heatmap Crypto
+                    {t("pages.heatmap.hero")}
                   </h1>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-orange-500/40 bg-orange-500/10 text-orange-300">
-                    <Sparkles className="w-2.5 h-2.5" /> Top 200 Live
+                    <Sparkles className="w-2.5 h-2.5" /> {t("pages.heatmap.topLive")}
                   </span>
                 </div>
                 <p className="text-xs md:text-sm text-gray-400">
-                  Carte thermique du marché · Vert = Hausse · Rouge = Baisse · MAJ auto 60s
+                  {t("pages.heatmap.caption")}
                 </p>
               </div>
             </div>
@@ -175,14 +175,14 @@ export default function Heatmap() {
                   className={`px-3 md:px-4 py-2 text-xs font-bold transition-all ${view === "heatmap" ? "bg-orange-500/25 text-orange-300" : "bg-white/[0.04] text-gray-500 hover:text-white"}`}
                   style={view === "heatmap" ? { boxShadow: "inset 0 0 0 1px rgba(249,115,22,0.3)" } : {}}
                 >
-                  🔥 Heatmap
+                  🔥 {t("pages.heatmap.viewHeatmap").replace("🔥 ", "")}
                 </button>
                 <button
                   onClick={() => setView("table")}
                   className={`px-3 md:px-4 py-2 text-xs font-bold transition-all ${view === "table" ? "bg-orange-500/25 text-orange-300" : "bg-white/[0.04] text-gray-500 hover:text-white"}`}
                   style={view === "table" ? { boxShadow: "inset 0 0 0 1px rgba(249,115,22,0.3)" } : {}}
                 >
-                  📊 Tableau
+                  📊 {t("pages.heatmap.viewTable").replace("📊 ", "")}
                 </button>
               </div>
               <button
@@ -193,7 +193,7 @@ export default function Heatmap() {
                 <RefreshCw
                   className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
                 />
-                <span className="hidden sm:inline">{lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}</span>
+                <span className="hidden sm:inline">{lastUpdate ? t("pages.heatmap.lastUpdate", { time: lastUpdate }) : t("pages.heatmap.refresh")}</span>
               </button>
             </div>
           </div>
@@ -214,12 +214,12 @@ export default function Heatmap() {
         {/* KPIs */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 mb-6">
           {[
-            { label: "Cryptos", value: coins.length, color: "#cbd5e1", glow: "rgba(255,255,255,0.1)" },
-            { label: "Market Cap", value: formatNum(totalMC), color: "#a78bfa", glow: "rgba(167,139,250,0.3)" },
-            { label: "Variation Moy.", value: `${avgChange >= 0 ? "+" : ""}${avgChange.toFixed(2)}%`, color: avgChange >= 0 ? "#22c55e" : "#ef4444", glow: avgChange >= 0 ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)" },
-            { label: "Hausses", value: gainers, color: "#22c55e", glow: "rgba(34,197,94,0.3)" },
-            { label: "Baisses", value: losers, color: "#ef4444", glow: "rgba(239,68,68,0.3)" },
-            { label: "Ratio H/B", value: losers > 0 ? (gainers / losers).toFixed(2) : "—", color: "#22d3ee", glow: "rgba(34,211,238,0.3)" },
+            { label: t("pages.heatmap.kpiCryptos"), value: coins.length, color: "#cbd5e1", glow: "rgba(255,255,255,0.1)" },
+            { label: t("pages.heatmap.kpiMarketCap"), value: formatNum(totalMC), color: "#a78bfa", glow: "rgba(167,139,250,0.3)" },
+            { label: t("pages.heatmap.kpiAvgChange"), value: `${avgChange >= 0 ? "+" : ""}${avgChange.toFixed(2)}%`, color: avgChange >= 0 ? "#22c55e" : "#ef4444", glow: avgChange >= 0 ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)" },
+            { label: t("pages.heatmap.kpiGainers"), value: gainers, color: "#22c55e", glow: "rgba(34,197,94,0.3)" },
+            { label: t("pages.heatmap.kpiLosers"), value: losers, color: "#ef4444", glow: "rgba(239,68,68,0.3)" },
+            { label: t("pages.heatmap.kpiRatio"), value: losers > 0 ? (gainers / losers).toFixed(2) : "—", color: "#22d3ee", glow: "rgba(34,211,238,0.3)" },
           ].map((k, i) => (
             <div key={i}
               className="hm-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl p-4 transition-all overflow-hidden"
@@ -239,7 +239,7 @@ export default function Heatmap() {
           <div className="hm-anim relative bg-gradient-to-br from-emerald-500/[0.06] to-transparent border border-emerald-500/20 rounded-2xl p-4 overflow-hidden">
             <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-emerald-500/20 blur-3xl" />
             <p className="relative text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-2">
-              🥇 Top Gainer 24h
+              🥇 {t("pages.heatmap.topGainer24h")}
             </p>
             {topGainer && (
               <div className="relative flex items-center gap-3">
@@ -263,7 +263,7 @@ export default function Heatmap() {
           <div className="hm-anim relative bg-gradient-to-br from-red-500/[0.06] to-transparent border border-red-500/20 rounded-2xl p-4 overflow-hidden">
             <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-red-500/20 blur-3xl" />
             <p className="relative text-[10px] text-red-400 font-bold uppercase tracking-wider mb-2">
-              🔻 Top Loser 24h
+              🔻 {t("pages.heatmap.topLoser24h")}
             </p>
             {topLoser && (
               <div className="relative flex items-center gap-3">
@@ -307,7 +307,7 @@ export default function Heatmap() {
             ))}
           </div>
           <p className="text-center text-[10px] text-gray-600 mt-2">
-            Variation moyenne 24h:{" "}
+            {t("pages.heatmap.avgChange24h")}:{" "}
             <span
               className={
                 avgChange >= 0 ? "text-emerald-400" : "text-red-400"

@@ -45,6 +45,7 @@ const en: TranslationDict = {
       dashboard: "Dashboard",
       myCryptoia: "My CryptoIA",
       gamification: "Gamification & Badges",
+      leaderboard: "Public Leaderboard 🏆",
       fearGreed: "Fear & Greed",
       dominance: "Dominance",
       altcoinSeason: "Altcoin Season",

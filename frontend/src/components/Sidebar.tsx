@@ -79,6 +79,7 @@ const NAV_SECTIONS = [
     items: [
       { path: "/my-cryptoia", label: "My CryptoIA", icon: User },
       { path: "/gamification", label: "Gamification & Badges", icon: Trophy },
+      { path: "/leaderboard", label: "Classement Public", icon: Crown },
     ],
   },
   {
@@ -185,6 +186,7 @@ const PATH_KEY: Record<string, string> = {
   "/": "nav.items.dashboard",
   "/my-cryptoia": "nav.items.myCryptoia",
   "/gamification": "nav.items.gamification",
+  "/leaderboard": "nav.items.leaderboard",
   "/fear-greed": "nav.items.fearGreed",
   "/dominance": "nav.items.dominance",
   "/altcoin-season": "nav.items.altcoinSeason",

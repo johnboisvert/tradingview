@@ -43,6 +43,7 @@ const fr = {
       dashboard: "Dashboard",
       myCryptoia: "My CryptoIA",
       gamification: "Gamification & Badges",
+      leaderboard: "Classement Public 🏆",
       fearGreed: "Fear & Greed",
       dominance: "Dominance",
       altcoinSeason: "Altcoin Season",

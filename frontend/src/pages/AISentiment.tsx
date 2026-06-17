@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import { RefreshCw, Search } from "lucide-react";
 import { fetchTop200, fetchWithCorsProxy, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
@@ -75,6 +76,7 @@ const getSentimentColor = (val: number) => {
 };
 
 export default function AISentiment() {
+  const { t } = useTranslation();
   const [data, setData] = useState<SentimentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalSentiment, setGlobalSentiment] = useState(0);
@@ -120,8 +122,8 @@ export default function AISentiment() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">🌡️</span>}
-          title="AI Sentiment Analysis"
-          subtitle="Analyse du sentiment de marché par IA : agrégation des réseaux sociaux, news, données on-chain et comportement des traders pour mesurer l’humeur globale du marché."
+          title={t("pages.aISentiment.title")}
+          subtitle={t("pages.aISentiment.subtitle")}
           accentColor="orange"
           steps={[
             { n: "1", title: "Lisez le sentiment global", desc: "Le score global indique si le marché est dans une phase d’optimisme (bull) ou de pessimisme (bear). Utile pour le market timing." },

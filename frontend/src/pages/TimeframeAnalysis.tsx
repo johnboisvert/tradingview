@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import { RefreshCw, Search } from "lucide-react";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
@@ -63,6 +64,7 @@ function buildTFData(c: CoinMarketData): TFData {
 }
 
 export default function TimeframeAnalysis() {
+  const { t } = useTranslation();
   const [data, setData] = useState<TFData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTF, setSelectedTF] = useState("ALL");
@@ -98,8 +100,8 @@ export default function TimeframeAnalysis() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">⏱️</span>}
-          title="Timeframe Analysis"
-          subtitle="Analysez les cryptos sur plusieurs timeframes simultanément. La confluence de signaux sur plusieurs unités de temps renforce considérablement la fiabilité d’un setup."
+          title={t("pages.timeframeAnalysis.title")}
+          subtitle={t("pages.timeframeAnalysis.subtitle")}
           accentColor="cyan"
           steps={[
             { n: "1", title: "Sélectionnez un timeframe", desc: "Choisissez le timeframe principal (1H, 4H, 1D, 1W) pour filtrer les cryptos selon leur tendance sur cette période." },

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
-import { Link2, Sparkles, Activity, Database } from "lucide-react";
+import { Link2, Sparkles, Activity, Database, Coins, Zap } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 
@@ -14,10 +15,24 @@ interface MetricData {
   color: string;
 }
 
+interface EthData {
+  price: number;
+  mcap: number;
+  vol24: number;
+  priceChange24h: number;
+  supply: number;
+  dominance: number;
+  gasGwei: number | null;
+  baseFeeGwei: number | null;
+  pendingTx: number | null;
+}
+
 export default function OnChainMetrics() {
+  const { t } = useTranslation();
   const [metrics, setMetrics] = useState<MetricData[]>([]);
   const [loading, setLoading] = useState(true);
   const [flowData, setFlowData] = useState({ inflow: 0, outflow: 0, net: 0 });
+  const [eth, setEth] = useState<EthData | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,9 +50,11 @@ export default function OnChainMetrics() {
           return n.toString();
         };
 
-        // Parallel fetch: CoinGecko + mempool.space (free, real on-chain data)
-        const [cgRes, hashrateRes, statsRes, feesRes, blockRes] = await Promise.allSettled([
+        // Parallel fetch: CoinGecko (BTC + ETH + global) + mempool.space (free, real on-chain data)
+        const [cgRes, cgEthRes, cgGlobalRes, hashrateRes, statsRes, feesRes, blockRes] = await Promise.allSettled([
           fetch("/api/coingecko/coins/bitcoin?localization=false&tickers=false&community_data=true&developer_data=true", { signal: AbortSignal.timeout(15000) }),
+          fetch("/api/coingecko/coins/ethereum?localization=false&tickers=false&community_data=false&developer_data=false", { signal: AbortSignal.timeout(15000) }),
+          fetch("/api/coingecko/global", { signal: AbortSignal.timeout(15000) }),
           fetch("https://mempool.space/api/v1/mining/hashrate/3d", { signal: AbortSignal.timeout(10000) }),
           fetch("https://mempool.space/api/mempool", { signal: AbortSignal.timeout(10000) }),
           fetch("https://mempool.space/api/v1/fees/recommended", { signal: AbortSignal.timeout(10000) }),
@@ -45,10 +62,33 @@ export default function OnChainMetrics() {
         ]);
 
         const data = cgRes.status === "fulfilled" && cgRes.value.ok ? await cgRes.value.json() : {};
+        const ethRaw = cgEthRes.status === "fulfilled" && cgEthRes.value.ok ? await cgEthRes.value.json() : {};
+        const globalRaw = cgGlobalRes.status === "fulfilled" && cgGlobalRes.value.ok ? await cgGlobalRes.value.json() : {};
         const hashData = hashrateRes.status === "fulfilled" && hashrateRes.value.ok ? await hashrateRes.value.json() : null;
         const mempoolStats = statsRes.status === "fulfilled" && statsRes.value.ok ? await statsRes.value.json() : null;
         const feesData = feesRes.status === "fulfilled" && feesRes.value.ok ? await feesRes.value.json() : null;
         const blockHeight = blockRes.status === "fulfilled" && blockRes.value.ok ? await blockRes.value.text() : null;
+
+        // ─── ETH on-chain data ───
+        const ethPrice = ethRaw.market_data?.current_price?.usd || 0;
+        const ethMcap = ethRaw.market_data?.market_cap?.usd || 0;
+        const ethVol = ethRaw.market_data?.total_volume?.usd || 0;
+        const ethSupply = ethRaw.market_data?.circulating_supply || 0;
+        const ethPriceChange = ethRaw.market_data?.price_change_percentage_24h || 0;
+        const ethDominance = globalRaw.data?.market_cap_percentage?.eth ?? null;
+        if (ethPrice > 0) {
+          setEth({
+            price: ethPrice,
+            mcap: ethMcap,
+            vol24: ethVol,
+            priceChange24h: ethPriceChange,
+            supply: ethSupply,
+            dominance: ethDominance ?? 0,
+            gasGwei: null,    // ETH gas requires Etherscan API key — left null for now
+            baseFeeGwei: null,
+            pendingTx: null,
+          });
+        }
 
         const price = data.market_data?.current_price?.usd || 97000;
         const mcap = data.market_data?.market_cap?.usd || 1900000000000;
@@ -195,8 +235,8 @@ export default function OnChainMetrics() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">⛓️</span>}
-          title="On-Chain Metrics"
-          subtitle="Analysez les données directement issues de la blockchain : transactions, adresses actives, flux d'échanges et indicateurs de détention pour anticiper les mouvements de marché."
+          title={t("pages.onChainMetrics.title")}
+          subtitle={t("pages.onChainMetrics.subtitle")}
           accentColor="cyan"
           steps={[
             { n: "1", title: "Lisez les indicateurs clés", desc: "Chaque métrique on-chain révèle le comportement réel des investisseurs : accumulation, distribution, pression de vente." },
@@ -319,6 +359,104 @@ export default function OnChainMetrics() {
                   </div>
                 </div>
               </div>
+
+              {/* ===== ETH On-Chain Section (CoinGecko free API) ===== */}
+              {eth && (
+                <div
+                  className="oc-anim relative bg-gradient-to-br from-indigo-500/[0.06] to-violet-500/[0.02] border border-indigo-500/20 rounded-3xl p-6 mb-6 overflow-hidden"
+                  style={{ animationDelay: "260ms" }}
+                >
+                  <div className="absolute -top-24 left-1/4 w-72 h-72 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-24 right-1/4 w-72 h-72 rounded-full bg-violet-500/15 blur-3xl pointer-events-none" />
+
+                  <div className="relative flex items-center justify-between flex-wrap gap-3 mb-5">
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-400 via-violet-500 to-purple-600 text-white text-base"
+                        style={{ boxShadow: "0 0 24px rgba(99,102,241,0.5)" }}
+                      >
+                        <Coins className="w-5 h-5" />
+                      </span>
+                      <div>
+                        <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2">
+                          Ethereum On-Chain
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-indigo-400/40 bg-indigo-400/10 text-indigo-300">
+                            Live
+                          </span>
+                        </h2>
+                        <p className="text-[11px] text-gray-400">Métriques ETH temps réel · CoinGecko API · Pas de clé requise</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Prix ETH</p>
+                      <p
+                        className="text-2xl font-black font-mono"
+                        style={{
+                          color: eth.priceChange24h >= 0 ? "#34d399" : "#f87171",
+                          textShadow: `0 0 14px ${eth.priceChange24h >= 0 ? "rgba(52,211,153,0.4)" : "rgba(248,113,113,0.4)"}`,
+                        }}
+                      >
+                        ${eth.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </p>
+                      <span
+                        className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md mt-1 ${
+                          eth.priceChange24h >= 0 ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-red-500/15 text-red-300 border border-red-500/30"
+                        }`}
+                      >
+                        {eth.priceChange24h >= 0 ? "▲" : "▼"} {Math.abs(eth.priceChange24h).toFixed(2)}% 24h
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Metrics grid */}
+                  <div className="relative grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                    {[
+                      { label: "Market Cap", value: `$${(eth.mcap / 1e9).toFixed(1)}B`, color: "#a78bfa", icon: "💰" },
+                      { label: "Volume 24h", value: `$${(eth.vol24 / 1e9).toFixed(1)}B`, color: "#60a5fa", icon: "📊" },
+                      { label: "Dominance ETH", value: eth.dominance > 0 ? `${eth.dominance.toFixed(2)}%` : "N/A", color: "#22d3ee", icon: "🌐" },
+                      { label: "Supply Circulante", value: `${(eth.supply / 1e6).toFixed(2)}M ETH`, color: "#fbbf24", icon: "🪙" },
+                    ].map((m) => (
+                      <div
+                        key={m.label}
+                        className="relative bg-white/[0.03] border border-white/[0.08] rounded-2xl p-3.5 hover:border-white/[0.16] hover:bg-white/[0.05] transition-all hover:-translate-y-0.5 overflow-hidden"
+                      >
+                        <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full blur-3xl opacity-25" style={{ background: m.color }} />
+                        <div className="relative">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-base">{m.icon}</span>
+                            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">{m.label}</span>
+                          </div>
+                          <div className="text-base md:text-lg font-black font-mono" style={{ color: m.color, textShadow: `0 0 10px ${m.color}25` }}>
+                            {m.value}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Gas tracker placeholder */}
+                  <div className="relative bg-amber-500/[0.06] border border-amber-500/20 rounded-2xl p-4 flex items-start gap-3">
+                    <Zap className="w-5 h-5 text-amber-300 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs leading-relaxed">
+                      <p className="text-amber-200 font-bold mb-0.5">Gas Tracker ETH (Etherscan)</p>
+                      <p className="text-gray-300">
+                        Le suivi temps réel du gas ETH (Slow / Standard / Fast / Instant en Gwei) nécessite une clé API
+                        Etherscan gratuite.{" "}
+                        <a
+                          href="https://etherscan.io/myapikey"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-amber-300 underline hover:text-amber-200 font-semibold"
+                        >
+                          Créez votre clé ici
+                        </a>
+                        , puis ajoutez-la à votre fichier <code className="bg-black/40 px-1.5 py-0.5 rounded text-amber-300">.env</code> sous{" "}
+                        <code className="bg-black/40 px-1.5 py-0.5 rounded text-amber-300">ETHERSCAN_API_KEY=</code>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Education */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

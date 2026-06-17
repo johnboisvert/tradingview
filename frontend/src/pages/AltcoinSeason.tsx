@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { RefreshCw, TrendingUp, TrendingDown, ExternalLink, Info, Sparkles } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -188,6 +189,7 @@ function GaugeChart({ score }: { score: number }) {
 }
 
 export default function AltcoinSeason() {
+  const { t } = useTranslation();
   const [data, setData] = useState<AltcoinData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -226,8 +228,8 @@ export default function AltcoinSeason() {
       <main className="md:ml-[260px] pt-14 md:pt-0 min-h-screen relative bg-[#0a0a0f]">
         <PageHeader
           icon={<TrendingUp className="w-6 h-6" />}
-          title="Altcoin Season Index"
-          subtitle="Détectez les phases d'Altseason : quand les altcoins surperforment Bitcoin, des opportunités explosives émergent. Suivez le score en temps réel pour adapter votre stratégie."
+          title={t("pages.altcoinSeason.title")}
+          subtitle={t("pages.altcoinSeason.subtitle")}
           accentColor="green"
           steps={[
             { n: "1", title: "Lisez le score global", desc: "Score > 75 = Altseason (les altcoins dominent). Score < 25 = Bitcoin Season. Entre les deux = marché mixte." },

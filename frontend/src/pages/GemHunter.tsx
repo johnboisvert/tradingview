@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Gem, RefreshCw, TrendingUp, TrendingDown, Droplets, Search, ArrowUpDown } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -44,6 +45,7 @@ function ScoreBar({ value }: { value: number }) {
 }
 
 export default function GemHunter() {
+  const { t } = useTranslation();
   const [gems, setGems] = useState<GemCoin[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -135,8 +137,8 @@ export default function GemHunter() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<Gem className="w-6 h-6" />}
-          title="Crypto Pépites — Gem Hunter"
-          subtitle="Découvrez les cryptos à fort potentiel avant qu’elles n’explosent. Notre algorithme IA analyse des centaines de tokens pour identifier les gemmes sous-évaluées du marché."
+          title={t("pages.gemHunter.title")}
+          subtitle={t("pages.gemHunter.subtitle")}
           accentColor="amber"
           steps={[
             { n: "1", title: "Parcourez les pépites", desc: "Chaque token affiché a été sélectionné par l'IA pour son potentiel. Consultez le score de gemme et les métriques clés." },

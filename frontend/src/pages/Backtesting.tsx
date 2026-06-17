@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import { BarChart3, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
@@ -19,6 +20,7 @@ const STRATEGIES = Object.entries(STRATEGY_MAP).map(([id, s]) => ({
 }));
 
 export default function Backtesting() {
+  const { t } = useTranslation();
   const [strategy, setStrategy] = useState("ma_cross");
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [capital, setCapital] = useState(10000);
@@ -52,8 +54,8 @@ export default function Backtesting() {
       <main className="flex-1 md:ml-[260px] p-4 md:p-7 pt-[72px] md:pt-7 bg-[#030712]">
         <PageHeader
           icon={<BarChart3 className="w-6 h-6" />}
-          title="Backtesting de Stratégies"
-          subtitle="Testez vos stratégies sur des données historiques RÉELLES de Binance. Chaque trade est calculé à partir des vrais prix passés — aucune simulation aléatoire."
+          title={t("pages.backtesting.title")}
+          subtitle={t("pages.backtesting.subtitle")}
           accentColor="indigo"
           steps={[
             { n: "1", title: "Configurez votre stratégie", desc: "Choisissez la paire, le timeframe, le capital et la stratégie. Les données sont chargées en temps réel depuis Binance." },

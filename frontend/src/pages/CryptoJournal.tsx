@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import {
@@ -112,6 +113,7 @@ function AIInsight({ trades }: { trades: Trade[] }) {
 }
 
 export default function CryptoJournal() {
+  const { t } = useTranslation();
   const [trades, setTrades] = useState<Trade[]>(() => {
     try {
       const saved = localStorage.getItem("crypto_journal_trades");
@@ -211,8 +213,8 @@ export default function CryptoJournal() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0d1117] overflow-y-auto" style={{ maxHeight: "100vh", padding: "0 16px 16px 16px" }}>
       <PageHeader
           icon={<BookOpen className="w-6 h-6" />}
-          title="Crypto Journal"
-          subtitle="Tenez un journal de trading structuré pour analyser vos performances, identifier vos biais psychologiques et améliorer continuellement votre discipline de trading."
+          title={t("pages.cryptoJournal.title")}
+          subtitle={t("pages.cryptoJournal.subtitle")}
           accentColor="indigo"
           steps={[
             { n: "1", title: "Enregistrez vos trades", desc: "Après chaque trade, notez l'entrée, la sortie, la raison du trade et votre état émotionnel. La discipline du journal est clé." },

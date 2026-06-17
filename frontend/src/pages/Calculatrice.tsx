@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Calculator } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -8,6 +9,7 @@ const CALC_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/b3c0b3a0-ae42-46d0-9f3a-9f12780c9e10.png";
 
 export default function Calculatrice() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"profit" | "position" | "dca" | "liquidation">("profit");
 
   // Profit Calculator
@@ -76,8 +78,8 @@ export default function Calculatrice() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<Calculator className="w-6 h-6" />}
-          title="Calculatrice Trading"
-          subtitle="Calculez instantanément vos profits/pertes potentiels, la taille de vos positions et vos niveaux de liquidation. Un outil indispensable avant chaque trade."
+          title={t("pages.calculatrice.title")}
+          subtitle={t("pages.calculatrice.subtitle")}
           accentColor="cyan"
           steps={[
             { n: "1", title: "Entrez les paramètres", desc: "Renseignez le prix d'entrée, le prix cible, le stop loss et le montant investi pour calculer votre P&L potentiel." },

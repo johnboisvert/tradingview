@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Calendar, ChevronLeft, ChevronRight, Globe, Landmark, TrendingUp, AlertTriangle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -527,6 +528,7 @@ function buildAllEvents(): CalendarEvent[] {
 }
 
 export default function Calendrier() {
+  const { t } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("all");
@@ -586,8 +588,8 @@ export default function Calendrier() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
         <PageHeader
           icon={<Calendar className="w-6 h-6" />}
-          title="Calendrier Crypto"
-          subtitle="Ne manquez aucun événement important du marché crypto : halvings, listings, mises à jour de protocoles, expirations d'options et événements macroéconomiques."
+          title={t("pages.calendrier.title")}
+          subtitle={t("pages.calendrier.subtitle")}
           accentColor="cyan"
           steps={[
             { n: "1", title: "Naviguez dans le calendrier", desc: "Utilisez les flèches pour naviguer entre les mois. Les jours avec des événements sont mis en évidence." },

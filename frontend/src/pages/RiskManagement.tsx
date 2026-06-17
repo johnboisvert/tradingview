@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Shield, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Search } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -24,6 +25,7 @@ function computeRisk(c: CoinMarketData): RiskCoin {
 }
 
 export default function RiskManagement() {
+  const { t } = useTranslation();
   const [coins, setCoins] = useState<RiskCoin[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -58,8 +60,8 @@ export default function RiskManagement() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<Shield className="w-6 h-6" />}
-          title="Gestion des Risques"
-          subtitle="Maîtrisez votre exposition au risque. Calculez vos stop loss optimaux, gérez votre capital et protégez votre portefeuille contre les mouvements adverses du marché."
+          title={t("pages.riskManagement.title")}
+          subtitle={t("pages.riskManagement.subtitle")}
           accentColor="red"
           steps={[
             { n: "1", title: "Définissez votre risque", desc: "Entrez votre capital total et le pourcentage maximum que vous acceptez de risquer par trade (règle d'or : max 1-2%)." },

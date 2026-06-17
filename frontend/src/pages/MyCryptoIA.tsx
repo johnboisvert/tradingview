@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -856,6 +857,7 @@ function renderWidget(
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function MyCryptoIA() {
+  const { t } = useTranslation();
   const [allCoins, setAllCoins] = useState<CoinMarketData[]>([]);
   const [favorites, setFavorites] = useState<FavoriteCoin[]>([]);
   const [alerts, setAlerts] = useState<AlertItem[]>(MOCK_ALERTS);
@@ -944,8 +946,8 @@ export default function MyCryptoIA() {
         <div className="relative z-10 max-w-[1440px] mx-auto px-6 py-6">
           <PageHeader
             icon={<LayoutDashboard className="w-6 h-6" />}
-            title="My CryptoIA — Dashboard Personnalisé"
-            subtitle="Votre espace personnel entièrement configurable. 20 widgets disponibles : favoris, signaux IA, portfolio, alertes, marché, RSI, whales, actualités et bien plus."
+            title={t("pages.myCryptoIA.title")}
+            subtitle={t("pages.myCryptoIA.subtitle")}
             accentColor="indigo"
             steps={[
               { n: "1", title: "Personnalisez vos widgets", desc: "Cliquez sur ⚙️ Personnaliser pour activer/désactiver les 20 widgets disponibles. Filtrez par catégorie pour trouver rapidement." },

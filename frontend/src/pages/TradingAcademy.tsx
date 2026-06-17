@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import { ChevronDown, ChevronRight, CheckCircle2, Circle, Clock, Award, Layers } from "lucide-react";
 import { modules, getTotalLessons, getTotalSubLessons, getTotalQuizQuestions, type Lesson } from "../data/academy";
@@ -15,6 +16,7 @@ const DIFFICULTY_STYLES: Record<string, { bg: string; text: string }> = {
 };
 
 export default function TradingAcademy() {
+  const { t } = useTranslation();
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [expandedModule, setExpandedModule] = useState<string | null>("module-1");
   const [selectedLesson, setSelectedLesson] = useState<{ moduleId: string; lesson: Lesson } | null>(null);
@@ -67,8 +69,8 @@ export default function TradingAcademy() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
         <PageHeader
           icon={<span className="text-lg">🎓</span>}
-          title="Trading Academy"
-          subtitle="Formez-vous au trading crypto avec notre académie structurée. Des bases de l'analyse technique aux stratégies avancées, progressez à votre rythme."
+          title={t("pages.tradingAcademy.title")}
+          subtitle={t("pages.tradingAcademy.subtitle")}
           accentColor="blue"
           steps={[
             { n: "1", title: "Choisissez votre niveau", desc: "Filtrez les modules par niveau : Débutant, Intermédiaire ou Avancé. Commencez par les bases si vous débutez." },

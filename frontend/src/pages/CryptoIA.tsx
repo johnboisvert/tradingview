@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import {
@@ -287,6 +288,7 @@ function estimateTimeToTarget(pred: EnrichedPrediction): {
 }
 
 export default function CryptoIA() {
+  const { t } = useTranslation();
   const [apiStatus, setApiStatus] = useState<"checking" | "online" | "offline">("checking");
   const [cryptos, setCryptos] = useState<CryptoItem[]>([]);
   const [filteredCryptos, setFilteredCryptos] = useState<CryptoItem[]>([]);
@@ -489,8 +491,8 @@ export default function CryptoIA() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<Brain className="w-6 h-6" />}
-          title="Crypto IA — Analyse Intelligente"
-          subtitle="Analyse complète propulsée par l’IA : score de force, signaux d’achat/vente, niveaux clés de support/résistance et recommandations personnalisées pour chaque crypto."
+          title={t("pages.cryptoIA.title")}
+          subtitle={t("pages.cryptoIA.subtitle")}
           accentColor="blue"
           steps={[
             { n: "1", title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto dans la liste. L'IA génère instantanément une analyse complète avec score de force et signaux." },

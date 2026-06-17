@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -110,6 +111,7 @@ function RSIGauge({ value }: { value: number }) {
 }
 
 export default function TechnicalAnalysis() {
+  const { t } = useTranslation();
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [interval, setInterval_] = useState("1h");
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
@@ -229,8 +231,8 @@ export default function TechnicalAnalysis() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<BarChart3 className="w-6 h-6" />}
-          title="Analyse Technique"
-          subtitle="Analyse technique complète pour chaque crypto : tendance, RSI, MACD, Bollinger Bands, moyennes mobiles et score global. Tout ce dont vous avez besoin pour trader."
+          title={t("pages.technicalAnalysis.title")}
+          subtitle={t("pages.technicalAnalysis.subtitle")}
           accentColor="blue"
           steps={[
             { n: "1", title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto pour afficher son analyse technique complète avec tous les indicateurs calculés en temps réel." },

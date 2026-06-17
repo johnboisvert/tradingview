@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -457,6 +458,7 @@ function AllocationRow({ a, capital }: { a: Allocation; capital: number }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SimulateurStrategieIA() {
+  const { t } = useTranslation();
   const [form, setForm] = useState<FormState>({ capital: "10000", risk: "modere", horizon: "3m" });
   const [result, setResult] = useState<SimResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -490,8 +492,8 @@ export default function SimulateurStrategieIA() {
           {/* Page Header */}
           <PageHeader
             icon={<Target className="w-6 h-6" />}
-            title="Simulateur de Stratégie IA"
-            subtitle="Entrez votre capital et votre profil de risque. L'IA calcule une allocation optimisée, des projections de gains/pertes sur 3 scénarios et un niveau de risque global."
+            title={t("pages.simulateurStrategieIA.title")}
+            subtitle={t("pages.simulateurStrategieIA.subtitle")}
             accentColor="indigo"
             steps={[
               { n: "1", title: "Entrez votre capital et profil", desc: "Renseignez votre capital disponible en $, votre profil de risque (Conservateur, Modéré, Agressif) et votre horizon d'investissement." },

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -95,6 +96,7 @@ function classifyOpportunity(change24h: number, change7d: number, volMcapRatio: 
 }
 
 export default function OpportunityScanner() {
+  const { t } = useTranslation();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
@@ -159,8 +161,8 @@ export default function OpportunityScanner() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">🎯</span>}
-          title="Opportunity Scanner"
-          subtitle="L'IA scanne en permanence le marché pour détecter les opportunités de trading : oversold, breakouts, divergences et setups à fort potentiel avant qu'ils ne deviennent évidents."
+          title={t("pages.opportunityScanner.title")}
+          subtitle={t("pages.opportunityScanner.subtitle")}
           accentColor="green"
           steps={[
             { n: "1", title: "Consultez les opportunités", desc: "Chaque carte représente une opportunité détectée par l'IA avec le type de signal, le potentiel estimé et le niveau de risque." },

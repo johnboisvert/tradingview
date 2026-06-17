@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { RefreshCw, TrendingUp, TrendingDown, Search, Maximize2, Minimize2, AlertCircle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -236,6 +237,7 @@ function IndicatorChart({
 
 /* ── Main Component ── */
 export default function Graphiques() {
+  const { t } = useTranslation();
   const [coins, setCoins] = useState<CoinMarketData[]>([]);
   const [selected, setSelected] = useState("bitcoin");
   const [loading, setLoading] = useState(true);
@@ -565,8 +567,8 @@ export default function Graphiques() {
       <main className="md:ml-[260px] pt-14 md:pt-0 p-3 overflow-y-auto" style={{ height: "100vh" }}>
         <PageHeader
           icon={<span className="text-lg">📈</span>}
-          title="Graphiques"
-          subtitle="Analysez les graphiques de prix en temps réel avec indicateurs techniques RSI, MACD et Stochastic."
+          title={t("pages.graphiques.title")}
+          subtitle={t("pages.graphiques.subtitle")}
           accentColor="blue"
           steps={[
             { n: "1", title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto dans la liste pour afficher son graphique." },

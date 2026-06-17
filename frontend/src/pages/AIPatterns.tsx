@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import { RefreshCw, Search } from "lucide-react";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
@@ -61,6 +62,7 @@ function buildPattern(c: CoinMarketData, i: number): Pattern {
 }
 
 export default function AIPatterns() {
+  const { t } = useTranslation();
   const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [loading, setLoading] = useState(true);
   const [dirFilter, setDirFilter] = useState("ALL");
@@ -96,8 +98,8 @@ export default function AIPatterns() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">🔮</span>}
-          title="AI Patterns"
-          subtitle="Détection automatique des patterns chartistes par intelligence artificielle : Head & Shoulders, Double Top/Bottom, Triangles, Wedges et bien plus encore."
+          title={t("pages.aIPatterns.title")}
+          subtitle={t("pages.aIPatterns.subtitle")}
           accentColor="indigo"
           steps={[
             { n: "1", title: "Parcourez les patterns", desc: "L’IA scanne les graphiques de toutes les cryptos pour détecter les formations chartistes en cours de formation ou complétées." },

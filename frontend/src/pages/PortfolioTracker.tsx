@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 
 import PageHeader from "@/components/PageHeader";
@@ -21,6 +22,7 @@ const COIN_MAP: Record<string, string> = {
 };
 
 export default function PortfolioTracker() {
+  const { t } = useTranslation();
   const [holdings, setHoldings] = useState<Holding[]>(() => {
     const saved = localStorage.getItem("cryptoia_portfolio");
     return saved ? JSON.parse(saved) : [];
@@ -90,8 +92,8 @@ export default function PortfolioTracker() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">💼</span>}
-          title="Portfolio Tracker"
-          subtitle="Suivez la performance de votre portefeuille crypto en temps réel. Ajoutez vos positions, visualisez vos gains/pertes et analysez la répartition de vos actifs."
+          title={t("pages.portfolioTracker.title")}
+          subtitle={t("pages.portfolioTracker.subtitle")}
           accentColor="indigo"
           steps={[
             { n: "1", title: "Ajoutez vos actifs", desc: "Cliquez sur Ajouter un Actif, entrez le symbole, la quantité et le prix d’achat pour commencer à tracker votre portfolio." },

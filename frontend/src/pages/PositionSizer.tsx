@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Calculator, Shield, Target, AlertTriangle, DollarSign, TrendingUp } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -16,6 +17,7 @@ interface SizerResult {
 }
 
 export default function PositionSizer() {
+  const { t } = useTranslation();
   const [account, setAccount] = useState("1000");
   const [risk, setRisk] = useState("1");
   const [entry, setEntry] = useState("");
@@ -81,8 +83,8 @@ export default function PositionSizer() {
         <div className="max-w-[1440px] mx-auto px-6 py-6">
           <PageHeader
             icon={<Calculator className="w-6 h-6" />}
-            title="AI Position Sizer"
-            subtitle="Calculez la taille optimale de vos positions selon votre capital, votre tolérance au risque et votre stop loss. Ne risquez jamais plus que ce que vous pouvez vous permettre de perdre."
+            title={t("pages.positionSizer.title")}
+            subtitle={t("pages.positionSizer.subtitle")}
             accentColor="blue"
             steps={[
               { n: "1", title: "Entrez votre capital", desc: "Indiquez votre capital total disponible pour le trading. L'IA calculera la taille de position basée sur un pourcentage de ce capital." },

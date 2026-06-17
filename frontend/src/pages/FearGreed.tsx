@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { RefreshCw, TrendingUp, TrendingDown, Activity, Flame, Snowflake, Sparkles } from "lucide-react";
 import { fetchWithCorsProxy } from "@/lib/cryptoApi";
@@ -253,7 +254,8 @@ function CircularRing({ value, color, icon, name }: { value: number; color: stri
 // ====================== SPARKLINE AREA CHART ======================
 function HistoryAreaChart({ history }: { history: FGData[] }) {
   if (history.length < 2) return null;
-  const data = history.slice(0, 30).reverse();
+  // Use full history (caller decides range via historyRange state)
+  const data = [...history].reverse();
   const W = 760;
   const H = 200;
   const padX = 14;
@@ -261,6 +263,10 @@ function HistoryAreaChart({ history }: { history: FGData[] }) {
   const innerW = W - padX * 2;
   const innerH = H - padY * 2;
   const step = innerW / (data.length - 1);
+
+  // For long ranges (90/365), don't draw a dot at every point — only key ones
+  const showDots = data.length <= 60;
+  const dotEvery = data.length <= 60 ? 1 : Math.ceil(data.length / 40);
 
   const points = data.map((d, i) => ({
     x: padX + i * step,
@@ -307,8 +313,11 @@ function HistoryAreaChart({ history }: { history: FGData[] }) {
         {/* Line */}
         <path d={pathLine} fill="none" stroke="url(#histLine)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         {/* Dots */}
-        {points.map((p, i) => (
+        {showDots && points.map((p, i) => (
           <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={getColor(p.v)} opacity="0.7" />
+        ))}
+        {!showDots && points.filter((_, i) => i % dotEvery === 0).map((p, i) => (
+          <circle key={`s-${i}`} cx={p.x} cy={p.y} r="1.8" fill={getColor(p.v)} opacity="0.55" />
         ))}
         {/* Last point pulse */}
         <circle cx={last.x} cy={last.y} r="6" fill={getColor(lastVal)} opacity="0.25">
@@ -318,9 +327,9 @@ function HistoryAreaChart({ history }: { history: FGData[] }) {
         <circle cx={last.x} cy={last.y} r="4.5" fill={getColor(lastVal)} stroke="white" strokeWidth="1.5" />
       </svg>
       <div className="flex justify-between px-3 text-[10px] text-gray-600 -mt-1">
-        <span>30j</span>
-        <span>15j</span>
-        <span>7j</span>
+        <span>{data.length}j</span>
+        <span>{Math.round(data.length / 2)}j</span>
+        <span>{Math.round(data.length / 4)}j</span>
         <span className="text-white font-bold">Aujourd&apos;hui</span>
       </div>
     </div>
@@ -328,18 +337,20 @@ function HistoryAreaChart({ history }: { history: FGData[] }) {
 }
 
 export default function FearGreed() {
+  const { t } = useTranslation();
   const [current, setCurrent] = useState<FGData | null>(null);
   const [history, setHistory] = useState<FGData[]>([]);
   const [coins, setCoins] = useState<CoinSentiment[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
+  const [historyRange, setHistoryRange] = useState<7 | 30 | 90 | 365>(30);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const { fetchTop200 } = await import("@/lib/cryptoApi");
       const [fgRes, top200Data] = await Promise.all([
-        fetchWithCorsProxy("https://api.alternative.me/fng/?limit=30").then(r => ({ status: "fulfilled" as const, value: r })).catch(() => ({ status: "rejected" as const, value: null as any })),
+        fetchWithCorsProxy(`https://api.alternative.me/fng/?limit=${historyRange}`).then(r => ({ status: "fulfilled" as const, value: r })).catch(() => ({ status: "rejected" as const, value: null as any })),
         fetchTop200(false),
       ]);
 
@@ -352,7 +363,7 @@ export default function FearGreed() {
             timestamp: data.data[0].timestamp,
           });
           setHistory(
-            data.data.slice(0, 30).map((d: Record<string, string>) => ({
+            data.data.slice(0, historyRange).map((d: Record<string, string>) => ({
               value: parseInt(d.value),
               value_classification: d.value_classification,
               timestamp: d.timestamp,
@@ -381,7 +392,7 @@ export default function FearGreed() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [historyRange]);
 
   useEffect(() => {
     fetchData();
@@ -418,8 +429,8 @@ export default function FearGreed() {
       <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen bg-[#0A0E1A]">
         <PageHeader
           icon={<Activity className="w-6 h-6" />}
-          title="Fear & Greed Index"
-          subtitle="Mesurez le sentiment global du marché crypto en temps réel. Un indice bas (peur) peut signaler une opportunité d’achat, un indice élevé (avidité) peut indiquer un marché surchauffé."
+          title={t("pages.fearGreed.title")}
+          subtitle={t("pages.fearGreed.subtitle")}
           accentColor="amber"
           steps={[
             { n: "1", title: "Lisez l'indice principal", desc: "La jauge centrale affiche le sentiment actuel de 0 (peur extrême) à 100 (avidité extrême). Vert = optimisme, Rouge = pessimisme." },
@@ -594,13 +605,33 @@ export default function FearGreed() {
             className="fg-anim relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 md:p-8 overflow-hidden"
             style={{ animationDelay: "280ms" }}
           >
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <h2 className="text-base md:text-lg font-bold flex items-center gap-2">
-                <Flame className="w-4 h-4 text-orange-400" /> Évolution 30 jours
+                <Flame className="w-4 h-4 text-orange-400" /> Évolution{" "}
+                {historyRange === 7 ? "7 jours" : historyRange === 30 ? "30 jours" : historyRange === 90 ? "90 jours" : "1 an"}
               </h2>
-              <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                {history.length} points
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Range selector */}
+                <div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+                  {([7, 30, 90, 365] as const).map((r) => (
+                    <button
+                      key={r}
+                      data-testid={`fg-range-${r}`}
+                      onClick={() => setHistoryRange(r)}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                        historyRange === r
+                          ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md"
+                          : "text-gray-400 hover:text-white hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      {r === 365 ? "1A" : `${r}J`}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                  {history.length} points
+                </span>
+              </div>
             </div>
 
             <HistoryAreaChart history={history} />

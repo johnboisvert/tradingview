@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -182,6 +183,7 @@ const DirectionBadge = ({ direction }: { direction: "LONG" | "SHORT" }) => (
 );
 
 export default function AISetupBuilder() {
+  const { t } = useTranslation();
   const [selectedSetup, setSelectedSetup] = useState<Setup | null>(null);
   const [customSetup, setCustomSetup] = useState({
     pair: "BTCUSDT",
@@ -352,8 +354,8 @@ export default function AISetupBuilder() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">🏗️</span>}
-          title="AI Setup Builder"
-          subtitle="Construisez des setups de trading complets avec l’aide de l’IA. Définissez votre entrée, stop loss, take profit et obtenez une analyse de la qualité de votre setup."
+          title={t("pages.aISetupBuilder.title")}
+          subtitle={t("pages.aISetupBuilder.subtitle")}
           accentColor="blue"
           steps={[
             { n: "1", title: "Choisissez votre setup", desc: "Sélectionnez parmi les templates de setups pré-construits par l’IA ou créez le vôtre en définissant les paramètres clés." },

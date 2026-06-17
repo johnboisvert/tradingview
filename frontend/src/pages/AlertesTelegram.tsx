@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -74,6 +75,7 @@ function getApiBase(): string {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function AlertesTelegram() {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<AlertConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [testStatus, setTestStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
@@ -239,8 +241,8 @@ export default function AlertesTelegram() {
         <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-6">
           <PageHeader
             icon={<Send className="w-6 h-6" />}
-            title="Alertes Telegram"
-            subtitle="Recevez des alertes crypto automatiques sur Telegram basées sur des données RÉELLES de Binance et CoinGecko. Chaque alerte est vérifiée en temps réel — aucune fausse donnée."
+            title={t("pages.alertesTelegram.title")}
+            subtitle={t("pages.alertesTelegram.subtitle")}
             accentColor="blue"
             steps={[
               { n: "1", title: "Testez la connexion", desc: "Cliquez sur 'Tester la connexion' pour vérifier que le bot Telegram fonctionne correctement." },

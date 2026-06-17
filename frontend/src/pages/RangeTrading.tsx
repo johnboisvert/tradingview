@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import {
@@ -86,6 +87,7 @@ function getApiBase(): string {
 /* ─── Main Component ─── */
 
 export default function RangeTrading() {
+  const { t } = useTranslation();
   const [setups, setSetups] = useState<RangeSetup[]>([]);
   const [serverCalls, setServerCalls] = useState<ServerRangeCall[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,8 +173,8 @@ export default function RangeTrading() {
       <main className="flex-1 md:ml-64 pt-16 md:pt-0">
         <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
           <PageHeader
-            title="Range Trading"
-            subtitle="Signaux de trading en range — Bollinger Bands + RSI + ADX"
+            title={t("pages.rangeTrading.title")}
+            subtitle={t("pages.rangeTrading.subtitle")}
             icon={<BarChart3 className="w-7 h-7 text-blue-400" />}
           />
 

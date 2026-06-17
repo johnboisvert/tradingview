@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Gamepad2, Play, RotateCcw, TrendingUp, TrendingDown, DollarSign, BarChart3, Target, AlertTriangle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -25,6 +26,7 @@ interface CryptoOption {
 }
 
 export default function Simulation() {
+  const { t } = useTranslation();
   const [cryptos, setCryptos] = useState<CryptoOption[]>([]);
   const [selectedCrypto, setSelectedCrypto] = useState("bitcoin");
   const [initialCapital, setInitialCapital] = useState("10000");
@@ -135,8 +137,8 @@ export default function Simulation() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<Gamepad2 className="w-6 h-6" />}
-          title="Simulateur de Trading"
-          subtitle="Entraînez-vous au trading sans risquer de capital réel. Simulez des trades sur des données historiques ou en temps réel pour développer vos compétences et tester vos stratégies."
+          title={t("pages.simulation.title")}
+          subtitle={t("pages.simulation.subtitle")}
           accentColor="purple"
           steps={[
             { n: "1", title: "Configurez la simulation", desc: "Choisissez le capital de départ, la paire à trader et la période historique pour commencer votre simulation." },

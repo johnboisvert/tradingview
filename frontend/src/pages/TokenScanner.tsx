@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Search, AlertTriangle, TrendingUp, Shield, Droplets, BarChart3, ExternalLink } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -37,6 +38,7 @@ function formatNum(n: number): string {
 }
 
 export default function TokenScanner() {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<TokenResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -97,8 +99,8 @@ export default function TokenScanner() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<Search className="w-6 h-6" />}
-          title="AI Token Scanner"
-          subtitle="Analysez n’importe quel token en profondeur : score de liquidité, niveau de risque, momentum et signaux IA. Évitez les pièges et trouvez les opportunités cachées."
+          title={t("pages.tokenScanner.title")}
+          subtitle={t("pages.tokenScanner.subtitle")}
           accentColor="blue"
           steps={[
             { n: "1", title: "Recherchez un token", desc: "Tapez le nom ou symbole d'un token dans la barre de recherche. L'IA analyse instantanément ses métriques clés." },

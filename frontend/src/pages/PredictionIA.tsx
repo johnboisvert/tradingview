@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Brain, RefreshCw, TrendingUp, TrendingDown, Search } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -63,6 +64,7 @@ function buildPrediction(c: CoinMarketData): PredCoin {
 }
 
 export default function PredictionIA() {
+  const { t } = useTranslation();
   const [coins, setCoins] = useState<PredCoin[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -93,8 +95,8 @@ export default function PredictionIA() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<Brain className="w-6 h-6" />}
-          title="Prédictions IA"
-          subtitle="L’intelligence artificielle analyse les patterns techniques, le sentiment et les données on-chain pour générer des prédictions de prix à court et moyen terme."
+          title={t("pages.predictionIA.title")}
+          subtitle={t("pages.predictionIA.subtitle")}
           accentColor="purple"
           steps={[
             { n: "1", title: "Consultez les prédictions", desc: "Chaque crypto affiche une prédiction haussière ou baissière avec un niveau de confiance. Plus la confiance est élevée, plus le signal est fiable." },

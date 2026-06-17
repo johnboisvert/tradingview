@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Crown, RefreshCw, TrendingUp, TrendingDown, Sparkles, PieChart, Bitcoin } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -120,6 +121,7 @@ function DominanceDonut({ coins }: { coins: CoinDom[] }) {
 }
 
 export default function Dominance() {
+  const { t } = useTranslation();
   const [coins, setCoins] = useState<CoinDom[]>([]);
   const [totalMC, setTotalMC] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -187,8 +189,8 @@ export default function Dominance() {
       <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen bg-[#0A0E1A]">
         <PageHeader
           icon={<Crown className="w-6 h-6" />}
-          title="Dominance du Marché"
-          subtitle="Analysez la répartition de la capitalisation boursière entre Bitcoin, Ethereum et les altcoins. La dominance BTC est un indicateur clé du cycle de marché."
+          title={t("pages.dominance.title")}
+          subtitle={t("pages.dominance.subtitle")}
           accentColor="amber"
           steps={[
             { n: "1", title: "Lisez la barre visuelle", desc: "La barre colorée en haut montre la répartition des Top 15 cryptos. Survolez chaque segment pour voir le pourcentage exact." },

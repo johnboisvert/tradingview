@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -14,33 +15,67 @@ interface Pool {
   stablecoin: boolean;
 }
 
+interface ChainTvl {
+  name: string;
+  tvl: number;
+  change24h: number;
+  change7d: number;
+}
+
 export default function DefiYield() {
+  const { t } = useTranslation();
   const [pools, setPools] = useState<Pool[]>([]);
+  const [chainsTvl, setChainsTvl] = useState<ChainTvl[]>([]);
   const [loading, setLoading] = useState(true);
   const [chainFilter, setChainFilter] = useState("All");
   const [sortBy, setSortBy] = useState<"apy" | "tvl">("apy");
   const [lastUpdate, setLastUpdate] = useState("");
 
   useEffect(() => {
-    const fetchPools = async () => {
+    const fetchAll = async () => {
       try {
-        const res = await fetch("https://yields.llama.fi/pools");
-        const data = await res.json();
-        const filtered = (data.data || [])
-          .filter((p: any) => p.tvlUsd > 1000000 && p.apy > 0.1 && p.apy < 500)
-          .sort((a: any, b: any) => b.apy - a.apy)
-          .slice(0, 100)
-          .map((p: any) => ({
-            chain: p.chain || "Unknown",
-            project: p.project || "Unknown",
-            symbol: p.symbol || "N/A",
-            tvlUsd: p.tvlUsd || 0,
-            apy: p.apy || 0,
-            apyBase: p.apyBase || 0,
-            apyReward: p.apyReward || 0,
-            stablecoin: p.stablecoin || false,
-          }));
-        setPools(filtered);
+        // Parallel fetch: pools + chains TVL
+        const [poolsRes, chainsRes] = await Promise.allSettled([
+          fetch("https://yields.llama.fi/pools"),
+          fetch("https://api.llama.fi/v2/chains"),
+        ]);
+
+        // Pools
+        if (poolsRes.status === "fulfilled" && poolsRes.value.ok) {
+          const data = await poolsRes.value.json();
+          const filtered = (data.data || [])
+            .filter((p: any) => p.tvlUsd > 1000000 && p.apy > 0.1 && p.apy < 500)
+            .sort((a: any, b: any) => b.apy - a.apy)
+            .slice(0, 100)
+            .map((p: any) => ({
+              chain: p.chain || "Unknown",
+              project: p.project || "Unknown",
+              symbol: p.symbol || "N/A",
+              tvlUsd: p.tvlUsd || 0,
+              apy: p.apy || 0,
+              apyBase: p.apyBase || 0,
+              apyReward: p.apyReward || 0,
+              stablecoin: p.stablecoin || false,
+            }));
+          setPools(filtered);
+        }
+
+        // Chains TVL (DefiLlama free, no key)
+        if (chainsRes.status === "fulfilled" && chainsRes.value.ok) {
+          const chainsData = await chainsRes.value.json();
+          const chains: ChainTvl[] = (Array.isArray(chainsData) ? chainsData : [])
+            .filter((c: any) => c && c.tvl > 100_000_000)
+            .sort((a: any, b: any) => b.tvl - a.tvl)
+            .slice(0, 12)
+            .map((c: any) => ({
+              name: c.name || c.gecko_id || "Unknown",
+              tvl: c.tvl || 0,
+              change24h: c.change_1d || 0,
+              change7d: c.change_7d || 0,
+            }));
+          setChainsTvl(chains);
+        }
+
         setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
       } catch {
         setPools([
@@ -54,7 +89,7 @@ export default function DefiYield() {
       }
       setLoading(false);
     };
-    fetchPools();
+    fetchAll();
   }, []);
 
   const chains = ["All", ...new Set(pools.map((p) => p.chain))];
@@ -71,8 +106,8 @@ export default function DefiYield() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">🌾</span>}
-          title="DeFi Yield Farming"
-          subtitle="Trouvez les meilleures opportunités de rendement dans la DeFi. Comparez les APY, évaluez les risques et optimisez votre stratégie de yield farming."
+          title={t("pages.defiYield.title")}
+          subtitle={t("pages.defiYield.subtitle")}
           accentColor="green"
           steps={[
             { n: "1", title: "Comparez les APY", desc: "Triez les pools par APY pour trouver les meilleurs rendements. Attention : un APY très élevé implique souvent un risque plus élevé." },
@@ -84,13 +119,89 @@ export default function DefiYield() {
           <div className="absolute w-[500px] h-[500px] rounded-full bg-emerald-500/5 blur-[80px] top-[-150px] right-[-100px]" />
           <div className="absolute w-[400px] h-[400px] rounded-full bg-indigo-500/5 blur-[80px] bottom-[-150px] left-[-50px]" />
         </div>
-        <div className="relative z-10 max-w-[1440px] mx-auto">
-          <div className="text-center mb-10 pt-8">
-            <h1 className="text-5xl font-black bg-gradient-to-r from-emerald-400 via-indigo-400 to-amber-400 bg-[length:300%_auto] bg-clip-text text-transparent animate-gradient">
-              🏦 DeFi Yield Explorer
-            </h1>
-            <p className="text-gray-500 mt-3 text-lg max-w-xl mx-auto">Découvrez les meilleurs rendements DeFi en temps réel. Données actualisées via DeFi Llama.</p>
-          </div>
+        <div className="relative z-10 max-w-[1440px] mx-auto p-4 md:p-6">
+
+          {/* ===== TVL by Chain (DefiLlama API — sans clé) ===== */}
+          {chainsTvl.length > 0 && (
+            <div className="relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 mb-6 overflow-hidden">
+              <div className="absolute -top-24 left-1/3 w-72 h-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-24 right-1/3 w-72 h-72 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
+
+              <div className="relative flex items-center justify-between flex-wrap gap-3 mb-5">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-sm" style={{ boxShadow: "0 0 20px rgba(16,185,129,0.4)" }}>
+                    🌐
+                  </span>
+                  <div>
+                    <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2">
+                      TVL par Blockchain
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-400/40 bg-emerald-400/10 text-emerald-300">
+                        DefiLlama API
+                      </span>
+                    </h2>
+                    <p className="text-[11px] text-gray-400">Top 12 chains par Total Value Locked · Data live · Sans clé API</p>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-400">
+                  Total :{" "}
+                  <strong className="text-emerald-300 font-mono">
+                    ${(chainsTvl.reduce((s, c) => s + c.tvl, 0) / 1e9).toFixed(1)}B
+                  </strong>
+                </div>
+              </div>
+
+              <div className="relative space-y-2.5">
+                {(() => {
+                  const maxTvl = Math.max(...chainsTvl.map((c) => c.tvl));
+                  return chainsTvl.map((c, i) => {
+                    const pct = (c.tvl / maxTvl) * 100;
+                    const color = i < 3 ? "from-emerald-400 to-teal-500" : i < 6 ? "from-indigo-400 to-violet-500" : "from-slate-400 to-slate-500";
+                    const isPositive24 = c.change24h >= 0;
+                    return (
+                      <div
+                        key={c.name}
+                        data-testid={`chain-tvl-row-${i}`}
+                        className="group relative flex items-center gap-3 hover:bg-white/[0.03] rounded-xl px-2 py-1.5 transition-all"
+                        style={{ animation: "dy-fadeUp 0.5s ease-out both", animationDelay: `${i * 40}ms` }}
+                      >
+                        <span className="flex-shrink-0 w-7 text-[10px] font-black text-gray-500 font-mono text-right">
+                          #{i + 1}
+                        </span>
+                        <span className="flex-shrink-0 w-24 md:w-28 text-xs font-bold text-white truncate" title={c.name}>
+                          {c.name}
+                        </span>
+                        <div className="flex-1 relative h-7 rounded-lg bg-white/[0.04] overflow-hidden">
+                          <div
+                            className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${color} transition-all duration-700`}
+                            style={{ width: `${pct}%`, boxShadow: i < 3 ? "0 0 12px rgba(16,185,129,0.4)" : undefined }}
+                          />
+                          <div className="absolute inset-0 flex items-center px-2.5 text-[10px] font-bold text-white drop-shadow-md">
+                            ${(c.tvl / 1e9).toFixed(2)}B
+                          </div>
+                        </div>
+                        <span
+                          className={`flex-shrink-0 w-14 text-right text-[10px] font-bold font-mono ${
+                            isPositive24 ? "text-emerald-400" : "text-red-400"
+                          }`}
+                          title="Variation 24h"
+                        >
+                          {isPositive24 ? "+" : ""}
+                          {c.change24h.toFixed(1)}%
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          )}
+
+          <style>{`
+            @keyframes dy-fadeUp {
+              from { opacity: 0; transform: translateX(-10px); }
+              to { opacity: 1; transform: translateX(0); }
+            }
+          `}</style>
 
           {/* KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">

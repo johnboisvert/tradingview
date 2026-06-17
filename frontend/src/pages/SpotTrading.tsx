@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Gem, RefreshCw, TrendingUp, TrendingDown, ArrowUpDown, Search, BookOpen, Shield, Target, AlertTriangle, Clock } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -22,6 +23,7 @@ function formatNum(n: number): string {
 }
 
 export default function SpotTrading() {
+  const { t } = useTranslation();
   const [coins, setCoins] = useState<SpotCoin[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -61,8 +63,8 @@ export default function SpotTrading() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<Shield className="w-6 h-6" />}
-          title="Spot Trading — Investissement Long Terme"
-          subtitle="Analysez et sélectionnez les meilleures cryptos pour un investissement spot à long terme. Métriques fondamentales, score de qualité et recommandations IA pour construire un portefeuille solide."
+          title={t("pages.spotTrading.title")}
+          subtitle={t("pages.spotTrading.subtitle")}
           accentColor="green"
           steps={[
             { n: "1", title: "Évaluez les fondamentaux", desc: "Consultez la market cap, le volume et l'ATH de chaque crypto. Privilégiez les projets avec une liquidité élevée pour le spot." },

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { ArrowLeftRight, RefreshCw, DollarSign } from "lucide-react";
 
@@ -38,6 +39,7 @@ interface Selection {
 }
 
 export default function Convertisseur() {
+  const { t } = useTranslation();
   const [coins, setCoins] = useState<CoinPrice[]>([]);
   const [fiatRates, setFiatRates] = useState<FiatCurrency[]>(FIAT_CURRENCIES);
   const [from, setFrom] = useState<Selection>({ type: "crypto", id: "bitcoin" });
@@ -202,8 +204,8 @@ export default function Convertisseur() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<ArrowLeftRight className="w-6 h-6" />}
-          title="Convertisseur Crypto"
-          subtitle="Convertissez instantanément n’importe quelle crypto en fiat ou entre cryptos. Prix en temps réel avec support de toutes les principales devises mondiales."
+          title={t("pages.convertisseur.title")}
+          subtitle={t("pages.convertisseur.subtitle")}
           accentColor="cyan"
           steps={[
             { n: "1", title: "Sélectionnez les devises", desc: "Choisissez la crypto source et la devise cible (USD, EUR, BTC, ETH...). Les taux sont mis à jour en temps réel." },

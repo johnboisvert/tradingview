@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -90,6 +91,7 @@ function NarrativeRadarChart({ narratives }: { narratives: Narrative[] }) {
 }
 
 export default function NarrativeRadar() {
+  const { t } = useTranslation();
   const [narratives, setNarratives] = useState<Narrative[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -107,8 +109,8 @@ export default function NarrativeRadar() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
         <PageHeader
           icon={<Radar className="w-5 h-5" />}
-          title="Narrative Radar"
-          subtitle="Identifiez les narratives dominantes du marché crypto : quels secteurs (AI, DeFi, GameFi, L2...) captent l'attention et le capital des investisseurs en ce moment."
+          title={t("pages.narrativeRadar.title")}
+          subtitle={t("pages.narrativeRadar.subtitle")}
           accentColor="pink"
           steps={[
             { n: "1", title: "Repérez les tendances", desc: "Les narratives avec le score le plus élevé dominent le marché actuellement et attirent le plus de capital." },

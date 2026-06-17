@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -61,6 +62,7 @@ function generateReason(volMcapRatio: number, change24h: number, mcap: number): 
 }
 
 export default function PepitesCrypto() {
+  const { t } = useTranslation();
   const [pepites, setPepites] = useState<Pepite[]>([]);
   const [loading, setLoading] = useState(true);
   const [riskFilter, setRiskFilter] = useState("ALL");
@@ -130,8 +132,8 @@ export default function PepitesCrypto() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">💎</span>}
-          title="Pépites Crypto"
-          subtitle="Découvrez les gemmes cachées du marché crypto : projets sous-évalués avec un fort potentiel de croissance, sélectionnés et scorés par notre algorithme IA."
+          title={t("pages.pepitesCrypto.title")}
+          subtitle={t("pages.pepitesCrypto.subtitle")}
           accentColor="amber"
           steps={[
             { n: "1", title: "Explorez les pépites", desc: "Chaque carte représente un projet avec un score de potentiel, un niveau de risque et les raisons pour lesquelles l'IA le considère comme une pépite." },

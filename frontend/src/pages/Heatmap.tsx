@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Flame, RefreshCw, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -48,6 +49,7 @@ function formatNum(n: number): string {
 }
 
 export default function Heatmap() {
+  const { t } = useTranslation();
   const [coins, setCoins] = useState<HeatCoin[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -127,8 +129,8 @@ export default function Heatmap() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<Flame className="w-6 h-6" />}
-          title="Heatmap Crypto"
-          subtitle="Visualisez d’un coup d’oeil les performances du marché. Les couleurs chaudes (rouge/orange) indiquent des baisses, les couleurs froides (vert) indiquent des hausses."
+          title={t("pages.heatmap.title")}
+          subtitle={t("pages.heatmap.subtitle")}
           accentColor="orange"
           steps={[
             { n: "1", title: "Lisez les couleurs", desc: "Vert intense = forte hausse. Rouge intense = forte baisse. Gris = variation neutre. La taille des blocs reflète la market cap." },

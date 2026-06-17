@@ -407,6 +407,212 @@ const fr = {
     faqMobileQ: "Puis-je utiliser CryptoIA sur mobile ?",
     faqMobileA: "Oui, la plateforme est responsive et fonctionne sur tous les appareils.",
   },
+  pages: {
+    aIAssistant: {
+      title: "Assistant IA Conversationnel",
+      subtitle: "Votre assistant IA crypto personnel, propulsé par Google Gemini. Il connaît votre portefeuille, votre profil de risque et peut répondre à toutes vos questions sur le trading, les cryptos et les stratégies.",
+    },
+    aIPatterns: {
+      title: "AI Patterns",
+      subtitle: "Détection automatique des patterns chartistes par intelligence artificielle : Head & Shoulders, Triangles, Wedges, Double Top/Bottom et bien plus.",
+    },
+    aISentiment: {
+      title: "AI Sentiment Analysis",
+      subtitle: "Analyse du sentiment de marché par IA : agrégation des réseaux sociaux, news, données on-chain pour générer un score de sentiment global.",
+    },
+    aISetupBuilder: {
+      title: "AI Setup Builder",
+      subtitle: "Construisez des setups de trading complets avec l'aide de l'IA. Définissez votre crypto, votre risque et votre objectif — l'IA génère le plan d'entrée, SL et TP optimaux.",
+    },
+    aISignals: {
+      title: "AI Signals",
+      subtitle: "Signaux de trading générés par intelligence artificielle en temps réel. BUY, SELL, HOLD avec niveaux de confiance, points d'entrée, stop loss et take profit.",
+    },
+    alertesIA: {
+      title: "Alertes Intelligentes IA",
+      subtitle: "Configurez des alertes personnalisées sur vos cryptos favorites. Recevez des notifications sur Telegram, Discord ou email dès qu'un signal IA est déclenché.",
+    },
+    alertesTelegram: {
+      title: "Alertes Telegram",
+      subtitle: "Recevez des alertes crypto automatiques sur Telegram basées sur des données RÉELLES Binance et nos signaux IA.",
+    },
+    altcoinSeason: {
+      title: "Altcoin Season Index",
+      subtitle: "Détectez les phases d'Altseason : quand les altcoins surperforment Bitcoin, des opportunités massives s'ouvrent. Notre index combine 50 altcoins majeurs.",
+    },
+    backtesting: {
+      title: "Backtesting de Stratégies",
+      subtitle: "Testez vos stratégies sur des données historiques RÉELLES de Binance. Chaque trade est simulé avec frais et slippage réalistes.",
+    },
+    backtestingVisuel: {
+      title: "Backtesting Visuel — Données Réelles Binance",
+      subtitle: "",
+    },
+    bullrunPhase: {
+      title: "Bullrun Phase Tracker",
+      subtitle: "Identifiez la phase actuelle du cycle de marché crypto. Du fond du bear market au sommet de l'euphorie, chaque phase a ses opportunités spécifiques.",
+    },
+    calculatrice: {
+      title: "Calculatrice Trading",
+      subtitle: "Calculez instantanément vos profits/pertes potentiels, la taille de vos positions, votre risque/reward et vos frais sur tous les trades.",
+    },
+    calendrier: {
+      title: "Calendrier Crypto",
+      subtitle: "Ne manquez aucun événement important du marché crypto : halvings, listings, mises à jour de protocole, votes DAO et plus encore.",
+    },
+    convertisseur: {
+      title: "Convertisseur Crypto",
+      subtitle: "Convertissez instantanément n'importe quelle crypto en fiat ou entre cryptos. Prix en temps réel via CoinGecko, support de 100+ devises.",
+    },
+    cryptoIA: {
+      title: "Crypto IA — Analyse Intelligente",
+      subtitle: "Analyse complète propulsée par l'IA : score de force, signaux d'achat/vente, niveaux clés et probabilités de mouvement pour chaque crypto.",
+    },
+    cryptoJournal: {
+      title: "Crypto Journal",
+      subtitle: "Tenez un journal de trading structuré pour analyser vos performances, identifier vos patterns et améliorer votre psychologie de trader.",
+    },
+    defiYield: {
+      title: "DeFi Yield Farming",
+      subtitle: "Trouvez les meilleures opportunités de rendement dans la DeFi. Comparez les APY, les risques, les TVL sur les protocoles majeurs.",
+    },
+    dominance: {
+      title: "Dominance du Marché",
+      subtitle: "Analysez la répartition de la capitalisation boursière entre Bitcoin, Ethereum et les altcoins. Un indicateur clé pour anticiper les rotations de capital.",
+    },
+    fearGreed: {
+      title: "Fear & Greed Index",
+      subtitle: "Mesurez le sentiment global du marché crypto en temps réel. Un indice bas (peur) signale souvent des opportunités d'achat, un indice élevé (avidité) appelle à la prudence.",
+    },
+    gamification: {
+      title: "Système de Gamification",
+      subtitle: "Progressez, débloquez des badges et grimpez dans le classement en accomplissant des missions de trading et d'apprentissage.",
+    },
+    gemHunter: {
+      title: "Crypto Pépites — Gem Hunter",
+      subtitle: "Découvrez les cryptos à fort potentiel avant qu'elles n'explosent. Notre algorithme scanne 1000+ tokens pour détecter les opportunités cachées.",
+    },
+    graphiques: {
+      title: "Graphiques",
+      subtitle: "Analysez les graphiques de prix en temps réel avec indicateurs techniques RSI, MACD, EMA et plus encore.",
+    },
+    heatmap: {
+      title: "Heatmap Crypto",
+      subtitle: "Visualisez d'un coup d'oeil les performances du marché. Les couleurs chaudes (rouge/orange) indiquent des baisses, les couleurs froides (vert) indiquent des hausses.",
+    },
+    marketRegime: {
+      title: "Market Regime",
+      subtitle: "Identifiez le régime de marché actuel : tendance haussière, baissière, range ou consolidation. Chaque régime appelle des stratégies différentes.",
+    },
+    myCryptoIA: {
+      title: "My CryptoIA — Dashboard Personnalisé",
+      subtitle: "Votre espace personnel entièrement configurable. 20 widgets disponibles : favoris, portfolio, alertes, signaux, news et plus.",
+    },
+    narrativeRadar: {
+      title: "Narrative Radar",
+      subtitle: "Identifiez les narratives dominantes du marché crypto : quels secteurs (AI, DeFi, Gaming, RWA…) attirent le capital en ce moment.",
+    },
+    news: {
+      title: "Actualités Crypto",
+      subtitle: "Restez informé des dernières nouvelles du marché crypto en temps réel. Articles agrégés depuis les sources les plus fiables.",
+    },
+    onChainMetrics: {
+      title: "On-Chain Metrics",
+      subtitle: "Analysez les données directement issues de la blockchain : transactions, adresses actives, flux d'échange, hash rate et plus.",
+    },
+    opportunityScanner: {
+      title: "Opportunity Scanner",
+      subtitle: "L'IA scanne en permanence le marché pour détecter les opportunités de trading : pumps précoces, divergences RSI, breakouts confirmés.",
+    },
+    pepitesCrypto: {
+      title: "Pépites Crypto",
+      subtitle: "Découvrez les gemmes cachées du marché crypto : projets sous-évalués avec un fort potentiel de croissance.",
+    },
+    portfolioTracker: {
+      title: "Portfolio Tracker",
+      subtitle: "Suivez la performance de votre portefeuille crypto en temps réel. Ajoutez vos positions, suivez vos PnL, analysez votre allocation.",
+    },
+    positionSizer: {
+      title: "AI Position Sizer",
+      subtitle: "Calculez la taille optimale de vos positions selon votre capital, votre tolérance au risque et le setup. Ne risquez jamais plus que nécessaire.",
+    },
+    predictionIA: {
+      title: "Prédictions IA",
+      subtitle: "L'intelligence artificielle analyse les patterns techniques, le sentiment et les données on-chain pour prédire l'évolution des prix.",
+    },
+    rangeTrading: {
+      title: "Range Trading",
+      subtitle: "Signaux de trading en range — Bollinger Bands + RSI + ADX",
+    },
+    rapportHebdomadaireIA: {
+      title: "Rapport Hebdomadaire IA",
+      subtitle: "Chaque semaine, l'IA analyse l'ensemble du marché crypto et génère un rapport complet : tendances, opportunités, risques.",
+    },
+    riskManagement: {
+      title: "Gestion des Risques",
+      subtitle: "Maîtrisez votre exposition au risque. Calculez vos stop loss optimaux, gérez votre exposition globale et protégez votre capital.",
+    },
+    rugScamShield: {
+      title: "Rug & Scam Shield",
+      subtitle: "Protégez-vous contre les arnaques crypto. Analysez n'importe quel token pour détecter les signaux de rug pull, honeypot et scam.",
+    },
+    scalpTrading: {
+      title: "Scalp Trading v3 — Précision",
+      subtitle: "ATR SL (0.5-2%) + EMA 8/20 + VWAP + Stoch (9,3,1) + RSI M5 — TP1 rapide (0.8:1)",
+    },
+    scoreConfianceIA: {
+      title: "Score de Confiance IA",
+      subtitle: "Évaluation IA multi-dimensionnelle de chaque crypto basée sur 4 composantes : Analyse technique, fondamentaux, sentiment et on-chain.",
+    },
+    screenerTechnique: {
+      title: "Screener Technique Pro",
+      subtitle: "Filtrez et triez 500 cryptos avec 7 indicateurs techniques : RSI, MACD, EMA, Bollinger, ADX et plus.",
+    },
+    simulateurStrategieIA: {
+      title: "Simulateur de Stratégie IA",
+      subtitle: "Entrez votre capital et votre profil de risque. L'IA calcule une allocation optimale et simule la performance attendue sur 30/90 jours.",
+    },
+    simulation: {
+      title: "Simulateur de Trading",
+      subtitle: "Entraînez-vous au trading sans risquer de capital réel. Simulez des trades sur des données historiques réelles, testez vos idées.",
+    },
+    spotTrading: {
+      title: "Spot Trading — Investissement Long Terme",
+      subtitle: "Analysez et sélectionnez les meilleures cryptos pour un investissement spot à long terme. Score fondamental + technique + on-chain.",
+    },
+    statsAvancees: {
+      title: "Statistiques Avancées",
+      subtitle: "Plongez dans les statistiques détaillées du marché crypto : corrélations, volatilité, Sharpe ratio, drawdowns et plus.",
+    },
+    strategy: {
+      title: "Stratégies de Trading",
+      subtitle: "Découvrez et appliquez des stratégies de trading éprouvées. Chaque stratégie inclut un backtest, des règles claires et un exemple concret.",
+    },
+    technicalAnalysis: {
+      title: "Analyse Technique",
+      subtitle: "Analyse technique complète pour chaque crypto : tendance, RSI, MACD, Bollinger Bands, supports/résistances, patterns.",
+    },
+    telechargement: {
+      title: "Téléchargements",
+      subtitle: "Accédez à notre bibliothèque de ressources premium : guides PDF, cheat sheets, templates Excel, scripts de bot.",
+    },
+    timeframeAnalysis: {
+      title: "Timeframe Analysis",
+      subtitle: "Analysez les cryptos sur plusieurs timeframes simultanément. La confluence de signaux multi-TF est un signe de signal fort.",
+    },
+    tokenScanner: {
+      title: "AI Token Scanner",
+      subtitle: "Analysez n'importe quel token en profondeur : score de liquidité, niveau de risque, métriques on-chain, social score et plus.",
+    },
+    trades: {
+      title: "Suggestions de Swing Trading v6",
+      subtitle: "RSI/EMA 4H + Filtre Daily + ATR SL (6-12%) — TP1: 1.2:1 • TP2: 2.5:1 • TP3: 4:1",
+    },
+    tradingAcademy: {
+      title: "Trading Academy",
+      subtitle: "Formez-vous au trading crypto avec notre académie structurée. Des bases de l'analyse technique aux stratégies avancées de gestion de risque.",
+    },
+  },
   commandPalette: {
     placeholder: "Rechercher une page, une crypto, une action…",
     sections: {

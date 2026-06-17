@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Activity, RefreshCw, TrendingUp, TrendingDown, Sparkles, Gauge } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -27,6 +28,7 @@ function getRegime(ch24: number, ch7d: number, volRatio: number): { label: strin
 }
 
 export default function MarketRegime() {
+  const { t } = useTranslation();
   const [coins, setCoins] = useState<RegimeCoin[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -76,8 +78,8 @@ export default function MarketRegime() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<Activity className="w-6 h-6" />}
-          title="Market Regime"
-          subtitle="Identifiez le régime de marché actuel : tendance haussière, baissière, range ou volatilité extrême. Adaptez votre stratégie au contexte de marché pour maximiser vos performances."
+          title={t("pages.marketRegime.title")}
+          subtitle={t("pages.marketRegime.subtitle")}
           accentColor="blue"
           steps={[
             { n: "1", title: "Identifiez le régime", desc: "Le régime actuel (Bull, Bear, Range, Volatile) détermine quelle stratégie est la plus efficace. Adaptez votre approche en conséquence." },

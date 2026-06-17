@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -113,6 +114,7 @@ const LEADERBOARD: LeaderboardEntry[] = [
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Gamification() {
+  const { t } = useTranslation();
   const [xp, setXp] = useState<number>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -212,8 +214,8 @@ export default function Gamification() {
         <div className="max-w-[1440px] mx-auto px-6 py-6">
           <PageHeader
             icon={<Trophy className="w-6 h-6" />}
-            title="Système de Gamification"
-            subtitle="Progressez, débloquez des badges et grimpez dans le classement en accomplissant des actions sur la plateforme. Chaque interaction vous rapproche du sommet !"
+            title={t("pages.gamification.title")}
+            subtitle={t("pages.gamification.subtitle")}
             accentColor="purple"
             steps={[
               { n: "1", title: "Complétez des actions pour gagner des XP", desc: "Connexion quotidienne, analyses, signaux suivis, trades journalisés — chaque action vous rapporte des XP. Réclamez vos XP du jour en un clic." },

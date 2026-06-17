@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -188,6 +189,7 @@ const CHAIN_OPTIONS = [
 ];
 
 export default function RugScamShield() {
+  const { t } = useTranslation();
   const [address, setAddress] = useState("");
   const [chain, setChain] = useState("1");
   const [result, setResult] = useState<AuditResult | null>(null);
@@ -257,8 +259,8 @@ export default function RugScamShield() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">🛡️</span>}
-          title="Rug & Scam Shield"
-          subtitle="Protégez-vous contre les arnaques crypto. Analysez n’importe quel token pour détecter les red flags : honeypot, ownership non renoncé, liquidité verrouillée, etc."
+          title={t("pages.rugScamShield.title")}
+          subtitle={t("pages.rugScamShield.subtitle")}
           accentColor="red"
           steps={[
             { n: "1", title: "Entrez l’adresse du token", desc: "Copiez-collez l’adresse du contrat du token que vous souhaitez analyser. Compatible avec Ethereum, BSC et autres EVM." },

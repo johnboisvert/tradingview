@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import { RefreshCw, Search } from "lucide-react";
 import { fetchTop200, formatPrice, type CoinMarketData } from "@/lib/cryptoApi";
@@ -62,6 +63,7 @@ function generateSignal(c: CoinMarketData): Signal {
 }
 
 export default function AISignals() {
+  const { t } = useTranslation();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
@@ -105,8 +107,8 @@ export default function AISignals() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">📶</span>}
-          title="AI Signals"
-          subtitle="Signaux de trading générés par intelligence artificielle en temps réel. BUY, SELL et HOLD basés sur l’analyse technique, le sentiment et les données on-chain combinés."
+          title={t("pages.aISignals.title")}
+          subtitle={t("pages.aISignals.subtitle")}
           accentColor="blue"
           steps={[
             { n: "1", title: "Consultez les signaux", desc: "Chaque signal indique la direction (BUY/SELL/HOLD), la force du signal et le niveau de confiance de l’IA. Filtrez par type." },

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
 import Sidebar from "@/components/Sidebar";
 import {
@@ -283,6 +284,7 @@ function PortfolioPanel() {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function AIAssistant() {
+  const { t } = useTranslation();
   const loadHistory = (): Message[] => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -366,8 +368,8 @@ export default function AIAssistant() {
         <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-6">
           <PageHeader
             icon={<Bot className="w-6 h-6" />}
-            title="Assistant IA Conversationnel"
-            subtitle="Votre assistant IA crypto personnel, propulsé par Google Gemini. Il connaît votre portfolio, analyse le marché en temps réel et répond à toutes vos questions en français."
+            title={t("pages.aIAssistant.title")}
+            subtitle={t("pages.aIAssistant.subtitle")}
             accentColor="purple"
             steps={[
               { n: "1", title: "Posez votre question ou choisissez une suggestion", desc: "Tapez votre question ou cliquez sur une suggestion prédéfinie. L'IA comprend le contexte de votre portfolio et du marché actuel." },

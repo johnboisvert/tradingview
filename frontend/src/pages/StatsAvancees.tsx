@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { BarChart3, RefreshCw, TrendingUp, TrendingDown, Search } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -35,6 +36,7 @@ function buildStat(c: CoinMarketData): StatCoin {
 }
 
 export default function StatsAvancees() {
+  const { t } = useTranslation();
   const [coins, setCoins] = useState<StatCoin[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -66,8 +68,8 @@ export default function StatsAvancees() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<BarChart3 className="w-6 h-6" />}
-          title="Statistiques Avancées"
-          subtitle="Plongez dans les statistiques détaillées du marché crypto : corrélations, volatilité historique, distribution des rendements et métriques de risque avancées."
+          title={t("pages.statsAvancees.title")}
+          subtitle={t("pages.statsAvancees.subtitle")}
           accentColor="cyan"
           steps={[
             { n: "1", title: "Explorez les statistiques", desc: "Consultez les métriques avancées de chaque crypto : volatilité, Sharpe ratio, drawdown maximum et distribution des rendements." },

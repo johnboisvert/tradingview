@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -528,6 +529,7 @@ function PortfolioSection({ perf }: { perf: PortfolioPerf }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function RapportHebdomadaireIA() {
+  const { t } = useTranslation();
   const [selectedWeek, setSelectedWeek] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -641,8 +643,8 @@ export default function RapportHebdomadaireIA() {
           {/* Page Header */}
           <PageHeader
             icon={<FileText className="w-6 h-6" />}
-            title="Rapport Hebdomadaire IA"
-            subtitle="Chaque semaine, l'IA analyse l'ensemble du marché crypto et génère un rapport complet : résumé de marché, top opportunités, cryptos à surveiller, performance des signaux et de votre portfolio."
+            title={t("pages.rapportHebdomadaireIA.title")}
+            subtitle={t("pages.rapportHebdomadaireIA.subtitle")}
             accentColor="indigo"
             steps={[
               { n: "1", title: "Consultez le rapport de la semaine", desc: "Le rapport couvre le résumé du marché global (tendance, Fear & Greed, dominance BTC), les top 5 opportunités identifiées par l'IA et la performance des signaux." },

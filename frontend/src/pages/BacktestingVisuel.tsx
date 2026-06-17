@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -294,6 +295,7 @@ function Dropdown<T extends string | number>({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function BacktestingVisuel() {
+  const { t } = useTranslation();
   const [selectedSymbol, setSelectedSymbol] = useState("BTCUSDT");
   const [selectedTimeframe, setSelectedTimeframe] = useState("4h");
   const [selectedStrategy, setSelectedStrategy] = useState("ma_cross");
@@ -352,7 +354,7 @@ export default function BacktestingVisuel() {
         <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-6">
           <PageHeader
             icon={<Activity className="w-6 h-6" />}
-            title="Backtesting Visuel — Données Réelles Binance"
+            title={t("pages.backtestingVisuel.title")}
             subtitle={`Simulez les performances historiques de 5 stratégies sur ${BINANCE_SYMBOLS.length} paires Binance. Toutes les données sont réelles — aucune simulation aléatoire.`}
             accentColor="purple"
             steps={[

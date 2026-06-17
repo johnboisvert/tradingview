@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import emailjs from "@emailjs/browser";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
@@ -492,6 +493,7 @@ function NotifSettingsPanel({ settings, onChange, onTest, testingEmail }: {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function AlertesIA() {
+  const { t } = useTranslation();
   const [alerts, setAlerts] = useState<AlertRule[]>(loadAlerts);
   const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
   const [allCoins, setAllCoins] = useState<CoinMarketData[]>([]);
@@ -694,8 +696,8 @@ export default function AlertesIA() {
           {/* Page Header */}
           <PageHeader
             icon={<Bell className="w-6 h-6" />}
-            title="Alertes Intelligentes IA"
-            subtitle="Configurez des alertes personnalisées sur vos cryptos favorites. Recevez des notifications en temps réel via l'application ou par email (EmailJS)."
+            title={t("pages.alertesIA.title")}
+            subtitle={t("pages.alertesIA.subtitle")}
             accentColor="indigo"
             steps={[
               { n: "1", title: "Configurer les notifications", desc: "Cliquez sur '⚙️ Notifications' pour configurer EmailJS. Un guide étape par étape est inclus pour vous aider." },

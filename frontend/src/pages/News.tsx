@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Newspaper, RefreshCw, ExternalLink, Clock, AlertTriangle, Wifi, WifiOff } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -18,6 +19,7 @@ interface NewsItem {
 }
 
 export default function News() {
+  const { t } = useTranslation();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -134,8 +136,8 @@ export default function News() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<Newspaper className="w-6 h-6" />}
-          title="Actualités Crypto"
-          subtitle="Restez informé des dernières nouvelles du marché crypto en temps réel. Articles provenant de sources vérifiées et fiables."
+          title={t("pages.news.title")}
+          subtitle={t("pages.news.subtitle")}
           accentColor="blue"
           steps={[
             { n: "1", title: "Lisez les dernières news", desc: "Les actualités sont récupérées en temps réel depuis CryptoCompare (CoinTelegraph, CoinDesk, Bitcoin.com, etc.), des sources fiables du marché crypto." },

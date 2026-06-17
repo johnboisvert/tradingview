@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef, Fragment } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import {
@@ -1320,6 +1321,7 @@ async function registerScalpCallsToBackend(setups: ScalpSetup[]) {
    ═══════════════════════════════════════════════════════════════ */
 
 export default function ScalpTrading() {
+  const { t } = useTranslation();
   const [trades, setTrades] = useState<ScalpSetup[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
@@ -1511,8 +1513,8 @@ export default function ScalpTrading() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
         <PageHeader
           icon={<Zap className="w-7 h-7" />}
-          title="Scalp Trading v3 — Précision"
-          subtitle="ATR SL (0.5-2%) + EMA 8/20 + VWAP + Stoch (9,3,1) + RSI M5 — TP1 rapide (0.8:1)"
+          title={t("pages.scalpTrading.title")}
+          subtitle={t("pages.scalpTrading.subtitle")}
           accentColor="amber"
         />
 

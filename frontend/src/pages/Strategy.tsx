@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { BarChart3, RefreshCw, TrendingUp, TrendingDown, Target, Shield, Zap, Clock, AlertTriangle, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -39,6 +40,7 @@ interface StrategyGuide {
 }
 
 export default function Strategy() {
+  const { t } = useTranslation();
   const [signals, setSignals] = useState<CoinSignal[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -249,8 +251,8 @@ export default function Strategy() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
       <PageHeader
           icon={<BarChart3 className="w-6 h-6" />}
-          title="Stratégies de Trading"
-          subtitle="Découvrez et appliquez des stratégies de trading éprouvées. Chaque stratégie inclut les conditions d’entrée, de sortie, le risk management et les performances historiques."
+          title={t("pages.strategy.title")}
+          subtitle={t("pages.strategy.subtitle")}
           accentColor="blue"
           steps={[
             { n: "1", title: "Choisissez une stratégie", desc: "Parcourez les stratégies disponibles (Trend Following, Mean Reversion, Breakout...) et sélectionnez celle qui correspond à votre profil." },

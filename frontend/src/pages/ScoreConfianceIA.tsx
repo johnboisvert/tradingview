@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -291,6 +292,7 @@ function DetailModal({ coin, onClose }: { coin: CryptoScore; onClose: () => void
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ScoreConfianceIA() {
+  const { t } = useTranslation();
   const [scores, setScores] = useState<CryptoScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -367,8 +369,8 @@ export default function ScoreConfianceIA() {
           {/* Page Header */}
           <PageHeader
             icon={<Shield className="w-6 h-6" />}
-            title="Score de Confiance IA"
-            subtitle="Évaluation IA multi-dimensionnelle de chaque crypto basée sur 4 composantes : Analyse Technique, Sentiment Social, Métriques On-Chain et Momentum de Marché. Score de 0 à 100."
+            title={t("pages.scoreConfianceIA.title")}
+            subtitle={t("pages.scoreConfianceIA.subtitle")}
             accentColor="indigo"
             steps={[
               { n: "1", title: "Consultez les scores", desc: "Chaque crypto reçoit un score global de 0 à 100. Vert (67-100) = signal fort, Orange (34-66) = modéré, Rouge (0-33) = faible. Filtrez par catégorie." },

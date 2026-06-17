@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import {
@@ -633,6 +634,7 @@ function saveFavorites(favs: Set<string>) {
 // ═══════════════════════════════════════════════════════════════
 
 export default function ScreenerTechnique() {
+  const { t } = useTranslation();
   const [coins, setCoins] = useState<CoinScreener[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -765,8 +767,8 @@ export default function ScreenerTechnique() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#070B14]">
         <PageHeader
           icon={<Target className="w-6 h-6" />}
-          title="Screener Technique Pro"
-          subtitle="Filtrez et triez 500 cryptos avec 7 indicateurs techniques : RSI, MACD, EMA, Bollinger Bands, multi-timeframe, supports/résistances. Cliquez sur une ligne pour l'analyse détaillée."
+          title={t("pages.screenerTechnique.title")}
+          subtitle={t("pages.screenerTechnique.subtitle")}
           accentColor="cyan"
           steps={[
             { n: "1", title: "Appliquez vos filtres", desc: "RSI survendu, MACD haussier, Golden Cross, Bollinger Squeeze — combinez les indicateurs pour trouver les meilleurs setups." },

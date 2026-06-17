@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import { getEbooks, incrementEbookDownloads, type Ebook } from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
@@ -34,6 +35,7 @@ const ICON_MAP: Record<string, string> = {
 };
 
 export default function Telechargement() {
+  const { t } = useTranslation();
   const [ebooks, setEbooks] = useState<Ebook[]>([]);
   const [loading, setLoading] = useState(true);
   const [catFilter, setCatFilter] = useState("Tous");
@@ -81,8 +83,8 @@ export default function Telechargement() {
       <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">📥</span>}
-          title="Téléchargements"
-          subtitle="Accédez à notre bibliothèque de ressources premium : guides PDF, cheat sheets, templates de trading, calendriers et infographies pour améliorer votre trading."
+          title={t("pages.telechargement.title")}
+          subtitle={t("pages.telechargement.subtitle")}
           accentColor="purple"
           steps={[
             { n: "1", title: "Parcourez la bibliothèque", desc: "Filtrez par catégorie (Guides, Cheat Sheets, Templates...) pour trouver rapidement les ressources dont vous avez besoin." },

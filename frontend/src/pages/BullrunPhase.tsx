@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { RefreshCw, Sparkles } from "lucide-react";
 import { fetchWithCorsProxy } from "@/lib/cryptoApi";
@@ -126,6 +127,7 @@ function useAnimatedNumber(target: number, duration = 1200): number {
 }
 
 export default function BullrunPhase() {
+  const { t } = useTranslation();
   const [score, setScore] = useState(0);
   const [indicators, setIndicators] = useState<Indicator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -425,8 +427,8 @@ export default function BullrunPhase() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
       <PageHeader
           icon={<span className="text-lg">🚀</span>}
-          title="Bullrun Phase Tracker"
-          subtitle="Identifiez la phase actuelle du cycle de marché crypto. Du fond du bear market au pic du bull run, sachez exactement où nous en sommes pour optimiser votre stratégie."
+          title={t("pages.bullrunPhase.title")}
+          subtitle={t("pages.bullrunPhase.subtitle")}
           accentColor="amber"
           steps={[
             { n: "1", title: "Lisez la phase actuelle", desc: "Le tracker indique la phase du cycle : Accumulation, Early Bull, Mid Bull, Late Bull, Distribution ou Bear. Chaque phase a ses caractéristiques." },

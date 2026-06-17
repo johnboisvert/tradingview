@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import { TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3, Clock, Shield, Target, ChevronDown, ChevronUp, Link2, Zap, Trophy, Info, BookOpen } from "lucide-react";
@@ -1249,6 +1250,7 @@ function rsiBadge(rsi: number | null): { text: string; color: string; bg: string
 /* ─── Component ─── */
 
 export default function Trades() {
+  const { t } = useTranslation();
   const [setups, setSetups] = useState<TradeSetup[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
@@ -1342,8 +1344,8 @@ export default function Trades() {
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
         <PageHeader
           icon={<BarChart3 className="w-6 h-6" />}
-          title="Suggestions de Swing Trading v6"
-          subtitle="RSI/EMA 4H + Filtre Daily + ATR SL (6-12%) — TP1: 1.2:1 • TP2: 2.5:1 • TP3: 4:1 — Envoi Telegram auto ≥ 80%"
+          title={t("pages.trades.title")}
+          subtitle={t("pages.trades.subtitle")}
           accentColor="blue"
           steps={[
             { n: "1", title: "Pré-filtre CoinGecko", desc: "Top 200 cryptos analysées. Momentum (+4/+12%), survente (-8/-18%), ou distribution (-5/-20%) avec volume suffisant." },

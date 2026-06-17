@@ -24,18 +24,21 @@ export default function AnimatedLogo({
   className = "",
   oncePerSession = false,
 }: Props) {
-  const [animate, setAnimate] = useState(false);
+  // Si l'animation a déjà été jouée dans cette session, on rend directement
+  // dans l'état FINAL (visible) plutôt que dans l'état initial invisible.
+  const alreadyPlayed =
+    typeof window !== "undefined" &&
+    oncePerSession &&
+    sessionStorage.getItem("cryptoia-logo-anim") === "1";
+  const [animate, setAnimate] = useState<boolean>(alreadyPlayed);
 
   useEffect(() => {
-    if (oncePerSession && sessionStorage.getItem("cryptoia-logo-anim") === "1") {
-      setAnimate(false);
-      return;
-    }
+    if (alreadyPlayed) return;
     // tick to next frame so CSS transitions actually animate
     const t = requestAnimationFrame(() => setAnimate(true));
     if (oncePerSession) sessionStorage.setItem("cryptoia-logo-anim", "1");
     return () => cancelAnimationFrame(t);
-  }, [oncePerSession]);
+  }, [oncePerSession, alreadyPlayed]);
 
   const half = size / 2;
   // 3 rings with different radii, dasharray ≈ circumference

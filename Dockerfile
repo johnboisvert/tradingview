@@ -19,6 +19,10 @@ COPY --from=builder /app/frontend/dist ./dist
 # Copy server.js
 COPY --from=builder /app/frontend/server.js ./server.js
 
+# Copy backend route modules (ESM refactor) and gamification seed
+COPY --from=builder /app/frontend/routes ./routes
+COPY --from=builder /app/frontend/gamification_seed.js ./gamification_seed.js
+
 # Copy assets (logo for Telegram alerts)
 COPY --from=builder /app/frontend/assets ./assets
 
@@ -26,7 +30,7 @@ COPY --from=builder /app/frontend/assets ./assets
 RUN mkdir -p /app/data
 
 # Create a minimal package.json for the production server (ES modules + deps)
-RUN echo '{"type":"module","dependencies":{"express":"^5.2.1","dotenv":"^16.4.0","stripe":"^17.0.0","resend":"^4.4.1"}}' > package.json && npm install --omit=dev
+RUN echo '{"type":"module","dependencies":{"express":"^5.2.1","dotenv":"^16.4.0","stripe":"^17.0.0","resend":"^4.4.1","web-push":"^3.6.7"}}' > package.json && npm install --omit=dev
 
 EXPOSE 3000
 

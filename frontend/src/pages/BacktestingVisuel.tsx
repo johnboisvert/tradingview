@@ -358,10 +358,9 @@ export default function BacktestingVisuel() {
             subtitle={`Simulez les performances historiques de 5 stratégies sur ${BINANCE_SYMBOLS.length} paires Binance. Toutes les données sont réelles — aucune simulation aléatoire.`}
             accentColor="purple"
             steps={[
-              { n: "1", title: "Sélectionnez une paire et un timeframe", desc: `Choisissez parmi ${BINANCE_SYMBOLS.length} paires Binance et 4 timeframes. Les données sont chargées en temps réel.` },
-              { n: "2", title: "Choisissez une stratégie et lancez", desc: "L'algorithme applique la stratégie sur les vrais prix historiques Binance et génère les trades réels." },
-              { n: "3", title: "Analysez les performances", desc: "Consultez le taux de réussite, le gain total, le drawdown et comparez la stratégie vs Buy & Hold." },
-            ]}
+            { n: "2", title: t("pages.backtestingVisuel.steps.2.title"), desc: t("pages.backtestingVisuel.steps.2.desc") },
+            { n: "3", title: t("pages.backtestingVisuel.steps.3.title"), desc: t("pages.backtestingVisuel.steps.3.desc") },
+          ]}
           />
 
           {/* ── Config Panel ── */}

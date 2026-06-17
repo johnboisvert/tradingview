@@ -140,9 +140,9 @@ export default function News() {
           subtitle={t("pages.news.subtitle")}
           accentColor="blue"
           steps={[
-            { n: "1", title: "Lisez les dernières news", desc: "Les actualités sont récupérées en temps réel depuis CryptoCompare (CoinTelegraph, CoinDesk, Bitcoin.com, etc.), des sources fiables du marché crypto." },
-            { n: "2", title: "Vérifiez la source", desc: "Chaque article indique sa source d'origine. Cliquez pour lire l'article complet sur le site source." },
-            { n: "3", title: "Réagissez rapidement", desc: "Les grandes news peuvent créer des opportunités de trading. Croisez toujours l'info avec l'analyse technique avant d'agir." },
+            { n: "1", title: t("pages.news.steps.1.title"), desc: t("pages.news.steps.1.desc") },
+            { n: "2", title: t("pages.news.steps.2.title"), desc: t("pages.news.steps.2.desc") },
+            { n: "3", title: t("pages.news.steps.3.title"), desc: t("pages.news.steps.3.desc") },
           ]}
         />
         {/* ===== HERO premium ===== */}

@@ -82,9 +82,9 @@ export default function Calculatrice() {
           subtitle={t("pages.calculatrice.subtitle")}
           accentColor="cyan"
           steps={[
-            { n: "1", title: "Entrez les paramètres", desc: "Renseignez le prix d'entrée, le prix cible, le stop loss et le montant investi pour calculer votre P&L potentiel." },
-            { n: "2", title: "Vérifiez le ratio R/R", desc: "Un bon trade a un ratio risque/récompense d'au moins 1:2. Si votre ratio est inférieur, reconsidérez votre setup." },
-            { n: "3", title: "Calculez le levier", desc: "Pour le trading avec levier, entrez le multiplicateur pour voir l'impact sur vos gains et pertes potentiels et votre prix de liquidation." },
+            { n: "1", title: t("pages.calculatrice.steps.1.title"), desc: t("pages.calculatrice.steps.1.desc") },
+            { n: "2", title: t("pages.calculatrice.steps.2.title"), desc: t("pages.calculatrice.steps.2.desc") },
+            { n: "3", title: t("pages.calculatrice.steps.3.title"), desc: t("pages.calculatrice.steps.3.desc") },
           ]}
         />
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">

@@ -193,9 +193,9 @@ export default function Dominance() {
           subtitle={t("pages.dominance.subtitle")}
           accentColor="amber"
           steps={[
-            { n: "1", title: "Lisez la barre visuelle", desc: "La barre colorée en haut montre la répartition des Top 15 cryptos. Survolez chaque segment pour voir le pourcentage exact." },
-            { n: "2", title: "Suivez la dominance BTC", desc: "BTC dom > 55% = marché dominé par Bitcoin (phase accumulation). BTC dom < 45% = altseason potentielle." },
-            { n: "3", title: "Comparez les actifs", desc: "Le tableau détaillé vous permet de comparer market cap, volume et dominance de chaque crypto du Top 50." },
+            { n: "1", title: t("pages.dominance.steps.1.title"), desc: t("pages.dominance.steps.1.desc") },
+            { n: "2", title: t("pages.dominance.steps.2.title"), desc: t("pages.dominance.steps.2.desc") },
+            { n: "3", title: t("pages.dominance.steps.3.title"), desc: t("pages.dominance.steps.3.desc") },
           ]}
         />
 

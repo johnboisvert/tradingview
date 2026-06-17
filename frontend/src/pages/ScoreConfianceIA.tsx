@@ -373,10 +373,10 @@ export default function ScoreConfianceIA() {
             subtitle={t("pages.scoreConfianceIA.subtitle")}
             accentColor="indigo"
             steps={[
-              { n: "1", title: "Consultez les scores", desc: "Chaque crypto reçoit un score global de 0 à 100. Vert (67-100) = signal fort, Orange (34-66) = modéré, Rouge (0-33) = faible. Filtrez par catégorie." },
-              { n: "2", title: "Analysez les composantes", desc: "Cliquez sur une crypto pour voir le détail des 4 composantes : Technique (30%), On-Chain (25%), Momentum (25%), Sentiment (20%)." },
-              { n: "3", title: "Prenez des décisions éclairées", desc: "Combinez les scores IA avec vos propres analyses. Un score élevé sur plusieurs composantes renforce la conviction. Ne tradez jamais sur un seul indicateur." },
-            ]}
+            { n: "1", title: t("pages.scoreConfianceIA.steps.1.title"), desc: t("pages.scoreConfianceIA.steps.1.desc") },
+            { n: "2", title: t("pages.scoreConfianceIA.steps.2.title"), desc: t("pages.scoreConfianceIA.steps.2.desc") },
+            { n: "3", title: t("pages.scoreConfianceIA.steps.3.title"), desc: t("pages.scoreConfianceIA.steps.3.desc") },
+          ]}
           />
 
           {/* Stats */}

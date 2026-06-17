@@ -496,10 +496,10 @@ export default function SimulateurStrategieIA() {
             subtitle={t("pages.simulateurStrategieIA.subtitle")}
             accentColor="indigo"
             steps={[
-              { n: "1", title: "Entrez votre capital et profil", desc: "Renseignez votre capital disponible en $, votre profil de risque (Conservateur, Modéré, Agressif) et votre horizon d'investissement." },
-              { n: "2", title: "Lancez la simulation IA", desc: "L'IA analyse les données de marché, les scores de confiance et les métriques on-chain pour générer une allocation optimisée." },
-              { n: "3", title: "Analysez les projections", desc: "Consultez la répartition par crypto, les 3 scénarios (optimiste/réaliste/pessimiste) et le niveau de risque global avant de prendre vos décisions." },
-            ]}
+            { n: "1", title: t("pages.simulateurStrategieIA.steps.1.title"), desc: t("pages.simulateurStrategieIA.steps.1.desc") },
+            { n: "2", title: t("pages.simulateurStrategieIA.steps.2.title"), desc: t("pages.simulateurStrategieIA.steps.2.desc") },
+            { n: "3", title: t("pages.simulateurStrategieIA.steps.3.title"), desc: t("pages.simulateurStrategieIA.steps.3.desc") },
+          ]}
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">

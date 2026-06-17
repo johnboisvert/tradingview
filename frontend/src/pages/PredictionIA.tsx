@@ -99,9 +99,9 @@ export default function PredictionIA() {
           subtitle={t("pages.predictionIA.subtitle")}
           accentColor="purple"
           steps={[
-            { n: "1", title: "Consultez les prédictions", desc: "Chaque crypto affiche une prédiction haussière ou baissière avec un niveau de confiance. Plus la confiance est élevée, plus le signal est fiable." },
-            { n: "2", title: "Filtrez par signal", desc: "Utilisez les filtres pour afficher uniquement les signaux BULL (haussiers) ou BEAR (baissiers) selon votre stratégie." },
-            { n: "3", title: "Croisez avec l'analyse technique", desc: "Les prédictions IA sont un complément, pas un oracle. Confirmez toujours avec vos propres indicateurs techniques." },
+            { n: "1", title: t("pages.predictionIA.steps.1.title"), desc: t("pages.predictionIA.steps.1.desc") },
+            { n: "2", title: t("pages.predictionIA.steps.2.title"), desc: t("pages.predictionIA.steps.2.desc") },
+            { n: "3", title: t("pages.predictionIA.steps.3.title"), desc: t("pages.predictionIA.steps.3.desc") },
           ]}
         />
         <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">

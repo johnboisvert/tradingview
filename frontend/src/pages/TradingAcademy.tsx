@@ -73,9 +73,9 @@ export default function TradingAcademy() {
           subtitle={t("pages.tradingAcademy.subtitle")}
           accentColor="blue"
           steps={[
-            { n: "1", title: "Choisissez votre niveau", desc: "Filtrez les modules par niveau : Débutant, Intermédiaire ou Avancé. Commencez par les bases si vous débutez." },
-            { n: "2", title: "Suivez les leçons", desc: "Chaque module contient plusieurs leçons structurées. Cochez les leçons terminées pour suivre votre progression." },
-            { n: "3", title: "Pratiquez", desc: "Après chaque module, mettez en pratique les concepts appris sur le simulateur de trading avant de risquer du capital réel." },
+            { n: "1", title: t("pages.tradingAcademy.steps.1.title"), desc: t("pages.tradingAcademy.steps.1.desc") },
+            { n: "2", title: t("pages.tradingAcademy.steps.2.title"), desc: t("pages.tradingAcademy.steps.2.desc") },
+            { n: "3", title: t("pages.tradingAcademy.steps.3.title"), desc: t("pages.tradingAcademy.steps.3.desc") },
           ]}
         />
         <div className="fixed inset-0 pointer-events-none z-0">

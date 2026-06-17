@@ -141,9 +141,9 @@ export default function Simulation() {
           subtitle={t("pages.simulation.subtitle")}
           accentColor="purple"
           steps={[
-            { n: "1", title: "Configurez la simulation", desc: "Choisissez le capital de départ, la paire à trader et la période historique pour commencer votre simulation." },
-            { n: "2", title: "Tradez virtuellement", desc: "Ouvrez des positions LONG ou SHORT, placez vos stops et targets comme en trading réel, sans risquer d'argent réel." },
-            { n: "3", title: "Analysez vos résultats", desc: "Après la simulation, étudiez votre win rate, drawdown et P&L pour identifier vos points forts et axes d'amélioration." },
+            { n: "1", title: t("pages.simulation.steps.1.title"), desc: t("pages.simulation.steps.1.desc") },
+            { n: "2", title: t("pages.simulation.steps.2.title"), desc: t("pages.simulation.steps.2.desc") },
+            { n: "3", title: t("pages.simulation.steps.3.title"), desc: t("pages.simulation.steps.3.desc") },
           ]}
         />
         {/* Header */}

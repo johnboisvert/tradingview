@@ -950,10 +950,10 @@ export default function MyCryptoIA() {
             subtitle={t("pages.myCryptoIA.subtitle")}
             accentColor="indigo"
             steps={[
-              { n: "1", title: "Personnalisez vos widgets", desc: "Cliquez sur ⚙️ Personnaliser pour activer/désactiver les 20 widgets disponibles. Filtrez par catégorie pour trouver rapidement." },
-              { n: "2", title: "Ajoutez vos cryptos favorites", desc: "Dans le widget 'Cryptos Favorites', cliquez sur '+ Ajouter une crypto' pour suivre les actifs qui vous intéressent." },
-              { n: "3", title: "Interprétez les signaux IA", desc: "Les scores de confiance > 75% indiquent des signaux forts. Combinez RSI, Fear & Greed et mouvements Whales pour valider vos décisions." },
-            ]}
+            { n: "1", title: t("pages.myCryptoIA.steps.1.title"), desc: t("pages.myCryptoIA.steps.1.desc") },
+            { n: "2", title: t("pages.myCryptoIA.steps.2.title"), desc: t("pages.myCryptoIA.steps.2.desc") },
+            { n: "3", title: t("pages.myCryptoIA.steps.3.title"), desc: t("pages.myCryptoIA.steps.3.desc") },
+          ]}
           />
 
           {/* Top bar */}

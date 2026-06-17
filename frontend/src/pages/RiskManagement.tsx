@@ -64,9 +64,9 @@ export default function RiskManagement() {
           subtitle={t("pages.riskManagement.subtitle")}
           accentColor="red"
           steps={[
-            { n: "1", title: "Définissez votre risque", desc: "Entrez votre capital total et le pourcentage maximum que vous acceptez de risquer par trade (règle d'or : max 1-2%)." },
-            { n: "2", title: "Calculez vos stops", desc: "L'outil calcule automatiquement le stop loss optimal basé sur la volatilité de l'actif et votre tolérance au risque." },
-            { n: "3", title: "Surveillez l'exposition", desc: "Vérifiez régulièrement votre exposition totale. Ne jamais avoir plus de 10-15% de votre capital en risque simultanément." },
+            { n: "1", title: t("pages.riskManagement.steps.1.title"), desc: t("pages.riskManagement.steps.1.desc") },
+            { n: "2", title: t("pages.riskManagement.steps.2.title"), desc: t("pages.riskManagement.steps.2.desc") },
+            { n: "3", title: t("pages.riskManagement.steps.3.title"), desc: t("pages.riskManagement.steps.3.desc") },
           ]}
         />
         {/* ===== HERO premium ===== */}

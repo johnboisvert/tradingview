@@ -113,9 +113,9 @@ export default function NarrativeRadar() {
           subtitle={t("pages.narrativeRadar.subtitle")}
           accentColor="pink"
           steps={[
-            { n: "1", title: "Repérez les tendances", desc: "Les narratives avec le score le plus élevé dominent le marché actuellement et attirent le plus de capital." },
-            { n: "2", title: "Évaluez la force", desc: "Un score en hausse indique une narrative émergente. Un score en baisse signale une rotation vers d'autres secteurs." },
-            { n: "3", title: "Positionnez-vous", desc: "Investissez dans les cryptos liées aux narratives dominantes pour bénéficier du momentum sectoriel." },
+            { n: "1", title: t("pages.narrativeRadar.steps.1.title"), desc: t("pages.narrativeRadar.steps.1.desc") },
+            { n: "2", title: t("pages.narrativeRadar.steps.2.title"), desc: t("pages.narrativeRadar.steps.2.desc") },
+            { n: "3", title: t("pages.narrativeRadar.steps.3.title"), desc: t("pages.narrativeRadar.steps.3.desc") },
           ]}
         />
 

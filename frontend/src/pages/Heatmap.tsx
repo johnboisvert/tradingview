@@ -133,9 +133,9 @@ export default function Heatmap() {
           subtitle={t("pages.heatmap.subtitle")}
           accentColor="orange"
           steps={[
-            { n: "1", title: "Lisez les couleurs", desc: "Vert intense = forte hausse. Rouge intense = forte baisse. Gris = variation neutre. La taille des blocs reflète la market cap." },
-            { n: "2", title: "Basculez entre les vues", desc: "Mode Heatmap pour une vue visuelle rapide, mode Tableau pour les données précises avec tri par colonne." },
-            { n: "3", title: "Identifiez les secteurs", desc: "Repérez les groupes de cryptos qui bougent ensemble pour détecter des rotations sectorielles (DeFi, L1, Gaming...)." },
+            { n: "1", title: t("pages.heatmap.steps.1.title"), desc: t("pages.heatmap.steps.1.desc") },
+            { n: "2", title: t("pages.heatmap.steps.2.title"), desc: t("pages.heatmap.steps.2.desc") },
+            { n: "3", title: t("pages.heatmap.steps.3.title"), desc: t("pages.heatmap.steps.3.desc") },
           ]}
         />
         {/* Hero */}

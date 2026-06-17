@@ -372,10 +372,10 @@ export default function AIAssistant() {
             subtitle={t("pages.aIAssistant.subtitle")}
             accentColor="purple"
             steps={[
-              { n: "1", title: "Posez votre question ou choisissez une suggestion", desc: "Tapez votre question ou cliquez sur une suggestion prédéfinie. L'IA comprend le contexte de votre portfolio et du marché actuel." },
-              { n: "2", title: "L'IA analyse votre portfolio et le marché", desc: "Google Gemini AI analyse votre question en tenant compte de vos positions actuelles, des tendances du marché et des indicateurs techniques." },
-              { n: "3", title: "Recevez des conseils personnalisés", desc: "Obtenez des réponses détaillées et personnalisées. Posez des questions de suivi — l'IA garde le contexte de toute la conversation." },
-            ]}
+            { n: "1", title: t("pages.aIAssistant.steps.1.title"), desc: t("pages.aIAssistant.steps.1.desc") },
+            { n: "2", title: t("pages.aIAssistant.steps.2.title"), desc: t("pages.aIAssistant.steps.2.desc") },
+            { n: "3", title: t("pages.aIAssistant.steps.3.title"), desc: t("pages.aIAssistant.steps.3.desc") },
+          ]}
           />
 
           {/* API Status Banner */}

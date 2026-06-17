@@ -218,10 +218,10 @@ export default function Gamification() {
             subtitle={t("pages.gamification.subtitle")}
             accentColor="purple"
             steps={[
-              { n: "1", title: "Complétez des actions pour gagner des XP", desc: "Connexion quotidienne, analyses, signaux suivis, trades journalisés — chaque action vous rapporte des XP. Réclamez vos XP du jour en un clic." },
-              { n: "2", title: "Débloquez des badges exclusifs", desc: "9 badges à débloquer de rareté commune à légendaire. Chaque badge récompense une accomplissement spécifique sur la plateforme." },
-              { n: "3", title: "Grimpez dans le classement", desc: "Comparez votre progression avec la communauté. Relevez les défis hebdomadaires pour gagner des XP bonus et monter dans le top 10." },
-            ]}
+            { n: "1", title: t("pages.gamification.steps.1.title"), desc: t("pages.gamification.steps.1.desc") },
+            { n: "2", title: t("pages.gamification.steps.2.title"), desc: t("pages.gamification.steps.2.desc") },
+            { n: "3", title: t("pages.gamification.steps.3.title"), desc: t("pages.gamification.steps.3.desc") },
+          ]}
           />
 
           {/* ── Reward Toast ── */}

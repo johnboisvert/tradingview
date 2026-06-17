@@ -431,9 +431,9 @@ export default function BullrunPhase() {
           subtitle={t("pages.bullrunPhase.subtitle")}
           accentColor="amber"
           steps={[
-            { n: "1", title: "Lisez la phase actuelle", desc: "Le tracker indique la phase du cycle : Accumulation, Early Bull, Mid Bull, Late Bull, Distribution ou Bear. Chaque phase a ses caractéristiques." },
-            { n: "2", title: "Analysez les indicateurs", desc: "Les métriques on-chain, le sentiment et les données techniques sont combinés pour déterminer la phase avec précision." },
-            { n: "3", title: "Adaptez votre exposition", desc: "Augmentez l’exposition en Early Bull, prenez des profits en Late Bull, accumulez en Bear. Le cycle se répète, profitez-en." },
+            { n: "1", title: t("pages.bullrunPhase.steps.1.title"), desc: t("pages.bullrunPhase.steps.1.desc") },
+            { n: "2", title: t("pages.bullrunPhase.steps.2.title"), desc: t("pages.bullrunPhase.steps.2.desc") },
+            { n: "3", title: t("pages.bullrunPhase.steps.3.title"), desc: t("pages.bullrunPhase.steps.3.desc") },
           ]}
         />
         <div className="fixed top-0 left-[260px] right-0 bottom-0 pointer-events-none z-0 overflow-hidden">

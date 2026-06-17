@@ -1348,9 +1348,9 @@ export default function Trades() {
           subtitle={t("pages.trades.subtitle")}
           accentColor="blue"
           steps={[
-            { n: "1", title: "Pré-filtre CoinGecko", desc: "Top 200 cryptos analysées. Momentum (+4/+12%), survente (-8/-18%), ou distribution (-5/-20%) avec volume suffisant." },
-            { n: "2", title: "Confirmation Binance 4H", desc: "RSI(4H) + EMA 8/20(4H) + Volume spike. Rejet strict si indicateurs en conflit avec la direction." },
-            { n: "3", title: "Filtre Daily + Risk", desc: "Blocage dur contre-tendance Daily. SL: 6-12% (ATR). TP1: 1.2:1 • TP2: 2.5:1 • TP3: 4:1. Cooldown 12h." },
+            { n: "1", title: t("pages.trades.steps.1.title"), desc: t("pages.trades.steps.1.desc") },
+            { n: "2", title: t("pages.trades.steps.2.title"), desc: t("pages.trades.steps.2.desc") },
+            { n: "3", title: t("pages.trades.steps.3.title"), desc: t("pages.trades.steps.3.desc") },
           ]}
         />
 

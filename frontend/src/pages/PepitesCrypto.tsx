@@ -136,9 +136,9 @@ export default function PepitesCrypto() {
           subtitle={t("pages.pepitesCrypto.subtitle")}
           accentColor="amber"
           steps={[
-            { n: "1", title: "Explorez les pépites", desc: "Chaque carte représente un projet avec un score de potentiel, un niveau de risque et les raisons pour lesquelles l'IA le considère comme une pépite." },
-            { n: "2", title: "Filtrez par risque", desc: "Sélectionnez votre tolérance au risque : Faible (projets établis), Moyen (croissance), Élevé (early stage à fort potentiel)." },
-            { n: "3", title: "Faites votre DYOR", desc: "Ces sélections sont des pistes de recherche, pas des conseils financiers. Faites toujours votre propre recherche avant d'investir." },
+            { n: "1", title: t("pages.pepitesCrypto.steps.1.title"), desc: t("pages.pepitesCrypto.steps.1.desc") },
+            { n: "2", title: t("pages.pepitesCrypto.steps.2.title"), desc: t("pages.pepitesCrypto.steps.2.desc") },
+            { n: "3", title: t("pages.pepitesCrypto.steps.3.title"), desc: t("pages.pepitesCrypto.steps.3.desc") },
           ]}
         />
         <div className="fixed inset-0 pointer-events-none z-0">

@@ -165,9 +165,9 @@ export default function OpportunityScanner() {
           subtitle={t("pages.opportunityScanner.subtitle")}
           accentColor="green"
           steps={[
-            { n: "1", title: "Consultez les opportunités", desc: "Chaque carte représente une opportunité détectée par l'IA avec le type de signal, le potentiel estimé et le niveau de risque." },
-            { n: "2", title: "Filtrez par type", desc: "Utilisez les filtres pour afficher uniquement les opportunités qui correspondent à votre style de trading (swing, scalp, position)." },
-            { n: "3", title: "Agissez rapidement", desc: "Les opportunités sont éphémères. Vérifiez le signal sur votre chart avant d'entrer en position et respectez votre risk management." },
+            { n: "1", title: t("pages.opportunityScanner.steps.1.title"), desc: t("pages.opportunityScanner.steps.1.desc") },
+            { n: "2", title: t("pages.opportunityScanner.steps.2.title"), desc: t("pages.opportunityScanner.steps.2.desc") },
+            { n: "3", title: t("pages.opportunityScanner.steps.3.title"), desc: t("pages.opportunityScanner.steps.3.desc") },
           ]}
         />
         <div className="fixed inset-0 pointer-events-none z-0">

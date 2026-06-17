@@ -217,9 +217,9 @@ export default function CryptoJournal() {
           subtitle={t("pages.cryptoJournal.subtitle")}
           accentColor="indigo"
           steps={[
-            { n: "1", title: "Enregistrez vos trades", desc: "Après chaque trade, notez l'entrée, la sortie, la raison du trade et votre état émotionnel. La discipline du journal est clé." },
-            { n: "2", title: "Analysez vos patterns", desc: "L'IA analyse vos entrées pour identifier vos biais récurrents : FOMO, revenge trading, sortie prématurée, etc." },
-            { n: "3", title: "Améliorez-vous", desc: "Consultez vos statistiques hebdomadaires et mensuelles pour mesurer votre progression et ajuster votre approche." },
+            { n: "1", title: t("pages.cryptoJournal.steps.1.title"), desc: t("pages.cryptoJournal.steps.1.desc") },
+            { n: "2", title: t("pages.cryptoJournal.steps.2.title"), desc: t("pages.cryptoJournal.steps.2.desc") },
+            { n: "3", title: t("pages.cryptoJournal.steps.3.title"), desc: t("pages.cryptoJournal.steps.3.desc") },
           ]}
         />
         {/* Header */}

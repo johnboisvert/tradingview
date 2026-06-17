@@ -87,9 +87,9 @@ export default function Telechargement() {
           subtitle={t("pages.telechargement.subtitle")}
           accentColor="purple"
           steps={[
-            { n: "1", title: "Parcourez la bibliothèque", desc: "Filtrez par catégorie (Guides, Cheat Sheets, Templates...) pour trouver rapidement les ressources dont vous avez besoin." },
-            { n: "2", title: "Téléchargez vos ressources", desc: "Cliquez sur Télécharger pour obtenir le fichier. Les ressources premium sont disponibles avec votre abonnement actif." },
-            { n: "3", title: "Appliquez les connaissances", desc: "Utilisez les cheat sheets comme référence rapide pendant vos sessions de trading et les templates pour structurer vos analyses." },
+            { n: "1", title: t("pages.telechargement.steps.1.title"), desc: t("pages.telechargement.steps.1.desc") },
+            { n: "2", title: t("pages.telechargement.steps.2.title"), desc: t("pages.telechargement.steps.2.desc") },
+            { n: "3", title: t("pages.telechargement.steps.3.title"), desc: t("pages.telechargement.steps.3.desc") },
           ]}
         />
         <div className="fixed inset-0 pointer-events-none z-0">

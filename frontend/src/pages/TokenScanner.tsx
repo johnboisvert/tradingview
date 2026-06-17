@@ -103,9 +103,9 @@ export default function TokenScanner() {
           subtitle={t("pages.tokenScanner.subtitle")}
           accentColor="blue"
           steps={[
-            { n: "1", title: "Recherchez un token", desc: "Tapez le nom ou symbole d'un token dans la barre de recherche. L'IA analyse instantanément ses métriques clés." },
-            { n: "2", title: "Évaluez les scores", desc: "Score de liquidité > 70 = bonne liquidité. Score de risque < 30 = risque faible. Momentum = direction de la tendance." },
-            { n: "3", title: "Prenez une décision", desc: "Croisez le score IA avec votre analyse personnelle. Ne basez jamais une décision sur un seul indicateur." },
+            { n: "1", title: t("pages.tokenScanner.steps.1.title"), desc: t("pages.tokenScanner.steps.1.desc") },
+            { n: "2", title: t("pages.tokenScanner.steps.2.title"), desc: t("pages.tokenScanner.steps.2.desc") },
+            { n: "3", title: t("pages.tokenScanner.steps.3.title"), desc: t("pages.tokenScanner.steps.3.desc") },
           ]}
         />
         {/* ===== HERO (premium CSS) ===== */}

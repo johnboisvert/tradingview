@@ -82,9 +82,9 @@ export default function MarketRegime() {
           subtitle={t("pages.marketRegime.subtitle")}
           accentColor="blue"
           steps={[
-            { n: "1", title: "Identifiez le régime", desc: "Le régime actuel (Bull, Bear, Range, Volatile) détermine quelle stratégie est la plus efficace. Adaptez votre approche en conséquence." },
-            { n: "2", title: "Analysez les indicateurs", desc: "Chaque crypto affiche son régime individuel. Cherchez les cryptos en tendance forte pour les stratégies de suivi de tendance." },
-            { n: "3", title: "Changez de stratégie", desc: "Trend Following en tendance, Mean Reversion en range, réduction d'exposition en volatilité extrême. Le régime dicte la stratégie." },
+            { n: "1", title: t("pages.marketRegime.steps.1.title"), desc: t("pages.marketRegime.steps.1.desc") },
+            { n: "2", title: t("pages.marketRegime.steps.2.title"), desc: t("pages.marketRegime.steps.2.desc") },
+            { n: "3", title: t("pages.marketRegime.steps.3.title"), desc: t("pages.marketRegime.steps.3.desc") },
           ]}
         />
         {/* ===== HERO (pure CSS) ===== */}

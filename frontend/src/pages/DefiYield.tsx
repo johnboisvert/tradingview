@@ -110,9 +110,9 @@ export default function DefiYield() {
           subtitle={t("pages.defiYield.subtitle")}
           accentColor="green"
           steps={[
-            { n: "1", title: "Comparez les APY", desc: "Triez les pools par APY pour trouver les meilleurs rendements. Attention : un APY très élevé implique souvent un risque plus élevé." },
-            { n: "2", title: "Évaluez le risque", desc: "Vérifiez la TVL (Total Value Locked) : plus elle est élevée, plus le protocole est établi et généralement plus sûr." },
-            { n: "3", title: "Diversifiez", desc: "Ne concentrez pas tout votre capital dans un seul pool. Répartissez sur plusieurs protocoles et blockchains pour limiter les risques." },
+            { n: "1", title: t("pages.defiYield.steps.1.title"), desc: t("pages.defiYield.steps.1.desc") },
+            { n: "2", title: t("pages.defiYield.steps.2.title"), desc: t("pages.defiYield.steps.2.desc") },
+            { n: "3", title: t("pages.defiYield.steps.3.title"), desc: t("pages.defiYield.steps.3.desc") },
           ]}
         />
         <div className="fixed inset-0 pointer-events-none z-0">

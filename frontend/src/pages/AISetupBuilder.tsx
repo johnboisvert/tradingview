@@ -358,9 +358,9 @@ export default function AISetupBuilder() {
           subtitle={t("pages.aISetupBuilder.subtitle")}
           accentColor="blue"
           steps={[
-            { n: "1", title: "Choisissez votre setup", desc: "Sélectionnez parmi les templates de setups pré-construits par l’IA ou créez le vôtre en définissant les paramètres clés." },
-            { n: "2", title: "Configurez les niveaux", desc: "Entrez votre prix d’entrée, stop loss et take profit. L’IA calcule automatiquement le ratio risque/récompense et la taille de position optimale." },
-            { n: "3", title: "Validez et exécutez", desc: "L’IA évalue la qualité de votre setup (A, B, C). Ne prenez que les setups A et B pour maximiser votre edge sur le marché." },
+            { n: "1", title: t("pages.aISetupBuilder.steps.1.title"), desc: t("pages.aISetupBuilder.steps.1.desc") },
+            { n: "2", title: t("pages.aISetupBuilder.steps.2.title"), desc: t("pages.aISetupBuilder.steps.2.desc") },
+            { n: "3", title: t("pages.aISetupBuilder.steps.3.title"), desc: t("pages.aISetupBuilder.steps.3.desc") },
           ]}
         />
         <div className="fixed inset-0 pointer-events-none z-0">

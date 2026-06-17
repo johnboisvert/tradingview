@@ -104,9 +104,9 @@ export default function TimeframeAnalysis() {
           subtitle={t("pages.timeframeAnalysis.subtitle")}
           accentColor="cyan"
           steps={[
-            { n: "1", title: "Sélectionnez un timeframe", desc: "Choisissez le timeframe principal (1H, 4H, 1D, 1W) pour filtrer les cryptos selon leur tendance sur cette période." },
-            { n: "2", title: "Cherchez la confluence", desc: "Un signal haussier sur 1H, 4H ET 1D est bien plus fiable qu’un signal sur un seul timeframe. Recherchez cette confluence." },
-            { n: "3", title: "Adaptez votre stratégie", desc: "Utilisez les grands timeframes (1D, 1W) pour la direction, les petits (1H, 4H) pour les points d’entrée précis." },
+            { n: "1", title: t("pages.timeframeAnalysis.steps.1.title"), desc: t("pages.timeframeAnalysis.steps.1.desc") },
+            { n: "2", title: t("pages.timeframeAnalysis.steps.2.title"), desc: t("pages.timeframeAnalysis.steps.2.desc") },
+            { n: "3", title: t("pages.timeframeAnalysis.steps.3.title"), desc: t("pages.timeframeAnalysis.steps.3.desc") },
           ]}
         />
         <div className="fixed inset-0 pointer-events-none z-0">

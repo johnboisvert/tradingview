@@ -96,9 +96,9 @@ export default function PortfolioTracker() {
           subtitle={t("pages.portfolioTracker.subtitle")}
           accentColor="indigo"
           steps={[
-            { n: "1", title: "Ajoutez vos actifs", desc: "Cliquez sur Ajouter un Actif, entrez le symbole, la quantité et le prix d’achat pour commencer à tracker votre portfolio." },
-            { n: "2", title: "Suivez vos performances", desc: "Le tableau de bord affiche votre P&L total, la valeur actuelle et la variation de chaque position en temps réel." },
-            { n: "3", title: "Analysez la répartition", desc: "Le graphique de répartition vous montre votre exposition par actif pour identifier les concentrations de risque." },
+            { n: "1", title: t("pages.portfolioTracker.steps.1.title"), desc: t("pages.portfolioTracker.steps.1.desc") },
+            { n: "2", title: t("pages.portfolioTracker.steps.2.title"), desc: t("pages.portfolioTracker.steps.2.desc") },
+            { n: "3", title: t("pages.portfolioTracker.steps.3.title"), desc: t("pages.portfolioTracker.steps.3.desc") },
           ]}
         />
         <div className="relative z-10 max-w-[1440px] mx-auto p-4 md:p-6">

@@ -771,9 +771,9 @@ export default function ScreenerTechnique() {
           subtitle={t("pages.screenerTechnique.subtitle")}
           accentColor="cyan"
           steps={[
-            { n: "1", title: "Appliquez vos filtres", desc: "RSI survendu, MACD haussier, Golden Cross, Bollinger Squeeze — combinez les indicateurs pour trouver les meilleurs setups." },
-            { n: "2", title: "Triez les résultats", desc: "Cliquez sur les en-têtes de colonnes pour trier par score IA, variation, MACD, EMA ou volume." },
-            { n: "3", title: "Analysez en détail", desc: "Cliquez sur une ligne pour voir tous les indicateurs, les supports/résistances et le graphique 7 jours." },
+            { n: "1", title: t("pages.screenerTechnique.steps.1.title"), desc: t("pages.screenerTechnique.steps.1.desc") },
+            { n: "2", title: t("pages.screenerTechnique.steps.2.title"), desc: t("pages.screenerTechnique.steps.2.desc") },
+            { n: "3", title: t("pages.screenerTechnique.steps.3.title"), desc: t("pages.screenerTechnique.steps.3.desc") },
           ]}
         />
 

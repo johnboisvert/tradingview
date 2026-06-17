@@ -126,9 +126,9 @@ export default function AISentiment() {
           subtitle={t("pages.aISentiment.subtitle")}
           accentColor="orange"
           steps={[
-            { n: "1", title: "Lisez le sentiment global", desc: "Le score global indique si le marché est dans une phase d’optimisme (bull) ou de pessimisme (bear). Utile pour le market timing." },
-            { n: "2", title: "Analysez par crypto", desc: "Chaque crypto a son propre score de sentiment. Un sentiment très positif peut indiquer un sommet local (FOMO), très négatif un creux (FUD)." },
-            { n: "3", title: "Tradez à contre-courant", desc: "Le sentiment extrême est souvent un signal contrarian : sentiment extrêmement positif = potentiel de correction, négatif = opportunité d’achat." },
+            { n: "1", title: t("pages.aISentiment.steps.1.title"), desc: t("pages.aISentiment.steps.1.desc") },
+            { n: "2", title: t("pages.aISentiment.steps.2.title"), desc: t("pages.aISentiment.steps.2.desc") },
+            { n: "3", title: t("pages.aISentiment.steps.3.title"), desc: t("pages.aISentiment.steps.3.desc") },
           ]}
         />
         <div className="relative z-10 max-w-[1440px] mx-auto p-4 md:p-6">

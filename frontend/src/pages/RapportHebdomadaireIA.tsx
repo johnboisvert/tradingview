@@ -647,10 +647,10 @@ export default function RapportHebdomadaireIA() {
             subtitle={t("pages.rapportHebdomadaireIA.subtitle")}
             accentColor="indigo"
             steps={[
-              { n: "1", title: "Consultez le rapport de la semaine", desc: "Le rapport couvre le résumé du marché global (tendance, Fear & Greed, dominance BTC), les top 5 opportunités identifiées par l'IA et la performance des signaux." },
-              { n: "2", title: "Analysez les opportunités identifiées", desc: "Chaque opportunité est accompagnée d'un score IA, d'un signal (BUY/SELL/HOLD), d'une variation hebdomadaire et d'une explication détaillée des raisons." },
-              { n: "3", title: "Planifiez vos trades", desc: "Utilisez la section 'Cryptos à surveiller' pour anticiper les mouvements de la semaine prochaine. Combinez avec le Simulateur de Stratégie IA pour une approche complète." },
-            ]}
+            { n: "1", title: t("pages.rapportHebdomadaireIA.steps.1.title"), desc: t("pages.rapportHebdomadaireIA.steps.1.desc") },
+            { n: "2", title: t("pages.rapportHebdomadaireIA.steps.2.title"), desc: t("pages.rapportHebdomadaireIA.steps.2.desc") },
+            { n: "3", title: t("pages.rapportHebdomadaireIA.steps.3.title"), desc: t("pages.rapportHebdomadaireIA.steps.3.desc") },
+          ]}
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">

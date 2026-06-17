@@ -433,9 +433,9 @@ export default function FearGreed() {
           subtitle={t("pages.fearGreed.subtitle")}
           accentColor="amber"
           steps={[
-            { n: "1", title: "Lisez l'indice principal", desc: "La jauge centrale affiche le sentiment actuel de 0 (peur extrême) à 100 (avidité extrême). Vert = optimisme, Rouge = pessimisme." },
-            { n: "2", title: "Analysez l'historique", desc: "Consultez l'évolution sur 30 jours pour identifier les tendances de sentiment et anticiper les retournements de marché." },
-            { n: "3", title: "Croisez avec les facteurs", desc: "Les 6 facteurs (volatilité, volume, momentum…) vous donnent le détail du calcul pour affiner votre analyse." },
+            { n: "1", title: t("pages.fearGreed.steps.1.title"), desc: t("pages.fearGreed.steps.1.desc") },
+            { n: "2", title: t("pages.fearGreed.steps.2.title"), desc: t("pages.fearGreed.steps.2.desc") },
+            { n: "3", title: t("pages.fearGreed.steps.3.title"), desc: t("pages.fearGreed.steps.3.desc") },
           ]}
         />
 

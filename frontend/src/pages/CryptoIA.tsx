@@ -495,9 +495,9 @@ export default function CryptoIA() {
           subtitle={t("pages.cryptoIA.subtitle")}
           accentColor="blue"
           steps={[
-            { n: "1", title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto dans la liste. L'IA génère instantanément une analyse complète avec score de force et signaux." },
-            { n: "2", title: "Lisez le score IA", desc: "Score > 70 = signal fort haussier. Score < 30 = signal fort baissier. Entre 40-60 = zone neutre, attendez confirmation." },
-            { n: "3", title: "Utilisez les niveaux clés", desc: "Les supports et résistances calculés par l'IA vous donnent des zones précises pour placer vos entrées, stops et targets." },
+            { n: "1", title: t("pages.cryptoIA.steps.1.title"), desc: t("pages.cryptoIA.steps.1.desc") },
+            { n: "2", title: t("pages.cryptoIA.steps.2.title"), desc: t("pages.cryptoIA.steps.2.desc") },
+            { n: "3", title: t("pages.cryptoIA.steps.3.title"), desc: t("pages.cryptoIA.steps.3.desc") },
           ]}
         />
         {/* Header */}

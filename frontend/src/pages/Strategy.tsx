@@ -255,9 +255,9 @@ export default function Strategy() {
           subtitle={t("pages.strategy.subtitle")}
           accentColor="blue"
           steps={[
-            { n: "1", title: "Choisissez une stratégie", desc: "Parcourez les stratégies disponibles (Trend Following, Mean Reversion, Breakout...) et sélectionnez celle qui correspond à votre profil." },
-            { n: "2", title: "Vérifiez les conditions", desc: "Chaque stratégie indique les conditions de marché optimales, les indicateurs à surveiller et les niveaux d'entrée/sortie." },
-            { n: "3", title: "Gérez votre risque", desc: "Respectez toujours le stop loss recommandé. Ne risquez jamais plus de 1-2% de votre capital par trade." },
+            { n: "1", title: t("pages.strategy.steps.1.title"), desc: t("pages.strategy.steps.1.desc") },
+            { n: "2", title: t("pages.strategy.steps.2.title"), desc: t("pages.strategy.steps.2.desc") },
+            { n: "3", title: t("pages.strategy.steps.3.title"), desc: t("pages.strategy.steps.3.desc") },
           ]}
         />
         {/* Hero */}

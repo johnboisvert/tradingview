@@ -58,9 +58,9 @@ export default function Backtesting() {
           subtitle={t("pages.backtesting.subtitle")}
           accentColor="indigo"
           steps={[
-            { n: "1", title: "Configurez votre stratégie", desc: "Choisissez la paire, le timeframe, le capital et la stratégie. Les données sont chargées en temps réel depuis Binance." },
-            { n: "2", title: "Lancez le backtest", desc: "L'algorithme applique la stratégie sur les vrais prix historiques et génère les trades réels." },
-            { n: "3", title: "Analysez les résultats", desc: "Win rate, drawdown, Sharpe ratio et chaque trade individuel — tout est basé sur des données vérifiables." },
+            { n: "1", title: t("pages.backtesting.steps.1.title"), desc: t("pages.backtesting.steps.1.desc") },
+            { n: "2", title: t("pages.backtesting.steps.2.title"), desc: t("pages.backtesting.steps.2.desc") },
+            { n: "3", title: t("pages.backtesting.steps.3.title"), desc: t("pages.backtesting.steps.3.desc") },
           ]}
         />
         <div className="fixed inset-0 pointer-events-none z-0">

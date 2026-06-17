@@ -111,9 +111,9 @@ export default function AISignals() {
           subtitle={t("pages.aISignals.subtitle")}
           accentColor="blue"
           steps={[
-            { n: "1", title: "Consultez les signaux", desc: "Chaque signal indique la direction (BUY/SELL/HOLD), la force du signal et le niveau de confiance de l’IA. Filtrez par type." },
-            { n: "2", title: "Vérifiez la confiance", desc: "Confiance > 80% = signal fort. Entre 60-80% = signal modéré. En dessous de 60% = signal faible, attendez confirmation." },
-            { n: "3", title: "Gérez votre risque", desc: "Même les meilleurs signaux IA ne sont pas infaillibles. Utilisez toujours un stop loss et ne risquez pas plus de 1-2% par trade." },
+            { n: "1", title: t("pages.aISignals.steps.1.title"), desc: t("pages.aISignals.steps.1.desc") },
+            { n: "2", title: t("pages.aISignals.steps.2.title"), desc: t("pages.aISignals.steps.2.desc") },
+            { n: "3", title: t("pages.aISignals.steps.3.title"), desc: t("pages.aISignals.steps.3.desc") },
           ]}
         />
         <div className="relative z-10 max-w-[1440px] mx-auto p-4 md:p-6">

@@ -700,10 +700,10 @@ export default function AlertesIA() {
             subtitle={t("pages.alertesIA.subtitle")}
             accentColor="indigo"
             steps={[
-              { n: "1", title: "Configurer les notifications", desc: "Cliquez sur '⚙️ Notifications' pour configurer EmailJS. Un guide étape par étape est inclus pour vous aider." },
-              { n: "2", title: "Créer une alerte", desc: "Cliquez sur '+ Nouvelle alerte', sélectionnez votre crypto, le type d'alerte et le canal de notification souhaité." },
-              { n: "3", title: "Recevoir les notifications", desc: "Dès qu'une condition est remplie, vous êtes notifié via le canal choisi : in-app ou email." },
-            ]}
+            { n: "1", title: t("pages.alertesIA.steps.1.title"), desc: t("pages.alertesIA.steps.1.desc") },
+            { n: "2", title: t("pages.alertesIA.steps.2.title"), desc: t("pages.alertesIA.steps.2.desc") },
+            { n: "3", title: t("pages.alertesIA.steps.3.title"), desc: t("pages.alertesIA.steps.3.desc") },
+          ]}
           />
 
           {/* Stats bar */}

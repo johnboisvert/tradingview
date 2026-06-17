@@ -87,10 +87,10 @@ export default function PositionSizer() {
             subtitle={t("pages.positionSizer.subtitle")}
             accentColor="blue"
             steps={[
-              { n: "1", title: "Entrez votre capital", desc: "Indiquez votre capital total disponible pour le trading. L'IA calculera la taille de position basée sur un pourcentage de ce capital." },
-              { n: "2", title: "Définissez votre risque", desc: "Entrez votre pourcentage de risque par trade (recommandé : 1-2%) et votre stop loss en pourcentage ou en prix." },
-              { n: "3", title: "Obtenez la taille optimale", desc: "L'IA calcule le nombre de tokens à acheter, le montant en dollars et le ratio risque/récompense pour votre setup." },
-            ]}
+            { n: "1", title: t("pages.positionSizer.steps.1.title"), desc: t("pages.positionSizer.steps.1.desc") },
+            { n: "2", title: t("pages.positionSizer.steps.2.title"), desc: t("pages.positionSizer.steps.2.desc") },
+            { n: "3", title: t("pages.positionSizer.steps.3.title"), desc: t("pages.positionSizer.steps.3.desc") },
+          ]}
           />
 
           {/* ===== HERO premium ===== */}

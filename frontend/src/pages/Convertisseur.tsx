@@ -208,9 +208,9 @@ export default function Convertisseur() {
           subtitle={t("pages.convertisseur.subtitle")}
           accentColor="cyan"
           steps={[
-            { n: "1", title: "Sélectionnez les devises", desc: "Choisissez la crypto source et la devise cible (USD, EUR, BTC, ETH...). Les taux sont mis à jour en temps réel." },
-            { n: "2", title: "Entrez le montant", desc: "Tapez le montant à convertir. La conversion s'effectue instantanément dans les deux sens." },
-            { n: "3", title: "Utilisez pour vos calculs", desc: "Idéal pour calculer la valeur de vos positions, comparer des prix sur différentes plateformes ou planifier vos achats." },
+            { n: "1", title: t("pages.convertisseur.steps.1.title"), desc: t("pages.convertisseur.steps.1.desc") },
+            { n: "2", title: t("pages.convertisseur.steps.2.title"), desc: t("pages.convertisseur.steps.2.desc") },
+            { n: "3", title: t("pages.convertisseur.steps.3.title"), desc: t("pages.convertisseur.steps.3.desc") },
           ]}
         />
         {/* Hero */}

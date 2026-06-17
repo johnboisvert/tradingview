@@ -141,9 +141,9 @@ export default function GemHunter() {
           subtitle={t("pages.gemHunter.subtitle")}
           accentColor="amber"
           steps={[
-            { n: "1", title: "Parcourez les pépites", desc: "Chaque token affiché a été sélectionné par l'IA pour son potentiel. Consultez le score de gemme et les métriques clés." },
-            { n: "2", title: "Filtrez et triez", desc: "Triez par score de gemme, variation 24h ou volume pour trouver les opportunités les plus prometteuses du moment." },
-            { n: "3", title: "Faites votre DYOR", desc: "Cliquez sur un token pour voir l'analyse complète. Vérifiez toujours la liquidité et le projet avant d'investir." },
+            { n: "1", title: t("pages.gemHunter.steps.1.title"), desc: t("pages.gemHunter.steps.1.desc") },
+            { n: "2", title: t("pages.gemHunter.steps.2.title"), desc: t("pages.gemHunter.steps.2.desc") },
+            { n: "3", title: t("pages.gemHunter.steps.3.title"), desc: t("pages.gemHunter.steps.3.desc") },
           ]}
         />
         {/* ===== HERO (premium CSS) ===== */}

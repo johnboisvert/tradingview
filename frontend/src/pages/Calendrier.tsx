@@ -592,9 +592,9 @@ export default function Calendrier() {
           subtitle={t("pages.calendrier.subtitle")}
           accentColor="cyan"
           steps={[
-            { n: "1", title: "Naviguez dans le calendrier", desc: "Utilisez les flèches pour naviguer entre les mois. Les jours avec des événements sont mis en évidence." },
-            { n: "2", title: "Consultez les événements", desc: "Cliquez sur un jour pour voir tous les événements prévus : leur type, importance et impact potentiel sur le marché." },
-            { n: "3", title: "Anticipez les mouvements", desc: "Les grands événements (halvings, expirations d'options, décisions Fed) créent souvent de la volatilité. Préparez-vous à l'avance." },
+            { n: "1", title: t("pages.calendrier.steps.1.title"), desc: t("pages.calendrier.steps.1.desc") },
+            { n: "2", title: t("pages.calendrier.steps.2.title"), desc: t("pages.calendrier.steps.2.desc") },
+            { n: "3", title: t("pages.calendrier.steps.3.title"), desc: t("pages.calendrier.steps.3.desc") },
           ]}
         />
         <div className="mb-6">

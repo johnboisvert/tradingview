@@ -232,9 +232,9 @@ export default function AltcoinSeason() {
           subtitle={t("pages.altcoinSeason.subtitle")}
           accentColor="green"
           steps={[
-            { n: "1", title: "Lisez le score global", desc: "Score > 75 = Altseason (les altcoins dominent). Score < 25 = Bitcoin Season. Entre les deux = marché mixte." },
-            { n: "2", title: "Analysez les performances", desc: "Le tableau montre quelles cryptos surperforment BTC sur 90 jours. Plus il y en a, plus l'altseason est forte." },
-            { n: "3", title: "Agissez au bon moment", desc: "Entrez en altcoins quand le score monte vers 75+. Réduisez l'exposition quand il redescend sous 50." },
+            { n: "1", title: t("pages.altcoinSeason.steps.1.title"), desc: t("pages.altcoinSeason.steps.1.desc") },
+            { n: "2", title: t("pages.altcoinSeason.steps.2.title"), desc: t("pages.altcoinSeason.steps.2.desc") },
+            { n: "3", title: t("pages.altcoinSeason.steps.3.title"), desc: t("pages.altcoinSeason.steps.3.desc") },
           ]}
         />
         <div className="relative z-10 max-w-[1440px] mx-auto p-4 md:p-7 pb-20">

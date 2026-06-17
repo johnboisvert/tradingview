@@ -245,10 +245,10 @@ export default function AlertesTelegram() {
             subtitle={t("pages.alertesTelegram.subtitle")}
             accentColor="blue"
             steps={[
-              { n: "1", title: "Testez la connexion", desc: "Cliquez sur 'Tester la connexion' pour vérifier que le bot Telegram fonctionne correctement." },
-              { n: "2", title: "Configurez vos alertes", desc: "Activez les types d'alertes souhaités et personnalisez les seuils et les cryptos à surveiller." },
-              { n: "3", title: "Activez le système", desc: "Activez les alertes automatiques. Le serveur vérifie les conditions toutes les 5 minutes." },
-            ]}
+            { n: "1", title: t("pages.alertesTelegram.steps.1.title"), desc: t("pages.alertesTelegram.steps.1.desc") },
+            { n: "2", title: t("pages.alertesTelegram.steps.2.title"), desc: t("pages.alertesTelegram.steps.2.desc") },
+            { n: "3", title: t("pages.alertesTelegram.steps.3.title"), desc: t("pages.alertesTelegram.steps.3.desc") },
+          ]}
           />
 
           {/* ── Connection Status & Test ── */}

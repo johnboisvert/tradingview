@@ -263,9 +263,9 @@ export default function RugScamShield() {
           subtitle={t("pages.rugScamShield.subtitle")}
           accentColor="red"
           steps={[
-            { n: "1", title: "Entrez l’adresse du token", desc: "Copiez-collez l’adresse du contrat du token que vous souhaitez analyser. Compatible avec Ethereum, BSC et autres EVM." },
-            { n: "2", title: "Lisez le score de sécurité", desc: "Score > 80 = token relativement sûr. Score < 40 = risque élevé, évitez. Vérifiez chaque critère individuellement." },
-            { n: "3", title: "Vérifiez les red flags", desc: "Honeypot, taxes élevées, ownership non renoncé, liquidité non verrouillée = signaux d’alarme majeurs. Ne jamais ignorer." },
+            { n: "1", title: t("pages.rugScamShield.steps.1.title"), desc: t("pages.rugScamShield.steps.1.desc") },
+            { n: "2", title: t("pages.rugScamShield.steps.2.title"), desc: t("pages.rugScamShield.steps.2.desc") },
+            { n: "3", title: t("pages.rugScamShield.steps.3.title"), desc: t("pages.rugScamShield.steps.3.desc") },
           ]}
         />
         <div className="fixed inset-0 pointer-events-none z-0">

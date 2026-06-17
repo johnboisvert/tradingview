@@ -239,9 +239,9 @@ export default function OnChainMetrics() {
           subtitle={t("pages.onChainMetrics.subtitle")}
           accentColor="cyan"
           steps={[
-            { n: "1", title: "Lisez les indicateurs clés", desc: "Chaque métrique on-chain révèle le comportement réel des investisseurs : accumulation, distribution, pression de vente." },
-            { n: "2", title: "Identifiez les signaux", desc: "Hausse des adresses actives = adoption croissante. Sorties des exchanges = accumulation. Entrées exchanges = pression vendeuse." },
-            { n: "3", title: "Croisez les données", desc: "Combinez plusieurs métriques on-chain pour obtenir une image complète de la santé du réseau et du sentiment des holders." },
+            { n: "1", title: t("pages.onChainMetrics.steps.1.title"), desc: t("pages.onChainMetrics.steps.1.desc") },
+            { n: "2", title: t("pages.onChainMetrics.steps.2.title"), desc: t("pages.onChainMetrics.steps.2.desc") },
+            { n: "3", title: t("pages.onChainMetrics.steps.3.title"), desc: t("pages.onChainMetrics.steps.3.desc") },
           ]}
         />
         <div className="relative z-10 max-w-[1440px] mx-auto p-4 md:p-6">

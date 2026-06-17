@@ -102,9 +102,9 @@ export default function AIPatterns() {
           subtitle={t("pages.aIPatterns.subtitle")}
           accentColor="indigo"
           steps={[
-            { n: "1", title: "Parcourez les patterns", desc: "L’IA scanne les graphiques de toutes les cryptos pour détecter les formations chartistes en cours de formation ou complétées." },
-            { n: "2", title: "Filtrez par direction", desc: "Sélectionnez BULLISH pour les patterns haussiers, BEARISH pour les baissiers, ou ALL pour voir toutes les formations détectées." },
-            { n: "3", title: "Validez le pattern", desc: "Vérifiez toujours le pattern sur votre propre chart. L’IA donne une probabilité de réussite basée sur l’historique de ce pattern." },
+            { n: "1", title: t("pages.aIPatterns.steps.1.title"), desc: t("pages.aIPatterns.steps.1.desc") },
+            { n: "2", title: t("pages.aIPatterns.steps.2.title"), desc: t("pages.aIPatterns.steps.2.desc") },
+            { n: "3", title: t("pages.aIPatterns.steps.3.title"), desc: t("pages.aIPatterns.steps.3.desc") },
           ]}
         />
         <div className="fixed inset-0 pointer-events-none z-0">

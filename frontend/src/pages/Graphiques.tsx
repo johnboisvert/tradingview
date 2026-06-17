@@ -571,9 +571,9 @@ export default function Graphiques() {
           subtitle={t("pages.graphiques.subtitle")}
           accentColor="blue"
           steps={[
-            { n: "1", title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto dans la liste pour afficher son graphique." },
-            { n: "2", title: "Analysez les indicateurs", desc: "RSI, MACD et Stochastic sont affichés sous le graphique principal." },
-            { n: "3", title: "Mode plein écran", desc: "Cliquez sur le bouton plein écran pour une vue étendue." },
+            { n: "1", title: t("pages.graphiques.steps.1.title"), desc: t("pages.graphiques.steps.1.desc") },
+            { n: "2", title: t("pages.graphiques.steps.2.title"), desc: t("pages.graphiques.steps.2.desc") },
+            { n: "3", title: t("pages.graphiques.steps.3.title"), desc: t("pages.graphiques.steps.3.desc") },
           ]}
         />
 

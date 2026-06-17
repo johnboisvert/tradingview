@@ -67,9 +67,9 @@ export default function SpotTrading() {
           subtitle={t("pages.spotTrading.subtitle")}
           accentColor="green"
           steps={[
-            { n: "1", title: "Évaluez les fondamentaux", desc: "Consultez la market cap, le volume et l'ATH de chaque crypto. Privilégiez les projets avec une liquidité élevée pour le spot." },
-            { n: "2", title: "Utilisez le score qualité", desc: "Le score IA évalue la qualité globale du projet : technologie, adoption, équipe et tokenomics. Visez les scores > 70." },
-            { n: "3", title: "Construisez votre DCA", desc: "Pour l'investissement long terme, utilisez la stratégie DCA (Dollar Cost Averaging) : achetez régulièrement quelle que soit la volatilité." },
+            { n: "1", title: t("pages.spotTrading.steps.1.title"), desc: t("pages.spotTrading.steps.1.desc") },
+            { n: "2", title: t("pages.spotTrading.steps.2.title"), desc: t("pages.spotTrading.steps.2.desc") },
+            { n: "3", title: t("pages.spotTrading.steps.3.title"), desc: t("pages.spotTrading.steps.3.desc") },
           ]}
         />
         {/* Hero */}

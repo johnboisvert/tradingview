@@ -411,134 +411,298 @@ const fr = {
     aIAssistant: {
       title: "Assistant IA Conversationnel",
       subtitle: "Votre assistant IA crypto personnel, propulsé par Google Gemini. Il connaît votre portefeuille, votre profil de risque et peut répondre à toutes vos questions sur le trading, les cryptos et les stratégies.",
+      steps: {
+        "1": { title: "Posez votre question ou choisissez une suggestion", desc: "Tapez votre question ou cliquez sur une suggestion prédéfinie. L'IA comprend le contexte de votre portfolio et du marché actuel." },
+        "2": { title: "L'IA analyse votre portfolio et le marché", desc: "Google Gemini AI analyse votre question en tenant compte de vos positions actuelles, des tendances du marché et des indicateurs techniques." },
+        "3": { title: "Recevez des conseils personnalisés", desc: "Obtenez des réponses détaillées et personnalisées. Posez des questions de suivi — l'IA garde le contexte de toute la conversation." },
+      },
     },
     aIPatterns: {
       title: "AI Patterns",
       subtitle: "Détection automatique des patterns chartistes par intelligence artificielle : Head & Shoulders, Triangles, Wedges, Double Top/Bottom et bien plus.",
+      steps: {
+        "1": { title: "Parcourez les patterns", desc: "L’IA scanne les graphiques de toutes les cryptos pour détecter les formations chartistes en cours de formation ou complétées." },
+        "2": { title: "Filtrez par direction", desc: "Sélectionnez BULLISH pour les patterns haussiers, BEARISH pour les baissiers, ou ALL pour voir toutes les formations détectées." },
+        "3": { title: "Validez le pattern", desc: "Vérifiez toujours le pattern sur votre propre chart. L’IA donne une probabilité de réussite basée sur l’historique de ce pattern." },
+      },
     },
     aISentiment: {
       title: "AI Sentiment Analysis",
       subtitle: "Analyse du sentiment de marché par IA : agrégation des réseaux sociaux, news, données on-chain pour générer un score de sentiment global.",
+      steps: {
+        "1": { title: "Lisez le sentiment global", desc: "Le score global indique si le marché est dans une phase d’optimisme (bull) ou de pessimisme (bear). Utile pour le market timing." },
+        "2": { title: "Analysez par crypto", desc: "Chaque crypto a son propre score de sentiment. Un sentiment très positif peut indiquer un sommet local (FOMO), très négatif un creux (FUD)." },
+        "3": { title: "Tradez à contre-courant", desc: "Le sentiment extrême est souvent un signal contrarian : sentiment extrêmement positif = potentiel de correction, négatif = opportunité d’achat." },
+      },
     },
     aISetupBuilder: {
       title: "AI Setup Builder",
       subtitle: "Construisez des setups de trading complets avec l'aide de l'IA. Définissez votre crypto, votre risque et votre objectif — l'IA génère le plan d'entrée, SL et TP optimaux.",
+      steps: {
+        "1": { title: "Choisissez votre setup", desc: "Sélectionnez parmi les templates de setups pré-construits par l’IA ou créez le vôtre en définissant les paramètres clés." },
+        "2": { title: "Configurez les niveaux", desc: "Entrez votre prix d’entrée, stop loss et take profit. L’IA calcule automatiquement le ratio risque/récompense et la taille de position optimale." },
+        "3": { title: "Validez et exécutez", desc: "L’IA évalue la qualité de votre setup (A, B, C). Ne prenez que les setups A et B pour maximiser votre edge sur le marché." },
+      },
     },
     aISignals: {
       title: "AI Signals",
       subtitle: "Signaux de trading générés par intelligence artificielle en temps réel. BUY, SELL, HOLD avec niveaux de confiance, points d'entrée, stop loss et take profit.",
+      steps: {
+        "1": { title: "Consultez les signaux", desc: "Chaque signal indique la direction (BUY/SELL/HOLD), la force du signal et le niveau de confiance de l’IA. Filtrez par type." },
+        "2": { title: "Vérifiez la confiance", desc: "Confiance > 80% = signal fort. Entre 60-80% = signal modéré. En dessous de 60% = signal faible, attendez confirmation." },
+        "3": { title: "Gérez votre risque", desc: "Même les meilleurs signaux IA ne sont pas infaillibles. Utilisez toujours un stop loss et ne risquez pas plus de 1-2% par trade." },
+      },
     },
     alertesIA: {
       title: "Alertes Intelligentes IA",
       subtitle: "Configurez des alertes personnalisées sur vos cryptos favorites. Recevez des notifications sur Telegram, Discord ou email dès qu'un signal IA est déclenché.",
+      steps: {
+        "1": { title: "Configurer les notifications", desc: "Cliquez sur '⚙️ Notifications' pour configurer EmailJS. Un guide étape par étape est inclus pour vous aider." },
+        "2": { title: "Créer une alerte", desc: "Cliquez sur '+ Nouvelle alerte', sélectionnez votre crypto, le type d'alerte et le canal de notification souhaité." },
+        "3": { title: "Recevoir les notifications", desc: "Dès qu'une condition est remplie, vous êtes notifié via le canal choisi : in-app ou email." },
+      },
     },
     alertesTelegram: {
       title: "Alertes Telegram",
       subtitle: "Recevez des alertes crypto automatiques sur Telegram basées sur des données RÉELLES Binance et nos signaux IA.",
+      steps: {
+        "1": { title: "Testez la connexion", desc: "Cliquez sur 'Tester la connexion' pour vérifier que le bot Telegram fonctionne correctement." },
+        "2": { title: "Configurez vos alertes", desc: "Activez les types d'alertes souhaités et personnalisez les seuils et les cryptos à surveiller." },
+        "3": { title: "Activez le système", desc: "Activez les alertes automatiques. Le serveur vérifie les conditions toutes les 5 minutes." },
+      },
     },
     altcoinSeason: {
       title: "Altcoin Season Index",
       subtitle: "Détectez les phases d'Altseason : quand les altcoins surperforment Bitcoin, des opportunités massives s'ouvrent. Notre index combine 50 altcoins majeurs.",
+      steps: {
+        "1": { title: "Lisez le score global", desc: "Score > 75 = Altseason (les altcoins dominent). Score < 25 = Bitcoin Season. Entre les deux = marché mixte." },
+        "2": { title: "Analysez les performances", desc: "Le tableau montre quelles cryptos surperforment BTC sur 90 jours. Plus il y en a, plus l'altseason est forte." },
+        "3": { title: "Agissez au bon moment", desc: "Entrez en altcoins quand le score monte vers 75+. Réduisez l'exposition quand il redescend sous 50." },
+      },
     },
     backtesting: {
       title: "Backtesting de Stratégies",
       subtitle: "Testez vos stratégies sur des données historiques RÉELLES de Binance. Chaque trade est simulé avec frais et slippage réalistes.",
+      steps: {
+        "1": { title: "Configurez votre stratégie", desc: "Choisissez la paire, le timeframe, le capital et la stratégie. Les données sont chargées en temps réel depuis Binance." },
+        "2": { title: "Lancez le backtest", desc: "L'algorithme applique la stratégie sur les vrais prix historiques et génère les trades réels." },
+        "3": { title: "Analysez les résultats", desc: "Win rate, drawdown, Sharpe ratio et chaque trade individuel — tout est basé sur des données vérifiables." },
+      },
     },
     backtestingVisuel: {
       title: "Backtesting Visuel — Données Réelles Binance",
       subtitle: "",
+      steps: {
+        "2": { title: "Choisissez une stratégie et lancez", desc: "L'algorithme applique la stratégie sur les vrais prix historiques Binance et génère les trades réels." },
+        "3": { title: "Analysez les performances", desc: "Consultez le taux de réussite, le gain total, le drawdown et comparez la stratégie vs Buy & Hold." },
+      },
     },
     bullrunPhase: {
       title: "Bullrun Phase Tracker",
       subtitle: "Identifiez la phase actuelle du cycle de marché crypto. Du fond du bear market au sommet de l'euphorie, chaque phase a ses opportunités spécifiques.",
+      steps: {
+        "1": { title: "Lisez la phase actuelle", desc: "Le tracker indique la phase du cycle : Accumulation, Early Bull, Mid Bull, Late Bull, Distribution ou Bear. Chaque phase a ses caractéristiques." },
+        "2": { title: "Analysez les indicateurs", desc: "Les métriques on-chain, le sentiment et les données techniques sont combinés pour déterminer la phase avec précision." },
+        "3": { title: "Adaptez votre exposition", desc: "Augmentez l’exposition en Early Bull, prenez des profits en Late Bull, accumulez en Bear. Le cycle se répète, profitez-en." },
+      },
     },
     calculatrice: {
       title: "Calculatrice Trading",
       subtitle: "Calculez instantanément vos profits/pertes potentiels, la taille de vos positions, votre risque/reward et vos frais sur tous les trades.",
+      steps: {
+        "1": { title: "Entrez les paramètres", desc: "Renseignez le prix d'entrée, le prix cible, le stop loss et le montant investi pour calculer votre P&L potentiel." },
+        "2": { title: "Vérifiez le ratio R/R", desc: "Un bon trade a un ratio risque/récompense d'au moins 1:2. Si votre ratio est inférieur, reconsidérez votre setup." },
+        "3": { title: "Calculez le levier", desc: "Pour le trading avec levier, entrez le multiplicateur pour voir l'impact sur vos gains et pertes potentiels et votre prix de liquidation." },
+      },
     },
     calendrier: {
       title: "Calendrier Crypto",
       subtitle: "Ne manquez aucun événement important du marché crypto : halvings, listings, mises à jour de protocole, votes DAO et plus encore.",
+      steps: {
+        "1": { title: "Naviguez dans le calendrier", desc: "Utilisez les flèches pour naviguer entre les mois. Les jours avec des événements sont mis en évidence." },
+        "2": { title: "Consultez les événements", desc: "Cliquez sur un jour pour voir tous les événements prévus : leur type, importance et impact potentiel sur le marché." },
+        "3": { title: "Anticipez les mouvements", desc: "Les grands événements (halvings, expirations d'options, décisions Fed) créent souvent de la volatilité. Préparez-vous à l'avance." },
+      },
     },
     convertisseur: {
       title: "Convertisseur Crypto",
       subtitle: "Convertissez instantanément n'importe quelle crypto en fiat ou entre cryptos. Prix en temps réel via CoinGecko, support de 100+ devises.",
+      steps: {
+        "1": { title: "Sélectionnez les devises", desc: "Choisissez la crypto source et la devise cible (USD, EUR, BTC, ETH...). Les taux sont mis à jour en temps réel." },
+        "2": { title: "Entrez le montant", desc: "Tapez le montant à convertir. La conversion s'effectue instantanément dans les deux sens." },
+        "3": { title: "Utilisez pour vos calculs", desc: "Idéal pour calculer la valeur de vos positions, comparer des prix sur différentes plateformes ou planifier vos achats." },
+      },
     },
     cryptoIA: {
       title: "Crypto IA — Analyse Intelligente",
       subtitle: "Analyse complète propulsée par l'IA : score de force, signaux d'achat/vente, niveaux clés et probabilités de mouvement pour chaque crypto.",
+      steps: {
+        "1": { title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto dans la liste. L'IA génère instantanément une analyse complète avec score de force et signaux." },
+        "2": { title: "Lisez le score IA", desc: "Score > 70 = signal fort haussier. Score < 30 = signal fort baissier. Entre 40-60 = zone neutre, attendez confirmation." },
+        "3": { title: "Utilisez les niveaux clés", desc: "Les supports et résistances calculés par l'IA vous donnent des zones précises pour placer vos entrées, stops et targets." },
+      },
     },
     cryptoJournal: {
       title: "Crypto Journal",
       subtitle: "Tenez un journal de trading structuré pour analyser vos performances, identifier vos patterns et améliorer votre psychologie de trader.",
+      steps: {
+        "1": { title: "Enregistrez vos trades", desc: "Après chaque trade, notez l'entrée, la sortie, la raison du trade et votre état émotionnel. La discipline du journal est clé." },
+        "2": { title: "Analysez vos patterns", desc: "L'IA analyse vos entrées pour identifier vos biais récurrents : FOMO, revenge trading, sortie prématurée, etc." },
+        "3": { title: "Améliorez-vous", desc: "Consultez vos statistiques hebdomadaires et mensuelles pour mesurer votre progression et ajuster votre approche." },
+      },
     },
     defiYield: {
       title: "DeFi Yield Farming",
       subtitle: "Trouvez les meilleures opportunités de rendement dans la DeFi. Comparez les APY, les risques, les TVL sur les protocoles majeurs.",
+      steps: {
+        "1": { title: "Comparez les APY", desc: "Triez les pools par APY pour trouver les meilleurs rendements. Attention : un APY très élevé implique souvent un risque plus élevé." },
+        "2": { title: "Évaluez le risque", desc: "Vérifiez la TVL (Total Value Locked) : plus elle est élevée, plus le protocole est établi et généralement plus sûr." },
+        "3": { title: "Diversifiez", desc: "Ne concentrez pas tout votre capital dans un seul pool. Répartissez sur plusieurs protocoles et blockchains pour limiter les risques." },
+      },
     },
     dominance: {
       title: "Dominance du Marché",
       subtitle: "Analysez la répartition de la capitalisation boursière entre Bitcoin, Ethereum et les altcoins. Un indicateur clé pour anticiper les rotations de capital.",
+      steps: {
+        "1": { title: "Lisez la barre visuelle", desc: "La barre colorée en haut montre la répartition des Top 15 cryptos. Survolez chaque segment pour voir le pourcentage exact." },
+        "2": { title: "Suivez la dominance BTC", desc: "BTC dom > 55% = marché dominé par Bitcoin (phase accumulation). BTC dom < 45% = altseason potentielle." },
+        "3": { title: "Comparez les actifs", desc: "Le tableau détaillé vous permet de comparer market cap, volume et dominance de chaque crypto du Top 50." },
+      },
     },
     fearGreed: {
       title: "Fear & Greed Index",
       subtitle: "Mesurez le sentiment global du marché crypto en temps réel. Un indice bas (peur) signale souvent des opportunités d'achat, un indice élevé (avidité) appelle à la prudence.",
+      steps: {
+        "1": { title: "Lisez l'indice principal", desc: "La jauge centrale affiche le sentiment actuel de 0 (peur extrême) à 100 (avidité extrême). Vert = optimisme, Rouge = pessimisme." },
+        "2": { title: "Analysez l'historique", desc: "Consultez l'évolution sur 30 jours pour identifier les tendances de sentiment et anticiper les retournements de marché." },
+        "3": { title: "Croisez avec les facteurs", desc: "Les 6 facteurs (volatilité, volume, momentum…) vous donnent le détail du calcul pour affiner votre analyse." },
+      },
     },
     gamification: {
       title: "Système de Gamification",
       subtitle: "Progressez, débloquez des badges et grimpez dans le classement en accomplissant des missions de trading et d'apprentissage.",
+      steps: {
+        "1": { title: "Complétez des actions pour gagner des XP", desc: "Connexion quotidienne, analyses, signaux suivis, trades journalisés — chaque action vous rapporte des XP. Réclamez vos XP du jour en un clic." },
+        "2": { title: "Débloquez des badges exclusifs", desc: "9 badges à débloquer de rareté commune à légendaire. Chaque badge récompense une accomplissement spécifique sur la plateforme." },
+        "3": { title: "Grimpez dans le classement", desc: "Comparez votre progression avec la communauté. Relevez les défis hebdomadaires pour gagner des XP bonus et monter dans le top 10." },
+      },
     },
     gemHunter: {
       title: "Crypto Pépites — Gem Hunter",
       subtitle: "Découvrez les cryptos à fort potentiel avant qu'elles n'explosent. Notre algorithme scanne 1000+ tokens pour détecter les opportunités cachées.",
+      steps: {
+        "1": { title: "Parcourez les pépites", desc: "Chaque token affiché a été sélectionné par l'IA pour son potentiel. Consultez le score de gemme et les métriques clés." },
+        "2": { title: "Filtrez et triez", desc: "Triez par score de gemme, variation 24h ou volume pour trouver les opportunités les plus prometteuses du moment." },
+        "3": { title: "Faites votre DYOR", desc: "Cliquez sur un token pour voir l'analyse complète. Vérifiez toujours la liquidité et le projet avant d'investir." },
+      },
     },
     graphiques: {
       title: "Graphiques",
       subtitle: "Analysez les graphiques de prix en temps réel avec indicateurs techniques RSI, MACD, EMA et plus encore.",
+      steps: {
+        "1": { title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto dans la liste pour afficher son graphique." },
+        "2": { title: "Analysez les indicateurs", desc: "RSI, MACD et Stochastic sont affichés sous le graphique principal." },
+        "3": { title: "Mode plein écran", desc: "Cliquez sur le bouton plein écran pour une vue étendue." },
+      },
     },
     heatmap: {
       title: "Heatmap Crypto",
       subtitle: "Visualisez d'un coup d'oeil les performances du marché. Les couleurs chaudes (rouge/orange) indiquent des baisses, les couleurs froides (vert) indiquent des hausses.",
+      steps: {
+        "1": { title: "Lisez les couleurs", desc: "Vert intense = forte hausse. Rouge intense = forte baisse. Gris = variation neutre. La taille des blocs reflète la market cap." },
+        "2": { title: "Basculez entre les vues", desc: "Mode Heatmap pour une vue visuelle rapide, mode Tableau pour les données précises avec tri par colonne." },
+        "3": { title: "Identifiez les secteurs", desc: "Repérez les groupes de cryptos qui bougent ensemble pour détecter des rotations sectorielles (DeFi, L1, Gaming...)." },
+      },
     },
     marketRegime: {
       title: "Market Regime",
       subtitle: "Identifiez le régime de marché actuel : tendance haussière, baissière, range ou consolidation. Chaque régime appelle des stratégies différentes.",
+      steps: {
+        "1": { title: "Identifiez le régime", desc: "Le régime actuel (Bull, Bear, Range, Volatile) détermine quelle stratégie est la plus efficace. Adaptez votre approche en conséquence." },
+        "2": { title: "Analysez les indicateurs", desc: "Chaque crypto affiche son régime individuel. Cherchez les cryptos en tendance forte pour les stratégies de suivi de tendance." },
+        "3": { title: "Changez de stratégie", desc: "Trend Following en tendance, Mean Reversion en range, réduction d'exposition en volatilité extrême. Le régime dicte la stratégie." },
+      },
     },
     myCryptoIA: {
       title: "My CryptoIA — Dashboard Personnalisé",
       subtitle: "Votre espace personnel entièrement configurable. 20 widgets disponibles : favoris, portfolio, alertes, signaux, news et plus.",
+      steps: {
+        "1": { title: "Personnalisez vos widgets", desc: "Cliquez sur ⚙️ Personnaliser pour activer/désactiver les 20 widgets disponibles. Filtrez par catégorie pour trouver rapidement." },
+        "2": { title: "Ajoutez vos cryptos favorites", desc: "Dans le widget 'Cryptos Favorites', cliquez sur '+ Ajouter une crypto' pour suivre les actifs qui vous intéressent." },
+        "3": { title: "Interprétez les signaux IA", desc: "Les scores de confiance > 75% indiquent des signaux forts. Combinez RSI, Fear & Greed et mouvements Whales pour valider vos décisions." },
+      },
     },
     narrativeRadar: {
       title: "Narrative Radar",
       subtitle: "Identifiez les narratives dominantes du marché crypto : quels secteurs (AI, DeFi, Gaming, RWA…) attirent le capital en ce moment.",
+      steps: {
+        "1": { title: "Repérez les tendances", desc: "Les narratives avec le score le plus élevé dominent le marché actuellement et attirent le plus de capital." },
+        "2": { title: "Évaluez la force", desc: "Un score en hausse indique une narrative émergente. Un score en baisse signale une rotation vers d'autres secteurs." },
+        "3": { title: "Positionnez-vous", desc: "Investissez dans les cryptos liées aux narratives dominantes pour bénéficier du momentum sectoriel." },
+      },
     },
     news: {
       title: "Actualités Crypto",
       subtitle: "Restez informé des dernières nouvelles du marché crypto en temps réel. Articles agrégés depuis les sources les plus fiables.",
+      steps: {
+        "1": { title: "Lisez les dernières news", desc: "Les actualités sont récupérées en temps réel depuis CryptoCompare (CoinTelegraph, CoinDesk, Bitcoin.com, etc.), des sources fiables du marché crypto." },
+        "2": { title: "Vérifiez la source", desc: "Chaque article indique sa source d'origine. Cliquez pour lire l'article complet sur le site source." },
+        "3": { title: "Réagissez rapidement", desc: "Les grandes news peuvent créer des opportunités de trading. Croisez toujours l'info avec l'analyse technique avant d'agir." },
+      },
     },
     onChainMetrics: {
       title: "On-Chain Metrics",
       subtitle: "Analysez les données directement issues de la blockchain : transactions, adresses actives, flux d'échange, hash rate et plus.",
+      steps: {
+        "1": { title: "Lisez les indicateurs clés", desc: "Chaque métrique on-chain révèle le comportement réel des investisseurs : accumulation, distribution, pression de vente." },
+        "2": { title: "Identifiez les signaux", desc: "Hausse des adresses actives = adoption croissante. Sorties des exchanges = accumulation. Entrées exchanges = pression vendeuse." },
+        "3": { title: "Croisez les données", desc: "Combinez plusieurs métriques on-chain pour obtenir une image complète de la santé du réseau et du sentiment des holders." },
+      },
     },
     opportunityScanner: {
       title: "Opportunity Scanner",
       subtitle: "L'IA scanne en permanence le marché pour détecter les opportunités de trading : pumps précoces, divergences RSI, breakouts confirmés.",
+      steps: {
+        "1": { title: "Consultez les opportunités", desc: "Chaque carte représente une opportunité détectée par l'IA avec le type de signal, le potentiel estimé et le niveau de risque." },
+        "2": { title: "Filtrez par type", desc: "Utilisez les filtres pour afficher uniquement les opportunités qui correspondent à votre style de trading (swing, scalp, position)." },
+        "3": { title: "Agissez rapidement", desc: "Les opportunités sont éphémères. Vérifiez le signal sur votre chart avant d'entrer en position et respectez votre risk management." },
+      },
     },
     pepitesCrypto: {
       title: "Pépites Crypto",
       subtitle: "Découvrez les gemmes cachées du marché crypto : projets sous-évalués avec un fort potentiel de croissance.",
+      steps: {
+        "1": { title: "Explorez les pépites", desc: "Chaque carte représente un projet avec un score de potentiel, un niveau de risque et les raisons pour lesquelles l'IA le considère comme une pépite." },
+        "2": { title: "Filtrez par risque", desc: "Sélectionnez votre tolérance au risque : Faible (projets établis), Moyen (croissance), Élevé (early stage à fort potentiel)." },
+        "3": { title: "Faites votre DYOR", desc: "Ces sélections sont des pistes de recherche, pas des conseils financiers. Faites toujours votre propre recherche avant d'investir." },
+      },
     },
     portfolioTracker: {
       title: "Portfolio Tracker",
       subtitle: "Suivez la performance de votre portefeuille crypto en temps réel. Ajoutez vos positions, suivez vos PnL, analysez votre allocation.",
+      steps: {
+        "1": { title: "Ajoutez vos actifs", desc: "Cliquez sur Ajouter un Actif, entrez le symbole, la quantité et le prix d’achat pour commencer à tracker votre portfolio." },
+        "2": { title: "Suivez vos performances", desc: "Le tableau de bord affiche votre P&L total, la valeur actuelle et la variation de chaque position en temps réel." },
+        "3": { title: "Analysez la répartition", desc: "Le graphique de répartition vous montre votre exposition par actif pour identifier les concentrations de risque." },
+      },
     },
     positionSizer: {
       title: "AI Position Sizer",
       subtitle: "Calculez la taille optimale de vos positions selon votre capital, votre tolérance au risque et le setup. Ne risquez jamais plus que nécessaire.",
+      steps: {
+        "1": { title: "Entrez votre capital", desc: "Indiquez votre capital total disponible pour le trading. L'IA calculera la taille de position basée sur un pourcentage de ce capital." },
+        "2": { title: "Définissez votre risque", desc: "Entrez votre pourcentage de risque par trade (recommandé : 1-2%) et votre stop loss en pourcentage ou en prix." },
+        "3": { title: "Obtenez la taille optimale", desc: "L'IA calcule le nombre de tokens à acheter, le montant en dollars et le ratio risque/récompense pour votre setup." },
+      },
     },
     predictionIA: {
       title: "Prédictions IA",
       subtitle: "L'intelligence artificielle analyse les patterns techniques, le sentiment et les données on-chain pour prédire l'évolution des prix.",
+      steps: {
+        "1": { title: "Consultez les prédictions", desc: "Chaque crypto affiche une prédiction haussière ou baissière avec un niveau de confiance. Plus la confiance est élevée, plus le signal est fiable." },
+        "2": { title: "Filtrez par signal", desc: "Utilisez les filtres pour afficher uniquement les signaux BULL (haussiers) ou BEAR (baissiers) selon votre stratégie." },
+        "3": { title: "Croisez avec l'analyse technique", desc: "Les prédictions IA sont un complément, pas un oracle. Confirmez toujours avec vos propres indicateurs techniques." },
+      },
     },
     rangeTrading: {
       title: "Range Trading",
@@ -547,14 +711,29 @@ const fr = {
     rapportHebdomadaireIA: {
       title: "Rapport Hebdomadaire IA",
       subtitle: "Chaque semaine, l'IA analyse l'ensemble du marché crypto et génère un rapport complet : tendances, opportunités, risques.",
+      steps: {
+        "1": { title: "Consultez le rapport de la semaine", desc: "Le rapport couvre le résumé du marché global (tendance, Fear & Greed, dominance BTC), les top 5 opportunités identifiées par l'IA et la performance des signaux." },
+        "2": { title: "Analysez les opportunités identifiées", desc: "Chaque opportunité est accompagnée d'un score IA, d'un signal (BUY/SELL/HOLD), d'une variation hebdomadaire et d'une explication détaillée des raisons." },
+        "3": { title: "Planifiez vos trades", desc: "Utilisez la section 'Cryptos à surveiller' pour anticiper les mouvements de la semaine prochaine. Combinez avec le Simulateur de Stratégie IA pour une approche complète." },
+      },
     },
     riskManagement: {
       title: "Gestion des Risques",
       subtitle: "Maîtrisez votre exposition au risque. Calculez vos stop loss optimaux, gérez votre exposition globale et protégez votre capital.",
+      steps: {
+        "1": { title: "Définissez votre risque", desc: "Entrez votre capital total et le pourcentage maximum que vous acceptez de risquer par trade (règle d'or : max 1-2%)." },
+        "2": { title: "Calculez vos stops", desc: "L'outil calcule automatiquement le stop loss optimal basé sur la volatilité de l'actif et votre tolérance au risque." },
+        "3": { title: "Surveillez l'exposition", desc: "Vérifiez régulièrement votre exposition totale. Ne jamais avoir plus de 10-15% de votre capital en risque simultanément." },
+      },
     },
     rugScamShield: {
       title: "Rug & Scam Shield",
       subtitle: "Protégez-vous contre les arnaques crypto. Analysez n'importe quel token pour détecter les signaux de rug pull, honeypot et scam.",
+      steps: {
+        "1": { title: "Entrez l’adresse du token", desc: "Copiez-collez l’adresse du contrat du token que vous souhaitez analyser. Compatible avec Ethereum, BSC et autres EVM." },
+        "2": { title: "Lisez le score de sécurité", desc: "Score > 80 = token relativement sûr. Score < 40 = risque élevé, évitez. Vérifiez chaque critère individuellement." },
+        "3": { title: "Vérifiez les red flags", desc: "Honeypot, taxes élevées, ownership non renoncé, liquidité non verrouillée = signaux d’alarme majeurs. Ne jamais ignorer." },
+      },
     },
     scalpTrading: {
       title: "Scalp Trading v3 — Précision",
@@ -563,54 +742,119 @@ const fr = {
     scoreConfianceIA: {
       title: "Score de Confiance IA",
       subtitle: "Évaluation IA multi-dimensionnelle de chaque crypto basée sur 4 composantes : Analyse technique, fondamentaux, sentiment et on-chain.",
+      steps: {
+        "1": { title: "Consultez les scores", desc: "Chaque crypto reçoit un score global de 0 à 100. Vert (67-100) = signal fort, Orange (34-66) = modéré, Rouge (0-33) = faible. Filtrez par catégorie." },
+        "2": { title: "Analysez les composantes", desc: "Cliquez sur une crypto pour voir le détail des 4 composantes : Technique (30%), On-Chain (25%), Momentum (25%), Sentiment (20%)." },
+        "3": { title: "Prenez des décisions éclairées", desc: "Combinez les scores IA avec vos propres analyses. Un score élevé sur plusieurs composantes renforce la conviction. Ne tradez jamais sur un seul indicateur." },
+      },
     },
     screenerTechnique: {
       title: "Screener Technique Pro",
       subtitle: "Filtrez et triez 500 cryptos avec 7 indicateurs techniques : RSI, MACD, EMA, Bollinger, ADX et plus.",
+      steps: {
+        "1": { title: "Appliquez vos filtres", desc: "RSI survendu, MACD haussier, Golden Cross, Bollinger Squeeze — combinez les indicateurs pour trouver les meilleurs setups." },
+        "2": { title: "Triez les résultats", desc: "Cliquez sur les en-têtes de colonnes pour trier par score IA, variation, MACD, EMA ou volume." },
+        "3": { title: "Analysez en détail", desc: "Cliquez sur une ligne pour voir tous les indicateurs, les supports/résistances et le graphique 7 jours." },
+      },
     },
     simulateurStrategieIA: {
       title: "Simulateur de Stratégie IA",
       subtitle: "Entrez votre capital et votre profil de risque. L'IA calcule une allocation optimale et simule la performance attendue sur 30/90 jours.",
+      steps: {
+        "1": { title: "Entrez votre capital et profil", desc: "Renseignez votre capital disponible en $, votre profil de risque (Conservateur, Modéré, Agressif) et votre horizon d'investissement." },
+        "2": { title: "Lancez la simulation IA", desc: "L'IA analyse les données de marché, les scores de confiance et les métriques on-chain pour générer une allocation optimisée." },
+        "3": { title: "Analysez les projections", desc: "Consultez la répartition par crypto, les 3 scénarios (optimiste/réaliste/pessimiste) et le niveau de risque global avant de prendre vos décisions." },
+      },
     },
     simulation: {
       title: "Simulateur de Trading",
       subtitle: "Entraînez-vous au trading sans risquer de capital réel. Simulez des trades sur des données historiques réelles, testez vos idées.",
+      steps: {
+        "1": { title: "Configurez la simulation", desc: "Choisissez le capital de départ, la paire à trader et la période historique pour commencer votre simulation." },
+        "2": { title: "Tradez virtuellement", desc: "Ouvrez des positions LONG ou SHORT, placez vos stops et targets comme en trading réel, sans risquer d'argent réel." },
+        "3": { title: "Analysez vos résultats", desc: "Après la simulation, étudiez votre win rate, drawdown et P&L pour identifier vos points forts et axes d'amélioration." },
+      },
     },
     spotTrading: {
       title: "Spot Trading — Investissement Long Terme",
       subtitle: "Analysez et sélectionnez les meilleures cryptos pour un investissement spot à long terme. Score fondamental + technique + on-chain.",
+      steps: {
+        "1": { title: "Évaluez les fondamentaux", desc: "Consultez la market cap, le volume et l'ATH de chaque crypto. Privilégiez les projets avec une liquidité élevée pour le spot." },
+        "2": { title: "Utilisez le score qualité", desc: "Le score IA évalue la qualité globale du projet : technologie, adoption, équipe et tokenomics. Visez les scores > 70." },
+        "3": { title: "Construisez votre DCA", desc: "Pour l'investissement long terme, utilisez la stratégie DCA (Dollar Cost Averaging) : achetez régulièrement quelle que soit la volatilité." },
+      },
     },
     statsAvancees: {
       title: "Statistiques Avancées",
       subtitle: "Plongez dans les statistiques détaillées du marché crypto : corrélations, volatilité, Sharpe ratio, drawdowns et plus.",
+      steps: {
+        "1": { title: "Explorez les statistiques", desc: "Consultez les métriques avancées de chaque crypto : volatilité, Sharpe ratio, drawdown maximum et distribution des rendements." },
+        "2": { title: "Analysez les corrélations", desc: "La matrice de corrélation montre quels actifs bougent ensemble. Utile pour diversifier votre portefeuille efficacement." },
+        "3": { title: "Comparez les actifs", desc: "Utilisez les statistiques pour comparer objectivement les cryptos et identifier celles avec le meilleur ratio rendement/risque." },
+      },
     },
     strategy: {
       title: "Stratégies de Trading",
       subtitle: "Découvrez et appliquez des stratégies de trading éprouvées. Chaque stratégie inclut un backtest, des règles claires et un exemple concret.",
+      steps: {
+        "1": { title: "Choisissez une stratégie", desc: "Parcourez les stratégies disponibles (Trend Following, Mean Reversion, Breakout...) et sélectionnez celle qui correspond à votre profil." },
+        "2": { title: "Vérifiez les conditions", desc: "Chaque stratégie indique les conditions de marché optimales, les indicateurs à surveiller et les niveaux d'entrée/sortie." },
+        "3": { title: "Gérez votre risque", desc: "Respectez toujours le stop loss recommandé. Ne risquez jamais plus de 1-2% de votre capital par trade." },
+      },
     },
     technicalAnalysis: {
       title: "Analyse Technique",
       subtitle: "Analyse technique complète pour chaque crypto : tendance, RSI, MACD, Bollinger Bands, supports/résistances, patterns.",
+      steps: {
+        "1": { title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto pour afficher son analyse technique complète avec tous les indicateurs calculés en temps réel." },
+        "2": { title: "Lisez le score global", desc: "Le score technique agrège tous les indicateurs en un seul chiffre. > 70 = tendance haussière forte. < 30 = tendance baissière forte." },
+        "3": { title: "Analysez les indicateurs", desc: "RSI > 70 = surachat, < 30 = survente. MACD croisement haussier = signal d'achat. Bollinger squeeze = breakout imminent." },
+      },
     },
     telechargement: {
       title: "Téléchargements",
       subtitle: "Accédez à notre bibliothèque de ressources premium : guides PDF, cheat sheets, templates Excel, scripts de bot.",
+      steps: {
+        "1": { title: "Parcourez la bibliothèque", desc: "Filtrez par catégorie (Guides, Cheat Sheets, Templates...) pour trouver rapidement les ressources dont vous avez besoin." },
+        "2": { title: "Téléchargez vos ressources", desc: "Cliquez sur Télécharger pour obtenir le fichier. Les ressources premium sont disponibles avec votre abonnement actif." },
+        "3": { title: "Appliquez les connaissances", desc: "Utilisez les cheat sheets comme référence rapide pendant vos sessions de trading et les templates pour structurer vos analyses." },
+      },
     },
     timeframeAnalysis: {
       title: "Timeframe Analysis",
       subtitle: "Analysez les cryptos sur plusieurs timeframes simultanément. La confluence de signaux multi-TF est un signe de signal fort.",
+      steps: {
+        "1": { title: "Sélectionnez un timeframe", desc: "Choisissez le timeframe principal (1H, 4H, 1D, 1W) pour filtrer les cryptos selon leur tendance sur cette période." },
+        "2": { title: "Cherchez la confluence", desc: "Un signal haussier sur 1H, 4H ET 1D est bien plus fiable qu’un signal sur un seul timeframe. Recherchez cette confluence." },
+        "3": { title: "Adaptez votre stratégie", desc: "Utilisez les grands timeframes (1D, 1W) pour la direction, les petits (1H, 4H) pour les points d’entrée précis." },
+      },
     },
     tokenScanner: {
       title: "AI Token Scanner",
       subtitle: "Analysez n'importe quel token en profondeur : score de liquidité, niveau de risque, métriques on-chain, social score et plus.",
+      steps: {
+        "1": { title: "Recherchez un token", desc: "Tapez le nom ou symbole d'un token dans la barre de recherche. L'IA analyse instantanément ses métriques clés." },
+        "2": { title: "Évaluez les scores", desc: "Score de liquidité > 70 = bonne liquidité. Score de risque < 30 = risque faible. Momentum = direction de la tendance." },
+        "3": { title: "Prenez une décision", desc: "Croisez le score IA avec votre analyse personnelle. Ne basez jamais une décision sur un seul indicateur." },
+      },
     },
     trades: {
       title: "Suggestions de Swing Trading v6",
       subtitle: "RSI/EMA 4H + Filtre Daily + ATR SL (6-12%) — TP1: 1.2:1 • TP2: 2.5:1 • TP3: 4:1",
+      steps: {
+        "1": { title: "Pré-filtre CoinGecko", desc: "Top 200 cryptos analysées. Momentum (+4/+12%), survente (-8/-18%), ou distribution (-5/-20%) avec volume suffisant." },
+        "2": { title: "Confirmation Binance 4H", desc: "RSI(4H) + EMA 8/20(4H) + Volume spike. Rejet strict si indicateurs en conflit avec la direction." },
+        "3": { title: "Filtre Daily + Risk", desc: "Blocage dur contre-tendance Daily. SL: 6-12% (ATR). TP1: 1.2:1 • TP2: 2.5:1 • TP3: 4:1. Cooldown 12h." },
+      },
     },
     tradingAcademy: {
       title: "Trading Academy",
       subtitle: "Formez-vous au trading crypto avec notre académie structurée. Des bases de l'analyse technique aux stratégies avancées de gestion de risque.",
+      steps: {
+        "1": { title: "Choisissez votre niveau", desc: "Filtrez les modules par niveau : Débutant, Intermédiaire ou Avancé. Commencez par les bases si vous débutez." },
+        "2": { title: "Suivez les leçons", desc: "Chaque module contient plusieurs leçons structurées. Cochez les leçons terminées pour suivre votre progression." },
+        "3": { title: "Pratiquez", desc: "Après chaque module, mettez en pratique les concepts appris sur le simulateur de trading avant de risquer du capital réel." },
+      },
     },
   },
   commandPalette: {

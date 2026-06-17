@@ -72,9 +72,9 @@ export default function StatsAvancees() {
           subtitle={t("pages.statsAvancees.subtitle")}
           accentColor="cyan"
           steps={[
-            { n: "1", title: "Explorez les statistiques", desc: "Consultez les métriques avancées de chaque crypto : volatilité, Sharpe ratio, drawdown maximum et distribution des rendements." },
-            { n: "2", title: "Analysez les corrélations", desc: "La matrice de corrélation montre quels actifs bougent ensemble. Utile pour diversifier votre portefeuille efficacement." },
-            { n: "3", title: "Comparez les actifs", desc: "Utilisez les statistiques pour comparer objectivement les cryptos et identifier celles avec le meilleur ratio rendement/risque." },
+            { n: "1", title: t("pages.statsAvancees.steps.1.title"), desc: t("pages.statsAvancees.steps.1.desc") },
+            { n: "2", title: t("pages.statsAvancees.steps.2.title"), desc: t("pages.statsAvancees.steps.2.desc") },
+            { n: "3", title: t("pages.statsAvancees.steps.3.title"), desc: t("pages.statsAvancees.steps.3.desc") },
           ]}
         />
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[120px] bg-gradient-to-r from-cyan-900/40 to-blue-900/40">

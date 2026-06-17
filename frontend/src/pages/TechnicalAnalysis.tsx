@@ -235,9 +235,9 @@ export default function TechnicalAnalysis() {
           subtitle={t("pages.technicalAnalysis.subtitle")}
           accentColor="blue"
           steps={[
-            { n: "1", title: "Sélectionnez une crypto", desc: "Recherchez ou cliquez sur une crypto pour afficher son analyse technique complète avec tous les indicateurs calculés en temps réel." },
-            { n: "2", title: "Lisez le score global", desc: "Le score technique agrège tous les indicateurs en un seul chiffre. > 70 = tendance haussière forte. < 30 = tendance baissière forte." },
-            { n: "3", title: "Analysez les indicateurs", desc: "RSI > 70 = surachat, < 30 = survente. MACD croisement haussier = signal d'achat. Bollinger squeeze = breakout imminent." },
+            { n: "1", title: t("pages.technicalAnalysis.steps.1.title"), desc: t("pages.technicalAnalysis.steps.1.desc") },
+            { n: "2", title: t("pages.technicalAnalysis.steps.2.title"), desc: t("pages.technicalAnalysis.steps.2.desc") },
+            { n: "3", title: t("pages.technicalAnalysis.steps.3.title"), desc: t("pages.technicalAnalysis.steps.3.desc") },
           ]}
         />
         {/* Hero */}

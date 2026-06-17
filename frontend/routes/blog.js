@@ -108,9 +108,6 @@ app.get('/sitemap.xml', (req, res) => {
     <lastmod>${today}</lastmod>
     <changefreq>${p.changefreq}</changefreq>
     <priority>${p.priority}</priority>
-    <xhtml:link rel="alternate" hreflang="fr-CA" href="${baseUrl}${p.path}" />
-    <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}${p.path}?lang=en" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}${p.path}" />
   </url>`).join('\n');
 
   const articleUrls = db.articles.map(a => `  <url>
@@ -121,8 +118,7 @@ app.get('/sitemap.xml', (req, res) => {
   </url>`).join('\n');
 
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap-0.9"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap-0.9">
 ${staticUrls}
 ${articleUrls}
 </urlset>`);

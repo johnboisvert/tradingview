@@ -68,21 +68,63 @@ app.post('/api/v1/blog/publish', (req, res) => {
   res.json({ ok: true, article });
 });
 
-// GET /sitemap.xml — Auto-generated sitemap including blog articles (SEO boost)
+// GET /sitemap.xml — Auto-generated comprehensive sitemap (static pages + blog articles + hreflang FR/EN)
 app.get('/sitemap.xml', (req, res) => {
   const baseUrl = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
   const db = loadBlog();
-  const articles = db.articles.map(a => `  <url><loc>${baseUrl}/blog/${a.slug}</loc><lastmod>${(a.publishedAt || new Date().toISOString()).slice(0, 10)}</lastmod><priority>0.7</priority></url>`).join('\n');
-  const staticPaths = [
-    '/', '/abonnements', '/affiliation', '/leaderboard', '/blog',
-    '/heatmap', '/dominance', '/fear-greed', '/altcoin-season',
-    '/ai-signals', '/whale-watcher', '/gem-hunter', '/contact',
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Static pages with SEO metadata (priority + change frequency tuned for crypto/trading content)
+  const staticPages = [
+    { path: '/',                  priority: '1.0', changefreq: 'daily' },
+    { path: '/crypto-ia',         priority: '0.9', changefreq: 'daily' },
+    { path: '/screener-technique', priority: '0.9', changefreq: 'daily' },
+    { path: '/ai-signals',        priority: '0.9', changefreq: 'daily' },
+    { path: '/heatmap',           priority: '0.8', changefreq: 'daily' },
+    { path: '/fear-greed',        priority: '0.8', changefreq: 'daily' },
+    { path: '/dominance',         priority: '0.8', changefreq: 'daily' },
+    { path: '/altcoin-season',    priority: '0.8', changefreq: 'daily' },
+    { path: '/bullrun-phase',     priority: '0.8', changefreq: 'daily' },
+    { path: '/whale-watcher',     priority: '0.8', changefreq: 'daily' },
+    { path: '/on-chain-metrics',  priority: '0.8', changefreq: 'daily' },
+    { path: '/ai-sentiment',      priority: '0.8', changefreq: 'daily' },
+    { path: '/gem-hunter',        priority: '0.8', changefreq: 'daily' },
+    { path: '/alertes-ia',        priority: '0.7', changefreq: 'daily' },
+    { path: '/portfolio-tracker', priority: '0.7', changefreq: 'daily' },
+    { path: '/ai-assistant',      priority: '0.7', changefreq: 'weekly' },
+    { path: '/convertisseur',     priority: '0.7', changefreq: 'weekly' },
+    { path: '/calculatrice',      priority: '0.7', changefreq: 'weekly' },
+    { path: '/calendrier',        priority: '0.7', changefreq: 'weekly' },
+    { path: '/trading-academy',   priority: '0.7', changefreq: 'weekly' },
+    { path: '/blog',              priority: '0.8', changefreq: 'daily' },
+    { path: '/leaderboard',       priority: '0.7', changefreq: 'daily' },
+    { path: '/affiliation',       priority: '0.7', changefreq: 'monthly' },
+    { path: '/abonnements',       priority: '0.6', changefreq: 'monthly' },
+    { path: '/contact',           priority: '0.5', changefreq: 'monthly' },
   ];
-  const staticUrls = staticPaths.map(p => `  <url><loc>${baseUrl}${p}</loc><priority>${p === '/' ? '1.0' : '0.8'}</priority></url>`).join('\n');
+
+  const staticUrls = staticPages.map(p => `  <url>
+    <loc>${baseUrl}${p.path}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${p.changefreq}</changefreq>
+    <priority>${p.priority}</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CA" href="${baseUrl}${p.path}" />
+    <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}${p.path}?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}${p.path}" />
+  </url>`).join('\n');
+
+  const articleUrls = db.articles.map(a => `  <url>
+    <loc>${baseUrl}/blog/${a.slug}</loc>
+    <lastmod>${(a.publishedAt || new Date().toISOString()).slice(0, 10)}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`).join('\n');
+
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap-0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap-0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${staticUrls}
-${articles}
+${articleUrls}
 </urlset>`);
 });
 

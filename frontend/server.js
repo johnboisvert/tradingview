@@ -1091,14 +1091,13 @@ function alignTPWithSR(side, entry, slPercent, supports, resistances) {
   let tp1, tp2, tp3, sl;
 
   if (side === 'LONG') {
-      sl = entry - slDistance;
+    sl = entry - slDistance;
     // Enforce minimum 6% SL distance
     if (Math.abs(entry - sl) / entry < 0.06) sl = entry * 0.94;
     // v6: Adjusted TP ratios for wider SL
     tp1 = entry + slDistance * 1.2;   // 1.2:1 — slightly above 1:1 to account for fees
     tp2 = entry + slDistance * 2.5;   // 2.5:1 — moderate target
     tp3 = entry + slDistance * 4.0;   // 4:1 — extended target
-
     const nearestSupport = supports.find(s => s.price < entry * 0.995);
     if (nearestSupport && nearestSupport.price > sl * 0.95 && nearestSupport.price < entry * 0.96) {
       sl = nearestSupport.price * 0.997;
@@ -2184,7 +2183,7 @@ async function generateScalpSetup(symbol) {
   const stochCrossUp = kPrev <= dPrev && kVal > dVal;
   const stochCrossDown = kPrev >= dPrev && kVal < dVal;
   const stochRising = kVal > kPrev;
-    const stochFalling = kVal < kPrev;
+  const stochFalling = kVal < kPrev;
 
   // Extended price proximity — relaxed from 0.003 to 0.006
   const priceNearEmaWide = distToEma8 < 0.006 || distToEma20 < 0.006;
@@ -2198,7 +2197,7 @@ async function generateScalpSetup(symbol) {
       if (diff >= 0) gainSum += diff; else lossSum += Math.abs(diff);
     }
     let avgGain = gainSum / 14, avgLoss = lossSum / 14;
-    for (let i = 15; i < m5Closes.length; i++) {
+     for (let i = 15; i < m5Closes.length; i++) {
       const diff = m5Closes[i] - m5Closes[i - 1];
       if (diff >= 0) { avgGain = (avgGain * 13 + diff) / 14; avgLoss = (avgLoss * 13) / 14; }
       else { avgGain = (avgGain * 13) / 14; avgLoss = (avgLoss * 13 + Math.abs(diff)) / 14; }
@@ -3193,7 +3192,44 @@ app.post('/api/v1/payment/stripe_webhook', async (req, res) => {
   if (eventType === 'checkout.session.completed') {
     const session = event.data?.object || {};
     const metadata = session.metadata || {};
-    console.log(`[Payment] ✅ checkout.session.completed: plan=${metadata.plan}, billing=${metadata.billing_period}, email=${session.customer_details?.email}`);
+    const email = session.customer_details?.email || session.customer_email || null;
+    const amountTotal = (session.amount_total || 0) / 100; // cents → dollars
+    console.log(`[Payment] ✅ checkout.session.completed: plan=${metadata.plan}, billing=${metadata.billing_period}, email=${email}, amount=${amountTotal}`);
+
+    // ─── 🤝 Affiliation conversion (PAYMENT confirmed) ───
+    if (metadata.ref_code && amountTotal > 0) {
+      try {
+        recordAffiliationConversion({
+          code: metadata.ref_code,
+          type: 'payment',
+          amount: amountTotal,
+          email,
+        });
+        console.log(`[Affiliation] 💰 Payment conversion tracked: ref=${metadata.ref_code} amount=${amountTotal} commission=${(amountTotal * 0.30).toFixed(2)}`);
+      } catch (e) {
+        console.error('[Affiliation] payment tracking error:', e?.message);
+      }
+    }
+
+    // ─── 🚨 Admin notification email (nouvelle vente !) ───
+    (async () => {
+      try {
+        const client = await getResendClient();
+        if (!client) return;
+        const sender = process.env.SENDER_EMAIL || 'CryptoIA <onboarding@resend.dev>';
+        const adminEmail = process.env.ADMIN_EMAIL || 'cryptoia2026@gmail.com';
+        const html = `<!DOCTYPE html><html><body style="font-family:-apple-system,sans-serif;background:#0A0E1A;color:#e2e8f0;padding:32px;"><div style="max-width:520px;margin:0 auto;background:linear-gradient(140deg,#0f172a,#1e1b4b);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:32px;"><div style="text-align:center;margin-bottom:24px;"><div style="display:inline-block;width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#10b981,#06b6d4);line-height:56px;font-size:24px;">💰</div><h1 style="margin:12px 0 0;color:#fff;font-size:22px;">Nouvelle vente CryptoIA !</h1></div><table cellpadding="8" style="width:100%;border-spacing:0;"><tr><td style="color:#94a3b8;font-size:12px;">Plan</td><td style="color:#fff;font-weight:700;">${metadata.plan || 'N/A'} (${metadata.billing_period || 'monthly'})</td></tr><tr><td style="color:#94a3b8;font-size:12px;">Email client</td><td style="color:#fff;font-weight:700;">${email || 'N/A'}</td></tr><tr><td style="color:#94a3b8;font-size:12px;">Montant</td><td style="color:#34d399;font-weight:900;font-size:18px;">$${amountTotal.toFixed(2)} CAD</td></tr>${metadata.promo_code ? `<tr><td style="color:#94a3b8;font-size:12px;">Code promo</td><td style="color:#fbbf24;font-family:monospace;">${metadata.promo_code} (-${metadata.discount_pct || '?'}%)</td></tr>` : ''}${metadata.ref_code ? `<tr><td style="color:#94a3b8;font-size:12px;">Affilié</td><td style="color:#a78bfa;font-family:monospace;">${metadata.ref_code} → commission $${(amountTotal * 0.30).toFixed(2)}</td></tr>` : ''}</table><div style="text-align:center;margin-top:24px;"><a href="https://www.cryptoia.ca/admin/analytics" style="display:inline-block;padding:12px 24px;border-radius:10px;background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;font-weight:900;text-decoration:none;text-transform:uppercase;font-size:12px;letter-spacing:1px;">📊 Voir le dashboard</a></div></div></body></html>`;
+        await client.emails.send({
+          from: sender,
+          to: [adminEmail],
+          subject: `💰 +$${amountTotal.toFixed(2)} — Nouvelle vente CryptoIA ${metadata.plan || ''}`,
+          html,
+        });
+        console.log(`[AdminAlert] Sale notification sent to ${adminEmail}`);
+      } catch (e) {
+        console.error('[AdminAlert] error:', e?.message);
+      }
+    })();
   } else if (eventType === 'invoice.payment_succeeded') {
     const invoice = event.data?.object || {};
     console.log(`[Payment] ✅ invoice.payment_succeeded: subscription=${invoice.subscription}`);
@@ -3260,8 +3296,7 @@ app.post('/api/v1/nowpayments/create_payment', async (req, res) => {
 
     const result = await response.json();
     console.log(`[NOWPayments] Invoice created: id=${result.id}, order_id=${orderId}, plan=${plan}`);
-
-    res.json({
+res.json({
       payment_url: result.invoice_url || '',
       payment_id: String(result.id || ''),
     });
@@ -3277,7 +3312,7 @@ app.post('/api/v1/nowpayments/webhook', async (req, res) => {
   const paymentStatus = payload?.payment_status || '';
   const orderId = payload?.order_id || '';
   const paymentId = String(payload?.payment_id || '');
-  
+
   console.log(`[NOWPayments] IPN: payment_id=${paymentId}, status=${paymentStatus}, order_id=${orderId}`);
 
   // Extract plan from order_id (format: cryptoia_{plan}_{timestamp})
@@ -4361,7 +4396,7 @@ async function generateRangeSetup(symbol) {
   if (bbWidth < 0.008) return null;
 
   // ─── RSI(14) on M15 ───
-  const rsiArr = calcRSI(m15Closes, 14);
+const rsiArr = calcRSI(m15Closes, 14);
   const rsiM15 = rsiArr[rsiArr.length - 1];
 
   // ─── H1 EMA 8 & EMA 20 for bias ───
@@ -4370,7 +4405,8 @@ async function generateRangeSetup(symbol) {
   const h1Ema8Val = h1Ema8[h1Ema8.length - 1];
   const h1Ema20Val = h1Ema20[h1Ema20.length - 1];
   const h1Price = h1Closes[h1Closes.length - 1];
-   let h1Trend = 'neutral';
+
+  let h1Trend = 'neutral';
   const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
   if (h1Spread < 0.002) h1Trend = 'neutral';
   else if (h1Ema8Val > h1Ema20Val) h1Trend = 'bullish';

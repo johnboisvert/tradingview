@@ -86,6 +86,82 @@ ${articles}
 </urlset>`);
 });
 
+// ─── SEO: server-side meta injection for /blog/:slug ───
+// Crawlers (Google, Twitter, Facebook, LinkedIn) need OG/Twitter/JSON-LD tags in initial HTML
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+app.get('/blog/:slug', (req, res, next) => {
+  const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
+  if (!fs.existsSync(indexPath)) return next(); // dev mode — fall through to SPA fallback
+  const db = loadBlog();
+  const article = db.articles.find(a => a.slug === req.params.slug);
+  if (!article) return next(); // article not found — let SPA show 404
+
+  const baseUrl = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
+  const url = `${baseUrl}/blog/${article.slug}`;
+  const title = escapeHtml(article.title);
+  const desc = escapeHtml(article.excerpt || String(article.content || '').slice(0, 200));
+  const image = article.coverImage || `${baseUrl}/og-default.png`;
+  const lang = article.language || 'fr';
+  const publishedAt = article.publishedAt || new Date().toISOString();
+  const tags = Array.isArray(article.tags) ? article.tags : ['crypto'];
+
+  const jsonLd = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: article.title,
+    description: article.excerpt || '',
+    image: [image],
+    author: { '@type': 'Organization', name: 'CryptoIA' },
+    publisher: {
+      '@type': 'Organization',
+      name: 'CryptoIA',
+      logo: { '@type': 'ImageObject', url: `${baseUrl}/logo.png` },
+    },
+    datePublished: publishedAt,
+    dateModified: publishedAt,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    keywords: tags.join(', '),
+    inLanguage: lang,
+  });
+
+  const metaTags = `<title>${title} — CryptoIA</title>
+<meta name="description" content="${desc}" />
+<meta name="keywords" content="${escapeHtml(tags.join(', '))}" />
+<link rel="canonical" href="${url}" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="${title}" />
+<meta property="og:description" content="${desc}" />
+<meta property="og:image" content="${escapeHtml(image)}" />
+<meta property="og:url" content="${url}" />
+<meta property="og:site_name" content="CryptoIA" />
+<meta property="og:locale" content="${lang === 'en' ? 'en_US' : 'fr_CA'}" />
+<meta property="article:published_time" content="${publishedAt}" />
+${tags.map(t => `<meta property="article:tag" content="${escapeHtml(t)}" />`).join('\n')}
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="${title}" />
+<meta name="twitter:description" content="${desc}" />
+<meta name="twitter:image" content="${escapeHtml(image)}" />
+<script type="application/ld+json">${jsonLd}</script>`;
+
+  try {
+    let html = fs.readFileSync(indexPath, 'utf-8');
+    // Inject just before </head>. Strip existing <title> first to avoid duplicates.
+    html = html.replace(/<title>[^<]*<\/title>/i, '');
+    html = html.replace('</head>', `${metaTags}\n</head>`);
+    res.setHeader('Cache-Control', 'public, max-age=600'); // 10min CDN-friendly
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (e) {
+    console.error('[Blog SEO] inject failed:', e?.message);
+    next();
+  }
+});
+
 process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] Unhandled rejection (continuing):', reason?.stack || reason?.message || reason);
 });

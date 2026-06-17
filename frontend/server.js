@@ -12,6 +12,7 @@ import dotenv from 'dotenv';
 import registerPushRoutes from './routes/push.js';
 import registerBlogRoutes from './routes/blog.js';
 import registerGamificationRoutes from './routes/gamification.js';
+import registerAdminRoutes from './routes/admin.js';
 import { seed as gamiSeed } from './gamification_seed.js';
 
 dotenv.config();
@@ -23,9 +24,38 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
 
-// ─── CoinGecko response cache (in-memory, 5min TTL) ───
+// ─── CoinGecko response cache (in-memory + disk persistence, 5min fresh / unlimited stale) ───
 const cgCache = new Map(); // key → { data, status, timestamp }
-const CG_CACHE_TTL = 300_000; // 5 minutes — reduced rate limit hits
+const CG_CACHE_TTL = 300_000; // 5 minutes — fresh window
+const CG_CACHE_FILE = '/app/data/cg_cache.json';
+let cgCacheSaveTimer = null;
+
+// Load persisted cache on boot (survives Railway redeploys)
+try {
+  if (fs.existsSync(CG_CACHE_FILE)) {
+    const raw = JSON.parse(fs.readFileSync(CG_CACHE_FILE, 'utf-8'));
+    if (raw && typeof raw === 'object') {
+      for (const [k, v] of Object.entries(raw)) cgCache.set(k, v);
+      console.log(`[CG-Cache] Loaded ${cgCache.size} entries from disk`);
+    }
+  }
+} catch (e) {
+  console.warn('[CG-Cache] Failed to load cache from disk:', e?.message);
+}
+
+function persistCgCacheDebounced() {
+  if (cgCacheSaveTimer) return;
+  cgCacheSaveTimer = setTimeout(() => {
+    cgCacheSaveTimer = null;
+    try {
+      const obj = Object.fromEntries(cgCache.entries());
+      fs.mkdirSync('/app/data', { recursive: true });
+      fs.writeFileSync(CG_CACHE_FILE, JSON.stringify(obj), 'utf-8');
+    } catch (e) {
+      console.warn('[CG-Cache] Disk persist failed:', e?.message);
+    }
+  }, 5000); // debounce 5s
+}
 
 // Stripe webhook needs raw body for signature verification — must be before json parser
 app.use('/api/v1/payment/stripe_webhook', express.raw({ type: 'application/json' }));
@@ -279,147 +309,9 @@ app.put('/api/users/:username/plan', (req, res) => {
 });
 
 // ============================================================
-// Super Admin Management — Server-side JSON file persistence
+// Super Admin Management — extracted to routes/admin.js (Session 16)
 // ============================================================
-const SUPER_ADMIN_FILE = path.join(DATA_DIR, 'super_admin.json');
-const adminSessions = new Map(); // token → { email, name, role, created_at }
-const ADMIN_SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
-
-function loadSuperAdmin() {
-  try {
-    if (existsSync(SUPER_ADMIN_FILE)) {
-      return JSON.parse(readFileSync(SUPER_ADMIN_FILE, 'utf-8'));
-    }
-  } catch (err) {
-    console.error('Error loading super admin:', err);
-  }
-  return null;
-}
-
-function saveSuperAdmin(admin) {
-  try {
-    writeFileSync(SUPER_ADMIN_FILE, JSON.stringify(admin, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error saving super admin:', err);
-  }
-}
-
-function generateSessionToken() {
-  return createHash('sha256').update(Math.random().toString() + Date.now().toString() + Math.random().toString()).digest('hex');
-}
-
-// Clean expired sessions periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [token, session] of adminSessions) {
-    if (now - new Date(session.created_at).getTime() > ADMIN_SESSION_TTL) {
-      adminSessions.delete(token);
-    }
-  }
-}, 30 * 60 * 1000); // Every 30 minutes
-
-// ─── GET /api/v1/admin/status — Check if super admin is configured ───
-app.get('/api/v1/admin/status', (req, res) => {
-  const admin = loadSuperAdmin();
-  res.json({ configured: !!admin });
-});
-
-// ─── POST /api/v1/admin/setup — Initialize super admin (one-time only) ───
-app.post('/api/v1/admin/setup', (req, res) => {
-  const existing = loadSuperAdmin();
-  if (existing) {
-    return res.status(403).json({ success: false, message: 'Super admin déjà configuré.' });
-  }
-
-  const { email, name, password } = req.body;
-  if (!email || !name || !password) {
-    return res.status(400).json({ success: false, message: 'Email, nom et mot de passe requis.' });
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return res.status(400).json({ success: false, message: 'Adresse email invalide.' });
-  }
-
-  if (password.length < 6) {
-    return res.status(400).json({ success: false, message: 'Le mot de passe doit contenir au moins 6 caractères.' });
-  }
-
-  const admin = {
-    email: email.trim().toLowerCase(),
-    name: name.trim(),
-    passwordHash: hashPwd(password),
-    role: 'super_admin',
-    created_at: new Date().toISOString(),
-  };
-
-  saveSuperAdmin(admin);
-  console.log(`[Admin] Super admin created: ${admin.email}`);
-  res.json({ success: true, message: 'Super admin créé avec succès.' });
-});
-
-// ─── POST /api/v1/admin/login — Authenticate admin ───
-app.post('/api/v1/admin/login', (req, res) => {
-  const admin = loadSuperAdmin();
-  if (!admin) {
-    return res.status(403).json({ success: false, message: 'Super admin non configuré.' });
-  }
-
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: 'Email et mot de passe requis.' });
-  }
-
-  if (admin.email !== email.trim().toLowerCase() || admin.passwordHash !== hashPwd(password)) {
-    return res.json({ success: false, message: 'Email ou mot de passe incorrect.' });
-  }
-
-  // Generate session token
-  const token = generateSessionToken();
-  adminSessions.set(token, {
-    email: admin.email,
-    name: admin.name,
-    role: admin.role,
-    created_at: new Date().toISOString(),
-  });
-
-  console.log(`[Admin] Login successful: ${admin.email}`);
-  res.json({
-    success: true,
-    token,
-    admin: { email: admin.email, name: admin.name, role: admin.role },
-  });
-});
-
-// ─── POST /api/v1/admin/verify — Verify session token ───
-app.post('/api/v1/admin/verify', (req, res) => {
-  const { token } = req.body;
-  if (!token) {
-    return res.json({ valid: false });
-  }
-
-  const session = adminSessions.get(token);
-  if (!session) {
-    return res.json({ valid: false });
-  }
-
-  // Check expiry
-  if (Date.now() - new Date(session.created_at).getTime() > ADMIN_SESSION_TTL) {
-    adminSessions.delete(token);
-    return res.json({ valid: false });
-  }
-
-  res.json({ valid: true, admin: { email: session.email, name: session.name, role: session.role } });
-});
-
-// ─── POST /api/v1/admin/logout — Invalidate session ───
-app.post('/api/v1/admin/logout', (req, res) => {
-  const { token } = req.body;
-  if (token) {
-    adminSessions.delete(token);
-  }
-  res.json({ success: true });
-});
+registerAdminRoutes(app, { DATA_DIR, hashPwd });
 
 // ─── Gemini AI Chat proxy ───
 app.post('/api/ai-chat', async (req, res) => {
@@ -491,7 +383,7 @@ app.all('/api/crypto-predict/{*path}', async (req, res) => {
   }
 });
 
-// ─── CoinGecko API proxy (with in-memory cache to avoid 429 rate limits) ───
+// ─── CoinGecko API proxy (cache + retry-backoff + stale-on-error fallback) ───
 // Proxies /api/coingecko/* to https://api.coingecko.com/api/v3/*
 app.get('/api/coingecko/{*path}', async (req, res) => {
   const targetPath = req.url.replace('/api/coingecko', '');
@@ -506,33 +398,60 @@ app.get('/api/coingecko/{*path}', async (req, res) => {
 
   const targetUrl = `https://api.coingecko.com/api/v3${targetPath}`;
 
-  try {
-    const upstreamRes = await fetch(targetUrl, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(15000),
-    });
+  // Retry up to 3 times with exponential backoff on 429/5xx
+  let lastErr = null;
+  let lastStatus = 0;
+  let lastData = null;
+  const maxAttempts = 3;
 
-    const data = await upstreamRes.text();
-    const status = upstreamRes.status;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      if (attempt > 0) {
+        const delay = 500 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 200); // 500ms, 1000ms (+jitter)
+        await new Promise(r => setTimeout(r, delay));
+      }
 
-    // Cache successful responses
-    if (status === 200) {
-      cgCache.set(cacheKey, { data, status, timestamp: now });
-    } else if (status === 429 && cached) {
-      // On rate limit, serve stale cache if available
-      return res.status(200).set('Content-Type', 'application/json').send(cached.data);
+      const upstreamRes = await fetch(targetUrl, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(15000),
+      });
+
+      lastStatus = upstreamRes.status;
+      lastData = await upstreamRes.text();
+
+      if (upstreamRes.status === 200) {
+        cgCache.set(cacheKey, { data: lastData, status: 200, timestamp: now });
+        persistCgCacheDebounced();
+        return res.status(200).set('Content-Type', 'application/json').send(lastData);
+      }
+
+      // 429 or 5xx → retry; 4xx (non-429) → stop
+      if (upstreamRes.status !== 429 && upstreamRes.status < 500) {
+        break;
+      }
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[CG-Proxy] Attempt ${attempt + 1}/${maxAttempts} failed for ${targetPath}: ${err?.message}`);
     }
-
-    res.status(status).set('Content-Type', 'application/json').send(data);
-  } catch (err) {
-    console.error('CoinGecko proxy error:', err);
-    // Serve stale cache on network error if available
-    if (cached) {
-      return res.status(200).set('Content-Type', 'application/json').send(cached.data);
-    }
-    res.status(502).json({ error: 'CoinGecko proxy failed', message: err?.message });
   }
+
+  // All retries exhausted — serve stale cache (any age) if available
+  if (cached) {
+    console.log(`[CG-Proxy] Serving STALE cache for ${targetPath} (age=${Math.round((now - cached.timestamp)/1000)}s, last upstream status=${lastStatus})`);
+    return res.status(200)
+      .set('Content-Type', 'application/json')
+      .set('X-CG-Cache', 'stale')
+      .send(cached.data);
+  }
+
+  // No cache at all — return last upstream error
+  if (lastData !== null) {
+    return res.status(lastStatus || 502)
+      .set('Content-Type', 'application/json')
+      .send(lastData);
+  }
+  res.status(502).json({ error: 'CoinGecko proxy failed', message: lastErr?.message || 'upstream unreachable' });
 });
 
 // ─── Binance Klines API proxy (with symbol validation + Bybit fallback) ───

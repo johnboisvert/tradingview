@@ -957,15 +957,46 @@ export default function Abonnements() {
           })}
         </div>
 
+        {/* Social Proof */}
+        <div className="max-w-4xl mx-auto mb-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="text-center p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+              <div className="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">2 500+</div>
+              <div className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">{t('pricing.proof.traders', 'Traders actifs')}</div>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+              <div className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">94%</div>
+              <div className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">{t('pricing.proof.satisfaction', 'Satisfaction')}</div>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+              <div className="text-2xl font-black bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">24/7</div>
+              <div className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">{t('pricing.proof.realtime', 'Données temps réel')}</div>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+              <div className="text-2xl font-black bg-gradient-to-r from-pink-400 to-rose-400 bg-clip-text text-transparent">7 j</div>
+              <div className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">{t('pricing.proof.trial', 'Essai gratuit')}</div>
+            </div>
+          </div>
+        </div>
+
         {/* FAQ */}
         <div className="max-w-3xl mx-auto">
           <h2 className="text-2xl font-bold text-center mb-6">Questions Fréquentes</h2>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {FAQ.map((item, i) => (
-              <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
-                <h3 className="font-bold text-sm mb-2 text-blue-400">{item.q}</h3>
-                <p className="text-xs text-gray-400 leading-relaxed">{item.a}</p>
-              </div>
+              <details
+                key={i}
+                data-testid={`faq-item-${i}`}
+                className="group bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden transition-colors hover:border-indigo-500/30"
+              >
+                <summary className="cursor-pointer list-none p-5 flex items-center justify-between gap-3 select-none">
+                  <h3 className="font-bold text-sm text-blue-400 flex-1">{item.q}</h3>
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-300 text-xs transition-transform group-open:rotate-45">+</span>
+                </summary>
+                <div className="px-5 pb-5 -mt-1">
+                  <p className="text-xs text-gray-400 leading-relaxed">{item.a}</p>
+                </div>
+              </details>
             ))}
           </div>
         </div>

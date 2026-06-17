@@ -11,9 +11,43 @@ export default function register(app) {
 // PWA PUSH NOTIFICATIONS — Web Push API (VAPID)
 // ═══════════════════════════════════════════════════════════════════════════════
 const PUSH_SUBS_FILE = path.join(__dirname, '..', 'data', 'push_subscriptions.json');
-const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY || '';
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_FILE = path.join(__dirname, '..', 'data', 'vapid_keys.json');
+let VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY || '';
+let VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '';
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@cryptoia.ca';
+
+// Auto-generate VAPID keys if missing (persist to disk so they survive restarts)
+if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
+  try {
+    if (fs.existsSync(VAPID_FILE)) {
+      const saved = JSON.parse(fs.readFileSync(VAPID_FILE, 'utf8'));
+      if (saved?.publicKey && saved?.privateKey) {
+        VAPID_PUBLIC = saved.publicKey;
+        VAPID_PRIVATE = saved.privateKey;
+        console.log('[Push] VAPID keys loaded from disk (auto-generated previously)');
+      }
+    }
+    if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
+      const generated = webpush.generateVAPIDKeys();
+      VAPID_PUBLIC = generated.publicKey;
+      VAPID_PRIVATE = generated.privateKey;
+      try {
+        fs.mkdirSync(path.dirname(VAPID_FILE), { recursive: true });
+        fs.writeFileSync(VAPID_FILE, JSON.stringify({
+          publicKey: VAPID_PUBLIC,
+          privateKey: VAPID_PRIVATE,
+          generated_at: new Date().toISOString(),
+        }, null, 2), 'utf8');
+      } catch (e) { console.warn('[Push] Could not persist VAPID keys to disk:', e?.message); }
+      console.log('[Push] ⚠️  VAPID keys auto-generated — for production add these to Railway env vars:');
+      console.log(`[Push]    VAPID_PUBLIC_KEY=${VAPID_PUBLIC}`);
+      console.log(`[Push]    VAPID_PRIVATE_KEY=${VAPID_PRIVATE}`);
+    }
+  } catch (e) {
+    console.error('[Push] VAPID auto-generation failed:', e?.message);
+  }
+}
+
 let pushEnabled = false;
 if (VAPID_PUBLIC && VAPID_PRIVATE) {
   try {

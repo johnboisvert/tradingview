@@ -181,6 +181,13 @@ app.post('/api/users/create', async (req, res) => {
   // Also track signup completion regardless of email
   trackServerEvent('signup_completed', { plan: newUser.plan, role: newUser.role });
 
+  // Discord/Slack notification for new signup
+  sendChatNotification({
+    title: `🎉 Nouvel inscrit !`,
+    lines: `**User** : ${newUser.username}\n**Plan** : ${newUser.plan}\n**Rôle** : ${newUser.role}${ref_code ? `\n**Parrainé par** : ${ref_code}` : ''}`,
+    color: 0x6366f1, // indigo
+  }).catch(() => {});
+
   // ─── 🤝 Affiliation conversion tracking ───
   if (ref_code && typeof ref_code === 'string' && ref_code.trim().length >= 4) {
     try {
@@ -1098,11 +1105,12 @@ function alignTPWithSR(side, entry, slPercent, supports, resistances) {
     tp1 = entry + slDistance * 1.2;   // 1.2:1 — slightly above 1:1 to account for fees
     tp2 = entry + slDistance * 2.5;   // 2.5:1 — moderate target
     tp3 = entry + slDistance * 4.0;   // 4:1 — extended target
+
     const nearestSupport = supports.find(s => s.price < entry * 0.995);
     if (nearestSupport && nearestSupport.price > sl * 0.95 && nearestSupport.price < entry * 0.96) {
       sl = nearestSupport.price * 0.997;
       if (Math.abs(entry - sl) / entry < 0.06) sl = entry * 0.94;
-    }
+        }
 
     const resAbove = resistances.filter(r => r.price > entry * 1.005);
     if (resAbove.length >= 1 && resAbove[0].price > tp1 * 0.90 && resAbove[0].price < tp1 * 1.20) {
@@ -2197,7 +2205,7 @@ async function generateScalpSetup(symbol) {
       if (diff >= 0) gainSum += diff; else lossSum += Math.abs(diff);
     }
     let avgGain = gainSum / 14, avgLoss = lossSum / 14;
-     for (let i = 15; i < m5Closes.length; i++) {
+    for (let i = 15; i < m5Closes.length; i++) {
       const diff = m5Closes[i] - m5Closes[i - 1];
       if (diff >= 0) { avgGain = (avgGain * 13 + diff) / 14; avgLoss = (avgLoss * 13) / 14; }
       else { avgGain = (avgGain * 13) / 14; avgLoss = (avgLoss * 13 + Math.abs(diff)) / 14; }
@@ -3196,6 +3204,19 @@ app.post('/api/v1/payment/stripe_webhook', async (req, res) => {
     const amountTotal = (session.amount_total || 0) / 100; // cents → dollars
     console.log(`[Payment] ✅ checkout.session.completed: plan=${metadata.plan}, billing=${metadata.billing_period}, email=${email}, amount=${amountTotal}`);
 
+    // ─── 💬 Discord/Slack notification (instant) ───
+    sendChatNotification({
+      title: `💰 +$${amountTotal.toFixed(2)} — Nouvelle vente !`,
+      lines: [
+        `**Plan** : ${metadata.plan || 'N/A'} (${metadata.billing_period || 'monthly'})`,
+        `**Client** : ${email || 'N/A'}`,
+        `**Montant** : $${amountTotal.toFixed(2)} CAD`,
+        metadata.promo_code ? `**Promo** : ${metadata.promo_code} (-${metadata.discount_pct || '?'}%)` : null,
+        metadata.ref_code ? `**Affilié** : ${metadata.ref_code} → commission $${(amountTotal * 0.30).toFixed(2)}` : null,
+      ].filter(Boolean).join('\n'),
+      color: 0x10b981, // emerald
+    }).catch(() => {});
+
     // ─── 🤝 Affiliation conversion (PAYMENT confirmed) ───
     if (metadata.ref_code && amountTotal > 0) {
       try {
@@ -3296,7 +3317,8 @@ app.post('/api/v1/nowpayments/create_payment', async (req, res) => {
 
     const result = await response.json();
     console.log(`[NOWPayments] Invoice created: id=${result.id}, order_id=${orderId}, plan=${plan}`);
-res.json({
+
+    res.json({
       payment_url: result.invoice_url || '',
       payment_id: String(result.id || ''),
     });
@@ -3312,8 +3334,7 @@ app.post('/api/v1/nowpayments/webhook', async (req, res) => {
   const paymentStatus = payload?.payment_status || '';
   const orderId = payload?.order_id || '';
   const paymentId = String(payload?.payment_id || '');
-
-  console.log(`[NOWPayments] IPN: payment_id=${paymentId}, status=${paymentStatus}, order_id=${orderId}`);
+   console.log(`[NOWPayments] IPN: payment_id=${paymentId}, status=${paymentStatus}, order_id=${orderId}`);
 
   // Extract plan from order_id (format: cryptoia_{plan}_{timestamp})
   let plan = 'unknown';
@@ -4396,7 +4417,7 @@ async function generateRangeSetup(symbol) {
   if (bbWidth < 0.008) return null;
 
   // ─── RSI(14) on M15 ───
-const rsiArr = calcRSI(m15Closes, 14);
+  const rsiArr = calcRSI(m15Closes, 14);
   const rsiM15 = rsiArr[rsiArr.length - 1];
 
   // ─── H1 EMA 8 & EMA 20 for bias ───
@@ -4424,7 +4445,7 @@ const rsiArr = calcRSI(m15Closes, 14);
   if (distToLower < 0.15 && rsiM15 < 35) {
     side = 'LONG';
     confidence = 50;
-    reasons.push(`Prix proche BB inférieure ($${formatPrice(bbLower)})`);
+     reasons.push(`Prix proche BB inférieure ($${formatPrice(bbLower)})`);
     reasons.push(`RSI M15: ${rsiM15.toFixed(1)} — zone de survente`);
 
     if (rsiM15 < 25) { confidence += 10; reasons.push('RSI extrêmement bas'); }
@@ -5293,6 +5314,47 @@ function trackServerEvent(event, meta) {
     saveAnalyticsEvents(events);
   } catch {
     // never block
+  }
+}
+
+// ─── Discord/Slack instant notifications ─────────────────────────────────────
+// Configure DISCORD_WEBHOOK_URL or SLACK_WEBHOOK_URL in Railway to enable.
+// Both can be set simultaneously — notification will be sent to both.
+async function sendChatNotification({ title, lines, color = 0x6366f1 }) {
+  const discordUrl = process.env.DISCORD_WEBHOOK_URL;
+  const slackUrl = process.env.SLACK_WEBHOOK_URL;
+  const body = typeof lines === 'string' ? lines : '';
+
+  // Discord embed
+  if (discordUrl) {
+    try {
+      await fetch(discordUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [{
+            title: title || 'CryptoIA',
+            description: body,
+            color,
+            timestamp: new Date().toISOString(),
+            footer: { text: 'CryptoIA · Notifications' },
+          }],
+        }),
+      });
+    } catch (e) { console.error('[Discord] webhook error:', e?.message); }
+  }
+
+  // Slack simple text
+  if (slackUrl) {
+    try {
+      await fetch(slackUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: `*${title || 'CryptoIA'}*\n${body.replace(/\*\*/g, '*')}`,
+        }),
+      });
+    } catch (e) { console.error('[Slack] webhook error:', e?.message); }
   }
 }
 

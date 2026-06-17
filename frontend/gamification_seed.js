@@ -1,11 +1,14 @@
 // Auto-seed initial leaderboard with demo entries (runs ONCE on server boot if file empty).
 // Provides social proof on the public leaderboard.
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const GAMI_FILE = path.join(__dirname, 'data', 'gamification.json');
 
-function seed() {
+export function seed() {
   if (fs.existsSync(GAMI_FILE)) {
     try {
       const data = JSON.parse(fs.readFileSync(GAMI_FILE, 'utf8'));
@@ -58,5 +61,3 @@ function seed() {
     console.error('[GamiSeed] write error:', e?.message);
   }
 }
-
-module.exports = { seed };

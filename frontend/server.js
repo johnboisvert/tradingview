@@ -8,6 +8,12 @@ import fs from 'fs';
 const { readFileSync, writeFileSync, existsSync, mkdirSync } = fs;
 import dotenv from 'dotenv';
 
+// Modular routes (extracted Session 15)
+import registerPushRoutes from './routes/push.js';
+import registerBlogRoutes from './routes/blog.js';
+import registerGamificationRoutes from './routes/gamification.js';
+import { seed as gamiSeed } from './gamification_seed.js';
+
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -5524,7 +5530,13 @@ app.post('/api/v1/webhooks/resend', express.json(), (req, res) => {
   } catch (e) { return res.status(500).json({ error: 'internal error' }); }
 });
 
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODULAR ROUTES (extracted in Session 15 refactor — see ./routes/)
+// MUST be registered BEFORE the SPA catch-all below.
+// ═══════════════════════════════════════════════════════════════════════════════
+registerPushRoutes(app);
+registerBlogRoutes(app);
+registerGamificationRoutes(app);
 
 // Serve static files from dist
 app.use(express.static(path.join(__dirname, 'dist')));
@@ -5541,298 +5553,6 @@ app.get('{*path}', (req, res) => {
 process.on('uncaughtException', (err) => {
   console.error('[FATAL] Uncaught exception (continuing):', err?.stack || err?.message || err);
 });
-// ═══════════════════════════════════════════════════════════════════════════════
-// PWA PUSH NOTIFICATIONS — Web Push API (VAPID)
-// ═══════════════════════════════════════════════════════════════════════════════
-const webpush = require('web-push');
-const PUSH_SUBS_FILE = path.join(__dirname, 'data', 'push_subscriptions.json');
-const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY || '';
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '';
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@cryptoia.ca';
-let pushEnabled = false;
-if (VAPID_PUBLIC && VAPID_PRIVATE) {
-  try {
-    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
-    pushEnabled = true;
-    console.log('[Push] VAPID configured ✅ — push notifications enabled');
-  } catch (e) {
-    console.error('[Push] VAPID config error:', e?.message);
-  }
-} else {
-  console.log('[Push] VAPID keys missing (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY) — push notifications disabled');
-}
-function loadSubs() {
-  try { if (fs.existsSync(PUSH_SUBS_FILE)) return JSON.parse(fs.readFileSync(PUSH_SUBS_FILE, 'utf8')); } catch {}
-  return { subscriptions: [] };
-}
-function saveSubs(data) {
-  try { fs.mkdirSync(path.dirname(PUSH_SUBS_FILE), { recursive: true }); fs.writeFileSync(PUSH_SUBS_FILE, JSON.stringify(data, null, 2)); } catch (e) { console.error('[Push] save error:', e?.message); }
-}
-
-// GET /api/v1/push/vapid-public — Returns public VAPID key (for frontend subscribe)
-app.get('/api/v1/push/vapid-public', (req, res) => {
-  res.json({ ok: true, publicKey: VAPID_PUBLIC, enabled: pushEnabled });
-});
-
-// POST /api/v1/push/subscribe — Save subscription
-app.post('/api/v1/push/subscribe', (req, res) => {
-  const { subscription, userKey, topics } = req.body || {};
-  if (!subscription?.endpoint) return res.status(400).json({ ok: false, error: 'invalid subscription' });
-  const db = loadSubs();
-  const existing = db.subscriptions.findIndex(s => s.subscription.endpoint === subscription.endpoint);
-  const entry = { subscription, userKey: userKey || null, topics: topics || ['alerts', 'signals'], createdAt: new Date().toISOString() };
-  if (existing >= 0) db.subscriptions[existing] = entry;
-  else db.subscriptions.push(entry);
-  saveSubs(db);
-  res.json({ ok: true, total: db.subscriptions.length });
-});
-
-// POST /api/v1/push/unsubscribe — Remove subscription
-app.post('/api/v1/push/unsubscribe', (req, res) => {
-  const { endpoint } = req.body || {};
-  if (!endpoint) return res.status(400).json({ ok: false, error: 'endpoint required' });
-  const db = loadSubs();
-  const before = db.subscriptions.length;
-  db.subscriptions = db.subscriptions.filter(s => s.subscription.endpoint !== endpoint);
-  saveSubs(db);
-  res.json({ ok: true, removed: before - db.subscriptions.length });
-});
-
-// POST /api/v1/push/send — Send to all (admin-only — protect with token in production)
-app.post('/api/v1/push/send', async (req, res) => {
-  if (!pushEnabled) return res.status(503).json({ ok: false, error: 'push not configured' });
-  const { title, body, url, topic, adminToken } = req.body || {};
-  if (process.env.PUSH_ADMIN_TOKEN && adminToken !== process.env.PUSH_ADMIN_TOKEN) {
-    return res.status(401).json({ ok: false, error: 'unauthorized' });
-  }
-  if (!title || !body) return res.status(400).json({ ok: false, error: 'title and body required' });
-  const db = loadSubs();
-  const payload = JSON.stringify({ title, body, url: url || '/', icon: '/assets/logo1.png', badge: '/assets/logo1.png' });
-  let sent = 0, failed = 0;
-  const expired = [];
-  for (const s of db.subscriptions) {
-    if (topic && !s.topics.includes(topic)) continue;
-    try { await webpush.sendNotification(s.subscription, payload); sent++; }
-    catch (e) {
-      failed++;
-      if (e.statusCode === 410 || e.statusCode === 404) expired.push(s.subscription.endpoint);
-    }
-  }
-  // Clean up expired subs
-  if (expired.length) {
-    db.subscriptions = db.subscriptions.filter(s => !expired.includes(s.subscription.endpoint));
-    saveSubs(db);
-  }
-  res.json({ ok: true, sent, failed, expired: expired.length, total: db.subscriptions.length });
-});
-
-// GET /api/v1/push/stats — Admin stats
-app.get('/api/v1/push/stats', (req, res) => {
-  const db = loadSubs();
-  res.json({ ok: true, total: db.subscriptions.length, enabled: pushEnabled, publicKey: VAPID_PUBLIC.slice(0, 12) + '...' });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// BLOG SEO — Auto-generated articles for organic traffic
-// ═══════════════════════════════════════════════════════════════════════════════
-const BLOG_FILE = path.join(__dirname, 'data', 'blog.json');
-function loadBlog() {
-  try { if (fs.existsSync(BLOG_FILE)) return JSON.parse(fs.readFileSync(BLOG_FILE, 'utf8')); } catch {}
-  return { articles: [] };
-}
-function saveBlog(data) {
-  try { fs.mkdirSync(path.dirname(BLOG_FILE), { recursive: true }); fs.writeFileSync(BLOG_FILE, JSON.stringify(data, null, 2)); } catch (e) { console.error('[Blog] save error:', e?.message); }
-}
-
-// Slugify helper
-function slugify(s) {
-  return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
-}
-
-// GET /api/v1/blog/list — List articles (paginated)
-app.get('/api/v1/blog/list', (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
-  const offset = parseInt(req.query.offset, 10) || 0;
-  const db = loadBlog();
-  const sorted = [...db.articles].sort((a, b) => (b.publishedAt || '').localeCompare(a.publishedAt || ''));
-  res.json({ ok: true, total: sorted.length, articles: sorted.slice(offset, offset + limit) });
-});
-
-// GET /api/v1/blog/article/:slug — Single article
-app.get('/api/v1/blog/article/:slug', (req, res) => {
-  const db = loadBlog();
-  const article = db.articles.find(a => a.slug === req.params.slug);
-  if (!article) return res.status(404).json({ ok: false, error: 'not found' });
-  // Increment views
-  article.views = (article.views || 0) + 1;
-  saveBlog(db);
-  res.json({ ok: true, article });
-});
-
-// POST /api/v1/blog/publish — Manual publish (or called by cron with auth)
-app.post('/api/v1/blog/publish', (req, res) => {
-  const { adminToken, title, content, excerpt, tags, coverImage, language } = req.body || {};
-  if (process.env.BLOG_ADMIN_TOKEN && adminToken !== process.env.BLOG_ADMIN_TOKEN) {
-    return res.status(401).json({ ok: false, error: 'unauthorized' });
-  }
-  if (!title || !content) return res.status(400).json({ ok: false, error: 'title and content required' });
-  const slug = slugify(title) + '-' + Date.now().toString(36);
-  const db = loadBlog();
-  const article = {
-    slug,
-    title,
-    excerpt: excerpt || content.slice(0, 200) + '...',
-    content,
-    tags: tags || ['crypto'],
-    coverImage: coverImage || null,
-    language: language || 'fr',
-    publishedAt: new Date().toISOString(),
-    views: 0,
-  };
-  db.articles.push(article);
-  saveBlog(db);
-  res.json({ ok: true, article });
-});
-
-// GET /sitemap.xml — Auto-generated sitemap including blog articles (SEO boost)
-app.get('/sitemap.xml', (req, res) => {
-  const baseUrl = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
-  const db = loadBlog();
-  const articles = db.articles.map(a => `  <url><loc>${baseUrl}/blog/${a.slug}</loc><lastmod>${(a.publishedAt || new Date().toISOString()).slice(0, 10)}</lastmod><priority>0.7</priority></url>`).join('\n');
-  const staticPaths = [
-    '/', '/abonnements', '/affiliation', '/leaderboard', '/blog',
-    '/heatmap', '/dominance', '/fear-greed', '/altcoin-season',
-    '/ai-signals', '/whale-watcher', '/gem-hunter', '/contact',
-  ];
-  const staticUrls = staticPaths.map(p => `  <url><loc>${baseUrl}${p}</loc><priority>${p === '/' ? '1.0' : '0.8'}</priority></url>`).join('\n');
-  res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap-0.9">
-${staticUrls}
-${articles}
-</urlset>`);
-});
-
-process.on('unhandledRejection', (reason) => {
-  console.error('[FATAL] Unhandled rejection (continuing):', reason?.stack || reason?.message || reason);
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// GAMIFICATION SYSTEM — XP, levels, badges, public leaderboard
-// ═══════════════════════════════════════════════════════════════════════════════
-const GAMI_FILE = path.join(__dirname, 'data', 'gamification.json');
-function loadGami() {
-  try {
-    if (fs.existsSync(GAMI_FILE)) {
-      return JSON.parse(fs.readFileSync(GAMI_FILE, 'utf8'));
-    }
-  } catch (e) { console.error('[Gami] load error:', e?.message); }
-  return { users: {} };
-}
-function saveGami(data) {
-  try {
-    fs.mkdirSync(path.dirname(GAMI_FILE), { recursive: true });
-    fs.writeFileSync(GAMI_FILE, JSON.stringify(data, null, 2));
-  } catch (e) { console.error('[Gami] save error:', e?.message); }
-}
-function levelFromXP(xp) {
-  // Level 1: 0-99 XP, Level 2: 100-299, Level 3: 300-599, ...
-  // formula: requires n*100 XP cumulative to reach level n+1
-  let lvl = 1, need = 100, total = 0;
-  while (total + need <= xp) { total += need; lvl++; need = lvl * 100; }
-  return { level: lvl, currentLevelXp: xp - total, nextLevelXp: need };
-}
-const BADGE_CATALOG = [
-  { id: 'first_signal',  name: 'Premier Signal',     name_en: 'First Signal',     emoji: '🎯', rarity: 'common',    xp: 50,   desc_fr: 'Reçu ton 1er signal IA',                desc_en: 'Got your 1st AI signal' },
-  { id: 'streak_7',      name: '7 Jours d\'affilée', name_en: '7-Day Streak',     emoji: '🔥', rarity: 'rare',      xp: 200,  desc_fr: 'Connecté 7 jours d\'affilée',           desc_en: 'Logged in 7 days in a row' },
-  { id: 'streak_30',     name: '30 Jours Légende',   name_en: '30-Day Legend',    emoji: '🏆', rarity: 'legendary', xp: 1000, desc_fr: 'Connecté 30 jours d\'affilée',          desc_en: 'Logged in 30 days in a row' },
-  { id: 'first_trade',   name: 'Premier Trade',      name_en: 'First Trade',      emoji: '📈', rarity: 'common',    xp: 75,   desc_fr: 'Enregistré ton 1er trade dans le journal', desc_en: 'Logged your 1st trade in the journal' },
-  { id: 'profit_x2',     name: '2x Profit',          name_en: '2x Profit',        emoji: '💰', rarity: 'epic',      xp: 500,  desc_fr: 'Doublé un portfolio simulé',            desc_en: 'Doubled a simulated portfolio' },
-  { id: 'profit_x10',    name: '10x Whale',          name_en: '10x Whale',        emoji: '🐋', rarity: 'legendary', xp: 2000, desc_fr: '10x sur un portfolio simulé',           desc_en: '10x on a simulated portfolio' },
-  { id: 'first_alert',   name: 'Première Alerte',    name_en: 'First Alert',      emoji: '🔔', rarity: 'common',    xp: 50,   desc_fr: 'Créé ta 1ère alerte IA',                desc_en: 'Created your 1st AI alert' },
-  { id: 'master_alerts', name: 'Maître des Alertes', name_en: 'Alert Master',     emoji: '⚡', rarity: 'epic',      xp: 300,  desc_fr: 'Créé 10 alertes IA',                    desc_en: 'Created 10 AI alerts' },
-  { id: 'first_backtest',name: 'Stratège',           name_en: 'Strategist',       emoji: '🧠', rarity: 'common',    xp: 75,   desc_fr: 'Lancé ton 1er backtest',                desc_en: 'Ran your 1st backtest' },
-  { id: 'backtest_pro',  name: 'Backtest Pro',       name_en: 'Backtest Pro',     emoji: '🎓', rarity: 'rare',      xp: 250,  desc_fr: 'Lancé 25 backtests',                    desc_en: 'Ran 25 backtests' },
-  { id: 'first_referral',name: 'Ambassadeur',        name_en: 'Ambassador',       emoji: '🎁', rarity: 'rare',      xp: 300,  desc_fr: '1er filleul converti',                  desc_en: '1st referral converted' },
-  { id: 'referral_5',    name: 'Influenceur',        name_en: 'Influencer',       emoji: '🌟', rarity: 'epic',      xp: 800,  desc_fr: '5 filleuls convertis',                  desc_en: '5 referrals converted' },
-  { id: 'referral_20',   name: 'Top Affiliate',      name_en: 'Top Affiliate',    emoji: '👑', rarity: 'legendary', xp: 2500, desc_fr: '20 filleuls convertis',                 desc_en: '20 referrals converted' },
-  { id: 'whale_watcher', name: 'Whale Watcher',      name_en: 'Whale Watcher',    emoji: '🔱', rarity: 'rare',      xp: 200,  desc_fr: 'Consulté Whale Watcher 10 fois',        desc_en: 'Visited Whale Watcher 10 times' },
-  { id: 'gem_hunter',    name: 'Chasseur de Gems',   name_en: 'Gem Hunter',       emoji: '💎', rarity: 'rare',      xp: 200,  desc_fr: 'Utilisé Gem Hunter 10 fois',            desc_en: 'Used Gem Hunter 10 times' },
-  { id: 'social_share',  name: 'Réseauteur',         name_en: 'Networker',        emoji: '📣', rarity: 'common',    xp: 50,   desc_fr: 'Partagé sur les réseaux sociaux',       desc_en: 'Shared on social media' },
-  { id: 'cmd_k_master',  name: 'Power User',         name_en: 'Power User',       emoji: '⌨️', rarity: 'rare',      xp: 150,  desc_fr: 'Utilisé ⌘K 50 fois',                    desc_en: 'Used ⌘K 50 times' },
-  { id: 'magic_owner',   name: 'Magic JB',           name_en: 'Magic JB',         emoji: '✨', rarity: 'legendary', xp: 1500, desc_fr: 'Accès à l\'indicateur Magic JB IA',     desc_en: 'Access to the Magic JB AI indicator' },
-  { id: 'feedback',      name: 'Beta-tester',        name_en: 'Beta tester',      emoji: '🐛', rarity: 'rare',      xp: 250,  desc_fr: 'Envoyé du feedback à l\'équipe',        desc_en: 'Sent feedback to the team' },
-  { id: 'profile_full',  name: 'Profil Complet',     name_en: 'Complete Profile', emoji: '✅', rarity: 'common',    xp: 100,  desc_fr: 'Profil rempli à 100%',                  desc_en: 'Profile 100% complete' },
-];
-
-// GET /api/v1/gamification/catalog — Public badge catalog
-app.get('/api/v1/gamification/catalog', (req, res) => {
-  res.json({ ok: true, badges: BADGE_CATALOG });
-});
-
-// GET /api/v1/gamification/stats/:userKey — User XP, level, badges
-app.get('/api/v1/gamification/stats/:userKey', (req, res) => {
-  const key = String(req.params.userKey || '').trim().toLowerCase();
-  if (!key) return res.status(400).json({ ok: false, error: 'userKey required' });
-  const db = loadGami();
-  const user = db.users[key] || { xp: 0, badges: [], displayName: key.split('@')[0], createdAt: new Date().toISOString() };
-  const lvl = levelFromXP(user.xp);
-  res.json({ ok: true, user: { ...user, ...lvl } });
-});
-
-// POST /api/v1/gamification/unlock — Unlock a badge for user
-app.post('/api/v1/gamification/unlock', (req, res) => {
-  const { userKey, badgeId, displayName } = req.body || {};
-  const key = String(userKey || '').trim().toLowerCase();
-  if (!key || !badgeId) return res.status(400).json({ ok: false, error: 'userKey and badgeId required' });
-  const badge = BADGE_CATALOG.find(b => b.id === badgeId);
-  if (!badge) return res.status(404).json({ ok: false, error: 'badge not found' });
-  const db = loadGami();
-  if (!db.users[key]) db.users[key] = { xp: 0, badges: [], displayName: displayName || key.split('@')[0], createdAt: new Date().toISOString() };
-  if (db.users[key].badges.find(b => b.id === badgeId)) {
-    return res.json({ ok: true, alreadyUnlocked: true, badge });
-  }
-  db.users[key].badges.push({ id: badgeId, unlockedAt: new Date().toISOString() });
-  db.users[key].xp += badge.xp;
-  if (displayName) db.users[key].displayName = displayName;
-  saveGami(db);
-  const lvl = levelFromXP(db.users[key].xp);
-  res.json({ ok: true, badge, newXp: db.users[key].xp, ...lvl });
-});
-
-// POST /api/v1/gamification/xp — Add XP for an action
-app.post('/api/v1/gamification/xp', (req, res) => {
-  const { userKey, action, xp, displayName } = req.body || {};
-  const key = String(userKey || '').trim().toLowerCase();
-  const xpAmount = parseInt(xp, 10) || 0;
-  if (!key || xpAmount <= 0) return res.status(400).json({ ok: false, error: 'userKey and positive xp required' });
-  const db = loadGami();
-  if (!db.users[key]) db.users[key] = { xp: 0, badges: [], displayName: displayName || key.split('@')[0], createdAt: new Date().toISOString() };
-  db.users[key].xp += xpAmount;
-  if (displayName) db.users[key].displayName = displayName;
-  db.users[key].lastActivity = new Date().toISOString();
-  saveGami(db);
-  const lvl = levelFromXP(db.users[key].xp);
-  res.json({ ok: true, action: action || 'unknown', newXp: db.users[key].xp, ...lvl });
-});
-
-// GET /api/v1/gamification/leaderboard — Public leaderboard (top 100 by XP)
-app.get('/api/v1/gamification/leaderboard', (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
-  const db = loadGami();
-  const list = Object.entries(db.users).map(([key, u]) => {
-    const lvl = levelFromXP(u.xp);
-    return {
-      anonKey: key.length > 4 ? key.slice(0, 2) + '***' + key.slice(-2) : '****',
-      displayName: u.displayName || 'Anonymous',
-      xp: u.xp,
-      level: lvl.level,
-      badges: u.badges?.length || 0,
-      lastActivity: u.lastActivity || u.createdAt,
-    };
-  }).sort((a, b) => b.xp - a.xp).slice(0, limit);
-  res.json({ ok: true, total: Object.keys(db.users).length, leaderboard: list });
-});
-
 // CRITICAL: bind to 0.0.0.0 explicitly for Railway/Docker (otherwise IPv6-only on some setups)
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT} (bound to 0.0.0.0)`);
@@ -5840,7 +5560,7 @@ app.listen(PORT, '0.0.0.0', () => {
   // Start background alert checkers AFTER server is listening — so healthcheck on / always responds
   // Any errors here won't prevent the server from being healthy
   setImmediate(() => {
-    try { require('./gamification_seed').seed(); } catch (e) { console.error('[Boot] gamiSeed error:', e?.message); }
+    try { gamiSeed(); } catch (e) { console.error('[Boot] gamiSeed error:', e?.message); }
     try { startAlertChecker(); } catch (e) { console.error('[Boot] startAlertChecker error:', e?.message); }
     try { startScalpAlertChecker(); } catch (e) { console.error('[Boot] startScalpAlertChecker error:', e?.message); }
     try { startRangeAlertChecker(); } catch (e) { console.error('[Boot] startRangeAlertChecker error:', e?.message); }

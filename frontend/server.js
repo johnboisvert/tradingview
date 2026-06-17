@@ -1046,7 +1046,7 @@ function calculateSRLevels(coin) {
   }
 
   // Sort: supports descending (nearest first), resistances ascending (nearest first)
- supports.sort((a, b) => b.price - a.price);
+  supports.sort((a, b) => b.price - a.price);
   resistances.sort((a, b) => a.price - b.price);
 
   // Deduplicate very close levels (within 0.5%)
@@ -1080,7 +1080,7 @@ function alignTPWithSR(side, entry, slPercent, supports, resistances) {
     sl = entry - slDistance;
     // Enforce minimum 6% SL distance
     if (Math.abs(entry - sl) / entry < 0.06) sl = entry * 0.94;
-    // v6: Adjusted TP ratios for wider SL
+      // v6: Adjusted TP ratios for wider SL
     tp1 = entry + slDistance * 1.2;   // 1.2:1 — slightly above 1:1 to account for fees
     tp2 = entry + slDistance * 2.5;   // 2.5:1 — moderate target
     tp3 = entry + slDistance * 4.0;   // 4:1 — extended target
@@ -2094,7 +2094,7 @@ async function generateScalpSetup(symbol) {
   }
 
   // ─── Step 1b: 4H Trend Filter — Penalize (don't reject) conflicting 4H trend ───
-// v5: No longer hard-reject on 4H conflict — apply penalty instead to allow counter-trend scalps
+  // v5: No longer hard-reject on 4H conflict — apply penalty instead to allow counter-trend scalps
   let h4ConflictPenalty = 0;
   if (h1Trend === 'bullish' && h4Trend === 'bearish') {
     h4ConflictPenalty = 10;
@@ -2161,8 +2161,7 @@ async function generateScalpSetup(symbol) {
   const distToEma20 = Math.abs(currentPrice - m5Ema20Val) / currentPrice;
   const priceNearEma = distToEma8 < 0.003 || distToEma20 < 0.003;
   const priceBetweenEmas = (currentPrice >= Math.min(m5Ema8Val, m5Ema20Val) && currentPrice <= Math.max(m5Ema8Val, m5Ema20Val));
-
-  // Stochastic conditions — v3: ultra-tight thresholds for precision
+ // Stochastic conditions — v3: ultra-tight thresholds for precision
   const stochOversold = kVal < 20;        // v3: Tightened from 25 to 20
   const stochDeepOversold = kVal < 10;    // v3: Tightened from 15 to 10
   const stochOverbought = kVal > 80;      // v3: Tightened from 75 to 80
@@ -3142,7 +3141,7 @@ app.post('/api/v1/payment/stripe_webhook', async (req, res) => {
     const invoice = event.data?.object || {};
     console.log(`[Payment] ✅ invoice.payment_succeeded: subscription=${invoice.subscription}`);
   } else if (eventType === 'customer.subscription.deleted') {
-       const sub = event.data?.object || {};
+    const sub = event.data?.object || {};
     console.log(`[Payment] ❌ subscription.deleted: customer=${sub.customer}`);
   }
 
@@ -3244,7 +3243,7 @@ app.post('/api/v1/nowpayments/webhook', async (req, res) => {
 
 // ─── GET /api/v1/nowpayments/status ───
 app.get('/api/v1/nowpayments/status', async (req, res) => {
-  const apiKey = NOWPAYMENTS_API_KEY;
+    const apiKey = NOWPAYMENTS_API_KEY;
   if (!apiKey) {
     return res.status(503).json({ error: 'NOWPayments non configuré' });
   }
@@ -4190,7 +4189,7 @@ function setRangeCooldown(cooldowns, symbol, direction) {
 function loadRangeCalls() {
   try {
     if (existsSync(RANGE_CALLS_FILE)) {
-        return JSON.parse(readFileSync(RANGE_CALLS_FILE, 'utf-8'));
+      return JSON.parse(readFileSync(RANGE_CALLS_FILE, 'utf-8'));
     }
   } catch (err) {
     console.error('Error loading range calls:', err);
@@ -4326,7 +4325,7 @@ async function generateRangeSetup(symbol) {
   const distToUpper = (bbUpper - currentPrice) / (bbUpper - bbLower);
 
   let side = null;
-  let confidence = 0;
+    let confidence = 0;
   const reasons = [];
 
   // ─── LONG: Price near lower BB + RSI < 35 ───
@@ -5085,6 +5084,8 @@ const ALLOWED_EVENTS = new Set([
   'onboarding_started', 'onboarding_completed', 'onboarding_skipped', 'onboarding_cta_click',
   'testimonial_cta_click',
   'email_welcome_sent', 'email_welcome_failed',
+  'email_welcome_delivered', 'email_welcome_opened', 'email_welcome_clicked',
+  'email_welcome_bounced', 'email_welcome_complained',
   'signup_started', 'signup_completed',
 ]);
 
@@ -5203,6 +5204,173 @@ function trackServerEvent(event, meta) {
   }
 }
 
+// ─── Affiliation Tracking ────────────────────────────────────────────────────
+const AFFILIATION_FILE = path.join(__dirname, 'data', 'affiliation_events.json');
+
+function loadAffiliationEvents() {
+  try {
+    if (!fs.existsSync(AFFILIATION_FILE)) return [];
+    const raw = fs.readFileSync(AFFILIATION_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+
+function saveAffiliationEvents(events) {
+  try {
+    fs.mkdirSync(path.dirname(AFFILIATION_FILE), { recursive: true });
+    const trimmed = events.length > 50000 ? events.slice(-50000) : events;
+    fs.writeFileSync(AFFILIATION_FILE, JSON.stringify(trimmed));
+  } catch (e) { console.error('[Affiliation] save error:', e?.message); }
+}
+
+app.post('/api/v1/affiliation/click', express.json(), (req, res) => {
+  try {
+    const { code, ts } = req.body || {};
+    if (!code || typeof code !== 'string') return res.status(400).json({ error: 'code required' });
+    const normalized = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (normalized.length < 4 || normalized.length > 20) return res.status(400).json({ error: 'invalid code' });
+    const events = loadAffiliationEvents();
+    events.push({ type: 'click', code: normalized, ts: ts || new Date().toISOString(), ip: req.ip || 'unknown' });
+    saveAffiliationEvents(events);
+    return res.json({ status: 'ok' });
+  } catch { return res.status(500).json({ error: 'internal error' }); }
+});
+
+function recordAffiliationConversion({ code, type, amount, email }) {
+  if (!code) return;
+  const events = loadAffiliationEvents();
+  events.push({ type: type || 'conversion', code: String(code).trim().toUpperCase(), amount: amount || 0, email: email || null, ts: new Date().toISOString() });
+  saveAffiliationEvents(events);
+}
+
+app.get('/api/v1/affiliation/stats', (req, res) => {
+  try {
+    const code = req.query.code ? String(req.query.code).trim().toUpperCase() : null;
+    const all = loadAffiliationEvents();
+    const events = code ? all.filter(e => e.code === code) : all;
+    const clicks = events.filter(e => e.type === 'click').length;
+    const signups = events.filter(e => e.type === 'signup').length;
+    const payments = events.filter(e => e.type === 'payment');
+    const totalRevenue = payments.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    let topAffiliates = [];
+    if (!code) {
+      const byCode = {};
+      for (const e of all) {
+        if (!byCode[e.code]) byCode[e.code] = { code: e.code, clicks: 0, signups: 0, revenue: 0 };
+        if (e.type === 'click') byCode[e.code].clicks++;
+        if (e.type === 'signup') byCode[e.code].signups++;
+        if (e.type === 'payment') byCode[e.code].revenue += Number(e.amount) || 0;
+      }
+      topAffiliates = Object.values(byCode).map(a => ({ ...a, commission: a.revenue * 0.30 }))
+        .sort((a, b) => b.revenue - a.revenue || b.signups - a.signups || b.clicks - a.clicks).slice(0, 20);
+    }
+    return res.json({
+      code, clicks, signups, payments: payments.length,
+      conversion_rate: clicks > 0 ? Number((signups / clicks * 100).toFixed(1)) : 0,
+      total_revenue: Number(totalRevenue.toFixed(2)),
+      commission_owed: Number((totalRevenue * 0.30).toFixed(2)),
+      top_affiliates: topAffiliates,
+    });
+  } catch (e) { return res.status(500).json({ error: 'internal error' }); }
+});
+
+// ─── Email Digest Hebdomadaire ───────────────────────────────────────────────
+function buildDigestHtml(stats) {
+  const fmt = (n) => Number(n || 0).toLocaleString('fr-FR');
+  const topPromos = (stats.top_promos || []).slice(0, 3);
+  const topAffs = (stats.top_affiliates || []).slice(0, 3);
+  return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#0A0E1A;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#e2e8f0;"><table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0A0E1A;padding:32px 16px;"><tr><td align="center"><table cellpadding="0" cellspacing="0" border="0" width="640" style="max-width:640px;background:linear-gradient(140deg,#0f172a 0%,#1e1b4b 60%,#0f172a 100%);border-radius:24px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;"><tr><td style="padding:32px 32px 16px;text-align:center;background:linear-gradient(180deg,rgba(16,185,129,0.15) 0%,rgba(16,185,129,0) 100%);"><div style="display:inline-block;width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#10b981,#06b6d4);text-align:center;line-height:56px;font-size:24px;margin-bottom:12px;box-shadow:0 0 28px rgba(16,185,129,0.5);">📊</div><h1 style="margin:0;font-size:24px;font-weight:900;color:#ffffff;">Rapport hebdo CryptoIA</h1><p style="margin:8px 0 0;color:#10b981;font-size:13px;font-weight:600;">7 derniers jours · ${new Date().toLocaleDateString('fr-FR')}</p></td></tr><tr><td style="padding:24px 32px;"><table cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td width="48%" style="padding:16px;border-radius:14px;border:1px solid rgba(245,158,11,0.25);background:rgba(245,158,11,0.06);text-align:center;"><p style="margin:0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#fbbf24;">Popups affichées</p><p style="margin:6px 0 0;font-size:28px;font-weight:900;color:#fde047;">${fmt(stats.counts?.popup_shown)}</p><p style="margin:2px 0 0;font-size:11px;color:#94a3b8;">${stats.conversions?.popup?.rate || 0}% conversion CTA</p></td><td width="4%"></td><td width="48%" style="padding:16px;border-radius:14px;border:1px solid rgba(217,70,239,0.25);background:rgba(217,70,239,0.06);text-align:center;"><p style="margin:0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#e879f9;">Codes promo appliqués</p><p style="margin:6px 0 0;font-size:28px;font-weight:900;color:#f0abfc;">${fmt(stats.counts?.promo_applied)}</p><p style="margin:2px 0 0;font-size:11px;color:#94a3b8;">${stats.counts?.promo_invalid || 0} invalides</p></td></tr><tr><td height="12"></td></tr><tr><td style="padding:16px;border-radius:14px;border:1px solid rgba(16,185,129,0.25);background:rgba(16,185,129,0.06);text-align:center;"><p style="margin:0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#34d399;">Codes affiliés générés</p><p style="margin:6px 0 0;font-size:28px;font-weight:900;color:#6ee7b7;">${fmt(stats.counts?.affiliate_generated)}</p></td><td width="4%"></td><td style="padding:16px;border-radius:14px;border:1px solid rgba(34,211,238,0.25);background:rgba(34,211,238,0.06);text-align:center;"><p style="margin:0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#22d3ee;">Welcome emails</p><p style="margin:6px 0 0;font-size:28px;font-weight:900;color:#67e8f9;">${fmt(stats.counts?.email_welcome_sent)}</p><p style="margin:2px 0 0;font-size:11px;color:#94a3b8;">${stats.counts?.email_welcome_failed || 0} échecs</p></td></tr></table>${topPromos.length > 0 ? `<h2 style="margin:28px 0 12px;font-size:14px;color:#cbd5e1;text-transform:uppercase;letter-spacing:1px;">🏆 Top codes promo</h2>${topPromos.map((p, i) => `<div style="padding:10px 12px;border-radius:8px;background:rgba(255,255,255,0.03);margin-bottom:6px;"><span style="color:#94a3b8;margin-right:8px;">#${i+1}</span><strong style="color:#f0abfc;font-family:monospace;">${p.code}</strong><span style="float:right;color:#ffffff;font-weight:700;">${p.count} utilisations</span></div>`).join('')}` : ''}${topAffs.length > 0 ? `<h2 style="margin:28px 0 12px;font-size:14px;color:#cbd5e1;text-transform:uppercase;letter-spacing:1px;">🤝 Top affiliés</h2>${topAffs.map((a, i) => `<div style="padding:10px 12px;border-radius:8px;background:rgba(255,255,255,0.03);margin-bottom:6px;"><span style="color:#94a3b8;margin-right:8px;">#${i+1}</span><strong style="color:#6ee7b7;font-family:monospace;">${a.code}</strong><span style="float:right;color:#ffffff;font-weight:700;">${a.count} codes générés</span></div>`).join('')}` : ''}<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:24px;"><tr><td align="center"><a href="https://www.cryptoia.ca/admin/analytics" style="display:inline-block;padding:12px 28px;border-radius:12px;background:linear-gradient(135deg,#10b981 0%,#06b6d4 100%);color:#ffffff;font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:1.5px;text-decoration:none;">📊 Voir le dashboard complet</a></td></tr></table></td></tr><tr><td style="padding:20px 32px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;"><p style="margin:0;font-size:10px;color:#475569;">CryptoIA · Rapport automatique chaque lundi à 9h.</p></td></tr></table></td></tr></table></body></html>`;
+}
+
+async function sendDigestEmail(testMode = false) {
+  try {
+    const client = await getResendClient();
+    if (!client) return { sent: false, error: 'Resend not configured' };
+    const now = Date.now();
+    const cutoff = now - 7 * 24 * 60 * 60 * 1000;
+    const all = loadAnalyticsEvents();
+    const events = all.filter(e => new Date(e.ts).getTime() >= cutoff);
+    const counts = {};
+    for (const e of events) counts[e.event] = (counts[e.event] || 0) + 1;
+    const promos = {}; const affiliates = {};
+    for (const e of events.filter(e => e.event === 'promo_applied')) { const c = e.meta?.code || 'UNKNOWN'; promos[c] = (promos[c] || 0) + 1; }
+    for (const e of events.filter(e => e.event === 'affiliate_generated')) { const c = e.meta?.code || 'UNKNOWN'; affiliates[c] = (affiliates[c] || 0) + 1; }
+    const topPromos = Object.entries(promos).map(([code, count]) => ({ code, count })).sort((a, b) => b.count - a.count).slice(0, 5);
+    const topAffiliates = Object.entries(affiliates).map(([code, count]) => ({ code, count })).sort((a, b) => b.count - a.count).slice(0, 5);
+    const popupShown = counts.popup_shown || 0; const popupCta = counts.popup_cta_click || 0;
+    const conversions = { popup: { rate: popupShown > 0 ? Number((popupCta / popupShown * 100).toFixed(1)) : 0 } };
+    const stats = { counts, top_promos: topPromos, top_affiliates: topAffiliates, conversions };
+    const html = buildDigestHtml(stats);
+    const sender = process.env.SENDER_EMAIL || 'CryptoIA <onboarding@resend.dev>';
+    const recipient = process.env.ADMIN_EMAIL || 'cryptoia2026@gmail.com';
+    const result = await client.emails.send({
+      from: sender, to: [recipient],
+      subject: `📊 ${testMode ? '[TEST] ' : ''}Rapport hebdo CryptoIA — ${new Date().toLocaleDateString('fr-FR')}`,
+      html,
+    });
+    if (result?.error) return { sent: false, error: result.error?.message || 'unknown' };
+    console.log(`[Digest] Sent to ${recipient} (id=${result?.data?.id})`);
+    return { sent: true, email_id: result?.data?.id, recipient };
+  } catch (e) {
+    console.error('[Digest] Exception:', e?.message);
+    return { sent: false, error: e?.message || 'exception' };
+  }
+}
+
+app.post('/api/v1/email/digest', async (req, res) => {
+  const result = await sendDigestEmail(true);
+  if (result.sent) return res.json({ status: 'success', ...result });
+  return res.status(500).json({ status: 'error', ...result });
+});
+
+function scheduleDigest() {
+  const checkInterval = 60 * 60 * 1000;
+  const lastSentKey = path.join(__dirname, 'data', '.last_digest');
+  setInterval(() => {
+    try {
+      const now = new Date();
+      if (now.getUTCDay() !== 1 || now.getUTCHours() !== 13) return;
+      const today = now.toISOString().slice(0, 10);
+      let lastSent = '';
+      try { lastSent = fs.readFileSync(lastSentKey, 'utf-8').trim(); } catch { /* */ }
+      if (lastSent === today) return;
+      fs.mkdirSync(path.dirname(lastSentKey), { recursive: true });
+      fs.writeFileSync(lastSentKey, today);
+      sendDigestEmail(false).catch(e => console.error('[Digest] scheduled error:', e?.message));
+    } catch (e) { console.error('[Digest] scheduler error:', e?.message); }
+  }, checkInterval);
+  console.log('[Digest] Scheduler enabled (Monday 13h UTC = 9h EST)');
+}
+
+// ─── Resend Webhook ──────────────────────────────────────────────────────────
+app.post('/api/v1/webhooks/resend', express.json(), (req, res) => {
+  try {
+    const { type, data } = req.body || {};
+    if (!type) return res.status(400).json({ error: 'type required' });
+    const map = {
+      'email.delivered': 'email_welcome_delivered',
+      'email.opened': 'email_welcome_opened',
+      'email.clicked': 'email_welcome_clicked',
+      'email.bounced': 'email_welcome_bounced',
+      'email.complained': 'email_welcome_complained',
+    };
+    const eventName = map[type];
+    if (eventName) {
+      const events = loadAnalyticsEvents();
+      events.push({
+        ts: new Date().toISOString(),
+        event: eventName,
+        meta: { email_id: data?.email_id || null, to: Array.isArray(data?.to) ? data.to[0] : data?.to || null },
+      });
+      saveAnalyticsEvents(events);
+    }
+    return res.json({ status: 'ok' });
+  } catch (e) { return res.status(500).json({ error: 'internal error' }); }
+});
+
+
+
 // Serve static files from dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
@@ -5232,5 +5400,6 @@ app.listen(PORT, '0.0.0.0', () => {
     try { startAlertChecker(); } catch (e) { console.error('[Boot] startAlertChecker error:', e?.message); }
     try { startScalpAlertChecker(); } catch (e) { console.error('[Boot] startScalpAlertChecker error:', e?.message); }
     try { startRangeAlertChecker(); } catch (e) { console.error('[Boot] startRangeAlertChecker error:', e?.message); }
+    try { scheduleDigest(); } catch (e) { console.error('[Boot] scheduleDigest error:', e?.message); }
   });
 });

@@ -64,22 +64,67 @@ export default function register(app) {
 
   // Admin: notify ALL current blog articles + key landing pages (run once after setup)
   app.post('/api/v1/admin/indexnow/notify-all', async (req, res) => {
-    const baseUrl = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
-    const BLOG_FILE = path.join(__dirname, '..', 'data', 'blog.json');
-    let articles = [];
-    try {
-      if (fs.existsSync(BLOG_FILE)) articles = (JSON.parse(fs.readFileSync(BLOG_FILE, 'utf8')).articles || []);
-    } catch {}
-    const urls = [
-      `${baseUrl}/`,
-      `${baseUrl}/abonnements`,
-      `${baseUrl}/blog`,
-      `${baseUrl}/comparateur-frais-exchanges`,
-      `${baseUrl}/ai-signals`,
-      ...articles.map(a => `${baseUrl}/blog/${a.slug}`),
-    ];
+    const urls = collectAllUrls();
     // IndexNow accepts max 10k URLs per request
     const ok = await notifyIndexNow(urls);
     res.json({ ok, count: urls.length });
   });
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // DAILY CRON — auto-notify Bing/Yandex every day at 06:00 UTC
+  // Same pattern as daily_digest.js (tick every 30 min, idempotent via state file)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const STATE_FILE = path.join(__dirname, '..', 'data', 'indexnow_cron_state.json');
+  const INTERVAL_MS = 30 * 60 * 1000; // tick every 30 min
+  const STARTUP_DELAY_MS = 120 * 1000; // wait 2 min after boot
+  const TARGET_HOUR_UTC = Number(process.env.INDEXNOW_CRON_HOUR_UTC || 6);
+
+  function loadState() {
+    try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { return { last_sent_date: null, last_count: 0 }; }
+  }
+  function saveState(s) {
+    try { fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true }); fs.writeFileSync(STATE_FILE, JSON.stringify(s, null, 2)); } catch {}
+  }
+
+  async function tick() {
+    try {
+      const now = new Date();
+      if (now.getUTCHours() !== TARGET_HOUR_UTC) return;
+      const today = now.toISOString().slice(0, 10);
+      const state = loadState();
+      if (state.last_sent_date === today) return;
+      const urls = collectAllUrls();
+      const ok = await notifyIndexNow(urls);
+      if (ok) {
+        state.last_sent_date = today;
+        state.last_count = urls.length;
+        saveState(state);
+        console.log(`[IndexNow Cron] ✅ Daily ping sent: ${urls.length} URLs to Bing/Yandex`);
+      } else {
+        console.warn('[IndexNow Cron] Ping failed, will retry next tick');
+      }
+    } catch (e) {
+      console.error('[IndexNow Cron] tick error:', e?.message);
+    }
+  }
+  setTimeout(() => { tick(); setInterval(tick, INTERVAL_MS); }, STARTUP_DELAY_MS);
+  console.log(`[IndexNow Cron] Scheduler initialized — fires daily around ${TARGET_HOUR_UTC}:00 UTC`);
+}
+
+// Helper used by both the endpoint and the cron — keeps URL list consistent
+function collectAllUrls() {
+  const baseUrl = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
+  const BLOG_FILE = path.join(__dirname, '..', 'data', 'blog.json');
+  let articles = [];
+  try {
+    if (fs.existsSync(BLOG_FILE)) articles = (JSON.parse(fs.readFileSync(BLOG_FILE, 'utf8')).articles || []);
+  } catch {}
+  return [
+    `${baseUrl}/`,
+    `${baseUrl}/abonnements`,
+    `${baseUrl}/blog`,
+    `${baseUrl}/comparateur-frais-exchanges`,
+    `${baseUrl}/ai-signals`,
+    ...articles.map(a => `${baseUrl}/blog/${a.slug}`),
+  ];
 }

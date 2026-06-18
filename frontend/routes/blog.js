@@ -10,7 +10,17 @@ export default function register(app) {
 // BLOG SEO — Auto-generated articles for organic traffic
 // ═══════════════════════════════════════════════════════════════════════════════
 const BLOG_FILE = path.join(__dirname, '..', 'data', 'blog.json');
-const SEED_FILE = path.join(__dirname, '..', 'data', 'blog_seed.json');
+// Try multiple seed locations (Railway volume on /app/data masks files copied via Dockerfile)
+const SEED_CANDIDATES = [
+  path.join(__dirname, '..', 'seeds', 'blog_seed.json'),  // production (volume-safe)
+  path.join(__dirname, '..', 'data', 'blog_seed.json'),   // legacy / dev
+];
+function findSeedFile() {
+  for (const p of SEED_CANDIDATES) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
 function loadBlog() {
   try { if (fs.existsSync(BLOG_FILE)) return JSON.parse(fs.readFileSync(BLOG_FILE, 'utf8')); } catch {}
   return { articles: [] };
@@ -21,7 +31,9 @@ function saveBlog(data) {
 
 // ─── Auto-seed evergreen articles on startup (upsert: update content but keep views) ───
 try {
-  if (fs.existsSync(SEED_FILE)) {
+  const SEED_FILE = findSeedFile();
+  if (SEED_FILE) {
+    console.log(`[Blog] Loading seed from: ${SEED_FILE}`);
     const seedData = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
     const db = loadBlog();
     const existingBySlug = new Map((db.articles || []).map(a => [a.slug, a]));
@@ -50,6 +62,8 @@ try {
     } else {
       console.log(`[Blog] Seed up to date — ${db.articles.length} articles`);
     }
+  } else {
+    console.log('[Blog] No seed file found — skipping auto-seed');
   }
 } catch (e) {
   console.warn('[Blog] Auto-seed failed:', e?.message);

@@ -13,6 +13,7 @@ import registerPushRoutes from './routes/push.js';
 import registerBlogRoutes from './routes/blog.js';
 import registerGamificationRoutes from './routes/gamification.js';
 import registerAdminRoutes from './routes/admin.js';
+import registerLeadMagnetRoutes from './routes/lead_magnet.js';
 import { seed as gamiSeed } from './gamification_seed.js';
 
 dotenv.config();
@@ -5131,6 +5132,7 @@ const ALLOWED_EVENTS = new Set([
   'checkout_started', 'checkout_failed', 'checkout_method_chosen',
   'payment_completed', 'payment_failed',
   'blog_article_viewed', 'blog_cta_clicked', 'leaderboard_viewed',
+  'lead_magnet_submitted', 'lead_magnet_delivered',
 ]);
 
 app.post('/api/v1/analytics/track', express.json(), (req, res) => {
@@ -5493,6 +5495,7 @@ app.post('/api/v1/webhooks/resend', express.json(), (req, res) => {
 registerPushRoutes(app);
 registerBlogRoutes(app);
 registerGamificationRoutes(app);
+registerLeadMagnetRoutes(app, { resendClientGetter: getResendClient });
 
 // Serve static files from dist
 app.use(express.static(path.join(__dirname, 'dist')));

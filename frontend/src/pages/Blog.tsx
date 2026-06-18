@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import PageHeader from "@/components/PageHeader";
 import { BookOpen, Calendar, Eye, ArrowLeft, ArrowRight, Tag, Sparkles, X } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
+import LeadMagnetForm from "@/components/LeadMagnetForm";
 
 type Article = {
   slug: string;
@@ -153,6 +154,11 @@ export default function Blog() {
               className="text-sm md:text-base text-gray-200 leading-relaxed space-y-4"
               dangerouslySetInnerHTML={{ __html: single.content }}
             />
+
+            {/* Lead Magnet email capture — pre-conversion */}
+            <div className="mt-10 not-prose">
+              <LeadMagnetForm source={`blog/${single.slug}`} />
+            </div>
 
             {/* In-article conversion CTA */}
             <div

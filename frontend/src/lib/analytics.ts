@@ -34,10 +34,24 @@ type EventName =
   | "payment_failed"
   | "blog_article_viewed"
   | "blog_cta_clicked"
-  | "leaderboard_viewed";
+  | "leaderboard_viewed"
+  | "lead_magnet_submitted"
+  | "lead_magnet_delivered";
 
 export function trackEvent(event: EventName, meta?: Record<string, unknown>): void {
   if (typeof window === "undefined") return;
+  // GDPR: respect cookie consent — block tracking if user rejected
+  try {
+    const consent = localStorage.getItem("cryptoia_cookie_consent_v1");
+    if (consent === "rejected") return;
+    // If consent not yet given, still allow strictly-functional events (signup/payment) for legal/audit purposes
+    const functionalEvents = new Set([
+      "signup_started", "signup_completed",
+      "checkout_started", "checkout_method_chosen", "checkout_failed",
+      "payment_completed", "payment_failed",
+    ]);
+    if (consent === null && !functionalEvents.has(event)) return;
+  } catch {}
   try {
     // Use sendBeacon when available (survives page unload)
     const url = "/api/v1/analytics/track";

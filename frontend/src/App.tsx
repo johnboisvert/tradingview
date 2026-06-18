@@ -4,6 +4,7 @@ import LoadingSpinner from "./components/LoadingSpinner";
 import PageTracker from "./components/PageTracker";
 import ErrorBoundary from "./components/ErrorBoundary";
 import CommandPalette from "./components/CommandPalette";
+import CookieConsentBanner from "./components/CookieConsentBanner";
 import { captureRefFromUrl } from "./lib/affiliation";
 
 // ── Lazy-loaded pages ────────────────────────────────────────────────────────
@@ -113,6 +114,7 @@ function App() {
       <PageTracker />
       <ProtectionLayer />
       <CommandPalette />
+      <CookieConsentBanner />
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           {/* Main Pages - Marché */}

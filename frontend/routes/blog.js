@@ -161,6 +161,80 @@ ${articleUrls}
 </urlset>`);
 });
 
+// ─── Dynamic OG image (SVG) per article — used by social platforms ───
+function svgEscape(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function wrapTitleForSvg(title, maxCharsPerLine = 28, maxLines = 4) {
+  const words = String(title).split(/\s+/);
+  const lines = [];
+  let current = '';
+  for (const w of words) {
+    if (!current) current = w;
+    else if ((current + ' ' + w).length <= maxCharsPerLine) current += ' ' + w;
+    else { lines.push(current); current = w; }
+    if (lines.length >= maxLines) break;
+  }
+  if (current && lines.length < maxLines) lines.push(current);
+  if (lines.length === maxLines && current && lines[lines.length - 1] !== current) {
+    lines[lines.length - 1] = lines[lines.length - 1].slice(0, maxCharsPerLine - 1) + '…';
+  }
+  return lines;
+}
+
+app.get('/og/:slug.svg', (req, res) => {
+  const db = loadBlog();
+  const article = db.articles.find(a => a.slug === req.params.slug);
+  const title = article ? article.title : 'CryptoIA — Analyse Crypto IA';
+  const tag = (article?.tags?.[0] || 'crypto-ia').toUpperCase();
+  const lines = wrapTitleForSvg(title, 28, 4);
+  const lineY = 320 - (lines.length - 1) * 30; // start Y so block is vertically centered around 320
+  const tspans = lines.map((line, i) => `<tspan x="80" dy="${i === 0 ? 0 : 76}">${svgEscape(line)}</tspan>`).join('');
+
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a14"/>
+      <stop offset="100%" stop-color="#1a0f2e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="50%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="80%" cy="20%" r="60%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect x="0" y="0" width="1200" height="8" fill="url(#accent)"/>
+  <g transform="translate(80, 100)">
+    <rect width="180" height="40" rx="20" fill="rgba(168,85,247,0.15)" stroke="rgba(168,85,247,0.4)" stroke-width="1"/>
+    <text x="90" y="26" text-anchor="middle" fill="#c4b5fd" font-family="-apple-system, BlinkMacSystemFont, Inter, Arial, sans-serif" font-size="14" font-weight="800" letter-spacing="2">${svgEscape(tag)}</text>
+  </g>
+  <text x="80" y="${lineY}" fill="white" font-family="-apple-system, BlinkMacSystemFont, Inter, Arial, sans-serif" font-size="64" font-weight="900" letter-spacing="-1.5">${tspans}</text>
+  <g transform="translate(80, 540)">
+    <circle cx="20" cy="20" r="20" fill="url(#accent)"/>
+    <text x="56" y="18" fill="white" font-family="-apple-system, BlinkMacSystemFont, Inter, Arial, sans-serif" font-size="22" font-weight="900">CryptoIA</text>
+    <text x="56" y="40" fill="#9ca3af" font-family="-apple-system, BlinkMacSystemFont, Inter, Arial, sans-serif" font-size="14" font-weight="500">cryptoia.ca · Analyse crypto par IA</text>
+  </g>
+  <g transform="translate(950, 540)">
+    <rect width="170" height="44" rx="22" fill="white"/>
+    <text x="85" y="29" text-anchor="middle" fill="#4f46e5" font-family="-apple-system, BlinkMacSystemFont, Inter, Arial, sans-serif" font-size="14" font-weight="900">Essai 7 j gratuit →</text>
+  </g>
+</svg>`;
+
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=86400'); // 24h CDN cache
+  res.send(svg);
+});
+
 // ─── SEO: server-side meta injection for /blog/:slug ───
 // Crawlers (Google, Twitter, Facebook, LinkedIn) need OG/Twitter/JSON-LD tags in initial HTML
 function escapeHtml(s) {
@@ -180,7 +254,7 @@ app.get('/blog/:slug', (req, res, next) => {
   const url = `${baseUrl}/blog/${article.slug}`;
   const title = escapeHtml(article.title);
   const desc = escapeHtml(article.excerpt || String(article.content || '').slice(0, 200));
-  const image = article.coverImage || `${baseUrl}/og-image.png`;
+  const image = article.coverImage || `${baseUrl}/og/${article.slug}.svg`;
   const lang = article.language || 'fr';
   const publishedAt = article.publishedAt || new Date().toISOString();
   const tags = Array.isArray(article.tags) ? article.tags : ['crypto'];
@@ -225,8 +299,11 @@ ${tags.map(t => `<meta property="article:tag" content="${escapeHtml(t)}" />`).jo
 
   try {
     let html = fs.readFileSync(indexPath, 'utf-8');
-    // Inject just before </head>. Strip existing <title> first to avoid duplicates.
+    // Strip existing SEO tags from index.html template (avoid duplicates that confuse crawlers)
     html = html.replace(/<title>[^<]*<\/title>/i, '');
+    html = html.replace(/<meta[^>]*\s(?:name|property)\s*=\s*"(?:description|keywords|og:[^"]+|twitter:[^"]+|article:[^"]+)"[^>]*>/gi, '');
+    html = html.replace(/<link[^>]*\srel\s*=\s*"canonical"[^>]*>/gi, '');
+    html = html.replace(/<script[^>]*type\s*=\s*"application\/ld\+json"[^>]*>[\s\S]*?<\/script>/gi, '');
     html = html.replace('</head>', `${metaTags}\n</head>`);
     res.setHeader('Cache-Control', 'public, max-age=600'); // 10min CDN-friendly
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

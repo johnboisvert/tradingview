@@ -1,6 +1,7 @@
 // Lead Magnet — captures emails from blog visitors + sends free guide via Resend
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -126,6 +127,13 @@ export default function register(app, { resendClientGetter }) {
     if (existing) {
       existing.last_request_at = new Date().toISOString();
       existing.requests = (existing.requests || 1) + 1;
+      // If previously unsubscribed and they re-subscribe, re-activate the sequence
+      if (existing.unsubscribed) {
+        existing.unsubscribed = false;
+        existing.sequence_step = 0;
+        existing.subscribed_at = new Date().toISOString();
+      }
+      if (!existing.unsub_token) existing.unsub_token = crypto.randomBytes(16).toString('hex');
     } else {
       db.subscribers.push({
         email: cleanEmail,
@@ -134,6 +142,9 @@ export default function register(app, { resendClientGetter }) {
         subscribed_at: new Date().toISOString(),
         last_request_at: new Date().toISOString(),
         requests: 1,
+        sequence_step: 0, // step 0 = guide just sent
+        unsub_token: crypto.randomBytes(16).toString('hex'),
+        unsubscribed: false,
       });
     }
     saveLeads(db);

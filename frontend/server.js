@@ -19,6 +19,7 @@ import registerPublicStatsRoutes from './routes/public_stats.js';
 import registerSuccessStoriesRoutes from './routes/success_stories.js';
 import registerDailyDigestRoutes from './routes/daily_digest.js';
 import registerIndexNowRoutes, { notifyIndexNow } from './routes/indexnow.js';
+import registerSentryWebhookRoutes from './routes/sentry_webhook.js';
 import { seed as gamiSeed } from './gamification_seed.js';
 
 dotenv.config();
@@ -5506,6 +5507,7 @@ registerPublicStatsRoutes(app);
 registerSuccessStoriesRoutes(app);
 registerDailyDigestRoutes(app, { resendClientGetter: getResendClient });
 registerIndexNowRoutes(app);
+registerSentryWebhookRoutes(app, { sendTelegram: sendTelegramMessage });
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Bing Webmaster Tools verification — guarantee meta tag is in dist/index.html

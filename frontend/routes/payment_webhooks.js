@@ -10,6 +10,7 @@ export default function registerPaymentWebhookRoutes(
     recordAffiliationConversion,
     getResendClient,
     STRIPE_SECRET_KEY,
+    checkoutRecovery, // { handleExpiredCheckout, markCompleted }
   }
 ) {
   // ─── POST /api/v1/payment/stripe_webhook ──────────────────────────────────
@@ -38,6 +39,8 @@ export default function registerPaymentWebhookRoutes(
     if (eventType === 'checkout.session.completed') {
       const session = event.data?.object || {};
       const metadata = session.metadata || {};
+      // Mark as recovered if this was a previously abandoned checkout
+      try { checkoutRecovery?.markCompleted?.(session.id, metadata.promo_code || null); } catch {}
       const email = session.customer_details?.email || session.customer_email || null;
       const amountTotal = (session.amount_total || 0) / 100; // cents → dollars
       console.log(`[Payment] ✅ checkout.session.completed: plan=${metadata.plan}, billing=${metadata.billing_period}, email=${email}, amount=${amountTotal}`);
@@ -92,6 +95,15 @@ export default function registerPaymentWebhookRoutes(
     } else if (eventType === 'invoice.payment_succeeded') {
       const invoice = event.data?.object || {};
       console.log(`[Payment] ✅ invoice.payment_succeeded: subscription=${invoice.subscription}`);
+    } else if (eventType === 'checkout.session.expired') {
+      // Abandoned checkout — trigger recovery email with promo code
+      const session = event.data?.object || {};
+      console.log(`[Payment] ⏰ checkout.session.expired: ${session.id}`);
+      try {
+        await checkoutRecovery?.handleExpiredCheckout?.(session);
+      } catch (e) {
+        console.error('[Payment] checkout recovery error:', e?.message);
+      }
     } else if (eventType === 'customer.subscription.deleted') {
       const sub = event.data?.object || {};
       console.log(`[Payment] ❌ subscription.deleted: customer=${sub.customer}`);

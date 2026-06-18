@@ -21,6 +21,7 @@ import registerDailyDigestRoutes from './routes/daily_digest.js';
 import registerIndexNowRoutes, { notifyIndexNow } from './routes/indexnow.js';
 import registerSentryWebhookRoutes from './routes/sentry_webhook.js';
 import registerPaymentWebhookRoutes from './routes/payment_webhooks.js';
+import registerCheckoutRecoveryRoutes from './routes/checkout_recovery.js';
 import registerAdminHealthRoutes from './routes/admin_health.js';
 import { seed as gamiSeed } from './gamification_seed.js';
 
@@ -2993,6 +2994,7 @@ app.post('/api/v1/payment/create_payment_session', async (req, res) => {
       BIENVENUE20: 20,
       LAUNCH30: 30,
       BFRIDAY40: 40,
+      LASTCHANCE20: 20, // Cart recovery promo (sent via checkout.session.expired email)
     };
 
     const planPrices = SERVER_PLAN_PRICES[plan] || SERVER_PLAN_PRICES.premium;
@@ -5331,12 +5333,19 @@ registerSuccessStoriesRoutes(app);
 registerDailyDigestRoutes(app, { resendClientGetter: getResendClient });
 registerIndexNowRoutes(app);
 registerSentryWebhookRoutes(app, { sendTelegram: sendTelegramMessage });
+// Initialize checkout recovery first — registerPaymentWebhookRoutes depends on its helpers
+const checkoutRecovery = registerCheckoutRecoveryRoutes(app, {
+  getResendClient,
+  sendChatNotification,
+});
+
 registerPaymentWebhookRoutes(app, {
   getStripeInstance,
   sendChatNotification,
   recordAffiliationConversion,
   getResendClient,
   STRIPE_SECRET_KEY,
+  checkoutRecovery,
 });
 registerAdminHealthRoutes(app, {
   getStripeInstance,

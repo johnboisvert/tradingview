@@ -44,6 +44,7 @@ const Affiliation = React.lazy(() => import("./pages/Affiliation"));
 const MonCompte = React.lazy(() => import("./pages/MonCompte"));
 const AdminDashboard = React.lazy(() => import("./pages/AdminDashboard"));
 const AdminAnalytics = React.lazy(() => import("./pages/AdminAnalytics"));
+const AdminSocialKits = React.lazy(() => import("./pages/AdminSocialKits"));
 const Analytics = React.lazy(() => import("./pages/Analytics"));
 const Pricing = React.lazy(() => import("./pages/Pricing"));
 const Promos = React.lazy(() => import("./pages/Promos"));
@@ -212,6 +213,7 @@ function App() {
           {/* Admin - Protected */}
           <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
           <Route path="/admin/analytics" element={<ProtectedAdminRoute><AdminAnalytics /></ProtectedAdminRoute>} />
+          <Route path="/admin/social-kits" element={<ProtectedAdminRoute><AdminSocialKits /></ProtectedAdminRoute>} />
           <Route path="/admin/analytics" element={<ProtectedAdminRoute><Analytics /></ProtectedAdminRoute>} />
           <Route path="/admin/pricing" element={<ProtectedAdminRoute><Pricing /></ProtectedAdminRoute>} />
           <Route path="/admin/promos" element={<ProtectedAdminRoute><Promos /></ProtectedAdminRoute>} />

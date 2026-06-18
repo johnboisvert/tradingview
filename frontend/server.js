@@ -17,6 +17,7 @@ import registerLeadMagnetRoutes from './routes/lead_magnet.js';
 import registerEmailSequenceRoutes from './routes/email_sequence.js';
 import registerPublicStatsRoutes from './routes/public_stats.js';
 import registerSuccessStoriesRoutes from './routes/success_stories.js';
+import registerDailyDigestRoutes from './routes/daily_digest.js';
 import { seed as gamiSeed } from './gamification_seed.js';
 
 dotenv.config();
@@ -5502,6 +5503,7 @@ registerLeadMagnetRoutes(app, { resendClientGetter: getResendClient });
 registerEmailSequenceRoutes(app, { resendClientGetter: getResendClient });
 registerPublicStatsRoutes(app);
 registerSuccessStoriesRoutes(app);
+registerDailyDigestRoutes(app, { resendClientGetter: getResendClient });
 
 // Serve static files from dist
 app.use(express.static(path.join(__dirname, 'dist')));

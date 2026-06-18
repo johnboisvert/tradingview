@@ -6,7 +6,7 @@ import { getUsers, type User } from "@/lib/api";
 import {
   Shield, Users, BarChart3, CreditCard, MessageSquare, Tag,
   Activity, Eye, DollarSign, Zap, ArrowUpRight, ArrowDownRight, BookOpen,
-  Download, Mail, FileText
+  Download, Mail, FileText, Sparkles
 } from "lucide-react";
 
 function StatCard({ icon: Icon, label, value, change, color, trend }: {
@@ -129,6 +129,7 @@ export default function AdminDashboard() {
 
   const adminLinks = [
     { path: "/admin/analytics", label: "Analytics", icon: BarChart3, desc: "Statistiques détaillées", color: "from-blue-500 to-indigo-600" },
+    { path: "/admin/social-kits", label: "Social Kits", icon: Sparkles, desc: "Posts prêts-à-coller", color: "from-pink-500 to-purple-600" },
     { path: "/admin/users", label: "Utilisateurs", icon: Users, desc: `${stats.totalUsers} comptes`, color: "from-emerald-500 to-green-600" },
     { path: "/admin/pricing", label: "Tarification", icon: CreditCard, desc: "Plans et prix", color: "from-amber-500 to-orange-600" },
     { path: "/admin/promos", label: "Promotions", icon: Tag, desc: `${stats.activePromos} actifs`, color: "from-purple-500 to-pink-600" },

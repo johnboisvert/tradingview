@@ -372,21 +372,33 @@ app.get('/blog/:slug', (req, res, next) => {
 
   const jsonLd = JSON.stringify({
     '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: article.title,
-    description: article.excerpt || '',
-    image: [image],
-    author: { '@type': 'Organization', name: 'CryptoIA' },
-    publisher: {
-      '@type': 'Organization',
-      name: 'CryptoIA',
-      logo: { '@type': 'ImageObject', url: `${baseUrl}/logo.png` },
-    },
-    datePublished: publishedAt,
-    dateModified: publishedAt,
-    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
-    keywords: tags.join(', '),
-    inLanguage: lang,
+    '@graph': [
+      {
+        '@type': 'Article',
+        headline: article.title,
+        description: article.excerpt || '',
+        image: [image],
+        author: { '@type': 'Organization', name: 'CryptoIA' },
+        publisher: {
+          '@type': 'Organization',
+          name: 'CryptoIA',
+          logo: { '@type': 'ImageObject', url: `${baseUrl}/logo.png` },
+        },
+        datePublished: publishedAt,
+        dateModified: publishedAt,
+        mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+        keywords: tags.join(', '),
+        inLanguage: lang,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: lang === 'en' ? 'Home' : 'Accueil', item: baseUrl },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${baseUrl}/blog` },
+          { '@type': 'ListItem', position: 3, name: article.title, item: url },
+        ],
+      },
+    ],
   });
 
   const metaTags = `<title>${title} — CryptoIA</title>

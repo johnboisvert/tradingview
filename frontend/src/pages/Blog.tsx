@@ -137,7 +137,7 @@ export default function Blog() {
               <ArrowLeft className="w-3.5 h-3.5" /> {lang === "en" ? "Back to all articles" : "Retour à tous les articles"}
             </Link>
             {single.coverImage && (
-              <img src={single.coverImage} alt={single.title} className="w-full rounded-2xl mb-6" />
+              <img src={single.coverImage} alt={single.title} loading="eager" decoding="async" fetchPriority="high" className="w-full rounded-2xl mb-6" />
             )}
             <h1 className="text-3xl md:text-4xl font-black mb-4 bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
               {single.title}
@@ -232,7 +232,7 @@ export default function Blog() {
                 data-testid={`blog-card-${a.slug}`}
               >
                 {a.coverImage && (
-                  <img src={a.coverImage} alt={a.title} className="w-full h-44 object-cover" />
+                  <img src={a.coverImage} alt={a.title} loading="lazy" decoding="async" className="w-full h-44 object-cover" />
                 )}
                 <div className="p-5">
                   <div className="flex items-center gap-2 text-[10px] text-gray-500 mb-2">

@@ -41,25 +41,111 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "CryptoIA",
-      "url": "https://www.cryptoia.ca",
-      "description": "Plateforme d'analyse crypto alimentée par l'intelligence artificielle. Signaux de trading, prédictions IA, whale watcher, screener technique et plus de 50 outils professionnels.",
-      "applicationCategory": "FinanceApplication",
-      "operatingSystem": "Web",
-      "browserRequirements": "Requires JavaScript",
-      "inLanguage": "fr",
-      "image": "/images/CryptoAnalysis.jpg",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "CAD"
-      },
-      "creator": {
-        "@type": "Organization",
-        "name": "CryptoIA",
-        "url": "https://www.cryptoia.ca"
-      }
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://www.cryptoia.ca/#organization",
+          "name": "CryptoIA",
+          "url": "https://www.cryptoia.ca",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://www.cryptoia.ca/assets/logo1.png",
+            "width": 512,
+            "height": 512
+          },
+          "description": "Plateforme d'analyse crypto alimentée par l'intelligence artificielle. Signaux de trading IA, prédictions, whale watcher, screener technique et 50+ outils professionnels.",
+          "foundingDate": "2024",
+          "areaServed": ["CA", "FR", "US", "BE", "CH"],
+          "knowsLanguage": ["fr", "en"]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://www.cryptoia.ca/#website",
+          "url": "https://www.cryptoia.ca",
+          "name": "CryptoIA",
+          "description": "Analyse Crypto IA, Signaux de Trading & Outils Professionnels",
+          "publisher": { "@id": "https://www.cryptoia.ca/#organization" },
+          "inLanguage": ["fr-CA", "en-US"],
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://www.cryptoia.ca/blog?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "WebApplication",
+          "name": "CryptoIA",
+          "url": "https://www.cryptoia.ca",
+          "applicationCategory": "FinanceApplication",
+          "operatingSystem": "Web",
+          "browserRequirements": "Requires JavaScript",
+          "inLanguage": "fr",
+          "image": "https://www.cryptoia.ca/assets/logo1.png",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "CAD",
+            "availability": "https://schema.org/InStock"
+          },
+          "creator": { "@id": "https://www.cryptoia.ca/#organization" }
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Qu'est-ce que CryptoIA ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "CryptoIA est une plateforme canadienne d'analyse crypto propulsée par l'intelligence artificielle. Elle offre des signaux de trading automatiques, des prédictions IA, un whale watcher, un screener technique, un Fear & Greed Index, et plus de 50 outils professionnels pour traders crypto."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Les signaux de trading IA de CryptoIA sont-ils fiables ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Les signaux IA combinent analyse technique multi-timeframe (H1, 4H, 1D), indicateurs (EMA8/20, Stochastic, VWAP) et un filtre de confiance minimum (≥85% pour scalp, ≥80% pour range). Aucun signal n'est garanti — la performance dépend des conditions de marché. La transparence des résultats est consultable en temps réel sur la page Performance."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "CryptoIA a-t-il un essai gratuit ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Oui. CryptoIA propose 7 jours d'essai gratuit sans engagement. Accès complet à tous les outils, signaux IA, screener et alertes Telegram. Aucune carte requise pour commencer."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Quels exchanges crypto sont supportés ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "CryptoIA est compatible avec tous les principaux exchanges : Binance, Coinbase, Kraken, Bybit, OKX, KuCoin, Bitget et Bitfinex. Notre Comparateur de Frais d'Exchanges gratuit permet de calculer en quelques secondes lequel est le moins cher pour votre volume."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Comment fonctionne le système d'alertes Telegram ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Les abonnés Premium reçoivent des alertes Telegram en temps réel à chaque nouveau signal scalp ou range validé par l'IA. Les alertes incluent le pair, l'entry, le stop loss, les targets, le score de confiance et l'analyse multi-timeframe."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Quels moyens de paiement sont acceptés ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "CryptoIA accepte les cartes bancaires (Visa, Mastercard, Amex) via Stripe en mode sécurisé, ainsi que les cryptomonnaies (BTC, ETH, USDT, USDC, BNB, SOL) via NOWPayments. Toutes les transactions sont LIVE et instantanées."
+              }
+            }
+          ]
+        }
+      ]
     }
     </script>
 

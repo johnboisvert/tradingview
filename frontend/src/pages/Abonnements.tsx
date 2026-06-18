@@ -622,12 +622,15 @@ export default function Abonnements() {
   const [annualDiscount, setAnnualDiscount] = useState(20);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
+  const [publicStats, setPublicStats] = useState<{ crypto_pairs_scanned?: number; indicators_tracked?: number; trial_days?: number } | null>(null);
   const currentPlan = getUserPlan();
 
   useEffect(() => {
     getPlanPrices().then(setPrices);
     getAnnualPlanPrices().then(setAnnualPrices);
     getAnnualDiscount().then(setAnnualDiscount);
+    // Real public stats (no fake counts)
+    fetch("/api/v1/stats/public").then(r => r.json()).then((j) => { if (j.ok) setPublicStats(j); }).catch(() => {});
     // Funnel: pricing page viewed
     trackEvent("pricing_page_viewed");
   }, []);
@@ -983,23 +986,23 @@ export default function Abonnements() {
           })}
         </div>
 
-        {/* Social Proof */}
+        {/* Social Proof — verified product facts only (no fake user counts) */}
         <div className="max-w-4xl mx-auto mb-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="pricing-product-facts">
             <div className="text-center p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-              <div className="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">2 500+</div>
-              <div className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">{t('pricing.proof.traders', 'Traders actifs')}</div>
+              <div className="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">{publicStats?.crypto_pairs_scanned ?? "200"}+</div>
+              <div className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">{t('pricing.proof.pairs', 'Paires scannées')}</div>
             </div>
             <div className="text-center p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-              <div className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">94%</div>
-              <div className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">{t('pricing.proof.satisfaction', 'Satisfaction')}</div>
+              <div className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">{publicStats?.indicators_tracked ?? "12"}+</div>
+              <div className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">{t('pricing.proof.indicators', 'Indicateurs IA')}</div>
             </div>
             <div className="text-center p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
               <div className="text-2xl font-black bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">24/7</div>
               <div className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">{t('pricing.proof.realtime', 'Données temps réel')}</div>
             </div>
             <div className="text-center p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-              <div className="text-2xl font-black bg-gradient-to-r from-pink-400 to-rose-400 bg-clip-text text-transparent">7 j</div>
+              <div className="text-2xl font-black bg-gradient-to-r from-pink-400 to-rose-400 bg-clip-text text-transparent">{publicStats?.trial_days ?? "7"} j</div>
               <div className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">{t('pricing.proof.trial', 'Essai gratuit')}</div>
             </div>
           </div>

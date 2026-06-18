@@ -105,38 +105,32 @@ function buildEmail(key, lang, token, baseUrl = 'https://www.cryptoia.ca') {
   }
 
   if (key === 'testimonial') {
-    const title = isEn ? 'How Marc went from -25% to +180% in 6 months' : 'Comment Marc est passé de -25% à +180% en 6 mois';
-    const badge = isEn ? 'Day 3 · Case Study' : 'Jour 3 · Cas concret';
+    const title = isEn ? 'The 4 tools most-used by our beta testers' : 'Les 4 outils les plus utilisés par nos beta testeurs';
+    const badge = isEn ? 'Day 3 · Features' : 'Jour 3 · Outils';
     const body = isEn ? `
-      <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin:0 0 16px 0;">Marc, 34, software engineer in Montreal. He started trading crypto in 2024. By mid-2025, he was down 25% — and burned out checking charts every 15 minutes.</p>
-      <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin:0 0 16px 0;">In August 2025, he subscribed to CryptoIA. Here's what changed:</p>
+      <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin:0 0 16px 0;">We don't publish fake testimonials — instead, here are the 4 tools that our beta testers open every single day. Take a look:</p>
       <div style="background:#0a0a14;border:1px solid rgba(168,85,247,0.3);border-radius:14px;padding:22px;margin:20px 0;">
-        <p style="margin:0 0 12px 0;font-size:14px;color:#c4b5fd;font-weight:700;">📊 6-month results:</p>
-        <ul style="margin:0;padding-left:20px;color:#d1d5db;font-size:14px;line-height:1.85;">
-          <li><strong style="color:#34d399;">+180% portfolio</strong> (vs -25% before)</li>
-          <li><strong style="color:#34d399;">73% win rate</strong> on AI signals followed</li>
-          <li><strong style="color:#34d399;">10 min/day</strong> instead of 3-4 hours stress</li>
-          <li><strong style="color:#34d399;">Sold ETH at $4,200</strong> (top of cycle alert)</li>
-        </ul>
+        <ol style="margin:0;padding-left:22px;color:#d1d5db;font-size:14px;line-height:1.85;">
+          <li><strong style="color:#a78bfa;">AI Signals</strong> — live buy/sell on 200+ pairs, with Telegram alerts</li>
+          <li><strong style="color:#a78bfa;">Whale Watcher</strong> — track what wallets >100 BTC are doing right now</li>
+          <li><strong style="color:#a78bfa;">Fear &amp; Greed</strong> — when to buy (below 25) and take profits (above 75)</li>
+          <li><strong style="color:#a78bfa;">Gem Hunter</strong> — find undervalued altcoins before the crowd</li>
+        </ol>
       </div>
-      <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin:0 0 16px 0;font-style:italic;">"I used to obsess over every candle. Now I trust the signals and live my life. My portfolio thrives without my anxiety." — Marc R., Premium subscriber</p>
-      <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin:0 0 8px 0;">Marc's story isn't unique. Hundreds of our users went from emotional trading to disciplined investing.</p>
-      ${ctaLink(`${baseUrl}/abonnements`, 'See pricing →')}
+      <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin:0 0 8px 0;">If you've already had positive results with CryptoIA, we'd love to publish your real verified story. <a href="${baseUrl}/success-stories" style="color:#a78bfa;">Share it here.</a></p>
+      ${ctaLink(`${baseUrl}/ai-signals`, 'Try AI Signals →')}
     ` : `
-      <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin:0 0 16px 0;">Marc, 34 ans, ingénieur logiciel à Montréal. Il a commencé le trading crypto en 2024. Mi-2025, il était à -25% — et épuisé à vérifier les graphiques toutes les 15 minutes.</p>
-      <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin:0 0 16px 0;">En août 2025, il s'est abonné à CryptoIA. Voici ce qui a changé :</p>
+      <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin:0 0 16px 0;">On ne publie pas de faux témoignages — voici à la place les 4 outils que nos beta testeurs ouvrent chaque jour. Regarde :</p>
       <div style="background:#0a0a14;border:1px solid rgba(168,85,247,0.3);border-radius:14px;padding:22px;margin:20px 0;">
-        <p style="margin:0 0 12px 0;font-size:14px;color:#c4b5fd;font-weight:700;">📊 Résultats sur 6 mois :</p>
-        <ul style="margin:0;padding-left:20px;color:#d1d5db;font-size:14px;line-height:1.85;">
-          <li><strong style="color:#34d399;">+180% portfolio</strong> (vs -25% avant)</li>
-          <li><strong style="color:#34d399;">73% de win rate</strong> sur les signaux IA suivis</li>
-          <li><strong style="color:#34d399;">10 min/jour</strong> au lieu de 3-4h de stress</li>
-          <li><strong style="color:#34d399;">Vendu son ETH à 4 200$</strong> (alerte top de cycle)</li>
-        </ul>
+        <ol style="margin:0;padding-left:22px;color:#d1d5db;font-size:14px;line-height:1.85;">
+          <li><strong style="color:#a78bfa;">AI Signals</strong> — buy/sell en direct sur 200+ paires, avec alertes Telegram</li>
+          <li><strong style="color:#a78bfa;">Whale Watcher</strong> — vois ce que font les wallets &gt;100 BTC en temps réel</li>
+          <li><strong style="color:#a78bfa;">Fear &amp; Greed</strong> — quand acheter (sous 25) et prendre profits (au-dessus 75)</li>
+          <li><strong style="color:#a78bfa;">Gem Hunter</strong> — trouve les altcoins sous-valorisés avant la foule</li>
+        </ol>
       </div>
-      <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin:0 0 16px 0;font-style:italic;">"J'étais obsédé par chaque bougie. Maintenant je fais confiance aux signaux et je vis ma vie. Mon portfolio prospère sans mon anxiété." — Marc R., abonné Premium</p>
-      <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin:0 0 8px 0;">L'histoire de Marc n'est pas isolée. Des centaines de nos utilisateurs sont passés du trading émotionnel à l'investissement discipliné.</p>
-      ${ctaLink(`${baseUrl}/abonnements`, 'Voir les tarifs →')}
+      <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin:0 0 8px 0;">Si CryptoIA t'a déjà donné des résultats positifs, on serait ravis de publier ta vraie histoire vérifiée. <a href="${baseUrl}/success-stories" style="color:#a78bfa;">Partage-la ici.</a></p>
+      ${ctaLink(`${baseUrl}/ai-signals`, 'Tester les signaux IA →')}
     `;
     return {
       subject: title,

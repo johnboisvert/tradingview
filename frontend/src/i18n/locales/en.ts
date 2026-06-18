@@ -37,6 +37,7 @@ const en: TranslationDict = {
       aiAnalysis: "AI & Analysis",
       trading: "Trading",
       assistant: "Assistant",
+      resources: "Resources",
       tools: "Tools",
       account: "Account",
       admin: "Admin",

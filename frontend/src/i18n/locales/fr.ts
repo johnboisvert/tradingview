@@ -35,6 +35,7 @@ const fr = {
       aiAnalysis: "IA & Analyse",
       trading: "Trading",
       assistant: "Assistant",
+      resources: "Ressources",
       tools: "Outils",
       account: "Compte",
       admin: "Admin",

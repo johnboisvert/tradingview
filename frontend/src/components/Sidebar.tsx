@@ -147,18 +147,24 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    title: "Ressources",
+    items: [
+      { path: "/blog", label: "Blog 📝", icon: BookOpen, badge: "NEW" },
+      { path: "/news", label: "Nouvelles", icon: Newspaper },
+      { path: "/trading-academy", label: "Trading Academy", icon: GraduationCap },
+      { path: "/success-stories", label: "Success Stories", icon: Award },
+      { path: "/leaderboard", label: "Leaderboard", icon: Award },
+    ],
+  },
+  {
     title: "Outils",
     items: [
       { path: "/stats-avancees", label: "Stats Avancées", icon: BarChart3 },
       { path: "/simulation", label: "Simulation", icon: Gamepad2 },
       { path: "/convertisseur", label: "Convertisseur", icon: ArrowLeftRight },
       { path: "/calendrier", label: "Calendrier", icon: Calendar },
-      { path: "/news", label: "Nouvelles", icon: Newspaper },
-      { path: "/blog", label: "Blog SEO", icon: BookOpen },
-      { path: "/success-stories", label: "Success Stories", icon: Award },
       { path: "/onchain-metrics", label: "On-Chain", icon: LinkIcon },
       { path: "/defi-yield", label: "DeFi Yield", icon: Landmark },
-      { path: "/trading-academy", label: "Trading Academy", icon: GraduationCap },
       { path: "/telechargement", label: "Téléchargements", icon: Download },
       { path: "/contact", label: "Contact", icon: Mail },
     ],
@@ -181,6 +187,7 @@ const SECTION_KEY: Record<string, string> = {
   "IA & Analyse": "nav.sections.aiAnalysis",
   "Trading": "nav.sections.trading",
   "Assistant": "nav.sections.assistant",
+  "Ressources": "nav.sections.resources",
   "Outils": "nav.sections.tools",
 };
 
@@ -428,6 +435,14 @@ export default function Sidebar() {
                       }`}>
                         {t(PATH_KEY[item.path] || item.label, { defaultValue: item.label })}
                       </span>
+                      {accessible && (item as { badge?: string }).badge && (
+                        <span
+                          data-testid={`sidebar-badge-${item.path.replace(/\//g, "-")}`}
+                          className="flex-shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm shadow-pink-500/30"
+                        >
+                          {(item as { badge?: string }).badge}
+                        </span>
+                      )}
                       {!accessible && (
                         <div className="flex items-center gap-1">
                           <Lock className="w-3 h-3 text-gray-600" />

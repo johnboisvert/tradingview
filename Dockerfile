@@ -3,6 +3,13 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Build-time arguments — Railway passes service variables as build args
+# These MUST be declared with ARG to be visible to Vite during npm run build
+ARG VITE_SENTRY_DSN=""
+ARG RAILWAY_GIT_COMMIT_SHA=""
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
+ENV VITE_RELEASE=$RAILWAY_GIT_COMMIT_SHA
+
 COPY frontend/package*.json ./frontend/
 RUN cd frontend && npm install
 

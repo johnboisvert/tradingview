@@ -35,18 +35,23 @@ async function checkResend(getResendClient) {
   try {
     const client = await getResendClient();
     if (!client) return { ok: false, status: 'not_configured', latency: 0, message: 'RESEND_API_KEY missing' };
-    // Resend doesn't have a true health endpoint — listing domains is the cheapest authenticated call
-    await withTimeout(
+    // Hit any Resend endpoint. We don't care about scope (401 means API up but key has limited perms).
+    // Network errors / 5xx are real problems.
+    const res = await withTimeout(
       fetch('https://api.resend.com/domains', {
         headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY || ''}` },
-      }).then((r) => {
-        if (!r.ok && r.status !== 200) throw new Error(`HTTP ${r.status}`);
-        return r;
       }),
       5000,
       'Resend'
     );
-    return { ok: true, status: 'healthy', latency: Date.now() - t0, message: 'API reachable' };
+    if (res.status >= 500) throw new Error(`HTTP ${res.status}`);
+    const reachable = res.status < 500; // 200/401/403 all mean API is reachable
+    return {
+      ok: reachable,
+      status: reachable ? 'healthy' : 'down',
+      latency: Date.now() - t0,
+      message: res.status === 200 ? 'API reachable (full access)' : `API reachable (HTTP ${res.status})`,
+    };
   } catch (e) {
     return { ok: false, status: 'down', latency: Date.now() - t0, message: e?.message?.slice(0, 80) || 'unknown' };
   }

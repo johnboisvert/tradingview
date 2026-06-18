@@ -58,6 +58,7 @@ import {
   Lock,
   BookOpen,
   SlidersHorizontal,
+  Scale,
   Bell,
   FileText,
   Trophy,
@@ -166,6 +167,7 @@ const NAV_SECTIONS = [
     title: "Outils",
     items: [
       { path: "/stats-avancees", label: "Stats Avancées", icon: BarChart3 },
+      { path: "/comparateur-frais-exchanges", label: "Comparateur Frais Exchanges", icon: Scale, badge: "NEW" },
       { path: "/simulation", label: "Simulation", icon: Gamepad2 },
       { path: "/convertisseur", label: "Convertisseur", icon: ArrowLeftRight },
       { path: "/calendrier", label: "Calendrier", icon: Calendar },

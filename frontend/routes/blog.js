@@ -145,6 +145,7 @@ app.get('/sitemap.xml', (req, res) => {
     { path: '/ai-assistant',      priority: '0.7', changefreq: 'weekly' },
     { path: '/convertisseur',     priority: '0.7', changefreq: 'weekly' },
     { path: '/calculatrice',      priority: '0.7', changefreq: 'weekly' },
+    { path: '/comparateur-frais-exchanges', priority: '0.8', changefreq: 'weekly' },
     { path: '/calendrier',        priority: '0.7', changefreq: 'weekly' },
     { path: '/trading-academy',   priority: '0.7', changefreq: 'weekly' },
     { path: '/blog',              priority: '0.8', changefreq: 'daily' },
@@ -173,6 +174,36 @@ app.get('/sitemap.xml', (req, res) => {
 ${staticUrls}
 ${articleUrls}
 </urlset>`);
+});
+
+// GET /rss.xml — RSS 2.0 feed (auto-discovery by aggregators: Feedly, Crypto Panic, etc.)
+app.get('/rss.xml', (req, res) => {
+  const baseUrl = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
+  const db = loadBlog();
+  const escape = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const items = (db.articles || [])
+    .sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
+    .slice(0, 30)
+    .map(a => `    <item>
+      <title>${escape(a.title)}</title>
+      <link>${baseUrl}/blog/${a.slug}</link>
+      <guid isPermaLink="true">${baseUrl}/blog/${a.slug}</guid>
+      <description>${escape(a.excerpt || '')}</description>
+      <pubDate>${new Date(a.publishedAt || Date.now()).toUTCString()}</pubDate>
+      ${(a.tags || []).map(t => `<category>${escape(t)}</category>`).join('')}
+    </item>`).join('\n');
+  res.type('application/rss+xml').send(`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>CryptoIA — Analyse Crypto par IA</title>
+    <link>${baseUrl}</link>
+    <atom:link href="${baseUrl}/rss.xml" rel="self" type="application/rss+xml"/>
+    <description>Signaux IA, analyses on-chain, dashboards crypto en français-canadien. Mises à jour quotidiennes.</description>
+    <language>fr-CA</language>
+    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+${items}
+  </channel>
+</rss>`);
 });
 
 // ─── GET /api/v1/blog/social-kit/:slug — ready-to-post copy for X/LinkedIn/Reddit ───

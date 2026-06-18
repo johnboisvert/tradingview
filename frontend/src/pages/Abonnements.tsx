@@ -242,6 +242,13 @@ function PaymentModal({
   const handleStripe = async () => {
     setLoading(true);
     setError("");
+    trackEvent("checkout_started", {
+      plan: plan.key,
+      amount: Number(totalPrice.toFixed(2)),
+      billing,
+      method: "stripe",
+      promo: promoApplied?.code ?? null,
+    });
     try {
       const res = await fetch("/api/v1/payment/create_payment_session", {
         method: "POST",
@@ -256,9 +263,12 @@ function PaymentModal({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Erreur Stripe");
+      trackEvent("checkout_method_chosen", { method: "stripe", plan: plan.key });
       window.location.href = data.url;
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur lors de la création de la session");
+      const msg = e instanceof Error ? e.message : "Erreur lors de la création de la session";
+      setError(msg);
+      trackEvent("checkout_failed", { method: "stripe", plan: plan.key, error: msg });
     } finally {
       setLoading(false);
     }
@@ -267,6 +277,13 @@ function PaymentModal({
   const handleNowPayments = async () => {
     setLoading(true);
     setError("");
+    trackEvent("checkout_started", {
+      plan: plan.key,
+      amount: Number(totalPrice.toFixed(2)),
+      billing,
+      method: "crypto",
+      promo: promoApplied?.code ?? null,
+    });
     try {
       const res = await fetch("/api/v1/nowpayments/create_payment", {
         method: "POST",
@@ -282,9 +299,12 @@ function PaymentModal({
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Erreur NOWPayments");
       if (!data.payment_url) throw new Error("URL de paiement introuvable");
+      trackEvent("checkout_method_chosen", { method: "crypto", plan: plan.key });
       window.location.href = data.payment_url;
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur lors de la création du paiement crypto");
+      const msg = e instanceof Error ? e.message : "Erreur lors de la création du paiement crypto";
+      setError(msg);
+      trackEvent("checkout_failed", { method: "crypto", plan: plan.key, error: msg });
     } finally {
       setLoading(false);
     }
@@ -608,7 +628,13 @@ export default function Abonnements() {
     getPlanPrices().then(setPrices);
     getAnnualPlanPrices().then(setAnnualPrices);
     getAnnualDiscount().then(setAnnualDiscount);
+    // Funnel: pricing page viewed
+    trackEvent("pricing_page_viewed");
   }, []);
+
+  useEffect(() => {
+    trackEvent("billing_period_changed", { period: billing });
+  }, [billing]);
 
   const isAnnual = billing === "annual";
 

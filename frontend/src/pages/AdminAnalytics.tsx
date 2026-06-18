@@ -17,6 +17,16 @@ interface StatsResponse {
     popup: { shown: number; cta: number; rate: number };
     onboarding: { started: number; completed: number; rate: number };
   };
+  funnel?: {
+    pricing_viewed: number;
+    checkout_started: number;
+    checkout_failed: number;
+    payment_completed: number;
+    payment_failed: number;
+    rates: { pricing_to_checkout: number; checkout_to_paid: number; pricing_to_paid: number };
+    revenue_cad: number;
+    plan_breakdown: Record<string, number>;
+  };
 }
 
 const RANGES = [
@@ -44,6 +54,16 @@ const EVENT_LABELS: Record<string, { label: string; color: string; icon: string 
   email_welcome_failed: { label: "Email welcome échoué", color: "text-red-300", icon: "📮" },
   signup_started: { label: "Inscription démarrée", color: "text-cyan-300", icon: "📝" },
   signup_completed: { label: "Inscription terminée", color: "text-emerald-300", icon: "🎉" },
+  pricing_page_viewed: { label: "Page abonnements vue", color: "text-amber-300", icon: "💎" },
+  plan_selected: { label: "Plan sélectionné", color: "text-fuchsia-300", icon: "🛒" },
+  billing_period_changed: { label: "Période de facturation", color: "text-gray-400", icon: "🔄" },
+  checkout_started: { label: "Checkout démarré", color: "text-yellow-300", icon: "💳" },
+  checkout_failed: { label: "Checkout échoué", color: "text-red-300", icon: "❌" },
+  checkout_method_chosen: { label: "Méthode choisie", color: "text-violet-300", icon: "✅" },
+  payment_completed: { label: "Paiement réussi 🎉", color: "text-emerald-400", icon: "💰" },
+  payment_failed: { label: "Paiement échoué", color: "text-red-400", icon: "🚫" },
+  blog_article_viewed: { label: "Article blog lu", color: "text-blue-300", icon: "📰" },
+  leaderboard_viewed: { label: "Leaderboard vu", color: "text-amber-300", icon: "🏆" },
 };
 
 function KpiCard({ icon: Icon, label, value, sub, accent, glow }: {
@@ -191,6 +211,60 @@ export default function AdminAnalytics() {
             glow="rgba(34,211,238,0.4)"
           />
         </div>
+
+        {/* 💰 REVENUE FUNNEL — la métrique business #1 */}
+        {stats?.funnel && (
+          <div className="relative rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.07] via-white/[0.02] to-transparent p-6 overflow-hidden mb-6">
+            <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+            <div className="relative flex items-center justify-between mb-5 flex-wrap gap-3">
+              <h3 className="text-base font-black text-white flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-400" /> Funnel de Conversion — Revenue 💰
+              </h3>
+              <div className="text-right" data-testid="funnel-revenue">
+                <div className="text-[10px] uppercase tracking-wider text-emerald-300/70 font-bold">Revenue ({stats.range})</div>
+                <div className="text-2xl font-black bg-gradient-to-r from-emerald-300 to-teal-300 bg-clip-text text-transparent">
+                  {stats.funnel.revenue_cad.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
+                </div>
+              </div>
+            </div>
+            <div className="relative space-y-1">
+              <FunnelBar label="Page abonnements vue" value={stats.funnel.pricing_viewed} pct={100} color="from-amber-400 to-orange-500" />
+              <FunnelBar label="Checkout démarré" value={stats.funnel.checkout_started} pct={stats.funnel.rates.pricing_to_checkout} color="from-yellow-400 to-amber-500" />
+              <FunnelBar label="Paiement réussi 🎉" value={stats.funnel.payment_completed} pct={stats.funnel.rates.pricing_to_paid} color="from-emerald-400 to-teal-500" />
+            </div>
+            <div className="relative mt-5 grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] py-3 px-2" data-testid="funnel-rate-pricing-to-checkout">
+                <div className="text-[10px] uppercase tracking-wider text-gray-400">Pricing → Checkout</div>
+                <div className="text-lg font-black text-yellow-300 mt-1">{stats.funnel.rates.pricing_to_checkout}%</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] py-3 px-2" data-testid="funnel-rate-checkout-to-paid">
+                <div className="text-[10px] uppercase tracking-wider text-gray-400">Checkout → Payé</div>
+                <div className="text-lg font-black text-emerald-300 mt-1">{stats.funnel.rates.checkout_to_paid}%</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] py-3 px-2" data-testid="funnel-rate-end-to-end">
+                <div className="text-[10px] uppercase tracking-wider text-gray-400">End-to-end</div>
+                <div className="text-lg font-black text-teal-300 mt-1">{stats.funnel.rates.pricing_to_paid}%</div>
+              </div>
+              <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] py-3 px-2" data-testid="funnel-failures">
+                <div className="text-[10px] uppercase tracking-wider text-gray-400">Échecs (CO+Paiement)</div>
+                <div className="text-lg font-black text-red-300 mt-1">{stats.funnel.checkout_failed + stats.funnel.payment_failed}</div>
+              </div>
+            </div>
+            {Object.keys(stats.funnel.plan_breakdown).length > 0 && (
+              <div className="relative mt-5 pt-4 border-t border-white/10">
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2 font-bold">Répartition des checkouts par plan</div>
+                <div className="flex gap-2 flex-wrap">
+                  {Object.entries(stats.funnel.plan_breakdown).map(([plan, count]) => (
+                    <div key={plan} className="px-3 py-1.5 rounded-full bg-white/[0.05] border border-white/10 text-xs">
+                      <span className="font-bold text-white capitalize">{plan}</span>
+                      <span className="text-gray-400 ml-2">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Conversion funnels */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">

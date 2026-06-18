@@ -5126,6 +5126,11 @@ const ALLOWED_EVENTS = new Set([
   'email_welcome_delivered', 'email_welcome_opened', 'email_welcome_clicked',
   'email_welcome_bounced', 'email_welcome_complained',
   'signup_started', 'signup_completed',
+  // ─── Conversion funnel (Session 17) ───
+  'pricing_page_viewed', 'plan_selected', 'billing_period_changed',
+  'checkout_started', 'checkout_failed', 'checkout_method_chosen',
+  'payment_completed', 'payment_failed',
+  'blog_article_viewed', 'leaderboard_viewed',
 ]);
 
 app.post('/api/v1/analytics/track', express.json(), (req, res) => {
@@ -5212,6 +5217,28 @@ app.get('/api/v1/analytics/stats', (req, res) => {
     const onboardingCompleted = counts.onboarding_completed || 0;
     const onboardingCompletion = onboardingStarted > 0 ? (onboardingCompleted / onboardingStarted * 100) : 0;
 
+    // ─── Conversion funnel (Session 17) ───
+    const pricingViewed = counts.pricing_page_viewed || 0;
+    const checkoutStarted = counts.checkout_started || 0;
+    const paymentCompleted = counts.payment_completed || 0;
+    const paymentFailed = counts.payment_failed || 0;
+    const checkoutFailed = counts.checkout_failed || 0;
+    const funnelRates = {
+      pricing_to_checkout: pricingViewed > 0 ? Number((checkoutStarted / pricingViewed * 100).toFixed(1)) : 0,
+      checkout_to_paid: checkoutStarted > 0 ? Number((paymentCompleted / checkoutStarted * 100).toFixed(1)) : 0,
+      pricing_to_paid: pricingViewed > 0 ? Number((paymentCompleted / pricingViewed * 100).toFixed(1)) : 0,
+    };
+    // Revenue estimation (CAD) — from payment_completed events with meta.amount
+    const revenue = events
+      .filter(e => e.event === 'payment_completed')
+      .reduce((sum, e) => sum + (Number(e.meta?.amount) || 0), 0);
+    // Plan breakdown
+    const planBreakdown = {};
+    for (const e of events.filter(e => e.event === 'checkout_started')) {
+      const plan = e.meta?.plan || 'unknown';
+      planBreakdown[plan] = (planBreakdown[plan] || 0) + 1;
+    }
+
     return res.json({
       range,
       total_events: events.length,
@@ -5223,6 +5250,16 @@ app.get('/api/v1/analytics/stats', (req, res) => {
       conversions: {
         popup: { shown: popupShown, cta: popupCta, rate: Number(popupConversion.toFixed(1)) },
         onboarding: { started: onboardingStarted, completed: onboardingCompleted, rate: Number(onboardingCompletion.toFixed(1)) },
+      },
+      funnel: {
+        pricing_viewed: pricingViewed,
+        checkout_started: checkoutStarted,
+        checkout_failed: checkoutFailed,
+        payment_completed: paymentCompleted,
+        payment_failed: paymentFailed,
+        rates: funnelRates,
+        revenue_cad: Number(revenue.toFixed(2)),
+        plan_breakdown: planBreakdown,
       },
     });
   } catch (e) {

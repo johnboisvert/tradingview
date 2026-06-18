@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { CheckCircle, XCircle, Loader2, ArrowRight, Home, Clock, Calendar } from "lucide-react";
 import { activateSubscription, type BillingPeriod } from "@/lib/subscription";
+import { trackEvent } from "@/lib/analytics";
 import Footer from "@/components/Footer";
 
 const PLAN_LABELS: Record<string, string> = {
@@ -84,11 +85,19 @@ export default function PaymentSuccess() {
             setSubscriptionEnd(endDate);
           }
           setStatus("success");
+          trackEvent("payment_completed", {
+            plan: confirmedPlan,
+            billing: data.billing_period || billingParam,
+            provider,
+            session_id: sessionId,
+          });
         } else {
           setStatus("error");
+          trackEvent("payment_failed", { provider, session_id: sessionId, reason: data.status || "unknown" });
         }
       } catch {
         setStatus("error");
+        trackEvent("payment_failed", { provider, session_id: sessionId, reason: "verify_exception" });
       }
     };
 

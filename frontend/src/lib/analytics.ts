@@ -22,7 +22,18 @@ type EventName =
   | "email_welcome_sent"
   | "email_welcome_failed"
   | "signup_started"
-  | "signup_completed";
+  | "signup_completed"
+  // ─── Conversion funnel (Session 17) ───
+  | "pricing_page_viewed"
+  | "plan_selected"
+  | "billing_period_changed"
+  | "checkout_started"
+  | "checkout_failed"
+  | "checkout_method_chosen"
+  | "payment_completed"
+  | "payment_failed"
+  | "blog_article_viewed"
+  | "leaderboard_viewed";
 
 export function trackEvent(event: EventName, meta?: Record<string, unknown>): void {
   if (typeof window === "undefined") return;

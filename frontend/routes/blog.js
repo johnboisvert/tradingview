@@ -10,12 +10,37 @@ export default function register(app) {
 // BLOG SEO — Auto-generated articles for organic traffic
 // ═══════════════════════════════════════════════════════════════════════════════
 const BLOG_FILE = path.join(__dirname, '..', 'data', 'blog.json');
+const SEED_FILE = path.join(__dirname, '..', 'data', 'blog_seed.json');
 function loadBlog() {
   try { if (fs.existsSync(BLOG_FILE)) return JSON.parse(fs.readFileSync(BLOG_FILE, 'utf8')); } catch {}
   return { articles: [] };
 }
 function saveBlog(data) {
   try { fs.mkdirSync(path.dirname(BLOG_FILE), { recursive: true }); fs.writeFileSync(BLOG_FILE, JSON.stringify(data, null, 2)); } catch (e) { console.error('[Blog] save error:', e?.message); }
+}
+
+// ─── Auto-seed evergreen articles on startup (idempotent: dedupe by slug) ───
+try {
+  if (fs.existsSync(SEED_FILE)) {
+    const seedData = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
+    const db = loadBlog();
+    const existingSlugs = new Set((db.articles || []).map(a => a.slug));
+    let added = 0;
+    for (const article of (seedData.articles || [])) {
+      if (!existingSlugs.has(article.slug)) {
+        db.articles.push(article);
+        added++;
+      }
+    }
+    if (added > 0) {
+      saveBlog(db);
+      console.log(`[Blog] Auto-seeded ${added} evergreen articles from blog_seed.json (total: ${db.articles.length})`);
+    } else {
+      console.log(`[Blog] Seed already applied — ${db.articles.length} articles in DB`);
+    }
+  }
+} catch (e) {
+  console.warn('[Blog] Auto-seed failed:', e?.message);
 }
 
 // Slugify helper

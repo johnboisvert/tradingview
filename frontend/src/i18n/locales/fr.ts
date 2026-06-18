@@ -33,6 +33,8 @@ const fr = {
       myArea: "Mon Espace",
       market: "Marché",
       aiAnalysis: "IA & Analyse",
+      aiSignals: "Signaux IA",
+      aiPredictions: "Prédictions & Stratégies IA",
       trading: "Trading",
       assistant: "Assistant",
       resources: "Ressources",

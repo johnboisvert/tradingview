@@ -35,6 +35,8 @@ const en: TranslationDict = {
       myArea: "My Space",
       market: "Market",
       aiAnalysis: "AI & Analysis",
+      aiSignals: "AI Signals",
+      aiPredictions: "AI Predictions & Strategies",
       trading: "Trading",
       assistant: "Assistant",
       resources: "Resources",

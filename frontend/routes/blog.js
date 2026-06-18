@@ -19,24 +19,36 @@ function saveBlog(data) {
   try { fs.mkdirSync(path.dirname(BLOG_FILE), { recursive: true }); fs.writeFileSync(BLOG_FILE, JSON.stringify(data, null, 2)); } catch (e) { console.error('[Blog] save error:', e?.message); }
 }
 
-// ─── Auto-seed evergreen articles on startup (idempotent: dedupe by slug) ───
+// ─── Auto-seed evergreen articles on startup (upsert: update content but keep views) ───
 try {
   if (fs.existsSync(SEED_FILE)) {
     const seedData = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
     const db = loadBlog();
-    const existingSlugs = new Set((db.articles || []).map(a => a.slug));
-    let added = 0;
+    const existingBySlug = new Map((db.articles || []).map(a => [a.slug, a]));
+    let added = 0, updated = 0;
     for (const article of (seedData.articles || [])) {
-      if (!existingSlugs.has(article.slug)) {
+      const existing = existingBySlug.get(article.slug);
+      if (!existing) {
         db.articles.push(article);
         added++;
+      } else {
+        // Upsert: refresh seed-managed fields, preserve runtime metrics
+        const before = JSON.stringify({ t: existing.title, c: existing.content, e: existing.excerpt, cover: existing.coverImage, tags: existing.tags });
+        existing.title = article.title;
+        existing.excerpt = article.excerpt;
+        existing.content = article.content;
+        existing.tags = article.tags;
+        existing.coverImage = article.coverImage;
+        existing.language = article.language;
+        const after = JSON.stringify({ t: existing.title, c: existing.content, e: existing.excerpt, cover: existing.coverImage, tags: existing.tags });
+        if (before !== after) updated++;
       }
     }
-    if (added > 0) {
+    if (added > 0 || updated > 0) {
       saveBlog(db);
-      console.log(`[Blog] Auto-seeded ${added} evergreen articles from blog_seed.json (total: ${db.articles.length})`);
+      console.log(`[Blog] Auto-seed: +${added} new, ~${updated} updated (total: ${db.articles.length})`);
     } else {
-      console.log(`[Blog] Seed already applied — ${db.articles.length} articles in DB`);
+      console.log(`[Blog] Seed up to date — ${db.articles.length} articles`);
     }
   }
 } catch (e) {
@@ -168,7 +180,7 @@ app.get('/blog/:slug', (req, res, next) => {
   const url = `${baseUrl}/blog/${article.slug}`;
   const title = escapeHtml(article.title);
   const desc = escapeHtml(article.excerpt || String(article.content || '').slice(0, 200));
-  const image = article.coverImage || `${baseUrl}/og-default.png`;
+  const image = article.coverImage || `${baseUrl}/og-image.png`;
   const lang = article.language || 'fr';
   const publishedAt = article.publishedAt || new Date().toISOString();
   const tags = Array.isArray(article.tags) ? article.tags : ['crypto'];

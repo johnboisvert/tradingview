@@ -33,6 +33,7 @@ type EventName =
   | "payment_completed"
   | "payment_failed"
   | "blog_article_viewed"
+  | "blog_cta_clicked"
   | "leaderboard_viewed";
 
 export function trackEvent(event: EventName, meta?: Record<string, unknown>): void {

@@ -4,7 +4,8 @@ import { Link, useParams } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import PageHeader from "@/components/PageHeader";
-import { BookOpen, Calendar, Eye, ArrowLeft, ArrowRight, Tag } from "lucide-react";
+import { BookOpen, Calendar, Eye, ArrowLeft, ArrowRight, Tag, Sparkles, X } from "lucide-react";
+import { trackEvent } from "@/lib/analytics";
 
 type Article = {
   slug: string;
@@ -18,6 +19,8 @@ type Article = {
   views: number;
 };
 
+const BLOG_BANNER_DISMISS_KEY = "cryptoia_blog_banner_dismissed_v1";
+
 export default function Blog() {
   const { t, i18n } = useTranslation();
   const { slug } = useParams<{ slug?: string }>();
@@ -25,16 +28,35 @@ export default function Blog() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [single, setSingle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    try { return typeof window !== "undefined" && localStorage.getItem(BLOG_BANNER_DISMISS_KEY) === "1"; }
+    catch { return false; }
+  });
+
+  const dismissBanner = () => {
+    setBannerDismissed(true);
+    try { localStorage.setItem(BLOG_BANNER_DISMISS_KEY, "1"); } catch {}
+  };
+
+  const handleCtaClick = (location: "top_banner" | "inline_end" | "article_card") => {
+    trackEvent("blog_cta_clicked", { location, slug: single?.slug || slug || "list" });
+  };
 
   useEffect(() => {
     if (slug) {
       setLoading(true);
       fetch(`/api/v1/blog/article/${encodeURIComponent(slug)}`)
         .then((r) => r.json())
-        .then((j) => { if (j.ok) setSingle(j.article); })
+        .then((j) => {
+          if (j.ok) {
+            setSingle(j.article);
+            trackEvent("blog_article_viewed", { slug: j.article.slug, tags: j.article.tags });
+          }
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(true);
+      setSingle(null);
       fetch("/api/v1/blog/list?limit=30")
         .then((r) => r.json())
         .then((j) => { if (j.ok) setArticles(j.articles || []); })
@@ -51,6 +73,41 @@ export default function Blog() {
     <div className="flex min-h-screen bg-[#030712]">
       <Sidebar />
       <main className="flex-1 md:ml-[260px] p-4 md:p-7 pt-[72px] md:pt-7 max-w-5xl mx-auto">
+        {/* Sticky CTA banner — only on blog (list + single), dismissable */}
+        {!bannerDismissed && (
+          <div
+            data-testid="blog-sticky-banner"
+            className="sticky top-0 z-40 -mx-4 md:-mx-7 mb-4 px-4 md:px-7 py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg"
+          >
+            <div className="flex items-center justify-between gap-3 max-w-5xl mx-auto">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <Sparkles className="w-4 h-4 flex-shrink-0 animate-pulse" />
+                <p className="text-xs md:text-sm font-medium truncate">
+                  {lang === "en"
+                    ? "🎯 Try AI signals free for 7 days — no credit card required"
+                    : "🎯 Essai gratuit 7 jours des signaux IA — sans carte bancaire"}
+                </p>
+              </div>
+              <Link
+                to="/abonnements"
+                onClick={() => handleCtaClick("top_banner")}
+                data-testid="blog-banner-cta"
+                className="flex-shrink-0 px-3 md:px-4 py-1.5 rounded-full bg-white text-indigo-600 text-xs md:text-sm font-black hover:scale-105 transition-transform whitespace-nowrap"
+              >
+                {lang === "en" ? "Start free" : "Commencer"} →
+              </Link>
+              <button
+                onClick={dismissBanner}
+                data-testid="blog-banner-dismiss"
+                aria-label="Dismiss"
+                className="flex-shrink-0 p-1 rounded-full hover:bg-white/15 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <PageHeader
           icon={<BookOpen className="w-6 h-6" />}
           title={single ? single.title : (lang === "en" ? "Blog" : "Blog")}
@@ -96,6 +153,47 @@ export default function Blog() {
               className="text-sm md:text-base text-gray-200 leading-relaxed space-y-4"
               dangerouslySetInnerHTML={{ __html: single.content }}
             />
+
+            {/* In-article conversion CTA */}
+            <div
+              data-testid="blog-inline-cta"
+              className="mt-10 rounded-3xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 p-6 md:p-8 not-prose"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-5 h-5 text-indigo-300" />
+                <span className="text-[10px] uppercase tracking-widest font-black text-indigo-300">
+                  {lang === "en" ? "Try CryptoIA" : "Découvre CryptoIA"}
+                </span>
+              </div>
+              <h3 className="text-xl md:text-2xl font-black text-white mb-3 leading-tight">
+                {lang === "en"
+                  ? "Want to apply this strategy with real-time AI signals?"
+                  : "Tu veux appliquer cette stratégie avec des signaux IA en temps réel ?"}
+              </h3>
+              <p className="text-sm text-gray-300 mb-5 leading-relaxed">
+                {lang === "en"
+                  ? "Get unlimited access to AI signals scanning 200+ pairs 24/7, Telegram alerts, and our exclusive market analyses. 7-day free trial, no credit card required."
+                  : "Accès illimité aux signaux IA scannant 200+ paires 24/7, alertes Telegram, et nos analyses exclusives du marché. Essai gratuit 7 jours, sans carte bancaire."}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  to="/abonnements"
+                  onClick={() => handleCtaClick("inline_end")}
+                  data-testid="blog-inline-cta-primary"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-black hover:scale-105 transition-transform shadow-lg shadow-indigo-500/30"
+                >
+                  {lang === "en" ? "Start free trial" : "Démarrer l'essai gratuit"}
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  to="/ai-signals"
+                  data-testid="blog-inline-cta-secondary"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.06] border border-white/10 text-white text-sm font-bold hover:bg-white/10 transition-colors"
+                >
+                  {lang === "en" ? "See AI signals" : "Voir les signaux IA"}
+                </Link>
+              </div>
+            </div>
           </article>
         )}
 

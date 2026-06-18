@@ -5130,7 +5130,7 @@ const ALLOWED_EVENTS = new Set([
   'pricing_page_viewed', 'plan_selected', 'billing_period_changed',
   'checkout_started', 'checkout_failed', 'checkout_method_chosen',
   'payment_completed', 'payment_failed',
-  'blog_article_viewed', 'leaderboard_viewed',
+  'blog_article_viewed', 'blog_cta_clicked', 'leaderboard_viewed',
 ]);
 
 app.post('/api/v1/analytics/track', express.json(), (req, res) => {

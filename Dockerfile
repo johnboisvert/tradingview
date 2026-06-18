@@ -19,6 +19,9 @@ COPY --from=builder /app/frontend/dist ./dist
 # Copy server.js
 COPY --from=builder /app/frontend/server.js ./server.js
 
+# Copy Sentry instrumentation (loaded via --import BEFORE server.js)
+COPY --from=builder /app/frontend/instrument.mjs ./instrument.mjs
+
 # Copy backend route modules (ESM refactor) and gamification seed
 COPY --from=builder /app/frontend/routes ./routes
 COPY --from=builder /app/frontend/gamification_seed.js ./gamification_seed.js
@@ -34,8 +37,8 @@ RUN mkdir -p /app/data /app/seeds
 COPY --from=builder /app/frontend/data/blog_seed.json ./seeds/blog_seed.json
 
 # Create a minimal package.json for the production server (ES modules + deps)
-RUN echo '{"type":"module","dependencies":{"express":"^5.2.1","dotenv":"^16.4.0","stripe":"^17.0.0","resend":"^4.4.1","web-push":"^3.6.7"}}' > package.json && npm install --omit=dev
+RUN echo '{"type":"module","dependencies":{"express":"^5.2.1","dotenv":"^16.4.0","stripe":"^17.0.0","resend":"^4.4.1","web-push":"^3.6.7","@sentry/node":"^10.58.0"}}' > package.json && npm install --omit=dev
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["node", "--import", "./instrument.mjs", "server.js"]

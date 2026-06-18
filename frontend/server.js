@@ -5539,9 +5539,26 @@ app.get('{*path}', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Sentry — error handler must be registered AFTER all routes/middlewares
+// instrument.mjs is loaded via --import flag BEFORE this file runs
+// ═══════════════════════════════════════════════════════════════════════════════
+try {
+  const Sentry = await import('@sentry/node');
+  Sentry.setupExpressErrorHandler(app);
+  console.log('[Sentry] ✅ Express error handler registered');
+} catch (e) {
+  console.log('[Sentry] ⏭️ @sentry/node not loaded:', e?.message);
+}
+
 // Global error handlers — log without crashing
 process.on('uncaughtException', (err) => {
   console.error('[FATAL] Uncaught exception (continuing):', err?.stack || err?.message || err);
+  try { import('@sentry/node').then(S => S.captureException(err)); } catch {}
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Unhandled rejection (continuing):', reason);
+  try { import('@sentry/node').then(S => S.captureException(reason)); } catch {}
 });
 // CRITICAL: bind to 0.0.0.0 explicitly for Railway/Docker (otherwise IPv6-only on some setups)
 app.listen(PORT, '0.0.0.0', () => {

@@ -6,6 +6,10 @@ import './index.css';
 import './i18n'; // initialise react-i18next (FR/EN) avant le 1er render
 import { loadRuntimeConfig } from './lib/config.ts';
 import { registerServiceWorker } from './registerSW.ts';
+import { initSentry } from './lib/sentry.ts';
+
+// Initialize Sentry as early as possible (before any other code)
+initSentry();
 
 // ── Anti-scraping protection (production only) ──────────────────────────────
 function initAntiScraping() {

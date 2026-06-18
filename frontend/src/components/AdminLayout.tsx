@@ -15,12 +15,14 @@ import {
   ChevronRight,
   ArrowLeft,
   Eye,
+  Activity,
 } from "lucide-react";
 import { adminLogout } from "@/pages/AdminLogin";
 import { getAdminSession } from "@/lib/store";
 
 const NAV_ITEMS = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/admin/health", label: "Health Monitor", icon: Activity },
   { path: "/admin/users", label: "Utilisateurs", icon: Users },
   { path: "/admin/visitors", label: "Visiteurs & Sessions", icon: Eye },
   { path: "/admin/pricing", label: "Prix & Forfaits", icon: CreditCard },

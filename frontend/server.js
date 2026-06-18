@@ -21,6 +21,7 @@ import registerDailyDigestRoutes from './routes/daily_digest.js';
 import registerIndexNowRoutes, { notifyIndexNow } from './routes/indexnow.js';
 import registerSentryWebhookRoutes from './routes/sentry_webhook.js';
 import registerPaymentWebhookRoutes from './routes/payment_webhooks.js';
+import registerAdminHealthRoutes from './routes/admin_health.js';
 import { seed as gamiSeed } from './gamification_seed.js';
 
 dotenv.config();
@@ -5336,6 +5337,12 @@ registerPaymentWebhookRoutes(app, {
   recordAffiliationConversion,
   getResendClient,
   STRIPE_SECRET_KEY,
+});
+registerAdminHealthRoutes(app, {
+  getStripeInstance,
+  getResendClient,
+  STRIPE_SECRET_KEY,
+  TELEGRAM_BOT_TOKEN,
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

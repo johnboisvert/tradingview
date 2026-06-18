@@ -159,7 +159,7 @@ export default function TelegramSetup() {
       <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
         {/* Header */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
-          <img src={TELE_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img loading="lazy" decoding="async" src={TELE_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/80 to-transparent" />
           <div className="relative z-10 h-full flex items-center justify-between px-8">
             <div>

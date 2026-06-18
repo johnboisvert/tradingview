@@ -171,7 +171,7 @@ export default function TimeframeAnalysis() {
                         <td className="py-2.5 px-3 text-xs text-gray-500">{i + 1}</td>
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-2">
-                            {d.image && <img src={d.image} alt={d.symbol} className="w-5 h-5 rounded-full" />}
+                            {d.image && <img loading="lazy" decoding="async" src={d.image} alt={d.symbol} className="w-5 h-5 rounded-full" />}
                             <div>
                               <div className="font-bold text-white text-sm">{d.symbol}</div>
                               <div className="text-[10px] text-gray-500">{d.name}</div>

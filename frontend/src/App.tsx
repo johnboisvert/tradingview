@@ -5,6 +5,7 @@ import PageTracker from "./components/PageTracker";
 import ErrorBoundary from "./components/ErrorBoundary";
 import CommandPalette from "./components/CommandPalette";
 import CookieConsentBanner from "./components/CookieConsentBanner";
+import PushNotificationPrompt from "./components/PushNotificationPrompt";
 import { captureRefFromUrl } from "./lib/affiliation";
 
 // ── Lazy-loaded pages ────────────────────────────────────────────────────────
@@ -118,6 +119,7 @@ function App() {
       <ProtectionLayer />
       <CommandPalette />
       <CookieConsentBanner />
+      <PushNotificationPrompt />
       <NewsletterPopup />
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>

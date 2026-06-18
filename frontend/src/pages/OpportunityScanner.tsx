@@ -260,7 +260,7 @@ export default function OpportunityScanner() {
                           <td className="py-3 px-3 text-sm text-gray-500">{i + 1}</td>
                           <td className="py-3 px-3">
                             <div className="flex items-center gap-2">
-                              {o.image && <img src={o.image} alt={o.symbol} className="w-6 h-6 rounded-full" />}
+                              {o.image && <img loading="lazy" decoding="async" src={o.image} alt={o.symbol} className="w-6 h-6 rounded-full" />}
                               <div>
                                 <div className="font-bold text-white text-sm">{o.symbol}</div>
                                 <div className="text-xs text-gray-500 truncate max-w-[120px]">{o.name}</div>

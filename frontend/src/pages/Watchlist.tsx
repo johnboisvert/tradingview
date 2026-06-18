@@ -275,7 +275,7 @@ export default function Watchlist() {
                   className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] hover:bg-purple-500/20 border border-white/[0.06] hover:border-purple-500/30 text-xs font-semibold transition-all group"
                 >
                   {c.image && (
-                    <img src={c.image} alt={c.symbol} className="w-5 h-5 rounded-full" />
+                    <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-5 h-5 rounded-full" />
                   )}
                   <span>{c.symbol}</span>
                   <span className="text-gray-600 text-[10px]">{c.name}</span>

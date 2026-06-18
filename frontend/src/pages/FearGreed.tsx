@@ -730,7 +730,7 @@ export default function FearGreed() {
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-3">
                           {c.image ? (
-                            <img src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full ring-1 ring-white/10" />
+                            <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full ring-1 ring-white/10" />
                           ) : (
                             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold ring-1 ring-white/10">
                               {c.symbol.slice(0, 2)}

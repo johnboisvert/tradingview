@@ -216,7 +216,7 @@ export default function AISentiment() {
                     <div key={d.id} className="bg-slate-900/70 border border-white/5 rounded-2xl p-5 hover:border-orange-500/20 transition-all hover:-translate-y-1">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          {d.image && <img src={d.image} alt={d.symbol} className="w-5 h-5 rounded-full" />}
+                          {d.image && <img loading="lazy" decoding="async" src={d.image} alt={d.symbol} className="w-5 h-5 rounded-full" />}
                           <div>
                             <span className="text-sm font-bold text-white">{d.symbol}</span>
                             <span className="text-[10px] text-gray-500 ml-1.5">{d.name}</span>
@@ -271,7 +271,7 @@ export default function AISentiment() {
                             <td className="py-2.5 px-3 text-sm text-gray-500">{i + 1}</td>
                             <td className="py-2.5 px-3">
                               <div className="flex items-center gap-2">
-                                {d.image && <img src={d.image} alt={d.symbol} className="w-5 h-5 rounded-full" />}
+                                {d.image && <img loading="lazy" decoding="async" src={d.image} alt={d.symbol} className="w-5 h-5 rounded-full" />}
                                 <span className="font-bold text-white text-sm">{d.symbol}</span>
                                 <span className="text-[10px] text-gray-500">{d.name}</span>
                               </div>

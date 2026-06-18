@@ -806,7 +806,7 @@ export default function AlertesIA() {
                   <div className="relative">
                     <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-black/30 border border-white/[0.08] focus-within:border-indigo-500/50">
                       {formCoin && (
-                        <img src={formCoin.image} alt={formCoin.symbol} className="w-5 h-5 rounded-full flex-shrink-0" />
+                        <img loading="lazy" decoding="async" src={formCoin.image} alt={formCoin.symbol} className="w-5 h-5 rounded-full flex-shrink-0" />
                       )}
                       <Search className="w-4 h-4 text-gray-500 flex-shrink-0" />
                       <input
@@ -844,7 +844,7 @@ export default function AlertesIA() {
                               }}
                               className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/[0.04] transition-all text-left"
                             >
-                              <img src={c.image} alt={c.symbol} className="w-6 h-6 rounded-full flex-shrink-0" />
+                              <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-6 h-6 rounded-full flex-shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <span className="text-xs font-bold text-white">{c.symbol.toUpperCase()}</span>
                                 <span className="text-[11px] text-gray-500 ml-1.5">{c.name}</span>
@@ -1019,7 +1019,7 @@ export default function AlertesIA() {
                     const chOpt = CHANNEL_OPTIONS.find((o) => o.value === entry.channel) || CHANNEL_OPTIONS[0];
                     return (
                       <div key={entry.id} className="flex items-center gap-4 p-4 bg-slate-900/60 border border-white/[0.05] rounded-xl hover:border-white/10 transition-all">
-                        <img src={entry.coinImage} alt={entry.coinSymbol} className="w-8 h-8 rounded-full flex-shrink-0" />
+                        <img loading="lazy" decoding="async" src={entry.coinImage} alt={entry.coinSymbol} className="w-8 h-8 rounded-full flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                             <span className="text-sm font-bold text-white">{entry.coinSymbol}</span>
@@ -1073,7 +1073,7 @@ function AlertCard({ alert, onToggle, onDelete, channelLabel }: {
 
   return (
     <div className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${isTriggered ? "bg-amber-500/5 border-amber-500/20" : isActive ? "bg-slate-900/60 border-white/[0.06] hover:border-white/10" : "bg-black/20 border-white/[0.03] opacity-60"}`}>
-      <img src={alert.coinImage} alt={alert.coinSymbol} className="w-9 h-9 rounded-full flex-shrink-0" />
+      <img loading="lazy" decoding="async" src={alert.coinImage} alt={alert.coinSymbol} className="w-9 h-9 rounded-full flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <span className="text-sm font-bold text-white">{alert.coinSymbol}</span>

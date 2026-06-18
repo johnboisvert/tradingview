@@ -74,7 +74,7 @@ export default function SpotTrading() {
         />
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
-          <img src={SPOT_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img loading="lazy" decoding="async" src={SPOT_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/75 to-transparent" />
           <div className="relative z-10 h-full flex items-center justify-between px-8">
             <div>
@@ -276,7 +276,7 @@ export default function SpotTrading() {
                     <td className="py-3 px-4 text-sm text-gray-500 font-semibold">{i + 1}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        {c.image ? <img src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full" /> : <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-[10px] font-bold">{c.symbol.slice(0, 2)}</div>}
+                        {c.image ? <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full" /> : <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-[10px] font-bold">{c.symbol.slice(0, 2)}</div>}
                         <div><p className="text-sm font-bold">{c.symbol}/USDT</p><p className="text-[10px] text-gray-500">{c.name}</p></div>
                       </div>
                     </td>

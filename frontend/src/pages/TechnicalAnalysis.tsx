@@ -242,7 +242,7 @@ export default function TechnicalAnalysis() {
         />
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
-          <img src={TA_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img loading="lazy" decoding="async" src={TA_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/95 via-[#0A0E1A]/75 to-transparent" />
           <div className="relative z-10 h-full flex items-center justify-between px-8">
             <div>

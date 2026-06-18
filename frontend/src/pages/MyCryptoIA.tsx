@@ -233,7 +233,7 @@ function FavoritesWidget({ coins, onRemove, onAdd, allCoins, showAddPanel, setSh
           const style = SIGNAL_STYLE[coin.signal];
           return (
             <div key={coin.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-black/20 border border-white/[0.04] hover:border-white/10 transition-all group">
-              <img src={coin.image} alt={coin.symbol} className="w-7 h-7 rounded-full flex-shrink-0" />
+              <img loading="lazy" decoding="async" src={coin.image} alt={coin.symbol} className="w-7 h-7 rounded-full flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-white">{coin.symbol}</span>
@@ -265,7 +265,7 @@ function FavoritesWidget({ coins, onRemove, onAdd, allCoins, showAddPanel, setSh
             {filtered.map((c) => (
               <button key={c.id} onClick={() => { onAdd(c); setShowAddPanel(false); setSearch(""); }}
                 className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-white/[0.05] transition-all text-left">
-                <img src={c.image} alt={c.symbol} className="w-5 h-5 rounded-full" />
+                <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-5 h-5 rounded-full" />
                 <span className="text-xs font-bold text-white">{c.symbol.toUpperCase()}</span>
                 <span className="text-[11px] text-gray-500">{c.name}</span>
                 <span className="ml-auto text-xs text-gray-400 font-mono">${formatPrice(c.current_price)}</span>
@@ -287,7 +287,7 @@ function SignalsWidget({ coins }: { coins: FavoriteCoin[] }) {
           const style = SIGNAL_STYLE[coin.signal];
           return (
             <div key={coin.id} className="flex items-center gap-3">
-              <img src={coin.image} alt={coin.symbol} className="w-6 h-6 rounded-full flex-shrink-0" />
+              <img loading="lazy" decoding="async" src={coin.image} alt={coin.symbol} className="w-6 h-6 rounded-full flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold text-white">{coin.symbol}</span>
@@ -437,7 +437,7 @@ function ConfidenceWidget({ coins }: { coins: FavoriteCoin[] }) {
       <div className="space-y-2">
         {sorted.map((coin) => (
           <div key={coin.id} className="flex items-center gap-2">
-            <img src={coin.image} alt={coin.symbol} className="w-5 h-5 rounded-full flex-shrink-0" />
+            <img loading="lazy" decoding="async" src={coin.image} alt={coin.symbol} className="w-5 h-5 rounded-full flex-shrink-0" />
             <span className="text-xs font-bold text-white w-12 flex-shrink-0">{coin.symbol}</span>
             <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
               <div className={`h-full rounded-full ${coin.confidence > 75 ? "bg-emerald-400" : coin.confidence > 55 ? "bg-amber-400" : "bg-gray-500"}`} style={{ width: `${coin.confidence}%` }} />
@@ -458,7 +458,7 @@ function TopGainersWidget({ coins }: { coins: FavoriteCoin[] }) {
         {top.map((coin, i) => (
           <div key={coin.id} className="flex items-center gap-3">
             <span className="text-xs font-black text-gray-600 w-4 flex-shrink-0">#{i + 1}</span>
-            <img src={coin.image} alt={coin.symbol} className="w-6 h-6 rounded-full flex-shrink-0" />
+            <img loading="lazy" decoding="async" src={coin.image} alt={coin.symbol} className="w-6 h-6 rounded-full flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <span className="text-xs font-bold text-white">{coin.symbol}</span>
               <p className="text-[10px] text-gray-500 font-mono">${formatPrice(coin.price)}</p>
@@ -480,7 +480,7 @@ function TopLosersWidget({ coins }: { coins: FavoriteCoin[] }) {
         {top.map((coin, i) => (
           <div key={coin.id} className="flex items-center gap-3">
             <span className="text-xs font-black text-gray-600 w-4 flex-shrink-0">#{i + 1}</span>
-            <img src={coin.image} alt={coin.symbol} className="w-6 h-6 rounded-full flex-shrink-0" />
+            <img loading="lazy" decoding="async" src={coin.image} alt={coin.symbol} className="w-6 h-6 rounded-full flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <span className="text-xs font-bold text-white">{coin.symbol}</span>
               <p className="text-[10px] text-gray-500 font-mono">${formatPrice(coin.price)}</p>
@@ -504,7 +504,7 @@ function VolumeWidget({ coins }: { coins: FavoriteCoin[] }) {
           <div key={coin.id} className="space-y-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <img src={coin.image} alt={coin.symbol} className="w-5 h-5 rounded-full" />
+                <img loading="lazy" decoding="async" src={coin.image} alt={coin.symbol} className="w-5 h-5 rounded-full" />
                 <span className="text-xs font-bold text-white">{coin.symbol}</span>
               </div>
               <span className="text-xs text-gray-400 font-mono">${(coin.volume / 1e9).toFixed(1)}B</span>
@@ -590,7 +590,7 @@ function RSIWidget({ coins }: { coins: FavoriteCoin[] }) {
           const rsiLabel = rsi >= 70 ? "Suracheté" : rsi <= 30 ? "Survendu" : "Neutre";
           return (
             <div key={coin.id} className="flex items-center gap-3">
-              <img src={coin.image} alt={coin.symbol} className="w-6 h-6 rounded-full flex-shrink-0" />
+              <img loading="lazy" decoding="async" src={coin.image} alt={coin.symbol} className="w-6 h-6 rounded-full flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold text-white">{coin.symbol}</span>
@@ -798,7 +798,7 @@ function WatchlistWidget({ allCoins }: { allCoins: CoinMarketData[] }) {
       <div className="space-y-2">
         {filtered.map((c) => (
           <div key={c.id} className="flex items-center gap-2">
-            <img src={c.image} alt={c.symbol} className="w-6 h-6 rounded-full flex-shrink-0" />
+            <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-6 h-6 rounded-full flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <span className="text-xs font-bold text-white">{c.symbol.toUpperCase()}</span>
               <span className="text-[10px] text-gray-500 ml-1.5">{c.name}</span>

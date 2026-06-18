@@ -230,7 +230,7 @@ export default function MarketRegime() {
                     <td className="py-3 px-3 text-sm text-gray-500 font-bold">{i + 1}</td>
                     <td className="py-3 px-3">
                       <div className="flex items-center gap-3">
-                        {c.image && <img src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full ring-1 ring-white/10" />}
+                        {c.image && <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full ring-1 ring-white/10" />}
                         <div><p className="text-sm font-bold">{c.symbol}</p><p className="text-[10px] text-gray-500 font-semibold">{c.name}</p></div>
                       </div>
                     </td>

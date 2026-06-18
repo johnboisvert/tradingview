@@ -1,1 +1,0 @@
-function n(n,t){if("undefined"!=typeof window)try{const e="/api/v1/analytics/track",a=JSON.stringify({event:n,meta:t||{}});if(navigator.sendBeacon){const n=new Blob([a],{type:"application/json"});return void navigator.sendBeacon(e,n)}fetch(e,{method:"POST",headers:{"Content-Type":"application/json"},body:a,keepalive:!0}).catch(()=>{})}catch{}}export{n as t};

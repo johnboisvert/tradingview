@@ -478,7 +478,7 @@ export default function AltcoinSeason() {
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-2">
                             {coin.image && (
-                              <img src={coin.image} alt={coin.symbol} className="w-5 h-5 rounded-full" />
+                              <img loading="lazy" decoding="async" src={coin.image} alt={coin.symbol} className="w-5 h-5 rounded-full" />
                             )}
                             <span className="font-bold text-xs text-white">{coin.symbol.toUpperCase()}</span>
                             <span className="text-[10px] text-gray-500 truncate max-w-[80px]">{coin.name}</span>

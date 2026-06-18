@@ -232,7 +232,7 @@ function DetailModal({ coin, onClose }: { coin: CryptoScore; onClose: () => void
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <img src={coin.image} alt={coin.symbol} className="w-10 h-10 rounded-full" />
+            <img loading="lazy" decoding="async" src={coin.image} alt={coin.symbol} className="w-10 h-10 rounded-full" />
             <div>
               <h3 className="text-lg font-black text-white">{coin.symbol}</h3>
               <p className="text-xs text-gray-500">{coin.name}</p>
@@ -398,7 +398,7 @@ export default function ScoreConfianceIA() {
               </div>
             </div>
             <div className="bg-slate-900/70 border border-white/[0.06] rounded-2xl p-4 flex items-center gap-3">
-              {topCoin && <img src={topCoin.image} alt={topCoin.symbol} className="w-10 h-10 rounded-full flex-shrink-0" />}
+              {topCoin && <img loading="lazy" decoding="async" src={topCoin.image} alt={topCoin.symbol} className="w-10 h-10 rounded-full flex-shrink-0" />}
               <div>
                 <p className="text-xs text-gray-500">Meilleur score</p>
                 {topCoin && (
@@ -491,7 +491,7 @@ export default function ScoreConfianceIA() {
 
                       {/* Coin */}
                       <div className="flex items-center gap-2 self-center min-w-0">
-                        <img src={coin.image} alt={coin.symbol} className="w-7 h-7 rounded-full flex-shrink-0" />
+                        <img loading="lazy" decoding="async" src={coin.image} alt={coin.symbol} className="w-7 h-7 rounded-full flex-shrink-0" />
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-white truncate">{coin.symbol}</p>
                           <p className="text-[10px] text-gray-500 truncate">{coin.name}</p>

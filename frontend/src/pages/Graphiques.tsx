@@ -583,7 +583,7 @@ export default function Graphiques() {
             <h1 className="text-lg font-extrabold">📈 Graphiques</h1>
             {selectedCoin && (
               <div className="flex items-center gap-2">
-                {selectedCoin.image && <img src={selectedCoin.image} alt="" className="w-5 h-5 rounded-full" />}
+                {selectedCoin.image && <img loading="lazy" decoding="async" src={selectedCoin.image} alt="" className="w-5 h-5 rounded-full" />}
                 <span className="font-bold text-sm">{selectedCoin.name}</span>
                 <span className="text-lg font-black">${formatPrice(selectedCoin.current_price)}</span>
                 <span className={`text-xs font-bold flex items-center gap-0.5 ${selectedCoin.price_change_percentage_24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
@@ -634,7 +634,7 @@ export default function Graphiques() {
                     : "bg-white/[0.03] text-gray-400 border border-white/[0.03] hover:bg-white/[0.06]"
                 }`}
               >
-                {c.image && <img src={c.image} alt="" className="w-3 h-3 rounded-full" />}
+                {c.image && <img loading="lazy" decoding="async" src={c.image} alt="" className="w-3 h-3 rounded-full" />}
                 {c.symbol.toUpperCase()}
               </button>
             ))}

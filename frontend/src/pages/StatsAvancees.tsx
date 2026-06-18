@@ -145,7 +145,7 @@ export default function StatsAvancees() {
                     <td className="py-2.5 px-3 text-sm text-gray-500">{i + 1}</td>
                     <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2">
-                        {c.image && <img src={c.image} alt={c.symbol} className="w-6 h-6 rounded-full" />}
+                        {c.image && <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-6 h-6 rounded-full" />}
                         <div><p className="text-sm font-bold">{c.symbol}</p><p className="text-[10px] text-gray-500">{c.name}</p></div>
                       </div>
                     </td>

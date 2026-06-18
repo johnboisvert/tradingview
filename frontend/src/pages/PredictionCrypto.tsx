@@ -208,7 +208,7 @@ export default function PredictionCrypto() {
           <>
             {/* Header */}
             <div className="flex flex-wrap items-center gap-4 mb-6">
-              {coin?.image && <img src={coin.image} alt={cryptoName} className="w-14 h-14 rounded-full" />}
+              {coin?.image && <img loading="lazy" decoding="async" src={coin.image} alt={cryptoName} className="w-14 h-14 rounded-full" />}
               <div>
                 <h1 className="text-3xl font-extrabold">
                   Prédiction {cryptoName}{" "}
@@ -356,7 +356,7 @@ export default function PredictionCrypto() {
                     className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center hover:bg-white/[0.06] hover:border-indigo-500/30 transition-all"
                   >
                     <div className="flex items-center justify-center gap-2 mb-1">
-                      {c.image && <img src={c.image} alt={c.name} className="w-5 h-5 rounded-full" />}
+                      {c.image && <img loading="lazy" decoding="async" src={c.image} alt={c.name} className="w-5 h-5 rounded-full" />}
                       <p className="font-bold text-sm">{c.name}</p>
                     </div>
                     <p className="text-[10px] text-gray-500">{c.symbol.toUpperCase()}</p>

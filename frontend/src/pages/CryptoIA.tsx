@@ -564,7 +564,7 @@ export default function CryptoIA() {
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.06] transition-colors text-left"
                     >
                       {c.image && (
-                        <img src={c.image} alt={c.symbol} className="w-6 h-6 rounded-full" />
+                        <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-6 h-6 rounded-full" />
                       )}
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-semibold text-white">{c.name}</span>
@@ -612,7 +612,7 @@ export default function CryptoIA() {
           {selectedCrypto && selectedId && !loading && (
             <div className="mt-4 flex items-center gap-4 p-3 rounded-xl bg-blue-500/5 border border-blue-500/20">
               {selectedCrypto.image && (
-                <img src={selectedCrypto.image} alt={selectedCrypto.symbol} className="w-8 h-8 rounded-full" />
+                <img loading="lazy" decoding="async" src={selectedCrypto.image} alt={selectedCrypto.symbol} className="w-8 h-8 rounded-full" />
               )}
               <div>
                 <p className="text-sm font-bold text-white">{selectedCrypto.name} <span className="text-gray-400">({selectedCrypto.symbol})</span></p>
@@ -708,7 +708,7 @@ export default function CryptoIA() {
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
                   {selectedCrypto.image && (
-                    <img src={selectedCrypto.image} alt={selectedCrypto.symbol} className="w-12 h-12 rounded-full ring-2 ring-blue-500/30" />
+                    <img loading="lazy" decoding="async" src={selectedCrypto.image} alt={selectedCrypto.symbol} className="w-12 h-12 rounded-full ring-2 ring-blue-500/30" />
                   )}
                   <div>
                     <h2 className="text-2xl font-extrabold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">

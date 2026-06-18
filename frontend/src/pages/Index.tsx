@@ -371,7 +371,7 @@ export default function DashboardPage() {
                 <div key={c.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-white/[0.03] transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
                     {c.image ? (
-                      <img src={c.image} alt={c.symbol} className="w-7 h-7 md:w-8 md:h-8 rounded-full" />
+                      <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-7 h-7 md:w-8 md:h-8 rounded-full" />
                     ) : (
                       <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
                         {c.symbol.slice(0, 2).toUpperCase()}
@@ -408,7 +408,7 @@ export default function DashboardPage() {
                 <div key={c.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-white/[0.03] transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
                     {c.image ? (
-                      <img src={c.image} alt={c.symbol} className="w-7 h-7 md:w-8 md:h-8 rounded-full" />
+                      <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-7 h-7 md:w-8 md:h-8 rounded-full" />
                     ) : (
                       <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
                         {c.symbol.slice(0, 2).toUpperCase()}
@@ -459,7 +459,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <span className="text-xs text-gray-600 font-bold w-4">{i + 1}</span>
                     {c.image ? (
-                      <img src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full" />
+                      <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full" />
                     ) : (
                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
                         {c.symbol.slice(0, 2).toUpperCase()}
@@ -512,7 +512,7 @@ export default function DashboardPage() {
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-3">
                           {c.image ? (
-                            <img src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full" />
+                            <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-7 h-7 rounded-full" />
                           ) : (
                             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold">
                               {c.symbol.slice(0, 2).toUpperCase()}

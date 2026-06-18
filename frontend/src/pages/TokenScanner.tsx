@@ -197,7 +197,7 @@ export default function TokenScanner() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     {token.image ? (
-                      <img src={token.image} alt={token.symbol} className="w-10 h-10 rounded-full" />
+                      <img loading="lazy" decoding="async" src={token.image} alt={token.symbol} className="w-10 h-10 rounded-full" />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold">
                         {token.symbol.slice(0, 2)}

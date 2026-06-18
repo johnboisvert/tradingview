@@ -292,7 +292,7 @@ export default function GemHunter() {
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         {g.image ? (
-                          <img src={g.image} alt={g.symbol} className="w-7 h-7 rounded-full" />
+                          <img loading="lazy" decoding="async" src={g.image} alt={g.symbol} className="w-7 h-7 rounded-full" />
                         ) : (
                           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-[10px] font-bold">
                             {g.symbol.slice(0, 2)}

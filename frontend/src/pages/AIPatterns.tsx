@@ -151,7 +151,7 @@ export default function AIPatterns() {
                 <div key={p.id} className="bg-slate-900/70 border border-white/5 rounded-2xl p-5 hover:border-indigo-500/20 transition-all hover:-translate-y-1">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      {p.image && <img src={p.image} alt={p.symbol} className="w-5 h-5 rounded-full" />}
+                      {p.image && <img loading="lazy" decoding="async" src={p.image} alt={p.symbol} className="w-5 h-5 rounded-full" />}
                       <div>
                         <span className="text-sm font-bold text-white">{p.symbol}</span>
                         <span className="text-[10px] text-gray-500 ml-1.5">{p.name}</span>

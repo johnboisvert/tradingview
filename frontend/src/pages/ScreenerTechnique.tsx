@@ -1001,7 +1001,7 @@ export default function ScreenerTechnique() {
                         <td className="py-3 px-2">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] text-gray-600 w-5">{(page - 1) * PER_PAGE + i + 1}</span>
-                            {c.image ? <img src={c.image} alt={c.symbol} className="w-6 h-6 rounded-full" /> : (
+                            {c.image ? <img loading="lazy" decoding="async" src={c.image} alt={c.symbol} className="w-6 h-6 rounded-full" /> : (
                               <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-[9px] font-bold">
                                 {c.symbol.slice(0, 2).toUpperCase()}
                               </div>

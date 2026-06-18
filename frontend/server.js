@@ -18,6 +18,7 @@ import registerEmailSequenceRoutes from './routes/email_sequence.js';
 import registerPublicStatsRoutes from './routes/public_stats.js';
 import registerSuccessStoriesRoutes from './routes/success_stories.js';
 import registerDailyDigestRoutes from './routes/daily_digest.js';
+import registerIndexNowRoutes, { notifyIndexNow } from './routes/indexnow.js';
 import { seed as gamiSeed } from './gamification_seed.js';
 
 dotenv.config();
@@ -5504,6 +5505,28 @@ registerEmailSequenceRoutes(app, { resendClientGetter: getResendClient });
 registerPublicStatsRoutes(app);
 registerSuccessStoriesRoutes(app);
 registerDailyDigestRoutes(app, { resendClientGetter: getResendClient });
+registerIndexNowRoutes(app);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Bing Webmaster Tools verification — guarantee meta tag is in dist/index.html
+// (runs at startup, idempotent, survives any rebuild that might omit it)
+// ═══════════════════════════════════════════════════════════════════════════════
+try {
+  const distIndexPath = path.join(__dirname, 'dist', 'index.html');
+  if (fs.existsSync(distIndexPath)) {
+    let html = fs.readFileSync(distIndexPath, 'utf8');
+    const BING_TAG = '<meta name="msvalidate.01" content="D3186790C6FC91995640B712EEECD124" />';
+    if (!html.includes('msvalidate.01')) {
+      html = html.replace('</head>', `    ${BING_TAG}\n  </head>`);
+      fs.writeFileSync(distIndexPath, html);
+      console.log('[BingVerify] Injected msvalidate.01 meta tag into dist/index.html');
+    } else {
+      console.log('[BingVerify] msvalidate.01 already present in dist/index.html');
+    }
+  }
+} catch (e) {
+  console.error('[BingVerify] Failed to inject meta tag:', e?.message);
+}
 
 // Serve static files from dist
 app.use(express.static(path.join(__dirname, 'dist')));

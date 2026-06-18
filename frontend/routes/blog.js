@@ -2,6 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { notifyIndexNow } from './indexnow.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -116,6 +117,13 @@ app.post('/api/v1/blog/publish', (req, res) => {
   };
   db.articles.push(article);
   saveBlog(db);
+  // Auto-notify Bing/Yandex via IndexNow (non-blocking)
+  const baseUrl = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
+  notifyIndexNow([
+    `${baseUrl}/blog/${slug}`,
+    `${baseUrl}/blog`,
+    `${baseUrl}/sitemap.xml`,
+  ]).catch(() => {});
   res.json({ ok: true, article });
 });
 

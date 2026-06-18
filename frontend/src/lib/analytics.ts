@@ -34,6 +34,7 @@ type EventName =
   | "payment_failed"
   | "blog_article_viewed"
   | "blog_cta_clicked"
+  | "blog_share_clicked"
   | "leaderboard_viewed"
   | "lead_magnet_submitted"
   | "lead_magnet_delivered";

@@ -175,6 +175,64 @@ ${articleUrls}
 </urlset>`);
 });
 
+// ─── GET /api/v1/blog/social-kit/:slug — ready-to-post copy for X/LinkedIn/Reddit ───
+// Returns text snippets the admin can paste directly (no API integration needed)
+app.get('/api/v1/blog/social-kit/:slug', (req, res) => {
+  const db = loadBlog();
+  const article = db.articles.find(a => a.slug === req.params.slug);
+  if (!article) return res.status(404).json({ ok: false, error: 'Article not found' });
+  const baseUrl = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
+  const url = `${baseUrl}/blog/${article.slug}`;
+  const isFr = (article.language || 'fr') === 'fr';
+
+  // Twitter/X thread (8 tweets)
+  const tags = (article.tags || []).slice(0, 4).map(t => `#${t.replace(/[^a-zA-Z0-9]/g, '')}`).join(' ');
+  const twitter_thread = [
+    `🧵 ${article.title}\n\n${(article.excerpt || '').slice(0, 200)}\n\n👇`,
+    `1/ ${(article.excerpt || '').slice(0, 260)}`,
+    isFr ? `2/ Pour aller plus loin sur ce sujet, voici l'analyse complète :` : `2/ Want the deep dive? Here's the full analysis:`,
+    `3/ ${article.tags?.[0] ? `Focus #${article.tags[0]}` : ''} — ${isFr ? 'lecture 5-10 min, actionnable immédiatement.' : '5-10 min read, immediately actionable.'}`,
+    isFr ? `4/ Notre IA scanne 200+ paires crypto 24/7 pour détecter les setups que les humains ratent.` : `4/ Our AI scans 200+ crypto pairs 24/7 to catch setups humans miss.`,
+    isFr ? `5/ Si tu débutes, on a aussi un guide PDF gratuit "Top 10 indicateurs crypto" — lien dans l'article.` : `5/ If you're starting out, we also offer a free PDF guide "Top 10 crypto indicators" — link in the article.`,
+    isFr ? `6/ Article complet ici 👇\n${url}` : `6/ Full article here 👇\n${url}`,
+    `7/ ${tags || '#crypto #trading #bitcoin'}`,
+  ];
+
+  // Single tweet (most popular format)
+  const twitter_single = isFr
+    ? `📊 ${article.title}\n\n${(article.excerpt || '').slice(0, 150)}\n\nL'analyse complète 👇\n${url}\n\n${tags}`
+    : `📊 ${article.title}\n\n${(article.excerpt || '').slice(0, 150)}\n\nFull breakdown 👇\n${url}\n\n${tags}`;
+
+  // LinkedIn post (longer, professional)
+  const linkedin = isFr
+    ? `${article.title}\n\n${article.excerpt || ''}\n\nDans cet article, on couvre :\n• Les indicateurs clés à surveiller\n• Une méthodologie actionnable\n• Les pièges à éviter\n\nLa lecture complète : ${url}\n\n${tags}\n\nQuel est ton plus gros challenge actuel sur le trading crypto ?`
+    : `${article.title}\n\n${article.excerpt || ''}\n\nIn this article we cover:\n• Key indicators to watch\n• An actionable methodology\n• Common pitfalls\n\nFull read: ${url}\n\n${tags}\n\nWhat's your biggest current challenge in crypto trading?`;
+
+  // Reddit post (raw, useful, no spam)
+  const reddit = {
+    title: article.title,
+    body: isFr
+      ? `${article.excerpt || ''}\n\nJ'ai écrit cet article qui couvre [résume en 1 phrase ton angle].\n\nLecture complète (sans paywall) : ${url}\n\nHappy à discuter dans les commentaires si vous avez des questions sur les indicateurs ou la méthodologie.`
+      : `${article.excerpt || ''}\n\nI wrote this article covering [summarize your angle in 1 sentence].\n\nFull read (no paywall): ${url}\n\nHappy to discuss in comments if you have questions on the indicators or methodology.`,
+  };
+
+  // Plain text caption for Instagram/Threads
+  const caption = isFr
+    ? `📊 ${article.title}\n\n${(article.excerpt || '').slice(0, 220)}\n\nLien complet en bio ou via Google "CryptoIA ${article.slug.slice(0, 30)}"\n\n${tags}`
+    : `📊 ${article.title}\n\n${(article.excerpt || '').slice(0, 220)}\n\nFull link in bio or search "CryptoIA ${article.slug.slice(0, 30)}" on Google\n\n${tags}`;
+
+  res.json({
+    ok: true,
+    url,
+    og_image: `${baseUrl}/og/${article.slug}.svg`,
+    twitter_single,
+    twitter_thread,
+    linkedin,
+    reddit,
+    instagram_caption: caption,
+  });
+});
+
 // ─── Dynamic OG image (SVG) per article — used by social platforms ───
 function svgEscape(s) {
   return String(s || '')

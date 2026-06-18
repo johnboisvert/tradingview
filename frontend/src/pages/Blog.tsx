@@ -7,6 +7,7 @@ import PageHeader from "@/components/PageHeader";
 import { BookOpen, Calendar, Eye, ArrowLeft, ArrowRight, Tag, Sparkles, X } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import LeadMagnetForm from "@/components/LeadMagnetForm";
+import SocialShareButtons from "@/components/SocialShareButtons";
 
 type Article = {
   slug: string;
@@ -154,6 +155,15 @@ export default function Blog() {
               className="text-sm md:text-base text-gray-200 leading-relaxed space-y-4"
               dangerouslySetInnerHTML={{ __html: single.content }}
             />
+
+            {/* Social Share buttons — visitors share content for us */}
+            <div className="mt-8 pt-6 border-t border-white/[0.06]">
+              <SocialShareButtons
+                url={typeof window !== "undefined" ? window.location.href : `https://www.cryptoia.ca/blog/${single.slug}`}
+                title={single.title}
+                slug={single.slug}
+              />
+            </div>
 
             {/* Lead Magnet email capture — pre-conversion */}
             <div className="mt-10 not-prose">

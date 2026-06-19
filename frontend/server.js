@@ -5376,6 +5376,12 @@ try {
 }
 
 // Serve static files from dist
+// SECURITY: block public access to source maps (.map files)
+// Even when Sentry plugin should delete them, we belt-and-braces this.
+app.get(/\.map(\.gz)?$/, (req, res) => {
+  res.status(404).type('text/plain').send('Not Found');
+});
+
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // SPA fallback — also with no-cache headers

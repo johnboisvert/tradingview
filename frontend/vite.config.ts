@@ -544,10 +544,13 @@ export default defineConfig(({ mode }) => ({
             authToken: process.env.SENTRY_AUTH_TOKEN,
             release: { name: process.env.RAILWAY_GIT_COMMIT_SHA || undefined },
             sourcemaps: {
-              assets: './dist/**/*.{js,map}',
-              filesToDeleteAfterUpload: ['./dist/**/*.map'], // SECURITY: remove .map from public dist after upload
+              assets: ['./dist/**/*.js', './dist/**/*.map'],
+              filesToDeleteAfterUpload: ['./dist/**/*.map', './dist/**/*.map.gz'],
             },
             telemetry: false,
+            errorHandler: (err) => {
+              console.warn('[Sentry vite-plugin] Upload error (build continues):', err?.message);
+            },
           }),
         ]
       : []),

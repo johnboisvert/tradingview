@@ -39,6 +39,7 @@ const STATUS_META: Record<string, { label: string; color: string; icon: typeof M
   sent:           { label: "Sent",    color: "bg-blue-500/15 text-blue-300 border-blue-500/30",     icon: Send },
   recovered:      { label: "Recovered", color: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30", icon: CheckCircle2 },
   error:          { label: "Error",   color: "bg-red-500/15 text-red-300 border-red-500/30",       icon: AlertCircle },
+  no_email:       { label: "No Email", color: "bg-amber-500/15 text-amber-300 border-amber-500/30", icon: AlertCircle },
 };
 
 export default function AdminRecovery() {

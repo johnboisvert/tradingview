@@ -83,7 +83,18 @@ export default function registerCheckoutRecoveryRoutes(app, { getResendClient, s
     const sessionId = session.id;
 
     if (!email) {
-      console.log(`[CheckoutRecovery] ⏭️ Skipped: no email in session ${sessionId}`);
+      console.log(`[CheckoutRecovery] ⚠️ Stripe event received but no email (test webhook?) — recording without sending. Session: ${sessionId}`);
+      const db = load();
+      if (!db.recoveries.some(r => r.session_id === sessionId)) {
+        db.recoveries.push({
+          session_id: sessionId, email: null, plan, amount,
+          expired_at: new Date().toISOString(),
+          email_sent_at: null,
+          status: 'no_email',
+          note: 'Stripe webhook received but no customer email (likely test event)',
+        });
+        save(db);
+      }
       return;
     }
 

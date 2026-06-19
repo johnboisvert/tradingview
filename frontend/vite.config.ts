@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react-swc';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { createHash } from 'crypto';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
@@ -533,6 +534,23 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     apiProxyPlugin(),
+    // Sentry plugin — uploads source maps then deletes them from dist (security)
+    // Only active if SENTRY_AUTH_TOKEN is provided at build time
+    ...(process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && mode === 'production'
+      ? [
+          sentryVitePlugin({
+            org: process.env.SENTRY_ORG,
+            project: process.env.SENTRY_PROJECT_FRONTEND || 'cryptoia-frontend',
+            authToken: process.env.SENTRY_AUTH_TOKEN,
+            release: { name: process.env.RAILWAY_GIT_COMMIT_SHA || undefined },
+            sourcemaps: {
+              assets: './dist/**/*.{js,map}',
+              filesToDeleteAfterUpload: ['./dist/**/*.map'], // SECURITY: remove .map from public dist after upload
+            },
+            telemetry: false,
+          }),
+        ]
+      : []),
   ],
   resolve: {
     alias: {
@@ -546,16 +564,16 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: '0.0.0.0',
     port: parseInt(process.env.VITE_PORT || '3000'),
+    allowedHosts: true,
     headers: {
       'X-Content-Type-Options': 'nosniff',
-      'X-Frame-Options': 'DENY',
       'X-XSS-Protection': '1; mode=block',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
     },
   },
   build: {
-    // SECURITY: Never expose source maps in production
-    sourcemap: false,
+    // Source maps generated ONLY when Sentry plugin is active — uploaded then deleted from dist
+    sourcemap: !!(process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && mode === 'production'),
     // Use terser for advanced minification and code protection
     minify: 'terser',
     terserOptions: {

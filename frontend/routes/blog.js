@@ -42,8 +42,16 @@ try {
     const seedData = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
     const db = loadBlog();
     const existingBySlug = new Map((db.articles || []).map(a => [a.slug, a]));
-    let added = 0, updated = 0;
+    let added = 0, updated = 0, removed = 0;
+    // Removal: slugs listed here are pruned from the runtime DB (for retiring duplicates/redundant content)
+    const removedSlugs = new Set(seedData.removed_slugs || []);
+    if (removedSlugs.size > 0) {
+      const before = db.articles.length;
+      db.articles = (db.articles || []).filter(a => !removedSlugs.has(a.slug));
+      removed = before - db.articles.length;
+    }
     for (const article of (seedData.articles || [])) {
+      if (removedSlugs.has(article.slug)) continue; // safety: never re-add a removed slug
       const existing = existingBySlug.get(article.slug);
       if (!existing) {
         db.articles.push(article);
@@ -61,9 +69,9 @@ try {
         if (before !== after) updated++;
       }
     }
-    if (added > 0 || updated > 0) {
+    if (added > 0 || updated > 0 || removed > 0) {
       saveBlog(db);
-      console.log(`[Blog] Auto-seed: +${added} new, ~${updated} updated (total: ${db.articles.length})`);
+      console.log(`[Blog] Auto-seed: +${added} new, ~${updated} updated, -${removed} removed (total: ${db.articles.length})`);
     } else {
       console.log(`[Blog] Seed up to date — ${db.articles.length} articles`);
     }

@@ -6,6 +6,10 @@ import { notifyIndexNow } from './indexnow.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Optional injection for newsletter notification (set by server.js)
+let _newsletterNotifier = null;
+export function setBlogNewsletterNotifier(fn) { _newsletterNotifier = fn; }
+
 export default function register(app) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // BLOG SEO — Auto-generated articles for organic traffic
@@ -124,6 +128,10 @@ app.post('/api/v1/blog/publish', (req, res) => {
     `${baseUrl}/blog`,
     `${baseUrl}/sitemap.xml`,
   ]).catch(() => {});
+  // Auto-send newsletter to all subscribers (non-blocking)
+  if (_newsletterNotifier) {
+    _newsletterNotifier(article).catch(e => console.error('[Blog] newsletter notify error:', e?.message));
+  }
   res.json({ ok: true, article });
 });
 

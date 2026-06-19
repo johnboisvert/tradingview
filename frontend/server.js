@@ -10,7 +10,7 @@ import dotenv from 'dotenv';
 
 // Modular routes (extracted Session 15)
 import registerPushRoutes from './routes/push.js';
-import registerBlogRoutes from './routes/blog.js';
+import registerBlogRoutes, { setBlogNewsletterNotifier } from './routes/blog.js';
 import registerGamificationRoutes from './routes/gamification.js';
 import registerAdminRoutes from './routes/admin.js';
 import registerLeadMagnetRoutes from './routes/lead_magnet.js';
@@ -20,6 +20,7 @@ import registerSuccessStoriesRoutes from './routes/success_stories.js';
 import registerDailyDigestRoutes from './routes/daily_digest.js';
 import registerIndexNowRoutes, { notifyIndexNow } from './routes/indexnow.js';
 import registerSentryWebhookRoutes from './routes/sentry_webhook.js';
+import registerBlogNewsletterRoutes from './routes/blog_newsletter.js';
 import registerPaymentWebhookRoutes from './routes/payment_webhooks.js';
 import registerCheckoutRecoveryRoutes from './routes/checkout_recovery.js';
 import registerAdminHealthRoutes from './routes/admin_health.js';
@@ -3022,6 +3023,11 @@ app.post('/api/v1/payment/create_payment_session', async (req, res) => {
     let label = PLAN_LABELS[plan] || `Abonnement ${plan.charAt(0).toUpperCase() + plan.slice(1)} — CryptoIA`;
     if (isAnnual) label += ' (Annuel)';
 
+    // ✨ 7-day free trial — only for "advanced" plan (conversion booster)
+    // Stripe will collect payment method but won't charge until day 7
+    const TRIAL_PLANS = (process.env.STRIPE_TRIAL_PLANS || 'advanced').split(',').map(s => s.trim().toLowerCase());
+    const trialDays = TRIAL_PLANS.includes(String(plan).toLowerCase()) ? 7 : 0;
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -3036,6 +3042,7 @@ app.post('/api/v1/payment/create_payment_session', async (req, res) => {
         },
       ],
       mode: 'subscription',
+      ...(trialDays > 0 ? { subscription_data: { trial_period_days: trialDays } } : {}),
       success_url: `${host}/payment-success?session_id={CHECKOUT_SESSION_ID}&plan=${plan}&billing=${billing_period}`,
       cancel_url: `${host}/abonnements`,
       metadata: {
@@ -3044,9 +3051,14 @@ app.post('/api/v1/payment/create_payment_session', async (req, res) => {
         promo_code: promo_code || '',
         discount_pct: String(appliedDiscount),
         ref_code: ref_code || '',
+        trial_days: String(trialDays),
       },
       allow_promotion_codes: true,
     });
+
+    if (trialDays > 0) {
+      console.log(`[Payment] ✨ Trial activated: ${trialDays} days for plan=${plan}`);
+    }
 
     console.log(`[Payment] Stripe session created: ${session.id} plan=${plan} billing=${billing_period} amount=${finalAmount.toFixed(2)} promo=${promo_code || 'none'} ref=${ref_code || 'none'}`);
 
@@ -5353,6 +5365,10 @@ registerAdminHealthRoutes(app, {
   STRIPE_SECRET_KEY,
   TELEGRAM_BOT_TOKEN,
 });
+
+// Blog newsletter: register routes and wire up auto-notify on publish
+const blogNewsletter = registerBlogNewsletterRoutes(app, { getResendClient });
+setBlogNewsletterNotifier(blogNewsletter.notifySubscribers);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Bing Webmaster Tools verification — guarantee meta tag is in dist/index.html

@@ -715,9 +715,11 @@ export default function Abonnements() {
       color: "from-purple-500 to-purple-600",
       borderColor: "border-purple-500/30",
       features: advancedFeatures,
-      cta: "S'abonner",
+      cta: "Essai gratuit 7 jours",
       popular: false,
       disabled: false,
+      trial: true,
+      badge: "7 jours gratuits",
     },
     {
       name: "Pro",
@@ -888,6 +890,14 @@ export default function Abonnements() {
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-xs font-bold whitespace-nowrap">
                     {t("abonnements.mostPopular")}
+                  </div>
+                )}
+
+                {/* Free trial badge (Advanced plan) */}
+                {plan.trial && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-[11px] font-black text-white whitespace-nowrap shadow-lg shadow-emerald-500/30 flex items-center gap-1.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    7 JOURS GRATUITS
                   </div>
                 )}
 

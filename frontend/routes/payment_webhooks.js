@@ -11,6 +11,7 @@ export default function registerPaymentWebhookRoutes(
     getResendClient,
     STRIPE_SECRET_KEY,
     checkoutRecovery, // { handleExpiredCheckout, markCompleted }
+    getReferralHandler, // () => async ({refCode,filleulEmail,amount,sessionId}) — anti-fraud + free month credit
   }
 ) {
   // ─── POST /api/v1/payment/stripe_webhook ──────────────────────────────────
@@ -58,18 +59,27 @@ export default function registerPaymentWebhookRoutes(
         color: 0x10b981, // emerald
       }).catch(() => {});
 
-      // 🤝 Affiliation conversion (PAYMENT confirmed)
+      // 🤝 Affiliation conversion (PAYMENT confirmed) + 🎁 Referral free-month credit (with anti-fraud)
       if (metadata.ref_code && amountTotal > 0) {
         try {
-          recordAffiliationConversion({
-            code: metadata.ref_code,
-            type: 'payment',
-            amount: amountTotal,
-            email,
-          });
-          console.log(`[Affiliation] 💰 Payment conversion tracked: ref=${metadata.ref_code} amount=${amountTotal} commission=${(amountTotal * 0.30).toFixed(2)}`);
+          const handler = getReferralHandler?.();
+          if (handler) {
+            const result = await handler({
+              refCode: metadata.ref_code,
+              filleulEmail: email,
+              amount: amountTotal,
+              sessionId: session.id,
+              stripeCustomerId: session.customer || null,
+            });
+            console.log(`[Referral] Conversion result: ${JSON.stringify(result)}`);
+          } else {
+            // Fallback: just record the conversion (no anti-fraud / no credit)
+            recordAffiliationConversion({ code: metadata.ref_code, type: 'payment', amount: amountTotal, email });
+          }
         } catch (e) {
-          console.error('[Affiliation] payment tracking error:', e?.message);
+          console.error('[Referral] payment conversion error:', e?.message);
+          // Still record raw affiliation event as fallback
+          try { recordAffiliationConversion({ code: metadata.ref_code, type: 'payment', amount: amountTotal, email }); } catch {}
         }
       }
 

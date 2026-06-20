@@ -24,6 +24,7 @@ import registerBlogNewsletterRoutes from './routes/blog_newsletter.js';
 import registerPaymentWebhookRoutes from './routes/payment_webhooks.js';
 import registerCheckoutRecoveryRoutes from './routes/checkout_recovery.js';
 import registerAdminHealthRoutes from './routes/admin_health.js';
+import registerReferralRoutes, { ensureUserReferralCode } from './routes/referral.js';
 import { seed as gamiSeed } from './gamification_seed.js';
 
 dotenv.config();
@@ -99,6 +100,9 @@ app.get('/api/health', (req, res) => {
 // ============================================================
 const DATA_DIR = path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
+
+// Forward-declared module containers (assigned later in startup, after deps are ready)
+let referralModule = null; // assigned by registerReferralRoutes() later in the file
 
 // Ensure data directory exists
 if (!existsSync(DATA_DIR)) {
@@ -183,8 +187,12 @@ app.post('/api/users/create', async (req, res) => {
     passwordHash: hashPwd(tempPwd),
     role: role || 'user',
     plan: plan || 'free',
+    email: (email && typeof email === 'string' && email.includes('@')) ? email.trim() : null,
     created_at: now.toISOString().split('T')[0],
+    freeMonthsCredit: 0,
   };
+  // ─── Generate unique referral code for every new user ───
+  ensureUserReferralCode(newUser, users);
 
   if (newUser.plan !== 'free') {
     const end = new Date();
@@ -3028,6 +3036,32 @@ app.post('/api/v1/payment/create_payment_session', async (req, res) => {
     const TRIAL_PLANS = (process.env.STRIPE_TRIAL_PLANS || 'advanced').split(',').map(s => s.trim().toLowerCase());
     const trialDays = TRIAL_PLANS.includes(String(plan).toLowerCase()) ? 7 : 0;
 
+    // ─── 🎁 Referral coupon: -20% on first invoice if ref_code is valid ───
+    // We attach the Stripe coupon via subscription_data.discounts so the user can't
+    // game it by also entering a promotion code. The coupon is `duration: once` so
+    // it applies only to the FIRST invoice (monthly OR annual, both honored).
+    let referralCouponId = null;
+    if (ref_code && typeof ref_code === 'string' && ref_code.trim().length >= 4) {
+      try {
+        const users = loadUsers();
+        const refCodeUpper = ref_code.trim().toUpperCase();
+        const parrain = users.find(u => (u.referralCode || '').toUpperCase() === refCodeUpper);
+        if (parrain) {
+          referralCouponId = await referralModule.ensureReferralCoupon();
+          console.log(`[Payment] 🎁 Referral coupon ${referralCouponId} -20% applied for parrain=${parrain.username}`);
+        } else {
+          console.log(`[Payment] ⚠️ ref_code=${ref_code} not found in users — no referral coupon applied`);
+        }
+      } catch (e) {
+        console.error('[Payment] Referral coupon error:', e?.message);
+      }
+    }
+
+    const subscriptionData = {};
+    if (trialDays > 0) subscriptionData.trial_period_days = trialDays;
+    // Note: Stripe API requires coupon either via `discounts` (Checkout-level) OR
+    // `subscription_data.discounts`. We use Checkout-level so it applies to the first invoice.
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -3042,7 +3076,8 @@ app.post('/api/v1/payment/create_payment_session', async (req, res) => {
         },
       ],
       mode: 'subscription',
-      ...(trialDays > 0 ? { subscription_data: { trial_period_days: trialDays } } : {}),
+      ...(Object.keys(subscriptionData).length > 0 ? { subscription_data: subscriptionData } : {}),
+      ...(referralCouponId ? { discounts: [{ coupon: referralCouponId }] } : {}),
       success_url: `${host}/payment-success?session_id={CHECKOUT_SESSION_ID}&plan=${plan}&billing=${billing_period}`,
       cancel_url: `${host}/abonnements`,
       metadata: {
@@ -3052,8 +3087,10 @@ app.post('/api/v1/payment/create_payment_session', async (req, res) => {
         discount_pct: String(appliedDiscount),
         ref_code: ref_code || '',
         trial_days: String(trialDays),
+        referral_coupon_applied: referralCouponId ? '1' : '0',
       },
-      allow_promotion_codes: true,
+      // ⚠️ Stripe does not allow `allow_promotion_codes` together with `discounts`
+      ...(!referralCouponId ? { allow_promotion_codes: true } : {}),
     });
 
     if (trialDays > 0) {
@@ -5199,10 +5236,12 @@ app.post('/api/v1/affiliation/click', express.json(), (req, res) => {
   } catch { return res.status(500).json({ error: 'internal error' }); }
 });
 
-function recordAffiliationConversion({ code, type, amount, email }) {
+function recordAffiliationConversion({ code, type, amount, email, fraud }) {
   if (!code) return;
   const events = loadAffiliationEvents();
-  events.push({ type: type || 'conversion', code: String(code).trim().toUpperCase(), amount: amount || 0, email: email || null, ts: new Date().toISOString() });
+  const event = { type: type || 'conversion', code: String(code).trim().toUpperCase(), amount: amount || 0, email: email || null, ts: new Date().toISOString() };
+  if (fraud) event.fraud = fraud;
+  events.push(event);
   saveAffiliationEvents(events);
 }
 
@@ -5358,6 +5397,10 @@ registerPaymentWebhookRoutes(app, {
   getResendClient,
   STRIPE_SECRET_KEY,
   checkoutRecovery,
+  // Wire referral conversion handler — resolved lazily because referralModule
+  // is initialized just below this call. Safe because Stripe webhooks only
+  // fire after server startup is complete.
+  getReferralHandler: () => referralModule?.handleReferralConversion || null,
 });
 registerAdminHealthRoutes(app, {
   getStripeInstance,
@@ -5365,6 +5408,44 @@ registerAdminHealthRoutes(app, {
   STRIPE_SECRET_KEY,
   TELEGRAM_BOT_TOKEN,
 });
+
+// ─── Referral Program (Mon Parrainage) ──────────────────────────────────────
+// Generates a unique referral code per user, applies -20% Stripe coupon to
+// filleul on first invoice, credits +1 free month to parrain on confirmed
+// payment (with anti-fraud: same email/card fingerprint = rejected).
+referralModule = registerReferralRoutes(app, {
+  loadUsers,
+  saveUsers,
+  getStripeInstance,
+  recordAffiliationConversion,
+  loadAffiliationEvents,
+  getResendClient,
+  sendChatNotification,
+});
+
+// Backfill referral codes for any existing users that don't have one yet
+(() => {
+  try {
+    const us = loadUsers();
+    let changed = 0;
+    for (const u of us) {
+      if (!u.referralCode) {
+        ensureUserReferralCode(u, us);
+        changed++;
+      }
+      if (typeof u.freeMonthsCredit !== 'number') {
+        u.freeMonthsCredit = 0;
+        changed++;
+      }
+    }
+    if (changed > 0) {
+      saveUsers(us);
+      console.log(`[Referral] Backfilled ${changed} user record(s) with referralCode/freeMonthsCredit`);
+    }
+  } catch (e) {
+    console.error('[Referral] Backfill error:', e?.message);
+  }
+})();
 
 // Blog newsletter: register routes and wire up auto-notify on publish
 const blogNewsletter = registerBlogNewsletterRoutes(app, { getResendClient });

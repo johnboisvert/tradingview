@@ -421,6 +421,7 @@ app.get('/blog/:slug', (req, res, next) => {
 <meta name="description" content="${desc}" />
 <meta name="keywords" content="${escapeHtml(tags.join(', '))}" />
 <link rel="canonical" href="${url}" />
+<link rel="amphtml" href="${url}/amp" />
 <meta property="og:type" content="article" />
 <meta property="og:title" content="${title}" />
 <meta property="og:description" content="${desc}" />
@@ -449,6 +450,147 @@ ${tags.map(t => `<meta property="article:tag" content="${escapeHtml(t)}" />`).jo
     res.send(html);
   } catch (e) {
     console.error('[Blog SEO] inject failed:', e?.message);
+    next();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ─── Google AMP support: /blog/:slug/amp ─────────────────────────────────
+// Serves an AMP-compliant HTML version of the article, optimized for mobile
+// SEO ranking and Google Discover / Top Stories carousel inclusion.
+// AMP spec: https://amp.dev/documentation/guides-and-tutorials/start/create/
+// ═══════════════════════════════════════════════════════════════════════════
+function sanitizeForAmp(html) {
+  if (!html) return '';
+  let out = String(html);
+  // AMP forbids inline event handlers and <script> tags
+  out = out.replace(/<script[\s\S]*?<\/script>/gi, '');
+  out = out.replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '');
+  out = out.replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '');
+  // AMP forbids inline styles → strip
+  out = out.replace(/\sstyle\s*=\s*"[^"]*"/gi, '');
+  out = out.replace(/\sstyle\s*=\s*'[^']*'/gi, '');
+  // AMP forbids <iframe>, <object>, <embed>
+  out = out.replace(/<(iframe|object|embed)[\s\S]*?<\/\1>/gi, '');
+  // AMP requires width/height on images — convert <img> → <amp-img>
+  out = out.replace(/<img\s+([^>]*?)\/?>/gi, (_match, attrs) => {
+    const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
+    const altMatch = attrs.match(/alt\s*=\s*["']([^"']*)["']/i);
+    if (!srcMatch) return '';
+    const src = srcMatch[1];
+    const alt = altMatch ? altMatch[1] : '';
+    return `<amp-img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" width="800" height="450" layout="responsive"></amp-img>`;
+  });
+  // AMP forbids most link target=_blank without rel=noopener — add rel
+  out = out.replace(/<a\s+([^>]*?)target\s*=\s*["']_blank["']([^>]*?)>/gi, (_m, b, a) => {
+    const all = `${b}${a}`;
+    if (/rel\s*=\s*["'][^"']*noopener/i.test(all)) return `<a ${b}target="_blank"${a}>`;
+    return `<a ${b}target="_blank"${a} rel="noopener noreferrer">`;
+  });
+  return out;
+}
+
+app.get('/blog/:slug/amp', (req, res, next) => {
+  try {
+    const db = loadBlog();
+    const article = db.articles.find(a => a.slug === req.params.slug);
+    if (!article) return next();
+
+    const baseUrl = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
+    const url = `${baseUrl}/blog/${article.slug}`;
+    const ampUrl = `${url}/amp`;
+    const title = escapeHtml(article.title);
+    const desc = escapeHtml(article.excerpt || String(article.content || '').slice(0, 200));
+    const image = article.coverImage || `${baseUrl}/og/${article.slug}.svg`;
+    const lang = article.language || 'fr';
+    const publishedAt = article.publishedAt || new Date().toISOString();
+    const ampBody = sanitizeForAmp(article.content || '');
+
+    const jsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'NewsArticle',
+      headline: article.title,
+      description: article.excerpt || '',
+      image: [image],
+      author: { '@type': 'Organization', name: 'CryptoIA' },
+      publisher: {
+        '@type': 'Organization',
+        name: 'CryptoIA',
+        logo: { '@type': 'ImageObject', url: `${baseUrl}/logo.png`, width: 200, height: 60 },
+      },
+      datePublished: publishedAt,
+      dateModified: publishedAt,
+      mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    });
+
+    // AMP boilerplate — required exactly as specified by the AMP project
+    const html = `<!doctype html>
+<html ⚡ lang="${lang}">
+<head>
+  <meta charset="utf-8">
+  <title>${title} — CryptoIA</title>
+  <link rel="canonical" href="${url}">
+  <meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+  <meta name="description" content="${desc}">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${desc}">
+  <meta property="og:image" content="${escapeHtml(image)}">
+  <meta property="og:url" content="${ampUrl}">
+  <meta property="og:type" content="article">
+  <script type="application/ld+json">${jsonLd}</script>
+  <style amp-boilerplate>body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style><noscript><style amp-boilerplate>body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}</style></noscript>
+  <style amp-custom>
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:#fff;color:#111;line-height:1.6;margin:0;padding:0}
+    .wrap{max-width:720px;margin:0 auto;padding:24px 16px 48px}
+    header{padding:16px 0;border-bottom:1px solid #eee;margin-bottom:24px}
+    header a{color:#0f172a;text-decoration:none;font-weight:800;font-size:18px}
+    h1{font-size:28px;line-height:1.25;margin:8px 0 12px;color:#0f172a}
+    .meta{color:#64748b;font-size:13px;margin-bottom:20px}
+    .meta time{font-weight:600}
+    .excerpt{font-size:16px;color:#334155;margin-bottom:24px;padding:16px;background:#f1f5f9;border-left:4px solid #10b981;border-radius:4px}
+    article h2{font-size:22px;margin:32px 0 12px;color:#0f172a;font-weight:800}
+    article h3{font-size:18px;margin:24px 0 8px;color:#1e293b;font-weight:700}
+    article p{margin:0 0 16px;font-size:16px}
+    article ul,article ol{margin:0 0 16px 24px}
+    article li{margin-bottom:8px}
+    article strong{color:#0f172a}
+    article a{color:#0891b2;text-decoration:underline}
+    .cta{margin:40px 0 0;padding:24px;background:linear-gradient(135deg,#10b981,#06b6d4);border-radius:12px;color:#fff;text-align:center}
+    .cta a{display:inline-block;margin-top:12px;padding:12px 24px;background:#fff;color:#0f172a;border-radius:8px;font-weight:800;text-decoration:none}
+    footer{margin-top:48px;padding-top:24px;border-top:1px solid #eee;color:#64748b;font-size:13px;text-align:center}
+    footer a{color:#0891b2;text-decoration:none}
+    amp-img{margin:16px 0}
+  </style>
+  <script async src="https://cdn.ampproject.org/v0.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <header><a href="${baseUrl}">CryptoIA</a></header>
+    <h1>${title}</h1>
+    <div class="meta">
+      <time datetime="${publishedAt}">${new Date(publishedAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'fr-CA', { year: 'numeric', month: 'long', day: 'numeric' })}</time>
+      · CryptoIA
+    </div>
+    <div class="excerpt">${desc}</div>
+    <article>${ampBody}</article>
+    <div class="cta">
+      <strong>${lang === 'en' ? 'Try CryptoIA free for 7 days' : 'Essaie CryptoIA gratuitement pendant 7 jours'}</strong>
+      <br>
+      <a href="${baseUrl}/abonnements">${lang === 'en' ? 'Start free trial' : 'Démarrer l&#39;essai gratuit'}</a>
+    </div>
+    <footer>
+      <a href="${url}">${lang === 'en' ? 'View full article' : 'Voir l&#39;article complet'}</a>
+      · © CryptoIA
+    </footer>
+  </div>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600'); // 1h CDN cache
+    res.send(html);
+  } catch (e) {
+    console.error('[Blog AMP] error:', e?.message);
     next();
   }
 });

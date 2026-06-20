@@ -67,6 +67,7 @@ import {
   Send,
   Zap,
   Users,
+  Gift,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -179,7 +180,8 @@ const NAV_SECTIONS = [
 
 const BOTTOM_ITEMS = [
   { path: "/abonnements", label: "Abonnements", icon: CreditCard, color: "indigo" },
-  { path: "/affiliation", label: "Affiliation 30% 🎁", icon: Users, color: "emerald" },
+  { path: "/parrainage", label: "Mon Parrainage 🎁", icon: Gift, color: "emerald" },
+  { path: "/affiliation", label: "Affiliation 30%", icon: Users, color: "emerald" },
   { path: "/magic-strategy", label: "Indicateur Magic JB IA", icon: Sparkles, color: "cyan" },
   { path: "/admin", label: "Admin Panel", icon: Shield, color: "amber" },
   { path: "/mon-compte", label: "Mon Compte", icon: User, color: "emerald" },

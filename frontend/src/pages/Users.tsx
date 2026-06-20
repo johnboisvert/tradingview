@@ -46,6 +46,26 @@ const PLAN_ICONS: Record<string, React.ElementType> = {
 
 const PLANS = ["free", "premium", "advanced", "pro", "elite"];
 
+// Format ISO timestamp → relative French time (e.g., "il y a 3 min", "il y a 2 h", "hier")
+function formatRelativeTime(iso?: string): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return "—";
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return "à l'instant";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `il y a ${diffMin} min`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `il y a ${diffHr} h`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay === 1) return "hier";
+  if (diffDay < 7) return `il y a ${diffDay} j`;
+  if (diffDay < 30) return `il y a ${Math.floor(diffDay / 7)} sem.`;
+  if (diffDay < 365) return `il y a ${Math.floor(diffDay / 30)} mois`;
+  return `il y a ${Math.floor(diffDay / 365)} an${Math.floor(diffDay / 365) > 1 ? "s" : ""}`;
+}
+
 function PlanBadge({ plan }: { plan: string }) {
   const Icon = PLAN_ICONS[plan] || UserIcon;
   return (
@@ -359,19 +379,20 @@ export default function UsersPage() {
                     <th className="text-left text-xs font-bold text-gray-400 uppercase tracking-wider px-5 py-3">Plan</th>
                     <th className="text-left text-xs font-bold text-gray-400 uppercase tracking-wider px-5 py-3">Expiration</th>
                     <th className="text-left text-xs font-bold text-gray-400 uppercase tracking-wider px-5 py-3">Créé</th>
+                    <th className="text-left text-xs font-bold text-gray-400 uppercase tracking-wider px-5 py-3">Dernière connexion</th>
                     <th className="text-right text-xs font-bold text-gray-400 uppercase tracking-wider px-5 py-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-12 text-gray-500">
+                      <td colSpan={7} className="text-center py-12 text-gray-500">
                         <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-12 text-gray-500 text-sm">Aucun utilisateur trouvé.</td>
+                      <td colSpan={7} className="text-center py-12 text-gray-500 text-sm">Aucun utilisateur trouvé.</td>
                     </tr>
                   ) : (
                     filtered.map((u) => (
@@ -411,6 +432,15 @@ export default function UsersPage() {
                         </td>
                         <td className="px-5 py-3.5 text-sm text-gray-400">{u.subscription_end || "—"}</td>
                         <td className="px-5 py-3.5 text-sm text-gray-500">{u.created_at || "—"}</td>
+                        <td className="px-5 py-3.5 text-sm" data-testid={`last-login-${u.username}`}>
+                          {u.lastLoginAt ? (
+                            <span title={new Date(u.lastLoginAt).toLocaleString("fr-CA")} className="text-emerald-300">
+                              {formatRelativeTime(u.lastLoginAt)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-600 italic">Jamais</span>
+                          )}
+                        </td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-1.5 justify-end">
                             <button

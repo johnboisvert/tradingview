@@ -163,6 +163,11 @@ app.post('/api/users/login', (req, res) => {
     return res.json({ success: false, message: 'Nom d\'utilisateur ou mot de passe incorrect.' });
   }
 
+  // Track last login timestamp (mutate in place, persist immediately)
+  user.lastLoginAt = new Date().toISOString();
+  user.loginCount = (user.loginCount || 0) + 1;
+  saveUsers(users);
+
   // Return user info (without passwordHash)
   const { passwordHash, ...safeUser } = user;
   res.json({ success: true, user: safeUser });

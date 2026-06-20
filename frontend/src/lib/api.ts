@@ -14,6 +14,8 @@ export interface User {
   plan: string;
   subscription_end?: string;
   created_at?: string;
+  lastLoginAt?: string;
+  loginCount?: number;
 }
 
 export interface PromoCode {

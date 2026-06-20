@@ -19,6 +19,7 @@ import {
   RotateCcw,
   Sparkles,
   Send,
+  Twitter,
 } from "lucide-react";
 import { adminLogout } from "@/pages/AdminLogin";
 import { getAdminSession } from "@/lib/store";
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { path: "/admin/promos", label: "Codes Promo", icon: Tag },
   { path: "/admin/messages", label: "Messages & Ebooks", icon: MessageSquare },
   { path: "/admin/social-kits", label: "Social Kits", icon: Sparkles },
+  { path: "/admin/twitter", label: "Bot Twitter", icon: Twitter },
   { path: "/admin/telegram", label: "Alertes Telegram", icon: Send },
 ];
 

@@ -25,6 +25,7 @@ import registerPaymentWebhookRoutes from './routes/payment_webhooks.js';
 import registerCheckoutRecoveryRoutes from './routes/checkout_recovery.js';
 import registerAdminHealthRoutes from './routes/admin_health.js';
 import registerReferralRoutes, { ensureUserReferralCode } from './routes/referral.js';
+import registerTwitterBotRoutes from './routes/twitter_bot.js';
 import { seed as gamiSeed } from './gamification_seed.js';
 
 dotenv.config();
@@ -5427,6 +5428,28 @@ referralModule = registerReferralRoutes(app, {
   getResendClient,
   sendChatNotification,
 });
+
+// ─── Twitter Bot (Daily Auto-Post) ──────────────────────────────────────────
+// Posts 1 tweet/day at 10:00 America/Toronto, alternating blog vs marketing kit.
+// Requires TWITTER_API_KEY / TWITTER_API_SECRET / TWITTER_ACCESS_TOKEN / TWITTER_ACCESS_SECRET.
+// Without keys, scheduler runs but `postTweet` returns `twitter_keys_missing` (no crash).
+{
+  const BLOG_FILE_PATH = path.join(__dirname, 'data', 'blog.json');
+  const loadBlogForTwitter = () => {
+    try {
+      if (fs.existsSync(BLOG_FILE_PATH)) return JSON.parse(fs.readFileSync(BLOG_FILE_PATH, 'utf8'));
+    } catch (e) { console.error('[Twitter] loadBlog error:', e?.message); }
+    return { articles: [] };
+  };
+  // Admin guard (reuse existing pattern — basic admin header check)
+  const requireAdmin = (req, res, next) => {
+    const adminAuth = req.headers['x-admin-auth'] || req.query.admin_auth;
+    const expected = process.env.ADMIN_API_KEY || 'admin123';
+    if (adminAuth === expected) return next();
+    return res.status(401).json({ error: 'unauthorized' });
+  };
+  registerTwitterBotRoutes(app, { loadBlog: loadBlogForTwitter, requireAdmin });
+}
 
 // Backfill referral codes for any existing users that don't have one yet
 (() => {

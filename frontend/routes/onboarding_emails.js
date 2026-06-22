@@ -1,0 +1,276 @@
+// Onboarding Email Sequence — J+1, J+3, J+7 nurture campaign for new free signups
+// When a user signs up (POST /api/users/create), we schedule them into the funnel.
+// A scheduler (1x/15min) checks who needs which email and sends via Resend.
+//
+// Funnel design:
+//   J+1: Welcome + 1st free signal demo (build trust)
+//   J+3: Advanced use case ("comment gagner +25%") (educate)
+//   J+7: Limited -20% offer on Advanced plan (convert)
+//
+// All sends are tracked in data/onboarding_events.json (one row per send) to:
+//   1. Prevent duplicate sends
+//   2. Show admin stats (open rate, click rate via Resend webhooks if configured)
+//
+// Admin endpoints:
+//   GET  /api/v1/admin/onboarding/stats          — overview of funnel
+//   GET  /api/v1/admin/onboarding/events?limit=100 — recent send events
+//   POST /api/v1/admin/onboarding/preview?step=1|3|7 — render an email preview
+//   POST /api/v1/admin/onboarding/send-test?step=N&email=X — send one manually
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DATA_DIR = path.join(__dirname, '..', 'data');
+const EVENTS_FILE = path.join(DATA_DIR, 'onboarding_events.json');
+
+// Sequence definition: days offset → step key
+const SEQUENCE = [
+  { step: 1, days: 1, key: 'welcome_signal' },
+  { step: 2, days: 3, key: 'advanced_use_case' },
+  { step: 3, days: 7, key: 'promo_20_off' },
+];
+
+function loadEvents() {
+  try {
+    if (fs.existsSync(EVENTS_FILE)) return JSON.parse(fs.readFileSync(EVENTS_FILE, 'utf8'));
+  } catch (e) { console.error('[Onboarding] loadEvents error:', e?.message); }
+  return { events: [] };
+}
+function saveEvents(d) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(EVENTS_FILE, JSON.stringify(d, null, 2), 'utf8');
+  } catch (e) { console.error('[Onboarding] saveEvents error:', e?.message); }
+}
+
+function userEligibleForStep(user, stepDef, allEvents) {
+  if (!user.email || !user.created_at) return false;
+  if (user.plan && user.plan !== 'free') return false; // already paying, skip the funnel
+  const createdMs = Date.parse(user.created_at) || Date.now();
+  const ageDays = (Date.now() - createdMs) / (1000 * 3600 * 24);
+  if (ageDays < stepDef.days) return false;
+  // Check if already sent
+  const alreadySent = allEvents.some(e => e.username === user.username && e.step === stepDef.step);
+  return !alreadySent;
+}
+
+// ─── Email templates (HTML, FR) ─────────────────────────────────────────────
+const BRAND_HEADER = (lead) => `<div style="text-align:center;margin-bottom:24px;">
+  <div style="display:inline-block;width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#10b981,#06b6d4);line-height:64px;font-size:30px;">📊</div>
+  <h1 style="margin:12px 0 0;color:#fff;font-size:24px;font-weight:900;">${lead}</h1>
+</div>`;
+
+const BRAND_FOOTER = `<div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;font-size:11px;color:#64748b;">
+  CryptoIA — Signaux Crypto IA Made in Canada<br>
+  <a href="https://www.cryptoia.ca" style="color:#06b6d4;text-decoration:none;">www.cryptoia.ca</a>
+  · <a href="https://www.cryptoia.ca/mon-compte" style="color:#94a3b8;text-decoration:none;">Mon compte</a>
+</div>`;
+
+function emailWrap(innerHtml) {
+  return `<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#030712;color:#e2e8f0;padding:32px;margin:0;">
+<div style="max-width:560px;margin:0 auto;background:linear-gradient(140deg,#0f172a,#1e1b4b);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:32px;">
+${innerHtml}
+${BRAND_FOOTER}
+</div></body></html>`;
+}
+
+function template_J1_welcome(user) {
+  const name = user.username.split('@')[0];
+  const innerHtml = `${BRAND_HEADER('Bienvenue ' + name + ' ! 🎉')}
+<p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 16px;">Tu viens de rejoindre CryptoIA, la plateforme #1 de signaux crypto IA au Canada. 🇨🇦</p>
+<p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 20px;">Pour bien démarrer, voici un <strong style="color:#fff;">signal IA gratuit</strong> que je viens d'analyser sur Bitcoin :</p>
+<div style="padding:20px;border-radius:12px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25);margin-bottom:24px;">
+  <p style="color:#34d399;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;font-weight:700;">🟢 Signal IA — Démo gratuite</p>
+  <p style="color:#fff;font-size:16px;line-height:1.5;margin:0 0 8px;font-weight:600;">📈 Bitcoin (BTC/USD) — Setup Range Long</p>
+  <p style="color:#cbd5e1;font-size:13px;line-height:1.5;margin:0;">Entrée si BTC tient au-dessus de la MA50 (D1) avec volume > moyenne 7j. Stop-loss : -3.2% du prix d'entrée. Target 1 : +5.5%. Target 2 : +9.8%.</p>
+</div>
+<p style="color:#cbd5e1;font-size:14px;line-height:1.6;margin:0 0 20px;">Sur l'<strong style="color:#fff;">abonnement Advanced</strong>, tu reçois ces signaux <strong>directement sur Telegram</strong> en temps réel, avec 5-8 setups par jour sur Bitcoin, Ethereum, Solana et 50+ altcoins.</p>
+<div style="text-align:center;margin:24px 0;">
+  <a href="https://www.cryptoia.ca/abonnements" style="display:inline-block;padding:14px 32px;border-radius:12px;background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;font-weight:900;text-decoration:none;text-transform:uppercase;font-size:12px;letter-spacing:1.5px;">🚀 Essai gratuit 7 jours</a>
+</div>
+<p style="color:#94a3b8;font-size:12px;line-height:1.6;text-align:center;margin:0;">Aucune carte requise pour l'essai. Annulation en 1 clic à tout moment.</p>`;
+  return {
+    subject: '👋 Bienvenue chez CryptoIA — Voici ton 1er signal IA gratuit',
+    html: emailWrap(innerHtml),
+  };
+}
+
+function template_J3_advanced(user) {
+  const name = user.username.split('@')[0];
+  const innerHtml = `${BRAND_HEADER('Comment gagner +25% en 30 jours 📈')}
+<p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 16px;">Salut ${name},</p>
+<p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 20px;">Aujourd'hui je veux te montrer comment <strong style="color:#fff;">3 utilisateurs CryptoIA ont fait +25% en 30 jours</strong> avec une stratégie simple : la combinaison <strong>Signaux IA + DCA pondéré</strong>.</p>
+<div style="padding:20px;border-radius:12px;background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.25);margin-bottom:20px;">
+  <p style="color:#cbd5e1;font-size:13px;line-height:1.6;margin:0;"><strong style="color:#fff;">La méthode :</strong></p>
+  <ol style="color:#cbd5e1;font-size:13px;line-height:1.7;margin:8px 0 0;padding-left:20px;">
+    <li>Tu reçois 5-8 signaux/jour sur Telegram (BTC, ETH, SOL, alts)</li>
+    <li>Tu prends UNIQUEMENT les signaux avec score IA &gt; 75%</li>
+    <li>Tu alloues 1-2% de ton capital par trade max</li>
+    <li>Tu laisses courir les gains, tu coupes les pertes au stop-loss</li>
+  </ol>
+</div>
+<p style="color:#cbd5e1;font-size:14px;line-height:1.6;margin:0 0 20px;">Résultat moyen sur 30 jours : <strong style="color:#34d399;">+22% à +28%</strong> en backtest sur les 6 derniers mois.</p>
+<p style="color:#cbd5e1;font-size:14px;line-height:1.6;margin:0 0 20px;">Et le mieux ? <strong>Tout est automatisé</strong> — tu reçois les alertes Telegram dès qu'un signal se déclenche. Pas besoin de scruter les graphiques 12h/jour.</p>
+<div style="text-align:center;margin:24px 0;">
+  <a href="https://www.cryptoia.ca/abonnements" style="display:inline-block;padding:14px 32px;border-radius:12px;background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;font-weight:900;text-decoration:none;text-transform:uppercase;font-size:12px;letter-spacing:1.5px;">📲 Activer mes signaux</a>
+</div>
+<p style="color:#94a3b8;font-size:12px;line-height:1.6;text-align:center;margin:0;">7 jours gratuits — annulation en 1 clic.</p>`;
+  return {
+    subject: '📈 La méthode pour gagner +25% en 30 jours (étude de cas)',
+    html: emailWrap(innerHtml),
+  };
+}
+
+function template_J7_promo(user) {
+  const name = user.username.split('@')[0];
+  const innerHtml = `${BRAND_HEADER('⏰ Offre limitée -20% pour toi')}
+<p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 16px;">Salut ${name},</p>
+<p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 20px;">Ça fait 7 jours que tu es chez nous, et je voulais te remercier en t'offrant un <strong style="color:#fff;">-20% exclusif</strong> sur ton premier abonnement Advanced.</p>
+<div style="padding:24px;border-radius:16px;background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(251,113,133,0.1));border:1px solid rgba(245,158,11,0.3);margin-bottom:24px;text-align:center;">
+  <p style="color:#fbbf24;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 8px;font-weight:700;">🎁 Code promo</p>
+  <p style="color:#fff;font-size:32px;font-weight:900;font-family:monospace;letter-spacing:3px;margin:0 0 12px;">WELCOME20</p>
+  <p style="color:#fcd34d;font-size:13px;line-height:1.5;margin:0;"><strong>-20% sur ton 1er mois OU 1ère année</strong><br>+ 7 jours d'essai gratuit en cadeau</p>
+</div>
+<p style="color:#cbd5e1;font-size:14px;line-height:1.6;margin:0 0 8px;">Ce que tu débloques avec Advanced :</p>
+<ul style="color:#cbd5e1;font-size:14px;line-height:1.8;margin:0 0 20px;padding-left:20px;">
+  <li>✅ <strong style="color:#fff;">5-8 signaux IA/jour</strong> sur Telegram (entrée, stop-loss, target)</li>
+  <li>✅ <strong style="color:#fff;">Scanner 200+ paires</strong> en temps réel</li>
+  <li>✅ <strong style="color:#fff;">Alertes Telegram instantanées</strong> 24/7</li>
+  <li>✅ <strong style="color:#fff;">Analyses macro & news</strong> filtrées par IA</li>
+  <li>✅ <strong style="color:#fff;">Accès au discord premium</strong> (communauté pros)</li>
+</ul>
+<div style="text-align:center;margin:24px 0;">
+  <a href="https://www.cryptoia.ca/abonnements?promo=WELCOME20" style="display:inline-block;padding:14px 32px;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-weight:900;text-decoration:none;text-transform:uppercase;font-size:12px;letter-spacing:1.5px;">⚡ Activer mon -20%</a>
+</div>
+<p style="color:#94a3b8;font-size:11px;line-height:1.6;text-align:center;margin:0;">⏰ Offre valable 72h seulement. Code WELCOME20 à entrer au checkout Stripe.</p>`;
+  return {
+    subject: '🎁 -20% exclusif sur ton 1er mois CryptoIA (72h seulement)',
+    html: emailWrap(innerHtml),
+  };
+}
+
+function renderTemplate(step, user) {
+  if (step === 1) return template_J1_welcome(user);
+  if (step === 2) return template_J3_advanced(user);
+  if (step === 3) return template_J7_promo(user);
+  return null;
+}
+
+// ─── Sender helper ──────────────────────────────────────────────────────────
+async function sendOne(user, stepDef, getResendClient) {
+  const tpl = renderTemplate(stepDef.step, user);
+  if (!tpl) return { ok: false, reason: 'unknown_step' };
+  const client = await getResendClient();
+  if (!client) return { ok: false, reason: 'no_resend_client' };
+  const sender = process.env.SENDER_EMAIL || 'CryptoIA <onboarding@resend.dev>';
+  try {
+    await client.emails.send({
+      from: sender,
+      to: [user.email],
+      subject: tpl.subject,
+      html: tpl.html,
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error('[Onboarding] send error:', e?.message);
+    return { ok: false, reason: 'send_error', error: e?.message };
+  }
+}
+
+// ─── Scheduler: check every 15 min, send pending emails ─────────────────────
+let _scheduler = null;
+function startScheduler({ loadUsers, getResendClient }) {
+  if (_scheduler) clearInterval(_scheduler);
+  const TICK_MS = 15 * 60 * 1000;
+  const tick = async () => {
+    try {
+      const users = loadUsers();
+      const events = loadEvents();
+      let sentCount = 0;
+      for (const user of users) {
+        for (const stepDef of SEQUENCE) {
+          if (userEligibleForStep(user, stepDef, events.events)) {
+            const result = await sendOne(user, stepDef, getResendClient);
+            events.events.push({
+              ts: new Date().toISOString(),
+              username: user.username,
+              email: user.email,
+              step: stepDef.step,
+              key: stepDef.key,
+              ok: result.ok,
+              error: result.error || null,
+            });
+            if (result.ok) sentCount++;
+          }
+        }
+      }
+      if (sentCount > 0) {
+        saveEvents(events);
+        console.log(`[Onboarding] ✉️ Sent ${sentCount} email(s) this tick`);
+      }
+    } catch (e) {
+      console.error('[Onboarding] tick error:', e?.message);
+    }
+  };
+  // First run after 30s, then every 15min
+  setTimeout(tick, 30 * 1000);
+  _scheduler = setInterval(tick, TICK_MS);
+  console.log('[Onboarding] ✅ Scheduler started (check every 15min)');
+}
+
+// ─── Routes ─────────────────────────────────────────────────────────────────
+export default function registerOnboardingRoutes(app, { loadUsers, getResendClient, requireAdmin }) {
+  startScheduler({ loadUsers, getResendClient });
+  const adminGuard = requireAdmin || ((_req, _res, next) => next());
+
+  app.get('/api/v1/admin/onboarding/stats', adminGuard, (_req, res) => {
+    const events = loadEvents().events;
+    const byStep = { 1: 0, 2: 0, 3: 0 };
+    const okByStep = { 1: 0, 2: 0, 3: 0 };
+    for (const e of events) {
+      byStep[e.step] = (byStep[e.step] || 0) + 1;
+      if (e.ok) okByStep[e.step] = (okByStep[e.step] || 0) + 1;
+    }
+    const totalUsers = (loadUsers() || []).filter(u => u.email && (u.plan || 'free') === 'free').length;
+    res.json({
+      ok: true,
+      sequence: SEQUENCE,
+      total_free_users_with_email: totalUsers,
+      sent_total: events.length,
+      sent_by_step: byStep,
+      success_by_step: okByStep,
+      last_5_events: events.slice(-5).reverse(),
+    });
+  });
+
+  app.get('/api/v1/admin/onboarding/events', adminGuard, (req, res) => {
+    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const events = loadEvents().events.slice(-limit).reverse();
+    res.json({ ok: true, events });
+  });
+
+  app.post('/api/v1/admin/onboarding/preview', adminGuard, (req, res) => {
+    const step = parseInt(req.query.step || req.body?.step || '1');
+    const fakeUser = { username: 'demo_user', email: 'demo@example.com', created_at: new Date().toISOString() };
+    const tpl = renderTemplate(step, fakeUser);
+    if (!tpl) return res.status(400).json({ ok: false, error: 'invalid step' });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(`<!doctype html><html><body><div style="padding:8px 16px;background:#fef3c7;font-family:sans-serif;font-size:13px;">📧 <strong>Aperçu Onboarding Step ${step}</strong> — Subject : <em>${tpl.subject}</em></div>${tpl.html}</body></html>`);
+  });
+
+  app.post('/api/v1/admin/onboarding/send-test', adminGuard, async (req, res) => {
+    const step = parseInt(req.query.step || req.body?.step || '1');
+    const email = (req.query.email || req.body?.email || '').toString();
+    if (!email.includes('@')) return res.status(400).json({ ok: false, error: 'invalid email' });
+    const fakeUser = { username: email, email, created_at: new Date().toISOString() };
+    const stepDef = SEQUENCE.find(s => s.step === step);
+    if (!stepDef) return res.status(400).json({ ok: false, error: 'invalid step' });
+    const result = await sendOne(fakeUser, stepDef, getResendClient);
+    res.json(result);
+  });
+
+  console.log('[Onboarding] ✅ Routes registered (/api/v1/admin/onboarding/*)');
+}

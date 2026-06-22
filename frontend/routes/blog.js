@@ -133,8 +133,10 @@ app.post('/api/v1/blog/publish', (req, res) => {
   const baseUrl = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
   notifyIndexNow([
     `${baseUrl}/blog/${slug}`,
+    `${baseUrl}/blog/${slug}/amp`,
     `${baseUrl}/blog`,
     `${baseUrl}/sitemap.xml`,
+    `${baseUrl}/sitemap-amp.xml`,
   ]).catch(() => {});
   // Auto-send newsletter to all subscribers (non-blocking)
   if (_newsletterNotifier) {
@@ -197,6 +199,20 @@ app.get('/sitemap.xml', (req, res) => {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${staticUrls}
 ${articleUrls}
+</urlset>`);
+});
+
+// GET /sitemap-amp.xml — AMP-only sitemap (mobile SEO boost — submitted to Google Search Console)
+app.get('/sitemap-amp.xml', (req, res) => {
+  const baseUrl = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
+  const db = loadBlog();
+  const ampUrls = (db.articles || []).map(a => {
+    const lastmod = (a.updatedAt || a.publishedAt || new Date().toISOString()).split('T')[0];
+    return `  <url><loc>${baseUrl}/blog/${a.slug}/amp</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`;
+  }).join('\n');
+  res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${ampUrls}
 </urlset>`);
 });
 

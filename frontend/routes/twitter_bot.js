@@ -75,6 +75,115 @@ function getTwitterClient() {
   return new TwitterApi({ appKey: key, appSecret: secret, accessToken, accessSecret });
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ─── 🤖 AUTO-REPLY TO MENTIONS ─────────────────────────────────────────────
+// Polls @CryptoIA_ca mentions every 30 minutes via API v2
+// Replies with rotating template messages (FAQ bot style)
+// Anti-spam: max 1 reply per author per 24h
+// ═══════════════════════════════════════════════════════════════════════════
+const REPLY_TEMPLATES_FR = [
+  "Merci pour ta mention ! 🙏 Tu peux essayer CryptoIA gratuitement 7 jours ici 👉 https://www.cryptoia.ca/abonnements",
+  "Salut ! 👋 Si tu veux nos signaux IA en temps réel sur Telegram, l'essai 7j est gratuit : https://www.cryptoia.ca",
+  "Merci ! 🚀 Pour comprendre comment fonctionne notre IA, jette un œil à notre blog : https://www.cryptoia.ca/blog",
+  "Hello ! 📊 Nos signaux Bitcoin sont mis à jour quotidiennement. Essai gratuit : https://www.cryptoia.ca/abonnements",
+  "Merci pour l'intérêt 🙌 On a un programme de parrainage : -20% pour ton ami + 1 mois gratuit pour toi → https://www.cryptoia.ca/parrainage",
+];
+const MENTION_POLL_INTERVAL_MS = 30 * 60 * 1000; // 30 min
+const REPLY_COOLDOWN_HOURS = 24; // per author
+
+function loadMentionState() {
+  const h = loadHistory();
+  return h.mentions || { replied: [], lastSinceId: null };
+}
+function saveMentionState(state) {
+  const h = loadHistory();
+  h.mentions = state;
+  saveHistory(h);
+}
+
+async function pollAndReplyToMentions() {
+  const client = getTwitterClient();
+  if (!client) return { ok: false, reason: 'no_client' };
+  try {
+    const me = await client.v2.me();
+    const myUserId = me?.data?.id;
+    const myUsername = (me?.data?.username || 'CryptoIA_ca').toLowerCase();
+    if (!myUserId) return { ok: false, reason: 'no_user_id' };
+
+    const state = loadMentionState();
+    const params = {
+      max_results: 20,
+      'tweet.fields': ['author_id', 'created_at', 'in_reply_to_user_id'],
+      'expansions': ['author_id'],
+      'user.fields': ['username'],
+    };
+    if (state.lastSinceId) params.since_id = state.lastSinceId;
+
+    const mentions = await client.v2.userMentionTimeline(myUserId, params);
+    const tweets = mentions?.data?.data || [];
+    if (tweets.length === 0) {
+      return { ok: true, processed: 0, replied: 0 };
+    }
+
+    const usersById = new Map((mentions.data.includes?.users || []).map(u => [u.id, u]));
+    const cutoffMs = Date.now() - REPLY_COOLDOWN_HOURS * 3600 * 1000;
+    const recentRepliesByAuthor = new Set(
+      (state.replied || []).filter(r => Date.parse(r.ts) > cutoffMs).map(r => r.authorId)
+    );
+
+    let replied = 0;
+    let newLastSinceId = state.lastSinceId;
+    for (const tweet of tweets) {
+      if (!newLastSinceId || tweet.id > newLastSinceId) newLastSinceId = tweet.id;
+      if (tweet.author_id === myUserId) continue; // skip self
+      if (recentRepliesByAuthor.has(tweet.author_id)) continue; // cooldown
+
+      const replyText = pick(REPLY_TEMPLATES_FR);
+      try {
+        await client.v2.reply(replyText, tweet.id);
+        state.replied = state.replied || [];
+        state.replied.push({
+          ts: new Date().toISOString(),
+          authorId: tweet.author_id,
+          authorUsername: usersById.get(tweet.author_id)?.username || null,
+          mentionId: tweet.id,
+          replyText,
+        });
+        recentRepliesByAuthor.add(tweet.author_id);
+        replied++;
+        console.log(`[Twitter] 🤖 Replied to @${usersById.get(tweet.author_id)?.username || tweet.author_id}`);
+      } catch (e) {
+        console.error('[Twitter] reply error:', e?.data?.detail || e?.message);
+      }
+    }
+
+    // Prune old replies (keep last 30 days)
+    const pruneCutoff = Date.now() - 30 * 24 * 3600 * 1000;
+    state.replied = (state.replied || []).filter(r => Date.parse(r.ts) > pruneCutoff);
+    state.lastSinceId = newLastSinceId;
+    saveMentionState(state);
+
+    return { ok: true, processed: tweets.length, replied };
+  } catch (e) {
+    console.error('[Twitter] pollMentions error:', e?.data?.detail || e?.message);
+    return { ok: false, reason: 'api_error', error: e?.data?.detail || e?.message };
+  }
+}
+
+let _mentionScheduler = null;
+function scheduleMentionPolling() {
+  const enabled = String(process.env.TWITTER_AUTO_REPLY || '').toLowerCase() === '1' || String(process.env.TWITTER_AUTO_REPLY || '').toLowerCase() === 'true';
+  if (!enabled) {
+    console.log('[Twitter] ℹ️ Auto-reply to mentions disabled (set TWITTER_AUTO_REPLY=1 to enable).');
+    return;
+  }
+  if (_mentionScheduler) clearInterval(_mentionScheduler);
+  _mentionScheduler = setInterval(pollAndReplyToMentions, MENTION_POLL_INTERVAL_MS);
+  // Trigger first run after 60s
+  setTimeout(pollAndReplyToMentions, 60 * 1000);
+  console.log(`[Twitter] ✅ Auto-reply scheduler started — poll every ${MENTION_POLL_INTERVAL_MS / 60000} min`);
+}
+
 // ─── Tweet templates for blog articles ──────────────────────────────────────
 const BLOG_INTROS_FR = [
   '📊 Nouveau guide :',
@@ -531,6 +640,7 @@ function scheduleDaily({ loadBlog, getResendClient }) {
 export default function registerTwitterBotRoutes(app, { loadBlog, requireAdmin, getResendClient }) {
   scheduleDaily({ loadBlog, getResendClient });
   schedulePinRefresh();
+  scheduleMentionPolling();
 
   const adminGuard = requireAdmin || ((_req, _res, next) => next());
 
@@ -625,6 +735,26 @@ export default function registerTwitterBotRoutes(app, { loadBlog, requireAdmin, 
   // ─── 🧲 POST /api/v1/admin/twitter/refresh-pin — manually trigger auto-pin
   app.post('/api/v1/admin/twitter/refresh-pin', adminGuard, async (_req, res) => {
     const result = await refreshAutoPin();
+    res.json(result);
+  });
+
+  // ─── 🤖 GET /api/v1/admin/twitter/mentions — recent replies + state
+  app.get('/api/v1/admin/twitter/mentions', adminGuard, (_req, res) => {
+    const state = loadMentionState();
+    const enabled = String(process.env.TWITTER_AUTO_REPLY || '').toLowerCase() === '1' || String(process.env.TWITTER_AUTO_REPLY || '').toLowerCase() === 'true';
+    res.json({
+      ok: true,
+      enabled,
+      cooldown_hours: REPLY_COOLDOWN_HOURS,
+      poll_interval_min: MENTION_POLL_INTERVAL_MS / 60000,
+      lastSinceId: state.lastSinceId || null,
+      recent_replies: (state.replied || []).slice(-20).reverse(),
+    });
+  });
+
+  // ─── 🤖 POST /api/v1/admin/twitter/poll-mentions — manual trigger
+  app.post('/api/v1/admin/twitter/poll-mentions', adminGuard, async (_req, res) => {
+    const result = await pollAndReplyToMentions();
     res.json(result);
   });
 

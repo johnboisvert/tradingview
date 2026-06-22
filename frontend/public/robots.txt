@@ -6,3 +6,4 @@ Disallow: /admin/
 Disallow: /login
 
 Sitemap: https://www.cryptoia.ca/sitemap.xml
+Sitemap: https://www.cryptoia.ca/sitemap-amp.xml

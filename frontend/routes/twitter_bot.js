@@ -210,6 +210,7 @@ async function postTweet({ source, dryRun = false, loadBlog, getResendClient, fo
   }
 
   // ─── PATH 1: Try Twitter API direct posting ─────────────────────────────
+  let apiError = null;
   if (client && !forceEmail) {
     try {
       const result = await client.v2.tweet(tweet);
@@ -231,7 +232,16 @@ async function postTweet({ source, dryRun = false, loadBlog, getResendClient, fo
       return { ok: true, tweetId, tweetUrl, text: tweet, meta, method: 'api' };
     } catch (e) {
       const msg = e?.data?.detail || e?.data?.title || e?.message || String(e);
-      console.warn('[Twitter] API failed, falling back to email "1-click publish":', msg);
+      apiError = {
+        message: msg,
+        code: e?.code || null,
+        status: e?.data?.status || null,
+        type: e?.data?.type || null,
+        detail: e?.data?.detail || null,
+        errors: e?.data?.errors || null,
+        full: typeof e?.data === 'object' ? JSON.stringify(e.data).slice(0, 500) : null,
+      };
+      console.warn('[Twitter] API failed, falling back to email "1-click publish":', JSON.stringify(apiError));
       // Fall through to email path
     }
   }
@@ -254,7 +264,7 @@ async function postTweet({ source, dryRun = false, loadBlog, getResendClient, fo
       });
       saveHistory(history);
       console.log(`[Twitter] 📧 Email "1-click publish" envoyé (mode gratuit)`);
-      return { ok: true, method: 'email_intent', text: tweet, meta, email_sent: ok };
+      return { ok: true, method: 'email_intent', text: tweet, meta, email_sent: ok, api_error: apiError };
     } catch (e) {
       console.error('[Twitter] email fallback error:', e?.message);
       return { ok: false, reason: 'email_failed', error: e?.message, text: tweet };

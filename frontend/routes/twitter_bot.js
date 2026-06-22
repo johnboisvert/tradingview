@@ -380,9 +380,8 @@ async function pinTweet(tweetId) {
   const userId = await getAuthenticatedUserId();
   if (!userId) return { ok: false, reason: 'no_user_id' };
   try {
-    // POST /2/users/:id/pinned_tweets is the v2 endpoint
-    // twitter-api-v2 exposes it as: await client.v2.post('users/:id/pinned_tweets', { tweet_id })
-    await client.v2.post(`users/${userId}/pinned_tweets`, { tweet_id: tweetId });
+    // Twitter API v2: PUT /2/users/:id/pinned_tweets — Body: {tweet_id}
+    await client.v2.put(`users/${userId}/pinned_tweets`, { tweet_id: tweetId });
     return { ok: true, userId, tweetId };
   } catch (e) {
     const detail = e?.data?.detail || e?.message || String(e);

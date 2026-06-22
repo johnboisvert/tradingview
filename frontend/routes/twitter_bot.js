@@ -180,12 +180,11 @@ function trimKitTweet(text) {
 }
 
 // ─── Post a tweet (manual or scheduled) ─────────────────────────────────────
-async function postTweet({ source, dryRun = false, loadBlog }) {
+// If Twitter API is configured AND succeeds → post directly
+// If Twitter API fails OR not configured → fall back to email "1-click publish"
+async function postTweet({ source, dryRun = false, loadBlog, getResendClient, forceEmail = false }) {
   const history = loadHistory();
   const client = getTwitterClient();
-  if (!client && !dryRun) {
-    return { ok: false, reason: 'twitter_keys_missing', text: null };
-  }
 
   let tweet = null;
   let meta = {};
@@ -210,39 +209,116 @@ async function postTweet({ source, dryRun = false, loadBlog }) {
     return { ok: true, dryRun: true, text: tweet, meta };
   }
 
+  // ─── PATH 1: Try Twitter API direct posting ─────────────────────────────
+  if (client && !forceEmail) {
+    try {
+      const result = await client.v2.tweet(tweet);
+      const tweetId = result?.data?.id;
+      const tweetUrl = tweetId ? `https://twitter.com/i/web/status/${tweetId}` : null;
+      history.posts.push({
+        ts: new Date().toISOString(),
+        kind: meta.kind,
+        slug: meta.slug || null,
+        topic: meta.topic || null,
+        variation: meta.variation || null,
+        text: tweet,
+        tweetId,
+        tweetUrl,
+        method: 'api',
+      });
+      saveHistory(history);
+      console.log(`[Twitter] ✅ Tweet posted via API: ${tweetUrl || tweetId}`);
+      return { ok: true, tweetId, tweetUrl, text: tweet, meta, method: 'api' };
+    } catch (e) {
+      const msg = e?.data?.detail || e?.data?.title || e?.message || String(e);
+      console.warn('[Twitter] API failed, falling back to email "1-click publish":', msg);
+      // Fall through to email path
+    }
+  }
+
+  // ─── PATH 2: Send email with "1-click publish" intent URL (always free) ─
+  if (getResendClient) {
+    try {
+      const ok = await sendOneClickPublishEmail({ tweet, meta, getResendClient });
+      history.posts.push({
+        ts: new Date().toISOString(),
+        kind: meta.kind,
+        slug: meta.slug || null,
+        topic: meta.topic || null,
+        variation: meta.variation || null,
+        text: tweet,
+        tweetId: null,
+        tweetUrl: null,
+        method: 'email_intent',
+        email_sent: ok,
+      });
+      saveHistory(history);
+      console.log(`[Twitter] 📧 Email "1-click publish" envoyé (mode gratuit)`);
+      return { ok: true, method: 'email_intent', text: tweet, meta, email_sent: ok };
+    } catch (e) {
+      console.error('[Twitter] email fallback error:', e?.message);
+      return { ok: false, reason: 'email_failed', error: e?.message, text: tweet };
+    }
+  }
+
+  return { ok: false, reason: 'no_method_available', text: tweet };
+}
+
+// ─── Email "1-click publish" — sends tweet preview + Twitter Web Intent URL ──
+async function sendOneClickPublishEmail({ tweet, meta, getResendClient }) {
   try {
-    const result = await client.v2.tweet(tweet);
-    const tweetId = result?.data?.id;
-    const tweetUrl = tweetId ? `https://twitter.com/i/web/status/${tweetId}` : null;
-    history.posts.push({
-      ts: new Date().toISOString(),
-      kind: meta.kind,
-      slug: meta.slug || null,
-      topic: meta.topic || null,
-      variation: meta.variation || null,
-      text: tweet,
-      tweetId,
-      tweetUrl,
+    const client = await getResendClient();
+    if (!client) return false;
+    const recipient = process.env.ADMIN_EMAIL || process.env.ALERT_EMAIL || null;
+    if (!recipient) {
+      console.warn('[Twitter] sendOneClickPublishEmail: no ADMIN_EMAIL / ALERT_EMAIL set');
+      return false;
+    }
+    const sender = process.env.SENDER_EMAIL || 'CryptoIA <onboarding@resend.dev>';
+    const intentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweet)}`;
+    const sourceLabel = meta.kind === 'blog' ? `Article blog : ${meta.title || meta.slug}` : `Kit marketing : ${meta.topic || ''}`;
+    const escaped = tweet.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    const html = `<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#030712;color:#e2e8f0;padding:32px;margin:0;">
+<div style="max-width:560px;margin:0 auto;background:linear-gradient(140deg,#0f172a,#1e1b4b);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:32px;">
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="display:inline-block;width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#06b6d4,#3b82f6);line-height:64px;font-size:32px;">🐦</div>
+    <h1 style="margin:12px 0 0;color:#fff;font-size:22px;">Ton tweet du jour est prêt</h1>
+    <p style="color:#94a3b8;margin-top:8px;font-size:13px;">${sourceLabel}</p>
+  </div>
+  <div style="padding:20px;border-radius:12px;background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.25);margin-bottom:24px;">
+    <p style="color:#cbd5e1;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px;font-weight:700;">Aperçu</p>
+    <p style="color:#fff;font-size:15px;line-height:1.5;margin:0;">${escaped}</p>
+  </div>
+  <div style="text-align:center;margin:24px 0;">
+    <a href="${intentUrl}" style="display:inline-block;padding:16px 40px;border-radius:12px;background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#fff;font-weight:900;text-decoration:none;text-transform:uppercase;font-size:13px;letter-spacing:1.5px;">📤 Publier sur X en 1 clic</a>
+  </div>
+  <p style="color:#94a3b8;font-size:12px;line-height:1.6;text-align:center;margin:24px 0 0;">Le bouton ouvre X (Twitter) avec le tweet déjà rédigé.<br>Tu n'as qu'à cliquer <strong style="color:#cbd5e1;">"Post"</strong> pour publier.</p>
+  <div style="margin-top:24px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
+    <a href="https://www.cryptoia.ca/admin/twitter" style="color:#06b6d4;text-decoration:none;font-size:12px;">⚙️ Gérer le bot</a>
+  </div>
+</div>
+</body></html>`;
+    await client.emails.send({
+      from: sender,
+      to: [recipient],
+      subject: `🐦 Ton tweet du jour CryptoIA — 1 clic pour publier`,
+      html,
     });
-    saveHistory(history);
-    console.log(`[Twitter] ✅ Tweet posted: ${tweetUrl || tweetId}`);
-    return { ok: true, tweetId, tweetUrl, text: tweet, meta };
+    return true;
   } catch (e) {
-    const msg = e?.data?.detail || e?.data?.title || e?.message || String(e);
-    console.error('[Twitter] post error:', msg);
-    return { ok: false, reason: 'api_error', error: msg, text: tweet };
+    console.error('[Twitter] sendOneClickPublishEmail error:', e?.message);
+    return false;
   }
 }
 
 // ─── Scheduler: check once per minute, fire if it's the post hour today ────
-function scheduleDaily({ loadBlog }) {
+function scheduleDaily({ loadBlog, getResendClient }) {
   if (_scheduler) clearInterval(_scheduler);
   let lastPostDay = null;
   _scheduler = setInterval(async () => {
     try {
       if (_paused) return;
       const now = new Date();
-      // Compute "Toronto local hour" by applying offset (rough; OK for daily window)
       const utcHour = now.getUTCHours();
       const localHour = (utcHour + TIMEZONE_OFFSET_HOURS + 24) % 24;
       const today = `${now.getUTCFullYear()}-${now.getUTCMonth()}-${now.getUTCDate()}`;
@@ -251,23 +327,21 @@ function scheduleDaily({ loadBlog }) {
       lastPostDay = today;
       const source = decideSource(now);
       console.log(`[Twitter] ⏰ Daily auto-post triggered (source=${source})`);
-      const result = await postTweet({ source, loadBlog });
-      console.log(`[Twitter] Daily post result:`, result.ok ? `OK -> ${result.tweetUrl}` : `FAILED: ${result.reason}`);
+      const result = await postTweet({ source, loadBlog, getResendClient });
+      console.log(`[Twitter] Daily post result:`, result.ok ? `OK via ${result.method} -> ${result.tweetUrl || 'email sent'}` : `FAILED: ${result.reason}`);
     } catch (e) {
       console.error('[Twitter] scheduler tick error:', e?.message);
     }
   }, 60 * 1000);
-  console.log(`[Twitter] ✅ Daily scheduler started — posts at ~${POST_HOUR_LOCAL}:00 America/Toronto`);
+  console.log(`[Twitter] ✅ Daily scheduler started — posts at ~${POST_HOUR_LOCAL}:00 America/Toronto (API → email fallback)`);
 }
 
 // ─── Routes registration ────────────────────────────────────────────────────
-export default function registerTwitterBotRoutes(app, { loadBlog, requireAdmin }) {
-  // Auto-start the scheduler (no-op if keys missing — twitter_api will reject)
-  scheduleDaily({ loadBlog });
+export default function registerTwitterBotRoutes(app, { loadBlog, requireAdmin, getResendClient }) {
+  scheduleDaily({ loadBlog, getResendClient });
 
   const adminGuard = requireAdmin || ((_req, _res, next) => next());
 
-  // ─── GET /api/v1/admin/twitter/status ─────────────────────────────────────
   app.get('/api/v1/admin/twitter/status', adminGuard, (req, res) => {
     const history = loadHistory();
     const client = getTwitterClient();
@@ -275,7 +349,6 @@ export default function registerTwitterBotRoutes(app, { loadBlog, requireAdmin }
     const blog = loadBlog ? loadBlog() : { articles: [] };
     const postedBlogSlugs = new Set(history.posts.filter(p => p.kind === 'blog').map(p => p.slug));
     const postedKitTexts = new Set(history.posts.filter(p => p.kind === 'kit').map(p => (p.text || '').slice(0, 80)));
-
     const now = new Date();
     const tomorrow = new Date(now);
     if ((now.getUTCHours() + TIMEZONE_OFFSET_HOURS + 24) % 24 >= POST_HOUR_LOCAL) {
@@ -286,6 +359,8 @@ export default function registerTwitterBotRoutes(app, { loadBlog, requireAdmin }
     res.json({
       ok: true,
       configured: !!client,
+      mode: client ? 'api' : 'email_intent',
+      admin_email: process.env.ADMIN_EMAIL || process.env.ALERT_EMAIL || null,
       paused: _paused,
       next_post_at: tomorrow.toISOString(),
       next_post_source: decideSource(tomorrow),
@@ -298,22 +373,20 @@ export default function registerTwitterBotRoutes(app, { loadBlog, requireAdmin }
     });
   });
 
-  // ─── GET /api/v1/admin/twitter/history ────────────────────────────────────
   app.get('/api/v1/admin/twitter/history', adminGuard, (_req, res) => {
     const history = loadHistory();
     res.json({ ok: true, posts: history.posts.slice().reverse() });
   });
 
-  // ─── POST /api/v1/admin/twitter/post-now ──────────────────────────────────
   app.post('/api/v1/admin/twitter/post-now', adminGuard, async (req, res) => {
     const source = (req.query.source || req.body?.source || '').toString();
     const dryRun = req.query.dry === '1' || req.body?.dry === true;
+    const forceEmail = req.query.force_email === '1' || req.body?.force_email === true;
     const resolvedSource = source === 'blog' || source === 'kit' ? source : decideSource(new Date());
-    const result = await postTweet({ source: resolvedSource, dryRun, loadBlog });
+    const result = await postTweet({ source: resolvedSource, dryRun, loadBlog, getResendClient, forceEmail });
     res.json(result);
   });
 
-  // ─── POST /api/v1/admin/twitter/pause ─────────────────────────────────────
   app.post('/api/v1/admin/twitter/pause', adminGuard, (req, res) => {
     _paused = !_paused;
     const history = loadHistory();

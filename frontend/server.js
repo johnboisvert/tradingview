@@ -5448,7 +5448,7 @@ referralModule = registerReferralRoutes(app, {
     if (adminAuth === expected) return next();
     return res.status(401).json({ error: 'unauthorized' });
   };
-  registerTwitterBotRoutes(app, { loadBlog: loadBlogForTwitter, requireAdmin });
+  registerTwitterBotRoutes(app, { loadBlog: loadBlogForTwitter, requireAdmin, getResendClient });
 }
 
 // Backfill referral codes for any existing users that don't have one yet

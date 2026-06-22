@@ -27,6 +27,7 @@ import registerAdminHealthRoutes from './routes/admin_health.js';
 import registerReferralRoutes, { ensureUserReferralCode } from './routes/referral.js';
 import registerTwitterBotRoutes from './routes/twitter_bot.js';
 import registerOnboardingRoutes from './routes/onboarding_emails.js';
+import registerPromoRoutes from './routes/promo_codes.js';
 import { createTelegramHelpers } from './routes/telegram_alerts.js';
 import { seed as gamiSeed } from './gamification_seed.js';
 
@@ -5379,6 +5380,9 @@ referralModule = registerReferralRoutes(app, {
 
   // ─── Onboarding Email Sequence (J+1 welcome / J+3 case study / J+7 promo) ─
   registerOnboardingRoutes(app, { loadUsers, getResendClient, requireAdmin });
+
+  // ─── Promo Codes (centralized backend storage, auto-seeds WELCOME20/FLASH30) ─
+  registerPromoRoutes(app, { requireAdmin });
 }
 
 // Backfill referral codes for any existing users that don't have one yet

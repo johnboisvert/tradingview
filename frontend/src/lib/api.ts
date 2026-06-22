@@ -322,52 +322,77 @@ export const savePlanAccess = async (
 };
 
 // ============================================================
-// Promos
+// Promos — Centralized backend storage (was localStorage, now REST API)
 // ============================================================
-export const getPromos = async (): Promise<{
-  success: boolean;
-  promos: PromoCode[];
-}> => {
-  return { success: true, promos: store.getPromos() };
+const ADMIN_AUTH_HEADER = () => ({
+  "x-admin-auth": localStorage.getItem("admin_api_key") || "admin123",
+  "Content-Type": "application/json",
+});
+
+export const getPromos = async (): Promise<{ success: boolean; promos: PromoCode[] }> => {
+  try {
+    const res = await fetch("/api/v1/admin/promo-codes", { headers: ADMIN_AUTH_HEADER() });
+    const d = await res.json();
+    if (d?.ok) {
+      // Map backend shape -> frontend PromoCode shape (uses → current_uses, enabled → active)
+      const promos = (d.codes || []).map((c: { code: string; discount: number; type?: string; max_uses?: number | null; uses?: number; enabled?: boolean; created_at?: string; expires_at?: string | null }) => ({
+        code: c.code,
+        discount: c.discount,
+        type: c.type || "percent",
+        max_uses: c.max_uses || 9999,
+        current_uses: c.uses || 0,
+        active: c.enabled !== false,
+        created_at: c.created_at?.split("T")[0] || "",
+        expires_at: c.expires_at || undefined,
+      }));
+      return { success: true, promos };
+    }
+  } catch (e) { console.error("getPromos error", e); }
+  return { success: false, promos: [] };
 };
 
-export const deletePromoApi = async (
-  code: string
-): Promise<{ success: boolean }> => {
-  const ok = store.deletePromo(code);
-  return { success: ok };
+export const deletePromoApi = async (code: string): Promise<{ success: boolean }> => {
+  try {
+    const res = await fetch(`/api/v1/admin/promo-codes/${encodeURIComponent(code)}`, { method: "DELETE", headers: ADMIN_AUTH_HEADER() });
+    const d = await res.json();
+    return { success: !!d.ok };
+  } catch { return { success: false }; }
 };
-// Keep backward compat name
 export const deletePromo = deletePromoApi;
 
-export const createPromo = async (data: {
-  code: string;
-  discount: number;
-  type: string;
-  max_uses: number;
-  expires_at?: string;
-}): Promise<{ success: boolean }> => {
-  store.addPromo({
-    ...data,
-    current_uses: 0,
-    active: true,
-    created_at: new Date().toISOString().split("T")[0],
-  });
-  return { success: true };
+export const createPromo = async (data: { code: string; discount: number; type: string; max_uses: number; expires_at?: string }): Promise<{ success: boolean }> => {
+  try {
+    const res = await fetch("/api/v1/admin/promo-codes", { method: "POST", headers: ADMIN_AUTH_HEADER(), body: JSON.stringify(data) });
+    const d = await res.json();
+    return { success: !!d.ok };
+  } catch { return { success: false }; }
 };
 
 export const togglePromo = async (code: string): Promise<{ success: boolean }> => {
-  const ok = store.togglePromo(code);
-  return { success: ok };
+  try {
+    const res = await fetch(`/api/v1/admin/promo-codes/${encodeURIComponent(code)}/toggle`, { method: "PATCH", headers: ADMIN_AUTH_HEADER() });
+    const d = await res.json();
+    return { success: !!d.ok };
+  } catch { return { success: false }; }
 };
 
 export const validatePromo = async (code: string): Promise<{ valid: boolean; discount: number; type: string; message: string }> => {
-  return store.validatePromo(code);
+  try {
+    const res = await fetch(`/api/v1/promo-codes/validate?code=${encodeURIComponent(code)}`);
+    const d = await res.json();
+    return {
+      valid: !!d.valid,
+      discount: d.discount || 0,
+      type: d.type || "percent",
+      message: d.valid ? "Code valide" : d.reason === "not_found" ? "Code introuvable" : d.reason === "expired" ? "Code expiré" : d.reason === "disabled" ? "Code désactivé" : d.reason === "max_uses_reached" ? "Limite d'utilisations atteinte" : "Code invalide",
+    };
+  } catch { return { valid: false, discount: 0, type: "percent", message: "Erreur réseau" }; }
 };
 
 export const usePromoCode = async (code: string): Promise<{ success: boolean }> => {
-  const ok = store.usePromoCode(code);
-  return { success: ok };
+  // The backend now increments use automatically when checkout completes via Stripe webhook;
+  // this client call is kept as a no-op for backward compat with the admin UI flow.
+  return { success: true };
 };
 
 // ============================================================

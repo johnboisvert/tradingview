@@ -321,6 +321,177 @@ async function sendOneClickPublishEmail({ tweet, meta, getResendClient }) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ─── 🧲 AUTO-PIN BEST TWEET ──────────────────────────────────────────────────
+// Daily routine (06:00 UTC = ~1h after the post window):
+//   1. Pull public_metrics for the last 14 days of API-posted tweets
+//   2. Compute engagement score: likes + 2*RT + 0.5*replies + 0.1*impressions/100
+//   3. Find best tweet → pin it to @CryptoIA_ca profile
+//   4. Unpins the previous one automatically
+// Cached current pin in data/twitter_history.json under .currentPin
+// ═══════════════════════════════════════════════════════════════════════════
+const ENGAGEMENT_WINDOW_DAYS = 14;
+const PIN_REFRESH_HOUR_UTC = 14; // 06:00 EST = 11:00 UTC; we use 14:00 UTC = 09:00 EST (just before post window)
+
+function computeEngagementScore(metrics) {
+  if (!metrics) return 0;
+  const likes = Number(metrics.like_count || 0);
+  const rts = Number(metrics.retweet_count || 0);
+  const replies = Number(metrics.reply_count || 0);
+  const impressions = Number(metrics.impression_count || 0);
+  return likes + 2 * rts + 0.5 * replies + 0.01 * impressions;
+}
+
+async function fetchTweetsMetrics(tweetIds) {
+  const client = getTwitterClient();
+  if (!client || tweetIds.length === 0) return {};
+  const out = {};
+  // Twitter v2 supports up to 100 IDs per call
+  const chunks = [];
+  for (let i = 0; i < tweetIds.length; i += 100) chunks.push(tweetIds.slice(i, i + 100));
+  for (const chunk of chunks) {
+    try {
+      const res = await client.v2.tweets(chunk, { 'tweet.fields': ['public_metrics', 'created_at'] });
+      for (const t of res?.data || []) {
+        out[t.id] = { metrics: t.public_metrics, created_at: t.created_at };
+      }
+    } catch (e) {
+      console.error('[Twitter] fetchTweetsMetrics chunk error:', e?.data?.detail || e?.message);
+    }
+  }
+  return out;
+}
+
+async function getAuthenticatedUserId() {
+  const client = getTwitterClient();
+  if (!client) return null;
+  try {
+    const me = await client.v2.me();
+    return me?.data?.id || null;
+  } catch (e) {
+    console.error('[Twitter] getAuthenticatedUserId error:', e?.data?.detail || e?.message);
+    return null;
+  }
+}
+
+async function pinTweet(tweetId) {
+  const client = getTwitterClient();
+  if (!client || !tweetId) return { ok: false, reason: 'no_client_or_id' };
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return { ok: false, reason: 'no_user_id' };
+  try {
+    // POST /2/users/:id/pinned_tweets is the v2 endpoint
+    // twitter-api-v2 exposes it as: await client.v2.post('users/:id/pinned_tweets', { tweet_id })
+    await client.v2.post(`users/${userId}/pinned_tweets`, { tweet_id: tweetId });
+    return { ok: true, userId, tweetId };
+  } catch (e) {
+    const detail = e?.data?.detail || e?.message || String(e);
+    console.error('[Twitter] pinTweet error:', detail);
+    return { ok: false, reason: 'api_error', error: detail };
+  }
+}
+
+async function unpinTweet(tweetId) {
+  const client = getTwitterClient();
+  if (!client || !tweetId) return { ok: false, reason: 'no_client_or_id' };
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return { ok: false, reason: 'no_user_id' };
+  try {
+    await client.v2.delete(`users/${userId}/pinned_tweets/${tweetId}`);
+    return { ok: true };
+  } catch (e) {
+    console.error('[Twitter] unpinTweet error:', e?.data?.detail || e?.message);
+    return { ok: false, error: e?.data?.detail || e?.message };
+  }
+}
+
+// Public: find best tweet from last N days, pin it, return summary
+async function refreshAutoPin() {
+  const history = loadHistory();
+  const cutoff = Date.now() - ENGAGEMENT_WINDOW_DAYS * 24 * 3600 * 1000;
+  const candidates = (history.posts || []).filter(p => {
+    if (!p.tweetId || p.method !== 'api') return false;
+    const ts = Date.parse(p.ts);
+    return !isNaN(ts) && ts >= cutoff;
+  });
+  if (candidates.length === 0) {
+    return { ok: false, reason: 'no_eligible_tweets', candidates: 0 };
+  }
+
+  const metricsMap = await fetchTweetsMetrics(candidates.map(c => c.tweetId));
+  const scored = candidates.map(c => {
+    const m = metricsMap[c.tweetId];
+    return {
+      ...c,
+      metrics: m?.metrics || null,
+      engagement_score: computeEngagementScore(m?.metrics),
+    };
+  }).sort((a, b) => b.engagement_score - a.engagement_score);
+
+  const best = scored[0];
+  if (!best || best.engagement_score < 0) {
+    return { ok: false, reason: 'no_score', candidates: scored.length };
+  }
+
+  // If the best is already pinned, no-op
+  if (history.currentPin?.tweetId === best.tweetId) {
+    return {
+      ok: true,
+      changed: false,
+      pinned: best,
+      candidates: scored.slice(0, 5),
+    };
+  }
+
+  // Pin the new best
+  const pinResult = await pinTweet(best.tweetId);
+  if (!pinResult.ok) {
+    return { ok: false, reason: 'pin_failed', error: pinResult.error, candidates: scored.slice(0, 5) };
+  }
+
+  // Update history
+  history.currentPin = {
+    tweetId: best.tweetId,
+    tweetUrl: best.tweetUrl,
+    text: best.text,
+    pinnedAt: new Date().toISOString(),
+    metrics: best.metrics,
+    engagement_score: best.engagement_score,
+  };
+  saveHistory(history);
+  console.log(`[Twitter] 🧲 Auto-pinned tweet ${best.tweetId} (score=${best.engagement_score.toFixed(2)})`);
+
+  return {
+    ok: true,
+    changed: true,
+    pinned: history.currentPin,
+    candidates: scored.slice(0, 5),
+  };
+}
+
+// ─── Pin scheduler (once per day at 14:00 UTC = 09:00 EST) ──────────────────
+let _pinScheduler = null;
+function schedulePinRefresh() {
+  if (_pinScheduler) clearInterval(_pinScheduler);
+  let lastRunDay = null;
+  _pinScheduler = setInterval(async () => {
+    try {
+      if (_paused) return;
+      const now = new Date();
+      if (now.getUTCHours() !== PIN_REFRESH_HOUR_UTC) return;
+      const today = `${now.getUTCFullYear()}-${now.getUTCMonth()}-${now.getUTCDate()}`;
+      if (lastRunDay === today) return;
+      lastRunDay = today;
+      console.log('[Twitter] 🧲 Daily auto-pin refresh triggered');
+      const result = await refreshAutoPin();
+      console.log('[Twitter] Auto-pin result:', result.ok ? `changed=${result.changed} score=${result.pinned?.engagement_score}` : `FAILED: ${result.reason}`);
+    } catch (e) {
+      console.error('[Twitter] pinScheduler error:', e?.message);
+    }
+  }, 60 * 1000);
+  console.log(`[Twitter] ✅ Auto-pin scheduler started — runs daily at ~${PIN_REFRESH_HOUR_UTC}:00 UTC`);
+}
+
 // ─── Scheduler: check once per minute, fire if it's the post hour today ────
 function scheduleDaily({ loadBlog, getResendClient }) {
   if (_scheduler) clearInterval(_scheduler);
@@ -349,6 +520,7 @@ function scheduleDaily({ loadBlog, getResendClient }) {
 // ─── Routes registration ────────────────────────────────────────────────────
 export default function registerTwitterBotRoutes(app, { loadBlog, requireAdmin, getResendClient }) {
   scheduleDaily({ loadBlog, getResendClient });
+  schedulePinRefresh();
 
   const adminGuard = requireAdmin || ((_req, _res, next) => next());
 
@@ -403,6 +575,47 @@ export default function registerTwitterBotRoutes(app, { loadBlog, requireAdmin, 
     history.pausedAt = _paused ? new Date().toISOString() : null;
     saveHistory(history);
     res.json({ ok: true, paused: _paused });
+  });
+
+  // ─── 🧲 GET /api/v1/admin/twitter/pin-status — current pin + top candidates
+  app.get('/api/v1/admin/twitter/pin-status', adminGuard, async (req, res) => {
+    try {
+      const history = loadHistory();
+      // Pull fresh metrics for the last 14 days of API tweets
+      const cutoff = Date.now() - ENGAGEMENT_WINDOW_DAYS * 24 * 3600 * 1000;
+      const candidates = (history.posts || []).filter(p => p.tweetId && p.method === 'api' && Date.parse(p.ts) >= cutoff);
+      if (candidates.length === 0) {
+        return res.json({ ok: true, currentPin: history.currentPin || null, candidates: [], window_days: ENGAGEMENT_WINDOW_DAYS });
+      }
+      const metricsMap = await fetchTweetsMetrics(candidates.map(c => c.tweetId));
+      const scored = candidates.map(c => {
+        const m = metricsMap[c.tweetId];
+        return {
+          tweetId: c.tweetId,
+          tweetUrl: c.tweetUrl,
+          text: c.text,
+          ts: c.ts,
+          kind: c.kind,
+          metrics: m?.metrics || null,
+          engagement_score: computeEngagementScore(m?.metrics),
+        };
+      }).sort((a, b) => b.engagement_score - a.engagement_score);
+      res.json({
+        ok: true,
+        currentPin: history.currentPin || null,
+        candidates: scored.slice(0, 10),
+        window_days: ENGAGEMENT_WINDOW_DAYS,
+      });
+    } catch (e) {
+      console.error('[Twitter] pin-status error:', e?.message);
+      res.status(500).json({ ok: false, error: e?.message });
+    }
+  });
+
+  // ─── 🧲 POST /api/v1/admin/twitter/refresh-pin — manually trigger auto-pin
+  app.post('/api/v1/admin/twitter/refresh-pin', adminGuard, async (_req, res) => {
+    const result = await refreshAutoPin();
+    res.json(result);
   });
 
   console.log(`[Twitter] ✅ Routes registered (/api/v1/admin/twitter/*)`);

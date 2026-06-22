@@ -50,6 +50,7 @@ const AdminSocialKits = React.lazy(() => import("./pages/AdminSocialKits"));
 const AdminHealth = React.lazy(() => import("./pages/AdminHealth"));
 const AdminRecovery = React.lazy(() => import("./pages/AdminRecovery"));
 const AdminTwitter = React.lazy(() => import("./pages/AdminTwitter"));
+const AdminOnboarding = React.lazy(() => import("./pages/AdminOnboarding"));
 const ExchangeFeesComparator = React.lazy(() => import("./pages/ExchangeFeesComparator"));
 import NewsletterPopup from "./components/NewsletterPopup";
 const Analytics = React.lazy(() => import("./pages/Analytics"));
@@ -227,6 +228,7 @@ function App() {
           <Route path="/admin/health" element={<ProtectedAdminRoute><AdminHealth /></ProtectedAdminRoute>} />
           <Route path="/admin/recovery" element={<ProtectedAdminRoute><AdminRecovery /></ProtectedAdminRoute>} />
           <Route path="/admin/twitter" element={<ProtectedAdminRoute><AdminTwitter /></ProtectedAdminRoute>} />
+          <Route path="/admin/onboarding" element={<ProtectedAdminRoute><AdminOnboarding /></ProtectedAdminRoute>} />
           <Route path="/comparateur-frais-exchanges" element={<ExchangeFeesComparator />} />
           <Route path="/admin/analytics" element={<ProtectedAdminRoute><Analytics /></ProtectedAdminRoute>} />
           <Route path="/admin/pricing" element={<ProtectedAdminRoute><Pricing /></ProtectedAdminRoute>} />

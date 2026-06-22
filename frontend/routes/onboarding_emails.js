@@ -228,20 +228,65 @@ export default function registerOnboardingRoutes(app, { loadUsers, getResendClie
 
   app.get('/api/v1/admin/onboarding/stats', adminGuard, (_req, res) => {
     const events = loadEvents().events;
+    const users = loadUsers() || [];
     const byStep = { 1: 0, 2: 0, 3: 0 };
     const okByStep = { 1: 0, 2: 0, 3: 0 };
+    const failedByStep = { 1: 0, 2: 0, 3: 0 };
+    const recipientsByStep = { 1: new Set(), 2: new Set(), 3: new Set() };
     for (const e of events) {
       byStep[e.step] = (byStep[e.step] || 0) + 1;
-      if (e.ok) okByStep[e.step] = (okByStep[e.step] || 0) + 1;
+      if (e.ok) {
+        okByStep[e.step] = (okByStep[e.step] || 0) + 1;
+        if (e.username) recipientsByStep[e.step].add(e.username);
+      } else {
+        failedByStep[e.step] = (failedByStep[e.step] || 0) + 1;
+      }
     }
-    const totalUsers = (loadUsers() || []).filter(u => u.email && (u.plan || 'free') === 'free').length;
+
+    // Conversion: of users who received step N, how many became paid (plan != 'free')
+    const usersByUsername = new Map(users.map(u => [u.username, u]));
+    const convertedByStep = { 1: 0, 2: 0, 3: 0 };
+    for (const step of [1, 2, 3]) {
+      for (const username of recipientsByStep[step]) {
+        const u = usersByUsername.get(username);
+        if (u && u.plan && u.plan !== 'free') convertedByStep[step]++;
+      }
+    }
+
+    const totalFreeUsers = users.filter(u => u.email && (u.plan || 'free') === 'free').length;
+    const totalUsersWithEmail = users.filter(u => u.email).length;
+    const totalPaidUsers = users.filter(u => u.plan && u.plan !== 'free').length;
+    const totalUsers = users.length;
+
+    // Funnel computation per step: recipients → converted
+    const funnel = SEQUENCE.map(s => {
+      const recipients = recipientsByStep[s.step].size;
+      const converted = convertedByStep[s.step];
+      const conversionRate = recipients > 0 ? (converted / recipients) * 100 : 0;
+      return {
+        step: s.step,
+        days: s.days,
+        key: s.key,
+        sent_total: byStep[s.step] || 0,
+        sent_success: okByStep[s.step] || 0,
+        sent_failed: failedByStep[s.step] || 0,
+        unique_recipients: recipients,
+        converted_to_paid: converted,
+        conversion_rate_pct: Number(conversionRate.toFixed(2)),
+      };
+    });
+
     res.json({
       ok: true,
       sequence: SEQUENCE,
-      total_free_users_with_email: totalUsers,
+      totals: {
+        total_users: totalUsers,
+        total_users_with_email: totalUsersWithEmail,
+        total_free_users_with_email: totalFreeUsers,
+        total_paid_users: totalPaidUsers,
+      },
+      funnel,
       sent_total: events.length,
-      sent_by_step: byStep,
-      success_by_step: okByStep,
       last_5_events: events.slice(-5).reverse(),
     });
   });

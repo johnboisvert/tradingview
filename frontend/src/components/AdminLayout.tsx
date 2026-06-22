@@ -36,6 +36,7 @@ const NAV_ITEMS = [
   { path: "/admin/messages", label: "Messages & Ebooks", icon: MessageSquare },
   { path: "/admin/social-kits", label: "Social Kits", icon: Sparkles },
   { path: "/admin/twitter", label: "Bot Twitter", icon: Twitter },
+  { path: "/admin/onboarding", label: "Funnel Emails", icon: Send },
   { path: "/admin/telegram", label: "Alertes Telegram", icon: Send },
 ];
 

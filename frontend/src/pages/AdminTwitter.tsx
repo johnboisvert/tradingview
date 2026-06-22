@@ -104,6 +104,8 @@ export default function AdminTwitter() {
         await refresh();
       } else if (r.ok && !r.changed) {
         toast.info("Le meilleur tweet est déjà épinglé.");
+      } else if (r.error && String(r.error).includes("404")) {
+        toast.error("Endpoint pin non disponible sur ton tier Twitter (Basic+ requis). Épingle manuellement sur X.");
       } else {
         toast.error(`Échec : ${r.reason || r.error}`);
       }
@@ -289,25 +291,32 @@ TWITTER_ACCESS_SECRET=...`}</pre>
             <div className="rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-orange-500/5 p-5" data-testid="auto-pin-section">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base font-bold flex items-center gap-2">
-                  <Pin className="w-4 h-4 text-amber-400" /> Tweet épinglé (auto)
-                  <span className="text-[10px] font-normal text-gray-500 ml-2">refresh quotidien à 09:00 EST</span>
+                  <Trophy className="w-4 h-4 text-amber-400" /> Analytics & Top tweets
+                  <span className="text-[10px] font-normal text-gray-500 ml-2">14 derniers jours</span>
                 </h2>
                 <button
                   onClick={refreshPin}
                   disabled={pinRefreshing || !status.configured}
                   className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center gap-2 disabled:opacity-50 transition"
                   data-testid="refresh-pin"
+                  title="Essaie d'épingler automatiquement (nécessite tier Basic Twitter)"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${pinRefreshing ? "animate-spin" : ""}`} /> Actualiser maintenant
+                  <Pin className={`w-3.5 h-3.5 ${pinRefreshing ? "animate-pulse" : ""}`} /> Tenter l&apos;auto-pin
                 </button>
               </div>
 
-              {pinStatus?.currentPin ? (
-                <div className="p-4 rounded-lg bg-black/40 border border-amber-500/30" data-testid="current-pin">
+              <div className="mb-4 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 text-xs text-blue-200/80 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  ℹ️ <strong>Note</strong> : l&apos;épinglage automatique via API nécessite le tier <strong>Basic Twitter ($200/mois)</strong>. Sur le tier &quot;Pay Per Use&quot;, tu peux voir le meilleur tweet ci-dessous et l&apos;épingler <strong>manuellement</strong> sur Twitter (clique sur les 3 points du tweet → &quot;Épingler sur votre profil&quot;).
+                </div>
+              </div>
+
+              {pinStatus?.currentPin && (
+                <div className="p-4 rounded-lg bg-black/40 border border-amber-500/30 mb-4" data-testid="current-pin">
                   <div className="flex items-center gap-2 mb-2 text-xs">
-                    <Trophy className="w-4 h-4 text-amber-400" />
-                    <span className="text-amber-300 font-bold">Épinglé depuis {new Date(pinStatus.currentPin.pinnedAt).toLocaleString("fr-CA")}</span>
-                    <span className="text-gray-500">· Score : {pinStatus.currentPin.engagement_score.toFixed(1)}</span>
+                    <Pin className="w-4 h-4 text-amber-400" />
+                    <span className="text-amber-300 font-bold">Tweet épinglé · Score : {pinStatus.currentPin.engagement_score.toFixed(1)}</span>
                     {pinStatus.currentPin.tweetUrl && (
                       <a href={pinStatus.currentPin.tweetUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline flex items-center gap-1 ml-auto">
                         Voir sur X <ExternalLink className="w-3 h-3" />
@@ -317,29 +326,43 @@ TWITTER_ACCESS_SECRET=...`}</pre>
                   <p className="text-sm text-gray-200 whitespace-pre-wrap break-words mb-3">{pinStatus.currentPin.text}</p>
                   <PinMetricsRow metrics={pinStatus.currentPin.metrics} />
                 </div>
-              ) : (
-                <p className="text-sm text-gray-500" data-testid="no-pin">
-                  Aucun tweet épinglé pour le moment. Il faut au moins 1 tweet via API dans les {pinStatus?.window_days || 14} derniers jours.
-                </p>
               )}
 
-              {pinStatus && pinStatus.candidates.length > 1 && (
-                <div className="mt-4 pt-4 border-t border-amber-500/10">
-                  <p className="text-xs text-gray-400 mb-2 font-bold">Top 5 candidats (par engagement) :</p>
+              {pinStatus && pinStatus.candidates.length > 0 ? (
+                <div>
+                  <p className="text-xs text-gray-400 mb-2 font-bold">🏆 Top tweets par engagement :</p>
                   <ol className="space-y-2">
                     {pinStatus.candidates.slice(0, 5).map((c, i) => {
                       const isCurrent = pinStatus.currentPin?.tweetId === c.tweetId;
                       return (
-                        <li key={c.tweetId} className={`p-2 rounded-lg flex items-center gap-3 text-xs ${isCurrent ? "bg-amber-500/10 border border-amber-500/30" : "bg-black/20"}`}>
-                          <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold ${i === 0 ? "bg-amber-400 text-black" : "bg-white/10 text-gray-300"}`}>{i + 1}</span>
-                          <span className="text-gray-300 flex-1 truncate" title={c.text}>{c.text.slice(0, 60)}...</span>
-                          <span className="text-amber-300 font-bold">{c.engagement_score.toFixed(1)}</span>
-                          {isCurrent && <Pin className="w-3 h-3 text-amber-400" />}
+                        <li key={c.tweetId} className={`p-3 rounded-lg ${isCurrent ? "bg-amber-500/10 border border-amber-500/30" : "bg-black/20 border border-white/5"}`}>
+                          <div className="flex items-start gap-3">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${i === 0 ? "bg-amber-400 text-black" : "bg-white/10 text-gray-300"}`}>{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-gray-200 mb-1 line-clamp-2" title={c.text}>{c.text}</p>
+                              <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                                <PinMetricsRow metrics={c.metrics} compact />
+                                {c.tweetUrl && (
+                                  <a href={c.tweetUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline ml-auto">
+                                    Voir →
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                              <span className="text-xs font-black text-amber-300">{c.engagement_score.toFixed(1)}</span>
+                              <span className="text-[10px] text-gray-500">score</span>
+                            </div>
+                          </div>
                         </li>
                       );
                     })}
                   </ol>
                 </div>
+              ) : (
+                <p className="text-sm text-gray-500" data-testid="no-pin">
+                  Aucun tweet récent à analyser (besoin d&apos;au moins 1 tweet publié via API dans les {pinStatus?.window_days || 14} derniers jours).
+                </p>
               )}
             </div>
 
@@ -398,23 +421,22 @@ function StatCard({ icon, label, value, sub, color }: { icon: React.ReactNode; l
   );
 }
 
-function PinMetricsRow({ metrics }: { metrics: PinMetrics | null }) {
+function PinMetricsRow({ metrics, compact = false }: { metrics: PinMetrics | null; compact?: boolean }) {
   if (!metrics) {
-    return <p className="text-xs text-gray-500 italic">Pas encore de statistiques (peut prendre quelques minutes après publication).</p>;
+    return <p className={`${compact ? "text-[10px]" : "text-xs"} text-gray-500 italic`}>Pas encore de statistiques.</p>;
   }
   const items = [
-    { icon: <Heart className="w-3.5 h-3.5 text-pink-400" />, val: metrics.like_count ?? 0, label: "likes" },
-    { icon: <Repeat2 className="w-3.5 h-3.5 text-emerald-400" />, val: metrics.retweet_count ?? 0, label: "RT" },
-    { icon: <MessageCircle className="w-3.5 h-3.5 text-cyan-400" />, val: metrics.reply_count ?? 0, label: "réponses" },
-    { icon: <Eye className="w-3.5 h-3.5 text-purple-400" />, val: metrics.impression_count ?? 0, label: "vues" },
+    { icon: <Heart className={compact ? "w-3 h-3 text-pink-400" : "w-3.5 h-3.5 text-pink-400"} />, val: metrics.like_count ?? 0 },
+    { icon: <Repeat2 className={compact ? "w-3 h-3 text-emerald-400" : "w-3.5 h-3.5 text-emerald-400"} />, val: metrics.retweet_count ?? 0 },
+    { icon: <MessageCircle className={compact ? "w-3 h-3 text-cyan-400" : "w-3.5 h-3.5 text-cyan-400"} />, val: metrics.reply_count ?? 0 },
+    { icon: <Eye className={compact ? "w-3 h-3 text-purple-400" : "w-3.5 h-3.5 text-purple-400"} />, val: metrics.impression_count ?? 0 },
   ];
   return (
-    <div className="flex flex-wrap gap-4 text-xs">
+    <div className={`flex flex-wrap gap-${compact ? "2" : "4"} ${compact ? "text-[10px]" : "text-xs"}`}>
       {items.map((it, i) => (
-        <span key={i} className="flex items-center gap-1.5 text-gray-300">
+        <span key={i} className="flex items-center gap-1 text-gray-300">
           {it.icon}
           <strong className="text-white">{it.val.toLocaleString("fr-CA")}</strong>
-          <span className="text-gray-500">{it.label}</span>
         </span>
       ))}
     </div>

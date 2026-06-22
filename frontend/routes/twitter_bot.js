@@ -469,8 +469,19 @@ async function refreshAutoPin() {
 }
 
 // ─── Pin scheduler (once per day at 14:00 UTC = 09:00 EST) ──────────────────
+// ⚠️ Note: Twitter API v2 endpoint POST /2/users/:id/pinned_tweets returns 404
+// on the "Pay Per Use" / "Free" tiers — it's only available on Basic+ ($200/mo).
+// Set TWITTER_AUTO_PIN=1 in env to enable the auto-scheduler (only if you've
+// upgraded to Basic). Without the env var, the scheduler is OFF by default and
+// users can still trigger pinning manually via the admin UI (will show the
+// 404 error explanation if their tier doesn't support it).
 let _pinScheduler = null;
 function schedulePinRefresh() {
+  const enabled = String(process.env.TWITTER_AUTO_PIN || '').toLowerCase() === '1' || String(process.env.TWITTER_AUTO_PIN || '').toLowerCase() === 'true';
+  if (!enabled) {
+    console.log('[Twitter] ℹ️ Auto-pin scheduler disabled (set TWITTER_AUTO_PIN=1 to enable; requires Basic+ tier).');
+    return;
+  }
   if (_pinScheduler) clearInterval(_pinScheduler);
   let lastRunDay = null;
   _pinScheduler = setInterval(async () => {

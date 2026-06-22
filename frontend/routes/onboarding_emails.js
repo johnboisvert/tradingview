@@ -124,7 +124,8 @@ function template_J3_advanced(user) {
   };
 }
 
-function template_J7_promo(user) {
+function template_J7_promo_A(user) {
+  // VARIANT A: -20% standard, 72h urgency, code WELCOME20
   const name = user.username.split('@')[0];
   const innerHtml = `${BRAND_HEADER('⏰ Offre limitée -20% pour toi')}
 <p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 16px;">Salut ${name},</p>
@@ -152,6 +153,50 @@ function template_J7_promo(user) {
   };
 }
 
+function template_J7_promo_B(user) {
+  // VARIANT B: -30% aggressive, 24h urgency, code FLASH30
+  const name = user.username.split('@')[0];
+  const innerHtml = `${BRAND_HEADER('🔥 FLASH SALE — 24h seulement')}
+<p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 16px;">Salut ${name},</p>
+<p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 20px;">J'ai une <strong style="color:#fff;">offre flash exceptionnelle</strong> pour toi. Tu es l'un de mes utilisateurs gratuits depuis 7 jours, alors je débloque la promo qu'on n'offre <strong>JAMAIS</strong> habituellement :</p>
+<div style="padding:24px;border-radius:16px;background:linear-gradient(135deg,rgba(239,68,68,0.15),rgba(220,38,38,0.2));border:2px solid rgba(239,68,68,0.5);margin-bottom:24px;text-align:center;box-shadow:0 0 24px rgba(239,68,68,0.2);">
+  <p style="color:#fca5a5;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 8px;font-weight:700;">🔥 Code flash · 24h</p>
+  <p style="color:#fff;font-size:38px;font-weight:900;font-family:monospace;letter-spacing:4px;margin:0 0 8px;">FLASH30</p>
+  <p style="color:#fef3c7;font-size:14px;line-height:1.5;margin:0;"><strong>-30% sur ton 1er mois OU 1ère année</strong><br>(au lieu du -20% standard)</p>
+</div>
+<p style="color:#cbd5e1;font-size:14px;line-height:1.6;margin:0 0 12px;text-align:center;"><strong style="color:#fbbf24;">⚠️ Cette offre expire dans 24h chrono.</strong> Elle ne reviendra pas avant 6 mois minimum.</p>
+<ul style="color:#cbd5e1;font-size:14px;line-height:1.8;margin:0 0 20px;padding-left:20px;">
+  <li>✅ <strong style="color:#fff;">Signaux IA Telegram</strong> en temps réel (5-8/jour)</li>
+  <li>✅ <strong style="color:#fff;">200+ paires scannées</strong> 24/7</li>
+  <li>✅ <strong style="color:#fff;">Discord premium</strong> exclusif</li>
+  <li>✅ <strong style="color:#fff;">Garantie satisfait ou remboursé 30 jours</strong></li>
+</ul>
+<div style="text-align:center;margin:24px 0;">
+  <a href="https://www.cryptoia.ca/abonnements?promo=FLASH30" style="display:inline-block;padding:16px 40px;border-radius:12px;background:linear-gradient(135deg,#dc2626,#f59e0b);color:#fff;font-weight:900;text-decoration:none;text-transform:uppercase;font-size:13px;letter-spacing:1.5px;box-shadow:0 4px 12px rgba(239,68,68,0.4);">🔥 Débloquer le -30% maintenant</a>
+</div>
+<p style="color:#94a3b8;font-size:11px;line-height:1.6;text-align:center;margin:0;">⏰ Code FLASH30 valide pendant 24h. Stripe Checkout sécurisé.</p>`;
+  return {
+    subject: '🔥 FLASH 24h — Code FLASH30 pour -30% (au lieu de -20%)',
+    html: emailWrap(innerHtml),
+  };
+}
+
+// Pick variant deterministically based on username (so previews/sends are stable for the same user)
+function pickJ7Variant(username) {
+  // Simple deterministic hash: sum of char codes mod 2
+  let h = 0;
+  for (let i = 0; i < (username || '').length; i++) h = (h + username.charCodeAt(i)) % 1000;
+  return h % 2 === 0 ? 'A' : 'B';
+}
+
+function template_J7_promo(user) {
+  // Dispatcher — chooses A or B and returns the rendered template (we tag the variant separately)
+  const variant = pickJ7Variant(user.username || user.email || '');
+  const tpl = variant === 'A' ? template_J7_promo_A(user) : template_J7_promo_B(user);
+  tpl.variant = variant;
+  return tpl;
+}
+
 function renderTemplate(step, user) {
   if (step === 1) return template_J1_welcome(user);
   if (step === 2) return template_J3_advanced(user);
@@ -173,7 +218,7 @@ async function sendOne(user, stepDef, getResendClient) {
       subject: tpl.subject,
       html: tpl.html,
     });
-    return { ok: true };
+    return { ok: true, variant: tpl.variant || null };
   } catch (e) {
     console.error('[Onboarding] send error:', e?.message);
     return { ok: false, reason: 'send_error', error: e?.message };
@@ -201,6 +246,7 @@ function startScheduler({ loadUsers, getResendClient }) {
               step: stepDef.step,
               key: stepDef.key,
               ok: result.ok,
+              variant: result.variant || null,
               error: result.error || null,
             });
             if (result.ok) sentCount++;
@@ -276,6 +322,40 @@ export default function registerOnboardingRoutes(app, { loadUsers, getResendClie
       };
     });
 
+    // A/B test stats for step 3 (J+7 promo): split by variant A vs B
+    const j7VariantA = { recipients: new Set(), converted: 0 };
+    const j7VariantB = { recipients: new Set(), converted: 0 };
+    for (const e of events) {
+      if (e.step !== 3 || !e.ok || !e.username) continue;
+      if (e.variant === 'A') j7VariantA.recipients.add(e.username);
+      else if (e.variant === 'B') j7VariantB.recipients.add(e.username);
+    }
+    for (const username of j7VariantA.recipients) {
+      const u = usersByUsername.get(username);
+      if (u && u.plan && u.plan !== 'free') j7VariantA.converted++;
+    }
+    for (const username of j7VariantB.recipients) {
+      const u = usersByUsername.get(username);
+      if (u && u.plan && u.plan !== 'free') j7VariantB.converted++;
+    }
+    const ab_test_j7 = {
+      variant_A: {
+        label: '-20% / 72h / WELCOME20',
+        recipients: j7VariantA.recipients.size,
+        converted: j7VariantA.converted,
+        conversion_rate_pct: j7VariantA.recipients.size > 0 ? Number(((j7VariantA.converted / j7VariantA.recipients.size) * 100).toFixed(2)) : 0,
+      },
+      variant_B: {
+        label: '-30% / 24h / FLASH30',
+        recipients: j7VariantB.recipients.size,
+        converted: j7VariantB.converted,
+        conversion_rate_pct: j7VariantB.recipients.size > 0 ? Number(((j7VariantB.converted / j7VariantB.recipients.size) * 100).toFixed(2)) : 0,
+      },
+    };
+    ab_test_j7.winner = ab_test_j7.variant_A.conversion_rate_pct > ab_test_j7.variant_B.conversion_rate_pct ? 'A'
+      : ab_test_j7.variant_B.conversion_rate_pct > ab_test_j7.variant_A.conversion_rate_pct ? 'B'
+      : null;
+
     res.json({
       ok: true,
       sequence: SEQUENCE,
@@ -286,6 +366,7 @@ export default function registerOnboardingRoutes(app, { loadUsers, getResendClie
         total_paid_users: totalPaidUsers,
       },
       funnel,
+      ab_test_j7,
       sent_total: events.length,
       last_5_events: events.slice(-5).reverse(),
     });
@@ -299,20 +380,42 @@ export default function registerOnboardingRoutes(app, { loadUsers, getResendClie
 
   app.post('/api/v1/admin/onboarding/preview', adminGuard, (req, res) => {
     const step = parseInt(req.query.step || req.body?.step || '1');
+    const forcedVariant = (req.query.variant || req.body?.variant || '').toString().toUpperCase();
     const fakeUser = { username: 'demo_user', email: 'demo@example.com', created_at: new Date().toISOString() };
-    const tpl = renderTemplate(step, fakeUser);
+    let tpl;
+    if (step === 3 && (forcedVariant === 'A' || forcedVariant === 'B')) {
+      tpl = forcedVariant === 'A' ? template_J7_promo_A(fakeUser) : template_J7_promo_B(fakeUser);
+      tpl.variant = forcedVariant;
+    } else {
+      tpl = renderTemplate(step, fakeUser);
+    }
     if (!tpl) return res.status(400).json({ ok: false, error: 'invalid step' });
+    const variantTag = tpl.variant ? ` · Variant ${tpl.variant}` : '';
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(`<!doctype html><html><body><div style="padding:8px 16px;background:#fef3c7;font-family:sans-serif;font-size:13px;">📧 <strong>Aperçu Onboarding Step ${step}</strong> — Subject : <em>${tpl.subject}</em></div>${tpl.html}</body></html>`);
+    res.send(`<!doctype html><html><body><div style="padding:8px 16px;background:#fef3c7;font-family:sans-serif;font-size:13px;">📧 <strong>Aperçu Onboarding Step ${step}${variantTag}</strong> — Subject : <em>${tpl.subject}</em></div>${tpl.html}</body></html>`);
   });
 
   app.post('/api/v1/admin/onboarding/send-test', adminGuard, async (req, res) => {
     const step = parseInt(req.query.step || req.body?.step || '1');
     const email = (req.query.email || req.body?.email || '').toString();
+    const forcedVariant = (req.query.variant || req.body?.variant || '').toString().toUpperCase();
     if (!email.includes('@')) return res.status(400).json({ ok: false, error: 'invalid email' });
     const fakeUser = { username: email, email, created_at: new Date().toISOString() };
     const stepDef = SEQUENCE.find(s => s.step === step);
     if (!stepDef) return res.status(400).json({ ok: false, error: 'invalid step' });
+    // For test: respect forced variant by patching pickJ7Variant via a temp wrapper
+    if (step === 3 && (forcedVariant === 'A' || forcedVariant === 'B')) {
+      const client = await getResendClient();
+      if (!client) return res.json({ ok: false, reason: 'no_resend_client' });
+      const tpl = forcedVariant === 'A' ? template_J7_promo_A(fakeUser) : template_J7_promo_B(fakeUser);
+      const sender = process.env.SENDER_EMAIL || 'CryptoIA <onboarding@resend.dev>';
+      try {
+        await client.emails.send({ from: sender, to: [email], subject: tpl.subject, html: tpl.html });
+        return res.json({ ok: true, variant: forcedVariant });
+      } catch (e) {
+        return res.json({ ok: false, reason: 'send_error', error: e?.message });
+      }
+    }
     const result = await sendOne(fakeUser, stepDef, getResendClient);
     res.json(result);
   });

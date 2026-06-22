@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { toast } from "sonner";
-import { Mail, RefreshCw, Send, CheckCircle2, XCircle, Eye, ExternalLink, TrendingUp, Users, AlertCircle } from "lucide-react";
+import { Mail, RefreshCw, Send, CheckCircle2, XCircle, Eye, ExternalLink, TrendingUp, Users, AlertCircle, FlaskConical, Trophy } from "lucide-react";
 
 type FunnelStep = {
   step: number;
@@ -25,6 +25,11 @@ type Stats = {
   sequence: Array<{ step: number; days: number; key: string }>;
   totals: Totals;
   funnel: FunnelStep[];
+  ab_test_j7?: {
+    variant_A: { label: string; recipients: number; converted: number; conversion_rate_pct: number };
+    variant_B: { label: string; recipients: number; converted: number; conversion_rate_pct: number };
+    winner: 'A' | 'B' | null;
+  };
   sent_total: number;
   last_5_events: Array<{
     ts: string;
@@ -33,6 +38,7 @@ type Stats = {
     step: number;
     key: string;
     ok: boolean;
+    variant?: string;
     error?: string;
   }>;
 };
@@ -101,9 +107,10 @@ export default function AdminOnboarding() {
   };
 
   const previewUrl = (step: number) => `${window.location.origin}/api/v1/admin/onboarding/preview?step=${step}`;
-  const openPreview = async (step: number) => {
+  const openPreview = async (step: number, variant?: 'A' | 'B') => {
     try {
-      const res = await fetch(previewUrl(step), {
+      const url = variant ? `${previewUrl(step)}&variant=${variant}` : previewUrl(step);
+      const res = await fetch(url, {
         method: "POST",
         headers: { "x-admin-auth": getAdminAuth() },
       });
@@ -218,6 +225,60 @@ export default function AdminOnboarding() {
                 />
               </div>
             </div>
+
+            {/* A/B Test J+7 */}
+            {stats.ab_test_j7 && (
+              <div className="rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-pink-500/5 p-5" data-testid="ab-test-card">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base font-bold flex items-center gap-2">
+                    <FlaskConical className="w-4 h-4 text-purple-400" /> A/B Test — J+7 Promo
+                  </h2>
+                  {stats.ab_test_j7.winner && (
+                    <span className="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center gap-1" data-testid="ab-winner">
+                      <Trophy className="w-3 h-3" /> Gagnant : Variant {stats.ab_test_j7.winner}
+                    </span>
+                  )}
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {(['A', 'B'] as const).map((v) => {
+                    const data = v === 'A' ? stats.ab_test_j7!.variant_A : stats.ab_test_j7!.variant_B;
+                    const isWinner = stats.ab_test_j7!.winner === v;
+                    return (
+                      <div key={v} className={`p-4 rounded-lg border ${isWinner ? 'bg-amber-500/5 border-amber-500/40' : 'bg-black/30 border-white/[0.06]'}`} data-testid={`variant-${v}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`text-sm font-bold ${isWinner ? 'text-amber-300' : 'text-white'}`}>Variant {v} {isWinner && '🏆'}</span>
+                          <button
+                            onClick={() => openPreview(3, v)}
+                            className="px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] text-xs text-cyan-300 flex items-center gap-1"
+                            data-testid={`preview-variant-${v}`}
+                          >
+                            <Eye className="w-3 h-3" /> Aperçu
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-400 mb-3">{data.label}</p>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div>
+                            <p className="text-lg font-black text-white">{data.recipients}</p>
+                            <p className="text-[10px] text-gray-500">destinataires</p>
+                          </div>
+                          <div>
+                            <p className="text-lg font-black text-emerald-300">{data.converted}</p>
+                            <p className="text-[10px] text-gray-500">convertis</p>
+                          </div>
+                          <div>
+                            <p className={`text-lg font-black ${isWinner ? 'text-amber-300' : 'text-purple-300'}`}>{data.conversion_rate_pct.toFixed(1)}%</p>
+                            <p className="text-[10px] text-gray-500">taux conv.</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  💡 Le scheduler attribue les variantes de façon déterministe par username (50/50 hash). Patience : il faut au moins 20-50 utilisateurs par variante pour avoir un résultat statistiquement fiable.
+                </p>
+              </div>
+            )}
 
             {/* Last events */}
             <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5" data-testid="last-events">

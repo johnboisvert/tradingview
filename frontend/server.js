@@ -21,6 +21,7 @@ import registerDailyDigestRoutes from './routes/daily_digest.js';
 import registerIndexNowRoutes, { notifyIndexNow } from './routes/indexnow.js';
 import registerSentryWebhookRoutes from './routes/sentry_webhook.js';
 import registerBlogNewsletterRoutes from './routes/blog_newsletter.js';
+import registerBlogCronRoutes from './routes/blog_cron.js';
 import registerPaymentWebhookRoutes from './routes/payment_webhooks.js';
 import registerCheckoutRecoveryRoutes from './routes/checkout_recovery.js';
 import registerAdminHealthRoutes from './routes/admin_health.js';
@@ -5368,6 +5369,12 @@ referralModule = registerReferralRoutes(app, {
 
   // ─── Promo Codes (centralized backend storage, auto-seeds WELCOME20/FLASH30) ─
   registerPromoRoutes(app, { requireAdmin });
+
+  // ─── Blog auto-publish cron (1 article/day via GPT-5.4 + IndexNow + newsletter) ─
+  registerBlogCronRoutes(app, {
+    requireAdmin,
+    getNewsletterNotifier: () => blogNewsletter.notifySubscribers,
+  });
 }
 
 // Backfill referral codes for any existing users that don't have one yet

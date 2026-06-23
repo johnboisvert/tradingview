@@ -212,13 +212,23 @@ async function sendOne(user, stepDef, getResendClient) {
   if (!client) return { ok: false, reason: 'no_resend_client' };
   const sender = process.env.SENDER_EMAIL || 'CryptoIA <onboarding@resend.dev>';
   try {
-    await client.emails.send({
+    // Tag the email so Resend webhooks can attribute opens/clicks back to
+    // the onboarding step (consumed in routes/resend_webhook.js).
+    const tags = [
+      { name: 'category', value: 'onboarding' },
+      { name: 'step', value: String(stepDef.step) },
+      { name: 'key', value: stepDef.key },
+    ];
+    if (tpl.variant) tags.push({ name: 'variant', value: tpl.variant });
+    const resp = await client.emails.send({
       from: sender,
       to: [user.email],
       subject: tpl.subject,
       html: tpl.html,
+      tags,
     });
-    return { ok: true, variant: tpl.variant || null };
+    const emailId = resp?.data?.id || resp?.id || null;
+    return { ok: true, variant: tpl.variant || null, email_id: emailId };
   } catch (e) {
     console.error('[Onboarding] send error:', e?.message);
     return { ok: false, reason: 'send_error', error: e?.message };
@@ -247,6 +257,11 @@ function startScheduler({ loadUsers, getResendClient }) {
               key: stepDef.key,
               ok: result.ok,
               variant: result.variant || null,
+              email_id: result.email_id || null,
+              opened_at: null,
+              clicked_at: null,
+              bounced_at: null,
+              complained_at: null,
               error: result.error || null,
             });
             if (result.ok) sentCount++;

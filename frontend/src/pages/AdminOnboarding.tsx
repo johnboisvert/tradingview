@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { toast } from "sonner";
-import { Mail, RefreshCw, Send, CheckCircle2, XCircle, Eye, ExternalLink, TrendingUp, Users, AlertCircle, FlaskConical, Trophy } from "lucide-react";
+import { Mail, RefreshCw, Send, CheckCircle2, XCircle, Eye, ExternalLink, TrendingUp, Users, AlertCircle, FlaskConical, Trophy, MailOpen, MousePointerClick, ShieldAlert } from "lucide-react";
 
 type FunnelStep = {
   step: number;
@@ -63,6 +63,7 @@ async function api<T = unknown>(path: string, method: "GET" | "POST" = "GET"): P
 
 export default function AdminOnboarding() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [emailStats, setEmailStats] = useState<{ ok: boolean; per_step: Array<{ step: number; sent: number; delivered: number; delivered_rate_pct: number; opened: number; open_rate_pct: number; clicked: number; click_rate_pct: number; ctor_pct: number; bounced: number; complained: number }>; secured: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [testEmail, setTestEmail] = useState("");
   const [sending, setSending] = useState(false);
@@ -72,9 +73,13 @@ export default function AdminOnboarding() {
     setLoading(true);
     setError("");
     try {
-      const d = await api<Stats>("/api/v1/admin/onboarding/stats");
+      const [d, es] = await Promise.all([
+        api<Stats>("/api/v1/admin/onboarding/stats"),
+        api<{ ok: boolean; per_step: Array<{ step: number; sent: number; delivered: number; delivered_rate_pct: number; opened: number; open_rate_pct: number; clicked: number; click_rate_pct: number; ctor_pct: number; bounced: number; complained: number }>; secured: boolean }>("/api/v1/admin/onboarding/email-stats"),
+      ]);
       if (d?.ok) setStats(d);
       else setError("Échec de chargement");
+      if (es?.ok) setEmailStats(es);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -280,6 +285,51 @@ export default function AdminOnboarding() {
               </div>
             )}
 
+            {/* Email engagement (open / click rates via Resend webhook) */}
+            {emailStats && (
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5" data-testid="email-engagement-card">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                  <h2 className="text-base font-bold flex items-center gap-2">
+                    <MailOpen className="w-4 h-4 text-indigo-400" /> Engagement Emails (Resend Webhook)
+                  </h2>
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${emailStats.secured ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-amber-500/15 text-amber-300 border border-amber-500/30"}`} data-testid="webhook-secured-badge">
+                    {emailStats.secured ? "🔐 Webhook signé" : "⚠️ Webhook non signé"}
+                  </span>
+                </div>
+                <div className="grid md:grid-cols-3 gap-3">
+                  {emailStats.per_step.map((p) => {
+                    const label = STEP_LABELS[p.step];
+                    return (
+                      <div key={p.step} className="p-4 rounded-lg bg-black/30 border border-white/[0.04]" data-testid={`email-stats-step-${p.step}`}>
+                        <p className="text-sm font-bold text-white mb-1">{label?.title || `J+${p.step}`}</p>
+                        <p className="text-[11px] text-gray-500 mb-3">{p.sent} envoyés · {p.delivered} livrés ({p.delivered_rate_pct}%)</p>
+                        <div className="space-y-2">
+                          <RateBar icon={<MailOpen className="w-3.5 h-3.5 text-indigo-300" />} label="Ouvert" value={p.opened} pct={p.open_rate_pct} color="bg-indigo-400" />
+                          <RateBar icon={<MousePointerClick className="w-3.5 h-3.5 text-purple-300" />} label="Cliqué" value={p.clicked} pct={p.click_rate_pct} color="bg-purple-400" />
+                          {p.opened > 0 && (
+                            <p className="text-[10px] text-gray-500 mt-1">CTOR (clic/ouverture) : <span className="text-purple-300 font-bold">{p.ctor_pct}%</span></p>
+                          )}
+                          {(p.bounced > 0 || p.complained > 0) && (
+                            <p className="text-[10px] text-red-300 flex items-center gap-1 mt-1">
+                              <ShieldAlert className="w-3 h-3" /> {p.bounced} bounced · {p.complained} spam
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {!emailStats.secured && (
+                  <p className="text-[11px] text-amber-300/80 mt-3">
+                    💡 Pour sécuriser : ajoute <code className="px-1 py-0.5 rounded bg-black/40">RESEND_WEBHOOK_SECRET</code> dans Railway (Resend Dashboard → Webhooks → Signing Secret).
+                  </p>
+                )}
+                <p className="text-[10px] text-gray-500 mt-2">
+                  📡 Endpoint : <code className="px-1 py-0.5 rounded bg-black/40">POST /api/v1/webhooks/resend</code> — à configurer dans Resend Dashboard (events : delivered, opened, clicked, bounced, complained).
+                </p>
+              </div>
+            )}
+
             {/* Last events */}
             <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5" data-testid="last-events">
               <h2 className="text-base font-bold mb-3">Derniers envois</h2>
@@ -317,6 +367,20 @@ function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: s
       <p className="text-2xl font-black text-white">{value}</p>
       <p className="text-xs text-gray-400 mt-0.5">{label}</p>
       {sub && <p className="text-[10px] text-gray-500 mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+function RateBar({ icon, label, value, pct, color }: { icon: React.ReactNode; label: string; value: number; pct: number; color: string }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between text-[11px] mb-1">
+        <span className="flex items-center gap-1 text-gray-300">{icon}{label}</span>
+        <span className="text-white font-bold">{value} <span className="text-gray-500">({pct}%)</span></span>
+      </div>
+      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+        <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${Math.min(100, pct)}%` }} />
+      </div>
     </div>
   );
 }

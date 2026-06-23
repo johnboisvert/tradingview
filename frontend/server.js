@@ -27,6 +27,7 @@ import registerAdminHealthRoutes from './routes/admin_health.js';
 import registerReferralRoutes, { ensureUserReferralCode } from './routes/referral.js';
 import registerTwitterBotRoutes from './routes/twitter_bot.js';
 import registerOnboardingRoutes from './routes/onboarding_emails.js';
+import registerResendWebhookRoutes from './routes/resend_webhook.js';
 import registerPromoRoutes from './routes/promo_codes.js';
 import { createTelegramHelpers } from './routes/telegram_alerts.js';
 import { seed as gamiSeed } from './gamification_seed.js';
@@ -75,6 +76,8 @@ function persistCgCacheDebounced() {
 
 // Stripe webhook needs raw body for signature verification — must be before json parser
 app.use('/api/v1/payment/stripe_webhook', express.raw({ type: 'application/json' }));
+// Resend webhook also needs raw body to verify the Svix HMAC signature
+app.use('/api/v1/webhooks/resend', express.raw({ type: '*/*', limit: '1mb' }));
 
 // Parse JSON bodies for all other routes
 app.use(express.json({ limit: '1mb' }));
@@ -5278,31 +5281,10 @@ function scheduleDigest() {
   console.log('[Digest] Scheduler enabled (Monday 13h UTC = 9h EST)');
 }
 
-// ─── Resend Webhook ──────────────────────────────────────────────────────────
-app.post('/api/v1/webhooks/resend', express.json(), (req, res) => {
-  try {
-    const { type, data } = req.body || {};
-    if (!type) return res.status(400).json({ error: 'type required' });
-    const map = {
-      'email.delivered': 'email_welcome_delivered',
-      'email.opened': 'email_welcome_opened',
-      'email.clicked': 'email_welcome_clicked',
-      'email.bounced': 'email_welcome_bounced',
-      'email.complained': 'email_welcome_complained',
-    };
-    const eventName = map[type];
-    if (eventName) {
-      const events = loadAnalyticsEvents();
-      events.push({
-        ts: new Date().toISOString(),
-        event: eventName,
-        meta: { email_id: data?.email_id || null, to: Array.isArray(data?.to) ? data.to[0] : data?.to || null },
-      });
-      saveAnalyticsEvents(events);
-    }
-    return res.json({ status: 'ok' });
-  } catch (e) { return res.status(500).json({ error: 'internal error' }); }
-});
+// ─── Resend Webhook ─────────────────────────────────────────────────────────
+// Moved to routes/resend_webhook.js — registered below in the modular section.
+// (The old inline handler was replaced for proper Svix signature verification
+//  + per-step open/click tracking that enriches onboarding_events.json.)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MODULAR ROUTES (extracted in Session 15 refactor — see ./routes/)
@@ -5380,6 +5362,9 @@ referralModule = registerReferralRoutes(app, {
 
   // ─── Onboarding Email Sequence (J+1 welcome / J+3 case study / J+7 promo) ─
   registerOnboardingRoutes(app, { loadUsers, getResendClient, requireAdmin });
+
+  // ─── Resend Webhook (delivered / opened / clicked / bounced / complained) ─
+  registerResendWebhookRoutes(app, { requireAdmin });
 
   // ─── Promo Codes (centralized backend storage, auto-seeds WELCOME20/FLASH30) ─
   registerPromoRoutes(app, { requireAdmin });

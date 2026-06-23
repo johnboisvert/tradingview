@@ -865,10 +865,39 @@ export default function MyCryptoIA() {
   const [lastUpdate, setLastUpdate] = useState("");
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [widgets, setWidgets] = useState<Widget[]>(DEFAULT_WIDGETS);
   const [activeCategory, setActiveCategory] = useState<"all" | Widget["category"]>("all");
 
   const FAVORITES_KEY = "cryptoia_my_favorites";
+  const WIDGETS_KEY = "cryptoia_my_widgets_v1";
+
+  // ── Widget preferences (persisted to localStorage) ──────────────────────────
+  const loadWidgetPrefs = (): Widget[] => {
+    try {
+      const raw = localStorage.getItem(WIDGETS_KEY);
+      if (!raw) return DEFAULT_WIDGETS;
+      const saved = JSON.parse(raw) as Array<{ id: WidgetId; enabled: boolean }>;
+      const enabledMap = new Map(saved.map((s) => [s.id, s.enabled]));
+      // Merge: keep default widget order/metadata, override `enabled` from storage.
+      // New widgets (added later in DEFAULT_WIDGETS) fall back to their default `enabled`.
+      return DEFAULT_WIDGETS.map((w) =>
+        enabledMap.has(w.id) ? { ...w, enabled: !!enabledMap.get(w.id) } : w,
+      );
+    } catch {
+      return DEFAULT_WIDGETS;
+    }
+  };
+
+  const [widgets, setWidgets] = useState<Widget[]>(loadWidgetPrefs);
+
+  // Persist whenever widgets change (only `id` + `enabled`; icons are not JSON-safe)
+  useEffect(() => {
+    try {
+      const compact = widgets.map((w) => ({ id: w.id, enabled: w.enabled }));
+      localStorage.setItem(WIDGETS_KEY, JSON.stringify(compact));
+    } catch {
+      /* localStorage may be disabled — ignore */
+    }
+  }, [widgets]);
 
   const loadFavoriteIds = (): string[] => {
     try {
@@ -980,6 +1009,7 @@ export default function MyCryptoIA() {
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Actualiser
               </button>
               <button onClick={() => setShowSettings(!showSettings)}
+                data-testid="open-widgets-settings-btn"
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${showSettings ? "bg-indigo-500/20 border-indigo-500/30 text-indigo-400" : "bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.06] text-gray-400 hover:text-white"}`}>
                 <Settings className="w-3.5 h-3.5" /> Personnaliser ({enabledWidgets.length})
               </button>
@@ -989,10 +1019,31 @@ export default function MyCryptoIA() {
           {/* Settings panel */}
           {showSettings && (
             <div className="mb-6 p-5 rounded-2xl bg-slate-900/70 border border-white/[0.06]">
-              <div className="flex items-center gap-2 mb-4">
-                <Eye className="w-4 h-4 text-indigo-400" />
-                <h3 className="text-sm font-bold text-white">Widgets disponibles</h3>
-                <span className="text-xs text-gray-500 ml-1">— 20 widgets, activez ceux que vous souhaitez</span>
+              <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-indigo-400" />
+                  <h3 className="text-sm font-bold text-white">Widgets disponibles</h3>
+                  <span className="text-xs text-gray-500 ml-1">— 20 widgets, vos choix sont sauvegardés automatiquement</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    data-testid="widgets-enable-all-btn"
+                    onClick={() => setWidgets((prev) => prev.map((w) => ({ ...w, enabled: true })))}
+                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-white/[0.08] bg-white/[0.04] text-gray-300 hover:text-white hover:border-indigo-500/30 transition-all"
+                  >
+                    Tout activer
+                  </button>
+                  <button
+                    data-testid="widgets-reset-btn"
+                    onClick={() => {
+                      try { localStorage.removeItem(WIDGETS_KEY); } catch { /* noop */ }
+                      setWidgets(DEFAULT_WIDGETS);
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-white/[0.08] bg-white/[0.04] text-gray-300 hover:text-white hover:border-amber-500/30 transition-all"
+                  >
+                    Réinitialiser
+                  </button>
+                </div>
               </div>
               {/* Category filter */}
               <div className="flex gap-2 mb-4 flex-wrap">
@@ -1008,6 +1059,7 @@ export default function MyCryptoIA() {
                   const catStyle = CATEGORY_COLORS[w.category];
                   return (
                     <button key={w.id} onClick={() => toggleWidget(w.id)}
+                      data-testid={`widget-toggle-${w.id}`}
                       className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${w.enabled ? catStyle.active : catStyle.inactive}`}>
                       {w.icon}
                       <span className="text-[10px] font-bold text-center leading-tight">{w.label}</span>

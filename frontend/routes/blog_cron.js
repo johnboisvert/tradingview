@@ -122,14 +122,23 @@ function saveJSON(file, data) {
 }
 
 // ── Topic rotation: pick next topic, prioritizing unused ones ────────────
+// Once all topics are used, we auto-reset the used_topics list so the
+// rotation restarts from scratch each new cycle (instead of randomly
+// re-picking already-published topics in the same order).
 function getNextTopic() {
   const topics = loadJSON(TOPICS_FILE, { topics: DEFAULT_TOPICS }).topics || DEFAULT_TOPICS;
   const hist = loadJSON(HISTORY_FILE, { runs: [], used_topics: [] });
   const usedSet = new Set(hist.used_topics || []);
-  const unused = topics.filter(t => !usedSet.has(t));
-  // Pick from unused first; once exhausted, recycle from start
-  if (unused.length > 0) return unused[Math.floor(Math.random() * unused.length)];
-  return topics[Math.floor(Math.random() * topics.length)];
+  let unused = topics.filter(t => !usedSet.has(t));
+  // Auto-reset when the pool is exhausted (rotation cycle complete)
+  if (unused.length === 0) {
+    console.log(`[BlogCron] 🔄 All ${topics.length} topics used — resetting rotation cycle`);
+    hist.used_topics = [];
+    hist.last_reset_at = new Date().toISOString();
+    saveJSON(HISTORY_FILE, hist);
+    unused = topics;
+  }
+  return unused[Math.floor(Math.random() * unused.length)];
 }
 
 function slugify(s) {

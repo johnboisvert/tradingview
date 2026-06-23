@@ -204,6 +204,32 @@ function renderTemplate(step, user) {
   return null;
 }
 
+// ─── Re-engagement template (used when J+1 wasn't opened after 48h) ─────
+function template_J1_reengage(user) {
+  const name = (user.username || user.email || '').split('@')[0];
+  const innerHtml = `${BRAND_HEADER('Tu as oublié ton bonus ? 👀')}
+<p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 16px;">Salut ${name},</p>
+<p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 20px;">Tu n'as pas encore consulté mon dernier email — pas de souci, je te remets l'essentiel ici en 30 secondes ⏱️</p>
+<div style="padding:20px;border-radius:12px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);margin-bottom:24px;">
+  <p style="color:#a5b4fc;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;font-weight:700;">⚡ Ton accès gratuit inclut</p>
+  <ul style="color:#cbd5e1;font-size:13px;line-height:1.8;margin:0;padding-left:20px;">
+    <li><strong style="color:#fff;">1 signal IA Bitcoin gratuit</strong> chaque jour</li>
+    <li><strong style="color:#fff;">Heatmap des 100 cryptos</strong> en temps réel</li>
+    <li><strong style="color:#fff;">Calculatrice de position</strong> avec gestion du risque</li>
+    <li><strong style="color:#fff;">Top 5 narratives</strong> mises à jour à 9h EST</li>
+  </ul>
+</div>
+<p style="color:#cbd5e1;font-size:14px;line-height:1.6;margin:0 0 20px;">Et si tu veux passer au niveau supérieur, l'<strong style="color:#fff;">essai gratuit 7 jours Advanced</strong> est toujours actif. Aucune carte requise.</p>
+<div style="text-align:center;margin:24px 0;">
+  <a href="https://www.cryptoia.ca/abonnements" style="display:inline-block;padding:14px 32px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:900;text-decoration:none;text-transform:uppercase;font-size:12px;letter-spacing:1.5px;">🚀 Tester gratuitement</a>
+</div>
+<p style="color:#94a3b8;font-size:11px;line-height:1.6;text-align:center;margin:0;">Si tu ne veux plus recevoir ces emails, <a href="https://www.cryptoia.ca/mon-compte" style="color:#64748b;">désabonne-toi en 1 clic</a>.</p>`;
+  return {
+    subject: '👀 Tu as oublié ton bonus crypto (rappel)',
+    html: emailWrap(innerHtml),
+  };
+}
+
 // ─── Sender helper ──────────────────────────────────────────────────────────
 async function sendOne(user, stepDef, getResendClient) {
   const tpl = renderTemplate(stepDef.step, user);
@@ -235,16 +261,60 @@ async function sendOne(user, stepDef, getResendClient) {
   }
 }
 
+// ─── Re-engagement sender ───────────────────────────────────────────────────
+// Sends a single follow-up email to a user whose J+1 (step 1) message was
+// delivered but not opened after REENGAGE_AFTER_HOURS. We tag the email with
+// reengagement=1 so future analytics can isolate its performance.
+async function sendReengagement(user, originalEvent, getResendClient) {
+  const tpl = template_J1_reengage(user);
+  const client = await getResendClient();
+  if (!client) return { ok: false, reason: 'no_resend_client' };
+  const sender = process.env.SENDER_EMAIL || 'CryptoIA <onboarding@resend.dev>';
+  try {
+    const tags = [
+      { name: 'category', value: 'onboarding' },
+      { name: 'step', value: '1' },
+      { name: 'key', value: 'welcome_signal_reengage' },
+      { name: 'reengagement', value: '1' },
+    ];
+    const resp = await client.emails.send({
+      from: sender,
+      to: [user.email],
+      subject: tpl.subject,
+      html: tpl.html,
+      tags,
+    });
+    const emailId = resp?.data?.id || resp?.id || null;
+    // Mark the original event so we don't send again
+    originalEvent.reengagement_sent_at = new Date().toISOString();
+    originalEvent.reengagement_email_id = emailId;
+    return { ok: true, email_id: emailId };
+  } catch (e) {
+    console.error('[Onboarding] reengage send error:', e?.message);
+    originalEvent.reengagement_error = e?.message;
+    originalEvent.reengagement_sent_at = new Date().toISOString(); // mark to avoid retry storm
+    return { ok: false, reason: 'send_error', error: e?.message };
+  }
+}
+
 // ─── Scheduler: check every 15 min, send pending emails ─────────────────────
 let _scheduler = null;
 function startScheduler({ loadUsers, getResendClient }) {
   if (_scheduler) clearInterval(_scheduler);
   const TICK_MS = 15 * 60 * 1000;
+  const REENGAGE_ENABLED = process.env.ONBOARDING_REENGAGEMENT_ENABLED !== 'false';
+  const REENGAGE_AFTER_HOURS = parseInt(process.env.ONBOARDING_REENGAGEMENT_HOURS || '48', 10);
+  const REENGAGE_AFTER_MS = REENGAGE_AFTER_HOURS * 60 * 60 * 1000;
+
   const tick = async () => {
     try {
       const users = loadUsers();
+      const usersByEmail = new Map((users || []).map(u => [(u.email || '').toLowerCase(), u]));
       const events = loadEvents();
       let sentCount = 0;
+      let reengageCount = 0;
+
+      // 1) Normal funnel sending (J+1 / J+3 / J+7)
       for (const user of users) {
         for (const stepDef of SEQUENCE) {
           if (userEligibleForStep(user, stepDef, events.events)) {
@@ -268,9 +338,30 @@ function startScheduler({ loadUsers, getResendClient }) {
           }
         }
       }
-      if (sentCount > 0) {
+
+      // 2) Re-engagement: J+1 emails delivered >48h ago but never opened
+      if (REENGAGE_ENABLED) {
+        const now = Date.now();
+        for (const e of events.events) {
+          if (e.step !== 1 || !e.ok) continue;
+          if (e.opened_at || e.clicked_at) continue; // already engaged
+          if (e.reengagement_sent_at) continue; // already followed-up
+          if (e.bounced_at || e.complained_at) continue; // skip bad addresses
+          const sentTs = new Date(e.ts).getTime();
+          if (now - sentTs < REENGAGE_AFTER_MS) continue; // not old enough
+          const user = usersByEmail.get((e.email || '').toLowerCase());
+          if (!user) continue; // user no longer exists
+          const result = await sendReengagement(user, e, getResendClient);
+          if (result.ok) reengageCount++;
+        }
+      }
+
+      if (sentCount > 0 || reengageCount > 0) {
         saveEvents(events);
-        console.log(`[Onboarding] ✉️ Sent ${sentCount} email(s) this tick`);
+        const parts = [];
+        if (sentCount) parts.push(`${sentCount} funnel`);
+        if (reengageCount) parts.push(`${reengageCount} reengage`);
+        console.log(`[Onboarding] ✉️ Sent ${parts.join(' + ')} email(s) this tick`);
       }
     } catch (e) {
       console.error('[Onboarding] tick error:', e?.message);
@@ -279,7 +370,7 @@ function startScheduler({ loadUsers, getResendClient }) {
   // First run after 30s, then every 15min
   setTimeout(tick, 30 * 1000);
   _scheduler = setInterval(tick, TICK_MS);
-  console.log('[Onboarding] ✅ Scheduler started (check every 15min)');
+  console.log(`[Onboarding] ✅ Scheduler started (check every 15min, reengagement ${REENGAGE_ENABLED ? `after ${REENGAGE_AFTER_HOURS}h` : 'DISABLED'})`);
 }
 
 // ─── Routes ─────────────────────────────────────────────────────────────────
@@ -384,6 +475,33 @@ export default function registerOnboardingRoutes(app, { loadUsers, getResendClie
       ab_test_j7,
       sent_total: events.length,
       last_5_events: events.slice(-5).reverse(),
+    });
+  });
+
+  // ─── Re-engagement stats (J+1 non-openers got a follow-up) ───────────────
+  app.get('/api/v1/admin/onboarding/reengagement', adminGuard, (_req, res) => {
+    const events = loadEvents().events;
+    const j1Events = events.filter(e => e.step === 1 && e.ok);
+    const eligible = j1Events.filter(e => !e.opened_at && !e.clicked_at && !e.bounced_at && !e.complained_at);
+    const sent = j1Events.filter(e => e.reengagement_sent_at);
+    const errors = j1Events.filter(e => e.reengagement_error);
+    res.json({
+      ok: true,
+      enabled: process.env.ONBOARDING_REENGAGEMENT_ENABLED !== 'false',
+      after_hours: parseInt(process.env.ONBOARDING_REENGAGEMENT_HOURS || '48', 10),
+      j1_total_sent: j1Events.length,
+      j1_pending_non_openers: eligible.length,
+      reengagement_sent: sent.length,
+      reengagement_errors: errors.length,
+      recent: sent.slice(-10).reverse().map(e => ({
+        ts: e.ts,
+        reengagement_sent_at: e.reengagement_sent_at,
+        email: e.email,
+        username: e.username,
+        original_email_id: e.email_id,
+        reengagement_email_id: e.reengagement_email_id,
+        error: e.reengagement_error,
+      })),
     });
   });
 

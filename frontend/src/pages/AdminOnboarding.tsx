@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { toast } from "sonner";
-import { Mail, RefreshCw, Send, CheckCircle2, XCircle, Eye, ExternalLink, TrendingUp, Users, AlertCircle, FlaskConical, Trophy, MailOpen, MousePointerClick, ShieldAlert } from "lucide-react";
+import { Mail, RefreshCw, Send, CheckCircle2, XCircle, Eye, ExternalLink, TrendingUp, Users, AlertCircle, FlaskConical, Trophy, MailOpen, MousePointerClick, ShieldAlert, Repeat } from "lucide-react";
 
 type FunnelStep = {
   step: number;
@@ -64,6 +64,7 @@ async function api<T = unknown>(path: string, method: "GET" | "POST" = "GET"): P
 export default function AdminOnboarding() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [emailStats, setEmailStats] = useState<{ ok: boolean; per_step: Array<{ step: number; sent: number; delivered: number; delivered_rate_pct: number; opened: number; open_rate_pct: number; clicked: number; click_rate_pct: number; ctor_pct: number; bounced: number; complained: number }>; secured: boolean } | null>(null);
+  const [reengagementStats, setReengagementStats] = useState<{ ok: boolean; enabled: boolean; after_hours: number; j1_total_sent: number; j1_pending_non_openers: number; reengagement_sent: number; reengagement_errors: number; recent: Array<{ ts: string; reengagement_sent_at: string; email: string; original_email_id: string | null; reengagement_email_id: string | null; error?: string | null }> } | null>(null);
   const [loading, setLoading] = useState(true);
   const [testEmail, setTestEmail] = useState("");
   const [sending, setSending] = useState(false);
@@ -75,15 +76,17 @@ export default function AdminOnboarding() {
     setError("");
     setEmailStatsError("");
     try {
-      const [d, es] = await Promise.all([
+      const [d, es, re] = await Promise.all([
         api<Stats>("/api/v1/admin/onboarding/stats"),
         api<{ ok: boolean; per_step: Array<{ step: number; sent: number; delivered: number; delivered_rate_pct: number; opened: number; open_rate_pct: number; clicked: number; click_rate_pct: number; ctor_pct: number; bounced: number; complained: number }>; secured: boolean } | { ok: false; error: string }>("/api/v1/admin/onboarding/email-stats").catch((e) => ({ ok: false as const, error: String(e) })),
+        api<{ ok: boolean; enabled: boolean; after_hours: number; j1_total_sent: number; j1_pending_non_openers: number; reengagement_sent: number; reengagement_errors: number; recent: Array<{ ts: string; reengagement_sent_at: string; email: string; original_email_id: string | null; reengagement_email_id: string | null; error?: string | null }> }>("/api/v1/admin/onboarding/reengagement").catch(() => null),
       ]);
       if (d?.ok) setStats(d);
       else setError("Échec de chargement");
       if (es && "ok" in es && es.ok) setEmailStats(es as never);
       else if (es && "error" in es) setEmailStatsError(es.error || "Endpoint indisponible");
       else setEmailStatsError("Réponse inattendue de /onboarding/email-stats");
+      if (re?.ok) setReengagementStats(re);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -335,6 +338,56 @@ export default function AdminOnboarding() {
                 )}
                 <p className="text-[10px] text-gray-500 mt-2">
                   📡 Endpoint : <code className="px-1 py-0.5 rounded bg-black/40">POST /api/v1/webhooks/resend</code> — à configurer dans Resend Dashboard (events : delivered, opened, clicked, bounced, complained).
+                </p>
+              </div>
+            )}
+
+            {/* Re-engagement (J+1 non-openers follow-up) */}
+            {reengagementStats && (
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5" data-testid="reengagement-card">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                  <h2 className="text-base font-bold flex items-center gap-2">
+                    <Repeat className="w-4 h-4 text-purple-400" /> Relance auto J+1 (non-ouvreurs)
+                  </h2>
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${reengagementStats.enabled ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-gray-500/15 text-gray-400 border border-gray-500/30"}`} data-testid="reengagement-status-badge">
+                    {reengagementStats.enabled ? `✅ Actif (après ${reengagementStats.after_hours}h)` : "⏸️ Désactivé"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  <div className="p-3 rounded-lg bg-black/30 border border-white/[0.04]">
+                    <p className="text-xl font-black text-white">{reengagementStats.j1_total_sent}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 mt-1">J+1 envoyés</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-black/30 border border-white/[0.04]">
+                    <p className="text-xl font-black text-amber-300" data-testid="reengagement-pending">{reengagementStats.j1_pending_non_openers}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 mt-1">À relancer</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-black/30 border border-white/[0.04]">
+                    <p className="text-xl font-black text-purple-300" data-testid="reengagement-sent">{reengagementStats.reengagement_sent}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 mt-1">Relances envoyées</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-black/30 border border-white/[0.04]">
+                    <p className="text-xl font-black text-red-300">{reengagementStats.reengagement_errors}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 mt-1">Erreurs</p>
+                  </div>
+                </div>
+                {reengagementStats.recent.length > 0 && (
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-gray-400 mb-2">10 dernières relances</p>
+                    <div className="space-y-1">
+                      {reengagementStats.recent.map((r, i) => (
+                        <div key={i} className="flex items-center gap-2 p-2 rounded bg-black/20 text-[11px]" data-testid={`reengagement-recent-${i}`}>
+                          <Repeat className="w-3 h-3 text-purple-400 flex-shrink-0" />
+                          <span className="text-gray-300 truncate flex-1">{r.email}</span>
+                          <span className="text-gray-500 whitespace-nowrap">{new Date(r.reengagement_sent_at).toLocaleString("fr-CA", { dateStyle: "short", timeStyle: "short" })}</span>
+                          {r.error && <span className="text-red-300 truncate max-w-[120px]">⚠️ {r.error}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-[10px] text-gray-500 mt-3">
+                  💡 Désactiver via <code className="px-1 py-0.5 rounded bg-black/40">ONBOARDING_REENGAGEMENT_ENABLED=false</code> · Délai ajustable via <code className="px-1 py-0.5 rounded bg-black/40">ONBOARDING_REENGAGEMENT_HOURS</code>
                 </p>
               </div>
             )}

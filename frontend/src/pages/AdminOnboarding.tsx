@@ -68,18 +68,22 @@ export default function AdminOnboarding() {
   const [testEmail, setTestEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string>("");
+  const [emailStatsError, setEmailStatsError] = useState<string>("");
 
   const refresh = async () => {
     setLoading(true);
     setError("");
+    setEmailStatsError("");
     try {
       const [d, es] = await Promise.all([
         api<Stats>("/api/v1/admin/onboarding/stats"),
-        api<{ ok: boolean; per_step: Array<{ step: number; sent: number; delivered: number; delivered_rate_pct: number; opened: number; open_rate_pct: number; clicked: number; click_rate_pct: number; ctor_pct: number; bounced: number; complained: number }>; secured: boolean }>("/api/v1/admin/onboarding/email-stats"),
+        api<{ ok: boolean; per_step: Array<{ step: number; sent: number; delivered: number; delivered_rate_pct: number; opened: number; open_rate_pct: number; clicked: number; click_rate_pct: number; ctor_pct: number; bounced: number; complained: number }>; secured: boolean } | { ok: false; error: string }>("/api/v1/admin/onboarding/email-stats").catch((e) => ({ ok: false as const, error: String(e) })),
       ]);
       if (d?.ok) setStats(d);
       else setError("Échec de chargement");
-      if (es?.ok) setEmailStats(es);
+      if (es && "ok" in es && es.ok) setEmailStats(es as never);
+      else if (es && "error" in es) setEmailStatsError(es.error || "Endpoint indisponible");
+      else setEmailStatsError("Réponse inattendue de /onboarding/email-stats");
     } catch (e) {
       setError(String(e));
     } finally {
@@ -286,6 +290,11 @@ export default function AdminOnboarding() {
             )}
 
             {/* Email engagement (open / click rates via Resend webhook) */}
+            {emailStatsError && !emailStats && (
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200" data-testid="email-engagement-error">
+                ⚠️ <strong>Engagement Emails indisponible</strong> — {emailStatsError}. Si tu viens de déployer, fais un <kbd className="px-1 py-0.5 rounded bg-black/40 mx-1">Ctrl+Shift+R</kbd> pour vider le cache. Sinon vérifie que <code className="px-1 py-0.5 rounded bg-black/40">/api/v1/admin/onboarding/email-stats</code> répond bien.
+              </div>
+            )}
             {emailStats && (
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5" data-testid="email-engagement-card">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">

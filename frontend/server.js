@@ -22,6 +22,7 @@ import registerIndexNowRoutes, { notifyIndexNow } from './routes/indexnow.js';
 import registerSentryWebhookRoutes from './routes/sentry_webhook.js';
 import registerBlogNewsletterRoutes from './routes/blog_newsletter.js';
 import registerBlogCronRoutes from './routes/blog_cron.js';
+import registerI18nHelperRoutes from './routes/i18n_helper.js';
 import registerPaymentWebhookRoutes from './routes/payment_webhooks.js';
 import registerCheckoutRecoveryRoutes from './routes/checkout_recovery.js';
 import registerAdminHealthRoutes from './routes/admin_health.js';
@@ -5375,6 +5376,9 @@ referralModule = registerReferralRoutes(app, {
     requireAdmin,
     getNewsletterNotifier: () => blogNewsletter.notifySubscribers,
   });
+
+  // ─── i18n Helper (LLM-powered FR→EN translation tool for migration) ─
+  registerI18nHelperRoutes(app, { requireAdmin });
 }
 
 // Backfill referral codes for any existing users that don't have one yet

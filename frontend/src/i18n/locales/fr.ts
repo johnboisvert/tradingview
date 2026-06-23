@@ -900,6 +900,28 @@ const fr = {
     noResults: "Aucun résultat pour « {{query}} »",
     tryExamples: "Essayez « bitcoin », « scalp », « affiliation »…",
   },
+  successStories: {
+    title: "Success Stories",
+    intro: "Les retours réels et vérifiés de nos utilisateurs. Pour préserver la confiance, nous publions uniquement des témoignages authentifiés (email vérifié, profil utilisateur actif).",
+    pairsScanned: "Paires scannées",
+    indicators: "Indicateurs IA",
+    realtime: "Données temps réel",
+    languages: "Langues (FR / EN)",
+    emptyTitle: "Témoignages vérifiés à venir",
+    emptyBody: "Plutôt que des avis fictifs, nous publions uniquement les retours d'utilisateurs réels qui ont accepté de partager leur expérience. Sois le premier à raconter ton histoire ci-dessous — ton témoignage sera vérifié puis publié sur cette page.",
+    shareEyebrow: "Partager ton expérience",
+    shareTitle: "Raconte ton histoire CryptoIA",
+    shareBody: "Ton retour aide les autres traders à se décider. Après vérification, ton témoignage pourra apparaître ici (avec ton consentement).",
+    thanks: "Merci !",
+    thanksBody: "Ton témoignage a été reçu et sera examiné sous 48h.",
+    placeholderName: "Ton prénom ou pseudo",
+    placeholderEmail: "ton@email.com",
+    placeholderRole: "Ton rôle (ex: swing trader, débutant…)",
+    placeholderQuote: "Comment CryptoIA t'a aidé ? Quels outils utilises-tu ? Sois honnête, on publie tel quel après vérification.",
+    submit: "Soumettre mon témoignage →",
+    submitting: "Envoi…",
+    errorLine: "Erreur. Réessaie ou contacte-nous.",
+  },
 };
 
 export default fr;

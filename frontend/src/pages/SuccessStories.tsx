@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Award, Star, Quote, Send, Lock, BarChart3, Globe, Clock } from "lucide-react";
 import Footer from "@/components/Footer";
@@ -27,6 +28,7 @@ type PublicStats = {
 };
 
 export default function SuccessStories() {
+  const { t } = useTranslation();
   const [stories, setStories] = useState<Story[]>([]);
   const [stats, setStats] = useState<PublicStats | null>(null);
   const [submitOpen, setSubmitOpen] = useState(false);
@@ -73,11 +75,11 @@ export default function SuccessStories() {
           <div className="flex items-center justify-center gap-3 mb-3">
             <Award className="w-8 h-8 text-amber-400" />
             <h1 className="text-4xl font-extrabold bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
-              Success Stories
+              {t("successStories.title")}
             </h1>
           </div>
           <p className="text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            Les retours réels et vérifiés de nos utilisateurs. Pour préserver la confiance, nous publions uniquement des témoignages authentifiés (email vérifié, profil utilisateur actif).
+            {t("successStories.intro")}
           </p>
         </div>
 
@@ -86,22 +88,22 @@ export default function SuccessStories() {
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
             <BarChart3 className="w-5 h-5 text-indigo-300 mx-auto mb-2" />
             <div className="text-2xl font-black text-white">{stats?.crypto_pairs_scanned ?? "—"}+</div>
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">Paires scannées</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">{t("successStories.pairsScanned")}</div>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
             <Star className="w-5 h-5 text-amber-300 mx-auto mb-2" />
             <div className="text-2xl font-black text-white">{stats?.indicators_tracked ?? "—"}+</div>
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">Indicateurs IA</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">{t("successStories.indicators")}</div>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
             <Clock className="w-5 h-5 text-emerald-300 mx-auto mb-2" />
             <div className="text-2xl font-black text-white">24/7</div>
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">Données temps réel</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">{t("successStories.realtime")}</div>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
             <Globe className="w-5 h-5 text-pink-300 mx-auto mb-2" />
             <div className="text-2xl font-black text-white">{stats?.languages_supported ?? "—"}</div>
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">Langues (FR / EN)</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">{t("successStories.languages")}</div>
           </div>
         </div>
 
@@ -139,10 +141,9 @@ export default function SuccessStories() {
             className="rounded-3xl border border-white/10 bg-gradient-to-br from-indigo-500/5 via-white/[0.02] to-pink-500/5 p-10 text-center mb-10"
           >
             <Lock className="w-10 h-10 text-indigo-300 mx-auto mb-4" />
-            <h3 className="text-xl font-black text-white mb-2">Témoignages vérifiés à venir</h3>
+            <h3 className="text-xl font-black text-white mb-2">{t("successStories.emptyTitle")}</h3>
             <p className="text-sm text-gray-400 max-w-xl mx-auto leading-relaxed">
-              Plutôt que des avis fictifs, nous publions uniquement les retours d'utilisateurs réels qui ont accepté de partager leur expérience.
-              Sois le premier à raconter ton histoire ci-dessous — ton témoignage sera vérifié puis publié sur cette page.
+              {t("successStories.emptyBody")}
             </p>
           </div>
         )}
@@ -151,23 +152,23 @@ export default function SuccessStories() {
         <div className="max-w-2xl mx-auto rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.07] to-orange-500/[0.04] p-6 md:p-8">
           <div className="flex items-center gap-2 mb-3">
             <Send className="w-4 h-4 text-amber-300" />
-            <span className="text-[10px] uppercase tracking-widest font-black text-amber-300">Partager ton expérience</span>
+            <span className="text-[10px] uppercase tracking-widest font-black text-amber-300">{t("successStories.shareEyebrow")}</span>
           </div>
-          <h3 className="text-xl font-black text-white mb-2">Raconte ton histoire CryptoIA</h3>
+          <h3 className="text-xl font-black text-white mb-2">{t("successStories.shareTitle")}</h3>
           <p className="text-sm text-gray-300 mb-5 leading-relaxed">
-            Ton retour aide les autres traders à se décider. Après vérification, ton témoignage pourra apparaître ici (avec ton consentement).
+            {t("successStories.shareBody")}
           </p>
           {submitStatus === "success" ? (
             <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 text-center">
-              <div className="text-emerald-400 font-bold mb-1">✓ Merci !</div>
-              <p className="text-sm text-gray-300">Ton témoignage a été reçu et sera examiné sous 48h.</p>
+              <div className="text-emerald-400 font-bold mb-1">✓ {t("successStories.thanks")}</div>
+              <p className="text-sm text-gray-300">{t("successStories.thanksBody")}</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3" data-testid="story-submit-form">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <input
                   required
-                  placeholder="Ton prénom ou pseudo"
+                  placeholder={t("successStories.placeholderName")}
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   data-testid="story-name"
@@ -176,7 +177,7 @@ export default function SuccessStories() {
                 <input
                   required
                   type="email"
-                  placeholder="ton@email.com"
+                  placeholder={t("successStories.placeholderEmail")}
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   data-testid="story-email"
@@ -184,7 +185,7 @@ export default function SuccessStories() {
                 />
               </div>
               <input
-                placeholder="Ton rôle (ex: swing trader, débutant…)"
+                placeholder={t("successStories.placeholderRole")}
                 value={form.role}
                 onChange={(e) => setForm({ ...form, role: e.target.value })}
                 data-testid="story-role"
@@ -193,7 +194,7 @@ export default function SuccessStories() {
               <textarea
                 required
                 rows={4}
-                placeholder="Comment CryptoIA t'a aidé ? Quels outils utilises-tu ? Sois honnête, on publie tel quel après vérification."
+                placeholder={t("successStories.placeholderQuote")}
                 value={form.quote}
                 onChange={(e) => setForm({ ...form, quote: e.target.value })}
                 data-testid="story-quote"
@@ -205,10 +206,10 @@ export default function SuccessStories() {
                 data-testid="story-submit"
                 className="w-full px-5 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-sm hover:scale-[1.01] active:scale-[0.99] transition-transform disabled:opacity-60"
               >
-                {submitStatus === "submitting" ? "Envoi…" : "Soumettre mon témoignage →"}
+                {submitStatus === "submitting" ? t("successStories.submitting") : t("successStories.submit")}
               </button>
               {submitStatus === "error" && (
-                <p className="text-xs text-red-400" data-testid="story-error">Erreur. Réessaie ou contacte-nous.</p>
+                <p className="text-xs text-red-400" data-testid="story-error">{t("successStories.errorLine")}</p>
               )}
             </form>
           )}

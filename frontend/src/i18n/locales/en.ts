@@ -902,6 +902,28 @@ const en: TranslationDict = {
     noResults: "No results for « {{query}} »",
     tryExamples: "Try « bitcoin », « scalp », « affiliate »…",
   },
+  successStories: {
+    title: "Success Stories",
+    intro: "Real and verified feedback from our users. To preserve trust, we only publish authenticated testimonials (verified email, active user profile).",
+    pairsScanned: "Pairs scanned",
+    indicators: "AI indicators",
+    realtime: "Real-time data",
+    languages: "Languages (FR / EN)",
+    emptyTitle: "Verified testimonials coming soon",
+    emptyBody: "Rather than fictional reviews, we only publish feedback from real users who agreed to share their experience. Be the first to tell your story below — your testimonial will be verified and published on this page.",
+    shareEyebrow: "Share your experience",
+    shareTitle: "Tell your CryptoIA story",
+    shareBody: "Your feedback helps other traders decide. After verification, your testimonial may appear here (with your consent).",
+    thanks: "Thank you!",
+    thanksBody: "Your testimonial was received and will be reviewed within 48 hours.",
+    placeholderName: "Your first name or nickname",
+    placeholderEmail: "you@email.com",
+    placeholderRole: "Your role (e.g. swing trader, beginner…)",
+    placeholderQuote: "How did CryptoIA help you? Which tools do you use? Be honest — we publish as-is after verification.",
+    submit: "Submit my testimonial →",
+    submitting: "Sending…",
+    errorLine: "Error. Try again or contact us.",
+  },
 };
 
 export default en;

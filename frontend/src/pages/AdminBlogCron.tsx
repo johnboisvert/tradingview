@@ -31,7 +31,7 @@ type Preview = {
   dryRun?: boolean;
   topic?: string;
   preview?: { title: string; excerpt: string; content_chars: number; tags: string[] };
-  article?: { slug: string; title: string };
+  article?: { slug: string; title: string; coverImage?: string | null };
   error?: string;
   usage?: { total_tokens?: number; completion_tokens?: number } | null;
 };
@@ -119,7 +119,7 @@ export default function AdminBlogCron() {
               {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Publier maintenant
             </button>
           </div>
-          <p className="text-[11px] text-gray-500 mt-3">⏱️ La génération prend ~30-60s (GPT-5.4 article complet ~1500-2000 mots).</p>
+          <p className="text-[11px] text-gray-500 mt-3">⏱️ La génération prend ~30-90s (GPT-5.4 article complet ~1500-2000 mots + image de couverture GPT-Image-1).</p>
         </div>
 
         {/* Preview */}
@@ -139,10 +139,13 @@ export default function AdminBlogCron() {
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5" data-testid="publish-result">
             <h2 className="text-base font-bold text-emerald-300 mb-2 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Article publié !</h2>
             <p className="text-sm text-white font-bold mb-1">{preview.article.title}</p>
+            {preview.article.coverImage && (
+              <img src={preview.article.coverImage} alt={preview.article.title} className="mt-2 mb-3 rounded-lg w-full max-w-md border border-white/10" loading="lazy" data-testid="published-cover-image" />
+            )}
             <a href={`/blog/${preview.article.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-400 hover:text-emerald-300 underline" data-testid="published-article-link">
               /blog/{preview.article.slug} ↗
             </a>
-            <p className="text-[11px] text-gray-400 mt-2">🚀 IndexNow pingé · 📧 Newsletter envoyée · 🐦 Sera tweeté lors du prochain cycle 10h EST</p>
+            <p className="text-[11px] text-gray-400 mt-2">🚀 IndexNow pingé · 🎨 Cover GPT-Image-1 généré · 📧 Newsletter envoyée · 🐦 Sera tweeté lors du prochain cycle 10h EST</p>
           </div>
         )}
 

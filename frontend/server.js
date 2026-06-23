@@ -5439,6 +5439,13 @@ app.get(/\.map(\.gz)?$/, (req, res) => {
 
 app.use(express.static(path.join(__dirname, 'dist')));
 
+// Serve auto-generated blog cover images from persistent data volume.
+// These are PNG covers produced by routes/blog_cron.js (GPT-Image-1) and
+// they MUST survive container restarts — that's why they live under data/.
+app.use('/blog-covers', express.static(path.join(__dirname, 'data', 'blog-covers'), {
+  maxAge: '7d', immutable: true,
+}));
+
 // SPA fallback — also with no-cache headers
 app.get('{*path}', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');

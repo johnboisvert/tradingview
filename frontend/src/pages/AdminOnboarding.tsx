@@ -64,7 +64,7 @@ async function api<T = unknown>(path: string, method: "GET" | "POST" = "GET"): P
 export default function AdminOnboarding() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [emailStats, setEmailStats] = useState<{ ok: boolean; per_step: Array<{ step: number; sent: number; delivered: number; delivered_rate_pct: number; opened: number; open_rate_pct: number; clicked: number; click_rate_pct: number; ctor_pct: number; bounced: number; complained: number }>; secured: boolean } | null>(null);
-  const [reengagementStats, setReengagementStats] = useState<{ ok: boolean; enabled: boolean; after_hours: number; j1_total_sent: number; j1_pending_non_openers: number; reengagement_sent: number; reengagement_errors: number; recent: Array<{ ts: string; reengagement_sent_at: string; email: string; original_email_id: string | null; reengagement_email_id: string | null; error?: string | null }> } | null>(null);
+  const [reengagementStats, setReengagementStats] = useState<{ ok: boolean; enabled: boolean; after_hours: number; last_tick_at?: string | null; last_tick_error?: string | null; j1_total_sent: number; j1_pending_non_openers: number; reengagement_sent: number; reengagement_errors: number; recent: Array<{ ts: string; reengagement_sent_at: string; email: string; original_email_id: string | null; reengagement_email_id: string | null; error?: string | null }> } | null>(null);
   const [loading, setLoading] = useState(true);
   const [testEmail, setTestEmail] = useState("");
   const [sending, setSending] = useState(false);
@@ -79,7 +79,7 @@ export default function AdminOnboarding() {
       const [d, es, re] = await Promise.all([
         api<Stats>("/api/v1/admin/onboarding/stats"),
         api<{ ok: boolean; per_step: Array<{ step: number; sent: number; delivered: number; delivered_rate_pct: number; opened: number; open_rate_pct: number; clicked: number; click_rate_pct: number; ctor_pct: number; bounced: number; complained: number }>; secured: boolean } | { ok: false; error: string }>("/api/v1/admin/onboarding/email-stats").catch((e) => ({ ok: false as const, error: String(e) })),
-        api<{ ok: boolean; enabled: boolean; after_hours: number; j1_total_sent: number; j1_pending_non_openers: number; reengagement_sent: number; reengagement_errors: number; recent: Array<{ ts: string; reengagement_sent_at: string; email: string; original_email_id: string | null; reengagement_email_id: string | null; error?: string | null }> }>("/api/v1/admin/onboarding/reengagement").catch(() => null),
+        api<{ ok: boolean; enabled: boolean; after_hours: number; last_tick_at?: string | null; last_tick_error?: string | null; j1_total_sent: number; j1_pending_non_openers: number; reengagement_sent: number; reengagement_errors: number; recent: Array<{ ts: string; reengagement_sent_at: string; email: string; original_email_id: string | null; reengagement_email_id: string | null; error?: string | null }> }>("/api/v1/admin/onboarding/reengagement").catch(() => null),
       ]);
       if (d?.ok) setStats(d);
       else setError("Échec de chargement");
@@ -389,6 +389,12 @@ export default function AdminOnboarding() {
                 <p className="text-[10px] text-gray-500 mt-3">
                   💡 Désactiver via <code className="px-1 py-0.5 rounded bg-black/40">ONBOARDING_REENGAGEMENT_ENABLED=false</code> · Délai ajustable via <code className="px-1 py-0.5 rounded bg-black/40">ONBOARDING_REENGAGEMENT_HOURS</code>
                 </p>
+                {(reengagementStats.last_tick_at || reengagementStats.last_tick_error) && (
+                  <p className="text-[10px] text-gray-500 mt-1" data-testid="reengagement-heartbeat">
+                    {reengagementStats.last_tick_error ? "⚠️" : "💓"} Dernier tick du scheduler : {reengagementStats.last_tick_at ? new Date(reengagementStats.last_tick_at).toLocaleString("fr-CA", { dateStyle: "short", timeStyle: "medium" }) : "jamais"}
+                    {reengagementStats.last_tick_error && <span className="text-red-300 ml-2">— erreur : {reengagementStats.last_tick_error}</span>}
+                  </p>
+                )}
               </div>
             )}
 

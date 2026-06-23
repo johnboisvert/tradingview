@@ -299,6 +299,8 @@ async function sendReengagement(user, originalEvent, getResendClient) {
 
 // ─── Scheduler: check every 15 min, send pending emails ─────────────────────
 let _scheduler = null;
+let _lastTickAt = null;
+let _lastTickError = null;
 function startScheduler({ loadUsers, getResendClient }) {
   if (_scheduler) clearInterval(_scheduler);
   const TICK_MS = 15 * 60 * 1000;
@@ -307,12 +309,15 @@ function startScheduler({ loadUsers, getResendClient }) {
   const REENGAGE_AFTER_MS = REENGAGE_AFTER_HOURS * 60 * 60 * 1000;
 
   const tick = async () => {
+    _lastTickAt = new Date().toISOString();
+    _lastTickError = null;
     try {
       const users = loadUsers();
       const usersByEmail = new Map((users || []).map(u => [(u.email || '').toLowerCase(), u]));
       const events = loadEvents();
       let sentCount = 0;
       let reengageCount = 0;
+      let reengageErrorCount = 0;
 
       // 1) Normal funnel sending (J+1 / J+3 / J+7)
       for (const user of users) {
@@ -344,27 +349,33 @@ function startScheduler({ loadUsers, getResendClient }) {
         const now = Date.now();
         for (const e of events.events) {
           if (e.step !== 1 || !e.ok) continue;
-          if (e.opened_at || e.clicked_at) continue; // already engaged
-          if (e.reengagement_sent_at) continue; // already followed-up
-          if (e.bounced_at || e.complained_at) continue; // skip bad addresses
+          if (e.opened_at || e.clicked_at) continue;
+          if (e.reengagement_sent_at) continue;
+          if (e.bounced_at || e.complained_at) continue;
           const sentTs = new Date(e.ts).getTime();
-          if (now - sentTs < REENGAGE_AFTER_MS) continue; // not old enough
+          if (now - sentTs < REENGAGE_AFTER_MS) continue;
           const user = usersByEmail.get((e.email || '').toLowerCase());
-          if (!user) continue; // user no longer exists
+          if (!user) continue;
           const result = await sendReengagement(user, e, getResendClient);
           if (result.ok) reengageCount++;
+          else reengageErrorCount++;
         }
       }
 
-      if (sentCount > 0 || reengageCount > 0) {
+      // IMPORTANT: persist also when only errors occurred so that the
+      // reengagement_sent_at "lock" we set on failures isn't lost — this
+      // prevents the retry storm flagged in the testing agent code review.
+      if (sentCount > 0 || reengageCount > 0 || reengageErrorCount > 0) {
         saveEvents(events);
         const parts = [];
         if (sentCount) parts.push(`${sentCount} funnel`);
         if (reengageCount) parts.push(`${reengageCount} reengage`);
-        console.log(`[Onboarding] ✉️ Sent ${parts.join(' + ')} email(s) this tick`);
+        if (reengageErrorCount) parts.push(`${reengageErrorCount} reengage-err`);
+        console.log(`[Onboarding] ✉️ Tick: ${parts.join(' + ')}`);
       }
     } catch (e) {
-      console.error('[Onboarding] tick error:', e?.message);
+      _lastTickError = e?.message || String(e);
+      console.error('[Onboarding] tick error:', _lastTickError);
     }
   };
   // First run after 30s, then every 15min
@@ -375,7 +386,11 @@ function startScheduler({ loadUsers, getResendClient }) {
 
 // ─── Routes ─────────────────────────────────────────────────────────────────
 export default function registerOnboardingRoutes(app, { loadUsers, getResendClient, requireAdmin }) {
-  startScheduler({ loadUsers, getResendClient });
+  try {
+    startScheduler({ loadUsers, getResendClient });
+  } catch (e) {
+    console.error('[Onboarding] Failed to start scheduler:', e?.message);
+  }
   const adminGuard = requireAdmin || ((_req, _res, next) => next());
 
   app.get('/api/v1/admin/onboarding/stats', adminGuard, (_req, res) => {
@@ -489,6 +504,8 @@ export default function registerOnboardingRoutes(app, { loadUsers, getResendClie
       ok: true,
       enabled: process.env.ONBOARDING_REENGAGEMENT_ENABLED !== 'false',
       after_hours: parseInt(process.env.ONBOARDING_REENGAGEMENT_HOURS || '48', 10),
+      last_tick_at: _lastTickAt,
+      last_tick_error: _lastTickError,
       j1_total_sent: j1Events.length,
       j1_pending_non_openers: eligible.length,
       reengagement_sent: sent.length,

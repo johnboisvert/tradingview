@@ -100,7 +100,10 @@ function buildMetrics(events) {
   const click_rate = pct(clicked, total);
   const bounce_rate = pct(bounced, total);
   const spam_rate = pct(complained, total);
-  const score = computeHealthScore({ delivered_rate, open_rate, bounce_rate, spam_rate });
+  // For a zero-volume window we explicitly return score:null so the UI shows
+  // the no-data state instead of a misleading 70/100 'Bon' from absence points
+  // (flagged by testing agent iteration_3 code review).
+  const score = total === 0 ? null : computeHealthScore({ delivered_rate, open_rate, bounce_rate, spam_rate });
   return {
     total, delivered, opened, clicked, bounced, complained,
     delivered_rate, open_rate, click_rate, bounce_rate, spam_rate, score,
@@ -161,8 +164,15 @@ export default function registerEmailHealthRoutes(app, { requireAdmin } = {}) {
       window_days: days,
       overall,
       per_domain: perDomain,
+      per_domain_truncated: perDomain.length === 12,
       alerts,
-      health_label: overall.score >= 80 ? 'Excellent' : overall.score >= 60 ? 'Bon' : overall.score >= 40 ? 'Moyen' : overall.score >= 20 ? 'Faible' : 'Critique',
+      health_label: overall.total === 0
+        ? 'Aucune donnée'
+        : overall.score >= 80 ? 'Excellent'
+        : overall.score >= 60 ? 'Bon'
+        : overall.score >= 40 ? 'Moyen'
+        : overall.score >= 20 ? 'Faible'
+        : 'Critique',
     });
   });
 
@@ -171,8 +181,8 @@ export default function registerEmailHealthRoutes(app, { requireAdmin } = {}) {
     const events = loadEvents();
     const incidents = events
       .filter(e => e.type === 'email.bounced' || e.type === 'email.complained')
-      .slice(-limit)
-      .reverse()
+      .sort((a, b) => new Date(b.ts) - new Date(a.ts)) // defensive: sort desc instead of relying on append-order
+      .slice(0, limit)
       .map(e => ({ ts: e.ts, type: e.type, recipient: e.recipient, subject: e.subject, category: e.category }));
     res.json({ ok: true, incidents, total_in_log: events.length });
   });

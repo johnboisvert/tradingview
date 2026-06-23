@@ -9,10 +9,10 @@ async function api<T = unknown>(path: string): Promise<T> {
   return res.json();
 }
 
-type Overall = { total: number; delivered: number; opened: number; clicked: number; bounced: number; complained: number; delivered_rate: number; open_rate: number; click_rate: number; bounce_rate: number; spam_rate: number; score: number };
+type Overall = { total: number; delivered: number; opened: number; clicked: number; bounced: number; complained: number; delivered_rate: number; open_rate: number; click_rate: number; bounce_rate: number; spam_rate: number; score: number | null };
 type PerDomain = { domain: string; total: number; delivered_rate: number; open_rate: number; bounce_rate: number; spam_rate: number };
 type Alert = { level: "critical" | "warning"; msg: string };
-type Health = { ok: boolean; window_days: number; overall: Overall; per_domain: PerDomain[]; alerts: Alert[]; health_label: string };
+type Health = { ok: boolean; window_days: number; overall: Overall; per_domain: PerDomain[]; per_domain_truncated?: boolean; alerts: Alert[]; health_label: string };
 type Incident = { ts: string; type: string; recipient: string; subject?: string | null; category?: string | null };
 
 export default function AdminEmailHealth() {
@@ -20,17 +20,24 @@ export default function AdminEmailHealth() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
+  const [healthError, setHealthError] = useState<string>("");
+  const [incidentsError, setIncidentsError] = useState<string>("");
 
   const refresh = async (d: number) => {
     setLoading(true);
-    try {
-      const [h, inc] = await Promise.all([
-        api<Health>(`/api/v1/admin/email-health?days=${d}`),
-        api<{ ok: boolean; incidents: Incident[] }>("/api/v1/admin/email-health/recent?limit=30"),
-      ]);
-      if (h?.ok) setHealth(h);
-      if (inc?.ok) setIncidents(inc.incidents || []);
-    } catch (e) { console.error(e); }
+    setHealthError("");
+    setIncidentsError("");
+    // Independent fetches so a failure on one doesn't hide the other
+    // (resilience flagged by testing agent iteration_3 code review).
+    const hPromise = api<Health>(`/api/v1/admin/email-health?days=${d}`).then(
+      (h) => { if (h?.ok) setHealth(h); else setHealthError("Réponse inattendue"); },
+      (e) => setHealthError(String(e)),
+    );
+    const iPromise = api<{ ok: boolean; incidents: Incident[] }>("/api/v1/admin/email-health/recent?limit=30").then(
+      (inc) => { if (inc?.ok) setIncidents(inc.incidents || []); else setIncidentsError("Réponse inattendue"); },
+      (e) => setIncidentsError(String(e)),
+    );
+    await Promise.allSettled([hPromise, iPromise]);
     setLoading(false);
   };
 
@@ -64,13 +71,26 @@ export default function AdminEmailHealth() {
           </div>
         </div>
 
-        {!health && !loading && (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200" data-testid="no-data-warning">
-            ⚠️ Pas de données disponibles. Vérifie que le webhook Resend est bien configuré (Dashboard Resend → Webhooks → `/api/v1/webhooks/resend`).
+        {/* Errors */}
+        {healthError && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300" data-testid="health-error">
+            ⚠️ Erreur chargement <code className="px-1 py-0.5 rounded bg-black/40">/email-health</code> : {healthError}
+          </div>
+        )}
+        {incidentsError && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200" data-testid="incidents-error">
+            ⚠️ Erreur chargement <code className="px-1 py-0.5 rounded bg-black/40">/email-health/recent</code> : {incidentsError}
           </div>
         )}
 
-        {health && (
+        {/* No-data state: surface BOTH when API failed AND when API returned ok:true but no events yet */}
+        {!loading && (!health || health.overall.total === 0) && !healthError && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200" data-testid="no-data-warning">
+            ⚠️ Pas encore de données. Vérifie que le webhook Resend est bien configuré (Dashboard Resend → Webhooks → <code className="px-1 py-0.5 rounded bg-black/40">/api/v1/webhooks/resend</code>). Les premières métriques apparaîtront dès que tes emails commenceront à être livrés et ouverts.
+          </div>
+        )}
+
+        {health && health.overall.total > 0 && (
           <>
             {/* Health Score Hero */}
             <div className="rounded-3xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-white/[0.01] p-6" data-testid="health-score-card">
@@ -78,8 +98,8 @@ export default function AdminEmailHealth() {
                 <div>
                   <p className="text-[10px] uppercase tracking-widest font-black text-gray-400 mb-2">Score Santé Globale</p>
                   <div className="flex items-baseline gap-3">
-                    <span className={`text-6xl font-black bg-gradient-to-br ${scoreColor(health.overall.score)} bg-clip-text text-transparent`} data-testid="health-score">
-                      {health.overall.score}
+                    <span className={`text-6xl font-black bg-gradient-to-br ${scoreColor(health.overall.score ?? 0)} bg-clip-text text-transparent`} data-testid="health-score">
+                      {health.overall.score ?? "—"}
                     </span>
                     <span className="text-2xl text-gray-500">/ 100</span>
                   </div>
@@ -89,7 +109,7 @@ export default function AdminEmailHealth() {
                 </div>
                 <div className="flex-1 max-w-md w-full">
                   <div className="h-3 bg-white/5 rounded-full overflow-hidden">
-                    <div className={`h-full bg-gradient-to-r ${scoreColor(health.overall.score)} rounded-full transition-all`} style={{ width: `${health.overall.score}%` }} />
+                    <div className={`h-full bg-gradient-to-r ${scoreColor(health.overall.score ?? 0)} rounded-full transition-all`} style={{ width: `${health.overall.score ?? 0}%` }} />
                   </div>
                   <div className="flex justify-between text-[10px] text-gray-500 mt-2">
                     <span>Critique</span><span>Faible</span><span>Moyen</span><span>Bon</span><span>Excellent</span>
@@ -127,7 +147,7 @@ export default function AdminEmailHealth() {
             {/* Per-domain breakdown */}
             {health.per_domain.length > 0 && (
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5" data-testid="per-domain-card">
-                <h2 className="text-base font-bold mb-4 flex items-center gap-2"><Globe className="w-4 h-4 text-cyan-400" /> Réputation par domaine destinataire</h2>
+                <h2 className="text-base font-bold mb-4 flex items-center gap-2"><Globe className="w-4 h-4 text-cyan-400" /> Réputation par domaine destinataire {health.per_domain_truncated && <span className="text-[10px] font-normal text-amber-300">(top 12)</span>}</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>

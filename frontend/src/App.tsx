@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import CommandPalette from "./components/CommandPalette";
 import CookieConsentBanner from "./components/CookieConsentBanner";
 import PushNotificationPrompt from "./components/PushNotificationPrompt";
+import UpdateBanner from "./components/UpdateBanner";
 import { captureRefFromUrl } from "./lib/affiliation";
 
 // ── Lazy-loaded pages ────────────────────────────────────────────────────────
@@ -126,6 +127,7 @@ function App() {
       <CommandPalette />
       <CookieConsentBanner />
       <PushNotificationPrompt />
+      <UpdateBanner />
       <NewsletterPopup />
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>

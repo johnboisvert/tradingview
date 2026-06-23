@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const STATIC_CACHE = `cryptoia-static-${CACHE_VERSION}`;
 const API_CACHE = `cryptoia-api-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `cryptoia-runtime-${CACHE_VERSION}`;
@@ -58,7 +58,7 @@ function safeCachePut(cache, request, response) {
 
 // ── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing CryptoIA Service Worker v3...');
+  console.log('[SW] Installing CryptoIA Service Worker v4...');
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
       console.log('[SW] Pre-caching static assets');
@@ -67,12 +67,14 @@ self.addEventListener('install', (event) => {
       });
     })
   );
-  self.skipWaiting();
+  // DO NOT auto-skipWaiting on v4+ — we now wait for the user to click
+  // "Mettre à jour" in the in-app UpdateBanner (registered in App.tsx).
+  // The component sends a SKIP_WAITING message handled below.
 });
 
 // ── Activate ─────────────────────────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating CryptoIA Service Worker v3...');
+  console.log('[SW] Activating CryptoIA Service Worker v4...');
   const currentCaches = [STATIC_CACHE, API_CACHE, RUNTIME_CACHE];
   event.waitUntil(
     caches.keys().then((cacheNames) => {

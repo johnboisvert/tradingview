@@ -10,10 +10,12 @@
 
 import path from 'path';
 import { generateJSON, loadJSON, saveJSON, SEO_DATA_DIR } from './_seo_generator.js';
+import { notifyIndexNow } from './indexnow.js';
 
 const DESC_FILE = path.join(SEO_DATA_DIR, 'coin_descriptions.json');
 const COIN_CACHE_FILE = path.join(SEO_DATA_DIR, 'coin_market_cache.json');
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 min — CoinGecko free tier ~10 req/min
+const BASE_URL = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
 
 // CoinGecko symbol → id mapping for the top 60 coins (extend as needed)
 const COIN_MAP = {
@@ -178,6 +180,14 @@ export default function registerCoinRoutes(app, { requireAdmin } = {}) {
       }
     }
     saveJSON(DESC_FILE, db);
+    if (added.length > 0) {
+      const urls = [
+        `${BASE_URL}/crypto`,
+        `${BASE_URL}/sitemap.xml`,
+        ...added.map(s => `${BASE_URL}/crypto/${s}`),
+      ];
+      notifyIndexNow(urls).catch(e => console.error('[Coin] IndexNow ping error:', e?.message));
+    }
     res.json({ ok: true, added: added.length, total: Object.keys(db.items).length, items: added });
   });
 

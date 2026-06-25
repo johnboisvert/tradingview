@@ -12,8 +12,10 @@
 
 import path from 'path';
 import { generateJSON, loadJSON, saveJSON, slugify, SEO_DATA_DIR } from './_seo_generator.js';
+import { notifyIndexNow } from './indexnow.js';
 
 const FILE = path.join(SEO_DATA_DIR, 'glossary.json');
+const BASE_URL = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
 
 // ── Seed catalog of essential crypto terms (~80 core terms) ────────────────
 const DEFAULT_TERMS = [
@@ -105,6 +107,15 @@ export default function registerGlossaryRoutes(app, { requireAdmin } = {}) {
       }
     }
     saveJSON(FILE, db);
+    // Ping IndexNow for the new entries + the index page + sitemap
+    if (added.length > 0) {
+      const urls = [
+        `${BASE_URL}/lexique`,
+        `${BASE_URL}/sitemap.xml`,
+        ...added.map(a => `${BASE_URL}/lexique/${a.slug}`),
+      ];
+      notifyIndexNow(urls).catch(e => console.error('[Glossary] IndexNow ping error:', e?.message));
+    }
     res.json({ ok: true, added: added.length, total: db.items.length, items: added });
   });
 

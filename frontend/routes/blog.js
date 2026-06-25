@@ -15,6 +15,7 @@ export default function register(app) {
 // BLOG SEO — Auto-generated articles for organic traffic
 // ═══════════════════════════════════════════════════════════════════════════════
 const BLOG_FILE = path.join(__dirname, '..', 'data', 'blog.json');
+const DATA_DIR = path.join(__dirname, '..', 'data');
 // Try multiple seed locations (Railway volume on /app/data masks files copied via Dockerfile)
 const SEED_CANDIDATES = [
   path.join(__dirname, '..', 'seeds', 'blog_seed.json'),  // production (volume-safe)
@@ -175,6 +176,9 @@ app.get('/sitemap.xml', (req, res) => {
     { path: '/calendrier',        priority: '0.7', changefreq: 'weekly' },
     { path: '/trading-academy',   priority: '0.7', changefreq: 'weekly' },
     { path: '/blog',              priority: '0.8', changefreq: 'daily' },
+    { path: '/lexique',           priority: '0.8', changefreq: 'weekly' },
+    { path: '/compare',           priority: '0.8', changefreq: 'weekly' },
+    { path: '/crypto',            priority: '0.9', changefreq: 'daily' },
     { path: '/leaderboard',       priority: '0.7', changefreq: 'daily' },
     { path: '/affiliation',       priority: '0.7', changefreq: 'monthly' },
     { path: '/abonnements',       priority: '0.6', changefreq: 'monthly' },
@@ -195,10 +199,45 @@ app.get('/sitemap.xml', (req, res) => {
     <priority>0.7</priority>
   </url>`).join('\n');
 
+  // ── New dynamic SEO pages (glossary entries, comparisons, per-coin pages) ──
+  // Each loaded lazily so a missing file doesn't break the sitemap render.
+  const loadSafe = (file) => {
+    try { return JSON.parse(fs.readFileSync(path.join(DATA_DIR, file), 'utf8')); } catch { return null; }
+  };
+  const glossary = loadSafe('glossary.json');
+  const compare = loadSafe('comparisons.json');
+  const coinDesc = loadSafe('coin_descriptions.json');
+
+  const glossaryUrls = (glossary?.items || []).map(i => `  <url>
+    <loc>${baseUrl}/lexique/${i.slug}</loc>
+    <lastmod>${(i.generatedAt || today).slice(0, 10)}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>`).join('\n');
+
+  const compareUrls = (compare?.items || []).map(i => `  <url>
+    <loc>${baseUrl}/compare/${i.slug}</loc>
+    <lastmod>${(i.generatedAt || today).slice(0, 10)}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>`).join('\n');
+
+  // Per-coin pages: only include symbols that have a generated description
+  // (live-only pages without editorial content add no SEO value)
+  const coinUrls = Object.keys(coinDesc?.items || {}).map(sym => `  <url>
+    <loc>${baseUrl}/crypto/${sym}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>`).join('\n');
+
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${staticUrls}
 ${articleUrls}
+${glossaryUrls}
+${compareUrls}
+${coinUrls}
 </urlset>`);
 });
 

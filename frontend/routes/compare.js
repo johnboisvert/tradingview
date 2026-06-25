@@ -10,8 +10,10 @@
 
 import path from 'path';
 import { generateJSON, loadJSON, saveJSON, slugify, SEO_DATA_DIR } from './_seo_generator.js';
+import { notifyIndexNow } from './indexnow.js';
 
 const FILE = path.join(SEO_DATA_DIR, 'comparisons.json');
+const BASE_URL = process.env.PUBLIC_URL || 'https://www.cryptoia.ca';
 
 // 50 most-searched crypto comparisons (FR-speaking market)
 const DEFAULT_PAIRS = [
@@ -113,6 +115,14 @@ export default function registerCompareRoutes(app, { requireAdmin } = {}) {
       }
     }
     saveJSON(FILE, db);
+    if (added.length > 0) {
+      const urls = [
+        `${BASE_URL}/compare`,
+        `${BASE_URL}/sitemap.xml`,
+        ...added.map(a => `${BASE_URL}/compare/${a.slug}`),
+      ];
+      notifyIndexNow(urls).catch(e => console.error('[Compare] IndexNow ping error:', e?.message));
+    }
     res.json({ ok: true, added: added.length, total: db.items.length, items: added });
   });
 

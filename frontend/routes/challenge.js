@@ -72,21 +72,23 @@ async function getPrices(symbols) {
     return priceCache.data;
   }
   const port = process.env.PORT || 8765;
-  // Use the EXACT same URL as the Telegram cron so we hit the warm cache.
-  // This endpoint is refreshed every ~15 min by [Telegram] and is always available
-  // via stale-cache fallback even during CoinGecko rate-limits.
-  const url = `http://localhost:${port}/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=24h`;
+  // Fetch 2 pages (top 200) — same as Telegram cron — to cover symbols outside top 100
+  // (MATIC, APT, ARB, OP, INJ etc. may drift out of top 100).
+  const urls = [1, 2].map(p =>
+    `http://localhost:${port}/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${p}&sparkline=true&price_change_percentage=24h`
+  );
   try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    const arr = await r.json();
     const out = {};
-    if (Array.isArray(arr)) {
-      for (const c of arr) {
-        const sym = REVERSE_ID_MAP[c?.id];
-        if (sym && typeof c?.current_price === 'number') out[sym] = c.current_price;
+    for (const url of urls) {
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      const arr = await r.json();
+      if (Array.isArray(arr)) {
+        for (const c of arr) {
+          const sym = REVERSE_ID_MAP[c?.id];
+          if (sym && typeof c?.current_price === 'number') out[sym] = c.current_price;
+        }
       }
     }
-    // Top 100 covers our 23 symbols entirely. If we got anything, refresh cache.
     if (Object.keys(out).length > 0) {
       priceCache = { ts: now, data: out };
     }

@@ -185,7 +185,7 @@ function CoinDetailPage({ symbol }: { symbol: string }) {
                 <p className="text-[11px] uppercase tracking-widest font-black text-white/80 mb-1">⚡ Signal IA disponible</p>
                 <p className="text-base font-black text-white">Tu veux savoir si c&apos;est le bon moment pour {data.market.name} ?</p>
               </div>
-              <Link to={`/signaux?coin=${symbol}`} className="px-5 py-2.5 rounded-lg bg-white text-indigo-700 font-black text-sm hover:bg-indigo-50 transition-colors whitespace-nowrap">Voir le signal IA →</Link>
+              <Link to={`/predictions?coin=${symbol}`} className="px-5 py-2.5 rounded-lg bg-white text-indigo-700 font-black text-sm hover:bg-indigo-50 transition-colors whitespace-nowrap">Voir le signal IA →</Link>
             </div>
             {/* Description sections */}
             {data.description ? (

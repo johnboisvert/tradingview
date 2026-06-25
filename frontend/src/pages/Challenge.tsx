@@ -1,13 +1,17 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import SEOHead from "@/components/SEOHead";
 import TrialBanner from "@/components/TrialBanner";
-import { Trophy, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, RefreshCw, Users, Calendar, Crown } from "lucide-react";
+import TradingViewChart from "@/components/TradingViewChart";
+import {
+  Trophy, TrendingUp, RefreshCw, Users, Calendar, Crown,
+  ArrowUpRight, ArrowDownRight, X, Search,
+} from "lucide-react";
 
 interface Position { qty: number; avg_price: number }
 interface Trade { ts: string; side: "buy" | "sell"; symbol: string; qty: number; price: number; value: number }
-interface Coin { symbol: string; name: string; image: string | null; price: number; change_24h: number; rank: number }
+interface Coin { symbol: string; name: string; image: string | null; price: number; change_24h: number; rank: number; market_cap?: number }
 interface Me {
   username: string;
   balance: number;
@@ -30,16 +34,25 @@ interface LeaderboardResp {
 
 const LS_EMAIL = "challenge.email";
 const LS_USERNAME = "challenge.username";
-
 const QUICK_AMOUNTS = [10, 50, 100, 250, 500];
 
 function fmtUsd(n: number) {
-  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtPrice(n: number) {
+  if (n >= 1) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
 }
 function fmtQty(n: number) {
   if (n >= 1) return n.toFixed(4);
   if (n >= 0.0001) return n.toFixed(6);
   return n.toFixed(8);
+}
+function fmtMcap(n: number) {
+  if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+  return `$${fmtUsd(n)}`;
 }
 
 export default function Challenge() {
@@ -49,12 +62,14 @@ export default function Challenge() {
   const [board, setBoard] = useState<LeaderboardResp | null>(null);
   const [symbols, setSymbols] = useState<string[]>([]);
   const [coins, setCoins] = useState<Record<string, Coin>>({});
+  const [prices, setPrices] = useState<Record<string, number>>({});
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [tradeSym, setTradeSym] = useState("BTC");
   const [inputMode, setInputMode] = useState<"usd" | "qty">("usd");
   const [usdAmount, setUsdAmount] = useState<string>("100");
   const [tradeQty, setTradeQty] = useState("0.01");
-  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerQuery, setPickerQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -97,15 +112,28 @@ export default function Challenge() {
     }).catch(() => {});
   }, [fetchBoard, fetchPrices]);
 
-  useEffect(() => {
-    if (email) fetchMe(email);
-  }, [email, fetchMe]);
+  useEffect(() => { if (email) fetchMe(email); }, [email, fetchMe]);
 
-  // Refresh leaderboard + prices every 30s
   useEffect(() => {
-    const id = setInterval(() => { fetchBoard(); fetchPrices(); }, 30000);
+    const id = setInterval(() => { fetchBoard(); fetchPrices(); if (email) fetchMe(email); }, 20000);
     return () => clearInterval(id);
-  }, [fetchBoard, fetchPrices]);
+  }, [fetchBoard, fetchPrices, fetchMe, email]);
+
+  // Auto-clear notifications
+  useEffect(() => {
+    if (!info && !error) return;
+    const id = setTimeout(() => { setInfo(null); setError(null); }, 4500);
+    return () => clearTimeout(id);
+  }, [info, error]);
+
+  const filteredSymbols = useMemo(() => {
+    if (!pickerQuery.trim()) return symbols;
+    const q = pickerQuery.trim().toLowerCase();
+    return symbols.filter(s => {
+      const c = coins[s];
+      return s.toLowerCase().includes(q) || (c?.name || "").toLowerCase().includes(q);
+    });
+  }, [symbols, pickerQuery, coins]);
 
   async function join() {
     setError(null); setInfo(null);
@@ -131,8 +159,8 @@ export default function Challenge() {
   async function executeTrade() {
     setError(null); setInfo(null);
     if (!me) { setError("Rejoins d'abord le challenge"); return; }
-    const livePrice = (me.prices?.[tradeSym]) || prices[tradeSym];
-    if (!livePrice) { setError("Prix en cours de chargement, réessaye dans 2s."); return; }
+    const livePrice = (me.prices?.[tradeSym]) || prices[tradeSym] || coins[tradeSym]?.price || 0;
+    if (!livePrice) { setError("Prix indisponible. Choisis une autre crypto."); return; }
 
     let qty: number;
     if (inputMode === "usd") {
@@ -144,10 +172,8 @@ export default function Challenge() {
       if (!Number.isFinite(qty) || qty <= 0) { setError("Quantité invalide"); return; }
     }
 
-    // Client-side pre-validation
     if (side === "buy" && qty * livePrice > me.balance + 0.01) {
-      setError(`Solde insuffisant. Max achetable: $${fmtUsd(me.balance)}`);
-      return;
+      setError(`Solde insuffisant. Max: $${fmtUsd(me.balance)}`); return;
     }
     if (side === "sell") {
       const heldQty = me.positions[tradeSym]?.qty || 0;
@@ -163,361 +189,370 @@ export default function Challenge() {
       const j = await r.json();
       if (!j?.ok) { setError(j?.error || "Trade refusé"); return; }
       setMe(j.participant);
-      setInfo(`✅ ${side === "buy" ? "Achat" : "Vente"} de ${fmtQty(qty)} ${tradeSym} @ $${fmtUsd(j.executed.price)} ($${fmtUsd(j.executed.value)})`);
+      setInfo(`${side === "buy" ? "ACHAT" : "VENTE"} ${fmtQty(qty)} ${tradeSym} @ $${fmtPrice(j.executed.price)}`);
       await fetchBoard();
     } catch { setError("Erreur réseau"); }
     finally { setBusy(false); }
   }
 
-  // Quick-fill helpers
-  function setMaxBuy() {
+  function quickClose(sym: string) {
     if (!me) return;
-    setInputMode("usd");
-    setUsdAmount(me.balance.toFixed(2));
-  }
-  function setMaxSell() {
-    if (!me) return;
-    const held = me.positions[tradeSym]?.qty || 0;
+    setTradeSym(sym);
+    setSide("sell");
     setInputMode("qty");
-    setTradeQty(held.toString());
+    setTradeQty((me.positions[sym]?.qty || 0).toString());
+    setTimeout(() => executeTrade(), 100);
   }
+  function setMaxBuy() { if (!me) { return; } setInputMode("usd"); setUsdAmount(me.balance.toFixed(2)); }
+  function setMaxSell() { if (!me) { return; } setInputMode("qty"); setTradeQty((me.positions[tradeSym]?.qty || 0).toString()); }
 
   const isJoined = !!me;
-  const myRank = board && me ? board.leaderboard.findIndex((r) => r.username.toLowerCase() === me.username.toLowerCase()) + 1 : 0;
+  const selCoin = coins[tradeSym];
+  const livePrice = (me?.prices?.[tradeSym]) || prices[tradeSym] || selCoin?.price || 0;
+  const ch24 = selCoin?.change_24h ?? 0;
+  const myRank = board && me ? board.leaderboard.findIndex(r => r.username.toLowerCase() === me.username.toLowerCase()) + 1 : 0;
+  const heldQty = me?.positions[tradeSym]?.qty || 0;
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] text-white">
-      <SEOHead
-        title="Trading Challenge Mensuel · Paper Trading $1000"
-        description="Concours de trading paper-trading mensuel gratuit. $1000 virtuels, leaderboard public, le gagnant remporte 1 mois CryptoIA Premium offert."
-        path="/challenge"
-      />
+    <div className="min-h-screen bg-[#06070d] text-white">
+      <SEOHead title="Trading Challenge · Paper Trading $1000" description="Concours paper-trading mensuel sur 100 cryptos. $1000 virtuels, leaderboard live, le #1 gagne 1 mois CryptoIA Premium." path="/challenge" />
       <Sidebar />
-      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-12">
-          {/* Hero */}
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold mb-5">
-              <Trophy className="w-3.5 h-3.5" />
-              CHALLENGE MENSUEL · GRATUIT
-            </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-3 bg-gradient-to-r from-amber-300 via-orange-400 to-red-400 bg-clip-text text-transparent">
-              Trading Challenge
-            </h1>
-            <p className="text-lg text-gray-300 max-w-2xl mx-auto mb-2">
-              $1000 virtuels · Aucun risque réel · Le #1 du mois gagne 1 mois Premium offert
-            </p>
-            {board && (
-              <div className="flex items-center justify-center gap-4 text-xs text-gray-500 mt-4 flex-wrap">
-                <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Période: {board.period}</span>
-                <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> {board.total_participants} participants</span>
-                <span className="flex items-center gap-1.5"><Trophy className="w-3.5 h-3.5 text-amber-400" /> {board.prize}</span>
+      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#06070d]">
+        <div className="max-w-[1600px] mx-auto px-3 md:px-6 py-4 md:py-6">
+
+          {/* Header ribbon — compact pro */}
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center"><Trophy className="w-5 h-5 text-black" /></div>
+              <div>
+                <h1 className="text-xl md:text-2xl font-black tracking-tight">Trading Challenge</h1>
+                <p className="text-[11px] text-gray-500">Paper trading mensuel · Aucun risque réel</p>
               </div>
-            )}
+            </div>
+            <div className="flex items-center gap-2 md:gap-4 text-[11px] flex-wrap">
+              <RibbonStat icon={<Calendar className="w-3 h-3" />} label="Période" value={board?.period || "—"} />
+              <RibbonStat icon={<Users className="w-3 h-3" />} label="Joueurs" value={String(board?.total_participants ?? 0)} />
+              <RibbonStat icon={<Trophy className="w-3 h-3 text-amber-400" />} label="Prix" value="1 mois Premium" highlight />
+            </div>
           </div>
 
-          {error && <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm" data-testid="challenge-error">{error}</div>}
-          {info && <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm" data-testid="challenge-info">{info}</div>}
+          {/* Notifications */}
+          {error && <div className="mb-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-medium" data-testid="challenge-error">{error}</div>}
+          {info && <div className="mb-3 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-medium" data-testid="challenge-info">{info}</div>}
 
-          {/* Join section if not yet joined */}
+          {/* Join screen */}
           {!isJoined && (
-            <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6 md:p-8 mb-8" data-testid="challenge-join">
-              <h2 className="text-xl font-extrabold mb-1">Rejoins le challenge</h2>
-              <p className="text-sm text-gray-400 mb-5">Reçois $1000 virtuels et grimpe au leaderboard. Reset chaque 1er du mois.</p>
-              <div className="grid md:grid-cols-2 gap-3 mb-3">
-                <input
-                  data-testid="challenge-email-input"
-                  type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ton@email.com"
-                  className="px-4 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/50"
-                />
-                <input
-                  data-testid="challenge-username-input"
-                  type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Ton pseudo (public)"
-                  maxLength={24}
-                  className="px-4 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/50"
-                />
+            <div className="bg-[#0d0e16] border border-white/[0.06] rounded-2xl p-6 md:p-8 mb-6 max-w-2xl mx-auto" data-testid="challenge-join">
+              <div className="text-center mb-6">
+                <div className="text-5xl mb-2">🏆</div>
+                <h2 className="text-2xl font-black mb-1">Rejoins le challenge</h2>
+                <p className="text-sm text-gray-400">Reçois <b className="text-emerald-400">$1000 virtuels</b>, trade 100 cryptos, vise la 1ère place.</p>
               </div>
-              <button
-                data-testid="challenge-join-button"
-                onClick={join} disabled={busy}
-                className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold text-sm hover:from-amber-400 hover:to-orange-400 transition disabled:opacity-50"
-              >
-                <Trophy className="w-4 h-4" />
-                {busy ? "..." : "Rejoindre le challenge"}
+              <div className="grid md:grid-cols-2 gap-3 mb-3">
+                <input data-testid="challenge-email-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ton@email.com" className="px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/50" />
+                <input data-testid="challenge-username-input" type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Pseudo public" maxLength={24} className="px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/50" />
+              </div>
+              <button data-testid="challenge-join-button" onClick={join} disabled={busy} className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black font-extrabold text-sm hover:from-amber-400 hover:to-orange-400 transition disabled:opacity-50">
+                <Trophy className="w-4 h-4" /> {busy ? "..." : "Rejoindre · $1000 virtuels"}
               </button>
-              <p className="text-[10px] text-gray-500 mt-3">Pas de CB requise · Aucun spam · Reset le 1er de chaque mois</p>
+              <p className="text-[10px] text-gray-500 mt-3 text-center">Pas de CB · Reset le 1er de chaque mois</p>
             </div>
           )}
 
-          {/* Joined: portfolio + trade UI */}
-          {isJoined && me && (
-            <div className="grid lg:grid-cols-3 gap-6 mb-8">
-              {/* Portfolio summary */}
-              <div className="lg:col-span-2 bg-[#111827] border border-white/[0.06] rounded-2xl p-6" data-testid="challenge-portfolio">
-                <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
+          {/* Pro layout — Chart left, Order panel right, Portfolio + Leaderboard below */}
+          {isJoined && (
+            <>
+              {/* Selected coin ticker bar */}
+              <div className="bg-[#0d0e16] border border-white/[0.06] rounded-2xl px-4 py-3 mb-3 flex items-center gap-4 flex-wrap" data-testid="ticker-bar">
+                <button onClick={() => setPickerOpen(true)} data-testid="open-coin-picker" className="flex items-center gap-3 hover:bg-white/[0.04] rounded-lg p-1 -m-1 transition">
+                  {selCoin?.image ? <img src={selCoin.image} alt={selCoin.name} className="w-9 h-9 rounded-full" /> : <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/30 border border-amber-500/30 flex items-center justify-center font-extrabold text-[10px]">{tradeSym.slice(0, 3)}</div>}
+                  <div className="text-left">
+                    <div className="text-base font-extrabold leading-tight">{tradeSym}<span className="text-gray-500 font-normal text-xs ml-2">{selCoin?.name || ""}</span></div>
+                    <div className="text-[10px] text-gray-500">#{selCoin?.rank || "—"} · Mcap {selCoin?.market_cap ? fmtMcap(selCoin.market_cap) : "—"}</div>
+                  </div>
+                </button>
+                <div className="ml-auto flex items-center gap-5 text-right">
                   <div>
-                    <div className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Ton portfolio · {me.username}</div>
-                    <div className="text-3xl md:text-4xl font-black text-white">${fmtUsd(me.equity)}</div>
-                    <div className={`text-sm font-bold mt-1 flex items-center gap-1 ${me.roi_pct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                      {me.roi_pct >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                      {me.roi_pct >= 0 ? "+" : ""}{me.roi_pct.toFixed(2)}%
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wider">Prix</div>
+                    <div className="text-xl font-black text-cyan-300">${livePrice ? fmtPrice(livePrice) : "..."}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wider">24h</div>
+                    <div className={`text-base font-extrabold flex items-center gap-1 justify-end ${ch24 >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      {ch24 >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                      {ch24 >= 0 ? "+" : ""}{ch24.toFixed(2)}%
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-xs text-gray-500 mb-1">Cash dispo</div>
-                    <div className="text-xl font-extrabold text-cyan-300">${fmtUsd(me.balance)}</div>
-                    {myRank > 0 && (
-                      <div className="text-xs text-amber-300 font-bold mt-2 flex items-center gap-1 justify-end">
-                        <Crown className="w-3.5 h-3.5" /> Rang #{myRank}
-                      </div>
-                    )}
-                  </div>
+                  <button onClick={() => setPickerOpen(true)} data-testid="change-coin-button" className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-xs font-bold text-gray-200 transition">Changer</button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3 mb-4">
+                {/* TradingView chart */}
+                <div data-testid="chart-container">
+                  <TradingViewChart symbol={tradeSym} height={520} />
                 </div>
 
-                {Object.keys(me.positions).length === 0 ? (
-                  <div className="text-center py-8 text-sm text-gray-500">Aucune position ouverte. Achète ta première crypto ci-contre →</div>
-                ) : (
-                  <div className="space-y-2">
-                    {Object.entries(me.positions).map(([sym, pos]) => {
-                      const price = me.prices?.[sym] || pos.avg_price;
-                      const value = pos.qty * price;
-                      const pnl = (price - pos.avg_price) * pos.qty;
-                      const pnlPct = pos.avg_price > 0 ? ((price - pos.avg_price) / pos.avg_price) * 100 : 0;
-                      return (
-                        <div key={sym} className="flex items-center justify-between py-3 px-4 rounded-xl bg-black/30 border border-white/[0.04]">
-                          <div className="flex items-center gap-3">
-                            {coins[sym]?.image ? (
-                              <img src={coins[sym].image!} alt={sym} className="w-10 h-10 rounded-full" />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/30 border border-amber-500/30 flex items-center justify-center font-extrabold text-xs">{sym.slice(0, 3)}</div>
-                            )}
-                            <div>
-                              <div className="font-bold text-sm">{coins[sym]?.name || sym} <span className="text-gray-500 font-normal text-[11px]">· {sym}</span></div>
-                              <div className="text-xs text-gray-500">{pos.qty.toFixed(6)} @ ${fmtUsd(pos.avg_price)}</div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-extrabold text-sm">${fmtUsd(value)}</div>
-                            <div className={`text-xs font-bold ${pnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                              {pnl >= 0 ? "+" : ""}${fmtUsd(pnl)} ({pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%)
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                {/* Order panel — NinjaTrader style */}
+                <div className="bg-[#0d0e16] border border-white/[0.06] rounded-2xl p-4" data-testid="challenge-trade-form">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider text-gray-300">Order Ticket</h3>
+                    <span className="text-[10px] text-gray-500 font-mono">{tradeSym}/USD</span>
                   </div>
-                )}
 
-                {me.trades.length > 0 && (
-                  <details className="mt-5">
-                    <summary className="text-xs text-gray-500 hover:text-gray-300 cursor-pointer font-bold uppercase tracking-wider">Historique ({me.trades.length})</summary>
-                    <div className="mt-3 space-y-1 max-h-64 overflow-y-auto">
-                      {me.trades.slice(0, 30).map((t, i) => (
-                        <div key={i} className="flex justify-between text-xs py-2 px-3 rounded-lg bg-black/20">
-                          <span className={`font-bold ${t.side === "buy" ? "text-emerald-400" : "text-red-400"}`}>{t.side === "buy" ? "ACHAT" : "VENTE"} {t.symbol}</span>
-                          <span className="text-gray-400">{t.qty.toFixed(6)} @ ${fmtUsd(t.price)}</span>
-                          <span className="text-gray-500">{new Date(t.ts).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
+                  {/* Side */}
+                  <div className="grid grid-cols-2 gap-1.5 mb-3">
+                    <button data-testid="trade-side-buy" onClick={() => setSide("buy")} className={`py-2.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition ${side === "buy" ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/30" : "bg-white/[0.05] text-emerald-400 hover:bg-emerald-500/10"}`}>Buy / Long</button>
+                    <button data-testid="trade-side-sell" onClick={() => setSide("sell")} className={`py-2.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition ${side === "sell" ? "bg-red-500 text-black shadow-lg shadow-red-500/30" : "bg-white/[0.05] text-red-400 hover:bg-red-500/10"}`}>Sell</button>
+                  </div>
+
+                  {/* Mode toggle */}
+                  <div className="grid grid-cols-2 gap-0.5 mb-2 p-0.5 bg-black/40 rounded-md border border-white/[0.04]">
+                    <button data-testid="trade-mode-usd" onClick={() => setInputMode("usd")} className={`py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition ${inputMode === "usd" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"}`}>USD Amount</button>
+                    <button data-testid="trade-mode-qty" onClick={() => setInputMode("qty")} className={`py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition ${inputMode === "qty" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"}`}>Quantity</button>
+                  </div>
+
+                  {inputMode === "usd" ? (
+                    <>
+                      <div className="relative mb-2">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">$</span>
+                        <input data-testid="trade-usd-input" type="number" step="any" min="0" value={usdAmount} onChange={(e) => setUsdAmount(e.target.value)} className="w-full pl-7 pr-3 py-2.5 rounded-lg bg-black/40 border border-white/[0.08] text-white text-base font-extrabold focus:outline-none focus:border-amber-500/50 font-mono" />
+                      </div>
+                      <div className="grid grid-cols-5 gap-1 mb-2">
+                        {QUICK_AMOUNTS.map((a) => (
+                          <button key={a} data-testid={`trade-quick-${a}`} onClick={() => setUsdAmount(a.toString())} className="py-1.5 rounded text-[10px] font-bold bg-white/[0.04] hover:bg-white/[0.1] text-gray-400 hover:text-white transition">${a}</button>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <input data-testid="trade-qty-input" type="number" step="any" min="0" value={tradeQty} onChange={(e) => setTradeQty(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-black/40 border border-white/[0.08] text-white text-base font-extrabold mb-2 focus:outline-none focus:border-amber-500/50 font-mono" placeholder={`0.01 ${tradeSym}`} />
+                  )}
+
+                  <button data-testid="trade-max-button" onClick={side === "buy" ? setMaxBuy : setMaxSell} className="w-full mb-2 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition">
+                    {side === "buy" ? `Max · $${fmtUsd(me!.balance)}` : `Max · ${fmtQty(heldQty)} ${tradeSym}`}
+                  </button>
+
+                  {/* Order preview */}
+                  {(() => {
+                    let previewQty = 0, previewUsd = 0;
+                    if (inputMode === "usd") {
+                      previewUsd = parseFloat(usdAmount) || 0;
+                      previewQty = livePrice > 0 ? previewUsd / livePrice : 0;
+                    } else {
+                      previewQty = parseFloat(tradeQty) || 0;
+                      previewUsd = previewQty * livePrice;
+                    }
+                    if (previewQty <= 0 || livePrice <= 0) return null;
+                    const newBalance = side === "buy" ? me!.balance - previewUsd : me!.balance + previewUsd;
+                    return (
+                      <div className="mb-3 p-2.5 rounded-lg bg-black/40 border border-white/[0.04] text-[10px] space-y-1 font-mono" data-testid="trade-preview">
+                        <Row k="QTY" v={`${fmtQty(previewQty)} ${tradeSym}`} />
+                        <Row k="VALUE" v={`$${fmtUsd(previewUsd)}`} />
+                        <Row k="PRICE" v={`$${fmtPrice(livePrice)}`} />
+                        <Row k="CASH AFTER" v={`$${fmtUsd(newBalance)}`} accent={newBalance < 0 ? "red" : "cyan"} />
+                      </div>
+                    );
+                  })()}
+
+                  <button data-testid="trade-execute" onClick={executeTrade} disabled={busy} className={`w-full py-3 rounded-lg text-xs font-extrabold uppercase tracking-wider transition disabled:opacity-50 ${side === "buy" ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20" : "bg-red-500 hover:bg-red-400 text-black shadow-lg shadow-red-500/20"}`}>
+                    {busy ? "..." : `${side === "buy" ? "BUY" : "SELL"} ${tradeSym} · Market`}
+                  </button>
+                  <p className="text-[9px] text-gray-600 mt-2 text-center font-mono uppercase tracking-wider">CoinGecko · 0 fees · No leverage</p>
+                </div>
+              </div>
+
+              {/* Portfolio stats row */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                <Kpi label="Equity" value={`$${fmtUsd(me!.equity)}`} sub={`${me!.roi_pct >= 0 ? "+" : ""}${me!.roi_pct.toFixed(2)}%`} subColor={me!.roi_pct >= 0 ? "emerald" : "red"} />
+                <Kpi label="Cash" value={`$${fmtUsd(me!.balance)}`} sub="USD" />
+                <Kpi label="Positions" value={String(Object.keys(me!.positions).length)} sub={`${me!.trades.length} trades`} />
+                <Kpi label="Rang" value={myRank > 0 ? `#${myRank}` : "—"} sub={board ? `/ ${board.total_participants}` : ""} accent />
+              </div>
+
+              {/* Positions table */}
+              <div className="bg-[#0d0e16] border border-white/[0.06] rounded-2xl overflow-hidden mb-3" data-testid="challenge-portfolio">
+                <div className="px-4 py-3 border-b border-white/[0.04] flex items-center justify-between">
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-300">Open Positions · {me!.username}</h3>
+                  <span className="text-[10px] text-gray-500 font-mono">{Object.keys(me!.positions).length} active</span>
+                </div>
+                {Object.keys(me!.positions).length === 0 ? (
+                  <div className="text-center py-10 text-xs text-gray-500">Aucune position. Lance ton premier trade ci-dessus.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="text-[10px] uppercase tracking-wider text-gray-500 border-b border-white/[0.04]">
+                        <tr><th className="text-left px-4 py-2 font-bold">Asset</th><th className="text-right px-3 py-2 font-bold">Qty</th><th className="text-right px-3 py-2 font-bold">Avg Price</th><th className="text-right px-3 py-2 font-bold">Mark</th><th className="text-right px-3 py-2 font-bold">Value</th><th className="text-right px-3 py-2 font-bold">PnL</th><th className="text-right px-4 py-2 font-bold">Action</th></tr>
+                      </thead>
+                      <tbody className="font-mono">
+                        {Object.entries(me!.positions).map(([sym, pos]) => {
+                          const px = (me!.prices?.[sym] || prices[sym] || pos.avg_price);
+                          const value = pos.qty * px;
+                          const pnl = (px - pos.avg_price) * pos.qty;
+                          const pnlPct = pos.avg_price > 0 ? ((px - pos.avg_price) / pos.avg_price) * 100 : 0;
+                          return (
+                            <tr key={sym} className="border-b border-white/[0.02] hover:bg-white/[0.02] cursor-pointer" onClick={() => setTradeSym(sym)}>
+                              <td className="px-4 py-2.5">
+                                <div className="flex items-center gap-2">
+                                  {coins[sym]?.image ? <img src={coins[sym].image!} alt={sym} className="w-6 h-6 rounded-full" /> : <div className="w-6 h-6 rounded-full bg-white/[0.06]" />}
+                                  <div><div className="font-extrabold text-white">{sym}</div><div className="text-[10px] text-gray-500 sans-serif font-sans">{coins[sym]?.name || ""}</div></div>
+                                </div>
+                              </td>
+                              <td className="text-right px-3 py-2.5 text-white">{fmtQty(pos.qty)}</td>
+                              <td className="text-right px-3 py-2.5 text-gray-400">${fmtPrice(pos.avg_price)}</td>
+                              <td className="text-right px-3 py-2.5 text-cyan-300">${fmtPrice(px)}</td>
+                              <td className="text-right px-3 py-2.5 font-extrabold text-white">${fmtUsd(value)}</td>
+                              <td className={`text-right px-3 py-2.5 font-extrabold ${pnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>{pnl >= 0 ? "+" : ""}${fmtUsd(pnl)}<div className="text-[10px] font-bold">{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%</div></td>
+                              <td className="text-right px-4 py-2.5">
+                                <button data-testid={`close-position-${sym}`} onClick={(e) => { e.stopPropagation(); quickClose(sym); }} className="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider bg-red-500/10 hover:bg-red-500/30 text-red-400 border border-red-500/20 transition">Close</button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
 
-              {/* Trade form — new UX with USD-amount mode + live price + max + preview */}
-              <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6" data-testid="challenge-trade-form">
-                <h3 className="font-extrabold text-base mb-4 flex items-center gap-2"><Wallet className="w-4 h-4 text-amber-400" /> Trade</h3>
-
-                {/* Side toggle */}
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  <button data-testid="trade-side-buy" onClick={() => setSide("buy")} className={`py-2.5 rounded-xl text-sm font-bold transition ${side === "buy" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-white/[0.04] text-gray-400 border border-white/[0.06]"}`}>🟢 Acheter</button>
-                  <button data-testid="trade-side-sell" onClick={() => setSide("sell")} className={`py-2.5 rounded-xl text-sm font-bold transition ${side === "sell" ? "bg-red-500/20 text-red-400 border border-red-500/40" : "bg-white/[0.04] text-gray-400 border border-white/[0.06]"}`}>🔴 Vendre</button>
-                </div>
-
-                {/* Symbol select with live price */}
-                <label className="text-[10px] text-gray-500 font-bold mb-1.5 block uppercase tracking-wider">Crypto ({symbols.length} disponibles)</label>
-                <div className="relative mb-3">
-                  <select
-                    data-testid="trade-symbol-select"
-                    value={tradeSym}
-                    onChange={(e) => setTradeSym(e.target.value)}
-                    className="w-full appearance-none px-4 py-3 pr-10 rounded-xl bg-black/30 border border-white/[0.08] text-white text-sm font-bold focus:outline-none focus:border-amber-500/50"
-                  >
-                    {symbols.map((s) => {
-                      const c = coins[s];
-                      const p = prices[s] || c?.price || 0;
-                      const name = c?.name || s;
-                      return (
-                        <option key={s} value={s}>
-                          {s} · {name}{p ? ` · $${fmtUsd(p)}` : ""}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-                {/* Selected coin card */}
-                {(() => {
-                  const c = coins[tradeSym];
-                  const price = prices[tradeSym] || c?.price || 0;
-                  const ch = c?.change_24h ?? 0;
-                  return (
-                    <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-black/30 border border-white/[0.04]">
-                      {c?.image ? (
-                        <img src={c.image} alt={c.name} className="w-9 h-9 rounded-full" />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/30 border border-amber-500/30 flex items-center justify-center font-extrabold text-[10px]">{tradeSym.slice(0, 3)}</div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-extrabold text-white truncate">{c?.name || tradeSym}</div>
-                        <div className="text-[11px] text-gray-500">#{c?.rank || "—"} · {tradeSym}</div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-sm font-extrabold text-cyan-300">{price ? `$${fmtUsd(price)}` : "..."}</div>
-                        <div className={`text-[11px] font-bold ${ch >= 0 ? "text-emerald-400" : "text-red-400"}`}>{ch >= 0 ? "+" : ""}{ch.toFixed(2)}% 24h</div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Mode toggle: USD vs Qty */}
-                <div className="grid grid-cols-2 gap-1 mb-3 p-0.5 bg-black/30 rounded-lg">
-                  <button
-                    data-testid="trade-mode-usd"
-                    onClick={() => setInputMode("usd")}
-                    className={`py-1.5 rounded-md text-[11px] font-bold transition ${inputMode === "usd" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"}`}
-                  >Montant $</button>
-                  <button
-                    data-testid="trade-mode-qty"
-                    onClick={() => setInputMode("qty")}
-                    className={`py-1.5 rounded-md text-[11px] font-bold transition ${inputMode === "qty" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"}`}
-                  >Quantité {tradeSym}</button>
-                </div>
-
-                {inputMode === "usd" ? (
-                  <>
-                    <div className="relative mb-2">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">$</span>
-                      <input
-                        data-testid="trade-usd-input"
-                        type="number" step="any" min="0"
-                        value={usdAmount}
-                        onChange={(e) => setUsdAmount(e.target.value)}
-                        className="w-full pl-7 pr-3 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-white text-sm font-bold focus:outline-none focus:border-amber-500/50"
-                      />
-                    </div>
-                    <div className="grid grid-cols-5 gap-1 mb-3">
-                      {QUICK_AMOUNTS.map((a) => (
-                        <button
-                          key={a}
-                          data-testid={`trade-quick-${a}`}
-                          onClick={() => setUsdAmount(a.toString())}
-                          className="py-1.5 rounded-md text-[11px] font-bold bg-white/[0.04] hover:bg-white/[0.1] text-gray-400 hover:text-white transition"
-                        >${a}</button>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <input
-                    data-testid="trade-qty-input"
-                    type="number" step="any" min="0"
-                    value={tradeQty}
-                    onChange={(e) => setTradeQty(e.target.value)}
-                    className="w-full px-3 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-white text-sm font-bold mb-3 focus:outline-none focus:border-amber-500/50"
-                    placeholder={`0.01 ${tradeSym}`}
-                  />
-                )}
-
-                {/* Max button */}
-                <button
-                  data-testid="trade-max-button"
-                  onClick={side === "buy" ? setMaxBuy : setMaxSell}
-                  className="w-full mb-3 py-2 rounded-lg text-[11px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition"
-                >
-                  {side === "buy"
-                    ? `Max ($${fmtUsd(me.balance)})`
-                    : `Max (${fmtQty(me.positions[tradeSym]?.qty || 0)} ${tradeSym})`}
-                </button>
-
-                {/* Order preview */}
-                {(() => {
-                  const livePrice = me.prices?.[tradeSym] || prices[tradeSym] || 0;
-                  let previewQty = 0, previewUsd = 0;
-                  if (inputMode === "usd") {
-                    previewUsd = parseFloat(usdAmount) || 0;
-                    previewQty = livePrice > 0 ? previewUsd / livePrice : 0;
-                  } else {
-                    previewQty = parseFloat(tradeQty) || 0;
-                    previewUsd = previewQty * livePrice;
-                  }
-                  if (previewQty <= 0 || livePrice <= 0) return null;
-                  const newBalance = side === "buy" ? me.balance - previewUsd : me.balance + previewUsd;
-                  return (
-                    <div className="mb-3 p-3 rounded-xl bg-black/30 border border-white/[0.04] text-[11px] space-y-1" data-testid="trade-preview">
-                      <div className="flex justify-between"><span className="text-gray-500">Tu {side === "buy" ? "vas acheter" : "vas vendre"}</span><span className="font-bold text-white">{fmtQty(previewQty)} {tradeSym}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-500">Valeur</span><span className="font-bold text-white">${fmtUsd(previewUsd)}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-500">Cash après</span><span className={`font-bold ${newBalance < 0 ? "text-red-400" : "text-cyan-300"}`}>${fmtUsd(newBalance)}</span></div>
-                    </div>
-                  );
-                })()}
-
-                <button
-                  data-testid="trade-execute"
-                  onClick={executeTrade}
-                  disabled={busy}
-                  className={`w-full py-3.5 rounded-xl text-sm font-extrabold transition disabled:opacity-50 ${side === "buy" ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-400 hover:to-teal-400" : "bg-gradient-to-r from-red-500 to-rose-500 text-white hover:from-red-400 hover:to-rose-400"}`}
-                >
-                  {busy ? "..." : (side === "buy" ? `Acheter ${tradeSym}` : `Vendre ${tradeSym}`)}
-                </button>
-                <p className="text-[10px] text-gray-500 mt-3 text-center">Prix temps réel CoinGecko · Fees 0 · Pas de levier</p>
-              </div>
-            </div>
+              {/* History */}
+              {me!.trades.length > 0 && (
+                <details className="bg-[#0d0e16] border border-white/[0.06] rounded-2xl overflow-hidden mb-3">
+                  <summary className="px-4 py-3 cursor-pointer text-xs font-extrabold uppercase tracking-wider text-gray-300 hover:bg-white/[0.02]">Trade History ({me!.trades.length})</summary>
+                  <div className="overflow-x-auto max-h-72 overflow-y-auto">
+                    <table className="w-full text-xs font-mono">
+                      <thead className="text-[10px] uppercase tracking-wider text-gray-500 sticky top-0 bg-[#0d0e16]">
+                        <tr><th className="text-left px-4 py-2 font-bold">Time</th><th className="text-left px-3 py-2 font-bold">Side</th><th className="text-left px-3 py-2 font-bold">Symbol</th><th className="text-right px-3 py-2 font-bold">Qty</th><th className="text-right px-3 py-2 font-bold">Price</th><th className="text-right px-4 py-2 font-bold">Value</th></tr>
+                      </thead>
+                      <tbody>
+                        {me!.trades.slice(0, 100).map((t, i) => (
+                          <tr key={i} className="border-b border-white/[0.02]">
+                            <td className="px-4 py-2 text-gray-500">{new Date(t.ts).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td>
+                            <td className={`px-3 py-2 font-extrabold ${t.side === "buy" ? "text-emerald-400" : "text-red-400"}`}>{t.side.toUpperCase()}</td>
+                            <td className="px-3 py-2 text-white font-extrabold">{t.symbol}</td>
+                            <td className="px-3 py-2 text-right text-gray-300">{fmtQty(t.qty)}</td>
+                            <td className="px-3 py-2 text-right text-cyan-300">${fmtPrice(t.price)}</td>
+                            <td className="px-4 py-2 text-right font-extrabold text-white">${fmtUsd(t.value)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
+            </>
           )}
 
           {/* Leaderboard */}
-          <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6 mb-8" data-testid="challenge-leaderboard">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-extrabold text-lg flex items-center gap-2"><Crown className="w-5 h-5 text-amber-400" /> Leaderboard</h2>
-              <button onClick={fetchBoard} className="text-xs text-gray-500 hover:text-white flex items-center gap-1" data-testid="leaderboard-refresh">
-                <RefreshCw className="w-3.5 h-3.5" /> Refresh
-              </button>
+          <div className="bg-[#0d0e16] border border-white/[0.06] rounded-2xl overflow-hidden mb-4" data-testid="challenge-leaderboard">
+            <div className="px-4 py-3 border-b border-white/[0.04] flex items-center justify-between">
+              <h2 className="text-xs font-extrabold uppercase tracking-wider text-gray-300 flex items-center gap-2"><Crown className="w-3.5 h-3.5 text-amber-400" /> Leaderboard</h2>
+              <button onClick={fetchBoard} className="text-[10px] text-gray-500 hover:text-white flex items-center gap-1" data-testid="leaderboard-refresh"><RefreshCw className="w-3 h-3" /> Refresh</button>
             </div>
             {board?.last_winner && (
-              <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
-                <div className="text-xs text-amber-300 font-bold uppercase tracking-wider mb-1">🏆 Gagnant du mois précédent ({board.last_winner.period})</div>
-                <div className="text-sm font-bold">{board.last_winner.username} avec ${fmtUsd(board.last_winner.equity)}</div>
+              <div className="px-4 py-2 bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-b border-amber-500/10">
+                <div className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">🏆 Gagnant {board.last_winner.period} · <span className="text-white">{board.last_winner.username}</span> · ${fmtUsd(board.last_winner.equity)}</div>
               </div>
             )}
             {!board || board.leaderboard.length === 0 ? (
-              <div className="text-center py-10 text-sm text-gray-500">Pas encore de participants. Sois le premier !</div>
+              <div className="text-center py-10 text-xs text-gray-500">Sois le premier à rejoindre.</div>
             ) : (
-              <div className="space-y-1">
-                {board.leaderboard.map((row, i) => {
-                  const isMe = me && row.username.toLowerCase() === me.username.toLowerCase();
-                  const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
-                  return (
-                    <div key={i} className={`flex items-center justify-between py-3 px-4 rounded-xl border ${isMe ? "bg-amber-500/10 border-amber-500/30" : "bg-black/20 border-white/[0.04]"}`}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 text-center font-extrabold text-base">{medal}</div>
-                        <div className="min-w-0">
-                          <div className="font-bold text-sm truncate">{row.username}{isMe && <span className="ml-2 text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">TOI</span>}</div>
-                          <div className="text-xs text-gray-500">{row.trade_count} trades</div>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="font-extrabold text-sm">${fmtUsd(row.equity)}</div>
-                        <div className={`text-xs font-bold ${row.roi_pct >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.roi_pct >= 0 ? "+" : ""}{row.roi_pct.toFixed(2)}%</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <table className="w-full text-xs">
+                <thead className="text-[10px] uppercase tracking-wider text-gray-500 border-b border-white/[0.04]">
+                  <tr><th className="text-left px-4 py-2 font-bold">Rank</th><th className="text-left px-3 py-2 font-bold">User</th><th className="text-right px-3 py-2 font-bold">Equity</th><th className="text-right px-3 py-2 font-bold">ROI</th><th className="text-right px-4 py-2 font-bold">Trades</th></tr>
+                </thead>
+                <tbody className="font-mono">
+                  {board.leaderboard.map((row, i) => {
+                    const isMe = me && row.username.toLowerCase() === me.username.toLowerCase();
+                    const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
+                    return (
+                      <tr key={i} className={`border-b border-white/[0.02] ${isMe ? "bg-amber-500/5" : ""}`}>
+                        <td className="px-4 py-2.5 font-extrabold text-base">{medal}</td>
+                        <td className="px-3 py-2.5 font-extrabold text-white font-sans">{row.username}{isMe && <span className="ml-2 text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-mono">YOU</span>}</td>
+                        <td className="text-right px-3 py-2.5 font-extrabold text-white">${fmtUsd(row.equity)}</td>
+                        <td className={`text-right px-3 py-2.5 font-extrabold ${row.roi_pct >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.roi_pct >= 0 ? "+" : ""}{row.roi_pct.toFixed(2)}%</td>
+                        <td className="text-right px-4 py-2.5 text-gray-400">{row.trade_count}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
           </div>
 
           <TrialBanner source="challenge-page" />
         </div>
+
+        {/* Coin picker modal */}
+        {pickerOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setPickerOpen(false)} data-testid="coin-picker-modal">
+            <div className="bg-[#0d0e16] border border-white/[0.1] rounded-2xl max-w-xl w-full max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
+                <h3 className="font-extrabold text-sm uppercase tracking-wider">Sélectionne une crypto ({symbols.length})</h3>
+                <button onClick={() => setPickerOpen(false)} data-testid="close-picker" className="text-gray-500 hover:text-white"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="p-3 border-b border-white/[0.06]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input data-testid="coin-picker-search" type="text" value={pickerQuery} onChange={(e) => setPickerQuery(e.target.value)} placeholder="Bitcoin, ETH, Solana..." className="w-full pl-10 pr-3 py-2.5 rounded-lg bg-black/40 border border-white/[0.08] text-sm focus:outline-none focus:border-amber-500/50" autoFocus />
+                </div>
+              </div>
+              <div className="overflow-y-auto flex-1">
+                {filteredSymbols.length === 0 && <div className="p-8 text-center text-sm text-gray-500">Aucun résultat</div>}
+                {filteredSymbols.map((s) => {
+                  const c = coins[s];
+                  const p = prices[s] || c?.price || 0;
+                  const ch = c?.change_24h ?? 0;
+                  return (
+                    <button key={s} data-testid={`coin-picker-${s}`} onClick={() => { setTradeSym(s); setPickerOpen(false); setPickerQuery(""); }} className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-white/[0.04] transition border-b border-white/[0.02] text-left ${tradeSym === s ? "bg-amber-500/5" : ""}`}>
+                      {c?.image ? <img src={c.image} alt={c.name} className="w-8 h-8 rounded-full" /> : <div className="w-8 h-8 rounded-full bg-white/[0.06]" />}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-extrabold text-sm">{s} <span className="text-gray-500 font-normal text-xs">· {c?.name || s}</span></div>
+                        <div className="text-[10px] text-gray-500">#{c?.rank || "—"} · {c?.market_cap ? fmtMcap(c.market_cap) : ""}</div>
+                      </div>
+                      <div className="text-right shrink-0 font-mono">
+                        <div className="text-sm font-extrabold text-cyan-300">${fmtPrice(p)}</div>
+                        <div className={`text-[10px] font-bold ${ch >= 0 ? "text-emerald-400" : "text-red-400"}`}>{ch >= 0 ? "+" : ""}{ch.toFixed(2)}%</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         <Footer />
       </main>
+    </div>
+  );
+}
+
+function RibbonStat({ icon, label, value, highlight }: { icon: React.ReactNode; label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${highlight ? "bg-amber-500/10 border border-amber-500/20" : "bg-white/[0.04]"}`}>
+      <span className="text-gray-500">{icon}</span>
+      <span className="text-gray-500 uppercase tracking-wider text-[9px] font-bold">{label}</span>
+      <span className={`font-extrabold ${highlight ? "text-amber-300" : "text-white"}`}>{value}</span>
+    </div>
+  );
+}
+
+function Row({ k, v, accent }: { k: string; v: string; accent?: "red" | "cyan" }) {
+  const color = accent === "red" ? "text-red-400" : accent === "cyan" ? "text-cyan-300" : "text-white";
+  return (
+    <div className="flex justify-between">
+      <span className="text-gray-500 uppercase tracking-wider text-[9px] font-bold">{k}</span>
+      <span className={`font-extrabold ${color}`}>{v}</span>
+    </div>
+  );
+}
+
+function Kpi({ label, value, sub, subColor, accent }: { label: string; value: string; sub?: string; subColor?: "emerald" | "red"; accent?: boolean }) {
+  return (
+    <div className={`bg-[#0d0e16] border rounded-xl p-3 ${accent ? "border-amber-500/30" : "border-white/[0.06]"}`}>
+      <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">{label}</div>
+      <div className={`text-xl font-black font-mono ${accent ? "text-amber-300" : "text-white"}`}>{value}</div>
+      {sub && <div className={`text-[10px] font-bold mt-0.5 ${subColor === "emerald" ? "text-emerald-400" : subColor === "red" ? "text-red-400" : "text-gray-500"} font-mono`}>{sub}</div>}
     </div>
   );
 }

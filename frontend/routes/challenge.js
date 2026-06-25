@@ -62,6 +62,25 @@ const SYMBOL_BLOCKLIST = new Set([
   'WBTC', 'WETH', 'STETH', 'WSTETH', 'WEETH', 'WBETH', 'CBETH', 'RETH', 'METH', 'EZETH', 'RSETH', 'BSC-USD',
 ]);
 
+// Quality filters to keep the universe clean (no scam coins)
+const MIN_MARKET_CAP = 500_000_000; // $500M minimum
+const ASCII_NAME = /^[\x20-\x7E]+$/; // only printable ASCII chars in name
+
+function isQualityCoin(c) {
+  if (!c || typeof c !== 'object') return false;
+  const sym = String(c.symbol || '').toUpperCase();
+  if (!sym || SYMBOL_BLOCKLIST.has(sym)) return false;
+  if (typeof c.current_price !== 'number' || c.current_price <= 0) return false;
+  if (typeof c.market_cap !== 'number' || c.market_cap < MIN_MARKET_CAP) return false;
+  // No non-Latin characters in name (filters Chinese/Korean/Arabic scam tokens)
+  if (!c.name || !ASCII_NAME.test(c.name)) return false;
+  // Filter obvious scam patterns in name
+  const lowerName = c.name.toLowerCase();
+  if (lowerName.includes('life') && lowerName.includes('binance')) return false;
+  if (lowerName.match(/\b(scam|fake|test|copy)\b/)) return false;
+  return true;
+}
+
 // Dynamic universe (top 100 cryptos by market cap). Built from CoinGecko warm cache.
 // { SYMBOL: { id, name, image, price } } — refreshed every getPrices() call.
 let universe = {};
@@ -84,19 +103,19 @@ async function getPrices() {
     const newUniverse = {};
     const ranked = [];
     for (const c of arr) {
-      const sym = String(c?.symbol || '').toUpperCase();
-      if (!sym || SYMBOL_BLOCKLIST.has(sym)) continue;
-      if (typeof c?.current_price !== 'number' || c.current_price <= 0) continue;
+      if (!isQualityCoin(c)) continue;
+      const sym = String(c.symbol).toUpperCase();
       // De-dup: keep first occurrence of a symbol (highest market cap)
       if (newUniverse[sym]) continue;
       out[sym] = c.current_price;
       newUniverse[sym] = {
         id: c.id,
-        name: c.name || sym,
+        name: c.name,
         image: c.image || null,
         price: c.current_price,
         change_24h: c.price_change_percentage_24h || 0,
         rank: c.market_cap_rank || 999,
+        market_cap: c.market_cap,
       };
       ranked.push(sym);
     }
@@ -338,6 +357,7 @@ export default function register(app, { resendClientGetter }) {
       price: universe[sym]?.price || 0,
       change_24h: universe[sym]?.change_24h || 0,
       rank: universe[sym]?.rank || 999,
+      market_cap: universe[sym]?.market_cap || 0,
     }));
     res.json({ ok: true, symbols: list.map(s => s.symbol), coins: list });
   });

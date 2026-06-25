@@ -148,10 +148,10 @@ function CoinDetailPage({ symbol }: { symbol: string }) {
   return (
     <div className="flex min-h-screen bg-[#0a0e1a] text-white">
       <Sidebar />
-      <main className="flex-1 px-6 py-10 max-w-4xl mx-auto" data-testid="crypto-detail">
+      <main className="flex-1 px-6 py-10 max-w-4xl mx-auto" data-testid={data ? "crypto-detail" : notFound ? "crypto-not-found-wrap" : "crypto-loading"}>
         <Link to="/crypto" className="inline-flex items-center gap-1 text-sm text-cyan-400 hover:text-cyan-300 mb-6"><ArrowLeft className="w-4 h-4" /> Toutes les cryptos</Link>
         {loading && <p className="text-center text-gray-500 py-12">Chargement…</p>}
-        {notFound && <p className="text-center text-gray-500 py-12" data-testid="crypto-not-found">Cryptomonnaie non supportée.</p>}
+        {notFound && !data && <p className="text-center text-gray-500 py-12" data-testid="crypto-not-found">Cryptomonnaie non supportée.</p>}
         {data && (
           <>
             <header className="flex items-start gap-4 mb-8 flex-wrap">

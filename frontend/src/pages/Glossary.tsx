@@ -114,10 +114,10 @@ function GlossaryDetail({ slug }: { slug: string }) {
   return (
     <div className="flex min-h-screen bg-[#0a0e1a] text-white">
       <Sidebar />
-      <main className="flex-1 px-6 py-10 max-w-3xl mx-auto" data-testid="glossary-detail">
+      <main className="flex-1 px-6 py-10 max-w-3xl mx-auto" data-testid={item ? "glossary-detail" : notFound ? "glossary-not-found-wrap" : "glossary-loading"}>
         <Link to="/lexique" className="inline-flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300 mb-6"><ArrowLeft className="w-4 h-4" /> Tous les termes</Link>
         {loading && <p className="text-center text-gray-500 py-12">Chargement…</p>}
-        {notFound && <p className="text-center text-gray-500 py-12" data-testid="glossary-not-found">Terme introuvable.</p>}
+        {notFound && !item && <p className="text-center text-gray-500 py-12" data-testid="glossary-not-found">Terme introuvable.</p>}
         {item && (
           <article className="prose prose-invert max-w-none">
             <h1 className="text-4xl font-black mb-2 bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">{item.title}</h1>

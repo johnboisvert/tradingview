@@ -81,10 +81,10 @@ function CompareDetail({ slug }: { slug: string }) {
   return (
     <div className="flex min-h-screen bg-[#0a0e1a] text-white">
       <Sidebar />
-      <main className="flex-1 px-6 py-10 max-w-4xl mx-auto" data-testid="compare-detail">
+      <main className="flex-1 px-6 py-10 max-w-4xl mx-auto" data-testid={item ? "compare-detail" : notFound ? "compare-not-found-wrap" : "compare-loading"}>
         <Link to="/compare" className="inline-flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 mb-6"><ArrowLeft className="w-4 h-4" /> Tous les comparatifs</Link>
         {loading && <p className="text-center text-gray-500 py-12">Chargement…</p>}
-        {notFound && <p className="text-center text-gray-500 py-12" data-testid="compare-not-found">Comparatif introuvable.</p>}
+        {notFound && !item && <p className="text-center text-gray-500 py-12" data-testid="compare-not-found">Comparatif introuvable.</p>}
         {item && (
           <article>
             <h1 className="text-4xl font-black mb-4 bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">{item.title}</h1>

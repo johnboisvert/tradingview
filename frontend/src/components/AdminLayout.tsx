@@ -22,6 +22,7 @@ import {
   Twitter,
   Bot,
   Activity,
+  Wand2,
 } from "lucide-react";
 import { adminLogout } from "@/pages/AdminLogin";
 import { getAdminSession } from "@/lib/store";
@@ -41,6 +42,7 @@ const NAV_ITEMS = [
   { path: "/admin/onboarding", label: "Funnel Emails", icon: Send },
   { path: "/admin/email-health", label: "Email Health", icon: Activity },
   { path: "/admin/blog-cron", label: "Auto Blog (GPT)", icon: Bot },
+  { path: "/admin/seo-content", label: "Contenu SEO Auto", icon: Wand2 },
   { path: "/admin/telegram", label: "Alertes Telegram", icon: Send },
 ];
 

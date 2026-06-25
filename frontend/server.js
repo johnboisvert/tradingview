@@ -24,6 +24,10 @@ import registerBlogNewsletterRoutes from './routes/blog_newsletter.js';
 import registerBlogCronRoutes from './routes/blog_cron.js';
 import registerI18nHelperRoutes from './routes/i18n_helper.js';
 import registerEmailHealthRoutes from './routes/email_health.js';
+import registerGlossaryRoutes from './routes/glossary.js';
+import registerCompareRoutes from './routes/compare.js';
+import registerCoinRoutes from './routes/coin_pages.js';
+import registerDailyBriefRoutes from './routes/daily_brief.js';
 import registerPaymentWebhookRoutes from './routes/payment_webhooks.js';
 import registerCheckoutRecoveryRoutes from './routes/checkout_recovery.js';
 import registerAdminHealthRoutes from './routes/admin_health.js';
@@ -5383,6 +5387,14 @@ referralModule = registerReferralRoutes(app, {
 
   // ─── Email Health (deliverability reputation report) ─
   registerEmailHealthRoutes(app, { requireAdmin });
+
+  // ─── SEO content pages (Glossary, Comparisons, Per-coin pages) ─
+  registerGlossaryRoutes(app, { requireAdmin });
+  registerCompareRoutes(app, { requireAdmin });
+  registerCoinRoutes(app, { requireAdmin });
+
+  // ─── Daily Crypto Brief (8h EST email digest) ─
+  registerDailyBriefRoutes(app, { requireAdmin, loadUsers, getResendClient });
 }
 
 // Backfill referral codes for any existing users that don't have one yet

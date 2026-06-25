@@ -54,6 +54,10 @@ const AdminTwitter = React.lazy(() => import("./pages/AdminTwitter"));
 const AdminOnboarding = React.lazy(() => import("./pages/AdminOnboarding"));
 const AdminBlogCron = React.lazy(() => import("./pages/AdminBlogCron"));
 const AdminEmailHealth = React.lazy(() => import("./pages/AdminEmailHealth"));
+const Glossary = React.lazy(() => import("./pages/Glossary"));
+const Compare = React.lazy(() => import("./pages/Compare"));
+const CryptoPages = React.lazy(() => import("./pages/CryptoPages"));
+const AdminSeoContent = React.lazy(() => import("./pages/AdminSeoContent"));
 const ExchangeFeesComparator = React.lazy(() => import("./pages/ExchangeFeesComparator"));
 import NewsletterPopup from "./components/NewsletterPopup";
 const Analytics = React.lazy(() => import("./pages/Analytics"));
@@ -235,6 +239,13 @@ function App() {
           <Route path="/admin/onboarding" element={<ProtectedAdminRoute><AdminOnboarding /></ProtectedAdminRoute>} />
           <Route path="/admin/blog-cron" element={<ProtectedAdminRoute><AdminBlogCron /></ProtectedAdminRoute>} />
           <Route path="/admin/email-health" element={<ProtectedAdminRoute><AdminEmailHealth /></ProtectedAdminRoute>} />
+          <Route path="/admin/seo-content" element={<ProtectedAdminRoute><AdminSeoContent /></ProtectedAdminRoute>} />
+          <Route path="/lexique" element={<Glossary />} />
+          <Route path="/lexique/:slug" element={<Glossary />} />
+          <Route path="/compare" element={<Compare />} />
+          <Route path="/compare/:slug" element={<Compare />} />
+          <Route path="/crypto" element={<CryptoPages />} />
+          <Route path="/crypto/:symbol" element={<CryptoPages />} />
           <Route path="/comparateur-frais-exchanges" element={<ExchangeFeesComparator />} />
           <Route path="/admin/analytics" element={<ProtectedAdminRoute><Analytics /></ProtectedAdminRoute>} />
           <Route path="/admin/pricing" element={<ProtectedAdminRoute><Pricing /></ProtectedAdminRoute>} />

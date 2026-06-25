@@ -56,41 +56,54 @@ function computeEquity(p, prices) {
 
 // Simple in-memory price cache (15s TTL)
 let priceCache = { ts: 0, data: {} };
-// Symbol → CoinGecko id (covers our supported list + a few extras)
-const ID_MAP = {
-  BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin', XRP: 'ripple',
-  ADA: 'cardano', AVAX: 'avalanche-2', DOGE: 'dogecoin', MATIC: 'matic-network',
-  DOT: 'polkadot', LINK: 'chainlink', LTC: 'litecoin', ATOM: 'cosmos',
-  SHIB: 'shiba-inu', TRX: 'tron', UNI: 'uniswap', NEAR: 'near', APT: 'aptos',
-  ARB: 'arbitrum', OP: 'optimism', PEPE: 'pepe', SUI: 'sui', INJ: 'injective-protocol',
-};
-const REVERSE_ID_MAP = Object.fromEntries(Object.entries(ID_MAP).map(([s, id]) => [id, s]));
+// Symbol blocklist — stablecoins, wrapped/staked tokens that aren't relevant for trading challenge
+const SYMBOL_BLOCKLIST = new Set([
+  'USDT', 'USDC', 'DAI', 'BUSD', 'TUSD', 'USDD', 'USDE', 'FDUSD', 'PYUSD', 'USDS',
+  'WBTC', 'WETH', 'STETH', 'WSTETH', 'WEETH', 'WBETH', 'CBETH', 'RETH', 'METH', 'EZETH', 'RSETH', 'BSC-USD',
+]);
 
-async function getPrices(symbols) {
+// Dynamic universe (top 100 cryptos by market cap). Built from CoinGecko warm cache.
+// { SYMBOL: { id, name, image, price } } — refreshed every getPrices() call.
+let universe = {};
+let universeRanked = []; // ordered by market cap rank (for /symbols endpoint)
+
+async function getPrices() {
   const now = Date.now();
   if (now - priceCache.ts < 15000 && Object.keys(priceCache.data).length > 0) {
     return priceCache.data;
   }
   const port = process.env.PORT || 8765;
-  // Fetch 2 pages (top 200) — same as Telegram cron — to cover symbols outside top 100
-  // (MATIC, APT, ARB, OP, INJ etc. may drift out of top 100).
-  const urls = [1, 2].map(p =>
-    `http://localhost:${port}/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${p}&sparkline=true&price_change_percentage=24h`
-  );
+  // Top 100 by market cap. Same URL as Telegram cron → warm cache hit guaranteed.
+  const url = `http://localhost:${port}/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=24h`;
   try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const arr = await r.json();
+    if (!Array.isArray(arr)) return priceCache.data || {};
+
     const out = {};
-    for (const url of urls) {
-      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      const arr = await r.json();
-      if (Array.isArray(arr)) {
-        for (const c of arr) {
-          const sym = REVERSE_ID_MAP[c?.id];
-          if (sym && typeof c?.current_price === 'number') out[sym] = c.current_price;
-        }
-      }
+    const newUniverse = {};
+    const ranked = [];
+    for (const c of arr) {
+      const sym = String(c?.symbol || '').toUpperCase();
+      if (!sym || SYMBOL_BLOCKLIST.has(sym)) continue;
+      if (typeof c?.current_price !== 'number' || c.current_price <= 0) continue;
+      // De-dup: keep first occurrence of a symbol (highest market cap)
+      if (newUniverse[sym]) continue;
+      out[sym] = c.current_price;
+      newUniverse[sym] = {
+        id: c.id,
+        name: c.name || sym,
+        image: c.image || null,
+        price: c.current_price,
+        change_24h: c.price_change_percentage_24h || 0,
+        rank: c.market_cap_rank || 999,
+      };
+      ranked.push(sym);
     }
     if (Object.keys(out).length > 0) {
       priceCache = { ts: now, data: out };
+      universe = newUniverse;
+      universeRanked = ranked;
     }
     return Object.keys(out).length > 0 ? out : priceCache.data;
   } catch (e) {
@@ -180,6 +193,11 @@ async function endOfMonthSettlement(resendClientGetter) {
 export default function register(app, { resendClientGetter }) {
   // Ensure period is current at startup (catches missed cron during downtime)
   endOfMonthSettlement(resendClientGetter).catch(() => {});
+
+  // Warm the price/universe cache shortly after boot (give the CG cache time to populate)
+  setTimeout(() => { getPrices().catch(() => {}); }, 15000);
+  // Refresh prices every 60s so /symbols and leaderboard always have fresh data
+  setInterval(() => { getPrices().catch(() => {}); }, 60 * 1000);
 
   // Check every 30 minutes if month changed (matches pattern used in blog_cron/daily_brief)
   setInterval(() => {
@@ -309,19 +327,25 @@ export default function register(app, { resendClientGetter }) {
     });
   });
 
-  // GET /api/v1/challenge/symbols — list of supported coins (frontend dropdown)
-  app.get('/api/v1/challenge/symbols', (req, res) => {
-    res.json({
-      ok: true,
-      symbols: ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'AVAX', 'DOGE', 'MATIC', 'DOT', 'LINK', 'LTC', 'ATOM', 'SHIB', 'TRX', 'UNI', 'NEAR', 'APT', 'ARB', 'OP', 'PEPE', 'SUI', 'INJ'],
-    });
+  // GET /api/v1/challenge/symbols — dynamic top 100 from CoinGecko market cap
+  app.get('/api/v1/challenge/symbols', async (req, res) => {
+    // Ensure universe is warm
+    await getPrices();
+    const list = universeRanked.map(sym => ({
+      symbol: sym,
+      name: universe[sym]?.name || sym,
+      image: universe[sym]?.image || null,
+      price: universe[sym]?.price || 0,
+      change_24h: universe[sym]?.change_24h || 0,
+      rank: universe[sym]?.rank || 999,
+    }));
+    res.json({ ok: true, symbols: list.map(s => s.symbol), coins: list });
   });
 
-  // GET /api/v1/challenge/prices — return live prices for all supported symbols
+  // GET /api/v1/challenge/prices — live prices for all supported symbols
   app.get('/api/v1/challenge/prices', async (req, res) => {
-    const all = Object.keys(ID_MAP);
-    const prices = await getPrices(all);
-    res.json({ ok: true, prices, fetched_at: new Date().toISOString() });
+    const prices = await getPrices();
+    res.json({ ok: true, prices, count: Object.keys(prices).length, fetched_at: new Date().toISOString() });
   });
 
   // GET /api/v1/challenge/history — past months top 10

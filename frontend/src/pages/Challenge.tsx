@@ -7,6 +7,7 @@ import { Trophy, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, RefreshCw, Us
 
 interface Position { qty: number; avg_price: number }
 interface Trade { ts: string; side: "buy" | "sell"; symbol: string; qty: number; price: number; value: number }
+interface Coin { symbol: string; name: string; image: string | null; price: number; change_24h: number; rank: number }
 interface Me {
   username: string;
   balance: number;
@@ -47,6 +48,7 @@ export default function Challenge() {
   const [me, setMe] = useState<Me | null>(null);
   const [board, setBoard] = useState<LeaderboardResp | null>(null);
   const [symbols, setSymbols] = useState<string[]>([]);
+  const [coins, setCoins] = useState<Record<string, Coin>>({});
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [tradeSym, setTradeSym] = useState("BTC");
   const [inputMode, setInputMode] = useState<"usd" | "qty">("usd");
@@ -85,7 +87,14 @@ export default function Challenge() {
   useEffect(() => {
     fetchBoard();
     fetchPrices();
-    fetch("/api/v1/challenge/symbols").then((r) => r.json()).then((j) => j?.ok && setSymbols(j.symbols)).catch(() => {});
+    fetch("/api/v1/challenge/symbols").then((r) => r.json()).then((j) => {
+      if (j?.ok) {
+        setSymbols(j.symbols || []);
+        const map: Record<string, Coin> = {};
+        for (const c of (j.coins || [])) map[c.symbol] = c;
+        setCoins(map);
+      }
+    }).catch(() => {});
   }, [fetchBoard, fetchPrices]);
 
   useEffect(() => {
@@ -277,9 +286,13 @@ export default function Challenge() {
                       return (
                         <div key={sym} className="flex items-center justify-between py-3 px-4 rounded-xl bg-black/30 border border-white/[0.04]">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/30 border border-amber-500/30 flex items-center justify-center font-extrabold text-xs">{sym.slice(0, 3)}</div>
+                            {coins[sym]?.image ? (
+                              <img src={coins[sym].image!} alt={sym} className="w-10 h-10 rounded-full" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/30 border border-amber-500/30 flex items-center justify-center font-extrabold text-xs">{sym.slice(0, 3)}</div>
+                            )}
                             <div>
-                              <div className="font-bold text-sm">{sym}</div>
+                              <div className="font-bold text-sm">{coins[sym]?.name || sym} <span className="text-gray-500 font-normal text-[11px]">· {sym}</span></div>
                               <div className="text-xs text-gray-500">{pos.qty.toFixed(6)} @ ${fmtUsd(pos.avg_price)}</div>
                             </div>
                           </div>
@@ -322,27 +335,49 @@ export default function Challenge() {
                 </div>
 
                 {/* Symbol select with live price */}
-                <label className="text-[10px] text-gray-500 font-bold mb-1.5 block uppercase tracking-wider">Crypto</label>
-                <div className="relative mb-1">
+                <label className="text-[10px] text-gray-500 font-bold mb-1.5 block uppercase tracking-wider">Crypto ({symbols.length} disponibles)</label>
+                <div className="relative mb-3">
                   <select
                     data-testid="trade-symbol-select"
                     value={tradeSym}
                     onChange={(e) => setTradeSym(e.target.value)}
                     className="w-full appearance-none px-4 py-3 pr-10 rounded-xl bg-black/30 border border-white/[0.08] text-white text-sm font-bold focus:outline-none focus:border-amber-500/50"
                   >
-                    {symbols.map((s) => (
-                      <option key={s} value={s}>
-                        {s}{prices[s] ? ` — $${fmtUsd(prices[s])}` : ""}
-                      </option>
-                    ))}
+                    {symbols.map((s) => {
+                      const c = coins[s];
+                      const p = prices[s] || c?.price || 0;
+                      const name = c?.name || s;
+                      return (
+                        <option key={s} value={s}>
+                          {s} · {name}{p ? ` · $${fmtUsd(p)}` : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-gray-500 mb-4">
-                  <span>Prix actuel</span>
-                  <span className="font-bold text-cyan-300">
-                    {prices[tradeSym] ? `$${fmtUsd(prices[tradeSym])}` : "..."}
-                  </span>
-                </div>
+                {/* Selected coin card */}
+                {(() => {
+                  const c = coins[tradeSym];
+                  const price = prices[tradeSym] || c?.price || 0;
+                  const ch = c?.change_24h ?? 0;
+                  return (
+                    <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-black/30 border border-white/[0.04]">
+                      {c?.image ? (
+                        <img src={c.image} alt={c.name} className="w-9 h-9 rounded-full" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/30 border border-amber-500/30 flex items-center justify-center font-extrabold text-[10px]">{tradeSym.slice(0, 3)}</div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-extrabold text-white truncate">{c?.name || tradeSym}</div>
+                        <div className="text-[11px] text-gray-500">#{c?.rank || "—"} · {tradeSym}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-sm font-extrabold text-cyan-300">{price ? `$${fmtUsd(price)}` : "..."}</div>
+                        <div className={`text-[11px] font-bold ${ch >= 0 ? "text-emerald-400" : "text-red-400"}`}>{ch >= 0 ? "+" : ""}{ch.toFixed(2)}% 24h</div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Mode toggle: USD vs Qty */}
                 <div className="grid grid-cols-2 gap-1 mb-3 p-0.5 bg-black/30 rounded-lg">

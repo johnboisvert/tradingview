@@ -84,6 +84,7 @@ const NAV_SECTIONS = [
     items: [
       { path: "/my-cryptoia", label: "My CryptoIA", icon: User },
       { path: "/gamification", label: "Gamification & Badges", icon: Trophy },
+      { path: "/challenge", label: "Trading Challenge", icon: Trophy, badge: "NEW" },
       { path: "/portfolio-tracker", label: "Portfolio", icon: Briefcase },
       { path: "/watchlist", label: "Watchlist", icon: Eye },
       { path: "/crypto-journal", label: "Journal de Trading", icon: BookOpen },
@@ -168,7 +169,6 @@ const NAV_SECTIONS = [
       { path: "/success-stories", label: "Success Stories", icon: Award },
       { path: "/leaderboard", label: "Leaderboard 🏆", icon: Crown },
       { path: "/quiz", label: "Quiz Trader 🧠", icon: Sparkles, badge: "NEW" },
-      { path: "/challenge", label: "Trading Challenge", icon: Trophy, badge: "NEW" },
     ],
   },
   {

@@ -9,8 +9,8 @@ import {
   ArrowUpRight, ArrowDownRight, X, Search,
 } from "lucide-react";
 
-interface Position { qty: number; avg_price: number }
-interface Trade { ts: string; side: "buy" | "sell"; symbol: string; qty: number; price: number; value: number }
+interface Position { id: string; symbol: string; side: "long" | "short"; qty: number; avg_price: number; mark?: number; value?: number; pnl?: number; pnl_pct?: number; sl?: number; tp?: number; opened_at?: string; collateral?: number }
+interface Trade { ts: string; action?: "open" | "close"; side: "buy" | "sell" | "long" | "short"; symbol: string; qty: number; price: number; value: number; pnl?: number; trigger?: string }
 interface Coin { symbol: string; name: string; image: string | null; price: number; change_24h: number; rank: number; market_cap?: number }
 interface Me {
   username: string;
@@ -20,6 +20,7 @@ interface Me {
   roi_pct: number;
   trades: Trade[];
   prices?: Record<string, number>;
+  pnl_realized?: number;
 }
 interface LeaderRow { username: string; equity: number; roi_pct: number; trade_count: number }
 interface LeaderboardResp {
@@ -63,11 +64,13 @@ export default function Challenge() {
   const [symbols, setSymbols] = useState<string[]>([]);
   const [coins, setCoins] = useState<Record<string, Coin>>({});
   const [prices, setPrices] = useState<Record<string, number>>({});
-  const [side, setSide] = useState<"buy" | "sell">("buy");
+  const [side, setSide] = useState<"long" | "short">("long");
   const [tradeSym, setTradeSym] = useState("BTC");
   const [inputMode, setInputMode] = useState<"usd" | "qty">("usd");
   const [usdAmount, setUsdAmount] = useState<string>("100");
   const [tradeQty, setTradeQty] = useState("0.01");
+  const [slInput, setSlInput] = useState<string>("");
+  const [tpInput, setTpInput] = useState<string>("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerQuery, setPickerQuery] = useState("");
   const [busy, setBusy] = useState(false);
@@ -172,46 +175,88 @@ export default function Challenge() {
       if (!Number.isFinite(qty) || qty <= 0) { setError("Quantité invalide"); return; }
     }
 
-    if (side === "buy" && qty * livePrice > me.balance + 0.01) {
+    if (qty * livePrice > me.balance + 0.01) {
       setError(`Solde insuffisant. Max: $${fmtUsd(me.balance)}`); return;
     }
-    if (side === "sell") {
-      const heldQty = me.positions[tradeSym]?.qty || 0;
-      if (qty > heldQty + 1e-9) { setError(`Tu détiens seulement ${fmtQty(heldQty)} ${tradeSym}`); return; }
+
+    // Validate SL/TP
+    const slNum = slInput.trim() === "" ? null : parseFloat(slInput);
+    const tpNum = tpInput.trim() === "" ? null : parseFloat(tpInput);
+    if (slNum !== null) {
+      if (!Number.isFinite(slNum) || slNum <= 0) { setError("SL invalide"); return; }
+      if (side === "long" && slNum >= livePrice) { setError("SL doit être < prix actuel pour un LONG"); return; }
+      if (side === "short" && slNum <= livePrice) { setError("SL doit être > prix actuel pour un SHORT"); return; }
+    }
+    if (tpNum !== null) {
+      if (!Number.isFinite(tpNum) || tpNum <= 0) { setError("TP invalide"); return; }
+      if (side === "long" && tpNum <= livePrice) { setError("TP doit être > prix actuel pour un LONG"); return; }
+      if (side === "short" && tpNum >= livePrice) { setError("TP doit être < prix actuel pour un SHORT"); return; }
     }
 
     setBusy(true);
     try {
       const r = await fetch("/api/v1/challenge/trade", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, side, symbol: tradeSym, qty }),
+        body: JSON.stringify({
+          email, action: "open", side, symbol: tradeSym, qty,
+          ...(slNum !== null ? { sl: slNum } : {}),
+          ...(tpNum !== null ? { tp: tpNum } : {}),
+        }),
       });
       const j = await r.json();
       if (!j?.ok) { setError(j?.error || "Trade refusé"); return; }
       setMe(j.participant);
-      setInfo(`${side === "buy" ? "ACHAT" : "VENTE"} ${fmtQty(qty)} ${tradeSym} @ $${fmtPrice(j.executed.price)}`);
+      setInfo(`${side.toUpperCase()} ${fmtQty(qty)} ${tradeSym} @ $${fmtPrice(j.executed.price)}${slNum ? ` · SL $${fmtPrice(slNum)}` : ""}${tpNum ? ` · TP $${fmtPrice(tpNum)}` : ""}`);
+      setSlInput(""); setTpInput("");
       await fetchBoard();
     } catch { setError("Erreur réseau"); }
     finally { setBusy(false); }
   }
 
-  function quickClose(sym: string) {
+  async function closePosition(pos: Position, partial?: number) {
     if (!me) return;
-    setTradeSym(sym);
-    setSide("sell");
-    setInputMode("qty");
-    setTradeQty((me.positions[sym]?.qty || 0).toString());
-    setTimeout(() => executeTrade(), 100);
+    setError(null); setInfo(null);
+    setBusy(true);
+    try {
+      const r = await fetch("/api/v1/challenge/trade", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, action: "close", side: pos.side, symbol: pos.symbol, qty: partial || pos.qty, position_id: pos.id }),
+      });
+      const j = await r.json();
+      if (!j?.ok) { setError(j?.error || "Erreur close"); return; }
+      setMe(j.participant);
+      setInfo(`Fermé ${fmtQty(partial || pos.qty)} ${pos.symbol} ${pos.side.toUpperCase()}`);
+      await fetchBoard();
+    } catch { setError("Erreur réseau"); }
+    finally { setBusy(false); }
   }
-  function setMaxBuy() { if (!me) { return; } setInputMode("usd"); setUsdAmount(me.balance.toFixed(2)); }
-  function setMaxSell() { if (!me) { return; } setInputMode("qty"); setTradeQty((me.positions[tradeSym]?.qty || 0).toString()); }
+
+  async function updatePositionSLTP(pos: Position, sl?: number | null, tp?: number | null) {
+    setError(null); setInfo(null);
+    setBusy(true);
+    try {
+      const body: Record<string, unknown> = { email, position_id: pos.id };
+      if (sl !== undefined) body.sl = sl;
+      if (tp !== undefined) body.tp = tp;
+      const r = await fetch("/api/v1/challenge/position/update", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+      const j = await r.json();
+      if (!j?.ok) { setError(j?.error || "Erreur SL/TP"); return; }
+      setInfo(`SL/TP mis à jour sur ${pos.symbol} ${pos.side.toUpperCase()}`);
+      if (email) await fetchMe(email);
+    } catch { setError("Erreur réseau"); }
+    finally { setBusy(false); }
+  }
+
+  function setMaxBuy() { if (!me) return; setInputMode("usd"); setUsdAmount(me.balance.toFixed(2)); }
+  function setPctBalance(pct: number) { if (!me) return; setInputMode("usd"); setUsdAmount((me.balance * pct).toFixed(2)); }
 
   const isJoined = !!me;
   const selCoin = coins[tradeSym];
   const livePrice = (me?.prices?.[tradeSym]) || prices[tradeSym] || selCoin?.price || 0;
   const ch24 = selCoin?.change_24h ?? 0;
   const myRank = board && me ? board.leaderboard.findIndex(r => r.username.toLowerCase() === me.username.toLowerCase()) + 1 : 0;
-  const heldQty = me?.positions[tradeSym]?.qty || 0;
 
   return (
     <div className="min-h-screen bg-[#06070d] text-white">
@@ -300,10 +345,10 @@ export default function Challenge() {
                     <span className="text-[10px] text-gray-500 font-mono">{tradeSym}/USD</span>
                   </div>
 
-                  {/* Side */}
+                  {/* Side: LONG / SHORT */}
                   <div className="grid grid-cols-2 gap-1.5 mb-3">
-                    <button data-testid="trade-side-buy" onClick={() => setSide("buy")} className={`py-2.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition ${side === "buy" ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/30" : "bg-white/[0.05] text-emerald-400 hover:bg-emerald-500/10"}`}>Buy / Long</button>
-                    <button data-testid="trade-side-sell" onClick={() => setSide("sell")} className={`py-2.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition ${side === "sell" ? "bg-red-500 text-black shadow-lg shadow-red-500/30" : "bg-white/[0.05] text-red-400 hover:bg-red-500/10"}`}>Sell</button>
+                    <button data-testid="trade-side-long" onClick={() => setSide("long")} className={`py-2.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition ${side === "long" ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/30" : "bg-white/[0.05] text-emerald-400 hover:bg-emerald-500/10"}`}>↗ Long</button>
+                    <button data-testid="trade-side-short" onClick={() => setSide("short")} className={`py-2.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition ${side === "short" ? "bg-red-500 text-black shadow-lg shadow-red-500/30" : "bg-white/[0.05] text-red-400 hover:bg-red-500/10"}`}>↘ Short</button>
                   </div>
 
                   {/* Mode toggle */}
@@ -323,14 +368,58 @@ export default function Challenge() {
                           <button key={a} data-testid={`trade-quick-${a}`} onClick={() => setUsdAmount(a.toString())} className="py-1.5 rounded text-[10px] font-bold bg-white/[0.04] hover:bg-white/[0.1] text-gray-400 hover:text-white transition">${a}</button>
                         ))}
                       </div>
+                      {/* Percentage of balance */}
+                      <div className="grid grid-cols-4 gap-1 mb-2">
+                        {[0.25, 0.5, 0.75, 1].map((p) => (
+                          <button key={p} data-testid={`trade-pct-${p * 100}`} onClick={() => setPctBalance(p)} className="py-1.5 rounded text-[10px] font-bold bg-white/[0.04] hover:bg-amber-500/20 text-amber-300 transition">
+                            {p * 100}%
+                          </button>
+                        ))}
+                      </div>
                     </>
                   ) : (
                     <input data-testid="trade-qty-input" type="number" step="any" min="0" value={tradeQty} onChange={(e) => setTradeQty(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-black/40 border border-white/[0.08] text-white text-base font-extrabold mb-2 focus:outline-none focus:border-amber-500/50 font-mono" placeholder={`0.01 ${tradeSym}`} />
                   )}
 
-                  <button data-testid="trade-max-button" onClick={side === "buy" ? setMaxBuy : setMaxSell} className="w-full mb-2 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition">
-                    {side === "buy" ? `Max · $${fmtUsd(me!.balance)}` : `Max · ${fmtQty(heldQty)} ${tradeSym}`}
+                  <button data-testid="trade-max-button" onClick={setMaxBuy} className="w-full mb-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition">
+                    Max · ${fmtUsd(me!.balance)}
                   </button>
+
+                  {/* SL / TP inputs */}
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div>
+                      <label className="text-[9px] text-red-400 font-bold uppercase tracking-wider mb-1 block">Stop Loss</label>
+                      <input
+                        data-testid="trade-sl-input"
+                        type="number" step="any" min="0" value={slInput} onChange={(e) => setSlInput(e.target.value)}
+                        placeholder={livePrice ? `< $${fmtPrice(livePrice)}` : "—"}
+                        className="w-full px-2.5 py-2 rounded-lg bg-black/40 border border-red-500/20 text-red-300 text-xs font-extrabold focus:outline-none focus:border-red-500/50 font-mono"
+                      />
+                      {slInput && livePrice && (
+                        <div className="text-[9px] text-gray-500 mt-0.5 font-mono">
+                          Risque: {side === "long"
+                            ? `-${(((livePrice - parseFloat(slInput)) / livePrice) * 100).toFixed(2)}%`
+                            : `-${(((parseFloat(slInput) - livePrice) / livePrice) * 100).toFixed(2)}%`}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider mb-1 block">Take Profit</label>
+                      <input
+                        data-testid="trade-tp-input"
+                        type="number" step="any" min="0" value={tpInput} onChange={(e) => setTpInput(e.target.value)}
+                        placeholder={livePrice ? `> $${fmtPrice(livePrice)}` : "—"}
+                        className="w-full px-2.5 py-2 rounded-lg bg-black/40 border border-emerald-500/20 text-emerald-300 text-xs font-extrabold focus:outline-none focus:border-emerald-500/50 font-mono"
+                      />
+                      {tpInput && livePrice && (
+                        <div className="text-[9px] text-gray-500 mt-0.5 font-mono">
+                          Gain: {side === "long"
+                            ? `+${(((parseFloat(tpInput) - livePrice) / livePrice) * 100).toFixed(2)}%`
+                            : `+${(((livePrice - parseFloat(tpInput)) / livePrice) * 100).toFixed(2)}%`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                   {/* Order preview */}
                   {(() => {
@@ -343,19 +432,20 @@ export default function Challenge() {
                       previewUsd = previewQty * livePrice;
                     }
                     if (previewQty <= 0 || livePrice <= 0) return null;
-                    const newBalance = side === "buy" ? me!.balance - previewUsd : me!.balance + previewUsd;
+                    const newBalance = me!.balance - previewUsd;
                     return (
                       <div className="mb-3 p-2.5 rounded-lg bg-black/40 border border-white/[0.04] text-[10px] space-y-1 font-mono" data-testid="trade-preview">
+                        <Row k="SIDE" v={side.toUpperCase()} accent={side === "long" ? "cyan" : "red"} />
                         <Row k="QTY" v={`${fmtQty(previewQty)} ${tradeSym}`} />
-                        <Row k="VALUE" v={`$${fmtUsd(previewUsd)}`} />
-                        <Row k="PRICE" v={`$${fmtPrice(livePrice)}`} />
+                        <Row k="ENTRY" v={`$${fmtPrice(livePrice)}`} />
+                        <Row k="COLLATERAL" v={`$${fmtUsd(previewUsd)}`} />
                         <Row k="CASH AFTER" v={`$${fmtUsd(newBalance)}`} accent={newBalance < 0 ? "red" : "cyan"} />
                       </div>
                     );
                   })()}
 
-                  <button data-testid="trade-execute" onClick={executeTrade} disabled={busy} className={`w-full py-3 rounded-lg text-xs font-extrabold uppercase tracking-wider transition disabled:opacity-50 ${side === "buy" ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20" : "bg-red-500 hover:bg-red-400 text-black shadow-lg shadow-red-500/20"}`}>
-                    {busy ? "..." : `${side === "buy" ? "BUY" : "SELL"} ${tradeSym} · Market`}
+                  <button data-testid="trade-execute" onClick={executeTrade} disabled={busy} className={`w-full py-3 rounded-lg text-xs font-extrabold uppercase tracking-wider transition disabled:opacity-50 ${side === "long" ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20" : "bg-red-500 hover:bg-red-400 text-black shadow-lg shadow-red-500/20"}`}>
+                    {busy ? "..." : `Open ${side.toUpperCase()} · ${tradeSym} · Market`}
                   </button>
                   <p className="text-[9px] text-gray-600 mt-2 text-center font-mono uppercase tracking-wider">CoinGecko · 0 fees · No leverage</p>
                 </div>
@@ -381,29 +471,69 @@ export default function Challenge() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead className="text-[10px] uppercase tracking-wider text-gray-500 border-b border-white/[0.04]">
-                        <tr><th className="text-left px-4 py-2 font-bold">Asset</th><th className="text-right px-3 py-2 font-bold">Qty</th><th className="text-right px-3 py-2 font-bold">Avg Price</th><th className="text-right px-3 py-2 font-bold">Mark</th><th className="text-right px-3 py-2 font-bold">Value</th><th className="text-right px-3 py-2 font-bold">PnL</th><th className="text-right px-4 py-2 font-bold">Action</th></tr>
+                        <tr>
+                          <th className="text-left px-4 py-2 font-bold">Asset</th>
+                          <th className="text-left px-2 py-2 font-bold">Side</th>
+                          <th className="text-right px-2 py-2 font-bold">Qty</th>
+                          <th className="text-right px-2 py-2 font-bold">Entry</th>
+                          <th className="text-right px-2 py-2 font-bold">Mark</th>
+                          <th className="text-right px-2 py-2 font-bold">SL</th>
+                          <th className="text-right px-2 py-2 font-bold">TP</th>
+                          <th className="text-right px-2 py-2 font-bold">PnL</th>
+                          <th className="text-right px-4 py-2 font-bold">Action</th>
+                        </tr>
                       </thead>
                       <tbody className="font-mono">
-                        {Object.entries(me!.positions).map(([sym, pos]) => {
-                          const px = (me!.prices?.[sym] || prices[sym] || pos.avg_price);
-                          const value = pos.qty * px;
-                          const pnl = (px - pos.avg_price) * pos.qty;
-                          const pnlPct = pos.avg_price > 0 ? ((px - pos.avg_price) / pos.avg_price) * 100 : 0;
+                        {Object.entries(me!.positions).map(([key, pos]) => {
+                          const sym = pos.symbol;
+                          const px = pos.mark || me!.prices?.[sym] || prices[sym] || pos.avg_price;
+                          const pnl = typeof pos.pnl === "number" ? pos.pnl : (pos.side === "short" ? (pos.avg_price - px) * pos.qty : (px - pos.avg_price) * pos.qty);
+                          const pnlPct = typeof pos.pnl_pct === "number" ? pos.pnl_pct : (pos.avg_price > 0 ? (pnl / (pos.qty * pos.avg_price)) * 100 : 0);
                           return (
-                            <tr key={sym} className="border-b border-white/[0.02] hover:bg-white/[0.02] cursor-pointer" onClick={() => setTradeSym(sym)}>
+                            <tr key={key} className="border-b border-white/[0.02] hover:bg-white/[0.02] cursor-pointer" onClick={() => setTradeSym(sym)}>
                               <td className="px-4 py-2.5">
                                 <div className="flex items-center gap-2">
                                   {coins[sym]?.image ? <img src={coins[sym].image!} alt={sym} className="w-6 h-6 rounded-full" /> : <div className="w-6 h-6 rounded-full bg-white/[0.06]" />}
-                                  <div><div className="font-extrabold text-white">{sym}</div><div className="text-[10px] text-gray-500 sans-serif font-sans">{coins[sym]?.name || ""}</div></div>
+                                  <div><div className="font-extrabold text-white">{sym}</div><div className="text-[10px] text-gray-500 font-sans">{coins[sym]?.name || ""}</div></div>
                                 </div>
                               </td>
-                              <td className="text-right px-3 py-2.5 text-white">{fmtQty(pos.qty)}</td>
-                              <td className="text-right px-3 py-2.5 text-gray-400">${fmtPrice(pos.avg_price)}</td>
-                              <td className="text-right px-3 py-2.5 text-cyan-300">${fmtPrice(px)}</td>
-                              <td className="text-right px-3 py-2.5 font-extrabold text-white">${fmtUsd(value)}</td>
-                              <td className={`text-right px-3 py-2.5 font-extrabold ${pnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>{pnl >= 0 ? "+" : ""}${fmtUsd(pnl)}<div className="text-[10px] font-bold">{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%</div></td>
+                              <td className="px-2 py-2.5">
+                                <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${pos.side === "long" ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>{pos.side === "long" ? "↗ LONG" : "↘ SHORT"}</span>
+                              </td>
+                              <td className="text-right px-2 py-2.5 text-white">{fmtQty(pos.qty)}</td>
+                              <td className="text-right px-2 py-2.5 text-gray-400">${fmtPrice(pos.avg_price)}</td>
+                              <td className="text-right px-2 py-2.5 text-cyan-300">${fmtPrice(px)}</td>
+                              <td className="text-right px-2 py-2.5">
+                                <button
+                                  data-testid={`edit-sl-${key}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const v = prompt(`Stop Loss pour ${pos.side.toUpperCase()} ${sym} (laisser vide pour effacer)`, pos.sl ? String(pos.sl) : "");
+                                    if (v === null) return;
+                                    updatePositionSLTP(pos, v === "" ? null : parseFloat(v));
+                                  }}
+                                  className={`text-[10px] font-bold ${pos.sl ? "text-red-400" : "text-gray-600 hover:text-red-400"}`}
+                                >
+                                  {pos.sl ? `$${fmtPrice(pos.sl)}` : "— set"}
+                                </button>
+                              </td>
+                              <td className="text-right px-2 py-2.5">
+                                <button
+                                  data-testid={`edit-tp-${key}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const v = prompt(`Take Profit pour ${pos.side.toUpperCase()} ${sym} (laisser vide pour effacer)`, pos.tp ? String(pos.tp) : "");
+                                    if (v === null) return;
+                                    updatePositionSLTP(pos, undefined, v === "" ? null : parseFloat(v));
+                                  }}
+                                  className={`text-[10px] font-bold ${pos.tp ? "text-emerald-400" : "text-gray-600 hover:text-emerald-400"}`}
+                                >
+                                  {pos.tp ? `$${fmtPrice(pos.tp)}` : "— set"}
+                                </button>
+                              </td>
+                              <td className={`text-right px-2 py-2.5 font-extrabold ${pnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>{pnl >= 0 ? "+" : ""}${fmtUsd(pnl)}<div className="text-[10px] font-bold">{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%</div></td>
                               <td className="text-right px-4 py-2.5">
-                                <button data-testid={`close-position-${sym}`} onClick={(e) => { e.stopPropagation(); quickClose(sym); }} className="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider bg-red-500/10 hover:bg-red-500/30 text-red-400 border border-red-500/20 transition">Close</button>
+                                <button data-testid={`close-position-${key}`} onClick={(e) => { e.stopPropagation(); closePosition(pos); }} className="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider bg-red-500/10 hover:bg-red-500/30 text-red-400 border border-red-500/20 transition">Close</button>
                               </td>
                             </tr>
                           );
@@ -421,19 +551,28 @@ export default function Challenge() {
                   <div className="overflow-x-auto max-h-72 overflow-y-auto">
                     <table className="w-full text-xs font-mono">
                       <thead className="text-[10px] uppercase tracking-wider text-gray-500 sticky top-0 bg-[#0d0e16]">
-                        <tr><th className="text-left px-4 py-2 font-bold">Time</th><th className="text-left px-3 py-2 font-bold">Side</th><th className="text-left px-3 py-2 font-bold">Symbol</th><th className="text-right px-3 py-2 font-bold">Qty</th><th className="text-right px-3 py-2 font-bold">Price</th><th className="text-right px-4 py-2 font-bold">Value</th></tr>
+                        <tr><th className="text-left px-4 py-2 font-bold">Time</th><th className="text-left px-3 py-2 font-bold">Action</th><th className="text-left px-3 py-2 font-bold">Symbol</th><th className="text-right px-3 py-2 font-bold">Qty</th><th className="text-right px-3 py-2 font-bold">Price</th><th className="text-right px-3 py-2 font-bold">Value</th><th className="text-right px-4 py-2 font-bold">PnL</th></tr>
                       </thead>
                       <tbody>
-                        {me!.trades.slice(0, 100).map((t, i) => (
-                          <tr key={i} className="border-b border-white/[0.02]">
-                            <td className="px-4 py-2 text-gray-500">{new Date(t.ts).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td>
-                            <td className={`px-3 py-2 font-extrabold ${t.side === "buy" ? "text-emerald-400" : "text-red-400"}`}>{t.side.toUpperCase()}</td>
-                            <td className="px-3 py-2 text-white font-extrabold">{t.symbol}</td>
-                            <td className="px-3 py-2 text-right text-gray-300">{fmtQty(t.qty)}</td>
-                            <td className="px-3 py-2 text-right text-cyan-300">${fmtPrice(t.price)}</td>
-                            <td className="px-4 py-2 text-right font-extrabold text-white">${fmtUsd(t.value)}</td>
-                          </tr>
-                        ))}
+                        {me!.trades.slice(0, 100).map((t, i) => {
+                          const isClose = t.action === "close";
+                          const sideStr = String(t.side).toLowerCase();
+                          const color = isClose ? (t.pnl !== undefined && t.pnl >= 0 ? "text-emerald-400" : "text-red-400") : (sideStr === "long" || sideStr === "buy" ? "text-emerald-400" : "text-red-400");
+                          return (
+                            <tr key={i} className="border-b border-white/[0.02]">
+                              <td className="px-4 py-2 text-gray-500">{new Date(t.ts).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td>
+                              <td className={`px-3 py-2 font-extrabold ${color}`}>
+                                {isClose ? `CLOSE ${sideStr.toUpperCase()}` : `OPEN ${sideStr.toUpperCase()}`}
+                                {t.trigger && <span className="ml-1.5 text-[9px] bg-amber-500/20 text-amber-300 px-1 py-0.5 rounded">{t.trigger === "stop_loss" ? "SL" : "TP"}</span>}
+                              </td>
+                              <td className="px-3 py-2 text-white font-extrabold">{t.symbol}</td>
+                              <td className="px-3 py-2 text-right text-gray-300">{fmtQty(t.qty)}</td>
+                              <td className="px-3 py-2 text-right text-cyan-300">${fmtPrice(t.price)}</td>
+                              <td className="px-3 py-2 text-right font-extrabold text-white">${fmtUsd(t.value)}</td>
+                              <td className={`px-4 py-2 text-right font-extrabold ${t.pnl !== undefined && t.pnl >= 0 ? "text-emerald-400" : t.pnl !== undefined ? "text-red-400" : "text-gray-600"}`}>{t.pnl !== undefined ? `${t.pnl >= 0 ? "+" : ""}$${fmtUsd(t.pnl)}` : "—"}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

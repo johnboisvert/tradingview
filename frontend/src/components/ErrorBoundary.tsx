@@ -47,9 +47,9 @@ export default class ErrorBoundary extends Component<Props, State> {
             <p className="text-gray-400 text-sm mb-6">
               L'application a rencontré un problème inattendu. Veuillez réessayer.
             </p>
-            {import.meta.env.DEV && this.state.error && (
+            {this.state.error && (
               <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-left">
-                <p className="text-xs text-red-400 font-mono break-all">
+                <p className="text-xs text-red-400 font-mono break-all" data-testid="error-message">
                   {this.state.error.message}
                 </p>
               </div>

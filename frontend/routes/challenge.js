@@ -36,20 +36,59 @@ function ensureParticipant(db, email, username) {
       username: (username || email.split('@')[0]).slice(0, 24),
       joined_at: new Date().toISOString(),
       balance: STARTING_BALANCE,
-      positions: {}, // { BTC: { qty, avg_price } }
-      trades: [],    // array of { ts, side, symbol, qty, price, value }
+      // positions keyed by "SYMBOL_SIDE" → { id, symbol, side: 'long'|'short', qty, avg_price, opened_at, sl?, tp?, collateral }
+      // For long: collateral = qty*avg_price (locked from balance)
+      // For short: collateral = qty*avg_price (locked, returned on close)
+      positions: {},
+      // pending_orders: limit/SL/TP orders waiting for trigger
+      // { id, type: 'limit'|'stop_loss'|'take_profit', symbol, side, qty, price, position_id?, created_at }
+      pending_orders: [],
+      trades: [],
       pnl_realized: 0,
     };
   }
-  return db.participants[key];
+  // Migration: old participants with positions as { SYMBOL: { qty, avg_price } }
+  const p = db.participants[key];
+  if (p.positions && !Array.isArray(p.pending_orders)) p.pending_orders = [];
+  // Migrate legacy positions { BTC: { qty, avg_price } } → { BTC_long: { ... } }
+  for (const k of Object.keys(p.positions || {})) {
+    const v = p.positions[k];
+    if (v && typeof v === 'object' && !v.side && typeof v.qty === 'number') {
+      const newKey = `${k}_long`;
+      p.positions[newKey] = {
+        id: crypto.randomBytes(6).toString('hex'),
+        symbol: k, side: 'long', qty: v.qty, avg_price: v.avg_price,
+        opened_at: new Date().toISOString(),
+        collateral: v.qty * v.avg_price,
+      };
+      delete p.positions[k];
+    }
+  }
+  return p;
 }
 
-// Compute equity (cash + open positions valued at current price)
+// Compute unrealized PnL for a single position
+function positionPnL(pos, mark) {
+  if (!mark || !pos) return 0;
+  if (pos.side === 'short') return (pos.avg_price - mark) * pos.qty;
+  return (mark - pos.avg_price) * pos.qty;
+}
+// Position value used in equity calc:
+// Long: qty * mark (asset value)
+// Short: collateral + (avg_price - mark)*qty (locked collateral + unrealized PnL)
+function positionEquityContribution(pos, mark) {
+  if (pos.side === 'short') {
+    return (pos.collateral || pos.qty * pos.avg_price) + positionPnL(pos, mark);
+  }
+  return pos.qty * (mark || pos.avg_price || 0);
+}
+
+// Compute equity (cash + position contributions)
 function computeEquity(p, prices) {
   let equity = p.balance;
-  for (const [sym, pos] of Object.entries(p.positions || {})) {
-    const px = prices[sym] || pos.avg_price || 0;
-    equity += (pos.qty || 0) * px;
+  for (const pos of Object.values(p.positions || {})) {
+    const px = prices[pos.symbol] || pos.avg_price || 0;
+    equity += positionEquityContribution(pos, px);
   }
   return equity;
 }
@@ -209,6 +248,72 @@ async function endOfMonthSettlement(resendClientGetter) {
   console.log(`[Challenge] Period rolled ${oldPeriod} → ${newPeriod}`);
 }
 
+// Helper to enrich participant response with computed fields
+function enrichParticipant(p, prices) {
+  const positions = {};
+  for (const [k, pos] of Object.entries(p.positions || {})) {
+    const mark = prices[pos.symbol] || pos.avg_price;
+    positions[k] = {
+      ...pos,
+      mark,
+      value: positionEquityContribution(pos, mark),
+      pnl: positionPnL(pos, mark),
+      pnl_pct: pos.avg_price > 0 ? (positionPnL(pos, mark) / (pos.qty * pos.avg_price)) * 100 : 0,
+    };
+  }
+  const equity = computeEquity(p, prices);
+  return {
+    username: p.username,
+    balance: p.balance,
+    positions,
+    equity,
+    roi_pct: ((equity - STARTING_BALANCE) / STARTING_BALANCE) * 100,
+    trades: (p.trades || []).slice(-50).reverse(),
+    prices,
+    pnl_realized: p.pnl_realized || 0,
+  };
+}
+
+// Watcher: check every 20s for triggered SL/TP and auto-close positions
+async function checkStopOrders() {
+  const db = loadDb();
+  if (!db.participants) return;
+  await getPrices();
+  const prices = priceCache.data;
+  if (Object.keys(prices).length === 0) return;
+
+  let touched = false;
+  for (const p of Object.values(db.participants)) {
+    if (!p.positions) continue;
+    const posKeys = Object.keys(p.positions);
+    for (const key of posKeys) {
+      const pos = p.positions[key];
+      if (!pos) continue;
+      const mark = prices[pos.symbol];
+      if (!mark) continue;
+      let trigger = null;
+      if (pos.side === 'long') {
+        if (pos.sl && mark <= pos.sl) trigger = 'stop_loss';
+        else if (pos.tp && mark >= pos.tp) trigger = 'take_profit';
+      } else if (pos.side === 'short') {
+        if (pos.sl && mark >= pos.sl) trigger = 'stop_loss';
+        else if (pos.tp && mark <= pos.tp) trigger = 'take_profit';
+      }
+      if (!trigger) continue;
+
+      const closeQty = pos.qty;
+      const realized = pos.side === 'short' ? (pos.avg_price - mark) * closeQty : (mark - pos.avg_price) * closeQty;
+      p.balance += (pos.collateral || pos.qty * pos.avg_price) + realized;
+      p.pnl_realized = (p.pnl_realized || 0) + realized;
+      p.trades.push({ ts: new Date().toISOString(), action: 'close', side: pos.side, symbol: pos.symbol, qty: closeQty, price: mark, value: closeQty * mark, pnl: realized, trigger });
+      delete p.positions[key];
+      touched = true;
+      console.log(`[Challenge] ${trigger.toUpperCase()} triggered for ${p.username} ${pos.side} ${pos.symbol} @ $${mark.toFixed(4)} PnL=$${realized.toFixed(2)}`);
+    }
+  }
+  if (touched) saveDb(db);
+}
+
 export default function register(app, { resendClientGetter }) {
   // Ensure period is current at startup (catches missed cron during downtime)
   endOfMonthSettlement(resendClientGetter).catch(() => {});
@@ -217,6 +322,9 @@ export default function register(app, { resendClientGetter }) {
   setTimeout(() => { getPrices().catch(() => {}); }, 15000);
   // Refresh prices every 60s so /symbols and leaderboard always have fresh data
   setInterval(() => { getPrices().catch(() => {}); }, 60 * 1000);
+  // SL/TP watcher every 20s
+  setTimeout(() => { checkStopOrders().catch(() => {}); }, 25000);
+  setInterval(() => { checkStopOrders().catch(e => console.error('[Challenge] watcher error:', e?.message)); }, 20 * 1000);
 
   // Check every 30 minutes if month changed (matches pattern used in blog_cron/daily_brief)
   setInterval(() => {
@@ -224,7 +332,7 @@ export default function register(app, { resendClientGetter }) {
   }, 30 * 60 * 1000);
 
   // POST /api/v1/challenge/join — register participant
-  app.post('/api/v1/challenge/join', (req, res) => {
+  app.post('/api/v1/challenge/join', async (req, res) => {
     const { email, username } = req.body || {};
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ ok: false, error: 'Email invalide' });
@@ -232,7 +340,8 @@ export default function register(app, { resendClientGetter }) {
     const db = loadDb();
     const p = ensureParticipant(db, email, username);
     saveDb(db);
-    res.json({ ok: true, participant: { username: p.username, balance: p.balance, positions: p.positions, trades: p.trades.slice(-20) } });
+    await getPrices();
+    res.json({ ok: true, participant: enrichParticipant(p, priceCache.data) });
   });
 
   // GET /api/v1/challenge/me?email=...
@@ -242,30 +351,30 @@ export default function register(app, { resendClientGetter }) {
     const db = loadDb();
     const p = db.participants[email];
     if (!p) return res.json({ ok: true, participant: null });
-    const symbols = Object.keys(p.positions || {});
-    const prices = symbols.length ? await getPrices(symbols) : {};
-    const equity = computeEquity(p, prices);
-    res.json({
-      ok: true,
-      participant: {
-        username: p.username,
-        balance: p.balance,
-        positions: p.positions,
-        equity,
-        roi_pct: ((equity - STARTING_BALANCE) / STARTING_BALANCE) * 100,
-        trades: p.trades.slice(-50).reverse(),
-        prices,
-      },
-    });
+    ensureParticipant(db, email, p.username); // run migration
+    saveDb(db);
+    await getPrices();
+    res.json({ ok: true, participant: enrichParticipant(p, priceCache.data) });
   });
 
-  // POST /api/v1/challenge/trade — execute a paper trade
-  // body: { email, side: 'buy'|'sell', symbol, qty }
+  // POST /api/v1/challenge/trade — open OR close position(s)
+  // body: { email, action: 'open'|'close', side: 'long'|'short' (open only),
+  //         symbol, qty, position_id? (close only), sl?, tp? (open only) }
+  // Legacy compat: { side: 'buy'|'sell' } → action open long / close long
   app.post('/api/v1/challenge/trade', async (req, res) => {
-    const { email, side, symbol, qty } = req.body || {};
-    if (!email || !side || !symbol || !qty) return res.status(400).json({ ok: false, error: 'Paramètres manquants' });
-    const sideNorm = String(side).toLowerCase();
-    if (!['buy', 'sell'].includes(sideNorm)) return res.status(400).json({ ok: false, error: 'Side invalide' });
+    let { email, action, side, symbol, qty, position_id, sl, tp } = req.body || {};
+    if (!email || !symbol || !qty) return res.status(400).json({ ok: false, error: 'Paramètres manquants' });
+    // Legacy compat: buy/sell → open long / close long
+    if (!action && side) {
+      const sl2 = String(side).toLowerCase();
+      if (sl2 === 'buy') { action = 'open'; side = 'long'; }
+      else if (sl2 === 'sell') { action = 'close'; side = 'long'; }
+    }
+    action = String(action || '').toLowerCase();
+    side = String(side || 'long').toLowerCase();
+    if (!['open', 'close'].includes(action)) return res.status(400).json({ ok: false, error: 'Action invalide (open|close)' });
+    if (!['long', 'short'].includes(side)) return res.status(400).json({ ok: false, error: 'Side invalide (long|short)' });
+
     const sym = String(symbol).toUpperCase();
     const qtyNum = Math.abs(parseFloat(qty));
     if (!Number.isFinite(qtyNum) || qtyNum <= 0) return res.status(400).json({ ok: false, error: 'Quantité invalide' });
@@ -273,45 +382,121 @@ export default function register(app, { resendClientGetter }) {
     const db = loadDb();
     const p = db.participants[email.toLowerCase()];
     if (!p) return res.status(404).json({ ok: false, error: 'Participe d\'abord au challenge' });
+    ensureParticipant(db, email, p.username); // run migration if needed
 
-    const prices = await getPrices([sym]);
-    const price = prices[sym];
+    await getPrices();
+    const price = priceCache.data[sym];
     if (!price) return res.status(400).json({ ok: false, error: `Crypto non supportée: ${sym}` });
 
     const value = qtyNum * price;
+    const posKey = `${sym}_${side}`;
 
-    if (sideNorm === 'buy') {
-      if (value > p.balance) return res.status(400).json({ ok: false, error: 'Solde insuffisant' });
+    if (action === 'open') {
+      // Validate SL/TP coherence
+      const slNum = sl !== undefined && sl !== null && sl !== '' ? parseFloat(sl) : null;
+      const tpNum = tp !== undefined && tp !== null && tp !== '' ? parseFloat(tp) : null;
+      if (slNum !== null) {
+        if (side === 'long' && slNum >= price) return res.status(400).json({ ok: false, error: 'SL doit être < prix actuel pour un LONG' });
+        if (side === 'short' && slNum <= price) return res.status(400).json({ ok: false, error: 'SL doit être > prix actuel pour un SHORT' });
+      }
+      if (tpNum !== null) {
+        if (side === 'long' && tpNum <= price) return res.status(400).json({ ok: false, error: 'TP doit être > prix actuel pour un LONG' });
+        if (side === 'short' && tpNum >= price) return res.status(400).json({ ok: false, error: 'TP doit être < prix actuel pour un SHORT' });
+      }
+
+      // Lock collateral from balance
+      if (value > p.balance + 0.01) return res.status(400).json({ ok: false, error: `Solde insuffisant (besoin $${value.toFixed(2)}, dispo $${p.balance.toFixed(2)})` });
       p.balance -= value;
-      const pos = p.positions[sym] || { qty: 0, avg_price: 0 };
-      const newQty = pos.qty + qtyNum;
-      pos.avg_price = newQty > 0 ? (pos.qty * pos.avg_price + qtyNum * price) / newQty : price;
-      pos.qty = newQty;
-      p.positions[sym] = pos;
+
+      const existing = p.positions[posKey];
+      if (existing) {
+        const newQty = existing.qty + qtyNum;
+        existing.avg_price = newQty > 0 ? (existing.qty * existing.avg_price + qtyNum * price) / newQty : price;
+        existing.qty = newQty;
+        existing.collateral = (existing.collateral || 0) + value;
+        if (slNum !== null) existing.sl = slNum;
+        if (tpNum !== null) existing.tp = tpNum;
+      } else {
+        p.positions[posKey] = {
+          id: crypto.randomBytes(6).toString('hex'),
+          symbol: sym, side, qty: qtyNum, avg_price: price, opened_at: new Date().toISOString(),
+          collateral: value,
+          ...(slNum !== null ? { sl: slNum } : {}),
+          ...(tpNum !== null ? { tp: tpNum } : {}),
+        };
+      }
+      p.trades.push({ ts: new Date().toISOString(), action: 'open', side, symbol: sym, qty: qtyNum, price, value });
     } else {
-      const pos = p.positions[sym];
-      if (!pos || pos.qty < qtyNum) return res.status(400).json({ ok: false, error: 'Position insuffisante' });
-      const realized = (price - pos.avg_price) * qtyNum;
-      p.balance += value;
+      // CLOSE
+      let pos = position_id ? Object.values(p.positions).find(x => x.id === position_id) : p.positions[posKey];
+      if (!pos) return res.status(400).json({ ok: false, error: `Aucune position ${side} ouverte sur ${sym}` });
+      const closeQty = Math.min(qtyNum, pos.qty);
+      // Realized PnL
+      const realized = pos.side === 'short'
+        ? (pos.avg_price - price) * closeQty
+        : (price - pos.avg_price) * closeQty;
+      // Return locked collateral proportional to closed qty
+      const collateralReturn = (pos.collateral || pos.qty * pos.avg_price) * (closeQty / pos.qty);
+      p.balance += collateralReturn + realized;
       p.pnl_realized += realized;
-      pos.qty -= qtyNum;
-      if (pos.qty < 1e-9) delete p.positions[sym];
+      pos.qty -= closeQty;
+      pos.collateral = (pos.collateral || 0) - collateralReturn;
+      if (pos.qty < 1e-9) {
+        const key = Object.keys(p.positions).find(k => p.positions[k]?.id === pos.id) || posKey;
+        delete p.positions[key];
+      }
+      p.trades.push({ ts: new Date().toISOString(), action: 'close', side: pos.side, symbol: sym, qty: closeQty, price, value: closeQty * price, pnl: realized });
     }
-    p.trades.push({ ts: new Date().toISOString(), side: sideNorm, symbol: sym, qty: qtyNum, price, value });
+
     saveDb(db);
 
-    const symbols = Object.keys(p.positions);
-    const allPrices = symbols.length ? await getPrices(symbols) : prices;
+    const allPrices = priceCache.data;
     const equity = computeEquity(p, allPrices);
     res.json({
       ok: true,
-      participant: {
-        username: p.username, balance: p.balance, positions: p.positions, equity,
-        roi_pct: ((equity - STARTING_BALANCE) / STARTING_BALANCE) * 100,
-        trades: p.trades.slice(-50).reverse(),
-      },
-      executed: { side: sideNorm, symbol: sym, qty: qtyNum, price, value },
+      participant: enrichParticipant(p, allPrices),
+      executed: { action, side, symbol: sym, qty: qtyNum, price, value },
+      _legacy_equity: equity,
     });
+  });
+
+  // POST /api/v1/challenge/position/update — set SL/TP on existing position
+  // body: { email, position_id, sl?, tp? }  (null to clear)
+  app.post('/api/v1/challenge/position/update', async (req, res) => {
+    const { email, position_id, sl, tp } = req.body || {};
+    if (!email || !position_id) return res.status(400).json({ ok: false, error: 'Paramètres manquants' });
+    const db = loadDb();
+    const p = db.participants[String(email).toLowerCase()];
+    if (!p) return res.status(404).json({ ok: false, error: 'Participant introuvable' });
+    const posKey = Object.keys(p.positions).find(k => p.positions[k]?.id === position_id);
+    if (!posKey) return res.status(404).json({ ok: false, error: 'Position introuvable' });
+    const pos = p.positions[posKey];
+
+    await getPrices();
+    const mark = priceCache.data[pos.symbol];
+
+    if (sl === null || sl === '') delete pos.sl;
+    else if (sl !== undefined) {
+      const v = parseFloat(sl);
+      if (!Number.isFinite(v)) return res.status(400).json({ ok: false, error: 'SL invalide' });
+      if (mark) {
+        if (pos.side === 'long' && v >= mark) return res.status(400).json({ ok: false, error: 'SL doit être < prix actuel pour LONG' });
+        if (pos.side === 'short' && v <= mark) return res.status(400).json({ ok: false, error: 'SL doit être > prix actuel pour SHORT' });
+      }
+      pos.sl = v;
+    }
+    if (tp === null || tp === '') delete pos.tp;
+    else if (tp !== undefined) {
+      const v = parseFloat(tp);
+      if (!Number.isFinite(v)) return res.status(400).json({ ok: false, error: 'TP invalide' });
+      if (mark) {
+        if (pos.side === 'long' && v <= mark) return res.status(400).json({ ok: false, error: 'TP doit être > prix actuel pour LONG' });
+        if (pos.side === 'short' && v >= mark) return res.status(400).json({ ok: false, error: 'TP doit être < prix actuel pour SHORT' });
+      }
+      pos.tp = v;
+    }
+    saveDb(db);
+    res.json({ ok: true, position: pos });
   });
 
   // GET /api/v1/challenge/leaderboard — public top 20

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
+import TrialBanner from "@/components/TrialBanner";
 import { Scale, ArrowRight, ArrowLeft, Trophy, HelpCircle } from "lucide-react";
 
 type CompareItem = {
@@ -62,6 +63,7 @@ function CompareList() {
             </Link>
           ))}
         </div>
+        <div className="mt-8"><TrialBanner source="compare-list" /></div>
         <Footer />
       </main>
     </div>
@@ -138,6 +140,7 @@ function CompareDetail({ slug }: { slug: string }) {
             )}
           </article>
         )}
+        <div className="mt-8"><TrialBanner source="compare-detail" /></div>
         <Footer />
       </main>
     </div>

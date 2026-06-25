@@ -36,6 +36,8 @@ import registerTwitterBotRoutes from './routes/twitter_bot.js';
 import registerOnboardingRoutes from './routes/onboarding_emails.js';
 import registerResendWebhookRoutes from './routes/resend_webhook.js';
 import registerPromoRoutes from './routes/promo_codes.js';
+import registerQuizRoutes from './routes/quiz.js';
+import registerChallengeRoutes from './routes/challenge.js';
 import { createTelegramHelpers } from './routes/telegram_alerts.js';
 import { seed as gamiSeed } from './gamification_seed.js';
 
@@ -5301,6 +5303,8 @@ registerPushRoutes(app);
 registerBlogRoutes(app);
 registerGamificationRoutes(app);
 registerLeadMagnetRoutes(app, { resendClientGetter: getResendClient });
+registerQuizRoutes(app, { resendClientGetter: getResendClient });
+registerChallengeRoutes(app, { resendClientGetter: getResendClient });
 registerEmailSequenceRoutes(app, { resendClientGetter: getResendClient });
 registerPublicStatsRoutes(app);
 registerSuccessStoriesRoutes(app);

@@ -5,6 +5,7 @@ import { RefreshCw, TrendingUp, TrendingDown, Activity, Flame, Snowflake, Sparkl
 import { fetchWithCorsProxy } from "@/lib/cryptoApi";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
+import TrialBanner from "@/components/TrialBanner";
 
 interface FGData {
   value: number;
@@ -769,6 +770,7 @@ export default function FearGreed() {
             </table>
           </div>
         </div>
+        <TrialBanner source="fear-greed" className="mt-6" />
         <Footer />
       </main>
     </div>

@@ -104,6 +104,8 @@ const ScalpPerformance = React.lazy(() => import("./pages/ScalpPerformance"));
 const RangeTrading = React.lazy(() => import("./pages/RangeTrading"));
 const RangePerformance = React.lazy(() => import("./pages/RangePerformance"));
 const MagicStrategy = React.lazy(() => import("./pages/MagicStrategy"));
+const Quiz = React.lazy(() => import("./pages/Quiz"));
+const Challenge = React.lazy(() => import("./pages/Challenge"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 // ── Non-lazy components (needed immediately for route protection) ─────────────
@@ -138,7 +140,7 @@ function App() {
         <Routes>
           {/* Main Pages - Marché */}
           <Route path="/" element={<Index />} />
-          <Route path="/fear-greed" element={<PlanProtected path="/fear-greed"><FearGreed /></PlanProtected>} />
+          <Route path="/fear-greed" element={<FearGreed />} />
           <Route path="/dominance" element={<PlanProtected path="/dominance"><Dominance /></PlanProtected>} />
           <Route path="/altcoin-season" element={<PlanProtected path="/altcoin-season"><AltcoinSeason /></PlanProtected>} />
           <Route path="/heatmap" element={<PlanProtected path="/heatmap"><Heatmap /></PlanProtected>} />
@@ -148,7 +150,7 @@ function App() {
           {/* Trading */}
           <Route path="/strategy" element={<PlanProtected path="/strategy"><Strategy /></PlanProtected>} />
           <Route path="/spot-trading" element={<PlanProtected path="/spot-trading"><SpotTrading /></PlanProtected>} />
-          <Route path="/calculatrice" element={<PlanProtected path="/calculatrice"><Calculatrice /></PlanProtected>} />
+          <Route path="/calculatrice" element={<Calculatrice />} />
           <Route path="/trades" element={<PlanProtected path="/trades"><Trades /></PlanProtected>} />
           <Route path="/trades/performance" element={<PlanProtected path="/trades"><TradesPerformance /></PlanProtected>} />
           <Route path="/scalp" element={<PlanProtected path="/scalp"><ScalpTrading /></PlanProtected>} />
@@ -168,6 +170,8 @@ function App() {
           <Route path="/assistant-ia" element={<PlanProtected path="/assistant-ia"><AIAssistant /></PlanProtected>} />
           <Route path="/gamification" element={<PlanProtected path="/gamification"><Gamification /></PlanProtected>} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/quiz" element={<Quiz />} />
+          <Route path="/challenge" element={<Challenge />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<Blog />} />
           <Route path="/backtesting-visuel" element={<PlanProtected path="/backtesting-visuel"><BacktestingVisuel /></PlanProtected>} />

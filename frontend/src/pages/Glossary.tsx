@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
+import TrialBanner from "@/components/TrialBanner";
 import { BookOpen, Search, ArrowRight, ArrowLeft, HelpCircle } from "lucide-react";
 
 type GlossaryItem = {
@@ -90,6 +91,7 @@ function GlossaryList() {
             </div>
           </div>
         ))}
+        <div className="mt-8"><TrialBanner source="lexique-list" /></div>
         <Footer />
       </main>
     </div>
@@ -150,6 +152,7 @@ function GlossaryDetail({ slug }: { slug: string }) {
             )}
           </article>
         )}
+        <div className="mt-8"><TrialBanner source="lexique-detail" /></div>
         <Footer />
       </main>
     </div>

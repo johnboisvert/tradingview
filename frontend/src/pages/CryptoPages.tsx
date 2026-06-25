@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
+import TrialBanner from "@/components/TrialBanner";
 import { TrendingUp, TrendingDown, ArrowLeft, Coins, Sparkles, ShieldAlert, Target, HelpCircle, ExternalLink } from "lucide-react";
 
 type CoinListItem = {
@@ -125,6 +126,7 @@ function CoinList() {
             </tbody>
           </table>
         </div>
+        <div className="mt-8"><TrialBanner source="crypto-list" /></div>
         <Footer />
       </main>
     </div>
@@ -250,6 +252,7 @@ function CoinDetailPage({ symbol }: { symbol: string }) {
             )}
           </>
         )}
+        <div className="mt-8"><TrialBanner source="crypto-detail" /></div>
         <Footer />
       </main>
     </div>

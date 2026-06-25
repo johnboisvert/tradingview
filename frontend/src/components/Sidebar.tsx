@@ -167,6 +167,8 @@ const NAV_SECTIONS = [
       { path: "/crypto", label: "Cryptos (Cours & Fiches)", icon: Coins, badge: "NEW" },
       { path: "/success-stories", label: "Success Stories", icon: Award },
       { path: "/leaderboard", label: "Leaderboard 🏆", icon: Crown },
+      { path: "/quiz", label: "Quiz Trader 🧠", icon: Sparkles, badge: "NEW" },
+      { path: "/challenge", label: "Trading Challenge", icon: Trophy, badge: "NEW" },
     ],
   },
   {

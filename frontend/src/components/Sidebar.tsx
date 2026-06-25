@@ -452,6 +452,7 @@ export default function Sidebar() {
                       {accessible && (item as { badge?: string }).badge && (
                         <span
                           data-testid={`sidebar-badge-${item.path.replace(/\//g, "-")}`}
+                          aria-label={(item as { badge?: string }).badge === "NEW" ? "Nouveau" : (item as { badge?: string }).badge}
                           className="flex-shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm shadow-pink-500/30"
                         >
                           {(item as { badge?: string }).badge}

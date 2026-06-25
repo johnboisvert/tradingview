@@ -30,8 +30,15 @@ interface LeaderboardResp {
 const LS_EMAIL = "challenge.email";
 const LS_USERNAME = "challenge.username";
 
+const QUICK_AMOUNTS = [10, 50, 100, 250, 500];
+
 function fmtUsd(n: number) {
   return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+function fmtQty(n: number) {
+  if (n >= 1) return n.toFixed(4);
+  if (n >= 0.0001) return n.toFixed(6);
+  return n.toFixed(8);
 }
 
 export default function Challenge() {
@@ -42,7 +49,10 @@ export default function Challenge() {
   const [symbols, setSymbols] = useState<string[]>([]);
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [tradeSym, setTradeSym] = useState("BTC");
+  const [inputMode, setInputMode] = useState<"usd" | "qty">("usd");
+  const [usdAmount, setUsdAmount] = useState<string>("100");
   const [tradeQty, setTradeQty] = useState("0.01");
+  const [prices, setPrices] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -52,6 +62,14 @@ export default function Challenge() {
       const r = await fetch("/api/v1/challenge/leaderboard");
       const j = await r.json();
       if (j?.ok) setBoard(j);
+    } catch { /* ignore */ }
+  }, []);
+
+  const fetchPrices = useCallback(async () => {
+    try {
+      const r = await fetch("/api/v1/challenge/prices");
+      const j = await r.json();
+      if (j?.ok && j.prices) setPrices(j.prices);
     } catch { /* ignore */ }
   }, []);
 
@@ -66,18 +84,19 @@ export default function Challenge() {
 
   useEffect(() => {
     fetchBoard();
+    fetchPrices();
     fetch("/api/v1/challenge/symbols").then((r) => r.json()).then((j) => j?.ok && setSymbols(j.symbols)).catch(() => {});
-  }, [fetchBoard]);
+  }, [fetchBoard, fetchPrices]);
 
   useEffect(() => {
     if (email) fetchMe(email);
   }, [email, fetchMe]);
 
-  // Refresh leaderboard every 30s
+  // Refresh leaderboard + prices every 30s
   useEffect(() => {
-    const id = setInterval(fetchBoard, 30000);
+    const id = setInterval(() => { fetchBoard(); fetchPrices(); }, 30000);
     return () => clearInterval(id);
-  }, [fetchBoard]);
+  }, [fetchBoard, fetchPrices]);
 
   async function join() {
     setError(null); setInfo(null);
@@ -103,8 +122,29 @@ export default function Challenge() {
   async function executeTrade() {
     setError(null); setInfo(null);
     if (!me) { setError("Rejoins d'abord le challenge"); return; }
-    const qty = parseFloat(tradeQty);
-    if (!Number.isFinite(qty) || qty <= 0) { setError("Quantité invalide"); return; }
+    const livePrice = (me.prices?.[tradeSym]) || prices[tradeSym];
+    if (!livePrice) { setError("Prix en cours de chargement, réessaye dans 2s."); return; }
+
+    let qty: number;
+    if (inputMode === "usd") {
+      const usd = parseFloat(usdAmount);
+      if (!Number.isFinite(usd) || usd <= 0) { setError("Montant USD invalide"); return; }
+      qty = usd / livePrice;
+    } else {
+      qty = parseFloat(tradeQty);
+      if (!Number.isFinite(qty) || qty <= 0) { setError("Quantité invalide"); return; }
+    }
+
+    // Client-side pre-validation
+    if (side === "buy" && qty * livePrice > me.balance + 0.01) {
+      setError(`Solde insuffisant. Max achetable: $${fmtUsd(me.balance)}`);
+      return;
+    }
+    if (side === "sell") {
+      const heldQty = me.positions[tradeSym]?.qty || 0;
+      if (qty > heldQty + 1e-9) { setError(`Tu détiens seulement ${fmtQty(heldQty)} ${tradeSym}`); return; }
+    }
+
     setBusy(true);
     try {
       const r = await fetch("/api/v1/challenge/trade", {
@@ -114,10 +154,23 @@ export default function Challenge() {
       const j = await r.json();
       if (!j?.ok) { setError(j?.error || "Trade refusé"); return; }
       setMe(j.participant);
-      setInfo(`${side === "buy" ? "Achat" : "Vente"} de ${qty} ${tradeSym} @ $${fmtUsd(j.executed.price)}`);
+      setInfo(`✅ ${side === "buy" ? "Achat" : "Vente"} de ${fmtQty(qty)} ${tradeSym} @ $${fmtUsd(j.executed.price)} ($${fmtUsd(j.executed.value)})`);
       await fetchBoard();
     } catch { setError("Erreur réseau"); }
     finally { setBusy(false); }
+  }
+
+  // Quick-fill helpers
+  function setMaxBuy() {
+    if (!me) return;
+    setInputMode("usd");
+    setUsdAmount(me.balance.toFixed(2));
+  }
+  function setMaxSell() {
+    if (!me) return;
+    const held = me.positions[tradeSym]?.qty || 0;
+    setInputMode("qty");
+    setTradeQty(held.toString());
   }
 
   const isJoined = !!me;
@@ -258,23 +311,129 @@ export default function Challenge() {
                 )}
               </div>
 
-              {/* Trade form */}
+              {/* Trade form — new UX with USD-amount mode + live price + max + preview */}
               <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6" data-testid="challenge-trade-form">
                 <h3 className="font-extrabold text-base mb-4 flex items-center gap-2"><Wallet className="w-4 h-4 text-amber-400" /> Trade</h3>
-                <div className="grid grid-cols-2 gap-2 mb-3">
+
+                {/* Side toggle */}
+                <div className="grid grid-cols-2 gap-2 mb-4">
                   <button data-testid="trade-side-buy" onClick={() => setSide("buy")} className={`py-2.5 rounded-xl text-sm font-bold transition ${side === "buy" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-white/[0.04] text-gray-400 border border-white/[0.06]"}`}>🟢 Acheter</button>
                   <button data-testid="trade-side-sell" onClick={() => setSide("sell")} className={`py-2.5 rounded-xl text-sm font-bold transition ${side === "sell" ? "bg-red-500/20 text-red-400 border border-red-500/40" : "bg-white/[0.04] text-gray-400 border border-white/[0.06]"}`}>🔴 Vendre</button>
                 </div>
-                <label className="text-xs text-gray-500 font-bold mb-1 block">Crypto</label>
-                <select data-testid="trade-symbol-select" value={tradeSym} onChange={(e) => setTradeSym(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-black/30 border border-white/[0.08] text-white text-sm mb-3 focus:outline-none focus:border-amber-500/50">
-                  {symbols.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <label className="text-xs text-gray-500 font-bold mb-1 block">Quantité</label>
-                <input data-testid="trade-qty-input" type="number" step="any" min="0" value={tradeQty} onChange={(e) => setTradeQty(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-black/30 border border-white/[0.08] text-white text-sm mb-4 focus:outline-none focus:border-amber-500/50" />
-                <button data-testid="trade-execute" onClick={executeTrade} disabled={busy} className={`w-full py-3 rounded-xl text-sm font-extrabold transition disabled:opacity-50 ${side === "buy" ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-400 hover:to-teal-400" : "bg-gradient-to-r from-red-500 to-rose-500 text-white hover:from-red-400 hover:to-rose-400"}`}>
-                  {busy ? "..." : (side === "buy" ? "Acheter" : "Vendre")}
+
+                {/* Symbol select with live price */}
+                <label className="text-[10px] text-gray-500 font-bold mb-1.5 block uppercase tracking-wider">Crypto</label>
+                <div className="relative mb-1">
+                  <select
+                    data-testid="trade-symbol-select"
+                    value={tradeSym}
+                    onChange={(e) => setTradeSym(e.target.value)}
+                    className="w-full appearance-none px-4 py-3 pr-10 rounded-xl bg-black/30 border border-white/[0.08] text-white text-sm font-bold focus:outline-none focus:border-amber-500/50"
+                  >
+                    {symbols.map((s) => (
+                      <option key={s} value={s}>
+                        {s}{prices[s] ? ` — $${fmtUsd(prices[s])}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-gray-500 mb-4">
+                  <span>Prix actuel</span>
+                  <span className="font-bold text-cyan-300">
+                    {prices[tradeSym] ? `$${fmtUsd(prices[tradeSym])}` : "..."}
+                  </span>
+                </div>
+
+                {/* Mode toggle: USD vs Qty */}
+                <div className="grid grid-cols-2 gap-1 mb-3 p-0.5 bg-black/30 rounded-lg">
+                  <button
+                    data-testid="trade-mode-usd"
+                    onClick={() => setInputMode("usd")}
+                    className={`py-1.5 rounded-md text-[11px] font-bold transition ${inputMode === "usd" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"}`}
+                  >Montant $</button>
+                  <button
+                    data-testid="trade-mode-qty"
+                    onClick={() => setInputMode("qty")}
+                    className={`py-1.5 rounded-md text-[11px] font-bold transition ${inputMode === "qty" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"}`}
+                  >Quantité {tradeSym}</button>
+                </div>
+
+                {inputMode === "usd" ? (
+                  <>
+                    <div className="relative mb-2">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">$</span>
+                      <input
+                        data-testid="trade-usd-input"
+                        type="number" step="any" min="0"
+                        value={usdAmount}
+                        onChange={(e) => setUsdAmount(e.target.value)}
+                        className="w-full pl-7 pr-3 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-white text-sm font-bold focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                    <div className="grid grid-cols-5 gap-1 mb-3">
+                      {QUICK_AMOUNTS.map((a) => (
+                        <button
+                          key={a}
+                          data-testid={`trade-quick-${a}`}
+                          onClick={() => setUsdAmount(a.toString())}
+                          className="py-1.5 rounded-md text-[11px] font-bold bg-white/[0.04] hover:bg-white/[0.1] text-gray-400 hover:text-white transition"
+                        >${a}</button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <input
+                    data-testid="trade-qty-input"
+                    type="number" step="any" min="0"
+                    value={tradeQty}
+                    onChange={(e) => setTradeQty(e.target.value)}
+                    className="w-full px-3 py-3 rounded-xl bg-black/30 border border-white/[0.08] text-white text-sm font-bold mb-3 focus:outline-none focus:border-amber-500/50"
+                    placeholder={`0.01 ${tradeSym}`}
+                  />
+                )}
+
+                {/* Max button */}
+                <button
+                  data-testid="trade-max-button"
+                  onClick={side === "buy" ? setMaxBuy : setMaxSell}
+                  className="w-full mb-3 py-2 rounded-lg text-[11px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition"
+                >
+                  {side === "buy"
+                    ? `Max ($${fmtUsd(me.balance)})`
+                    : `Max (${fmtQty(me.positions[tradeSym]?.qty || 0)} ${tradeSym})`}
                 </button>
-                <p className="text-[10px] text-gray-500 mt-3">Prix temps réel via CoinGecko · Fees 0 · Pas de levier</p>
+
+                {/* Order preview */}
+                {(() => {
+                  const livePrice = me.prices?.[tradeSym] || prices[tradeSym] || 0;
+                  let previewQty = 0, previewUsd = 0;
+                  if (inputMode === "usd") {
+                    previewUsd = parseFloat(usdAmount) || 0;
+                    previewQty = livePrice > 0 ? previewUsd / livePrice : 0;
+                  } else {
+                    previewQty = parseFloat(tradeQty) || 0;
+                    previewUsd = previewQty * livePrice;
+                  }
+                  if (previewQty <= 0 || livePrice <= 0) return null;
+                  const newBalance = side === "buy" ? me.balance - previewUsd : me.balance + previewUsd;
+                  return (
+                    <div className="mb-3 p-3 rounded-xl bg-black/30 border border-white/[0.04] text-[11px] space-y-1" data-testid="trade-preview">
+                      <div className="flex justify-between"><span className="text-gray-500">Tu {side === "buy" ? "vas acheter" : "vas vendre"}</span><span className="font-bold text-white">{fmtQty(previewQty)} {tradeSym}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500">Valeur</span><span className="font-bold text-white">${fmtUsd(previewUsd)}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500">Cash après</span><span className={`font-bold ${newBalance < 0 ? "text-red-400" : "text-cyan-300"}`}>${fmtUsd(newBalance)}</span></div>
+                    </div>
+                  );
+                })()}
+
+                <button
+                  data-testid="trade-execute"
+                  onClick={executeTrade}
+                  disabled={busy}
+                  className={`w-full py-3.5 rounded-xl text-sm font-extrabold transition disabled:opacity-50 ${side === "buy" ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-400 hover:to-teal-400" : "bg-gradient-to-r from-red-500 to-rose-500 text-white hover:from-red-400 hover:to-rose-400"}`}
+                >
+                  {busy ? "..." : (side === "buy" ? `Acheter ${tradeSym}` : `Vendre ${tradeSym}`)}
+                </button>
+                <p className="text-[10px] text-gray-500 mt-3 text-center">Prix temps réel CoinGecko · Fees 0 · Pas de levier</p>
               </div>
             </div>
           )}

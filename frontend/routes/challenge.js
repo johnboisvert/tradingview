@@ -54,41 +54,43 @@ function computeEquity(p, prices) {
   return equity;
 }
 
-// Simple in-memory price cache (5s TTL) so leaderboard doesn't spam CoinGecko
+// Simple in-memory price cache (15s TTL)
 let priceCache = { ts: 0, data: {} };
+// Symbol → CoinGecko id (covers our supported list + a few extras)
+const ID_MAP = {
+  BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin', XRP: 'ripple',
+  ADA: 'cardano', AVAX: 'avalanche-2', DOGE: 'dogecoin', MATIC: 'matic-network',
+  DOT: 'polkadot', LINK: 'chainlink', LTC: 'litecoin', ATOM: 'cosmos',
+  SHIB: 'shiba-inu', TRX: 'tron', UNI: 'uniswap', NEAR: 'near', APT: 'aptos',
+  ARB: 'arbitrum', OP: 'optimism', PEPE: 'pepe', SUI: 'sui', INJ: 'injective-protocol',
+};
+const REVERSE_ID_MAP = Object.fromEntries(Object.entries(ID_MAP).map(([s, id]) => [id, s]));
+
 async function getPrices(symbols) {
   const now = Date.now();
-  if (now - priceCache.ts < 5000 && Object.keys(priceCache.data).length > 0) {
+  if (now - priceCache.ts < 15000 && Object.keys(priceCache.data).length > 0) {
     return priceCache.data;
   }
-  // Map common symbols to CoinGecko IDs
-  const idMap = {
-    BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin', XRP: 'ripple',
-    ADA: 'cardano', AVAX: 'avalanche-2', DOGE: 'dogecoin', MATIC: 'matic-network',
-    DOT: 'polkadot', LINK: 'chainlink', LTC: 'litecoin', ATOM: 'cosmos',
-    SHIB: 'shiba-inu', TRX: 'tron', UNI: 'uniswap', NEAR: 'near', APT: 'aptos',
-    ARB: 'arbitrum', OP: 'optimism', PEPE: 'pepe', SUI: 'sui', INJ: 'injective-protocol',
-  };
-  const ids = symbols.map(s => idMap[s.toUpperCase()]).filter(Boolean);
-  if (ids.length === 0) return priceCache.data;
+  const port = process.env.PORT || 8765;
+  // Use the EXACT same URL as the Telegram cron so we hit the warm cache.
+  // This endpoint is refreshed every ~15 min by [Telegram] and is always available
+  // via stale-cache fallback even during CoinGecko rate-limits.
+  const url = `http://localhost:${port}/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=24h`;
   try {
-    // Use local CoinGecko proxy. /coins/markets endpoint is regularly cached
-    // by the existing Telegram cron, so it has warm data even during rate limits.
-    const port = process.env.PORT || 8765;
-    const r = await fetch(`http://localhost:${port}/api/coingecko/coins/markets?vs_currency=usd&ids=${ids.join(',')}`);
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
     const arr = await r.json();
     const out = {};
     if (Array.isArray(arr)) {
-      // Map CoinGecko id → symbol upper using idMap reverse
-      const reverse = {};
-      for (const [sym, cgId] of Object.entries(idMap)) reverse[cgId] = sym;
       for (const c of arr) {
-        const sym = reverse[c?.id];
+        const sym = REVERSE_ID_MAP[c?.id];
         if (sym && typeof c?.current_price === 'number') out[sym] = c.current_price;
       }
     }
-    priceCache = { ts: now, data: out };
-    return out;
+    // Top 100 covers our 23 symbols entirely. If we got anything, refresh cache.
+    if (Object.keys(out).length > 0) {
+      priceCache = { ts: now, data: out };
+    }
+    return Object.keys(out).length > 0 ? out : priceCache.data;
   } catch (e) {
     console.error('[Challenge] price fetch error:', e?.message);
     return priceCache.data || {};
@@ -311,6 +313,13 @@ export default function register(app, { resendClientGetter }) {
       ok: true,
       symbols: ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'AVAX', 'DOGE', 'MATIC', 'DOT', 'LINK', 'LTC', 'ATOM', 'SHIB', 'TRX', 'UNI', 'NEAR', 'APT', 'ARB', 'OP', 'PEPE', 'SUI', 'INJ'],
     });
+  });
+
+  // GET /api/v1/challenge/prices — return live prices for all supported symbols
+  app.get('/api/v1/challenge/prices', async (req, res) => {
+    const all = Object.keys(ID_MAP);
+    const prices = await getPrices(all);
+    res.json({ ok: true, prices, fetched_at: new Date().toISOString() });
   });
 
   // GET /api/v1/challenge/history — past months top 10

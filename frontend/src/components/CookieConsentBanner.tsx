@@ -25,6 +25,12 @@ export default function CookieConsentBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    // Skip banner entirely inside iframes (embed widgets) and on public
+    // widget/profile routes — those pages must stay clean for third-party hosts.
+    const inIframe = typeof window !== 'undefined' && window.self !== window.top;
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    const isPublicWidget = path.startsWith('/embed') || path.startsWith('/u/');
+    if (inIframe || isPublicWidget) return;
     // Show after small delay to avoid flash on initial load
     const t = setTimeout(() => {
       if (getConsentStatus() === null) setVisible(true);

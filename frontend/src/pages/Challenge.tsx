@@ -9,7 +9,7 @@ import {
   ArrowUpRight, ArrowDownRight, X, Search,
 } from "lucide-react";
 
-interface Position { id: string; symbol: string; side: "long" | "short"; qty: number; avg_price: number; mark?: number; value?: number; pnl?: number; pnl_pct?: number; sl?: number; tp?: number; opened_at?: string; collateral?: number }
+interface Position { id: string; symbol: string; side: "long" | "short"; qty: number; avg_price: number; mark?: number; value?: number; pnl?: number; pnl_pct?: number; sl?: number; tp?: number; opened_at?: string; collateral?: number; leverage?: number; liquidation_price?: number | null }
 interface Trade { ts: string; action?: "open" | "close"; side: "buy" | "sell" | "long" | "short"; symbol: string; qty: number; price: number; value: number; pnl?: number; trigger?: string }
 interface Coin { symbol: string; name: string; image: string | null; price: number; change_24h: number; rank: number; market_cap?: number }
 interface Me {
@@ -69,6 +69,7 @@ export default function Challenge() {
   const [inputMode, setInputMode] = useState<"usd" | "qty">("usd");
   const [usdAmount, setUsdAmount] = useState<string>("100");
   const [tradeQty, setTradeQty] = useState("0.01");
+  const [leverage, setLeverage] = useState<number>(1);
   const [slInput, setSlInput] = useState<string>("");
   const [tpInput, setTpInput] = useState<string>("");
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -175,8 +176,8 @@ export default function Challenge() {
       if (!Number.isFinite(qty) || qty <= 0) { setError("Quantité invalide"); return; }
     }
 
-    if (qty * livePrice > me.balance + 0.01) {
-      setError(`Solde insuffisant. Max: $${fmtUsd(me.balance)}`); return;
+    if (qty * livePrice / leverage > me.balance + 0.01) {
+      setError(`Collateral insuffisant. Max: $${fmtUsd(me.balance * leverage)} (avec ${leverage}x lev)`); return;
     }
 
     // Validate SL/TP
@@ -198,7 +199,7 @@ export default function Challenge() {
       const r = await fetch("/api/v1/challenge/trade", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email, action: "open", side, symbol: tradeSym, qty,
+          email, action: "open", side, symbol: tradeSym, qty, leverage,
           ...(slNum !== null ? { sl: slNum } : {}),
           ...(tpNum !== null ? { tp: tpNum } : {}),
         }),
@@ -249,8 +250,8 @@ export default function Challenge() {
     finally { setBusy(false); }
   }
 
-  function setMaxBuy() { if (!me) return; setInputMode("usd"); setUsdAmount(me.balance.toFixed(2)); }
-  function setPctBalance(pct: number) { if (!me) return; setInputMode("usd"); setUsdAmount((me.balance * pct).toFixed(2)); }
+  function setMaxBuy() { if (!me) return; setInputMode("usd"); setUsdAmount((me.balance * leverage).toFixed(2)); }
+  function setPctBalance(pct: number) { if (!me) return; setInputMode("usd"); setUsdAmount((me.balance * leverage * pct).toFixed(2)); }
 
   const isJoined = !!me;
   const selCoin = coins[tradeSym];
@@ -382,8 +383,31 @@ export default function Challenge() {
                   )}
 
                   <button data-testid="trade-max-button" onClick={setMaxBuy} className="w-full mb-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition">
-                    Max · ${fmtUsd(me!.balance)}
+                    Max · ${fmtUsd(me!.balance * leverage)} ({leverage}x)
                   </button>
+
+                  {/* Leverage selector — 1x to 50x */}
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[9px] text-amber-400 font-bold uppercase tracking-wider">Leverage</label>
+                      <span className="font-mono font-extrabold text-amber-300 text-sm">{leverage}x</span>
+                    </div>
+                    <div className="grid grid-cols-6 gap-1">
+                      {[1, 2, 5, 10, 25, 50].map((l) => (
+                        <button
+                          key={l}
+                          data-testid={`trade-lev-${l}`}
+                          onClick={() => setLeverage(l)}
+                          className={`py-1.5 rounded text-[10px] font-extrabold transition ${leverage === l ? "bg-amber-500 text-black shadow-lg shadow-amber-500/30" : "bg-white/[0.04] text-gray-400 hover:bg-amber-500/20 hover:text-amber-300"}`}
+                        >
+                          {l}x
+                        </button>
+                      ))}
+                    </div>
+                    {leverage >= 10 && (
+                      <p className="text-[9px] text-amber-400 mt-1 font-bold">⚠️ Levier élevé : risque de liquidation rapide</p>
+                    )}
+                  </div>
 
                   {/* SL / TP inputs */}
                   <div className="grid grid-cols-2 gap-2 mb-3">
@@ -432,22 +456,28 @@ export default function Challenge() {
                       previewUsd = previewQty * livePrice;
                     }
                     if (previewQty <= 0 || livePrice <= 0) return null;
-                    const newBalance = me!.balance - previewUsd;
+                    const collateral = previewUsd / leverage;
+                    const newBalance = me!.balance - collateral;
+                    // Liquidation price for the preview
+                    const liqPerUnit = collateral / previewQty;
+                    const previewLiq = side === "long" ? Math.max(0, livePrice - liqPerUnit) : livePrice + liqPerUnit;
                     return (
                       <div className="mb-3 p-2.5 rounded-lg bg-black/40 border border-white/[0.04] text-[10px] space-y-1 font-mono" data-testid="trade-preview">
-                        <Row k="SIDE" v={side.toUpperCase()} accent={side === "long" ? "cyan" : "red"} />
+                        <Row k="SIDE" v={`${side.toUpperCase()} ${leverage}x`} accent={side === "long" ? "cyan" : "red"} />
                         <Row k="QTY" v={`${fmtQty(previewQty)} ${tradeSym}`} />
                         <Row k="ENTRY" v={`$${fmtPrice(livePrice)}`} />
-                        <Row k="COLLATERAL" v={`$${fmtUsd(previewUsd)}`} />
+                        <Row k="NOTIONAL" v={`$${fmtUsd(previewUsd)}`} />
+                        <Row k="COLLATERAL" v={`$${fmtUsd(collateral)}`} />
+                        {leverage > 1 && <Row k="LIQ. PRICE" v={`$${fmtPrice(previewLiq)}`} accent="red" />}
                         <Row k="CASH AFTER" v={`$${fmtUsd(newBalance)}`} accent={newBalance < 0 ? "red" : "cyan"} />
                       </div>
                     );
                   })()}
 
                   <button data-testid="trade-execute" onClick={executeTrade} disabled={busy} className={`w-full py-3 rounded-lg text-xs font-extrabold uppercase tracking-wider transition disabled:opacity-50 ${side === "long" ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20" : "bg-red-500 hover:bg-red-400 text-black shadow-lg shadow-red-500/20"}`}>
-                    {busy ? "..." : `Open ${side.toUpperCase()} · ${tradeSym} · Market`}
+                    {busy ? "..." : `Open ${side.toUpperCase()} ${leverage}x · ${tradeSym} · Market`}
                   </button>
-                  <p className="text-[9px] text-gray-600 mt-2 text-center font-mono uppercase tracking-wider">CoinGecko · 0 fees · No leverage</p>
+                  <p className="text-[9px] text-gray-600 mt-2 text-center font-mono uppercase tracking-wider">CoinGecko · 0 fees · Max 50x leverage</p>
                 </div>
               </div>
 
@@ -498,11 +528,11 @@ export default function Challenge() {
                                 </div>
                               </td>
                               <td className="px-2 py-2.5">
-                                <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${pos.side === "long" ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>{pos.side === "long" ? "↗ LONG" : "↘ SHORT"}</span>
+                                <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${pos.side === "long" ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>{pos.side === "long" ? "↗ LONG" : "↘ SHORT"}{pos.leverage && pos.leverage > 1 ? ` ${pos.leverage}x` : ""}</span>
                               </td>
                               <td className="text-right px-2 py-2.5 text-white">{fmtQty(pos.qty)}</td>
                               <td className="text-right px-2 py-2.5 text-gray-400">${fmtPrice(pos.avg_price)}</td>
-                              <td className="text-right px-2 py-2.5 text-cyan-300">${fmtPrice(px)}</td>
+                              <td className="text-right px-2 py-2.5 text-cyan-300">${fmtPrice(px)}{pos.liquidation_price ? <div className="text-[9px] text-red-400 font-bold">Liq ${fmtPrice(pos.liquidation_price)}</div> : null}</td>
                               <td className="text-right px-2 py-2.5">
                                 <button
                                   data-testid={`edit-sl-${key}`}

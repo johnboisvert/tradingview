@@ -67,20 +67,27 @@ function ensureParticipant(db, email, username) {
   return p;
 }
 
-// Compute unrealized PnL for a single position
+// Compute unrealized PnL for a single position (leverage-aware)
+// PnL is computed on the full notional (qty * price_diff), NOT on the collateral.
 function positionPnL(pos, mark) {
   if (!mark || !pos) return 0;
   if (pos.side === 'short') return (pos.avg_price - mark) * pos.qty;
   return (mark - pos.avg_price) * pos.qty;
 }
+// Liquidation price for a leveraged position.
+// Maintenance margin = 0 (full collateral can be lost).
+// LONG liq when (entry - liq) * qty = collateral → liq = entry - (collateral/qty)
+// SHORT liq when (liq - entry) * qty = collateral → liq = entry + (collateral/qty)
+function liquidationPrice(pos) {
+  if (!pos || !pos.qty || !pos.collateral) return null;
+  const perUnit = pos.collateral / pos.qty;
+  return pos.side === 'short' ? pos.avg_price + perUnit : Math.max(0, pos.avg_price - perUnit);
+}
 // Position value used in equity calc:
-// Long: qty * mark (asset value)
-// Short: collateral + (avg_price - mark)*qty (locked collateral + unrealized PnL)
+// Long:  collateral + PnL  (because asset is leveraged, the unleveraged value = collateral + pnl)
+// Short: collateral + PnL  (same logic — collateral is the only "real" risk)
 function positionEquityContribution(pos, mark) {
-  if (pos.side === 'short') {
-    return (pos.collateral || pos.qty * pos.avg_price) + positionPnL(pos, mark);
-  }
-  return pos.qty * (mark || pos.avg_price || 0);
+  return (pos.collateral || 0) + positionPnL(pos, mark);
 }
 
 // Compute equity (cash + position contributions)
@@ -258,7 +265,9 @@ function enrichParticipant(p, prices) {
       mark,
       value: positionEquityContribution(pos, mark),
       pnl: positionPnL(pos, mark),
-      pnl_pct: pos.avg_price > 0 ? (positionPnL(pos, mark) / (pos.qty * pos.avg_price)) * 100 : 0,
+      pnl_pct: pos.collateral > 0 ? (positionPnL(pos, mark) / pos.collateral) * 100 : 0,
+      liquidation_price: liquidationPrice(pos),
+      leverage: pos.leverage || 1,
     };
   }
   const equity = computeEquity(p, prices);
@@ -292,23 +301,31 @@ async function checkStopOrders() {
       const mark = prices[pos.symbol];
       if (!mark) continue;
       let trigger = null;
-      if (pos.side === 'long') {
+      // Check liquidation FIRST (irrecoverable)
+      const liq = liquidationPrice(pos);
+      if (liq !== null) {
+        if (pos.side === 'long' && mark <= liq) trigger = 'liquidation';
+        else if (pos.side === 'short' && mark >= liq) trigger = 'liquidation';
+      }
+      if (!trigger && pos.side === 'long') {
         if (pos.sl && mark <= pos.sl) trigger = 'stop_loss';
         else if (pos.tp && mark >= pos.tp) trigger = 'take_profit';
-      } else if (pos.side === 'short') {
+      } else if (!trigger && pos.side === 'short') {
         if (pos.sl && mark >= pos.sl) trigger = 'stop_loss';
         else if (pos.tp && mark <= pos.tp) trigger = 'take_profit';
       }
       if (!trigger) continue;
 
       const closeQty = pos.qty;
-      const realized = pos.side === 'short' ? (pos.avg_price - mark) * closeQty : (mark - pos.avg_price) * closeQty;
-      p.balance += (pos.collateral || pos.qty * pos.avg_price) + realized;
+      // For liquidation, close at the liquidation price (collateral wiped exactly)
+      const closePx = trigger === 'liquidation' ? liq : mark;
+      const realized = pos.side === 'short' ? (pos.avg_price - closePx) * closeQty : (closePx - pos.avg_price) * closeQty;
+      p.balance += (pos.collateral || 0) + realized;
       p.pnl_realized = (p.pnl_realized || 0) + realized;
-      p.trades.push({ ts: new Date().toISOString(), action: 'close', side: pos.side, symbol: pos.symbol, qty: closeQty, price: mark, value: closeQty * mark, pnl: realized, trigger });
+      p.trades.push({ ts: new Date().toISOString(), action: 'close', side: pos.side, symbol: pos.symbol, qty: closeQty, price: closePx, value: closeQty * closePx, pnl: realized, trigger, leverage: pos.leverage || 1 });
       delete p.positions[key];
       touched = true;
-      console.log(`[Challenge] ${trigger.toUpperCase()} triggered for ${p.username} ${pos.side} ${pos.symbol} @ $${mark.toFixed(4)} PnL=$${realized.toFixed(2)}`);
+      console.log(`[Challenge] ${trigger.toUpperCase()} triggered for ${p.username} ${pos.side} ${pos.symbol} @ $${closePx.toFixed(4)} PnL=$${realized.toFixed(2)}`);
     }
   }
   if (touched) saveDb(db);
@@ -362,7 +379,7 @@ export default function register(app, { resendClientGetter }) {
   //         symbol, qty, position_id? (close only), sl?, tp? (open only) }
   // Legacy compat: { side: 'buy'|'sell' } → action open long / close long
   app.post('/api/v1/challenge/trade', async (req, res) => {
-    let { email, action, side, symbol, qty, position_id, sl, tp } = req.body || {};
+    let { email, action, side, symbol, qty, position_id, sl, tp, leverage } = req.body || {};
     if (!email || !symbol || !qty) return res.status(400).json({ ok: false, error: 'Paramètres manquants' });
     // Legacy compat: buy/sell → open long / close long
     if (!action && side) {
@@ -378,6 +395,10 @@ export default function register(app, { resendClientGetter }) {
     const sym = String(symbol).toUpperCase();
     const qtyNum = Math.abs(parseFloat(qty));
     if (!Number.isFinite(qtyNum) || qtyNum <= 0) return res.status(400).json({ ok: false, error: 'Quantité invalide' });
+    // Leverage: 1x to 50x (default 1x = spot equivalent)
+    let lev = parseFloat(leverage);
+    if (!Number.isFinite(lev) || lev < 1) lev = 1;
+    if (lev > 50) lev = 50;
 
     const db = loadDb();
     const p = db.participants[email.toLowerCase()];
@@ -389,6 +410,7 @@ export default function register(app, { resendClientGetter }) {
     if (!price) return res.status(400).json({ ok: false, error: `Crypto non supportée: ${sym}` });
 
     const value = qtyNum * price;
+    const collateralRequired = value / lev;
     const posKey = `${sym}_${side}`;
 
     if (action === 'open') {
@@ -404,39 +426,43 @@ export default function register(app, { resendClientGetter }) {
         if (side === 'short' && tpNum >= price) return res.status(400).json({ ok: false, error: 'TP doit être < prix actuel pour un SHORT' });
       }
 
-      // Lock collateral from balance
-      if (value > p.balance + 0.01) return res.status(400).json({ ok: false, error: `Solde insuffisant (besoin $${value.toFixed(2)}, dispo $${p.balance.toFixed(2)})` });
-      p.balance -= value;
+      // Lock collateral from balance (with leverage, collateral < notional)
+      if (collateralRequired > p.balance + 0.01) return res.status(400).json({ ok: false, error: `Collateral insuffisant (besoin $${collateralRequired.toFixed(2)}, dispo $${p.balance.toFixed(2)})` });
+      p.balance -= collateralRequired;
 
       const existing = p.positions[posKey];
       if (existing) {
         const newQty = existing.qty + qtyNum;
         existing.avg_price = newQty > 0 ? (existing.qty * existing.avg_price + qtyNum * price) / newQty : price;
         existing.qty = newQty;
-        existing.collateral = (existing.collateral || 0) + value;
+        existing.collateral = (existing.collateral || 0) + collateralRequired;
+        // Weighted-average leverage update
+        const oldNotional = existing.qty * existing.avg_price;
+        existing.leverage = oldNotional > 0 ? (existing.leverage || 1) : lev;
         if (slNum !== null) existing.sl = slNum;
         if (tpNum !== null) existing.tp = tpNum;
       } else {
         p.positions[posKey] = {
           id: crypto.randomBytes(6).toString('hex'),
           symbol: sym, side, qty: qtyNum, avg_price: price, opened_at: new Date().toISOString(),
-          collateral: value,
+          collateral: collateralRequired,
+          leverage: lev,
           ...(slNum !== null ? { sl: slNum } : {}),
           ...(tpNum !== null ? { tp: tpNum } : {}),
         };
       }
-      p.trades.push({ ts: new Date().toISOString(), action: 'open', side, symbol: sym, qty: qtyNum, price, value });
+      p.trades.push({ ts: new Date().toISOString(), action: 'open', side, symbol: sym, qty: qtyNum, price, value, leverage: lev, collateral: collateralRequired });
     } else {
       // CLOSE
       let pos = position_id ? Object.values(p.positions).find(x => x.id === position_id) : p.positions[posKey];
       if (!pos) return res.status(400).json({ ok: false, error: `Aucune position ${side} ouverte sur ${sym}` });
       const closeQty = Math.min(qtyNum, pos.qty);
-      // Realized PnL
+      // Realized PnL on full notional (leveraged)
       const realized = pos.side === 'short'
         ? (pos.avg_price - price) * closeQty
         : (price - pos.avg_price) * closeQty;
       // Return locked collateral proportional to closed qty
-      const collateralReturn = (pos.collateral || pos.qty * pos.avg_price) * (closeQty / pos.qty);
+      const collateralReturn = (pos.collateral || 0) * (closeQty / pos.qty);
       p.balance += collateralReturn + realized;
       p.pnl_realized += realized;
       pos.qty -= closeQty;
@@ -445,7 +471,7 @@ export default function register(app, { resendClientGetter }) {
         const key = Object.keys(p.positions).find(k => p.positions[k]?.id === pos.id) || posKey;
         delete p.positions[key];
       }
-      p.trades.push({ ts: new Date().toISOString(), action: 'close', side: pos.side, symbol: sym, qty: closeQty, price, value: closeQty * price, pnl: realized });
+      p.trades.push({ ts: new Date().toISOString(), action: 'close', side: pos.side, symbol: sym, qty: closeQty, price, value: closeQty * price, pnl: realized, leverage: pos.leverage || 1 });
     }
 
     saveDb(db);

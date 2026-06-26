@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip as ReTooltip, XAxis } from "recharts";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import SEOHead from "@/components/SEOHead";
 import TrialBanner from "@/components/TrialBanner";
 import TradingViewChart from "@/components/TradingViewChart";
+import Confetti from "@/components/Confetti";
 import {
   Trophy, RefreshCw, Users, Calendar, Crown,
   ArrowUpRight, ArrowDownRight, X, Search, Lock, Award, Activity, TrendingUp,
@@ -92,6 +93,12 @@ export default function Challenge() {
   const [recentTrades, setRecentTrades] = useState<Array<Trade & { username: string }>>([]);
   const [showAchievements, setShowAchievements] = useState(false);
   const [showMobileTicket, setShowMobileTicket] = useState(false);
+  // Badge unlock toast queue — pops a golden animated card top-right when a new
+  // achievement appears in `me.achievements` (compared to previous render).
+  const [badgeToast, setBadgeToast] = useState<{ key: string; emoji: string; name: string; desc: string } | null>(null);
+  const [badgeConfetti, setBadgeConfetti] = useState(false);
+  const seenAchievementsRef = useRef<Set<string>>(new Set());
+  const seenInitializedRef = useRef<boolean>(false);
 
   const fetchBoard = useCallback(async () => {
     try {
@@ -156,6 +163,33 @@ export default function Challenge() {
     const id = setTimeout(() => { setInfo(null); setError(null); }, 4500);
     return () => clearTimeout(id);
   }, [info, error]);
+
+  // Detect newly unlocked badges and show a golden celebration toast.
+  // First load seeds the "seen" set silently so we don't spam returning users
+  // with toasts for previously-earned badges.
+  useEffect(() => {
+    if (!me?.achievements || achievementsCatalog.length === 0) return;
+    const current = new Set(me.achievements.map(a => a.key));
+    if (!seenInitializedRef.current) {
+      seenAchievementsRef.current = current;
+      seenInitializedRef.current = true;
+      return;
+    }
+    const newlyUnlocked: string[] = [];
+    for (const k of current) {
+      if (!seenAchievementsRef.current.has(k)) newlyUnlocked.push(k);
+    }
+    if (newlyUnlocked.length === 0) return;
+    seenAchievementsRef.current = current;
+    const meta = achievementsCatalog.find(a => a.key === newlyUnlocked[0]);
+    if (!meta) return;
+    setBadgeToast(meta);
+    setBadgeConfetti(true);
+    // confetti fades; toast auto-dismisses
+    const t1 = setTimeout(() => setBadgeConfetti(false), 2600);
+    const t2 = setTimeout(() => setBadgeToast(null), 6000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [me?.achievements, achievementsCatalog]);
 
   const filteredSymbols = useMemo(() => {
     if (!pickerQuery.trim()) return symbols;
@@ -872,6 +906,57 @@ export default function Challenge() {
 
         <Footer />
       </main>
+
+      {/* Badge unlock toast — golden animated card top-right when a new achievement triggers */}
+      {badgeToast && (
+        <div
+          data-testid="badge-unlock-toast"
+          className="fixed top-4 right-4 z-[9999] w-[320px] max-w-[calc(100vw-2rem)] pointer-events-auto"
+          style={{ animation: "badgeToastIn 380ms cubic-bezier(.2,.9,.3,1.2)" }}
+        >
+          <div className="relative rounded-2xl overflow-hidden border border-amber-400/50 shadow-2xl shadow-amber-500/30 bg-gradient-to-br from-[#1a1404] via-[#2a1d05] to-[#1a1404]">
+            {/* shimmer overlay */}
+            <div
+              className="absolute inset-0 pointer-events-none opacity-60"
+              style={{
+                background: "linear-gradient(120deg, transparent 25%, rgba(253,224,71,0.18) 45%, rgba(253,224,71,0.32) 50%, rgba(253,224,71,0.18) 55%, transparent 75%)",
+                backgroundSize: "200% 100%",
+                animation: "badgeShimmer 2.4s linear infinite",
+              }}
+            />
+            <div className="relative flex items-start gap-3 p-4">
+              <div
+                className="shrink-0 w-14 h-14 rounded-xl flex items-center justify-center text-3xl border border-amber-300/40"
+                style={{ background: "radial-gradient(circle at 30% 25%, rgba(253,224,71,0.35), rgba(253,224,71,0.05) 70%)" }}
+              >
+                {badgeToast.emoji}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-amber-400">Badge débloqué</span>
+                  <Trophy className="w-3 h-3 text-amber-300" />
+                </div>
+                <div className="text-base font-black text-amber-100 truncate" data-testid="badge-toast-name">{badgeToast.name}</div>
+                <div className="text-[11px] text-amber-200/70 mt-0.5 leading-snug">{badgeToast.desc}</div>
+              </div>
+              <button
+                onClick={() => setBadgeToast(null)}
+                data-testid="badge-toast-close"
+                className="shrink-0 text-amber-300/50 hover:text-amber-200 transition"
+                aria-label="Fermer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <style>{`
+            @keyframes badgeToastIn { 0% { transform: translateY(-12px) scale(0.96); opacity: 0; } 60% { transform: translateY(2px) scale(1.02); opacity: 1; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
+            @keyframes badgeShimmer { 0% { background-position: 200% 0; } 100% { background-position: -50% 0; } }
+          `}</style>
+        </div>
+      )}
+
+      <Confetti active={badgeConfetti} count={70} />
     </div>
   );
 }

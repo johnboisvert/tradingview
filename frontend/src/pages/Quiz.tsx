@@ -4,7 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import SEOHead from "@/components/SEOHead";
 import TrialBanner from "@/components/TrialBanner";
-import { Sparkles, ArrowRight, CheckCircle2, RotateCcw, Trophy } from "lucide-react";
+import { Sparkles, ArrowRight, CheckCircle2, RotateCcw, Trophy, Twitter, Linkedin, Facebook, MessageCircle, Link2, Check, Share2 } from "lucide-react";
 
 interface QuizQ {
   id: number;
@@ -32,6 +32,16 @@ interface Profile {
 
 type Phase = "intro" | "questions" | "email-gate" | "result";
 
+// Static profile metadata (mirrors backend OG_PROFILES) — used when landing on a
+// shared link like /quiz?profile=hodler so we can render the result page without
+// requiring the user to retake the quiz first.
+const STATIC_PROFILES: Record<string, { emoji: string; name: string; tagline: string; color: string }> = {
+  hodler:   { emoji: '💎', name: 'Le HODLer Patient',          tagline: 'Tu joues sur le long terme avec sang-froid',          color: '#3b82f6' },
+  scalper:  { emoji: '⚡', name: 'Le Scalpeur Adrénaline',     tagline: 'Tu fais des trades rapides, plusieurs fois par jour', color: '#f97316' },
+  swing:    { emoji: '🎯', name: 'Le Swing Trader Stratégique', tagline: 'Tu joues sur des mouvements de quelques jours',     color: '#10b981' },
+  longterm: { emoji: '🚀', name: "L'Investisseur Visionnaire", tagline: 'Tu cherches les pépites de demain',                  color: '#a855f7' },
+};
+
 export default function Quiz() {
   const [phase, setPhase] = useState<Phase>("intro");
   const [questions, setQuestions] = useState<QuizQ[]>([]);
@@ -41,6 +51,8 @@ export default function Quiz() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [sharedView, setSharedView] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
 
   // Fetch questions on mount
   useEffect(() => {
@@ -53,6 +65,29 @@ export default function Quiz() {
         }
       })
       .catch(() => {});
+  }, []);
+
+  // Deep-link viewer: /quiz?profile=hodler shows a teaser of the shared profile
+  // so social link previews and curious visitors can land directly on the result.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pkey = params.get("profile");
+    if (pkey && STATIC_PROFILES[pkey]) {
+      const meta = STATIC_PROFILES[pkey];
+      setProfile({
+        key: pkey,
+        emoji: meta.emoji,
+        name: meta.name,
+        tagline: meta.tagline,
+        desc: "Découvre ce profil de trader et trouve le tien — il ne te reste plus que 10 questions !",
+        strengths: [],
+        weaknesses: [],
+        tools: [],
+        color: meta.color,
+      });
+      setSharedView(true);
+      setPhase("result");
+    }
   }, []);
 
   function selectAnswer(idx: number) {
@@ -112,12 +147,51 @@ export default function Quiz() {
 
   const progress = questions.length > 0 ? Math.round(((current + (phase === "email-gate" || phase === "result" ? 1 : 0)) / (questions.length + 1)) * 100) : 0;
 
+  // Build the dynamic SEO + share assets for the result page.
+  const isResultView = phase === "result" && profile;
+  const shareUrl = isResultView
+    ? `https://www.cryptoia.ca/quiz?profile=${profile!.key}&utm_source=share&utm_medium=social&utm_campaign=trader_quiz`
+    : "https://www.cryptoia.ca/quiz";
+  const ogImage = isResultView
+    ? `https://www.cryptoia.ca/api/v1/quiz/og/${profile!.key}.png`
+    : undefined;
+  const shareTitle = isResultView
+    ? `${profile!.emoji} Je suis ${profile!.name} sur CryptoIA ! Et toi, quel trader es-tu ?`
+    : "Quel trader es-tu ? · Quiz Crypto gratuit";
+  const shareDesc = isResultView
+    ? `${profile!.tagline} — Découvre ton profil de trader crypto en 2 minutes (gratuit).`
+    : "10 questions pour découvrir ton profil de trader crypto : HODLer, Scalpeur, Swing ou Investisseur visionnaire. Recommandations personnalisées + 7 jours gratuits.";
+
+  function share(platform: string) {
+    const text = isResultView
+      ? `${profile!.emoji} Selon CryptoIA, je suis : ${profile!.name} ! ${profile!.tagline}\n\nFais le test (2 min) :`
+      : "Quel trader crypto es-tu ? Fais le test (2 min) :";
+    const encUrl = encodeURIComponent(shareUrl);
+    const encText = encodeURIComponent(text);
+    let href = "";
+    if (platform === "twitter") href = `https://twitter.com/intent/tweet?text=${encText}&url=${encUrl}`;
+    else if (platform === "facebook") href = `https://www.facebook.com/sharer/sharer.php?u=${encUrl}`;
+    else if (platform === "linkedin") href = `https://www.linkedin.com/sharing/share-offsite/?url=${encUrl}`;
+    else if (platform === "whatsapp") href = `https://wa.me/?text=${encText}%20${encUrl}`;
+    else if (platform === "telegram") href = `https://t.me/share/url?url=${encUrl}&text=${encText}`;
+    if (href) window.open(href, "_blank", "noopener,noreferrer,width=600,height=600");
+  }
+
+  async function copyShareLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  }
+
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
       <SEOHead
-        title="Quel trader es-tu ? · Quiz Crypto gratuit"
-        description="10 questions pour découvrir ton profil de trader crypto : HODLer, Scalpeur, Swing ou Investisseur visionnaire. Recommandations personnalisées + 7 jours gratuits."
-        path="/quiz"
+        title={shareTitle}
+        description={shareDesc}
+        path={isResultView ? `/quiz?profile=${profile!.key}` : "/quiz"}
+        image={ogImage}
       />
       <Sidebar />
       <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
@@ -253,21 +327,116 @@ export default function Quiz() {
           {phase === "result" && profile && (
             <div data-testid="quiz-result">
               <div
-                className="rounded-3xl p-8 md:p-10 text-center mb-8"
+                className="rounded-3xl p-8 md:p-10 text-center mb-6"
                 style={{ background: `linear-gradient(135deg, ${profile.color}33, #ec489933)`, border: `1px solid ${profile.color}55` }}
               >
                 <div className="text-6xl md:text-7xl mb-3">{profile.emoji}</div>
                 <div className="text-[10px] uppercase tracking-[0.2em] font-bold mb-2" style={{ color: profile.color }}>
-                  Ton profil de trader
+                  {sharedView ? "Un profil de trader" : "Ton profil de trader"}
                 </div>
                 <h1 className="text-3xl md:text-5xl font-black mb-2">{profile.name}</h1>
                 <p className="text-base md:text-lg text-gray-300 italic">{profile.tagline}</p>
               </div>
 
+              {/* Viral share bar — visible only when the user just finished the quiz */}
+              {!sharedView && (
+                <div
+                  data-testid="quiz-share-bar"
+                  className="bg-[#111827] border border-white/[0.06] rounded-2xl p-5 mb-6"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <Share2 className="w-4 h-4" style={{ color: profile.color }} />
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider">Partage ton profil</h3>
+                    <span className="text-[10px] text-gray-500 font-bold ml-auto">+5 challenges = badge &laquo;&nbsp;Influenceur&nbsp;&raquo;</span>
+                  </div>
+
+                  {/* OG card preview — shows the exact image that will appear on socials */}
+                  <a
+                    href={shareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block mb-4 rounded-xl overflow-hidden border border-white/[0.06] hover:border-white/[0.18] transition-colors"
+                    data-testid="quiz-share-og-preview"
+                  >
+                    <img
+                      src={ogImage}
+                      alt={`Carte de partage ${profile.name}`}
+                      className="w-full h-auto block"
+                      loading="lazy"
+                    />
+                  </a>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => share("twitter")}
+                      data-testid="quiz-share-twitter"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/[0.05] border border-white/10 text-xs font-bold text-gray-100 hover:bg-white/[0.12] hover:border-white/20 transition"
+                    >
+                      <Twitter className="w-3.5 h-3.5" /> X
+                    </button>
+                    <button
+                      onClick={() => share("facebook")}
+                      data-testid="quiz-share-facebook"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/[0.05] border border-white/10 text-xs font-bold text-gray-100 hover:bg-white/[0.12] hover:border-white/20 transition"
+                    >
+                      <Facebook className="w-3.5 h-3.5" /> Facebook
+                    </button>
+                    <button
+                      onClick={() => share("linkedin")}
+                      data-testid="quiz-share-linkedin"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/[0.05] border border-white/10 text-xs font-bold text-gray-100 hover:bg-white/[0.12] hover:border-white/20 transition"
+                    >
+                      <Linkedin className="w-3.5 h-3.5" /> LinkedIn
+                    </button>
+                    <button
+                      onClick={() => share("whatsapp")}
+                      data-testid="quiz-share-whatsapp"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-xs font-bold text-emerald-300 hover:bg-emerald-500/25 transition"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                    </button>
+                    <button
+                      onClick={() => share("telegram")}
+                      data-testid="quiz-share-telegram"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-xs font-bold text-cyan-300 hover:bg-cyan-500/25 transition"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" /> Telegram
+                    </button>
+                    <button
+                      onClick={copyShareLink}
+                      data-testid="quiz-share-copy"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/[0.05] border border-white/10 text-xs font-bold text-gray-100 hover:bg-white/[0.12] hover:border-white/20 transition"
+                    >
+                      {copied ? <><Check className="w-3.5 h-3.5 text-emerald-400" /> Copié</> : <><Link2 className="w-3.5 h-3.5" /> Lien</>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Shared-view CTA: a curious friend lands on /quiz?profile=… — push them to take the quiz */}
+              {sharedView && (
+                <div
+                  data-testid="quiz-shared-cta"
+                  className="bg-gradient-to-br from-purple-500/15 to-pink-500/15 border border-purple-500/30 rounded-2xl p-6 mb-6 text-center"
+                >
+                  <p className="text-sm text-gray-300 mb-4">Quelqu&apos;un t&apos;a partagé ce profil. Découvre <b className="text-white">le tien</b> en 10 questions (2 min).</p>
+                  <button
+                    onClick={() => { setSharedView(false); setProfile(null); setPhase("intro"); window.history.replaceState({}, "", "/quiz"); }}
+                    data-testid="quiz-shared-start"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-extrabold text-sm hover:from-purple-400 hover:to-pink-400 transition-all"
+                  >
+                    Faire le quiz <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {!sharedView && (
               <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6 mb-6">
                 <p className="text-gray-300 leading-relaxed">{profile.desc}</p>
               </div>
+              )}
 
+              {!sharedView && (
               <div className="grid md:grid-cols-2 gap-4 mb-6">
                 <div className="bg-[#111827] border border-emerald-500/20 rounded-2xl p-5">
                   <h3 className="text-emerald-400 font-extrabold text-sm mb-3 uppercase tracking-wider">💪 Tes forces</h3>
@@ -291,7 +460,9 @@ export default function Quiz() {
                   </ul>
                 </div>
               </div>
+              )}
 
+              {!sharedView && (
               <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-6 mb-6">
                 <h3 className="font-extrabold text-base mb-4 flex items-center gap-2">
                   <Sparkles className="w-4 h-4" style={{ color: profile.color }} />
@@ -317,6 +488,7 @@ export default function Quiz() {
                   ))}
                 </div>
               </div>
+              )}
 
               <TrialBanner source="quiz-result" className="mb-6" />
 

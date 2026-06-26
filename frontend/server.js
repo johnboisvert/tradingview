@@ -5487,7 +5487,9 @@ function escapeAttr(s = '') {
 app.get('/quiz', (req, res, next) => {
   try {
     const key = String(req.query.profile || '').toLowerCase();
-    const meta = QUIZ_OG_PROFILES[key];
+    // Object.hasOwn guard prevents prototype-chain keys (__proto__, constructor, etc.)
+    // from bypassing the whitelist and emitting broken meta tags.
+    const meta = Object.hasOwn(QUIZ_OG_PROFILES, key) ? QUIZ_OG_PROFILES[key] : null;
     if (!meta) return next();
     const distIndex = path.join(__dirname, 'dist', 'index.html');
     if (!fs.existsSync(distIndex)) return next();

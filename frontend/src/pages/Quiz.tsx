@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
@@ -43,6 +44,7 @@ const STATIC_PROFILES: Record<string, { emoji: string; name: string; tagline: st
 };
 
 export default function Quiz() {
+  const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>("intro");
   const [questions, setQuestions] = useState<QuizQ[]>([]);
   const [answers, setAnswers] = useState<number[]>([]);
@@ -157,10 +159,10 @@ export default function Quiz() {
     : undefined;
   const shareTitle = isResultView
     ? `${profile!.emoji} Je suis ${profile!.name} sur CryptoIA ! Et toi, quel trader es-tu ?`
-    : "Quel trader es-tu ? · Quiz Crypto gratuit";
+    : t("quiz.seoTitle");
   const shareDesc = isResultView
     ? `${profile!.tagline} — Découvre ton profil de trader crypto en 2 minutes (gratuit).`
-    : "10 questions pour découvrir ton profil de trader crypto : HODLer, Scalpeur, Swing ou Investisseur visionnaire. Recommandations personnalisées + 7 jours gratuits.";
+    : t("quiz.seoDescription");
 
   // ── Viral share tracking ──────────────────────────────────────────────────
   // Records share events to the backend and powers the leaderboard.
@@ -236,13 +238,13 @@ export default function Quiz() {
             <div className="text-center" data-testid="quiz-intro">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-bold mb-6">
                 <Sparkles className="w-3.5 h-3.5" />
-                QUIZ GRATUIT · 2 MINUTES
+                {t("quiz.introSubtitle")}
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">
-                Quel trader es-tu&nbsp;?
+                {t("quiz.introTitle")}
               </h1>
               <p className="text-base md:text-lg text-gray-300 max-w-2xl mx-auto mb-2">
-                10 questions pour décoder ton ADN de trader crypto.
+                {t("quiz.introHook")}
               </p>
               <p className="text-sm text-gray-500 max-w-2xl mx-auto mb-10">
                 À la fin : ton profil, tes forces, tes faiblesses et les outils qui marchent pour TOI.
@@ -268,7 +270,7 @@ export default function Quiz() {
                 disabled={questions.length === 0}
                 className="inline-flex items-center gap-2 px-7 py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-extrabold text-base hover:from-purple-400 hover:to-pink-400 transition-all shadow-xl shadow-purple-500/20 disabled:opacity-50"
               >
-                {questions.length === 0 ? "Chargement..." : "Commencer le quiz"}
+                {questions.length === 0 ? t("common.loading") : t("quiz.startButton")}
                 <ArrowRight className="w-5 h-5" />
               </button>
               <p className="text-xs text-gray-500 mt-4">100% gratuit · Email demandé à la fin pour recevoir ton profil détaillé</p>
@@ -280,7 +282,7 @@ export default function Quiz() {
             <div data-testid="quiz-questions">
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Question {current + 1} / {questions.length}</span>
+                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">{t("quiz.questionCounter", { current: current + 1, total: questions.length })}</span>
                   <span className="text-xs text-purple-300 font-bold">{progress}%</span>
                 </div>
                 <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
@@ -367,7 +369,7 @@ export default function Quiz() {
               >
                 <div className="text-6xl md:text-7xl mb-3">{profile.emoji}</div>
                 <div className="text-[10px] uppercase tracking-[0.2em] font-bold mb-2" style={{ color: profile.color }}>
-                  {sharedView ? "Un profil de trader" : "Ton profil de trader"}
+                  {sharedView ? t("quiz.sharedProfileLabel") : t("quiz.resultProfileLabel")}
                 </div>
                 <h1 className="text-3xl md:text-5xl font-black mb-2">{profile.name}</h1>
                 <p className="text-base md:text-lg text-gray-300 italic">{profile.tagline}</p>
@@ -381,8 +383,8 @@ export default function Quiz() {
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <Share2 className="w-4 h-4" style={{ color: profile.color }} />
-                    <h3 className="font-extrabold text-sm uppercase tracking-wider">Partage ton profil</h3>
-                    <span className="text-[10px] text-gray-500 font-bold ml-auto">+5 challenges = badge &laquo;&nbsp;Influenceur&nbsp;&raquo;</span>
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider">{t("quiz.sharePanelTitle")}</h3>
+                    <span className="text-[10px] text-gray-500 font-bold ml-auto">{t("quiz.sharePanelBadgeHint")}</span>
                   </div>
 
                   {/* Viral leaderboard: most-shared profiles this week */}
@@ -393,7 +395,7 @@ export default function Quiz() {
                     >
                       <div className="flex items-center gap-2 mb-2.5">
                         <Trophy className="w-3.5 h-3.5 text-amber-400" />
-                        <span className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-amber-400">Top partages · 7 derniers jours</span>
+                        <span className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-amber-400">{t("quiz.leaderboardLabel")}</span>
                       </div>
                       <div className="grid grid-cols-4 gap-2">
                         {shareLeaderboard.map((s, idx) => {
@@ -412,7 +414,7 @@ export default function Quiz() {
                               <div className="text-xl leading-none mb-1">{meta.emoji}</div>
                               <div className="text-[9px] font-bold text-gray-300 truncate" title={meta.name}>{meta.name.split(" ").slice(1).join(" ") || meta.name}</div>
                               <div className="mt-1 text-[11px] font-black tabular-nums" style={{ color: isMe ? profile.color : "#e5e7eb" }}>{s.week}</div>
-                              <div className="text-[8px] text-gray-500 uppercase tracking-wider">partages</div>
+                              <div className="text-[8px] text-gray-500 uppercase tracking-wider">{t("quiz.leaderboardSharesUnit")}</div>
                             </div>
                           );
                         })}
@@ -430,7 +432,7 @@ export default function Quiz() {
                   >
                     <img
                       src={ogImage}
-                      alt={`Carte de partage ${profile.name}`}
+                      alt={t("quiz.shareCardAlt", { profile: profile.name })}
                       className="w-full h-auto block"
                       loading="lazy"
                     />
@@ -477,7 +479,7 @@ export default function Quiz() {
                       data-testid="quiz-share-copy"
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/[0.05] border border-white/10 text-xs font-bold text-gray-100 hover:bg-white/[0.12] hover:border-white/20 transition"
                     >
-                      {copied ? <><Check className="w-3.5 h-3.5 text-emerald-400" /> Copié</> : <><Link2 className="w-3.5 h-3.5" /> Lien</>}
+                      {copied ? <><Check className="w-3.5 h-3.5 text-emerald-400" /> {t("quiz.shareLinkCopied")}</> : <><Link2 className="w-3.5 h-3.5" /> {t("quiz.shareLinkButton")}</>}
                     </button>
                   </div>
                 </div>
@@ -489,13 +491,13 @@ export default function Quiz() {
                   data-testid="quiz-shared-cta"
                   className="bg-gradient-to-br from-purple-500/15 to-pink-500/15 border border-purple-500/30 rounded-2xl p-6 mb-6 text-center"
                 >
-                  <p className="text-sm text-gray-300 mb-4">Quelqu&apos;un t&apos;a partagé ce profil. Découvre <b className="text-white">le tien</b> en 10 questions (2 min).</p>
+                  <p className="text-sm text-gray-300 mb-4">{t("quiz.sharedCtaHint")}</p>
                   <button
                     onClick={() => { setSharedView(false); setProfile(null); setPhase("intro"); window.history.replaceState({}, "", "/quiz"); }}
                     data-testid="quiz-shared-start"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-extrabold text-sm hover:from-purple-400 hover:to-pink-400 transition-all"
                   >
-                    Faire le quiz <ArrowRight className="w-4 h-4" />
+                    {t("quiz.sharedCtaButton")} <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               )}

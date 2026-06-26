@@ -924,6 +924,41 @@ const en: TranslationDict = {
     submitting: "Sending…",
     errorLine: "Error. Try again or contact us.",
   },
+  quiz: {
+    seoTitle: "What kind of trader are you? · Free crypto quiz",
+    seoDescription:
+      "10 questions to discover your crypto trader profile: HODLer, Scalper, Swing or Visionary Investor. Personalized recommendations + 7-day free trial.",
+    introTitle: "What kind of trader are you?",
+    introSubtitle: "10 questions · 2 minutes · 100% free",
+    introHook:
+      "Discover your crypto trader profile and get personalized recommendations with a 7-day free trial.",
+    startButton: "Start the quiz",
+    questionCounter: "Question {{current}} of {{total}}",
+    next: "Next",
+    previous: "Previous",
+    emailGateTitle: "Get your personalized results",
+    emailGateSubtitle: "Plus a free AI roadmap + 7-day free trial",
+    emailPlaceholder: "Your email",
+    submitButton: "See my results →",
+    submitting: "Analyzing…",
+    resultProfileLabel: "Your trader profile",
+    sharedProfileLabel: "A trader profile",
+    sharedCtaHint:
+      "Someone shared this profile with you. Discover yours in 10 questions (2 min).",
+    sharedCtaButton: "Take the quiz",
+    sharePanelTitle: "Share your profile",
+    sharePanelBadgeHint: "+5 challenges = unlock the «Influencer» badge",
+    leaderboardLabel: "Top shares · last 7 days",
+    leaderboardSharesUnit: "shares",
+    shareCardAlt: "Share card for {{profile}}",
+    shareLinkCopied: "Copied",
+    shareLinkButton: "Link",
+    strengthsTitle: "💪 Your strengths",
+    weaknessesTitle: "⚠️ Watch out for",
+    toolsTitle: "Tools made for you",
+    retakeButton: "Retake the quiz",
+    error: "Error. Try again or contact us.",
+  },
 };
 
 export default en;

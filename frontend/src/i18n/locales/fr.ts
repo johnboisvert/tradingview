@@ -922,6 +922,41 @@ const fr = {
     submitting: "Envoi…",
     errorLine: "Erreur. Réessaie ou contacte-nous.",
   },
+  quiz: {
+    seoTitle: "Quel trader es-tu ? · Quiz Crypto gratuit",
+    seoDescription:
+      "10 questions pour découvrir ton profil de trader crypto : HODLer, Scalpeur, Swing ou Investisseur visionnaire. Recommandations personnalisées + 7 jours gratuits.",
+    introTitle: "Quel trader es-tu ?",
+    introSubtitle: "10 questions · 2 minutes · 100% gratuit",
+    introHook:
+      "Découvre ton profil de trader crypto et reçois des recommandations personnalisées avec 7 jours d'essai gratuits.",
+    startButton: "Démarrer le quiz",
+    questionCounter: "Question {{current}} sur {{total}}",
+    next: "Suivant",
+    previous: "Précédent",
+    emailGateTitle: "Reçois tes résultats personnalisés",
+    emailGateSubtitle: "Plus une feuille de route IA gratuite + 7 jours d'essai",
+    emailPlaceholder: "Ton email",
+    submitButton: "Voir mes résultats →",
+    submitting: "Analyse…",
+    resultProfileLabel: "Ton profil de trader",
+    sharedProfileLabel: "Un profil de trader",
+    sharedCtaHint:
+      "Quelqu'un t'a partagé ce profil. Découvre le tien en 10 questions (2 min).",
+    sharedCtaButton: "Faire le quiz",
+    sharePanelTitle: "Partage ton profil",
+    sharePanelBadgeHint: "+5 challenges = badge « Influenceur »",
+    leaderboardLabel: "Top partages · 7 derniers jours",
+    leaderboardSharesUnit: "partages",
+    shareCardAlt: "Carte de partage {{profile}}",
+    shareLinkCopied: "Copié",
+    shareLinkButton: "Lien",
+    strengthsTitle: "💪 Tes forces",
+    weaknessesTitle: "⚠️ Attention à",
+    toolsTitle: "Outils faits pour toi",
+    retakeButton: "Refaire le quiz",
+    error: "Erreur. Réessaie ou contacte-nous.",
+  },
 };
 
 export default fr;

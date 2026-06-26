@@ -52,7 +52,7 @@ COPY --from=builder /app/frontend/data/blog_seed.json ./seeds/blog_seed.json
 COPY --from=builder /app/frontend/data/twitter_marketing_seed.json ./seeds/twitter_marketing_seed.json
 
 # Create a minimal package.json for the production server (ES modules + deps)
-RUN echo '{"type":"module","dependencies":{"express":"^5.2.1","dotenv":"^16.4.0","stripe":"^17.0.0","resend":"^4.4.1","web-push":"^3.6.7","@sentry/node":"^10.58.0","twitter-api-v2":"^1.29.0"}}' > package.json && npm install --omit=dev
+RUN echo '{"type":"module","dependencies":{"express":"^5.2.1","dotenv":"^16.4.0","stripe":"^17.0.0","resend":"^4.4.1","web-push":"^3.6.7","@sentry/node":"^10.58.0","twitter-api-v2":"^1.29.0","sharp":"^0.34.5"}}' > package.json && npm install --omit=dev
 
 EXPOSE 3000
 

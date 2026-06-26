@@ -189,4 +189,38 @@ export default function registerQuizSharesRoutes(app) {
       res.status(500).json({ ok: false, error: 'Internal error' });
     }
   });
+
+  // GET /api/v1/quiz/influencers — public Top N influencers leaderboard.
+  // Emails are anonymized to "ab***@d***" so we can show real users w/o leaking PII.
+  // Used by the homepage social-proof block ("Top 10 ambassadors this week").
+  app.get('/api/v1/quiz/influencers', (req, res) => {
+    try {
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      const db = loadDb();
+      const anonymize = (e) => {
+        if (!e || !e.includes('@')) return '***';
+        const [local, domain] = e.split('@');
+        const dParts = domain.split('.');
+        return `${local.slice(0, 2)}***@${dParts[0].slice(0, 1)}***.${dParts.slice(1).join('.') || 'com'}`;
+      };
+      const list = Object.entries(db.influencers || {})
+        .map(([email, info]) => ({
+          email_anonymized: anonymize(email),
+          total_shares: info.total_shares || 0,
+          unlocked_at: info.unlocked_at,
+        }))
+        .sort((a, b) => b.total_shares - a.total_shares)
+        .slice(0, limit);
+      res.setHeader('Cache-Control', 'public, max-age=120');
+      res.json({
+        ok: true,
+        influencers: list,
+        total_count: Object.keys(db.influencers || {}).length,
+        threshold: INFLUENCER_THRESHOLD,
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'Internal error' });
+    }
+  });
 }

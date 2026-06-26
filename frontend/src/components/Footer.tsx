@@ -57,15 +57,26 @@ export default function Footer() {
           <p className="text-xs text-gray-600 font-medium tracking-wide">
             {t("footer.copyright", { year })}
           </p>
-          <a
-            href="/affiliation"
-            data-testid="footer-affiliation-link"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-300/80 hover:text-emerald-200 transition-colors group"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            {t("footer.affiliationCta")}
-            <span className="opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">→</span>
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href="/embed-gallery"
+              data-testid="footer-embed-gallery-link"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-300/80 hover:text-purple-200 transition-colors group"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+              Embed widgets
+              <span className="opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">→</span>
+            </a>
+            <a
+              href="/affiliation"
+              data-testid="footer-affiliation-link"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-300/80 hover:text-emerald-200 transition-colors group"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              {t("footer.affiliationCta")}
+              <span className="opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">→</span>
+            </a>
+          </div>
         </div>
       </div>
     </footer>

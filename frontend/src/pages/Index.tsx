@@ -20,6 +20,7 @@ import ExitIntentPopup from "@/components/ExitIntentPopup";
 import OnboardingTour from "@/components/OnboardingTour";
 import Testimonials from "@/components/Testimonials";
 import MiniSparkline from "@/components/MiniSparkline";
+import HomeInfluencers from "@/components/HomeInfluencers";
 
 interface CoinData {
   id: string;
@@ -438,6 +439,9 @@ export default function DashboardPage() {
 
         {/* Market Hours */}
         <MarketHours />
+
+        {/* Top Influenceurs — social proof for the viral quiz funnel */}
+        <HomeInfluencers />
 
         {/* Coins Table */}
         <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 md:p-5">

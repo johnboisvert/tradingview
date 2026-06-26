@@ -100,6 +100,7 @@ function unlockBadge(p, key) {
 
 // Snapshot equity once per day max
 function snapshotEquity(p, equity) {
+  if (!Array.isArray(p.equity_history)) p.equity_history = [];
   const today = new Date().toISOString().slice(0, 10);
   const last = p.equity_history[p.equity_history.length - 1];
   if (last && last.ts.slice(0, 10) === today) {
@@ -114,6 +115,10 @@ function snapshotEquity(p, equity) {
 
 // Track a closing trade for stats / badges
 function processTradeForGamification(p, trade, currentEquity) {
+  // Defensive defaults (in case legacy participant not yet migrated)
+  if (!Array.isArray(p.achievements)) p.achievements = [];
+  if (!p.stats) p.stats = { wins: 0, losses: 0, best_pnl: 0, worst_pnl: 0, largest_trade_value: 0, liquidations: 0 };
+  if (typeof p.win_streak !== 'number') p.win_streak = 0;
   // Stats
   if (trade.action === 'close') {
     const pnl = trade.pnl || 0;

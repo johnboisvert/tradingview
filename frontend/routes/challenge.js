@@ -156,12 +156,37 @@ function processTradeForGamification(p, trade, currentEquity) {
   if (p.stats.liquidations > 0 && currentEquity > STARTING_BALANCE) unlockBadge(p, 'survivor');
 }
 
-// Global recent trade feed (last 50 across all users, anonymized usernames)
+// Global recent trade feed (last N across all users, anonymized usernames)
+// Filters out: orphaned legacy trades whose symbol is no longer in the universe,
+// and normalizes numeric fields so the UI never receives NaN/undefined for closes.
 function getRecentTrades(db, limit = 30) {
   const all = [];
+  const validSymbols = Object.keys(universe || {});
+  const universeSet = new Set(validSymbols);
+  const hasUniverse = universeSet.size > 0;
   for (const p of Object.values(db.participants || {})) {
     for (const t of (p.trades || []).slice(-15)) {
-      all.push({ ...t, username: p.username });
+      if (!t || !t.symbol) continue;
+      const sym = String(t.symbol).toUpperCase();
+      // Drop trades for coins no longer in the curated universe (scam coins removed, delisted, etc.)
+      if (hasUniverse && !universeSet.has(sym)) continue;
+      const isClose = t.action === 'close';
+      const value = Number.isFinite(t.value) ? t.value : (Number.isFinite(t.qty) && Number.isFinite(t.price) ? t.qty * t.price : 0);
+      // For closes, always surface a numeric pnl (default 0) so the UI shows the badge.
+      const pnl = isClose ? (Number.isFinite(t.pnl) ? t.pnl : 0) : (Number.isFinite(t.pnl) ? t.pnl : undefined);
+      all.push({
+        ts: t.ts,
+        action: t.action,
+        side: t.side,
+        symbol: sym,
+        qty: Number.isFinite(t.qty) ? t.qty : 0,
+        price: Number.isFinite(t.price) ? t.price : 0,
+        value,
+        pnl,
+        trigger: t.trigger,
+        leverage: Number.isFinite(t.leverage) ? t.leverage : 1,
+        username: p.username,
+      });
     }
   }
   return all.sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, limit);
@@ -359,25 +384,45 @@ async function endOfMonthSettlement(resendClientGetter) {
 function enrichParticipant(p, prices) {
   const positions = {};
   for (const [k, pos] of Object.entries(p.positions || {})) {
-    const mark = prices[pos.symbol] || pos.avg_price;
+    const livePrice = prices[pos.symbol];
+    const mark = Number.isFinite(livePrice) && livePrice > 0 ? livePrice : (pos.avg_price || 0);
+    const rawPnl = positionPnL(pos, mark);
+    const pnl = Number.isFinite(rawPnl) ? rawPnl : 0;
+    const collateral = Number.isFinite(pos.collateral) ? pos.collateral : 0;
     positions[k] = {
       ...pos,
       mark,
       value: positionEquityContribution(pos, mark),
-      pnl: positionPnL(pos, mark),
-      pnl_pct: pos.collateral > 0 ? (positionPnL(pos, mark) / pos.collateral) * 100 : 0,
+      pnl,
+      pnl_pct: collateral > 0 ? (pnl / collateral) * 100 : 0,
       liquidation_price: liquidationPrice(pos),
       leverage: pos.leverage || 1,
     };
   }
   const equity = computeEquity(p, prices);
+  // Normalize per-user trade history: ensure numeric fields, set close pnl to 0 if undefined
+  const safeTrades = (p.trades || []).slice(-50).map(t => {
+    const isClose = t.action === 'close';
+    return {
+      ts: t.ts,
+      action: t.action,
+      side: t.side,
+      symbol: String(t.symbol || '').toUpperCase(),
+      qty: Number.isFinite(t.qty) ? t.qty : 0,
+      price: Number.isFinite(t.price) ? t.price : 0,
+      value: Number.isFinite(t.value) ? t.value : (Number.isFinite(t.qty) && Number.isFinite(t.price) ? t.qty * t.price : 0),
+      pnl: isClose ? (Number.isFinite(t.pnl) ? t.pnl : 0) : (Number.isFinite(t.pnl) ? t.pnl : undefined),
+      trigger: t.trigger,
+      leverage: Number.isFinite(t.leverage) ? t.leverage : 1,
+    };
+  }).reverse();
   return {
     username: p.username,
     balance: p.balance,
     positions,
     equity,
     roi_pct: ((equity - STARTING_BALANCE) / STARTING_BALANCE) * 100,
-    trades: (p.trades || []).slice(-50).reverse(),
+    trades: safeTrades,
     prices,
     pnl_realized: p.pnl_realized || 0,
     achievements: p.achievements || [],
@@ -702,7 +747,9 @@ export default function register(app, { resendClientGetter }) {
   });
 
   // GET /api/v1/challenge/recent-trades — live global feed (last 30 trades)
-  app.get('/api/v1/challenge/recent-trades', (req, res) => {
+  app.get('/api/v1/challenge/recent-trades', async (req, res) => {
+    // Ensure universe is warm so we can filter out delisted/scam coin trades
+    try { await getPrices(); } catch { /* ignore */ }
     const db = loadDb();
     res.json({ ok: true, trades: getRecentTrades(db, 30) });
   });

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 interface Position { id: string; symbol: string; side: "long" | "short"; qty: number; avg_price: number; mark?: number; value?: number; pnl?: number; pnl_pct?: number; sl?: number; tp?: number; opened_at?: string; collateral?: number; leverage?: number; liquidation_price?: number | null }
-interface Trade { ts: string; action?: "open" | "close"; side: "buy" | "sell" | "long" | "short"; symbol: string; qty: number; price: number; value: number; pnl?: number; trigger?: string }
+interface Trade { ts: string; action?: "open" | "close"; side: "buy" | "sell" | "long" | "short"; symbol: string; qty: number; price: number; value: number; pnl?: number; trigger?: string; leverage?: number }
 interface Coin { symbol: string; name: string; image: string | null; price: number; change_24h: number; rank: number; market_cap?: number }
 interface Achievement { key: string; unlocked_at: string }
 interface Stats { wins?: number; losses?: number; best_pnl?: number; worst_pnl?: number; largest_trade_value?: number; liquidations?: number }
@@ -46,13 +46,16 @@ const LS_USERNAME = "challenge.username";
 const QUICK_AMOUNTS = [10, 50, 100, 250, 500];
 
 function fmtUsd(n: number) {
+  if (!Number.isFinite(n)) return "0.00";
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function fmtPrice(n: number) {
+  if (!Number.isFinite(n)) return "0.00";
   if (n >= 1) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
 }
 function fmtQty(n: number) {
+  if (!Number.isFinite(n)) return "0";
   if (n >= 1) return n.toFixed(4);
   if (n >= 0.0001) return n.toFixed(6);
   return n.toFixed(8);
@@ -391,14 +394,9 @@ export default function Challenge() {
               )}
 
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3 mb-4">
-                {/* TradingView chart */}
-                <div data-testid="chart-container" className="order-1 lg:order-none">
-                  <div className="lg:hidden h-[360px]">
-                    <TradingViewChart symbol={tradeSym} height={360} />
-                  </div>
-                  <div className="hidden lg:block">
-                    <TradingViewChart symbol={tradeSym} height={520} />
-                  </div>
+                {/* TradingView chart — single instance with responsive height (avoids DOM ID collision) */}
+                <div data-testid="chart-container" className="order-1 lg:order-none h-[360px] lg:h-[520px]">
+                  <TradingViewChart symbol={tradeSym} idSuffix="main" />
                 </div>
 
                 {/* Mobile FAB to open order ticket — hidden on lg */}
@@ -660,9 +658,13 @@ export default function Challenge() {
                       <tbody className="font-mono">
                         {Object.entries(me!.positions).map(([key, pos]) => {
                           const sym = pos.symbol;
-                          const px = pos.mark || me!.prices?.[sym] || prices[sym] || pos.avg_price;
-                          const pnl = typeof pos.pnl === "number" ? pos.pnl : (pos.side === "short" ? (pos.avg_price - px) * pos.qty : (px - pos.avg_price) * pos.qty);
-                          const pnlPct = typeof pos.pnl_pct === "number" ? pos.pnl_pct : (pos.avg_price > 0 ? (pnl / (pos.qty * pos.avg_price)) * 100 : 0);
+                          const livePx = pos.mark || me!.prices?.[sym] || prices[sym] || 0;
+                          const px = livePx > 0 ? livePx : (pos.avg_price || 0);
+                          const hasMark = livePx > 0;
+                          const rawPnl = typeof pos.pnl === "number" ? pos.pnl : (pos.side === "short" ? (pos.avg_price - px) * pos.qty : (px - pos.avg_price) * pos.qty);
+                          const pnl = Number.isFinite(rawPnl) ? rawPnl : 0;
+                          const rawPnlPct = typeof pos.pnl_pct === "number" ? pos.pnl_pct : (pos.avg_price > 0 ? (pnl / (pos.qty * pos.avg_price)) * 100 : 0);
+                          const pnlPct = Number.isFinite(rawPnlPct) ? rawPnlPct : 0;
                           return (
                             <tr key={key} className="border-b border-white/[0.02] hover:bg-white/[0.02] cursor-pointer" onClick={() => setTradeSym(sym)}>
                               <td className="px-4 py-2.5">
@@ -676,7 +678,7 @@ export default function Challenge() {
                               </td>
                               <td className="text-right px-2 py-2.5 text-white">{fmtQty(pos.qty)}</td>
                               <td className="text-right px-2 py-2.5 text-gray-400">${fmtPrice(pos.avg_price)}</td>
-                              <td className="text-right px-2 py-2.5 text-cyan-300">${fmtPrice(px)}{pos.liquidation_price ? <div className="text-[9px] text-red-400 font-bold">Liq ${fmtPrice(pos.liquidation_price)}</div> : null}</td>
+                              <td className="text-right px-2 py-2.5 text-cyan-300">${fmtPrice(px)}{!hasMark && <span className="ml-1 text-[9px] text-amber-400" title="Prix indisponible">⚠</span>}{pos.liquidation_price ? <div className="text-[9px] text-red-400 font-bold">Liq ${fmtPrice(pos.liquidation_price)}</div> : null}</td>
                               <td className="text-right px-2 py-2.5">
                                 <button
                                   data-testid={`edit-sl-${key}`}

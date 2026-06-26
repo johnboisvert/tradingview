@@ -5,6 +5,8 @@ import { useEffect, useRef } from "react";
 interface Props {
   symbol: string;
   height?: number;
+  /** Unique suffix to avoid container ID collision when multiple charts render */
+  idSuffix?: string;
 }
 
 declare global {
@@ -28,8 +30,9 @@ function toTvSymbol(s: string): string {
   return `BINANCE:${up}USDT`;
 }
 
-export default function TradingViewChart({ symbol, height = 480 }: Props) {
-  const containerId = "tv_chart_" + symbol;
+export default function TradingViewChart({ symbol, height, idSuffix }: Props) {
+  // Unique container ID per chart instance to avoid DOM collision when multiple charts mount
+  const containerId = "tv_chart_" + symbol + (idSuffix ? `_${idSuffix}` : "");
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -80,7 +83,7 @@ export default function TradingViewChart({ symbol, height = 480 }: Props) {
   }, [symbol, containerId]);
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] overflow-hidden bg-[#0a0a0f]" style={{ height }}>
+    <div className="rounded-2xl border border-white/[0.06] overflow-hidden bg-[#0a0a0f] w-full h-full" style={height ? { height } : undefined}>
       <div id={containerId} ref={ref} className="w-full h-full" data-testid="tradingview-chart" />
     </div>
   );

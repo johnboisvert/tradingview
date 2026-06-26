@@ -5469,6 +5469,55 @@ app.use('/blog-covers', express.static(path.join(__dirname, 'data', 'blog-covers
 }));
 
 // SPA fallback — also with no-cache headers
+//
+// Quiz viral OG meta injection: when a social-media crawler (Twitter, Facebook,
+// LinkedIn, WhatsApp, Telegram, Discord) hits /quiz?profile=<key>, we need to
+// serve the dist/index.html with per-profile <meta property="og:image"> set
+// to the dynamic PNG endpoint. Crawlers don't execute JS, so React Helmet
+// runtime overrides are invisible to them.
+const QUIZ_OG_PROFILES = {
+  hodler:   { name: 'Le HODLer Patient',          tagline: 'Long terme · Sang-froid · Patience' },
+  scalper:  { name: 'Le Scalpeur Adrénaline',     tagline: 'Trades rapides · Réactivité · Précision' },
+  swing:    { name: 'Le Swing Trader Stratégique', tagline: 'Stratégie · Patience · Setups premium' },
+  longterm: { name: "L'Investisseur Visionnaire", tagline: 'Pépites · Vision · x100 hunter' },
+};
+function escapeAttr(s = '') {
+  return String(s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+}
+app.get('/quiz', (req, res, next) => {
+  try {
+    const key = String(req.query.profile || '').toLowerCase();
+    const meta = QUIZ_OG_PROFILES[key];
+    if (!meta) return next();
+    const distIndex = path.join(__dirname, 'dist', 'index.html');
+    if (!fs.existsSync(distIndex)) return next();
+    let html = fs.readFileSync(distIndex, 'utf8');
+    const ogUrl = `https://www.cryptoia.ca/quiz?profile=${key}`;
+    const ogImage = `https://www.cryptoia.ca/api/v1/quiz/og/${key}.png`;
+    const ogTitle = `${meta.name} · Quel trader es-tu ? | CryptoIA`;
+    const ogDesc = `${meta.tagline} — Découvre ton profil de trader crypto en 2 min (gratuit).`;
+    const replacements = [
+      [/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(ogTitle)}" />`],
+      [/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(ogDesc)}" />`],
+      [/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:image" content="${escapeAttr(ogImage)}" />`],
+      [/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:url" content="${escapeAttr(ogUrl)}" />`],
+      [/<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:title" content="${escapeAttr(ogTitle)}" />`],
+      [/<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:description" content="${escapeAttr(ogDesc)}" />`],
+      [/<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:image" content="${escapeAttr(ogImage)}" />`],
+      [/<title>[^<]*<\/title>/i, `<title>${escapeAttr(ogTitle)}</title>`],
+      [/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i, `<meta name="description" content="${escapeAttr(ogDesc)}" />`],
+    ];
+    for (const [re, replacement] of replacements) {
+      if (re.test(html)) html = html.replace(re, replacement);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    res.type('html').send(html);
+  } catch (e) {
+    console.error('[QuizOG-SSR] Error injecting meta tags:', e?.message);
+    next();
+  }
+});
+
 app.get('{*path}', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');

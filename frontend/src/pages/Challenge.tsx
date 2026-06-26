@@ -201,13 +201,13 @@ export default function Challenge() {
     const tpNum = tpInput.trim() === "" ? null : parseFloat(tpInput);
     if (slNum !== null) {
       if (!Number.isFinite(slNum) || slNum <= 0) { setError("SL invalide"); return; }
-      if (side === "long" && slNum >= livePrice) { setError("SL doit être < prix actuel pour un LONG"); return; }
-      if (side === "short" && slNum <= livePrice) { setError("SL doit être > prix actuel pour un SHORT"); return; }
+      if (side === "long" && slNum >= livePrice) { setError(`SL doit être < $${fmtPrice(livePrice)} (prix actuel) pour un LONG`); return; }
+      if (side === "short" && slNum <= livePrice) { setError(`SL doit être > $${fmtPrice(livePrice)} (prix actuel) pour un SHORT`); return; }
     }
     if (tpNum !== null) {
       if (!Number.isFinite(tpNum) || tpNum <= 0) { setError("TP invalide"); return; }
-      if (side === "long" && tpNum <= livePrice) { setError("TP doit être > prix actuel pour un LONG"); return; }
-      if (side === "short" && tpNum >= livePrice) { setError("TP doit être < prix actuel pour un SHORT"); return; }
+      if (side === "long" && tpNum <= livePrice) { setError(`TP doit être > $${fmtPrice(livePrice)} (prix actuel) pour un LONG`); return; }
+      if (side === "short" && tpNum >= livePrice) { setError(`TP doit être < $${fmtPrice(livePrice)} (prix actuel) pour un SHORT`); return; }
     }
 
     setBusy(true);

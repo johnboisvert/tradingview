@@ -17,7 +17,16 @@ function fmtUsd(n) {
 function fmtPrice(n) {
   if (!Number.isFinite(n)) return "0.00";
   if (n >= 1) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+  if (n >= 0.01) return n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  if (n >= 0.0001) return n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+  if (n > 0) {
+    return n.toLocaleString("en-US", {
+      minimumSignificantDigits: 4,
+      maximumSignificantDigits: 4,
+      useGrouping: false,
+    });
+  }
+  return "0.0000";
 }
 function fmtQty(n) {
   if (!Number.isFinite(n)) return "0";
@@ -50,6 +59,25 @@ describe("fmtPrice — adaptive precision", () => {
     // Must be at least 4 decimals
     assert.ok(/^0\.\d{4,6}$/.test(out), `expected high-precision sub-dollar, got '${out}'`);
   });
+  // SHITCOIN PRECISION — regression test for the PEPE TP/SL bug.
+  // Before the fix, fmtPrice(2.38e-6) returned "0.000002" (only 6 decimals),
+  // which is < the actual price, so users who copy-pasted the placeholder hit
+  // "TP doit être > prix actuel". The new format must preserve 4 significant
+  // digits so it stays distinguishable from rounded 0.000002.
+  test("PEPE 2.38e-6 → 0.000002380 (4 sig figs, distinguishable)", () => {
+    const out = fmtPrice(2.38e-6);
+    assert.equal(out, "0.000002380");
+  });
+  test("SHIB 4.22e-6 → 0.000004220", () => {
+    assert.equal(fmtPrice(4.22e-6), "0.000004220");
+  });
+  test("HTX 1.67e-6 → 0.000001670", () => {
+    assert.equal(fmtPrice(1.67e-6), "0.000001670");
+  });
+  test("PUMP 0.00130735 → 0.001307 (high-frac path)", () => {
+    assert.equal(fmtPrice(0.00130735), "0.001307");
+  });
+  test("zero → 0.0000", () => assert.equal(fmtPrice(0), "0.0000"));
 });
 
 describe("fmtQty — scale-adaptive decimals", () => {

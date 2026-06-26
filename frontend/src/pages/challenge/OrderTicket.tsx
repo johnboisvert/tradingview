@@ -161,6 +161,22 @@ export default function OrderTicket({
               placeholder={livePrice ? `< $${fmtPrice(livePrice)}` : "—"}
               className="w-full px-2.5 py-2 rounded-lg bg-black/40 border border-red-500/20 text-red-300 text-xs font-extrabold focus:outline-none focus:border-red-500/50 font-mono"
             />
+            {/* Quick % SL buttons — work for all prices including shitcoins (PEPE/SHIB) */}
+            <div className="grid grid-cols-3 gap-0.5 mt-1">
+              {[2, 5, 10].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  data-testid={`trade-sl-pct-${pct}`}
+                  onClick={() => {
+                    if (!livePrice) return;
+                    const factor = side === "long" ? 1 - pct / 100 : 1 + pct / 100;
+                    setSlInput(String(livePrice * factor));
+                  }}
+                  className="py-1 rounded text-[9px] font-bold bg-red-500/10 hover:bg-red-500/20 text-red-300 transition"
+                >-{pct}%</button>
+              ))}
+            </div>
             {slInput && livePrice > 0 && (
               <div className="text-[9px] text-gray-500 mt-0.5 font-mono">
                 Risque: {side === "long"
@@ -179,6 +195,22 @@ export default function OrderTicket({
               placeholder={livePrice ? `> $${fmtPrice(livePrice)}` : "—"}
               className="w-full px-2.5 py-2 rounded-lg bg-black/40 border border-emerald-500/20 text-emerald-300 text-xs font-extrabold focus:outline-none focus:border-emerald-500/50 font-mono"
             />
+            {/* Quick % TP buttons */}
+            <div className="grid grid-cols-3 gap-0.5 mt-1">
+              {[5, 10, 25].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  data-testid={`trade-tp-pct-${pct}`}
+                  onClick={() => {
+                    if (!livePrice) return;
+                    const factor = side === "long" ? 1 + pct / 100 : 1 - pct / 100;
+                    setTpInput(String(livePrice * factor));
+                  }}
+                  className="py-1 rounded text-[9px] font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 transition"
+                >+{pct}%</button>
+              ))}
+            </div>
             {tpInput && livePrice > 0 && (
               <div className="text-[9px] text-gray-500 mt-0.5 font-mono">
                 Gain: {side === "long"

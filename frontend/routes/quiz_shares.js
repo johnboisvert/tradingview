@@ -21,16 +21,18 @@ const VALID_PROFILES = new Set(['hodler', 'scalper', 'swing', 'longterm']);
 const VALID_PLATFORMS = new Set(['twitter', 'facebook', 'linkedin', 'whatsapp', 'telegram', 'copy', 'native']);
 const DEDUPE_WINDOW_MS = 6 * 60 * 60 * 1000;          // 6h same IP+profile+platform = 1 share
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const INFLUENCER_THRESHOLD = 5;                       // 5+ shares (any profile/platform) → Influenceur badge
 
 function defaultDb() {
   return {
-    events: [],              // [{ ts, profile, platform, ipHash }] — pruned to WEEK_MS
+    events: [],              // [{ ts, profile, platform, ipHash, email? }] — pruned to WEEK_MS
     totals: {                // lifetime counters per profile (never pruned)
       hodler: 0, scalper: 0, swing: 0, longterm: 0,
     },
     platformTotals: {        // lifetime counters per profile.platform
       hodler: {}, scalper: {}, swing: {}, longterm: {},
     },
+    influencers: {},         // emailLower → { unlocked_at, total_shares }
   };
 }
 
@@ -43,6 +45,7 @@ function loadDb() {
     if (!db.events) db.events = [];
     if (!db.totals) db.totals = defaultDb().totals;
     if (!db.platformTotals) db.platformTotals = defaultDb().platformTotals;
+    if (!db.influencers) db.influencers = {};
     return db;
   } catch (e) {
     console.error('[QuizShares] load error:', e?.message);
@@ -76,6 +79,7 @@ export default function registerQuizSharesRoutes(app) {
     try {
       const profile = String(req.body?.profile || '').toLowerCase();
       const platform = String(req.body?.platform || '').toLowerCase();
+      const email = String(req.body?.email || '').toLowerCase().trim() || null;
       if (!VALID_PROFILES.has(profile) || !VALID_PLATFORMS.has(platform)) {
         return res.status(400).json({ ok: false, error: 'Invalid profile or platform' });
       }
@@ -83,14 +87,49 @@ export default function registerQuizSharesRoutes(app) {
       pruneEvents(db);
       const ipHash = hashIp(req);
       if (isDuplicate(db, profile, platform, ipHash)) {
-        return res.json({ ok: true, deduped: true, total: db.totals[profile] || 0 });
+        const influencer = email && db.influencers?.[email];
+        return res.json({
+          ok: true,
+          deduped: true,
+          total: db.totals[profile] || 0,
+          influencer: !!influencer,
+          influencer_just_unlocked: false,
+        });
       }
-      db.events.push({ ts: Date.now(), profile, platform, ipHash });
+      db.events.push({ ts: Date.now(), profile, platform, ipHash, email });
       db.totals[profile] = (db.totals[profile] || 0) + 1;
       if (!db.platformTotals[profile]) db.platformTotals[profile] = {};
       db.platformTotals[profile][platform] = (db.platformTotals[profile][platform] || 0) + 1;
+
+      // Influencer badge unlock: count distinct (profile, platform) shares for this email
+      // OR ip-hash (covers anonymous sharing). Threshold = 5.
+      let justUnlocked = false;
+      let totalForUser = 0;
+      if (email) {
+        totalForUser = db.events.filter(e => e.email === email).length;
+        const wasUnlocked = !!db.influencers[email];
+        if (!wasUnlocked && totalForUser >= INFLUENCER_THRESHOLD) {
+          db.influencers[email] = { unlocked_at: new Date().toISOString(), total_shares: totalForUser };
+          justUnlocked = true;
+          console.log(`[QuizShares] 🏆 Influencer badge unlocked for ${email} (${totalForUser} shares)`);
+        } else if (wasUnlocked) {
+          db.influencers[email].total_shares = totalForUser;
+        }
+      } else {
+        // Fallback for users sharing without email (the shared-view CTA path):
+        // count IP shares for completeness, but no badge persisted (no identity to attach).
+        totalForUser = db.events.filter(e => e.ipHash === ipHash).length;
+      }
+
       saveDb(db);
-      res.json({ ok: true, deduped: false, total: db.totals[profile] });
+      res.json({
+        ok: true,
+        deduped: false,
+        total: db.totals[profile],
+        user_total_shares: totalForUser,
+        influencer: email ? !!db.influencers[email] : false,
+        influencer_just_unlocked: justUnlocked,
+      });
     } catch (e) {
       console.error('[QuizShares] share error:', e?.message);
       res.status(500).json({ ok: false, error: 'Internal error' });
@@ -112,7 +151,40 @@ export default function registerQuizSharesRoutes(app) {
         };
       }).sort((a, b) => b.week - a.week);
       res.setHeader('Cache-Control', 'public, max-age=60');
-      res.json({ ok: true, profiles, updatedAt: Date.now() });
+      res.json({
+        ok: true,
+        profiles,
+        influencers_count: Object.keys(db.influencers || {}).length,
+        threshold: INFLUENCER_THRESHOLD,
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'Internal error' });
+    }
+  });
+
+  // GET /api/v1/quiz/me-shares?email=… — per-user view: total shares + influencer flag.
+  // Lets the Quiz UI show a personalized progress bar toward the Influenceur badge.
+  app.get('/api/v1/quiz/me-shares', (req, res) => {
+    try {
+      const email = String(req.query.email || '').toLowerCase().trim();
+      if (!email || !email.includes('@')) {
+        return res.status(400).json({ ok: false, error: 'Invalid email' });
+      }
+      const db = loadDb();
+      pruneEvents(db);
+      const total = db.events.filter(e => e.email === email).length;
+      const influencer = !!db.influencers?.[email];
+      res.setHeader('Cache-Control', 'no-store');
+      res.json({
+        ok: true,
+        email_hash: email.slice(0, 2) + '***',
+        total_shares: total,
+        threshold: INFLUENCER_THRESHOLD,
+        progress_pct: Math.min(100, Math.round((total / INFLUENCER_THRESHOLD) * 100)),
+        influencer,
+        unlocked_at: db.influencers?.[email]?.unlocked_at || null,
+      });
     } catch (e) {
       res.status(500).json({ ok: false, error: 'Internal error' });
     }

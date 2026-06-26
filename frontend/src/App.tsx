@@ -106,6 +106,8 @@ const RangePerformance = React.lazy(() => import("./pages/RangePerformance"));
 const MagicStrategy = React.lazy(() => import("./pages/MagicStrategy"));
 const Quiz = React.lazy(() => import("./pages/Quiz"));
 const Challenge = React.lazy(() => import("./pages/Challenge"));
+const EmbedLiveFeed = React.lazy(() => import("./embeds/EmbedLiveFeed"));
+const EmbedBadges = React.lazy(() => import("./embeds/EmbedBadges"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 // ── Non-lazy components (needed immediately for route protection) ─────────────
@@ -172,6 +174,9 @@ function App() {
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/challenge" element={<Challenge />} />
+          {/* Public iframe-safe embeds (no Sidebar/Footer, no auth) */}
+          <Route path="/embed/live-feed" element={<EmbedLiveFeed />} />
+          <Route path="/embed/badges/:username" element={<EmbedBadges />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<Blog />} />
           <Route path="/backtesting-visuel" element={<PlanProtected path="/backtesting-visuel"><BacktestingVisuel /></PlanProtected>} />

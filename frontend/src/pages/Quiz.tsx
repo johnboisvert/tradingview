@@ -5,7 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import SEOHead from "@/components/SEOHead";
 import TrialBanner from "@/components/TrialBanner";
-import { Sparkles, ArrowRight, CheckCircle2, RotateCcw, Trophy, Twitter, Linkedin, Facebook, MessageCircle, Link2, Check, Share2 } from "lucide-react";
+import { Sparkles, ArrowRight, CheckCircle2, RotateCcw, Trophy, Twitter, Linkedin, Facebook, MessageCircle, Link2, Check, Share2, X } from "lucide-react";
 
 interface QuizQ {
   id: number;
@@ -168,6 +168,9 @@ export default function Quiz() {
   // Records share events to the backend and powers the leaderboard.
   type ShareEntry = { key: string; total: number; week: number; platforms: Record<string, number> };
   const [shareLeaderboard, setShareLeaderboard] = useState<ShareEntry[]>([]);
+  // Per-user share progress toward the "Influenceur" badge (5 shares total).
+  const [myShares, setMyShares] = useState<{ total: number; threshold: number; progress_pct: number; influencer: boolean } | null>(null);
+  const [influencerCelebration, setInfluencerCelebration] = useState<boolean>(false);
 
   useEffect(() => {
     let alive = true;
@@ -178,13 +181,22 @@ export default function Quiz() {
     return () => { alive = false; };
   }, [phase]);
 
+  // Fetch my-shares progress whenever the user lands on the result page with a known email.
+  useEffect(() => {
+    if (phase !== "result" || sharedView || !email) return;
+    fetch(`/api/v1/quiz/me-shares?email=${encodeURIComponent(email)}`)
+      .then(r => r.json())
+      .then(j => { if (j?.ok) setMyShares({ total: j.total_shares, threshold: j.threshold, progress_pct: j.progress_pct, influencer: j.influencer }); })
+      .catch(() => {});
+  }, [phase, sharedView, email]);
+
   async function trackShare(platform: string) {
     if (!isResultView) return;
     try {
       const r = await fetch("/api/v1/quiz/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile: profile!.key, platform }),
+        body: JSON.stringify({ profile: profile!.key, platform, email: email || null }),
       });
       const j = await r.json();
       if (j?.ok) {
@@ -193,6 +205,18 @@ export default function Quiz() {
           .then(r => r.json())
           .then(j2 => { if (j2?.ok) setShareLeaderboard(j2.profiles || []); })
           .catch(() => {});
+        // refresh my-shares to update the progress bar
+        if (email) {
+          fetch(`/api/v1/quiz/me-shares?email=${encodeURIComponent(email)}`)
+            .then(r => r.json())
+            .then(j2 => { if (j2?.ok) setMyShares({ total: j2.total_shares, threshold: j2.threshold, progress_pct: j2.progress_pct, influencer: j2.influencer }); })
+            .catch(() => {});
+        }
+        // Influencer badge just unlocked → celebration overlay
+        if (j.influencer_just_unlocked) {
+          setInfluencerCelebration(true);
+          setTimeout(() => setInfluencerCelebration(false), 7000);
+        }
       }
     } catch { /* ignore */ }
   }
@@ -386,6 +410,36 @@ export default function Quiz() {
                     <h3 className="font-extrabold text-sm uppercase tracking-wider">{t("quiz.sharePanelTitle")}</h3>
                     <span className="text-[10px] text-gray-500 font-bold ml-auto">{t("quiz.sharePanelBadgeHint")}</span>
                   </div>
+
+                  {/* Influenceur badge progress bar — only visible if user has shared at least once */}
+                  {myShares && myShares.total > 0 && (
+                    <div
+                      data-testid="quiz-influencer-progress"
+                      className={`mb-4 rounded-xl p-3 border ${myShares.influencer ? "bg-gradient-to-br from-amber-500/15 to-orange-500/10 border-amber-400/40" : "bg-white/[0.03] border-white/[0.05]"}`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Trophy className={`w-4 h-4 ${myShares.influencer ? "text-amber-300" : "text-amber-500/60"}`} />
+                        <span className={`text-xs font-extrabold ${myShares.influencer ? "text-amber-200" : "text-gray-200"}`}>
+                          {myShares.influencer ? "Badge Influenceur débloqué !" : "Badge Influenceur"}
+                        </span>
+                        <span className="ml-auto text-[11px] font-mono font-bold text-gray-400 tabular-nums">{myShares.total}/{myShares.threshold}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-black/40 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${myShares.progress_pct}%`,
+                            background: myShares.influencer ? "linear-gradient(90deg,#f59e0b,#fbbf24)" : "linear-gradient(90deg,#a855f7,#ec4899)",
+                          }}
+                        />
+                      </div>
+                      {!myShares.influencer && (
+                        <p className="mt-2 text-[10px] text-gray-500 font-bold">
+                          Plus que {Math.max(0, myShares.threshold - myShares.total)} partage{(myShares.threshold - myShares.total) > 1 ? "s" : ""} pour débloquer le badge 🏆
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Viral leaderboard: most-shared profiles this week */}
                   {shareLeaderboard.length > 0 && shareLeaderboard[0].week > 0 && (
@@ -587,6 +641,53 @@ export default function Quiz() {
         </div>
         <Footer />
       </main>
+
+      {/* Influencer badge unlock celebration — fullscreen, golden, dismisses after 7s */}
+      {influencerCelebration && (
+        <div
+          data-testid="influencer-celebration"
+          className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/70 backdrop-blur-md"
+          style={{ animation: "infCelebFade 380ms cubic-bezier(.2,.9,.3,1.2)" }}
+        >
+          <button
+            onClick={() => setInfluencerCelebration(false)}
+            className="absolute top-4 right-4 text-white/60 hover:text-white"
+            data-testid="influencer-celebration-close"
+            aria-label="Fermer"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="relative max-w-md w-[90%] rounded-3xl overflow-hidden bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-pink-500/15 border-2 border-amber-400/60 shadow-2xl shadow-amber-500/40 p-8 text-center">
+            <div
+              className="absolute inset-0 opacity-50 pointer-events-none"
+              style={{
+                background: "linear-gradient(120deg, transparent 25%, rgba(253,224,71,0.35) 50%, transparent 75%)",
+                backgroundSize: "200% 100%",
+                animation: "infCelebShimmer 2.2s linear infinite",
+              }}
+            />
+            <div className="relative">
+              <div className="text-7xl mb-4">🏆</div>
+              <div className="text-xs uppercase tracking-[0.25em] font-extrabold text-amber-300 mb-2">Badge débloqué</div>
+              <h2 className="text-3xl font-black text-white mb-3">Influenceur</h2>
+              <p className="text-sm text-amber-100/80 mb-5">
+                Bravo&nbsp;! Tu as partagé ton profil <b className="text-amber-200">5 fois</b>. Tu fais désormais partie des ambassadeurs CryptoIA.
+              </p>
+              <button
+                onClick={() => setInfluencerCelebration(false)}
+                data-testid="influencer-celebration-cta"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-black font-extrabold text-sm hover:from-amber-300 hover:to-orange-400 transition-all"
+              >
+                Continuer
+              </button>
+            </div>
+          </div>
+          <style>{`
+            @keyframes infCelebFade { 0% { opacity: 0; } 100% { opacity: 1; } }
+            @keyframes infCelebShimmer { 0% { background-position: 200% 0; } 100% { background-position: -50% 0; } }
+          `}</style>
+        </div>
+      )}
     </div>
   );
 }

@@ -7,7 +7,8 @@
     "lint": "eslint --quiet ./src",
     "preview": "vite preview",
     "start": "exec node_modules/.bin/serve dist --single --listen $PORT",
-    "postinstall": "echo 'Dependencies installed successfully'"
+    "postinstall": "echo 'Dependencies installed successfully'",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

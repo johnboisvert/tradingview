@@ -778,4 +778,42 @@ export default function register(app, { resendClientGetter }) {
   app.get('/api/v1/challenge/achievements', (req, res) => {
     res.json({ ok: true, achievements: ACHIEVEMENTS });
   });
+
+  // GET /api/v1/challenge/public/user/:username — public read-only snapshot of a participant
+  // for the shareable embed widgets (/embed/badges/:username + future /embed/equity/:username).
+  // Returns ONLY non-sensitive fields: username, badges, ROI, equity, stats, equity history.
+  // Email is NEVER returned. Trades + positions + balance are excluded too.
+  app.get('/api/v1/challenge/public/user/:username', async (req, res) => {
+    try {
+      const username = String(req.params.username || '').toLowerCase().trim();
+      if (!username) return res.status(400).json({ ok: false, error: 'Invalid username' });
+      const db = loadDb();
+      const participant = Object.values(db.participants || {}).find(
+        p => String(p.username || '').toLowerCase() === username
+      );
+      if (!participant) return res.status(404).json({ ok: false, error: 'User not found' });
+      const prices = await getPrices().catch(() => ({}));
+      const equity = computeEquity(participant, prices);
+      const achievements = (participant.achievements || []).map(a => {
+        const meta = ACHIEVEMENTS.find(x => x.key === a.key);
+        return meta ? { ...meta, unlocked_at: a.unlocked_at } : null;
+      }).filter(Boolean);
+      res.setHeader('Cache-Control', 'public, max-age=60');
+      res.json({
+        ok: true,
+        username: participant.username,
+        equity,
+        roi_pct: ((equity - STARTING_BALANCE) / STARTING_BALANCE) * 100,
+        achievements,                                  // unlocked + meta
+        catalog_count: ACHIEVEMENTS.length,
+        win_streak: participant.win_streak || 0,
+        stats: participant.stats || {},
+        equity_history: (participant.equity_history || []).slice(-60),  // last 60 snapshots
+        period: db.current_period || currentPeriod(),
+      });
+    } catch (e) {
+      console.error('[Challenge] public user error:', e?.message);
+      res.status(500).json({ ok: false, error: 'Internal error' });
+    }
+  });
 }

@@ -10,7 +10,7 @@ import {
   ArrowUpRight, ArrowDownRight, X, Search, Award, Lock,
 } from "lucide-react";
 import type { Position, Trade, Coin, Achievement, AchievementMeta, Me, LeaderboardResp } from "./challenge/types";
-import { fmtUsd, fmtMcap } from "./challenge/format";
+import { fmtUsd, fmtMcap, fmtPrice, fmtQty } from "./challenge/format";
 import { Kpi } from "./challenge/ui";
 import LiveFeed from "./challenge/LiveFeed";
 import OrderTicket from "./challenge/OrderTicket";

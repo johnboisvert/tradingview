@@ -11,6 +11,7 @@ export default function registerPaymentWebhookRoutes(
     getResendClient,
     STRIPE_SECRET_KEY,
     checkoutRecovery, // { handleExpiredCheckout, markCompleted }
+    winBack,          // { handleSubscriptionCanceled, markReactivated }
     getReferralHandler, // () => async ({refCode,filleulEmail,amount,sessionId}) — anti-fraud + free month credit
   }
 ) {
@@ -41,7 +42,10 @@ export default function registerPaymentWebhookRoutes(
       const session = event.data?.object || {};
       const metadata = session.metadata || {};
       // Mark as recovered if this was a previously abandoned checkout
-      try { checkoutRecovery?.markCompleted?.(session.id, metadata.promo_code || null); } catch {}
+      try { checkoutRecovery?.markCompleted?.(session.id, metadata.promo_code || null); } catch { /* ignore */ }
+      // Mark as reactivated for win-back tracking if this email had a canceled sub
+      const _email_for_winback = session.customer_details?.email || session.customer_email || null;
+      try { if (_email_for_winback) winBack?.markReactivated?.(_email_for_winback); } catch { /* ignore */ }
       const email = session.customer_details?.email || session.customer_email || null;
       const amountTotal = (session.amount_total || 0) / 100; // cents → dollars
       console.log(`[Payment] ✅ checkout.session.completed: plan=${metadata.plan}, billing=${metadata.billing_period}, email=${email}, amount=${amountTotal}`);
@@ -117,6 +121,17 @@ export default function registerPaymentWebhookRoutes(
     } else if (eventType === 'customer.subscription.deleted') {
       const sub = event.data?.object || {};
       console.log(`[Payment] ❌ subscription.deleted: customer=${sub.customer}`);
+      // Fetch the customer email from Stripe (the sub object itself doesn't carry it)
+      let email = sub.metadata?.email || null;
+      if (!email && sub.customer && STRIPE_SECRET_KEY) {
+        try {
+          const stripe = await getStripeInstance();
+          const customer = await stripe.customers.retrieve(sub.customer);
+          email = customer?.email || customer?.deleted ? null : (customer?.email || null);
+        } catch (e) { console.error('[Payment] customer fetch error:', e?.message); }
+      }
+      const enrichedSub = { ...sub, customer_email: email };
+      try { await winBack?.handleSubscriptionCanceled?.(enrichedSub); } catch (e) { console.error('[Payment] winback handler error:', e?.message); }
     }
 
     res.json({ status: 'ok' });

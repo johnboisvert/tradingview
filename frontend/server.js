@@ -30,6 +30,7 @@ import registerCoinRoutes from './routes/coin_pages.js';
 import registerDailyBriefRoutes from './routes/daily_brief.js';
 import registerPaymentWebhookRoutes from './routes/payment_webhooks.js';
 import registerCheckoutRecoveryRoutes from './routes/checkout_recovery.js';
+import registerWinBackRoutes from './routes/winback.js';
 import registerAdminHealthRoutes from './routes/admin_health.js';
 import registerReferralRoutes, { ensureUserReferralCode } from './routes/referral.js';
 import registerTwitterBotRoutes from './routes/twitter_bot.js';
@@ -38,6 +39,7 @@ import registerResendWebhookRoutes from './routes/resend_webhook.js';
 import registerPromoRoutes from './routes/promo_codes.js';
 import registerQuizRoutes from './routes/quiz.js';
 import registerQuizOgRoutes from './routes/quiz_og.js';
+import registerQuizSharesRoutes from './routes/quiz_shares.js';
 import registerChallengeRoutes from './routes/challenge.js';
 import { createTelegramHelpers } from './routes/telegram_alerts.js';
 import { seed as gamiSeed } from './gamification_seed.js';
@@ -5306,6 +5308,7 @@ registerGamificationRoutes(app);
 registerLeadMagnetRoutes(app, { resendClientGetter: getResendClient });
 registerQuizRoutes(app, { resendClientGetter: getResendClient });
 registerQuizOgRoutes(app);
+registerQuizSharesRoutes(app);
 registerChallengeRoutes(app, { resendClientGetter: getResendClient });
 registerEmailSequenceRoutes(app, { resendClientGetter: getResendClient });
 registerPublicStatsRoutes(app);
@@ -5318,6 +5321,10 @@ const checkoutRecovery = registerCheckoutRecoveryRoutes(app, {
   getResendClient,
   sendChatNotification,
 });
+const winBack = registerWinBackRoutes(app, {
+  getResendClient,
+  sendChatNotification,
+});
 
 registerPaymentWebhookRoutes(app, {
   getStripeInstance,
@@ -5326,6 +5333,7 @@ registerPaymentWebhookRoutes(app, {
   getResendClient,
   STRIPE_SECRET_KEY,
   checkoutRecovery,
+  winBack,
   // Wire referral conversion handler — resolved lazily because referralModule
   // is initialized just below this call. Safe because Stripe webhooks only
   // fire after server startup is complete.

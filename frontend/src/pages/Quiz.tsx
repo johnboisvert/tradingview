@@ -162,7 +162,41 @@ export default function Quiz() {
     ? `${profile!.tagline} — Découvre ton profil de trader crypto en 2 minutes (gratuit).`
     : "10 questions pour découvrir ton profil de trader crypto : HODLer, Scalpeur, Swing ou Investisseur visionnaire. Recommandations personnalisées + 7 jours gratuits.";
 
+  // ── Viral share tracking ──────────────────────────────────────────────────
+  // Records share events to the backend and powers the leaderboard.
+  type ShareEntry = { key: string; total: number; week: number; platforms: Record<string, number> };
+  const [shareLeaderboard, setShareLeaderboard] = useState<ShareEntry[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/v1/quiz/shares")
+      .then(r => r.json())
+      .then(j => { if (alive && j?.ok) setShareLeaderboard(j.profiles || []); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [phase]);
+
+  async function trackShare(platform: string) {
+    if (!isResultView) return;
+    try {
+      const r = await fetch("/api/v1/quiz/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile: profile!.key, platform }),
+      });
+      const j = await r.json();
+      if (j?.ok) {
+        // refresh leaderboard with the new count
+        fetch("/api/v1/quiz/shares")
+          .then(r => r.json())
+          .then(j2 => { if (j2?.ok) setShareLeaderboard(j2.profiles || []); })
+          .catch(() => {});
+      }
+    } catch { /* ignore */ }
+  }
+
   function share(platform: string) {
+    trackShare(platform);
     const text = isResultView
       ? `${profile!.emoji} Selon CryptoIA, je suis : ${profile!.name} ! ${profile!.tagline}\n\nFais le test (2 min) :`
       : "Quel trader crypto es-tu ? Fais le test (2 min) :";
@@ -178,6 +212,7 @@ export default function Quiz() {
   }
 
   async function copyShareLink() {
+    trackShare("copy");
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
@@ -349,6 +384,41 @@ export default function Quiz() {
                     <h3 className="font-extrabold text-sm uppercase tracking-wider">Partage ton profil</h3>
                     <span className="text-[10px] text-gray-500 font-bold ml-auto">+5 challenges = badge &laquo;&nbsp;Influenceur&nbsp;&raquo;</span>
                   </div>
+
+                  {/* Viral leaderboard: most-shared profiles this week */}
+                  {shareLeaderboard.length > 0 && shareLeaderboard[0].week > 0 && (
+                    <div
+                      data-testid="quiz-share-leaderboard"
+                      className="mb-4 rounded-xl bg-white/[0.03] border border-white/[0.05] p-3"
+                    >
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-amber-400">Top partages · 7 derniers jours</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {shareLeaderboard.map((s, idx) => {
+                          const meta = STATIC_PROFILES[s.key];
+                          if (!meta) return null;
+                          const isMe = s.key === profile.key;
+                          return (
+                            <div
+                              key={s.key}
+                              className={`relative rounded-lg p-2 text-center border transition-colors ${isMe ? "bg-white/[0.06] border-white/30" : "bg-white/[0.02] border-white/[0.05]"}`}
+                              style={isMe ? { borderColor: profile.color } : undefined}
+                            >
+                              {idx === 0 && s.week > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 text-[9px] font-black bg-amber-400 text-black rounded-full px-1.5 py-0.5">#1</span>
+                              )}
+                              <div className="text-xl leading-none mb-1">{meta.emoji}</div>
+                              <div className="text-[9px] font-bold text-gray-300 truncate" title={meta.name}>{meta.name.split(" ").slice(1).join(" ") || meta.name}</div>
+                              <div className="mt-1 text-[11px] font-black tabular-nums" style={{ color: isMe ? profile.color : "#e5e7eb" }}>{s.week}</div>
+                              <div className="text-[8px] text-gray-500 uppercase tracking-wider">partages</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* OG card preview — shows the exact image that will appear on socials */}
                   <a

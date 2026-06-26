@@ -225,8 +225,15 @@ function computeEquity(p, prices) {
   return equity;
 }
 
-// Simple in-memory price cache (15s TTL)
+// Simple in-memory price cache with stale-while-revalidate semantics.
+// - FRESH window (≤5s): serve cached, no refresh
+// - STALE window (5–60s): serve cached immediately AND kick a background refresh
+// - HARD-EXPIRED (>60s) or empty: block-await the fetch
+// Stampede protection: a single in-flight promise is shared across concurrent callers.
 let priceCache = { ts: 0, data: {} };
+let inflightPriceFetch = null;
+const PRICE_FRESH_MS = 5_000;
+const PRICE_STALE_MS = 60_000;
 // Symbol blocklist — stablecoins, wrapped/staked tokens that aren't relevant for trading challenge
 const SYMBOL_BLOCKLIST = new Set([
   'USDT', 'USDC', 'DAI', 'BUSD', 'TUSD', 'USDD', 'USDE', 'FDUSD', 'PYUSD', 'USDS',
@@ -259,9 +266,22 @@ let universeRanked = []; // ordered by market cap rank (for /symbols endpoint)
 
 async function getPrices() {
   const now = Date.now();
-  if (now - priceCache.ts < 15000 && Object.keys(priceCache.data).length > 0) {
+  const hasData = Object.keys(priceCache.data).length > 0;
+  const age = now - priceCache.ts;
+  // Fresh: cheapest path
+  if (hasData && age < PRICE_FRESH_MS) return priceCache.data;
+  // Stale-but-usable: return immediately, refresh in background (fire-and-forget)
+  if (hasData && age < PRICE_STALE_MS) {
+    if (!inflightPriceFetch) inflightPriceFetch = doFetchPrices().finally(() => { inflightPriceFetch = null; });
     return priceCache.data;
   }
+  // Hard-expired or empty: block on the single in-flight fetch
+  if (!inflightPriceFetch) inflightPriceFetch = doFetchPrices().finally(() => { inflightPriceFetch = null; });
+  try { await inflightPriceFetch; } catch { /* fallthrough — serve whatever cache we have */ }
+  return priceCache.data;
+}
+
+async function doFetchPrices() {
   const port = process.env.PORT || 8765;
   // Top 100 by market cap. Same URL as Telegram cron → warm cache hit guaranteed.
   const url = `http://localhost:${port}/api/coingecko/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=24h`;
@@ -291,7 +311,7 @@ async function getPrices() {
       ranked.push(sym);
     }
     if (Object.keys(out).length > 0) {
-      priceCache = { ts: now, data: out };
+      priceCache = { ts: Date.now(), data: out };
       universe = newUniverse;
       universeRanked = ranked;
     }

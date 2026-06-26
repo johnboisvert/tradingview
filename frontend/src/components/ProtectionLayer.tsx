@@ -18,15 +18,24 @@ import useDevToolsDetection from '../hooks/useDevToolsDetection';
 const ProtectionLayer: React.FC = () => {
   const { user, isAdmin } = useAuth();
 
-  // Anti-copy protections apply to everyone except admins
-  // (even anonymous visitors, so public pages are also protected).
-  const protectionsEnabled = !isAdmin;
+  // Skip all protections in 3 cases:
+  //   1) Admin users (full exemption)
+  //   2) Page rendered inside an <iframe> (window.self !== window.top) — iframes
+  //      typically have inner/outer size deltas that look like "DevTools open" to
+  //      the heuristic, which would block third-party blogs/Notion/Discord embeds.
+  //   3) Path is a public iframe-safe route (/embed/* or /embed-gallery) — even
+  //      when opened in a regular tab, these pages MUST never trigger the blur
+  //      overlay because they are designed to be copy-pasted/shared.
+  const inIframe = typeof window !== 'undefined' && window.self !== window.top;
+  const path = typeof window !== 'undefined' ? window.location.pathname : '';
+  const isPublicWidgetRoute = path.startsWith('/embed') || path.startsWith('/u/');
+  const protectionsEnabled = !isAdmin && !inIframe && !isPublicWidgetRoute;
 
   useAntiCopy({ enabled: protectionsEnabled });
   const devtoolsOpen = useDevToolsDetection({ enabled: protectionsEnabled });
 
   // Watermark only shows for connected non-admin users with an email.
-  const showWatermark = !isAdmin && !!user?.email;
+  const showWatermark = !isAdmin && !inIframe && !isPublicWidgetRoute && !!user?.email;
 
   return (
     <>

@@ -5,7 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import SEOHead from "@/components/SEOHead";
 import TrialBanner from "@/components/TrialBanner";
-import { Sparkles, ArrowRight, CheckCircle2, RotateCcw, Trophy, Twitter, Linkedin, Facebook, MessageCircle, Link2, Check, Share2, X } from "lucide-react";
+import { Sparkles, ArrowRight, CheckCircle2, RotateCcw, Trophy, Crown, Twitter, Linkedin, Facebook, MessageCircle, Link2, Check, Share2, X } from "lucide-react";
 
 interface QuizQ {
   id: number;
@@ -168,9 +168,19 @@ export default function Quiz() {
   // Records share events to the backend and powers the leaderboard.
   type ShareEntry = { key: string; total: number; week: number; platforms: Record<string, number> };
   const [shareLeaderboard, setShareLeaderboard] = useState<ShareEntry[]>([]);
-  // Per-user share progress toward the "Influenceur" badge (5 shares total).
-  const [myShares, setMyShares] = useState<{ total: number; threshold: number; progress_pct: number; influencer: boolean } | null>(null);
+  // Per-user share progress toward the "Influenceur" (5) and "Légende" (50 lifetime) badges.
+  const [myShares, setMyShares] = useState<{
+    total: number;
+    lifetime: number;
+    threshold: number;
+    legendThreshold: number;
+    progress_pct: number;
+    legend_progress_pct: number;
+    influencer: boolean;
+    legend: boolean;
+  } | null>(null);
   const [influencerCelebration, setInfluencerCelebration] = useState<boolean>(false);
+  const [legendCelebration, setLegendCelebration] = useState<boolean>(false);
 
   useEffect(() => {
     let alive = true;
@@ -186,7 +196,16 @@ export default function Quiz() {
     if (phase !== "result" || sharedView || !email) return;
     fetch(`/api/v1/quiz/me-shares?email=${encodeURIComponent(email)}`)
       .then(r => r.json())
-      .then(j => { if (j?.ok) setMyShares({ total: j.total_shares, threshold: j.threshold, progress_pct: j.progress_pct, influencer: j.influencer }); })
+      .then(j => { if (j?.ok) setMyShares({
+        total: j.total_shares,
+        lifetime: j.lifetime_shares || 0,
+        threshold: j.threshold,
+        legendThreshold: j.legend_threshold || 50,
+        progress_pct: j.progress_pct,
+        legend_progress_pct: j.legend_progress_pct || 0,
+        influencer: j.influencer,
+        legend: !!j.legend,
+      }); })
       .catch(() => {});
   }, [phase, sharedView, email]);
 
@@ -209,13 +228,27 @@ export default function Quiz() {
         if (email) {
           fetch(`/api/v1/quiz/me-shares?email=${encodeURIComponent(email)}`)
             .then(r => r.json())
-            .then(j2 => { if (j2?.ok) setMyShares({ total: j2.total_shares, threshold: j2.threshold, progress_pct: j2.progress_pct, influencer: j2.influencer }); })
+            .then(j2 => { if (j2?.ok) setMyShares({
+              total: j2.total_shares,
+              lifetime: j2.lifetime_shares || 0,
+              threshold: j2.threshold,
+              legendThreshold: j2.legend_threshold || 50,
+              progress_pct: j2.progress_pct,
+              legend_progress_pct: j2.legend_progress_pct || 0,
+              influencer: j2.influencer,
+              legend: !!j2.legend,
+            }); })
             .catch(() => {});
         }
         // Influencer badge just unlocked → celebration overlay
         if (j.influencer_just_unlocked) {
           setInfluencerCelebration(true);
           setTimeout(() => setInfluencerCelebration(false), 7000);
+        }
+        // Legend badge just unlocked (50 lifetime shares) → epic celebration
+        if (j.legend_just_unlocked) {
+          setLegendCelebration(true);
+          setTimeout(() => setLegendCelebration(false), 9000);
         }
       }
     } catch { /* ignore */ }
@@ -436,6 +469,38 @@ export default function Quiz() {
                       {!myShares.influencer && (
                         <p className="mt-2 text-[10px] text-gray-500 font-bold">
                           Plus que {Math.max(0, myShares.threshold - myShares.total)} partage{(myShares.threshold - myShares.total) > 1 ? "s" : ""} pour débloquer le badge 🏆
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Légende badge progress bar — visible once Influenceur is unlocked */}
+                  {myShares && myShares.influencer && (
+                    <div
+                      data-testid="quiz-legend-progress"
+                      className={`mb-4 rounded-xl p-3 border ${myShares.legend ? "bg-gradient-to-br from-purple-500/20 to-fuchsia-500/15 border-fuchsia-400/50" : "bg-gradient-to-br from-purple-500/8 to-fuchsia-500/4 border-purple-500/20"}`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Crown className={`w-4 h-4 ${myShares.legend ? "text-fuchsia-200" : "text-fuchsia-400/70"}`} />
+                        <span className={`text-xs font-extrabold ${myShares.legend ? "text-fuchsia-100" : "text-fuchsia-200"}`}>
+                          {myShares.legend ? "Badge Légende débloqué !" : "Badge Légende"}
+                        </span>
+                        <span className="ml-auto text-[11px] font-mono font-bold text-gray-300 tabular-nums">{myShares.lifetime}/{myShares.legendThreshold}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-black/40 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${myShares.legend_progress_pct}%`,
+                            background: myShares.legend
+                              ? "linear-gradient(90deg,#d946ef,#a855f7,#ec4899)"
+                              : "linear-gradient(90deg,#7c3aed,#c026d3)",
+                          }}
+                        />
+                      </div>
+                      {!myShares.legend && (
+                        <p className="mt-2 text-[10px] text-purple-200/70 font-bold">
+                          Plus que {Math.max(0, myShares.legendThreshold - myShares.lifetime)} partage{(myShares.legendThreshold - myShares.lifetime) > 1 ? "s" : ""} à vie pour entrer dans la Légende 👑
                         </p>
                       )}
                     </div>
@@ -685,6 +750,53 @@ export default function Quiz() {
           <style>{`
             @keyframes infCelebFade { 0% { opacity: 0; } 100% { opacity: 1; } }
             @keyframes infCelebShimmer { 0% { background-position: 200% 0; } 100% { background-position: -50% 0; } }
+          `}</style>
+        </div>
+      )}
+
+      {/* Legend badge unlock celebration — purple/fuchsia, 9s, even more epic */}
+      {legendCelebration && (
+        <div
+          data-testid="legend-celebration"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md"
+          style={{ animation: "legCelebFade 480ms cubic-bezier(.2,.9,.3,1.2)" }}
+        >
+          <button
+            onClick={() => setLegendCelebration(false)}
+            className="absolute top-4 right-4 text-white/60 hover:text-white"
+            data-testid="legend-celebration-close"
+            aria-label="Fermer"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="relative max-w-md w-[90%] rounded-3xl overflow-hidden bg-gradient-to-br from-purple-600/30 via-fuchsia-500/25 to-pink-500/20 border-2 border-fuchsia-400/70 shadow-2xl shadow-fuchsia-500/60 p-8 text-center">
+            <div
+              className="absolute inset-0 opacity-60 pointer-events-none"
+              style={{
+                background: "linear-gradient(120deg, transparent 25%, rgba(232,121,249,0.45) 50%, transparent 75%)",
+                backgroundSize: "200% 100%",
+                animation: "legCelebShimmer 1.8s linear infinite",
+              }}
+            />
+            <div className="relative">
+              <div className="text-7xl mb-4">👑</div>
+              <div className="text-xs uppercase tracking-[0.25em] font-extrabold text-fuchsia-200 mb-2">Badge ultime débloqué</div>
+              <h2 className="text-4xl font-black bg-gradient-to-r from-fuchsia-200 via-pink-200 to-purple-200 bg-clip-text text-transparent mb-3">Légende</h2>
+              <p className="text-sm text-fuchsia-100/90 mb-5">
+                Incroyable&nbsp;! Tu as partagé ton profil <b className="text-fuchsia-100">50 fois</b>. Tu rejoins le cercle ultra-fermé des Légendes CryptoIA.
+              </p>
+              <button
+                onClick={() => setLegendCelebration(false)}
+                data-testid="legend-celebration-cta"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-500 text-white font-extrabold text-sm hover:from-fuchsia-400 hover:to-purple-400 transition-all"
+              >
+                <Crown className="w-4 h-4" /> Continuer
+              </button>
+            </div>
+          </div>
+          <style>{`
+            @keyframes legCelebFade { 0% { opacity: 0; transform: scale(.94); } 100% { opacity: 1; transform: scale(1); } }
+            @keyframes legCelebShimmer { 0% { background-position: 200% 0; } 100% { background-position: -50% 0; } }
           `}</style>
         </div>
       )}

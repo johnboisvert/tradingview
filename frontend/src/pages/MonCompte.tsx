@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import {
   getUserPlan,
@@ -17,6 +18,7 @@ import { useNavigate } from "react-router-dom";
 import Footer from "@/components/Footer";
 
 export default function MonCompte() {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications" | "subscription">("profile");
   const [showApiKey, setShowApiKey] = useState(false);
@@ -35,9 +37,7 @@ export default function MonCompte() {
   };
 
   const handleCancelSubscription = () => {
-    if (window.confirm("Êtes-vous sûr de vouloir annuler votre abonnement ? Vous conserverez l'accès jusqu'à la fin de la période en cours.")) {
-      // In production, this would call the backend to cancel the Stripe subscription
-      // For now, we just clear the local plan
+    if (window.confirm(t("pages.monCompte.cancelConfirm"))) {
       clearUserPlan();
       setCurrentPlan("free");
       window.location.reload();
@@ -49,7 +49,7 @@ export default function MonCompte() {
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "—";
     try {
-      return new Date(dateStr).toLocaleDateString("fr-CA", {
+      return new Date(dateStr).toLocaleDateString(i18n.language === "en" ? "en-US" : "fr-CA", {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -61,18 +61,18 @@ export default function MonCompte() {
 
   // Summary cards data
   const summaryCards = [
-    { icon: Calendar, label: "Membre depuis", value: "Jan 2026", color: "text-blue-400" },
-    { icon: isAdmin ? ShieldCheck : CreditCard, label: "Plan actuel", value: planInfo.label, color: planInfo.color },
+    { icon: Calendar, label: t("pages.monCompte.memberSince"), value: i18n.language === "en" ? "Jan 2026" : "Jan 2026", color: "text-blue-400" },
+    { icon: isAdmin ? ShieldCheck : CreditCard, label: t("pages.monCompte.currentPlan"), value: planInfo.label, color: planInfo.color },
     {
       icon: Shield,
-      label: "Statut",
-      value: isAdmin ? "Admin" : subInfo.expired ? "Expiré" : subInfo.isActive ? "Actif" : "Gratuit",
+      label: t("pages.monCompte.status"),
+      value: isAdmin ? t("pages.monCompte.statusAdmin") : subInfo.expired ? t("pages.monCompte.statusExpired") : subInfo.isActive ? t("pages.monCompte.statusActive") : t("pages.monCompte.statusFree"),
       color: isAdmin ? "text-red-400" : subInfo.expired ? "text-red-400" : subInfo.isActive ? "text-emerald-400" : "text-gray-400",
     },
     {
       icon: Clock,
-      label: subInfo.isActive ? "Jours restants" : "Alertes actives",
-      value: subInfo.isActive ? `${subInfo.daysRemaining}j` : "3",
+      label: subInfo.isActive ? t("pages.monCompte.daysRemaining") : t("pages.monCompte.activeAlerts"),
+      value: subInfo.isActive ? `${subInfo.daysRemaining}${t("pages.monCompte.days")}` : "3",
       color: subInfo.isActive
         ? subInfo.daysRemaining <= 7 ? "text-red-400" : subInfo.daysRemaining <= 14 ? "text-amber-400" : "text-emerald-400"
         : "text-amber-400",
@@ -80,10 +80,18 @@ export default function MonCompte() {
   ];
 
   const tabs = [
-    { id: "profile" as const, label: "Profil", icon: User },
-    { id: "subscription" as const, label: "Abonnement", icon: Crown },
-    { id: "security" as const, label: "Sécurité", icon: Shield },
-    { id: "notifications" as const, label: "Notifications", icon: Bell },
+    { id: "profile" as const, label: t("pages.monCompte.tabProfile"), icon: User },
+    { id: "subscription" as const, label: t("pages.monCompte.tabSubscription"), icon: Crown },
+    { id: "security" as const, label: t("pages.monCompte.tabSecurity"), icon: Shield },
+    { id: "notifications" as const, label: t("pages.monCompte.tabNotifications"), icon: Bell },
+  ];
+
+  const notifications = [
+    { label: t("pages.monCompte.notifPriceAlerts"), desc: t("pages.monCompte.notifPriceAlertsDesc"), enabled: true },
+    { label: t("pages.monCompte.notifAiSignals"), desc: t("pages.monCompte.notifAiSignalsDesc"), enabled: true },
+    { label: t("pages.monCompte.notifNews"), desc: t("pages.monCompte.notifNewsDesc"), enabled: false },
+    { label: t("pages.monCompte.notifWeekly"), desc: t("pages.monCompte.notifWeeklyDesc"), enabled: true },
+    { label: t("pages.monCompte.notifProduct"), desc: t("pages.monCompte.notifProductDesc"), enabled: false },
   ];
 
   return (
@@ -97,8 +105,8 @@ export default function MonCompte() {
               <User className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold">Mon Compte</h1>
-              <p className="text-sm text-gray-400">Gérez votre profil, abonnement et préférences</p>
+              <h1 className="text-2xl font-extrabold" data-testid="account-title">{t("pages.monCompte.title")}</h1>
+              <p className="text-sm text-gray-400">{t("pages.monCompte.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -123,6 +131,7 @@ export default function MonCompte() {
             const Icon = tab.icon;
             return (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                data-testid={`account-tab-${tab.id}`}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
                   activeTab === tab.id
                     ? "bg-gradient-to-r from-emerald-500/15 to-green-500/10 text-emerald-400 border border-emerald-500/20"
@@ -138,22 +147,22 @@ export default function MonCompte() {
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
           {activeTab === "profile" && (
             <div className="space-y-5">
-              <h2 className="text-lg font-bold flex items-center gap-2"><User className="w-5 h-5 text-emerald-400" /> Informations du Profil</h2>
+              <h2 className="text-lg font-bold flex items-center gap-2"><User className="w-5 h-5 text-emerald-400" /> {t("pages.monCompte.profileInfo")}</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nom complet</label>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("pages.monCompte.fullName")}</label>
                   <input type="text" defaultValue="Utilisateur CryptoIA" className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Email</label>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("pages.monCompte.email")}</label>
                   <input type="email" defaultValue="user@cryptoia.com" className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Téléphone</label>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("pages.monCompte.phone")}</label>
                   <input type="tel" defaultValue="+1 (514) 000-0000" className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Fuseau horaire</label>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("pages.monCompte.timezone")}</label>
                   <select className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50">
                     <option value="est">EST (UTC-5)</option>
                     <option value="pst">PST (UTC-8)</option>
@@ -161,23 +170,23 @@ export default function MonCompte() {
                   </select>
                 </div>
               </div>
-              <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-sm hover:brightness-110 transition-all">
-                {saved ? <><CheckCircle className="w-4 h-4" /> Enregistré !</> : <><Save className="w-4 h-4" /> Enregistrer</>}
+              <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-sm hover:brightness-110 transition-all" data-testid="account-save-profile">
+                {saved ? <><CheckCircle className="w-4 h-4" /> {t("pages.monCompte.saved")}</> : <><Save className="w-4 h-4" /> {t("pages.monCompte.save")}</>}
               </button>
             </div>
           )}
 
           {activeTab === "subscription" && (
             <div className="space-y-6">
-              <h2 className="text-lg font-bold flex items-center gap-2"><Crown className="w-5 h-5 text-amber-400" /> Gestion de l'Abonnement</h2>
+              <h2 className="text-lg font-bold flex items-center gap-2"><Crown className="w-5 h-5 text-amber-400" /> {t("pages.monCompte.subscriptionManagement")}</h2>
 
               {/* Admin Notice */}
               {isAdmin && (
                 <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
                   <ShieldCheck className="w-5 h-5 text-red-400 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-bold text-red-400">Mode Administrateur Actif</p>
-                    <p className="text-xs text-gray-400">Vous avez un accès complet à toutes les fonctionnalités. Déconnectez-vous de l'admin pour revenir au plan utilisateur.</p>
+                    <p className="text-sm font-bold text-red-400">{t("pages.monCompte.adminModeActive")}</p>
+                    <p className="text-xs text-gray-400">{t("pages.monCompte.adminModeDesc")}</p>
                   </div>
                 </div>
               )}
@@ -187,10 +196,8 @@ export default function MonCompte() {
                 <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
                   <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-bold text-red-400">Abonnement expiré</p>
-                    <p className="text-xs text-gray-400">
-                      Votre abonnement a expiré le {formatDate(subInfo.endDate)}. Renouvelez pour retrouver l'accès à toutes vos fonctionnalités.
-                    </p>
+                    <p className="text-sm font-bold text-red-400">{t("pages.monCompte.subExpired")}</p>
+                    <p className="text-xs text-gray-400">{t("pages.monCompte.subExpiredDesc", { date: formatDate(subInfo.endDate) })}</p>
                   </div>
                 </div>
               )}
@@ -200,10 +207,8 @@ export default function MonCompte() {
                 <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
                   <Clock className="w-5 h-5 text-amber-400 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-bold text-amber-400">Renouvellement imminent</p>
-                    <p className="text-xs text-gray-400">
-                      Votre abonnement se renouvelle dans {subInfo.daysRemaining} jour{subInfo.daysRemaining > 1 ? "s" : ""} ({formatDate(subInfo.endDate)}).
-                    </p>
+                    <p className="text-sm font-bold text-amber-400">{t("pages.monCompte.renewalSoon")}</p>
+                    <p className="text-xs text-gray-400">{t("pages.monCompte.renewalSoonDesc", { count: subInfo.daysRemaining, date: formatDate(subInfo.endDate) })}</p>
                   </div>
                 </div>
               )}
@@ -212,14 +217,14 @@ export default function MonCompte() {
               <div className={`bg-gradient-to-r ${planInfo.gradient} rounded-2xl p-6 relative overflow-hidden`}>
                 <div className="absolute inset-0 bg-black/60" />
                 <div className="relative z-10">
-                  <p className="text-xs text-gray-300 uppercase tracking-wider mb-1">Plan actuel</p>
+                  <p className="text-xs text-gray-300 uppercase tracking-wider mb-1">{t("pages.monCompte.currentPlan")}</p>
                   <h3 className="text-2xl font-extrabold mb-2">{planInfo.label}</h3>
                   <p className="text-sm text-gray-300">
                     {currentPlan === "admin"
-                      ? "Accès administrateur complet à toutes les fonctionnalités."
+                      ? t("pages.monCompte.planAdminDesc")
                       : currentPlan === "free"
-                      ? "Accès limité aux fonctionnalités de base."
-                      : `Vous avez accès à toutes les fonctionnalités du plan ${planInfo.label}.`}
+                      ? t("pages.monCompte.planFreeDesc")
+                      : t("pages.monCompte.planPaidDesc", { plan: planInfo.label })}
                   </p>
                 </div>
               </div>
@@ -228,26 +233,26 @@ export default function MonCompte() {
               {subInfo.isActive && (
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Période de facturation</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">{t("pages.monCompte.billingPeriod")}</p>
                     <p className="text-sm font-bold text-white flex items-center gap-2">
                       <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
-                      {subInfo.billingPeriod === "annual" ? "Annuel" : "Mensuel"}
+                      {subInfo.billingPeriod === "annual" ? t("pages.monCompte.annual") : t("pages.monCompte.monthly")}
                     </p>
                   </div>
                   <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Prochain renouvellement</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">{t("pages.monCompte.nextRenewal")}</p>
                     <p className="text-sm font-bold text-white flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5 text-blue-400" />
                       {formatDate(subInfo.endDate)}
                     </p>
                   </div>
                   <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Jours restants</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">{t("pages.monCompte.daysRemaining")}</p>
                     <p className={`text-sm font-bold flex items-center gap-2 ${
                       subInfo.daysRemaining <= 7 ? "text-red-400" : subInfo.daysRemaining <= 14 ? "text-amber-400" : "text-emerald-400"
                     }`}>
                       <Clock className="w-3.5 h-3.5" />
-                      {subInfo.daysRemaining} jour{subInfo.daysRemaining > 1 ? "s" : ""}
+                      {subInfo.daysRemaining} {t("pages.monCompte.days")}
                     </p>
                   </div>
                 </div>
@@ -258,16 +263,15 @@ export default function MonCompte() {
                 <div className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-gray-300">Annuler l'abonnement</h3>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Vous conserverez l'accès jusqu'au {formatDate(subInfo.endDate)}.
-                      </p>
+                      <h3 className="text-sm font-bold text-gray-300">{t("pages.monCompte.cancelSub")}</h3>
+                      <p className="text-xs text-gray-500 mt-1">{t("pages.monCompte.cancelSubDesc", { date: formatDate(subInfo.endDate) })}</p>
                     </div>
                     <button
                       onClick={handleCancelSubscription}
+                      data-testid="account-cancel-subscription"
                       className="px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-all"
                     >
-                      Annuler
+                      {t("pages.monCompte.cancelButton")}
                     </button>
                   </div>
                 </div>
@@ -277,18 +281,17 @@ export default function MonCompte() {
               {!isAdmin && currentPlan !== "elite" && (
                 <div className="p-5 bg-white/[0.03] border border-white/[0.06] rounded-xl">
                   <h3 className="text-sm font-bold text-gray-300 mb-2">
-                    {subInfo.expired ? "Renouveler votre abonnement" : "Passer à un plan supérieur"}
+                    {subInfo.expired ? t("pages.monCompte.renewSub") : t("pages.monCompte.upgradePlan")}
                   </h3>
                   <p className="text-xs text-gray-500 mb-4">
-                    {subInfo.expired
-                      ? "Renouvelez votre abonnement pour retrouver l'accès à toutes vos fonctionnalités."
-                      : "Débloquez plus de fonctionnalités en passant à un plan supérieur."}
+                    {subInfo.expired ? t("pages.monCompte.renewDesc") : t("pages.monCompte.upgradeDesc")}
                   </p>
                   <button
                     onClick={() => navigate("/abonnements")}
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-bold text-sm hover:brightness-110 transition-all"
+                    data-testid="account-upgrade-btn"
                   >
-                    <Crown className="w-4 h-4" /> {subInfo.expired ? "Renouveler" : "Voir les abonnements"}
+                    <Crown className="w-4 h-4" /> {subInfo.expired ? t("pages.monCompte.renewBtn") : t("pages.monCompte.viewPlansBtn")}
                   </button>
                 </div>
               )}
@@ -296,7 +299,7 @@ export default function MonCompte() {
               {!isAdmin && currentPlan === "elite" && !subInfo.expired && (
                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
                   <CheckCircle className="w-4 h-4" />
-                  <span>Vous disposez du plan le plus complet. Profitez de toutes les fonctionnalités !</span>
+                  <span>{t("pages.monCompte.eliteFull")}</span>
                 </div>
               )}
             </div>
@@ -304,34 +307,34 @@ export default function MonCompte() {
 
           {activeTab === "security" && (
             <div className="space-y-5">
-              <h2 className="text-lg font-bold flex items-center gap-2"><Shield className="w-5 h-5 text-emerald-400" /> Sécurité</h2>
+              <h2 className="text-lg font-bold flex items-center gap-2"><Shield className="w-5 h-5 text-emerald-400" /> {t("pages.monCompte.security")}</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Mot de passe actuel</label>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("pages.monCompte.currentPassword")}</label>
                   <input type="password" placeholder="••••••••" className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nouveau mot de passe</label>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("pages.monCompte.newPassword")}</label>
                   <input type="password" placeholder="••••••••" className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Confirmer le mot de passe</label>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("pages.monCompte.confirmNewPassword")}</label>
                   <input type="password" placeholder="••••••••" className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50" />
                 </div>
               </div>
-              <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-sm hover:brightness-110 transition-all">
-                {saved ? <><CheckCircle className="w-4 h-4" /> Enregistré !</> : <><Save className="w-4 h-4" /> Mettre à jour</>}
+              <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-sm hover:brightness-110 transition-all" data-testid="account-update-password">
+                {saved ? <><CheckCircle className="w-4 h-4" /> {t("pages.monCompte.saved")}</> : <><Save className="w-4 h-4" /> {t("pages.monCompte.update")}</>}
               </button>
 
               {/* 2FA */}
               <div className="mt-6 p-4 bg-white/[0.03] border border-white/[0.06] rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-bold">Authentification à deux facteurs (2FA)</h3>
-                    <p className="text-xs text-gray-500 mt-1">Ajoutez une couche de sécurité supplémentaire</p>
+                    <h3 className="text-sm font-bold">{t("pages.monCompte.twofa")}</h3>
+                    <p className="text-xs text-gray-500 mt-1">{t("pages.monCompte.twofaDesc")}</p>
                   </div>
-                  <button className="px-4 py-2 rounded-lg bg-white/[0.06] text-xs font-semibold text-gray-400 hover:text-white hover:bg-white/[0.1] transition-all">
-                    Activer
+                  <button className="px-4 py-2 rounded-lg bg-white/[0.06] text-xs font-semibold text-gray-400 hover:text-white hover:bg-white/[0.1] transition-all" data-testid="account-activate-2fa">
+                    {t("pages.monCompte.activate")}
                   </button>
                 </div>
               </div>
@@ -340,10 +343,10 @@ export default function MonCompte() {
               <div className="mt-4 p-4 bg-white/[0.03] border border-white/[0.06] rounded-xl">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h3 className="text-sm font-bold flex items-center gap-2"><Key className="w-4 h-4 text-amber-400" /> Clé API</h3>
-                    <p className="text-xs text-gray-500 mt-1">Votre clé pour accéder à l'API CryptoIA</p>
+                    <h3 className="text-sm font-bold flex items-center gap-2"><Key className="w-4 h-4 text-amber-400" /> {t("pages.monCompte.apiKey")}</h3>
+                    <p className="text-xs text-gray-500 mt-1">{t("pages.monCompte.apiKeyDesc")}</p>
                   </div>
-                  <button onClick={() => setShowApiKey(!showApiKey)} className="text-gray-500 hover:text-white transition-colors">
+                  <button onClick={() => setShowApiKey(!showApiKey)} className="text-gray-500 hover:text-white transition-colors" data-testid="account-toggle-apikey">
                     {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -356,14 +359,8 @@ export default function MonCompte() {
 
           {activeTab === "notifications" && (
             <div className="space-y-5">
-              <h2 className="text-lg font-bold flex items-center gap-2"><Bell className="w-5 h-5 text-emerald-400" /> Préférences de Notifications</h2>
-              {[
-                { label: "Alertes de prix", desc: "Recevez des notifications quand un prix atteint votre cible", enabled: true },
-                { label: "Signaux IA", desc: "Notifications pour les nouveaux signaux de trading", enabled: true },
-                { label: "Nouvelles importantes", desc: "Alertes pour les actualités crypto majeures", enabled: false },
-                { label: "Rapport hebdomadaire", desc: "Résumé de vos performances chaque semaine", enabled: true },
-                { label: "Mises à jour produit", desc: "Nouvelles fonctionnalités et améliorations", enabled: false },
-              ].map((item, i) => (
+              <h2 className="text-lg font-bold flex items-center gap-2"><Bell className="w-5 h-5 text-emerald-400" /> {t("pages.monCompte.notificationPrefs")}</h2>
+              {notifications.map((item, i) => (
                 <div key={i} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl">
                   <div>
                     <p className="text-sm font-bold">{item.label}</p>
@@ -375,8 +372,8 @@ export default function MonCompte() {
                   </label>
                 </div>
               ))}
-              <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-sm hover:brightness-110 transition-all">
-                {saved ? <><CheckCircle className="w-4 h-4" /> Enregistré !</> : <><Save className="w-4 h-4" /> Enregistrer</>}
+              <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-sm hover:brightness-110 transition-all" data-testid="account-save-notifications">
+                {saved ? <><CheckCircle className="w-4 h-4" /> {t("pages.monCompte.saved")}</> : <><Save className="w-4 h-4" /> {t("pages.monCompte.save")}</>}
               </button>
             </div>
           )}
@@ -384,14 +381,14 @@ export default function MonCompte() {
 
         {/* Danger Zone */}
         <div className="mt-6 bg-red-500/[0.03] border border-red-500/10 rounded-2xl p-6">
-          <h3 className="text-sm font-bold text-red-400 mb-2">Zone Dangereuse</h3>
-          <p className="text-xs text-gray-500 mb-4">Ces actions sont irréversibles.</p>
+          <h3 className="text-sm font-bold text-red-400 mb-2">{t("pages.monCompte.dangerZone")}</h3>
+          <p className="text-xs text-gray-500 mb-4">{t("pages.monCompte.dangerZoneDesc")}</p>
           <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition-all">
-              <LogOut className="w-3.5 h-3.5" /> Déconnexion
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition-all" data-testid="account-logout">
+              <LogOut className="w-3.5 h-3.5" /> {t("pages.monCompte.logout")}
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition-all">
-              <Settings className="w-3.5 h-3.5" /> Supprimer le compte
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition-all" data-testid="account-delete">
+              <Settings className="w-3.5 h-3.5" /> {t("pages.monCompte.deleteAccount")}
             </button>
           </div>
         </div>

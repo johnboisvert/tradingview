@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Fish, RefreshCw, ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown } from "lucide-react";
 import Footer from "@/components/Footer";
@@ -29,7 +30,7 @@ function formatUsd(v: number): string {
   return `$${v.toFixed(0)}`;
 }
 
-function analyzeWhaleActivity(coins: any[]): WhaleActivity[] {
+function analyzeWhaleActivity(coins: any[], tr: (k: string, v?: any) => string): WhaleActivity[] {
   return coins
     .filter((c: any) => c && c.symbol && c.current_price && c.market_cap > 0)
     .map((c: any) => {
@@ -65,22 +66,22 @@ function analyzeWhaleActivity(coins: any[]): WhaleActivity[] {
 
       if (change24h > 3 && volMcapRatio > 0.15) {
         signal = "accumulation";
-        reason = `Hausse de ${change24h.toFixed(1)}% avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap) — accumulation probable`;
+        reason = tr("pages.whaleWatcherExtra.reasonRiseHighVol", { change: change24h.toFixed(1), ratio: (volMcapRatio * 100).toFixed(1) });
       } else if (change24h < -3 && volMcapRatio > 0.15) {
         signal = "distribution";
-        reason = `Baisse de ${change24h.toFixed(1)}% avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap) — distribution probable`;
+        reason = tr("pages.whaleWatcherExtra.reasonFallHighVol", { change: change24h.toFixed(1), ratio: (volMcapRatio * 100).toFixed(1) });
       } else if (volMcapRatio > 0.25 && Math.abs(change24h) < 2) {
         signal = "accumulation";
-        reason = `Volume très élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap) avec faible variation — accumulation silencieuse`;
+        reason = tr("pages.whaleWatcherExtra.reasonSilent", { ratio: (volMcapRatio * 100).toFixed(1) });
       } else if (change24h < -5) {
         signal = "distribution";
-        reason = `Forte baisse de ${change24h.toFixed(1)}% — pression vendeuse significative`;
+        reason = tr("pages.whaleWatcherExtra.reasonBigFall", { change: change24h.toFixed(1) });
       } else if (change24h > 5) {
         signal = "accumulation";
-        reason = `Forte hausse de ${change24h.toFixed(1)}% — achat massif détecté`;
+        reason = tr("pages.whaleWatcherExtra.reasonBigRise", { change: change24h.toFixed(1) });
       } else {
         signal = "neutral";
-        reason = `Activité normale — Vol/MCap: ${(volMcapRatio * 100).toFixed(1)}%, Variation: ${change24h > 0 ? "+" : ""}${change24h.toFixed(1)}%`;
+        reason = tr("pages.whaleWatcherExtra.reasonNormal", { ratio: (volMcapRatio * 100).toFixed(1), change: (change24h > 0 ? "+" : "") + change24h.toFixed(1) });
       }
 
       whaleScore = Math.min(100, Math.max(0, whaleScore));
@@ -104,6 +105,7 @@ function analyzeWhaleActivity(coins: any[]): WhaleActivity[] {
 }
 
 export default function WhaleWatcher() {
+  const { t, i18n } = useTranslation();
   const [activities, setActivities] = useState<WhaleActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"ALL" | "accumulation" | "distribution" | "neutral">("ALL");
@@ -115,15 +117,15 @@ export default function WhaleWatcher() {
       const { fetchTop200 } = await import("@/lib/cryptoApi");
       const data = await fetchTop200(false);
       if (data.length > 0) {
-        setActivities(analyzeWhaleActivity(data));
+        setActivities(analyzeWhaleActivity(data, t as (k: string, v?: any) => string));
       }
-      setLastUpdate(new Date().toLocaleTimeString("fr-FR"));
+      setLastUpdate(new Date().toLocaleTimeString(i18n.language === "en" ? "en-US" : "fr-FR"));
     } catch (err) {
       console.error("Fetch error:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t, i18n.language]);
 
   useEffect(() => {
     fetchData();
@@ -142,9 +144,9 @@ export default function WhaleWatcher() {
   const avgWhaleScore = activities.length > 0 ? Math.round(activities.reduce((s, a) => s + a.whaleScore, 0) / activities.length) : 0;
 
   const signalStyle = (s: WhaleActivity["signal"]) => {
-    if (s === "accumulation") return { label: "🟢 Accumulation", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
-    if (s === "distribution") return { label: "🔴 Distribution", color: "text-red-400 bg-red-500/10 border-red-500/20" };
-    return { label: "⚪ Neutre", color: "text-gray-400 bg-white/[0.06] border-white/[0.08]" };
+    if (s === "accumulation") return { label: `🟢 ${t("pages.whaleWatcherExtra.accumulation")}`, color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
+    if (s === "distribution") return { label: `🔴 ${t("pages.whaleWatcherExtra.distribution")}`, color: "text-red-400 bg-red-500/10 border-red-500/20" };
+    return { label: `⚪ ${t("pages.whaleWatcherExtra.neutral")}`, color: "text-gray-400 bg-white/[0.06] border-white/[0.08]" };
   };
 
   return (
@@ -168,19 +170,19 @@ export default function WhaleWatcher() {
               <div>
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
-                    AI Whale Watcher
+                    {t("pages.whaleWatcher.title")}
                   </h1>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-cyan-500/40 bg-cyan-500/10 text-cyan-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" /> Whale Detection
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" /> {t("pages.whaleWatcherExtra.badge")}
                   </span>
                 </div>
-                <p className="text-xs md:text-sm text-gray-400">Détection d&apos;activité whale basée sur les volumes réels CoinGecko</p>
+                <p className="text-xs md:text-sm text-gray-400">{t("pages.whaleWatcher.subtitle")}</p>
               </div>
             </div>
             <button onClick={fetchData} disabled={loading}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-sm font-semibold transition-all disabled:opacity-50">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">{lastUpdate ? `MAJ ${lastUpdate}` : "Rafraîchir"}</span>
+              <span className="hidden sm:inline">{lastUpdate ? t("pages.whaleWatcherExtra.lastUpdate", { time: lastUpdate }) : t("pages.whaleWatcherExtra.refresh")}</span>
             </button>
           </div>
         </div>
@@ -194,22 +196,22 @@ export default function WhaleWatcher() {
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Cryptos Analysées</p>
+            <p className="text-xs text-gray-500 font-semibold mb-1">{t("pages.whaleWatcherExtra.analyzed")}</p>
             <p className="text-2xl font-extrabold">{activities.length}</p>
           </div>
           <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Volume Total 24h</p>
+            <p className="text-xs text-gray-500 font-semibold mb-1">{t("pages.whaleWatcherExtra.totalVolume")}</p>
             <p className="text-2xl font-extrabold">{formatUsd(totalVolume)}</p>
           </div>
           <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Accumulation</p>
+            <p className="text-xs text-gray-500 font-semibold mb-1">{t("pages.whaleWatcherExtra.accumulation")}</p>
             <div className="flex items-center gap-2">
               <ArrowDownRight className="w-5 h-5 text-emerald-400" />
               <p className="text-2xl font-extrabold text-emerald-400">{accumulationCount}</p>
             </div>
           </div>
           <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-xs text-gray-500 font-semibold mb-1">Distribution</p>
+            <p className="text-xs text-gray-500 font-semibold mb-1">{t("pages.whaleWatcherExtra.distribution")}</p>
             <div className="flex items-center gap-2">
               <ArrowUpRight className="w-5 h-5 text-red-400" />
               <p className="text-2xl font-extrabold text-red-400">{distributionCount}</p>
@@ -220,13 +222,13 @@ export default function WhaleWatcher() {
         {/* Filters */}
         <div className="bg-[#111827] border border-white/[0.06] rounded-2xl p-4 mb-6">
           <div className="flex items-center gap-4 flex-wrap">
-            <span className="text-xs font-semibold text-gray-400">Filtres:</span>
+            <span className="text-xs font-semibold text-gray-400">{t("pages.whaleWatcherExtra.filters")}</span>
             <div className="flex gap-2">
               {([
-                { key: "ALL", label: "Tous" },
-                { key: "accumulation", label: "🟢 Accumulation" },
-                { key: "distribution", label: "🔴 Distribution" },
-                { key: "neutral", label: "⚪ Neutre" },
+                { key: "ALL", label: t("pages.whaleWatcherExtra.all") },
+                { key: "accumulation", label: `🟢 ${t("pages.whaleWatcherExtra.accumulation")}` },
+                { key: "distribution", label: `🔴 ${t("pages.whaleWatcherExtra.distribution")}` },
+                { key: "neutral", label: `⚪ ${t("pages.whaleWatcherExtra.neutral")}` },
               ] as const).map((f) => (
                 <button
                   key={f.key}
@@ -241,7 +243,7 @@ export default function WhaleWatcher() {
                 </button>
               ))}
             </div>
-            <span className="text-xs text-gray-500 ml-auto">Score whale moyen: {avgWhaleScore}/100</span>
+            <span className="text-xs text-gray-500 ml-auto">{t("pages.whaleWatcherExtra.avgScore", { score: avgWhaleScore })}</span>
           </div>
         </div>
 
@@ -252,13 +254,13 @@ export default function WhaleWatcher() {
               <thead>
                 <tr className="border-b border-white/[0.06]">
                   <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">#</th>
-                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Crypto</th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Prix</th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">24h</th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Volume 24h</th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Vol/MCap</th>
-                  <th className="text-center py-3 px-4 text-xs font-bold text-gray-500 uppercase">Score Whale</th>
-                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Signal</th>
+                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">{t("pages.whaleWatcherExtra.colCrypto")}</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">{t("pages.whaleWatcherExtra.colPrice")}</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">{t("pages.whaleWatcherExtra.col24h")}</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">{t("pages.whaleWatcherExtra.colVolume24")}</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">{t("pages.whaleWatcherExtra.colVolMcap")}</th>
+                  <th className="text-center py-3 px-4 text-xs font-bold text-gray-500 uppercase">{t("pages.whaleWatcherExtra.colWhaleScore")}</th>
+                  <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">{t("pages.whaleWatcherExtra.colSignal")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -266,12 +268,12 @@ export default function WhaleWatcher() {
                   <tr>
                     <td colSpan={8} className="text-center py-16">
                       <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-3" />
-                      <p className="text-sm text-gray-400">Chargement des données CoinGecko...</p>
+                      <p className="text-sm text-gray-400">{t("pages.whaleWatcherExtra.loadingData")}</p>
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-16 text-gray-500">Aucune activité trouvée</td>
+                    <td colSpan={8} className="text-center py-16 text-gray-500">{t("pages.whaleWatcherExtra.noActivity")}</td>
                   </tr>
                 ) : (
                   filtered.slice(0, 50).map((a, i) => {
@@ -335,23 +337,23 @@ export default function WhaleWatcher() {
 
         {/* Legend */}
         <div className="mt-4 bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
-          <h3 className="text-sm font-bold mb-3">📖 Méthodologie</h3>
+          <h3 className="text-sm font-bold mb-3">{t("pages.whaleWatcherExtra.methodology")}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-gray-400">
             <div className="flex items-start gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
-              <span><b className="text-emerald-400">Accumulation</b> = Volume élevé + hausse de prix ou volume très élevé avec faible variation (achat silencieux)</span>
+              <span><b className="text-emerald-400">{t("pages.whaleWatcherExtra.accumulation")}</b> {t("pages.whaleWatcherExtra.accDesc")}</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="w-2 h-2 rounded-full bg-red-400 mt-1.5 flex-shrink-0" />
-              <span><b className="text-red-400">Distribution</b> = Volume élevé + baisse de prix significative (vente massive)</span>
+              <span><b className="text-red-400">{t("pages.whaleWatcherExtra.distribution")}</b> {t("pages.whaleWatcherExtra.distDesc")}</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="w-2 h-2 rounded-full bg-gray-400 mt-1.5 flex-shrink-0" />
-              <span><b className="text-gray-300">Neutre</b> = Activité normale, pas de signal whale détecté</span>
+              <span><b className="text-gray-300">{t("pages.whaleWatcherExtra.neutral")}</b> {t("pages.whaleWatcherExtra.neutralDesc")}</span>
             </div>
           </div>
           <p className="text-[10px] text-gray-600 mt-3">
-            📊 Données en temps réel via CoinGecko API. Le score whale est calculé à partir du ratio Volume/Market Cap, de la variation 24h et du volume absolu. Aucune donnée simulée.
+            {t("pages.whaleWatcherExtra.footer")}
           </p>
         </div>
         <Footer />

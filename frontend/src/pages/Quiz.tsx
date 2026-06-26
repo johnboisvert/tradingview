@@ -178,9 +178,12 @@ export default function Quiz() {
     legend_progress_pct: number;
     influencer: boolean;
     legend: boolean;
+    legendPromoCode: string | null;
   } | null>(null);
   const [influencerCelebration, setInfluencerCelebration] = useState<boolean>(false);
   const [legendCelebration, setLegendCelebration] = useState<boolean>(false);
+  const [legendPromoCode, setLegendPromoCode] = useState<string | null>(null);
+  const [promoCopied, setPromoCopied] = useState<boolean>(false);
 
   useEffect(() => {
     let alive = true;
@@ -205,6 +208,7 @@ export default function Quiz() {
         legend_progress_pct: j.legend_progress_pct || 0,
         influencer: j.influencer,
         legend: !!j.legend,
+        legendPromoCode: j.legend_promo_code || null,
       }); })
       .catch(() => {});
   }, [phase, sharedView, email]);
@@ -237,6 +241,7 @@ export default function Quiz() {
               legend_progress_pct: j2.legend_progress_pct || 0,
               influencer: j2.influencer,
               legend: !!j2.legend,
+              legendPromoCode: j2.legend_promo_code || null,
             }); })
             .catch(() => {});
         }
@@ -247,8 +252,8 @@ export default function Quiz() {
         }
         // Legend badge just unlocked (50 lifetime shares) → epic celebration
         if (j.legend_just_unlocked) {
+          setLegendPromoCode(j.legend_promo_code || null);
           setLegendCelebration(true);
-          setTimeout(() => setLegendCelebration(false), 9000);
         }
       }
     } catch { /* ignore */ }
@@ -503,6 +508,25 @@ export default function Quiz() {
                           Plus que {Math.max(0, myShares.legendThreshold - myShares.lifetime)} partage{(myShares.legendThreshold - myShares.lifetime) > 1 ? "s" : ""} à vie pour entrer dans la Légende 👑
                         </p>
                       )}
+                      {myShares.legend && myShares.legendPromoCode && (
+                        <div className="mt-2 pt-2 border-t border-fuchsia-400/20 text-left">
+                          <p className="text-[9px] uppercase tracking-wider text-fuchsia-300 font-extrabold mb-1">🎁 Ton code -50% à vie</p>
+                          <div className="flex items-center gap-1.5">
+                            <code data-testid="legend-promo-code-inline" className="flex-1 font-mono text-[11px] font-black text-fuchsia-100 bg-fuchsia-500/15 px-2 py-1 rounded select-all">{myShares.legendPromoCode}</code>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard?.writeText(myShares.legendPromoCode!);
+                                setPromoCopied(true);
+                                setTimeout(() => setPromoCopied(false), 2000);
+                              }}
+                              className="p-1 rounded bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-200 transition-colors"
+                              aria-label="Copier"
+                            >
+                              {promoCopied ? <Check className="w-3 h-3" /> : <Link2 className="w-3 h-3" />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -754,11 +778,11 @@ export default function Quiz() {
         </div>
       )}
 
-      {/* Legend badge unlock celebration — purple/fuchsia, 9s, even more epic */}
+      {/* Legend badge unlock celebration — purple/fuchsia, shows the lifetime 50% promo code */}
       {legendCelebration && (
         <div
           data-testid="legend-celebration"
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-md p-4"
           style={{ animation: "legCelebFade 480ms cubic-bezier(.2,.9,.3,1.2)" }}
         >
           <button
@@ -769,7 +793,7 @@ export default function Quiz() {
           >
             <X className="w-6 h-6" />
           </button>
-          <div className="relative max-w-md w-[90%] rounded-3xl overflow-hidden bg-gradient-to-br from-purple-600/30 via-fuchsia-500/25 to-pink-500/20 border-2 border-fuchsia-400/70 shadow-2xl shadow-fuchsia-500/60 p-8 text-center">
+          <div className="relative max-w-md w-full rounded-3xl overflow-hidden bg-gradient-to-br from-purple-600/30 via-fuchsia-500/25 to-pink-500/20 border-2 border-fuchsia-400/70 shadow-2xl shadow-fuchsia-500/60 p-7 text-center">
             <div
               className="absolute inset-0 opacity-60 pointer-events-none"
               style={{
@@ -779,19 +803,43 @@ export default function Quiz() {
               }}
             />
             <div className="relative">
-              <div className="text-7xl mb-4">👑</div>
-              <div className="text-xs uppercase tracking-[0.25em] font-extrabold text-fuchsia-200 mb-2">Badge ultime débloqué</div>
-              <h2 className="text-4xl font-black bg-gradient-to-r from-fuchsia-200 via-pink-200 to-purple-200 bg-clip-text text-transparent mb-3">Légende</h2>
-              <p className="text-sm text-fuchsia-100/90 mb-5">
-                Incroyable&nbsp;! Tu as partagé ton profil <b className="text-fuchsia-100">50 fois</b>. Tu rejoins le cercle ultra-fermé des Légendes CryptoIA.
+              <div className="text-6xl mb-3">👑</div>
+              <div className="text-[10px] uppercase tracking-[0.25em] font-extrabold text-fuchsia-200 mb-2">Badge ultime débloqué</div>
+              <h2 className="text-3xl font-black bg-gradient-to-r from-fuchsia-200 via-pink-200 to-purple-200 bg-clip-text text-transparent mb-3">Légende</h2>
+              <p className="text-sm text-fuchsia-100/90 mb-4">
+                Incroyable&nbsp;! Tu as partagé ton profil <b className="text-fuchsia-100">50 fois</b> 🙏
               </p>
-              <button
-                onClick={() => setLegendCelebration(false)}
+
+              {legendPromoCode && (
+                <div data-testid="legend-promo-card" className="mb-5 rounded-2xl bg-black/50 border-2 border-dashed border-fuchsia-400/60 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-extrabold text-fuchsia-300 mb-2">🎁 Ta récompense exclusive</p>
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <code data-testid="legend-promo-code" className="font-mono text-xl font-black text-fuchsia-100 tracking-widest select-all bg-fuchsia-500/15 px-3 py-2 rounded-lg">{legendPromoCode}</code>
+                    <button
+                      data-testid="legend-promo-copy"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(legendPromoCode);
+                        setPromoCopied(true);
+                        setTimeout(() => setPromoCopied(false), 2500);
+                      }}
+                      className="p-2 rounded-lg bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-200 transition-colors"
+                      aria-label="Copier le code"
+                    >
+                      {promoCopied ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-base font-black text-white">-50% à vie</p>
+                  <p className="text-[10px] text-fuchsia-200/70 mt-1">Sur ton abonnement · Usage unique · Sans expiration · Email envoyé 📧</p>
+                </div>
+              )}
+
+              <a
+                href={legendPromoCode ? `/abonnements?promo=${encodeURIComponent(legendPromoCode)}` : "/abonnements"}
                 data-testid="legend-celebration-cta"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-500 text-white font-extrabold text-sm hover:from-fuchsia-400 hover:to-purple-400 transition-all"
               >
-                <Crown className="w-4 h-4" /> Continuer
-              </button>
+                <Crown className="w-4 h-4" /> Activer ma réduction →
+              </a>
             </div>
           </div>
           <style>{`

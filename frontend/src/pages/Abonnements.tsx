@@ -176,6 +176,8 @@ function BillingToggle({
 // ⚠️ Note : la validation finale est effectuée par le backend. Le client peut
 //          uniquement réduire l'amount_cad envoyé — l'admin doit vérifier
 //          côté Stripe les sessions reçues pour repérer un abus.
+// 🎁 Les codes générés dynamiquement (ex: LEGEND-XXXXXX) sont validés via
+//    le backend (/api/v1/promo-codes/validate) en fallback.
 const PROMO_CODES: Record<string, { discount: number; label: string }> = {
   BIENVENUE20: { discount: 20, label: "Bienvenue — 20% de rabais" },
   LAUNCH30: { discount: 30, label: "Lancement — 30% de rabais" },
@@ -185,6 +187,20 @@ const PROMO_CODES: Record<string, { discount: number; label: string }> = {
 function applyPromo(code: string): { discount: number; label: string } | null {
   const normalized = code.trim().toUpperCase();
   return PROMO_CODES[normalized] ?? null;
+}
+
+// Backend fallback for dynamic codes (LEGEND-*, admin-created, etc.)
+async function validatePromoBackend(code: string): Promise<{ discount: number; label: string } | null> {
+  try {
+    const r = await fetch(`/api/v1/promo-codes/validate?code=${encodeURIComponent(code.trim())}`);
+    const j = await r.json();
+    if (j?.valid && (j.type === "percent" || !j.type)) {
+      const c = String(j.code || code).toUpperCase();
+      const label = c.startsWith("LEGEND-") ? `👑 Légende — ${j.discount}% à vie` : `Code ${c} — ${j.discount}%`;
+      return { discount: Number(j.discount), label };
+    }
+  } catch { /* network — silently fall back */ }
+  return null;
 }
 
 // ─── Payment Modal ────────────────────────────────────────────────────────────
@@ -217,21 +233,44 @@ function PaymentModal({
   const totalPrice = baseTotal * (1 - promoDiscount);
   const periodLabel = isAnnual ? "/mois (facturé annuellement)" : "/mois";
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     setPromoError("");
-    const result = applyPromo(promoInput);
+    const raw = promoInput.trim();
+    if (!raw) return;
+    let result = applyPromo(raw);
+    if (!result) {
+      result = await validatePromoBackend(raw);
+    }
     if (!result) {
       setPromoError("Code promo invalide ou expiré.");
       setPromoApplied(null);
-      trackEvent("promo_invalid", { code: promoInput.trim().toUpperCase(), plan: plan.key });
+      trackEvent("promo_invalid", { code: raw.toUpperCase(), plan: plan.key });
       return;
     }
-    const code = promoInput.trim().toUpperCase();
+    const code = raw.toUpperCase();
     setPromoApplied({ code, ...result });
     trackEvent("promo_applied", { code, discount: result.discount, plan: plan.key, billing });
     setShowConfetti(true);
     setTimeout(() => setShowConfetti(false), 2500);
   };
+
+  // Auto-apply ?promo=CODE from URL (eg: ?promo=LEGEND-ABC123 from Legend reward email)
+  useEffect(() => {
+    if (promoApplied) return;
+    const params = new URLSearchParams(window.location.search);
+    const urlPromo = params.get("promo");
+    if (!urlPromo) return;
+    setPromoInput(urlPromo);
+    (async () => {
+      let result = applyPromo(urlPromo);
+      if (!result) result = await validatePromoBackend(urlPromo);
+      if (result) {
+        const code = urlPromo.trim().toUpperCase();
+        setPromoApplied({ code, ...result });
+        trackEvent("promo_applied", { code, discount: result.discount, plan: plan.key, billing, source: "url" });
+      }
+    })();
+  }, [plan.key, billing, promoApplied]);
 
   const handleRemovePromo = () => {
     setPromoApplied(null);

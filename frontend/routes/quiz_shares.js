@@ -10,6 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { generateLegendCode } from './promo_codes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,7 +66,7 @@ function saveDb(db) {
 
 // Lightweight Discord/Slack webhook notifier — fire-and-forget.
 // Set DISCORD_WEBHOOK_URL or SLACK_WEBHOOK_URL in Railway env to enable.
-function notifyChatBadgeUnlock({ kind, email, totalShares }) {
+function notifyChatBadgeUnlock({ kind, email, totalShares, promoCode }) {
   const discordUrl = process.env.DISCORD_WEBHOOK_URL;
   const slackUrl = process.env.SLACK_WEBHOOK_URL;
   if (!discordUrl && !slackUrl) return;
@@ -75,7 +76,7 @@ function notifyChatBadgeUnlock({ kind, email, totalShares }) {
   const isLegend = kind === 'legend';
   const title = isLegend ? '👑 Nouveau badge LÉGENDE débloqué !' : '🏆 Nouveau badge Influenceur débloqué !';
   const desc = isLegend
-    ? `**${anon}** vient d'atteindre **${totalShares} partages à vie** et entre dans le cercle des Légendes CryptoIA.`
+    ? `**${anon}** vient d'atteindre **${totalShares} partages à vie** et entre dans le cercle des Légendes CryptoIA.${promoCode ? `\n🎁 Récompense envoyée par email : un code promo **50% à vie** unique.` : ''}`
     : `**${anon}** a partagé son profil **${totalShares} fois** et débloque le badge Influenceur.`;
   const color = isLegend ? 0xd946ef : 0xf59e0b;
 
@@ -100,6 +101,52 @@ function notifyChatBadgeUnlock({ kind, email, totalShares }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: `*${title}*\n${desc.replace(/\*\*/g, '*')}` }),
     }).catch((e) => console.error('[QuizShares][Slack] webhook error:', e?.message));
+  }
+}
+
+// Send Resend email with the Legend promo code (fire-and-forget).
+async function emailLegendReward({ email, code, totalShares }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM || 'CryptoIA <notifications@cryptoia.ca>';
+  if (!apiKey || !email || !code) return;
+  const html = `
+<!doctype html>
+<html><body style="margin:0;background:#0a0a14;font-family:'Segoe UI',Arial,sans-serif;color:#fff;">
+  <div style="max-width:560px;margin:0 auto;padding:32px 24px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:64px;line-height:1;">👑</div>
+      <h1 style="margin:12px 0 8px;font-size:28px;font-weight:900;background:linear-gradient(90deg,#d946ef,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Tu es entré·e dans la Légende</h1>
+      <p style="color:#c4b5fd;font-size:14px;margin:0;">Badge ultime débloqué après ${totalShares} partages à vie</p>
+    </div>
+    <div style="background:linear-gradient(135deg,rgba(217,70,239,0.15),rgba(168,85,247,0.08));border:2px solid rgba(217,70,239,0.4);border-radius:16px;padding:24px;text-align:center;margin-bottom:24px;">
+      <p style="color:#e9d5ff;font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">Ta récompense exclusive</p>
+      <div style="font-family:'Courier New',monospace;font-size:32px;font-weight:900;color:#f5d0fe;letter-spacing:4px;margin:8px 0;background:rgba(0,0,0,0.4);padding:16px;border-radius:12px;border:1px dashed rgba(217,70,239,0.4);">${code}</div>
+      <p style="color:#fff;font-size:18px;font-weight:bold;margin:12px 0 4px;">-50% à vie sur ton abonnement</p>
+      <p style="color:#9ca3af;font-size:11px;margin:0;">Usage unique · Non cumulable · Sans date d'expiration</p>
+    </div>
+    <div style="text-align:center;margin-bottom:24px;">
+      <a href="https://cryptoia.ca/abonnements?promo=${encodeURIComponent(code)}" style="display:inline-block;background:linear-gradient(90deg,#d946ef,#a855f7);color:#fff;font-weight:900;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:14px;text-transform:uppercase;letter-spacing:1px;">Activer ma réduction →</a>
+    </div>
+    <p style="color:#9ca3af;font-size:12px;line-height:1.6;text-align:center;">Merci d'avoir partagé CryptoIA autant de fois 🙏 Tu fais partie des rares Légendes qui ont aidé la communauté à grandir. On ne l'oublie pas.</p>
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.06);margin:24px 0;" />
+    <p style="color:#6b7280;font-size:11px;text-align:center;margin:0;">CryptoIA · <a href="https://cryptoia.ca" style="color:#a855f7;">cryptoia.ca</a></p>
+  </div>
+</body></html>`.trim();
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        from,
+        to: [email],
+        subject: '👑 Bienvenue dans la Légende CryptoIA — ton code -50% à vie',
+        html,
+      }),
+    });
+    if (!r.ok) console.error('[QuizShares][Resend] legend email failed:', r.status, await r.text().catch(() => ''));
+    else console.log(`[QuizShares][Resend] ✅ Legend reward email sent to ${email}`);
+  } catch (e) {
+    console.error('[QuizShares][Resend] error:', e?.message);
   }
 }
 
@@ -169,10 +216,18 @@ export default function registerQuizSharesRoutes(app) {
         }
         const wasLegend = !!db.legends[email];
         if (!wasLegend && lifetimeForUser >= LEGEND_THRESHOLD) {
-          db.legends[email] = { unlocked_at: new Date().toISOString(), total_shares: lifetimeForUser };
+          // Generate unique LEGEND-XXXXXX promo code (50% off, lifetime, single use)
+          const promoCode = generateLegendCode(email);
+          db.legends[email] = {
+            unlocked_at: new Date().toISOString(),
+            total_shares: lifetimeForUser,
+            promo_code: promoCode,
+          };
           legendJustUnlocked = true;
-          console.log(`[QuizShares] 👑 LEGEND badge unlocked for ${email} (${lifetimeForUser} lifetime shares)`);
-          notifyChatBadgeUnlock({ kind: 'legend', email, totalShares: lifetimeForUser });
+          console.log(`[QuizShares] 👑 LEGEND badge unlocked for ${email} (${lifetimeForUser} lifetime shares) · code=${promoCode}`);
+          notifyChatBadgeUnlock({ kind: 'legend', email, totalShares: lifetimeForUser, promoCode });
+          // Send reward email (fire-and-forget, doesn't block the response)
+          emailLegendReward({ email, code: promoCode, totalShares: lifetimeForUser }).catch(() => {});
         } else if (wasLegend) {
           db.legends[email].total_shares = lifetimeForUser;
         }
@@ -193,6 +248,7 @@ export default function registerQuizSharesRoutes(app) {
         influencer_just_unlocked: justUnlocked,
         legend: email ? !!db.legends[email] : false,
         legend_just_unlocked: legendJustUnlocked,
+        legend_promo_code: email && db.legends[email]?.promo_code ? db.legends[email].promo_code : null,
       });
     } catch (e) {
       console.error('[QuizShares] share error:', e?.message);
@@ -257,6 +313,7 @@ export default function registerQuizSharesRoutes(app) {
         legend,
         unlocked_at: db.influencers?.[email]?.unlocked_at || null,
         legend_unlocked_at: db.legends?.[email]?.unlocked_at || null,
+        legend_promo_code: db.legends?.[email]?.promo_code || null,
       });
     } catch (e) {
       res.status(500).json({ ok: false, error: 'Internal error' });

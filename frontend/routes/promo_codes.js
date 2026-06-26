@@ -69,6 +69,36 @@ export function incrementPromoUse(code) {
   if (c) { c.uses = (c.uses || 0) + 1; save(db); }
 }
 
+// Generate a unique LEGEND-XXXXXX promo code (50% off, 1 use, never expires)
+// Called when a user unlocks the Légende badge (50 lifetime quiz shares).
+// Idempotent: if the user already has a LEGEND code, returns the same one.
+export function generateLegendCode(email) {
+  if (!email) return null;
+  const db = load();
+  const tagSource = `legend:${String(email).toLowerCase()}`;
+  // Idempotency: search existing
+  const existing = (db.codes || []).find(c => c.source === tagSource);
+  if (existing) return existing.code;
+  // Generate readable 6-char suffix (uppercase, no 0/O/1/I to avoid confusion)
+  const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let suffix = '';
+  for (let i = 0; i < 6; i++) suffix += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+  const code = `LEGEND-${suffix}`;
+  db.codes.push({
+    code,
+    discount: 50,
+    type: 'percent',
+    max_uses: 1,
+    uses: 0,
+    enabled: true,
+    created_at: new Date().toISOString(),
+    expires_at: null,
+    source: tagSource,
+  });
+  save(db);
+  return code;
+}
+
 export default function registerPromoRoutes(app, { requireAdmin }) {
   ensureSeed();
   const adminGuard = requireAdmin || ((_req, _res, next) => next());

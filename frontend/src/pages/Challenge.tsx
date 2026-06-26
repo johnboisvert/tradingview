@@ -1,17 +1,21 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip as ReTooltip, XAxis } from "recharts";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import SEOHead from "@/components/SEOHead";
 import TrialBanner from "@/components/TrialBanner";
 import TradingViewChart from "@/components/TradingViewChart";
 import {
-  Trophy, TrendingUp, RefreshCw, Users, Calendar, Crown,
-  ArrowUpRight, ArrowDownRight, X, Search,
+  Trophy, RefreshCw, Users, Calendar, Crown,
+  ArrowUpRight, ArrowDownRight, X, Search, Lock, Award, Activity, TrendingUp,
 } from "lucide-react";
 
 interface Position { id: string; symbol: string; side: "long" | "short"; qty: number; avg_price: number; mark?: number; value?: number; pnl?: number; pnl_pct?: number; sl?: number; tp?: number; opened_at?: string; collateral?: number; leverage?: number; liquidation_price?: number | null }
 interface Trade { ts: string; action?: "open" | "close"; side: "buy" | "sell" | "long" | "short"; symbol: string; qty: number; price: number; value: number; pnl?: number; trigger?: string }
 interface Coin { symbol: string; name: string; image: string | null; price: number; change_24h: number; rank: number; market_cap?: number }
+interface Achievement { key: string; unlocked_at: string }
+interface Stats { wins?: number; losses?: number; best_pnl?: number; worst_pnl?: number; largest_trade_value?: number; liquidations?: number }
+interface EquitySnapshot { ts: string; equity: number }
 interface Me {
   username: string;
   balance: number;
@@ -21,6 +25,10 @@ interface Me {
   trades: Trade[];
   prices?: Record<string, number>;
   pnl_realized?: number;
+  achievements?: Achievement[];
+  equity_history?: EquitySnapshot[];
+  win_streak?: number;
+  stats?: Stats;
 }
 interface LeaderRow { username: string; equity: number; roi_pct: number; trade_count: number }
 interface LeaderboardResp {
@@ -77,6 +85,10 @@ export default function Challenge() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [achievementsCatalog, setAchievementsCatalog] = useState<Array<{ key: string; emoji: string; name: string; desc: string }>>([]);
+  const [recentTrades, setRecentTrades] = useState<Array<Trade & { username: string }>>([]);
+  const [showAchievements, setShowAchievements] = useState(false);
+  const [showMobileTicket, setShowMobileTicket] = useState(false);
 
   const fetchBoard = useCallback(async () => {
     try {
@@ -94,6 +106,14 @@ export default function Challenge() {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchRecentTrades = useCallback(async () => {
+    try {
+      const r = await fetch("/api/v1/challenge/recent-trades");
+      const j = await r.json();
+      if (j?.ok && Array.isArray(j.trades)) setRecentTrades(j.trades);
+    } catch { /* ignore */ }
+  }, []);
+
   const fetchMe = useCallback(async (em: string) => {
     if (!em) return;
     try {
@@ -106,6 +126,7 @@ export default function Challenge() {
   useEffect(() => {
     fetchBoard();
     fetchPrices();
+    fetchRecentTrades();
     fetch("/api/v1/challenge/symbols").then((r) => r.json()).then((j) => {
       if (j?.ok) {
         setSymbols(j.symbols || []);
@@ -114,14 +135,17 @@ export default function Challenge() {
         setCoins(map);
       }
     }).catch(() => {});
-  }, [fetchBoard, fetchPrices]);
+    fetch("/api/v1/challenge/achievements").then((r) => r.json()).then((j) => {
+      if (j?.ok && Array.isArray(j.achievements)) setAchievementsCatalog(j.achievements);
+    }).catch(() => {});
+  }, [fetchBoard, fetchPrices, fetchRecentTrades]);
 
   useEffect(() => { if (email) fetchMe(email); }, [email, fetchMe]);
 
   useEffect(() => {
-    const id = setInterval(() => { fetchBoard(); fetchPrices(); if (email) fetchMe(email); }, 20000);
+    const id = setInterval(() => { fetchBoard(); fetchPrices(); fetchRecentTrades(); if (email) fetchMe(email); }, 20000);
     return () => clearInterval(id);
-  }, [fetchBoard, fetchPrices, fetchMe, email]);
+  }, [fetchBoard, fetchPrices, fetchRecentTrades, fetchMe, email]);
 
   // Auto-clear notifications
   useEffect(() => {
@@ -333,14 +357,62 @@ export default function Challenge() {
                 </div>
               </div>
 
+              {/* Live trade feed ticker — social proof */}
+              {recentTrades.length > 0 && (
+                <div className="bg-[#0d0e16] border border-white/[0.06] rounded-xl mb-3 overflow-hidden" data-testid="live-feed">
+                  <div className="flex items-center">
+                    <div className="bg-red-500/15 border-r border-red-500/30 px-3 py-2 flex items-center gap-1.5 shrink-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-400">Live</span>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <div className="flex items-center gap-6 animate-scroll-left" style={{ animation: "scroll-left 60s linear infinite" }}>
+                        {[...recentTrades, ...recentTrades].map((t, i) => {
+                          const isOpen = t.action === "open";
+                          const sideStr = String(t.side).toLowerCase();
+                          const sideColor = sideStr === "long" || sideStr === "buy" ? "text-emerald-400" : "text-red-400";
+                          return (
+                            <div key={i} className="flex items-center gap-2 text-[11px] font-mono whitespace-nowrap py-2 shrink-0">
+                              <span className="text-gray-400 font-bold">{t.username}</span>
+                              <span className={`font-extrabold ${sideColor}`}>{isOpen ? "OPENED" : "CLOSED"} {sideStr.toUpperCase()}</span>
+                              <span className="text-white font-bold">{t.symbol}</span>
+                              {t.leverage && t.leverage > 1 && <span className="text-amber-300 font-bold">{t.leverage}x</span>}
+                              <span className="text-cyan-300">${fmtUsd(t.value)}</span>
+                              {t.pnl !== undefined && <span className={t.pnl >= 0 ? "text-emerald-400" : "text-red-400"}>{t.pnl >= 0 ? "+" : ""}${fmtUsd(t.pnl)}</span>}
+                              {t.trigger && <span className="text-amber-300 text-[9px] uppercase">[{t.trigger === "stop_loss" ? "SL" : t.trigger === "take_profit" ? "TP" : "LIQ"}]</span>}
+                              <span className="text-gray-600">•</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3 mb-4">
                 {/* TradingView chart */}
-                <div data-testid="chart-container">
-                  <TradingViewChart symbol={tradeSym} height={520} />
+                <div data-testid="chart-container" className="order-1 lg:order-none">
+                  <div className="lg:hidden h-[360px]">
+                    <TradingViewChart symbol={tradeSym} height={360} />
+                  </div>
+                  <div className="hidden lg:block">
+                    <TradingViewChart symbol={tradeSym} height={520} />
+                  </div>
                 </div>
 
-                {/* Order panel — NinjaTrader style */}
-                <div className="bg-[#0d0e16] border border-white/[0.06] rounded-2xl p-4" data-testid="challenge-trade-form">
+                {/* Mobile FAB to open order ticket — hidden on lg */}
+                <button
+                  onClick={() => setShowMobileTicket(true)}
+                  data-testid="mobile-ticket-fab"
+                  className="lg:hidden fixed bottom-4 right-4 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 text-black font-extrabold text-xs shadow-2xl shadow-amber-500/40 flex items-center justify-center"
+                >
+                  TRADE
+                </button>
+
+                {/* Order panel — NinjaTrader style. Inline on lg, modal on mobile */}
+                <div className={`${showMobileTicket ? "fixed inset-0 z-50 bg-[#0a0a0f]/95 backdrop-blur-sm p-3 overflow-y-auto" : "hidden"} lg:relative lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:block lg:overflow-visible`}>
+                  <div className="bg-[#0d0e16] border border-white/[0.06] rounded-2xl p-4" data-testid="challenge-trade-form">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-extrabold text-sm uppercase tracking-wider text-gray-300">Order Ticket</h3>
                     <span className="text-[10px] text-gray-500 font-mono">{tradeSym}/USD</span>
@@ -478,15 +550,87 @@ export default function Challenge() {
                     {busy ? "..." : `Open ${side.toUpperCase()} ${leverage}x · ${tradeSym} · Market`}
                   </button>
                   <p className="text-[9px] text-gray-600 mt-2 text-center font-mono uppercase tracking-wider">CoinGecko · 0 fees · Max 50x leverage</p>
+                  {/* Mobile close button */}
+                  <button
+                    onClick={() => setShowMobileTicket(false)}
+                    data-testid="mobile-ticket-close"
+                    className="lg:hidden mt-3 w-full py-2.5 rounded-lg bg-white/[0.05] text-gray-400 text-[11px] font-bold uppercase tracking-wider hover:bg-white/[0.1] transition"
+                  >
+                    Fermer
+                  </button>
                 </div>
+              </div>
               </div>
 
               {/* Portfolio stats row */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
                 <Kpi label="Equity" value={`$${fmtUsd(me!.equity)}`} sub={`${me!.roi_pct >= 0 ? "+" : ""}${me!.roi_pct.toFixed(2)}%`} subColor={me!.roi_pct >= 0 ? "emerald" : "red"} />
                 <Kpi label="Cash" value={`$${fmtUsd(me!.balance)}`} sub="USD" />
-                <Kpi label="Positions" value={String(Object.keys(me!.positions).length)} sub={`${me!.trades.length} trades`} />
+                <Kpi label="W/L" value={`${me!.stats?.wins || 0} / ${me!.stats?.losses || 0}`} sub={`${me!.win_streak ? `🔥 ${me!.win_streak} streak` : "No streak"}`} />
                 <Kpi label="Rang" value={myRank > 0 ? `#${myRank}` : "—"} sub={board ? `/ ${board.total_participants}` : ""} accent />
+              </div>
+
+              {/* Equity curve + Achievements row */}
+              <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3 mb-3">
+                {/* Equity curve mini chart */}
+                <div className="bg-[#0d0e16] border border-white/[0.06] rounded-2xl p-4" data-testid="equity-curve">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-300 flex items-center gap-2"><TrendingUp className="w-3.5 h-3.5 text-cyan-400" /> Courbe d'équité</h3>
+                    <span className="text-[10px] text-gray-500 font-mono">{(me!.equity_history || []).length} snapshots</span>
+                  </div>
+                  {(me!.equity_history || []).length < 2 ? (
+                    <div className="h-32 flex items-center justify-center text-xs text-gray-500">
+                      Effectue quelques trades pour voir ta courbe d'équité
+                    </div>
+                  ) : (
+                    <div className="h-32">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={me!.equity_history!.map(p => ({ date: p.ts.slice(5, 10), equity: p.equity }))}>
+                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#6b7280" }} stroke="#1f2937" />
+                          <YAxis domain={["auto", "auto"]} tick={{ fontSize: 9, fill: "#6b7280" }} stroke="#1f2937" width={40} />
+                          <ReTooltip contentStyle={{ background: "#0a0a14", border: "1px solid #1f2937", borderRadius: "8px", fontSize: "11px" }} labelStyle={{ color: "#9ca3af" }} />
+                          <Line type="monotone" dataKey="equity" stroke={(me!.roi_pct ?? 0) >= 0 ? "#10b981" : "#ef4444"} strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+
+                {/* Achievements summary */}
+                <div className="bg-[#0d0e16] border border-white/[0.06] rounded-2xl p-4" data-testid="achievements-summary">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-300 flex items-center gap-2"><Award className="w-3.5 h-3.5 text-amber-400" /> Badges</h3>
+                    <span className="text-[10px] text-amber-300 font-mono font-bold">{(me!.achievements || []).length}/{achievementsCatalog.length}</span>
+                  </div>
+                  {achievementsCatalog.length === 0 ? (
+                    <div className="text-xs text-gray-500 text-center py-4">Chargement...</div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {achievementsCatalog.slice(0, 10).map((a) => {
+                          const unlocked = (me!.achievements || []).find(x => x.key === a.key);
+                          return (
+                            <div
+                              key={a.key}
+                              title={`${a.name} — ${a.desc}`}
+                              data-testid={`badge-${a.key}`}
+                              className={`aspect-square rounded-lg flex items-center justify-center text-lg transition ${unlocked ? "bg-gradient-to-br from-amber-500/30 to-orange-500/30 border border-amber-500/50 shadow-md shadow-amber-500/10" : "bg-white/[0.03] border border-white/[0.04] opacity-30 grayscale"}`}
+                            >
+                              {unlocked ? a.emoji : <Lock className="w-3 h-3 text-gray-600" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <button
+                        onClick={() => setShowAchievements(true)}
+                        data-testid="show-all-achievements"
+                        className="w-full mt-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-300 hover:text-amber-200 transition"
+                      >
+                        Voir tous les badges →
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Positions table */}
@@ -650,6 +794,40 @@ export default function Challenge() {
 
           <TrialBanner source="challenge-page" />
         </div>
+
+        {/* Achievements modal */}
+        {showAchievements && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowAchievements(false)} data-testid="achievements-modal">
+            <div className="bg-[#0d0e16] border border-white/[0.1] rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
+                <div>
+                  <h3 className="font-extrabold text-base flex items-center gap-2"><Award className="w-5 h-5 text-amber-400" /> Tous les badges</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">{(me?.achievements || []).length} / {achievementsCatalog.length} débloqués</p>
+                </div>
+                <button onClick={() => setShowAchievements(false)} data-testid="close-achievements" className="text-gray-500 hover:text-white"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="overflow-y-auto flex-1 p-5">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {achievementsCatalog.map((a) => {
+                    const unlocked = (me?.achievements || []).find(x => x.key === a.key);
+                    return (
+                      <div key={a.key} data-testid={`badge-detail-${a.key}`} className={`p-4 rounded-xl border ${unlocked ? "bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/30" : "bg-white/[0.02] border-white/[0.04] opacity-50"}`}>
+                        <div className={`text-3xl mb-2 ${unlocked ? "" : "grayscale"}`}>{unlocked ? a.emoji : <Lock className="w-6 h-6 text-gray-600" />}</div>
+                        <div className={`text-sm font-extrabold mb-1 ${unlocked ? "text-amber-300" : "text-gray-500"}`}>{a.name}</div>
+                        <div className="text-[11px] text-gray-400">{a.desc}</div>
+                        {unlocked && (
+                          <div className="text-[9px] text-gray-500 mt-2 font-mono">
+                            Débloqué : {new Date(unlocked.unlocked_at).toLocaleDateString("fr-FR")}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Coin picker modal */}
         {pickerOpen && (

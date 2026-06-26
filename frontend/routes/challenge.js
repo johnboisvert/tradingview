@@ -36,21 +36,24 @@ function ensureParticipant(db, email, username) {
       username: (username || email.split('@')[0]).slice(0, 24),
       joined_at: new Date().toISOString(),
       balance: STARTING_BALANCE,
-      // positions keyed by "SYMBOL_SIDE" → { id, symbol, side: 'long'|'short', qty, avg_price, opened_at, sl?, tp?, collateral }
-      // For long: collateral = qty*avg_price (locked from balance)
-      // For short: collateral = qty*avg_price (locked, returned on close)
       positions: {},
-      // pending_orders: limit/SL/TP orders waiting for trigger
-      // { id, type: 'limit'|'stop_loss'|'take_profit', symbol, side, qty, price, position_id?, created_at }
       pending_orders: [],
       trades: [],
       pnl_realized: 0,
+      // Gamification
+      achievements: [],          // [{ key, unlocked_at }]
+      equity_history: [],        // [{ ts, equity }] — 1 snapshot per day max
+      win_streak: 0,
+      stats: { wins: 0, losses: 0, best_pnl: 0, worst_pnl: 0, largest_trade_value: 0, liquidations: 0 },
     };
   }
-  // Migration: old participants with positions as { SYMBOL: { qty, avg_price } }
   const p = db.participants[key];
   if (p.positions && !Array.isArray(p.pending_orders)) p.pending_orders = [];
-  // Migrate legacy positions { BTC: { qty, avg_price } } → { BTC_long: { ... } }
+  if (!Array.isArray(p.achievements)) p.achievements = [];
+  if (!Array.isArray(p.equity_history)) p.equity_history = [];
+  if (!p.stats) p.stats = { wins: 0, losses: 0, best_pnl: 0, worst_pnl: 0, largest_trade_value: 0, liquidations: 0 };
+  if (typeof p.win_streak !== 'number') p.win_streak = 0;
+  // Migrate legacy positions
   for (const k of Object.keys(p.positions || {})) {
     const v = p.positions[k];
     if (v && typeof v === 'object' && !v.side && typeof v.qty === 'number') {
@@ -60,11 +63,103 @@ function ensureParticipant(db, email, username) {
         symbol: k, side: 'long', qty: v.qty, avg_price: v.avg_price,
         opened_at: new Date().toISOString(),
         collateral: v.qty * v.avg_price,
+        leverage: 1,
       };
       delete p.positions[k];
     }
   }
   return p;
+}
+
+// ─── ACHIEVEMENTS / BADGES ──────────────────────────────────────────────────
+const ACHIEVEMENTS = [
+  { key: 'first_trade', emoji: '🎯', name: 'Premier Trade', desc: 'Ouvre ta première position' },
+  { key: 'first_profit', emoji: '💰', name: 'Premier Profit', desc: 'Ferme une position en gain' },
+  { key: 'win_streak_5', emoji: '🔥', name: '5 Wins de Suite', desc: 'Enchaîne 5 trades gagnants' },
+  { key: 'win_streak_10', emoji: '⚡', name: 'Hot Streak', desc: '10 trades gagnants d\'affilée' },
+  { key: 'big_win', emoji: '💎', name: 'Diamond Hands', desc: 'Gagne plus de $100 sur un trade' },
+  { key: 'huge_win', emoji: '🚀', name: 'Moon Trader', desc: 'Gagne plus de $500 sur un trade' },
+  { key: 'whale_trader', emoji: '🐋', name: 'Whale Trader', desc: 'Ouvre une position de plus de $5,000' },
+  { key: 'leverage_master', emoji: '🎰', name: 'Leverage Master', desc: 'Trade en 25x ou plus' },
+  { key: 'leverage_legend', emoji: '🎲', name: 'Maximum Lev', desc: 'Trade en 50x' },
+  { key: 'short_seller', emoji: '↘️', name: 'Bear Trader', desc: 'Ouvre ta première position SHORT' },
+  { key: 'survivor', emoji: '🛡️', name: 'Survivor', desc: 'Survis à une liquidation (qui se relève)' },
+  { key: 'tp_master', emoji: '🎯', name: 'TP Master', desc: 'Atteins un Take Profit (TP)' },
+  { key: 'roi_10', emoji: '📈', name: '+10% Trader', desc: 'Atteins +10% ROI sur le mois' },
+  { key: 'roi_50', emoji: '🏆', name: '+50% Beast', desc: 'Atteins +50% ROI sur le mois' },
+  { key: 'roi_100', emoji: '👑', name: 'Double ou Rien', desc: 'Atteins +100% ROI sur le mois' },
+];
+const ACHIEVEMENTS_MAP = Object.fromEntries(ACHIEVEMENTS.map(a => [a.key, a]));
+
+function unlockBadge(p, key) {
+  if (!ACHIEVEMENTS_MAP[key]) return false;
+  if (p.achievements.find(a => a.key === key)) return false;
+  p.achievements.push({ key, unlocked_at: new Date().toISOString() });
+  return true;
+}
+
+// Snapshot equity once per day max
+function snapshotEquity(p, equity) {
+  const today = new Date().toISOString().slice(0, 10);
+  const last = p.equity_history[p.equity_history.length - 1];
+  if (last && last.ts.slice(0, 10) === today) {
+    last.equity = equity; // update intraday
+    last.updated_at = new Date().toISOString();
+  } else {
+    p.equity_history.push({ ts: new Date().toISOString(), equity });
+    // Keep max 60 days
+    if (p.equity_history.length > 60) p.equity_history = p.equity_history.slice(-60);
+  }
+}
+
+// Track a closing trade for stats / badges
+function processTradeForGamification(p, trade, currentEquity) {
+  // Stats
+  if (trade.action === 'close') {
+    const pnl = trade.pnl || 0;
+    if (pnl > 0) {
+      p.stats.wins += 1;
+      p.win_streak += 1;
+      if (pnl > p.stats.best_pnl) p.stats.best_pnl = pnl;
+      unlockBadge(p, 'first_profit');
+      if (pnl >= 100) unlockBadge(p, 'big_win');
+      if (pnl >= 500) unlockBadge(p, 'huge_win');
+    } else if (pnl < 0) {
+      p.stats.losses += 1;
+      p.win_streak = 0;
+      if (pnl < p.stats.worst_pnl) p.stats.worst_pnl = pnl;
+    }
+    if (p.win_streak >= 5) unlockBadge(p, 'win_streak_5');
+    if (p.win_streak >= 10) unlockBadge(p, 'win_streak_10');
+    if (trade.trigger === 'take_profit') unlockBadge(p, 'tp_master');
+    if (trade.trigger === 'liquidation') p.stats.liquidations += 1;
+  }
+  if (trade.action === 'open') {
+    unlockBadge(p, 'first_trade');
+    if (trade.value > p.stats.largest_trade_value) p.stats.largest_trade_value = trade.value;
+    if (trade.value >= 5000) unlockBadge(p, 'whale_trader');
+    if (trade.side === 'short') unlockBadge(p, 'short_seller');
+    if (trade.leverage >= 25) unlockBadge(p, 'leverage_master');
+    if (trade.leverage >= 50) unlockBadge(p, 'leverage_legend');
+  }
+  // ROI badges
+  const roi = ((currentEquity - STARTING_BALANCE) / STARTING_BALANCE) * 100;
+  if (roi >= 10) unlockBadge(p, 'roi_10');
+  if (roi >= 50) unlockBadge(p, 'roi_50');
+  if (roi >= 100) unlockBadge(p, 'roi_100');
+  // Survivor: had liquidation but equity back > starting
+  if (p.stats.liquidations > 0 && currentEquity > STARTING_BALANCE) unlockBadge(p, 'survivor');
+}
+
+// Global recent trade feed (last 50 across all users, anonymized usernames)
+function getRecentTrades(db, limit = 30) {
+  const all = [];
+  for (const p of Object.values(db.participants || {})) {
+    for (const t of (p.trades || []).slice(-15)) {
+      all.push({ ...t, username: p.username });
+    }
+  }
+  return all.sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, limit);
 }
 
 // Compute unrealized PnL for a single position (leverage-aware)
@@ -280,6 +375,10 @@ function enrichParticipant(p, prices) {
     trades: (p.trades || []).slice(-50).reverse(),
     prices,
     pnl_realized: p.pnl_realized || 0,
+    achievements: p.achievements || [],
+    equity_history: p.equity_history || [],
+    win_streak: p.win_streak || 0,
+    stats: p.stats || {},
   };
 }
 
@@ -323,6 +422,10 @@ async function checkStopOrders() {
       p.balance += (pos.collateral || 0) + realized;
       p.pnl_realized = (p.pnl_realized || 0) + realized;
       p.trades.push({ ts: new Date().toISOString(), action: 'close', side: pos.side, symbol: pos.symbol, qty: closeQty, price: closePx, value: closeQty * closePx, pnl: realized, trigger, leverage: pos.leverage || 1 });
+      // Gamification on auto-close
+      const eq3 = computeEquity(p, prices);
+      processTradeForGamification(p, p.trades[p.trades.length - 1], eq3);
+      snapshotEquity(p, eq3);
       delete p.positions[key];
       touched = true;
       console.log(`[Challenge] ${trigger.toUpperCase()} triggered for ${p.username} ${pos.side} ${pos.symbol} @ $${closePx.toFixed(4)} PnL=$${realized.toFixed(2)}`);
@@ -452,6 +555,10 @@ export default function register(app, { resendClientGetter }) {
         };
       }
       p.trades.push({ ts: new Date().toISOString(), action: 'open', side, symbol: sym, qty: qtyNum, price, value, leverage: lev, collateral: collateralRequired });
+      // Gamification
+      const eq1 = computeEquity(p, priceCache.data);
+      processTradeForGamification(p, p.trades[p.trades.length - 1], eq1);
+      snapshotEquity(p, eq1);
     } else {
       // CLOSE
       let pos = position_id ? Object.values(p.positions).find(x => x.id === position_id) : p.positions[posKey];
@@ -472,6 +579,10 @@ export default function register(app, { resendClientGetter }) {
         delete p.positions[key];
       }
       p.trades.push({ ts: new Date().toISOString(), action: 'close', side: pos.side, symbol: sym, qty: closeQty, price, value: closeQty * price, pnl: realized, leverage: pos.leverage || 1 });
+      // Gamification
+      const eq2 = computeEquity(p, priceCache.data);
+      processTradeForGamification(p, p.trades[p.trades.length - 1], eq2);
+      snapshotEquity(p, eq2);
     }
 
     saveDb(db);
@@ -583,5 +694,16 @@ export default function register(app, { resendClientGetter }) {
   app.get('/api/v1/challenge/history', (req, res) => {
     const db = loadDb();
     res.json({ ok: true, history: db.history || {} });
+  });
+
+  // GET /api/v1/challenge/recent-trades — live global feed (last 30 trades)
+  app.get('/api/v1/challenge/recent-trades', (req, res) => {
+    const db = loadDb();
+    res.json({ ok: true, trades: getRecentTrades(db, 30) });
+  });
+
+  // GET /api/v1/challenge/achievements — all available badges (catalog)
+  app.get('/api/v1/challenge/achievements', (req, res) => {
+    res.json({ ok: true, achievements: ACHIEVEMENTS });
   });
 }

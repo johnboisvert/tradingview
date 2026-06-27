@@ -159,12 +159,34 @@ function processTradeForGamification(p, trade, currentEquity) {
 // Global recent trade feed (last N across all users, anonymized usernames)
 // Filters out: orphaned legacy trades whose symbol is no longer in the universe,
 // and normalizes numeric fields so the UI never receives NaN/undefined for closes.
+
+// Heuristic to detect QA/testing-agent accounts that polluted the leaderboard
+// (created by previous testing_agent_v3 runs, Playwright reproductions, etc.).
+// These accounts are hidden from the public leaderboard + recent feed but kept
+// in the DB so they don't break referential integrity.
+// Pattern matches (case-insensitive):
+//   - email starts with qa-, qa_, smoke-, ci-, e2e-, test-, pepe-bug-, pepe-fixed-, pepe-tp-, legend-prod-
+//   - username matches one of the known QA labels (SmokeTest, FinalVerif, …)
+//   - email contains @cryptoia.test or @example.com / @test.com
+const QA_USERNAME_REGEX = /^(qa[-_]|smoke[-_]?test|finalverif|verifdeploy|levverif|pepebug|pepetest|pepefixed|pepe[-_]tp|legendprod|e2e[-_]|ci[-_]|tmp[-_]|test[-_])/i;
+const QA_EMAIL_REGEX = /^(qa[-_]|smoke[-_]|ci[-_]|e2e[-_]|pepe[-_]|legend[-_]prod|tmp[-_]|test[-_])/i;
+const QA_DOMAIN_REGEX = /@(cryptoia\.test|example\.com|test\.com|mailinator\.com)$/i;
+export function isQAAccount(email, username) {
+  const e = String(email || '').toLowerCase();
+  const u = String(username || '');
+  if (QA_DOMAIN_REGEX.test(e)) return true;
+  if (QA_EMAIL_REGEX.test(e)) return true;
+  if (QA_USERNAME_REGEX.test(u)) return true;
+  return false;
+}
+
 function getRecentTrades(db, limit = 30) {
   const all = [];
   const validSymbols = Object.keys(universe || {});
   const universeSet = new Set(validSymbols);
   const hasUniverse = universeSet.size > 0;
-  for (const p of Object.values(db.participants || {})) {
+  for (const [email, p] of Object.entries(db.participants || {})) {
+    if (isQAAccount(email, p.username)) continue; // hide QA noise from public feed
     for (const t of (p.trades || []).slice(-15)) {
       if (!t || !t.symbol) continue;
       const sym = String(t.symbol).toUpperCase();
@@ -706,7 +728,7 @@ export default function register(app, { resendClientGetter }) {
     res.json({ ok: true, position: pos });
   });
 
-  // GET /api/v1/challenge/leaderboard — public top 20
+  // GET /api/v1/challenge/leaderboard — public top 20 (QA test accounts filtered out)
   app.get('/api/v1/challenge/leaderboard', async (req, res) => {
     const db = loadDb();
     const allSymbols = new Set();
@@ -714,8 +736,11 @@ export default function register(app, { resendClientGetter }) {
       for (const s of Object.keys(p.positions || {})) allSymbols.add(s);
     }
     const prices = allSymbols.size ? await getPrices(Array.from(allSymbols)) : {};
-    const ranked = Object.values(db.participants)
-      .map(p => {
+    const includeQA = req.query.include_qa === '1'; // admin debug only
+    const realParticipants = Object.entries(db.participants)
+      .filter(([email, p]) => includeQA || !isQAAccount(email, p.username));
+    const ranked = realParticipants
+      .map(([, p]) => {
         const equity = computeEquity(p, prices);
         return {
           username: p.username,
@@ -731,11 +756,48 @@ export default function register(app, { resendClientGetter }) {
       ok: true,
       period: db.current_period,
       starting_balance: STARTING_BALANCE,
-      total_participants: Object.keys(db.participants).length,
+      total_participants: realParticipants.length,
+      total_participants_with_qa: Object.keys(db.participants).length,
       leaderboard: ranked,
       last_winner: db.last_winner || null,
       prize: '1 mois CryptoIA Premium gratuit',
     });
+  });
+
+  // GET /api/v1/admin/challenge/qa-accounts — list detected test accounts
+  // POST /api/v1/admin/challenge/qa-accounts/purge — delete all detected QA accounts
+  // Both require x-admin-auth header (existing pattern).
+  function isAdminReq(req) {
+    return req.headers['x-admin-auth'] === (process.env.ADMIN_PASSWORD || 'admin123');
+  }
+  app.get('/api/v1/admin/challenge/qa-accounts', (req, res) => {
+    if (!isAdminReq(req)) return res.status(401).json({ ok: false, error: 'admin auth required' });
+    const db = loadDb();
+    const qa = Object.entries(db.participants)
+      .filter(([email, p]) => isQAAccount(email, p.username))
+      .map(([email, p]) => ({
+        email,
+        username: p.username,
+        equity: p.balance || 0,
+        trades: (p.trades || []).length,
+        joined_at: p.joined_at,
+      }));
+    res.json({ ok: true, count: qa.length, accounts: qa, total_participants: Object.keys(db.participants).length });
+  });
+  app.post('/api/v1/admin/challenge/qa-accounts/purge', (req, res) => {
+    if (!isAdminReq(req)) return res.status(401).json({ ok: false, error: 'admin auth required' });
+    const db = loadDb();
+    const before = Object.keys(db.participants).length;
+    const purged = [];
+    for (const [email, p] of Object.entries(db.participants)) {
+      if (isQAAccount(email, p.username)) {
+        purged.push({ email, username: p.username });
+        delete db.participants[email];
+      }
+    }
+    saveDb(db);
+    console.log(`[Challenge] 🧹 Purged ${purged.length} QA test accounts (${before} → ${Object.keys(db.participants).length})`);
+    res.json({ ok: true, purged_count: purged.length, remaining: Object.keys(db.participants).length, purged });
   });
 
   // GET /api/v1/challenge/symbols — dynamic top 100 from CoinGecko market cap

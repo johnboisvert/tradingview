@@ -5,6 +5,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint --quiet ./src",
+    "typecheck:undefs": "node ./scripts/typecheck-undefs.mjs",
     "preview": "vite preview",
     "start": "exec node_modules/.bin/serve dist --single --listen $PORT",
     "postinstall": "echo 'Dependencies installed successfully'",

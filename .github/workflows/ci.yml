@@ -1,0 +1,46 @@
+name: CI — type & unit checks
+
+# Catches the class of bug that crashed /challenge in prod (Feb 2026):
+#   "fmtPrice is not defined" → ReferenceError at runtime because the Vite
+#   build does NOT type-check the React tree. This workflow runs the
+#   targeted typecheck + the Node test suite on every push/PR before
+#   Railway redeploys main.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Typecheck (undefined-symbol guard)
+        run: yarn typecheck:undefs
+
+      - name: Lint
+        run: yarn lint
+        continue-on-error: true  # pre-existing JSX warnings; not blocking
+
+      - name: Unit tests
+        run: yarn test
+
+      - name: Build (sanity)
+        run: yarn build

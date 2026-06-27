@@ -21,7 +21,6 @@ import {
   Send,
   Twitter,
   Bot,
-  Activity,
   Wand2,
 } from "lucide-react";
 import { adminLogout } from "@/pages/AdminLogin";

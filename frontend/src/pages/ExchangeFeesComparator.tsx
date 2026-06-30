@@ -15,15 +15,28 @@ type Exchange = {
 };
 
 // Public data — verified rates as of early 2026 (review quarterly)
+// Sorted by taker fee ascending (cheapest at top → "BEST" badge auto-applied to row 0)
 const EXCHANGES: Exchange[] = [
-  { name: "Binance",    maker_pct: 0.10, taker_pct: 0.10, withdraw_btc: 0.0002, notes: "Réduction -25% en BNB", fr_support: true },
-  { name: "Kraken",     maker_pct: 0.16, taker_pct: 0.26, withdraw_btc: 0.00015, notes: "Pro a des frais plus bas", fr_support: true },
-  { name: "Coinbase",   maker_pct: 0.40, taker_pct: 0.60, withdraw_btc: 0.0005, notes: "Pro/Advanced moins cher", fr_support: true },
-  { name: "Bitget",     maker_pct: 0.10, taker_pct: 0.10, withdraw_btc: 0.0002, notes: "Idéal copy-trading", fr_support: false },
+  // ─── Global CEXs (≤0.10% taker) ─────────────────────────────────────────
+  { name: "MEXC",       maker_pct: 0.00, taker_pct: 0.05, withdraw_btc: 0.0002, notes: "0% maker spot · grande variété de listings", fr_support: true },
   { name: "OKX",        maker_pct: 0.08, taker_pct: 0.10, withdraw_btc: 0.0002, notes: "Bons frais sur dérivés", fr_support: true },
+  { name: "Binance",    maker_pct: 0.10, taker_pct: 0.10, withdraw_btc: 0.0002, notes: "Réduction -25% en BNB", fr_support: true },
   { name: "Bybit",      maker_pct: 0.10, taker_pct: 0.10, withdraw_btc: 0.0002, notes: "Perpétuels populaires", fr_support: true },
-  { name: "Newton (CA)",maker_pct: 0.50, taker_pct: 0.70, withdraw_btc: 0.0005, notes: "Régulé Canada, KYC simple", fr_support: true },
-  { name: "Shakepay (CA)", maker_pct: 1.50, taker_pct: 1.50, withdraw_btc: 0.0005, notes: "Frais élevés, app simple", fr_support: true },
+  { name: "Bitget",     maker_pct: 0.10, taker_pct: 0.10, withdraw_btc: 0.0002, notes: "Idéal copy-trading", fr_support: false },
+  { name: "KuCoin",     maker_pct: 0.10, taker_pct: 0.10, withdraw_btc: 0.0004, notes: "Frais réduits avec KCS", fr_support: true },
+  { name: "Blofin",     maker_pct: 0.10, taker_pct: 0.10, withdraw_btc: 0.0002, notes: "Pas de KYC obligatoire", fr_support: false },
+  // ─── Premium / Regulated (0.20-0.50%) ──────────────────────────────────
+  { name: "HTX (Huobi)",maker_pct: 0.20, taker_pct: 0.20, withdraw_btc: 0.0003, notes: "Frais réduits avec HT staking", fr_support: false },
+  { name: "Kraken",     maker_pct: 0.16, taker_pct: 0.26, withdraw_btc: 0.00015, notes: "Kraken Pro: frais beaucoup plus bas", fr_support: true },
+  { name: "Crypto.com", maker_pct: 0.25, taker_pct: 0.40, withdraw_btc: 0.0005, notes: "Stake CRO pour -10 à -100%", fr_support: true },
+  { name: "Coinbase",   maker_pct: 0.40, taker_pct: 0.60, withdraw_btc: 0.0005, notes: "Coinbase Advanced bien moins cher", fr_support: true },
+  // ─── Canadian Regulated ────────────────────────────────────────────────
+  { name: "Newton (CA)",      maker_pct: 0.50, taker_pct: 0.70, withdraw_btc: 0.0005, notes: "Régulé Canada, KYC simple", fr_support: true },
+  { name: "Virgo (CA)",       maker_pct: 0.50, taker_pct: 1.00, withdraw_btc: 0.0006, notes: "Régulé Québec (AMF), virement Interac", fr_support: true },
+  { name: "Shakepay (CA)",    maker_pct: 1.50, taker_pct: 1.50, withdraw_btc: 0.0005, notes: "Frais élevés, app simple, Interac", fr_support: true },
+  { name: "Wealthsimple (CA)",maker_pct: 1.50, taker_pct: 2.00, withdraw_btc: 0.0010, notes: "Spread caché ~1.5-2%, sans retrait crypto", fr_support: true },
+  // ─── Hardware wallet swaps ─────────────────────────────────────────────
+  { name: "Ledger Live",      maker_pct: 1.50, taker_pct: 2.00, withdraw_btc: 0.0000, notes: "Swap via providers (Coinify/Changelly/MoonPay)", fr_support: true },
 ];
 
 export default function ExchangeFeesComparator() {

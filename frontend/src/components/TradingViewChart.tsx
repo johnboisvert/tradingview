@@ -17,14 +17,19 @@ declare global {
   }
 }
 
-// TradingView always uses Binance symbols where possible; fallback to ones that exist on Binance
+// TradingView always uses Binance symbols where possible; fallback to ones that exist on Binance.
+// IMPORTANT: any symbol not in this map AND not on Binance USDT spot will render a blank chart.
+// The server-side universe filter (routes/challenge.js SYMBOL_BLOCKLIST) is the primary defense;
+// this map is the second layer for the few exceptions Binance doesn't list as XXXUSDT.
 function toTvSymbol(s: string): string {
   const up = s.toUpperCase();
-  // Common exceptions where Binance doesn't list, use Coinbase or fallback
   const overrides: Record<string, string> = {
     XMR: "KRAKEN:XMRUSD",
     BCH: "BINANCE:BCHUSDT",
     HBAR: "BINANCE:HBARUSDT",
+    PAXG: "BINANCE:PAXGUSDT",
+    RENDER: "BINANCE:RENDERUSDT",
+    POL: "BINANCE:POLUSDT",
   };
   if (overrides[up]) return overrides[up];
   return `BINANCE:${up}USDT`;

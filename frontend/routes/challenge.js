@@ -256,20 +256,35 @@ let priceCache = { ts: 0, data: {} };
 let inflightPriceFetch = null;
 const PRICE_FRESH_MS = 5_000;
 const PRICE_STALE_MS = 60_000;
-// Symbol blocklist — stablecoins, wrapped/staked tokens that aren't relevant for trading challenge
+// Symbol blocklist — stablecoins, wrapped/staked tokens, tokenized RWA assets,
+// and exchange-specific tokens that have NO Binance USDT spot pair. If we let
+// these into the universe, the TradingView chart shows blank and users get
+// confused by phantom prices that don't match any tradeable market.
 const SYMBOL_BLOCKLIST = new Set([
+  // Major fiat stablecoins
   'USDT', 'USDC', 'DAI', 'BUSD', 'TUSD', 'USDD', 'USDE', 'FDUSD', 'PYUSD', 'USDS',
+  'USD1', 'USDG', 'USDF', 'USDY', 'USD0', 'USTB', 'USDTB', 'USDGO', 'USYC', 'RLUSD',
+  'GHO', 'EURSAFO', 'EUTBL', 'JAAA', 'JTRSY', 'YLDS', 'BFUSD', 'BUIDL', 'BCAP',
+  'XAUT', // tokenized gold — not on Binance USDT spot (PAXG is, XAUT isn't)
+  // Wrapped / liquid-staking derivatives (Binance lists the underlying, not these)
   'WBTC', 'WETH', 'STETH', 'WSTETH', 'WEETH', 'WBETH', 'CBETH', 'RETH', 'METH', 'EZETH', 'RSETH', 'BSC-USD',
+  // Exchange-native / chain-specific tokens NOT on Binance spot
+  'FIGR_HELOC', 'HYPE', 'WBT', 'OKB', 'KCS', 'GT', 'BGB', 'NEXO', 'LEO', 'BEAT', 'BDX',
+  'CC', 'LAB', 'RAIN', 'GRAM', 'HTX', 'PUMP', 'HASH', 'ASTER', 'FLR', 'XDC', 'SKY',
+  'CRO', 'MNT', 'ADI', 'M', 'U', 'WLFI', 'DEXE', 'VVV', 'JST',
 ]);
 
 // Quality filters to keep the universe clean (no scam coins)
 const MIN_MARKET_CAP = 500_000_000; // $500M minimum
 const ASCII_NAME = /^[\x20-\x7E]+$/; // only printable ASCII chars in name
+const SYMBOL_VALID = /^[A-Z0-9]{2,10}$/; // reject FIGR_HELOC-style symbols with underscores
 
 function isQualityCoin(c) {
   if (!c || typeof c !== 'object') return false;
   const sym = String(c.symbol || '').toUpperCase();
   if (!sym || SYMBOL_BLOCKLIST.has(sym)) return false;
+  // Reject symbols with non-standard chars (underscores, dashes, dots — typical of synthetic / RWA tokens)
+  if (!SYMBOL_VALID.test(sym)) return false;
   if (typeof c.current_price !== 'number' || c.current_price <= 0) return false;
   if (typeof c.market_cap !== 'number' || c.market_cap < MIN_MARKET_CAP) return false;
   // No non-Latin characters in name (filters Chinese/Korean/Arabic scam tokens)
@@ -278,6 +293,12 @@ function isQualityCoin(c) {
   const lowerName = c.name.toLowerCase();
   if (lowerName.includes('life') && lowerName.includes('binance')) return false;
   if (lowerName.match(/\b(scam|fake|test|copy)\b/)) return false;
+  // Pegged-asset heuristic: reject anything whose price is within ±0.5% of $1 (stablecoin)
+  // OR within ±0.5% of $1000s — but a regular token close to $1 (e.g., USDT) is already blocked above.
+  // This catches dynamic new stablecoins we forgot to list.
+  const px = c.current_price;
+  if (px > 0.99 && px < 1.01) return false;       // catch-all for $1 pegs
+  if (px > 0.998 && px < 1.002 && (lowerName.includes('usd') || lowerName.includes('dollar'))) return false;
   return true;
 }
 

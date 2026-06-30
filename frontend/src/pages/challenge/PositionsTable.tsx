@@ -60,7 +60,11 @@ export default function PositionsTable({ me, prices, coins, onSelectSymbol, onEd
                         {coins[sym]?.image ? <img src={coins[sym].image!} alt={sym} className="w-6 h-6 rounded-full" /> : <div className="w-6 h-6 rounded-full bg-white/[0.06]" />}
                         <div>
                           <div className="font-extrabold text-white">{sym}</div>
-                          <div className="text-[10px] text-gray-500 font-sans">{coins[sym]?.name || ""}</div>
+                          {coins[sym]?.name ? (
+                            <div className="text-[10px] text-gray-500 font-sans">{coins[sym].name}</div>
+                          ) : (
+                            <div className="text-[10px] text-amber-500/80 font-sans" title="Cette crypto a été retirée de l'univers. Tu peux toujours fermer la position.">delisted</div>
+                          )}
                         </div>
                       </div>
                     </td>

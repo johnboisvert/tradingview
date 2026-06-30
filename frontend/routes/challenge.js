@@ -622,7 +622,19 @@ export default function register(app, { resendClientGetter }) {
     ensureParticipant(db, email, p.username); // run migration if needed
 
     await getPrices();
-    const price = priceCache.data[sym];
+    let price = priceCache.data[sym];
+    // CLOSE must always succeed — even if the symbol was removed from the
+    // universe (cleanup of stablecoins/RWA tokens) the user must be able to
+    // exit positions. Fallback to the position's avg_price (= breakeven).
+    if (!price && action === 'close') {
+      const fallbackPos = position_id
+        ? Object.values(p.positions || {}).find((x) => x?.id === position_id)
+        : p.positions?.[posKey];
+      if (fallbackPos && Number.isFinite(fallbackPos.avg_price) && fallbackPos.avg_price > 0) {
+        price = fallbackPos.avg_price;
+        console.log(`[Challenge] CLOSE fallback price for delisted sym=${sym} → entry price $${price}`);
+      }
+    }
     if (!price) return res.status(400).json({ ok: false, error: `Crypto non supportée: ${sym}` });
 
     const value = qtyNum * price;

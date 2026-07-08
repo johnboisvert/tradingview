@@ -551,6 +551,49 @@ app.get('/api/binance/klines', async (req, res) => {
   }
 });
 
+// -----------------------------------------------------------------
+// Binance Order Book Depth proxy (used by Terminal Pro OrderBookWidget)
+// GET /api/binance/depth?symbol=BTCUSDT&limit=20
+// Mirrors Binance /api/v3/depth via data-api.binance.vision to avoid
+// browser-side geo restrictions & CORS.
+// -----------------------------------------------------------------
+app.get('/api/binance/depth', async (req, res) => {
+  const { symbol, limit } = req.query;
+  if (!symbol || typeof symbol !== 'string' || symbol.length < 5 || !symbol.endsWith('USDT')) {
+    return res.status(400).json({ error: 'Invalid symbol format', symbol });
+  }
+  const base = symbol.replace(/USDT$/, '');
+  if (!base || base.length < 2 || STABLECOIN_BASES.has(base)) {
+    return res.status(400).json({ error: 'Invalid or stablecoin symbol', symbol });
+  }
+  const effLimit = Math.max(5, Math.min(100, parseInt(String(limit || '20'), 10) || 20));
+
+  if (INVALID_BINANCE_SYMBOLS.has(symbol)) {
+    return res.status(400).json({ error: 'Known invalid symbol', symbol });
+  }
+
+  const targetUrl = `https://data-api.binance.vision/api/v3/depth?symbol=${symbol}&limit=${effLimit}`;
+  try {
+    const upstreamRes = await fetch(targetUrl, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json', 'User-Agent': 'CryptoIA/1.0' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (upstreamRes.status === 400 || upstreamRes.status === 451) {
+      INVALID_BINANCE_SYMBOLS.add(symbol);
+      return res.status(400).json({ error: 'Symbol not available on Binance', symbol });
+    }
+    const data = await upstreamRes.text();
+    res.status(upstreamRes.status)
+      .set('Content-Type', 'application/json')
+      .set('Cache-Control', 'no-store')
+      .send(data);
+  } catch (err) {
+    console.error('Binance depth proxy error:', err?.message || err);
+    res.status(502).json({ error: 'Binance depth proxy failed', message: err?.message });
+  }
+});
+
 // ============================================================
 // Telegram Bot API
 // ============================================================

@@ -54,7 +54,7 @@ export default function OrderBookWidget({ symbol }: Props) {
 
     const fetchDepth = async () => {
       try {
-        const r = await fetch(`https://api.binance.com/api/v3/depth?symbol=${pair}&limit=20`);
+        const r = await fetch(`/api/binance/depth?symbol=${pair}&limit=20`);
         if (!r.ok) throw new Error(String(r.status));
         const j: Depth = await r.json();
         if (!cancelled) setDepth(j);

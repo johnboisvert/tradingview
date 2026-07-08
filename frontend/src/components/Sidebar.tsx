@@ -70,6 +70,7 @@ import {
   Zap,
   Users,
   Gift,
+  Terminal as TerminalIcon,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -82,6 +83,7 @@ const NAV_SECTIONS = [
   {
     title: "Mon Espace",
     items: [
+      { path: "/terminal", label: "Terminal Pro", icon: TerminalIcon, badge: "ELITE" },
       { path: "/my-cryptoia", label: "My CryptoIA", icon: User },
       { path: "/gamification", label: "Gamification & Badges", icon: Trophy },
       { path: "/challenge", label: "Trading Challenge", icon: Trophy, badge: "NEW" },
@@ -455,7 +457,11 @@ export default function Sidebar() {
                         <span
                           data-testid={`sidebar-badge-${item.path.replace(/\//g, "-")}`}
                           aria-label={(item as { badge?: string }).badge === "NEW" ? "Nouveau" : (item as { badge?: string }).badge}
-                          className="flex-shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm shadow-pink-500/30"
+                          className={`flex-shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wider text-white shadow-sm ${
+                            (item as { badge?: string }).badge === "ELITE"
+                              ? "bg-gradient-to-r from-amber-500 to-orange-500 shadow-amber-500/30"
+                              : "bg-gradient-to-r from-pink-500 to-rose-500 shadow-pink-500/30"
+                          }`}
                         >
                           {(item as { badge?: string }).badge}
                         </span>

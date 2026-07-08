@@ -166,6 +166,7 @@ export function getSubscriptionInfo() {
 // Route path to plan access slug mapping
 const ROUTE_TO_SLUG: Record<string, string> = {
   "/": "dashboard",
+  "/terminal": "terminal-pro",
   "/fear-greed": "fear-greed",
   "/dominance": "dominance",
   "/altcoin-season": "altcoin-season",

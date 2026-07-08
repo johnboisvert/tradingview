@@ -117,6 +117,7 @@ const DEFAULT_PLAN_ACCESS: Record<string, string[]> = {
   ],
   // Elite : accès complet à tout
   elite: [
+    "terminal-pro",
     "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance",
     "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads",
     "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun",

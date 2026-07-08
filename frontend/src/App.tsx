@@ -11,6 +11,7 @@ import { captureRefFromUrl } from "./lib/affiliation";
 
 // ── Lazy-loaded pages ────────────────────────────────────────────────────────
 const Index = React.lazy(() => import("./pages/Index"));
+const Terminal = React.lazy(() => import("./pages/Terminal"));
 const TokenScanner = React.lazy(() => import("./pages/TokenScanner"));
 const WhaleWatcher = React.lazy(() => import("./pages/WhaleWatcher"));
 const TechnicalAnalysis = React.lazy(() => import("./pages/TechnicalAnalysis"));
@@ -144,6 +145,7 @@ function App() {
         <Routes>
           {/* Main Pages - Marché */}
           <Route path="/" element={<Index />} />
+          <Route path="/terminal" element={<PlanProtected path="/terminal"><Terminal /></PlanProtected>} />
           <Route path="/fear-greed" element={<FearGreed />} />
           <Route path="/dominance" element={<PlanProtected path="/dominance"><Dominance /></PlanProtected>} />
           <Route path="/altcoin-season" element={<PlanProtected path="/altcoin-season"><AltcoinSeason /></PlanProtected>} />

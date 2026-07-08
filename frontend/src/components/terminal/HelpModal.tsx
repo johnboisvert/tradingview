@@ -37,12 +37,15 @@ const SECTIONS = [
     items: [
       { key: "@help", desc: "Afficher cette aide" },
       { key: "@reset", desc: "Réinitialiser le chart sur BTC" },
+      { key: "@sound", desc: "Toggle alertes sonores (whales)" },
       { key: "@news", desc: "Focus le panneau NWS (surbrillance 2s)" },
       { key: "@whales", desc: "Focus le panneau WHL" },
       { key: "@feed", desc: "Focus le panneau FED (community trades)" },
       { key: "@signals", desc: "Focus le panneau SIG (Fear/Greed, dominance)" },
       { key: "@layout1", desc: "Layout Chart-Dominant (chart 8×8, sidebar 4)" },
       { key: "@layout2", desc: "Layout Watchlist (chart 7×7, ticker large)" },
+      { key: "@scalping", desc: "Preset Scalping (chart + ticker 6×6, news bar horizontal)" },
+      { key: "@swing", desc: "Preset Swing (chart XXL 9×9, widgets compacts)" },
     ],
   },
   {

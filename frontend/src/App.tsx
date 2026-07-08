@@ -12,6 +12,8 @@ import { captureRefFromUrl } from "./lib/affiliation";
 // ── Lazy-loaded pages ────────────────────────────────────────────────────────
 const Index = React.lazy(() => import("./pages/Index"));
 const Terminal = React.lazy(() => import("./pages/Terminal"));
+const Redeem = React.lazy(() => import("./pages/Redeem"));
+const AdminAccess = React.lazy(() => import("./pages/AdminAccess"));
 const TokenScanner = React.lazy(() => import("./pages/TokenScanner"));
 const WhaleWatcher = React.lazy(() => import("./pages/WhaleWatcher"));
 const TechnicalAnalysis = React.lazy(() => import("./pages/TechnicalAnalysis"));
@@ -146,6 +148,7 @@ function App() {
           {/* Main Pages - Marché */}
           <Route path="/" element={<Index />} />
           <Route path="/terminal" element={<PlanProtected path="/terminal"><Terminal /></PlanProtected>} />
+          <Route path="/redeem" element={<Redeem />} />
           <Route path="/fear-greed" element={<FearGreed />} />
           <Route path="/dominance" element={<PlanProtected path="/dominance"><Dominance /></PlanProtected>} />
           <Route path="/altcoin-season" element={<PlanProtected path="/altcoin-season"><AltcoinSeason /></PlanProtected>} />
@@ -265,6 +268,7 @@ function App() {
           <Route path="/comparateur-frais-exchanges" element={<ExchangeFeesComparator />} />
           <Route path="/admin/analytics" element={<ProtectedAdminRoute><Analytics /></ProtectedAdminRoute>} />
           <Route path="/admin/pricing" element={<ProtectedAdminRoute><Pricing /></ProtectedAdminRoute>} />
+          <Route path="/admin/access" element={<ProtectedAdminRoute><AdminAccess /></ProtectedAdminRoute>} />
           <Route path="/admin/promos" element={<ProtectedAdminRoute><Promos /></ProtectedAdminRoute>} />
           <Route path="/admin/messages" element={<ProtectedAdminRoute><Messages /></ProtectedAdminRoute>} />
           <Route path="/admin/users" element={<ProtectedAdminRoute><Users /></ProtectedAdminRoute>} />

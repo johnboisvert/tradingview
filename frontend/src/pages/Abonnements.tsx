@@ -703,6 +703,7 @@ export default function Abonnements() {
 
   const eliteFeatures = [
     "Tout du plan Pro",
+    "🖥️ Terminal Pro Bloomberg-style — Cockpit unifié 6 widgets live (⌘K command bar)",
     "✨ Indicateur Magic JB IA (TradingView) — Inclus",
     ...getPlanFeatures("elite", "pro"),
   ];
@@ -1098,6 +1099,94 @@ export default function Abonnements() {
             </button>
           </div>
         </div>
+
+        {/* Terminal Pro spotlight — Elite exclusive */}
+        <section data-testid="terminal-pro-marketing" className="mt-16 max-w-6xl mx-auto px-4">
+          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-black via-zinc-900 to-black border-2 border-amber-500/40 shadow-2xl shadow-amber-500/10">
+            {/* Grain / scan-lines effect */}
+            <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ background: "repeating-linear-gradient(180deg, transparent 0, transparent 2px, rgba(245,158,11,0.5) 3px, transparent 4px)" }} />
+            <div className="relative p-8 md:p-12 grid md:grid-cols-2 gap-8 items-center">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[10px] font-black uppercase tracking-[0.2em] mb-4">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  Nouveau · Elite Exclusive
+                </div>
+                <h2 className="text-4xl md:text-5xl font-black font-mono text-white mb-3 leading-tight">
+                  <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-orange-400 bg-clip-text text-transparent">Terminal Pro</span>
+                  <br />
+                  <span className="text-white/60 text-xl md:text-2xl font-normal font-sans">Style Bloomberg · pour crypto</span>
+                </h2>
+                <p className="text-white/70 leading-relaxed mb-6 text-sm md:text-base">
+                  Le premier cockpit unifié dédié au trading crypto. <b className="text-amber-300">6 widgets live</b> sur un seul écran,
+                  <b className="text-amber-300"> pilotable au clavier</b>, monospace dense, chart TradingView dominant,
+                  <b className="text-amber-300"> command bar ⌘K</b> pour tout accéder en 2 touches.
+                </p>
+                <ul className="space-y-2 text-[13px] text-white/80 mb-6">
+                  <li className="flex items-start gap-2"><span className="text-amber-400 font-black mt-0.5">▸</span><span><b>TVL</b> — Chart TradingView temps réel (Binance) · 41 cryptos filtrées</span></li>
+                  <li className="flex items-start gap-2"><span className="text-amber-400 font-black mt-0.5">▸</span><span><b>TCK</b> — Live ticker · click pour swap symbol · tri MCAP/GAIN/LOSS</span></li>
+                  <li className="flex items-start gap-2"><span className="text-amber-400 font-black mt-0.5">▸</span><span><b>WHL</b> — Détection whales (accumulation/distribution) score-sorted</span></li>
+                  <li className="flex items-start gap-2"><span className="text-amber-400 font-black mt-0.5">▸</span><span><b>SIG</b> — Fear &amp; Greed + BTC.D / ETH.D + Total Market Cap</span></li>
+                  <li className="flex items-start gap-2"><span className="text-amber-400 font-black mt-0.5">▸</span><span><b>NWS</b> — Flux d'actualités crypto (timestamps relatifs)</span></li>
+                  <li className="flex items-start gap-2"><span className="text-amber-400 font-black mt-0.5">▸</span><span><b>FED</b> — Trades LIVE de la communauté Challenge</span></li>
+                </ul>
+                <div className="flex items-center gap-3 flex-wrap mb-6">
+                  <span className="text-[11px] px-2 py-1 rounded bg-white/[0.05] border border-white/10 text-white/70 font-mono">⌘K Command</span>
+                  <span className="text-[11px] px-2 py-1 rounded bg-white/[0.05] border border-white/10 text-white/70 font-mono">↑↓ Nav</span>
+                  <span className="text-[11px] px-2 py-1 rounded bg-white/[0.05] border border-white/10 text-white/70 font-mono">? Help</span>
+                  <span className="text-[11px] px-2 py-1 rounded bg-white/[0.05] border border-white/10 text-white/70 font-mono">@news @whales @feed</span>
+                </div>
+                <a
+                  href="/terminal"
+                  data-testid="terminal-pro-cta"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-sm hover:brightness-110 transition-all"
+                >
+                  <span>Découvrir le Terminal Pro</span>
+                  <span>→</span>
+                </a>
+              </div>
+              {/* Terminal preview mock */}
+              <div className="relative">
+                <div className="rounded-lg overflow-hidden border border-amber-500/40 bg-black shadow-2xl shadow-black/60 font-mono text-[10px]">
+                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-amber-500/20 bg-white/[0.02]">
+                    <span className="text-amber-400 font-black tracking-[0.15em]">CRYPTOIA TERMINAL PRO</span>
+                    <span className="text-white/40 tabular-nums">14:37:05 UTC</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 p-1.5">
+                    <div className="col-span-2 aspect-video bg-gradient-to-br from-emerald-900/20 via-black to-red-900/20 border border-amber-500/30 rounded flex items-center justify-center relative overflow-hidden">
+                      <span className="absolute top-1 left-1 text-[8px] text-amber-400 font-black px-1 border border-amber-500/40 rounded">TVL</span>
+                      <svg viewBox="0 0 100 40" className="w-full h-full p-2">
+                        <polyline fill="none" stroke="#10b981" strokeWidth="0.8" points="0,32 10,28 18,25 25,20 32,22 40,18 48,16 55,20 62,12 70,8 78,10 85,14 92,10 100,6" />
+                      </svg>
+                    </div>
+                    <div className="border border-cyan-500/30 rounded p-1 space-y-0.5">
+                      <div className="text-[8px] text-cyan-400 font-black">TCK</div>
+                      <div className="flex justify-between"><span className="text-white/90">BTC</span><span className="text-emerald-400">+2.4%</span></div>
+                      <div className="flex justify-between"><span className="text-white/90">ETH</span><span className="text-emerald-400">+1.8%</span></div>
+                      <div className="flex justify-between"><span className="text-amber-300">PEPE</span><span className="text-red-400">-3.2%</span></div>
+                      <div className="flex justify-between"><span className="text-white/90">SOL</span><span className="text-emerald-400">+5.1%</span></div>
+                    </div>
+                    <div className="border border-green-500/30 rounded p-1">
+                      <div className="text-[8px] text-emerald-400 font-black">WHL</div>
+                      <div className="mt-0.5 text-white/80">SOL <span className="text-emerald-400">ACC</span></div>
+                      <div className="text-white/80">AVAX <span className="text-red-400">DIST</span></div>
+                    </div>
+                    <div className="border border-amber-500/30 rounded p-1">
+                      <div className="text-[8px] text-amber-400 font-black">NWS</div>
+                      <div className="text-white/70 truncate">BTC breaks 100k…</div>
+                      <div className="text-white/70 truncate">SEC greenlights…</div>
+                    </div>
+                    <div className="border border-cyan-500/30 rounded p-1">
+                      <div className="text-[8px] text-cyan-400 font-black">FED</div>
+                      <div className="text-amber-300">JohnB LONG BTC</div>
+                      <div className="text-amber-300">AliceX SHORT SOL</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="absolute -bottom-4 -right-4 rotate-6 bg-amber-500 text-black px-3 py-1 rounded shadow-lg font-black text-[10px] uppercase tracking-widest">👑 Elite Only</div>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* Payment Modal */}

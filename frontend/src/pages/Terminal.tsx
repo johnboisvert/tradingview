@@ -13,11 +13,13 @@ import CommandBar from "@/components/terminal/CommandBar";
 import HelpModal from "@/components/terminal/HelpModal";
 import { Crown, Terminal as TerminalIcon, Command as CmdIcon } from "lucide-react";
 
-type LayoutKey = "layout1" | "layout2";
+type LayoutKey = "layout1" | "layout2" | "scalping" | "swing";
 
 const LAYOUT_LABELS: Record<LayoutKey, string> = {
   layout1: "CHART-DOMINANT",
   layout2: "WATCHLIST",
+  scalping: "SCALPING",
+  swing: "SWING",
 };
 
 export default function Terminal() {
@@ -26,6 +28,7 @@ export default function Terminal() {
   const [cmdOpen, setCmdOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [layout, setLayout] = useState<LayoutKey>(() => (localStorage.getItem("cia_terminal_layout") as LayoutKey) || "layout1");
+  const [soundOn, setSoundOn] = useState<boolean>(() => localStorage.getItem("cia_terminal_sound") === "1");
   const [now, setNow] = useState(new Date());
 
   // Load available symbols for command palette autocomplete
@@ -68,6 +71,13 @@ export default function Terminal() {
     if (name === "reset") setSymbol("BTC");
     else if (name === "layout1") setLayout("layout1");
     else if (name === "layout2") setLayout("layout2");
+    else if (name === "scalping") setLayout("scalping");
+    else if (name === "swing") setLayout("swing");
+    else if (name === "sound") {
+      const newVal = !soundOn;
+      setSoundOn(newVal);
+      localStorage.setItem("cia_terminal_sound", newVal ? "1" : "0");
+    }
     else if (name === "help") setHelpOpen(true);
     else if (["news", "whales", "feed", "signals"].includes(name)) {
       const el = document.querySelector(`[data-widget="${name}"]`) as HTMLElement | null;
@@ -86,13 +96,16 @@ export default function Terminal() {
     }
   };
 
-  const gridClass = useMemo(() => {
-    // layout1: chart takes 8 cols × 8 rows; sidebar widgets stack right
-    // layout2: chart smaller, ticker + whales larger
-    return layout === "layout1"
-      ? "grid grid-cols-12 grid-rows-[repeat(12,minmax(60px,1fr))] gap-1.5"
-      : "grid grid-cols-12 grid-rows-[repeat(12,minmax(60px,1fr))] gap-1.5";
+  // Layout-specific sizing for each widget. All layouts use the same 12×12 grid.
+  const sizes = useMemo(() => {
+    if (layout === "layout2") return { chart: "col-span-7 row-span-7", ticker: "col-span-5 row-span-6", signals: "col-span-5 row-span-3", whales: "col-span-4 row-span-5", news: "col-span-4 row-span-5", feed: "col-span-4 row-span-5" };
+    if (layout === "scalping") return { chart: "col-span-6 row-span-7", ticker: "col-span-6 row-span-7", signals: "col-span-4 row-span-5", whales: "col-span-4 row-span-5", news: "col-span-4 row-span-5", feed: "col-span-12 row-span-3" };
+    if (layout === "swing")    return { chart: "col-span-9 row-span-9", ticker: "col-span-3 row-span-5", signals: "col-span-3 row-span-4", whales: "col-span-4 row-span-3", news: "col-span-4 row-span-3", feed: "col-span-4 row-span-3" };
+    // layout1 (default)
+    return { chart: "col-span-8 row-span-8", ticker: "col-span-4 row-span-5", signals: "col-span-4 row-span-3", whales: "col-span-4 row-span-4", news: "col-span-4 row-span-4", feed: "col-span-4 row-span-4" };
   }, [layout]);
+
+  const gridClass = "grid grid-cols-12 grid-rows-[repeat(12,minmax(60px,1fr))] gap-1.5";
 
   const timeStr = now.toISOString().slice(11, 19); // HH:MM:SS UTC
 
@@ -131,6 +144,19 @@ export default function Terminal() {
           >
             ?
           </button>
+          <button
+            data-testid="terminal-sound-toggle"
+            onClick={() => {
+              const nv = !soundOn;
+              setSoundOn(nv);
+              localStorage.setItem("cia_terminal_sound", nv ? "1" : "0");
+            }}
+            aria-label={soundOn ? "Sound on" : "Sound off"}
+            title={`Sound alerts: ${soundOn ? "ON" : "OFF"}`}
+            className={`w-6 h-6 flex items-center justify-center border rounded text-[11px] font-black transition ${soundOn ? "border-emerald-500/40 text-emerald-300 bg-emerald-500/10" : "border-white/15 text-white/50 hover:text-white/80"}`}
+          >
+            {soundOn ? "♪" : "♩"}
+          </button>
           <div className="text-[10px] text-white/60 tabular-nums" data-testid="terminal-clock">{timeStr} UTC</div>
         </div>
       </header>
@@ -139,7 +165,7 @@ export default function Terminal() {
       <main className="flex-1 p-1.5 min-h-0">
         <div className={`h-full ${gridClass}`}>
           {/* CHART (dominant) */}
-          <div className={`${layout === "layout1" ? "col-span-8 row-span-8" : "col-span-7 row-span-7"} min-h-0`}>
+          <div className={`${sizes.chart} min-h-0`}>
             <WidgetCard
               tag="TVL"
               title={`${symbol}/USDT · TradingView Live`}
@@ -156,14 +182,14 @@ export default function Terminal() {
           </div>
 
           {/* TICKER — right of chart */}
-          <div className={`${layout === "layout1" ? "col-span-4 row-span-5" : "col-span-5 row-span-6"} min-h-0`}>
-            <WidgetCard tag="TCK" title="Live Ticker · 41 Cryptos" accent="cyan" data-widget="ticker">
+          <div className={`${sizes.ticker} min-h-0`}>
+            <WidgetCard tag="TCK" title="Live Ticker · 41 Cryptos" accent="cyan">
               <LiveTickerWidget onSelectSymbol={setSymbol} activeSymbol={symbol} />
             </WidgetCard>
           </div>
 
           {/* SIGNALS — right lower */}
-          <div className={`${layout === "layout1" ? "col-span-4 row-span-3" : "col-span-5 row-span-3"} min-h-0`}>
+          <div className={`${sizes.signals} min-h-0`}>
             <div data-widget="signals" className="h-full transition-shadow rounded">
               <WidgetCard tag="SIG" title="Market Signals" accent="amber">
                 <SignalsWidget />
@@ -172,7 +198,7 @@ export default function Terminal() {
           </div>
 
           {/* WHALES — bottom row */}
-          <div className={`${layout === "layout1" ? "col-span-4 row-span-4" : "col-span-4 row-span-5"} min-h-0`}>
+          <div className={`${sizes.whales} min-h-0`}>
             <div data-widget="whales" className="h-full transition-shadow rounded">
               <WidgetCard tag="WHL" title="Whale Activity" accent="green">
                 <WhalesWidget />
@@ -181,7 +207,7 @@ export default function Terminal() {
           </div>
 
           {/* NEWS — bottom middle */}
-          <div className={`${layout === "layout1" ? "col-span-4 row-span-4" : "col-span-4 row-span-5"} min-h-0`}>
+          <div className={`${sizes.news} min-h-0`}>
             <div data-widget="news" className="h-full transition-shadow rounded">
               <WidgetCard tag="NWS" title="News Flash" accent="amber">
                 <NewsFlashWidget />
@@ -190,7 +216,7 @@ export default function Terminal() {
           </div>
 
           {/* COMMUNITY FEED — bottom right */}
-          <div className={`${layout === "layout1" ? "col-span-4 row-span-4" : "col-span-4 row-span-5"} min-h-0`}>
+          <div className={`${sizes.feed} min-h-0`}>
             <div data-widget="feed" className="h-full transition-shadow rounded">
               <WidgetCard tag="FED" title="Community Trades" accent="cyan">
                 <CommunityFeedWidget />

@@ -49,22 +49,25 @@ export default function Terminal() {
     return () => clearInterval(id);
   }, []);
 
-  // Keyboard: Cmd/Ctrl+K to open command palette; '?' opens help
+  // Keyboard: Cmd/Ctrl+K to open command palette; '?' opens help.
+  // Uses { capture: true } + stopImmediatePropagation to preempt the global
+  // CommandPalette (which also listens for ⌘K and would otherwise steal it).
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Skip if user is typing in an input
       const t = e.target as HTMLElement | null;
       if (t && ["INPUT", "TEXTAREA"].includes(t.tagName)) return;
       if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
+        e.stopImmediatePropagation();
         setCmdOpen(true);
       } else if (e.key === "?" && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
+        e.stopImmediatePropagation();
         setHelpOpen(true);
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener("keydown", handler, { capture: true });
+    return () => window.removeEventListener("keydown", handler, { capture: true } as EventListenerOptions);
   }, []);
 
   const onAction = (name: string) => {

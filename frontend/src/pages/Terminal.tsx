@@ -10,6 +10,7 @@ import WhalesWidget from "@/components/terminal/widgets/WhalesWidget";
 import CommunityFeedWidget from "@/components/terminal/widgets/CommunityFeedWidget";
 import SignalsWidget from "@/components/terminal/widgets/SignalsWidget";
 import CommandBar from "@/components/terminal/CommandBar";
+import HelpModal from "@/components/terminal/HelpModal";
 import { Crown, Terminal as TerminalIcon, Command as CmdIcon } from "lucide-react";
 
 type LayoutKey = "layout1" | "layout2";
@@ -23,6 +24,7 @@ export default function Terminal() {
   const [symbol, setSymbol] = useState<string>(() => localStorage.getItem("cia_terminal_symbol") || "BTC");
   const [symbols, setSymbols] = useState<string[]>([]);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [layout, setLayout] = useState<LayoutKey>(() => (localStorage.getItem("cia_terminal_layout") as LayoutKey) || "layout1");
   const [now, setNow] = useState(new Date());
 
@@ -44,12 +46,18 @@ export default function Terminal() {
     return () => clearInterval(id);
   }, []);
 
-  // Keyboard: Cmd/Ctrl+K to open command palette
+  // Keyboard: Cmd/Ctrl+K to open command palette; '?' opens help
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Skip if user is typing in an input
+      const t = e.target as HTMLElement | null;
+      if (t && ["INPUT", "TEXTAREA"].includes(t.tagName)) return;
       if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
         setCmdOpen(true);
+      } else if (e.key === "?" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setHelpOpen(true);
       }
     };
     window.addEventListener("keydown", handler);
@@ -60,12 +68,21 @@ export default function Terminal() {
     if (name === "reset") setSymbol("BTC");
     else if (name === "layout1") setLayout("layout1");
     else if (name === "layout2") setLayout("layout2");
-    else if (name === "help") setCmdOpen(true);
+    else if (name === "help") setHelpOpen(true);
     else if (["news", "whales", "feed", "signals"].includes(name)) {
-      const el = document.querySelector(`[data-widget="${name}"]`);
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
-      el?.classList.add("ring-2", "ring-amber-500");
-      setTimeout(() => el?.classList.remove("ring-2", "ring-amber-500"), 1500);
+      const el = document.querySelector(`[data-widget="${name}"]`) as HTMLElement | null;
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Inline-style glow (Tailwind JIT purges dynamic classes)
+      const prevBoxShadow = el.style.boxShadow;
+      const prevOutline = el.style.outline;
+      el.style.boxShadow = "0 0 0 2px rgb(245 158 11), 0 0 30px 4px rgba(245, 158, 11, 0.4)";
+      el.style.outline = "none";
+      el.style.transition = "box-shadow 220ms ease-out";
+      setTimeout(() => {
+        el.style.boxShadow = prevBoxShadow;
+        el.style.outline = prevOutline;
+      }, 1800);
     }
   };
 
@@ -104,6 +121,15 @@ export default function Terminal() {
             <CmdIcon className="w-3 h-3" />
             <kbd className="hidden sm:inline">⌘K</kbd>
             <span className="uppercase tracking-wider">Command</span>
+          </button>
+          <button
+            data-testid="terminal-open-help"
+            onClick={() => setHelpOpen(true)}
+            aria-label="Open help"
+            title="Help (?)"
+            className="w-6 h-6 flex items-center justify-center border border-white/15 rounded text-[11px] font-black text-white/70 hover:text-amber-300 hover:border-amber-500/40 transition"
+          >
+            ?
           </button>
           <div className="text-[10px] text-white/60 tabular-nums" data-testid="terminal-clock">{timeStr} UTC</div>
         </div>
@@ -197,6 +223,7 @@ export default function Terminal() {
         onSymbolSelect={setSymbol}
         onAction={onAction}
       />
+      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

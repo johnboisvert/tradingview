@@ -19,17 +19,22 @@ interface Props {
 }
 
 const ACTIONS = [
-  { name: "help",     label: "@help",     hint: "Show all commands" },
-  { name: "news",     label: "@news",     hint: "Focus news panel" },
-  { name: "whales",   label: "@whales",   hint: "Focus whales panel" },
-  { name: "feed",     label: "@feed",     hint: "Focus community feed" },
-  { name: "signals",  label: "@signals",  hint: "Focus signals panel" },
-  { name: "reset",    label: "@reset",    hint: "Reset chart to BTC" },
-  { name: "sound",    label: "@sound",    hint: "Toggle sound alerts (on new whale signals)" },
-  { name: "layout1",  label: "@layout1",  hint: "Default layout (chart-dominant)" },
-  { name: "layout2",  label: "@layout2",  hint: "Watchlist layout" },
-  { name: "scalping", label: "@scalping", hint: "Scalping preset (dense ticker)" },
-  { name: "swing",    label: "@swing",    hint: "Swing preset (large chart)" },
+  { name: "help",         label: "@help",         hint: "Show all commands" },
+  { name: "news",         label: "@news",         hint: "Focus news panel" },
+  { name: "whales",       label: "@whales",       hint: "Focus whales panel" },
+  { name: "feed",         label: "@feed",         hint: "Focus community feed" },
+  { name: "signals",      label: "@signals",      hint: "Focus signals panel" },
+  { name: "reset",        label: "@reset",        hint: "Reset chart to BTC" },
+  { name: "sound",        label: "@sound",        hint: "Toggle sound alerts (whales)" },
+  { name: "chart2",       label: "@chart2",       hint: "Toggle secondary chart (multi-chart)" },
+  { name: "orderbook",    label: "@orderbook",    hint: "Toggle order book depth widget" },
+  { name: "lock",         label: "@lock",         hint: "Verrouiller / déverrouiller le layout" },
+  { name: "reset-layout", label: "@reset-layout", hint: "Réinitialiser le layout au preset actuel" },
+  { name: "layout1",      label: "@layout1",      hint: "Default layout (chart-dominant)" },
+  { name: "layout2",      label: "@layout2",      hint: "Watchlist layout" },
+  { name: "scalping",     label: "@scalping",     hint: "Scalping preset (dense ticker)" },
+  { name: "swing",        label: "@swing",        hint: "Swing preset (large chart)" },
+  { name: "multichart",   label: "@multichart",   hint: "Preset Multi-chart (BTC + ETH + orderbook)" },
 ];
 
 export default function CommandBar({ symbols, onSymbolSelect, onAction, open, onClose }: Props) {

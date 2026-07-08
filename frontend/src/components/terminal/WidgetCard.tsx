@@ -6,7 +6,7 @@ import { ReactNode } from "react";
 
 interface Props {
   tag: string;
-  title: string;
+  title: ReactNode;
   right?: ReactNode;
   className?: string;
   children: ReactNode;

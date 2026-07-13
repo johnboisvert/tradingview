@@ -43,6 +43,7 @@ import registerQuizOgRoutes from './routes/quiz_og.js';
 import registerQuizSharesRoutes from './routes/quiz_shares.js';
 import registerChallengeRoutes from './routes/challenge.js';
 import registerPlanGrantsRoutes from './routes/plan_grants.js';
+import registerTerminalLayoutRoutes from './routes/terminal_layouts.js';
 import { createTelegramHelpers } from './routes/telegram_alerts.js';
 import { seed as gamiSeed } from './gamification_seed.js';
 
@@ -5258,6 +5259,7 @@ registerQuizOgRoutes(app);
 registerQuizSharesRoutes(app);
 registerChallengeRoutes(app, { resendClientGetter: getResendClient });
 registerPlanGrantsRoutes(app);
+registerTerminalLayoutRoutes(app);
 registerEmailSequenceRoutes(app, { resendClientGetter: getResendClient });
 registerPublicStatsRoutes(app);
 registerSuccessStoriesRoutes(app);

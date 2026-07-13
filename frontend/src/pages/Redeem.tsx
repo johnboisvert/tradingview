@@ -23,8 +23,9 @@ export default function Redeem() {
         setResult({ ok: false, msg: "Aucun accès associé à cet email. Contacte le support si tu penses que c'est une erreur." });
         return;
       }
-      // Apply plan locally
+      // Apply plan locally + remember email (used for Terminal layout cloud sync)
       setUserPlan(j.plan as any);
+      localStorage.setItem("cia_user_email", email.trim().toLowerCase());
       setResult({ ok: true, plan: j.plan, note: j.note, msg: `Accès ${j.plan.toUpperCase()} activé sur ce navigateur !` });
     } catch (e: unknown) {
       setResult({ ok: false, msg: `Échec : ${(e as Error).message}` });

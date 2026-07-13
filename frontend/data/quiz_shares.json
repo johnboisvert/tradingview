@@ -1,0 +1,20 @@
+{
+  "events": [],
+  "totals": {
+    "hodler": 1,
+    "scalper": 0,
+    "swing": 0,
+    "longterm": 0
+  },
+  "platformTotals": {
+    "hodler": {
+      "twitter": 1
+    },
+    "scalper": {},
+    "swing": {},
+    "longterm": {}
+  },
+  "influencers": {},
+  "legends": {},
+  "lifetimeShares": {}
+}

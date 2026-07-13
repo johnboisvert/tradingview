@@ -74,6 +74,12 @@ export default function OrderTicket({
           <span className="text-[10px] text-gray-500 font-mono">{tradeSym}/USD</span>
         </div>
 
+        {/* Cash disponible — always visible in the ticket */}
+        <div data-testid="ticket-cash" className={`flex items-center justify-between mb-3 px-2.5 py-1.5 rounded-lg border font-mono ${me.balance < 1 ? "bg-orange-500/10 border-orange-500/30" : "bg-emerald-500/[0.06] border-emerald-500/20"}`}>
+          <span className="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Cash disponible</span>
+          <span className={`text-sm font-black ${me.balance < 1 ? "text-orange-300" : "text-emerald-300"}`}>${fmtUsd(me.balance)}</span>
+        </div>
+
         {/* Side: LONG / SHORT */}
         <div className="grid grid-cols-2 gap-1.5 mb-3">
           <button data-testid="trade-side-long" onClick={() => setSide("long")} className={`py-2.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition ${side === "long" ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/30" : "bg-white/[0.05] text-emerald-400 hover:bg-emerald-500/10"}`}>↗ Long</button>
@@ -122,9 +128,15 @@ export default function OrderTicket({
           />
         )}
 
-        <button data-testid="trade-max-button" onClick={setMaxBuy} className="w-full mb-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition">
+        <button data-testid="trade-max-button" onClick={setMaxBuy} className="w-full mb-1 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition">
           Max · ${fmtUsd(me.balance * leverage)} ({leverage}x)
         </button>
+        {me.balance < 1 && Object.keys(me.positions || {}).length > 0 && (
+          <p data-testid="ticket-no-cash-hint" className="text-[9px] text-orange-300/90 mb-2 font-bold">
+            💡 Cash à $0 : toute ta balance est en marge sur tes positions ouvertes. Ferme une position pour trader à nouveau.
+          </p>
+        )}
+        <div className="mb-2" />
 
         {/* Leverage selector — 1x to 50x */}
         <div className="mb-3">

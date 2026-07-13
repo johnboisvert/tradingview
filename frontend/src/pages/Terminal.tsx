@@ -2,7 +2,7 @@
 // Elite plan gated. Ctrl/Cmd+K to open command palette.
 // Layout: react-grid-layout (12 cols) with drag & resize, persisted per user.
 // Supports multi-chart (BTC vs ETH side-by-side) + OrderBook depth (Binance).
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Responsive, WidthProvider, Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -20,6 +20,7 @@ import HelpModal from "@/components/terminal/HelpModal";
 import {
   Crown, Terminal as TerminalIcon, Command as CmdIcon,
   X as XIcon, Plus, Grid as GridIcon, Lock, Unlock, RotateCcw,
+  Cloud, CloudOff,
 } from "lucide-react";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -120,6 +121,7 @@ const LS_KEY = "cia_terminal_v2_layout";
 const LS_SYMBOL = "cia_terminal_symbol";
 const LS_SYMBOL2 = "cia_terminal_symbol2";
 const LS_SOUND = "cia_terminal_sound";
+const LS_USER_EMAIL = "cia_user_email";
 
 function loadStored(): StoredLayout | null {
   try {
@@ -143,6 +145,76 @@ export default function Terminal() {
   const [locked, setLocked] = useState<boolean>(stored?.locked ?? false);
   const [soundOn, setSoundOn] = useState<boolean>(() => localStorage.getItem(LS_SOUND) === "1");
   const [now, setNow] = useState(new Date());
+
+  // --- Cloud sync (multi-device layout continuity, keyed by email)
+  const [syncEmail, setSyncEmail] = useState<string>(() => localStorage.getItem(LS_USER_EMAIL) || "");
+  const [syncState, setSyncState] = useState<"off" | "loading" | "synced" | "error">(() => (localStorage.getItem(LS_USER_EMAIL) ? "loading" : "off"));
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const serverLoadedRef = useRef(false);
+  const stateRef = useRef({ layoutKey, items, locked, symbol, symbol2 });
+  useEffect(() => { stateRef.current = { layoutKey, items, locked, symbol, symbol2 }; });
+
+  const pushLayout = useCallback((email: string) => {
+    setSyncState("loading");
+    fetch("/api/v1/terminal/layout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, layout: stateRef.current }),
+    })
+      .then(r => r.json())
+      .then(j => setSyncState(j?.ok ? "synced" : "error"))
+      .catch(() => setSyncState("error"));
+  }, []);
+
+  // Initial pull: server layout wins if it exists; otherwise push local state up.
+  useEffect(() => {
+    if (!syncEmail) { serverLoadedRef.current = true; return; }
+    let alive = true;
+    setSyncState("loading");
+    fetch(`/api/v1/terminal/layout?email=${encodeURIComponent(syncEmail)}`)
+      .then(r => r.json())
+      .then(j => {
+        if (!alive) return;
+        if (j?.ok && j.layout && Array.isArray(j.layout.items) && j.layout.items.length > 0) {
+          const L = j.layout;
+          if (L.layoutKey && L.layoutKey in LAYOUT_PRESETS) setLayoutKey(L.layoutKey as LayoutKey);
+          setItems(L.items as LO[]);
+          setLocked(!!L.locked);
+          if (typeof L.symbol === "string" && L.symbol) setSymbol(L.symbol);
+          if (typeof L.symbol2 === "string" && L.symbol2) setSymbol2(L.symbol2);
+          setSyncState("synced");
+        } else if (j?.ok) {
+          pushLayout(syncEmail);
+        } else {
+          setSyncState("error");
+        }
+      })
+      .catch(() => { if (alive) setSyncState("error"); })
+      .finally(() => { serverLoadedRef.current = true; });
+    return () => { alive = false; };
+  }, [syncEmail, pushLayout]);
+
+  // Debounced auto-save to server on any layout/symbol change
+  useEffect(() => {
+    if (!syncEmail || !serverLoadedRef.current) return;
+    const t = window.setTimeout(() => pushLayout(syncEmail), 2500);
+    return () => window.clearTimeout(t);
+  }, [items, layoutKey, locked, symbol, symbol2, syncEmail, pushLayout]);
+
+  const enableSync = useCallback((email: string) => {
+    const e = email.trim().toLowerCase();
+    if (!e.includes("@")) return;
+    localStorage.setItem(LS_USER_EMAIL, e);
+    serverLoadedRef.current = false;
+    setSyncEmail(e);
+    setSyncModalOpen(false);
+  }, []);
+  const disableSync = useCallback(() => {
+    localStorage.removeItem(LS_USER_EMAIL);
+    setSyncEmail("");
+    setSyncState("off");
+    setSyncModalOpen(false);
+  }, []);
 
   // --- Load available symbols for command palette autocomplete
   useEffect(() => {
@@ -230,6 +302,7 @@ export default function Terminal() {
       localStorage.setItem(LS_SOUND, newVal ? "1" : "0");
     }
     else if (name === "help") setHelpOpen(true);
+    else if (name === "sync") setSyncModalOpen(true);
     else if (["news", "whales", "feed", "signals"].includes(name)) {
       const el = document.querySelector(`[data-widget="${name}"]`) as HTMLElement | null;
       if (!el) return;
@@ -253,7 +326,7 @@ export default function Terminal() {
       case "chart2":    return <TradingViewChart symbol={symbol2} idSuffix="secondary" />;
       case "ticker":    return <LiveTickerWidget onSelectSymbol={setSymbol} activeSymbol={symbol} />;
       case "signals":   return <SignalsWidget />;
-      case "whales":    return <WhalesWidget />;
+      case "whales":    return <WhalesWidget soundOn={soundOn} />;
       case "news":      return <NewsFlashWidget />;
       case "feed":      return <CommunityFeedWidget />;
       case "orderbook": return <OrderBookWidget symbol={symbol} />;
@@ -322,6 +395,21 @@ export default function Terminal() {
             className={`w-6 h-6 flex items-center justify-center border rounded text-[11px] font-black transition ${locked ? "border-red-500/40 text-red-300 bg-red-500/10" : "border-emerald-500/40 text-emerald-300 bg-emerald-500/10"}`}
           >
             {locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+          </button>
+          {/* Cloud sync */}
+          <button
+            data-testid="terminal-sync-button"
+            onClick={() => setSyncModalOpen(true)}
+            aria-label="Sync du layout"
+            title={syncEmail ? `Sync cloud active (${syncEmail}) — état : ${syncState}` : "Activer la sync cloud du layout (multi-appareils)"}
+            className={`w-6 h-6 flex items-center justify-center border rounded transition ${
+              syncState === "synced" ? "border-emerald-500/40 text-emerald-300 bg-emerald-500/10"
+              : syncState === "loading" ? "border-amber-500/40 text-amber-300 bg-amber-500/10 animate-pulse"
+              : syncState === "error" ? "border-red-500/40 text-red-300 bg-red-500/10"
+              : "border-white/15 text-white/50 hover:text-white/80"
+            }`}
+          >
+            {syncEmail ? <Cloud className="w-3 h-3" /> : <CloudOff className="w-3 h-3" />}
           </button>
           {/* Reset layout */}
           <button
@@ -472,6 +560,16 @@ export default function Terminal() {
       />
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
 
+      {syncModalOpen && (
+        <SyncModal
+          email={syncEmail}
+          state={syncState}
+          onEnable={enableSync}
+          onDisable={disableSync}
+          onClose={() => setSyncModalOpen(false)}
+        />
+      )}
+
       {/* RGL tweaks — bloomberg aesthetics */}
       <style>{`
         .terminal-rgl .react-grid-item.react-grid-placeholder {
@@ -489,6 +587,60 @@ export default function Terminal() {
           box-shadow: 0 8px 40px rgba(245, 158, 11, 0.25);
         }
       `}</style>
+    </div>
+  );
+}
+
+// ------- Cloud sync modal --------
+function SyncModal({
+  email, state, onEnable, onDisable, onClose,
+}: { email: string; state: string; onEnable: (e: string) => void; onDisable: () => void; onClose: () => void }) {
+  const [value, setValue] = useState(email);
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose} data-testid="sync-modal">
+      <div className="bg-[#0a0a0f] border border-amber-500/30 rounded-xl max-w-sm w-full p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 mb-1">
+          <Cloud className="w-4 h-4 text-amber-400" />
+          <h3 className="font-black text-xs uppercase tracking-[0.15em] text-amber-300">Sync Cloud du Layout</h3>
+        </div>
+        <p className="text-[10px] text-white/50 mb-4 leading-relaxed">
+          Sauvegarde ton layout sur le serveur pour le retrouver sur tous tes appareils. Utilise le même email que ton accès Elite.
+        </p>
+        <input
+          data-testid="sync-email-input"
+          type="email"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && onEnable(value)}
+          placeholder="ton@email.com"
+          className="w-full px-3 py-2 rounded-lg bg-black border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-amber-500/50 mb-3"
+          autoFocus
+        />
+        <div className="flex items-center gap-2">
+          <button
+            data-testid="sync-enable-button"
+            onClick={() => onEnable(value)}
+            disabled={!value.includes("@")}
+            className="flex-1 py-2 rounded-lg bg-amber-500 text-black text-[10px] font-black uppercase tracking-wider hover:bg-amber-400 transition disabled:opacity-40"
+          >
+            {email ? "Mettre à jour" : "Activer la sync"}
+          </button>
+          {email && (
+            <button
+              data-testid="sync-disable-button"
+              onClick={onDisable}
+              className="px-3 py-2 rounded-lg border border-red-500/40 text-red-300 text-[10px] font-black uppercase tracking-wider hover:bg-red-500/10 transition"
+            >
+              Désactiver
+            </button>
+          )}
+        </div>
+        {email && (
+          <p className="text-[9px] text-white/40 mt-3 font-mono">
+            État : <span className={state === "synced" ? "text-emerald-400" : state === "error" ? "text-red-400" : "text-amber-300"}>{state === "synced" ? "✓ synchronisé" : state === "error" ? "erreur serveur" : state}</span> · {email}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

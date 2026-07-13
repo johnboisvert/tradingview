@@ -5,6 +5,8 @@
     "role": "admin",
     "plan": "elite",
     "subscription_end": "2027-02-17",
-    "created_at": "2024-01-15"
+    "created_at": "2024-01-15",
+    "referralCode": "ADMI-DHB5",
+    "freeMonthsCredit": 0
   }
 ]

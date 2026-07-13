@@ -1,0 +1,13 @@
+{
+  "recoveries": [
+    {
+      "session_id": "cs_test_recovery_123",
+      "email": "test@example.com",
+      "plan": "premium",
+      "amount": 29.99,
+      "expired_at": "2026-06-18T23:15:38.718Z",
+      "email_sent_at": null,
+      "status": "pending_resend"
+    }
+  ]
+}

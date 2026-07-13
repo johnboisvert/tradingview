@@ -26,6 +26,7 @@ const ACTIONS = [
   { name: "signals",      label: "@signals",      hint: "Focus signals panel" },
   { name: "reset",        label: "@reset",        hint: "Reset chart to BTC" },
   { name: "sound",        label: "@sound",        hint: "Toggle sound alerts (whales)" },
+  { name: "sync",         label: "@sync",         hint: "Sync cloud du layout (multi-appareils)" },
   { name: "chart2",       label: "@chart2",       hint: "Toggle secondary chart (multi-chart)" },
   { name: "orderbook",    label: "@orderbook",    hint: "Toggle order book depth widget" },
   { name: "lock",         label: "@lock",         hint: "Verrouiller / déverrouiller le layout" },

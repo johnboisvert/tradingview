@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v5';
 const STATIC_CACHE = `cryptoia-static-${CACHE_VERSION}`;
 const API_CACHE = `cryptoia-api-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `cryptoia-runtime-${CACHE_VERSION}`;
@@ -58,7 +58,7 @@ function safeCachePut(cache, request, response) {
 
 // ── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing CryptoIA Service Worker v3...');
+  console.log('[SW] Installing CryptoIA Service Worker v5...');
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
       console.log('[SW] Pre-caching static assets');
@@ -67,12 +67,17 @@ self.addEventListener('install', (event) => {
       });
     })
   );
+  // One-time forced upgrade: many users got stuck on a v3/v4 service worker
+  // that cached stale JS bundles (e.g. without /compare and /crypto routes).
+  // Re-enable skipWaiting for v5 ONLY so every existing client switches
+  // immediately on next visit; future versions (v6+) will revert to the
+  // user-opt-in flow via the UpdateBanner.
   self.skipWaiting();
 });
 
 // ── Activate ─────────────────────────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating CryptoIA Service Worker v3...');
+  console.log('[SW] Activating CryptoIA Service Worker v5...');
   const currentCaches = [STATIC_CACHE, API_CACHE, RUNTIME_CACHE];
   event.waitUntil(
     caches.keys().then((cacheNames) => {

@@ -13,6 +13,7 @@ import type { Position, Trade, Coin, Achievement, AchievementMeta, Me, Leaderboa
 import { fmtUsd, fmtMcap, fmtPrice, fmtQty } from "./challenge/format";
 import { Kpi } from "./challenge/ui";
 import LiveFeed from "./challenge/LiveFeed";
+import AccountBar from "./challenge/AccountBar";
 import OrderTicket from "./challenge/OrderTicket";
 import EquityCurve from "./challenge/EquityCurve";
 import BadgesPanel from "./challenge/BadgesPanel";
@@ -324,6 +325,9 @@ export default function Challenge() {
           {/* Pro layout — Chart left, Order panel right, Portfolio + Leaderboard below */}
           {isJoined && (
             <>
+              {/* Mon Compte — balance monétaire toujours visible */}
+              <AccountBar me={me!} rank={myRank} total={board?.total_participants ?? 0} />
+
               {/* Selected coin ticker bar */}
               <div className="bg-[#0d0e16] border border-white/[0.06] rounded-2xl px-4 py-3 mb-3 flex items-center gap-4 flex-wrap" data-testid="ticker-bar">
                 <button onClick={() => setPickerOpen(true)} data-testid="open-coin-picker" className="flex items-center gap-3 hover:bg-white/[0.04] rounded-lg p-1 -m-1 transition">

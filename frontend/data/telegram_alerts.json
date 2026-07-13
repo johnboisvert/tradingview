@@ -19,6 +19,41 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-04-23T15:53:35.884Z",
-  "lastAlerts": []
+  "lastCheck": "2026-06-26T01:23:31.382Z",
+  "lastAlerts": [
+    {
+      "type": "coingecko_signal",
+      "coin": "plasma",
+      "direction": "LONG",
+      "rr": 2.5,
+      "entry": 0.1021,
+      "tp1": 0.1057,
+      "tp2": 0.1244,
+      "tp3": 0.1378,
+      "sl": 0.0932,
+      "confidence": 94
+    }
+  ],
+  "cooldowns": {
+    "aave_signal": {
+      "timestamp": "2026-06-25T20:03:27.520Z",
+      "direction": "LONG"
+    },
+    "ether-fi_signal": {
+      "timestamp": "2026-06-25T20:16:15.168Z",
+      "direction": "LONG"
+    },
+    "jupiter-exchange-solana_signal": {
+      "timestamp": "2026-06-25T20:16:17.721Z",
+      "direction": "LONG"
+    },
+    "aptos_signal": {
+      "timestamp": "2026-06-25T20:16:20.318Z",
+      "direction": "SHORT"
+    },
+    "layerzero_signal": {
+      "timestamp": "2026-06-25T20:16:22.864Z",
+      "direction": "SHORT"
+    }
+  }
 }

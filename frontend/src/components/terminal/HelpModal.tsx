@@ -38,6 +38,7 @@ const SECTIONS = [
       { key: "@help", desc: "Afficher cette aide" },
       { key: "@reset", desc: "Réinitialiser le chart sur BTC" },
       { key: "@sound", desc: "Toggle alertes sonores (whales)" },
+      { key: "@sync", desc: "Sync cloud du layout — multi-appareils (email Elite)" },
       { key: "@chart2", desc: "Afficher/masquer un second chart (multi-chart)" },
       { key: "@orderbook", desc: "Afficher/masquer le carnet d'ordres (Binance depth)" },
       { key: "@lock", desc: "Verrouiller / déverrouiller le layout drag-drop" },

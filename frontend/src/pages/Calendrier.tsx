@@ -529,6 +529,45 @@ function buildAllEvents(): CalendarEvent[] {
   return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
+// ====================== LIVE FEED (ForexFactory via backend proxy) ======================
+// Real release dates for macro prints. Within the live window, live events
+// REPLACE our rule-estimated economic/fed/ecb events (which drift from reality).
+const CURRENCY_FLAG: Record<string, string> = {
+  USD: "🇺🇸", EUR: "🇪🇺", GBP: "🇬🇧", JPY: "🇯🇵", CAD: "🇨🇦",
+  AUD: "🇦🇺", NZD: "🇳🇿", CHF: "🇨🇭", CNY: "🇨🇳",
+};
+
+interface LiveFeedEvent {
+  title: string; currency: string; date: string; time: string;
+  impact: string; forecast: string; previous: string;
+}
+
+function liveToCalendarEvents(list: LiveFeedEvent[]): CalendarEvent[] {
+  return list
+    .filter((e) => e.impact === "High" || e.impact === "Medium")
+    .map((e, i) => {
+      const isFed = e.currency === "USD" && /FOMC|Federal Funds/i.test(e.title);
+      const isEcb = e.currency === "EUR" && /ECB|Main Refinancing/i.test(e.title);
+      const high = e.impact === "High";
+      const parts: string[] = [];
+      if (e.time && e.time !== "00:00") parts.push(`🕐 ${e.time} (heure de New York)`);
+      if (e.forecast) parts.push(`Prévision : ${e.forecast}`);
+      if (e.previous) parts.push(`Précédent : ${e.previous}`);
+      return {
+        id: `live-${e.date}-${e.currency}-${i}`,
+        title: e.title,
+        date: e.date,
+        category: (isFed ? "fed" : isEcb ? "ecb" : "economic") as CalendarEvent["category"],
+        importance: (high ? "high" : "medium") as CalendarEvent["importance"],
+        description: parts.join(" · ") || "Donnée macro-économique (source live).",
+        country: CURRENCY_FLAG[e.currency] || "🌍",
+        cryptoImpact: (high ? "volatile" : "neutral") as CryptoImpact,
+        live: true,
+        time: e.time,
+      };
+    });
+}
+
 export default function Calendrier() {
   const { t } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());

@@ -930,37 +930,3 @@ export default function Calendrier() {
     </div>
   );
 }
-2">
-                <div className="text-[10px] font-bold text-gray-400 mb-1.5">Impact crypto attendu :</div>
-                <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-400">
-                  <div>🟢 Haussier</div>
-                  <div>🔴 Baissier</div>
-                  <div>⚡ Volatil</div>
-                  <div>⚪ Neutre</div>
-                </div>
-              </div>
-              <div className="text-[10px] text-gray-600 space-y-1">
-                <p>📌 FOMC : federalreserve.gov</p>
-                <p>📌 BCE : ecb.europa.eu</p>
-                <p>📌 Données macro : bls.gov, bea.gov, eurostat</p>
-                <p>📌 BoJ : boj.or.jp · BoE : bankofengland.co.uk</p>
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-r from-cyan-500/[0.06] to-blue-500/[0.06] border border-cyan-500/20 rounded-xl p-4">
-              <h3 className="text-xs font-bold text-cyan-400 mb-2">💡 Conseils Trading</h3>
-              <ul className="space-y-1.5 text-[10px] text-gray-400">
-                <li>• 🟢 Baisse de taux FED/BCE, halving, ETF approuvé = haussier BTC/alts</li>
-                <li>• 🔴 Hausse de taux, BoJ hawkish (carry trade unwind), CPI &gt; attentes = baissier</li>
-                <li>• ⚡ FOMC, NFP, CPI, expirations options = forte volatilité — réduisez levier</li>
-                <li>• Les conférences crypto sont souvent suivies de rallyes sentimentaux</li>
-                <li>• Évitez les trades à fort levier lors des annonces majeures</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-        <Footer />
-      </main>
-    </div>
-  );
-}

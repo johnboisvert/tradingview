@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import Sidebar from "@/components/Sidebar";
 import { Calendar, ChevronLeft, ChevronRight, Globe, Landmark, TrendingUp, AlertTriangle } from "lucide-react";
@@ -16,6 +16,8 @@ interface CalendarEvent {
   description: string;
   country?: string;
   cryptoImpact: CryptoImpact;
+  live?: boolean;
+  time?: string;
 }
 
 const CATEGORY_CONFIG: Record<string, { emoji: string; color: string; label: string }> = {
@@ -533,8 +535,30 @@ export default function Calendrier() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterImpact, setFilterImpact] = useState<string>("all");
+  const [liveData, setLiveData] = useState<{ events: CalendarEvent[]; from: string; to: string } | null>(null);
 
-  const allEvents = useMemo(() => buildAllEvents(), []);
+  useEffect(() => {
+    fetch("/api/v1/calendar/economic")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j?.ok && Array.isArray(j.events) && j.window?.from && j.window?.to) {
+          const evts = liveToCalendarEvents(j.events);
+          if (evts.length > 0) setLiveData({ events: evts, from: j.window.from, to: j.window.to });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const allEvents = useMemo(() => {
+    const base = buildAllEvents();
+    if (!liveData) return base;
+    // Inside the live window, drop our estimated macro events — the live feed
+    // has the authoritative dates. Crypto/conference/earnings/regulation kept.
+    const kept = base.filter(
+      (e) => !(["economic", "fed", "ecb"].includes(e.category) && e.date >= liveData.from && e.date <= liveData.to)
+    );
+    return [...kept, ...liveData.events].sort((a, b) => a.date.localeCompare(b.date));
+  }, [liveData]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -769,7 +793,10 @@ export default function Calendrier() {
                             <td className="py-2.5 px-2 text-xs text-gray-400 whitespace-nowrap">
                               {event.country} {new Date(event.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
                             </td>
-                            <td className="py-2.5 px-2 text-xs font-semibold text-white">{event.title}</td>
+                            <td className="py-2.5 px-2 text-xs font-semibold text-white">
+                              {event.title}
+                              {event.live && <span className="ml-1.5 text-[8px] font-black text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 rounded px-1 py-0.5 uppercase align-middle">Live</span>}
+                            </td>
                             <td className="py-2.5 px-2">
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded border whitespace-nowrap ${config.color}`}>
                                 {config.emoji} {config.label}
@@ -822,6 +849,7 @@ export default function Calendrier() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="font-bold text-sm">{event.title}</h3>
+                          {event.live && <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-black border whitespace-nowrap text-cyan-400 bg-cyan-500/10 border-cyan-500/30 uppercase">📡 Live</span>}
                           <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold border whitespace-nowrap ${
                             event.importance === "high" ? "bg-red-500/10 text-red-400 border-red-500/20" :
                             event.importance === "medium" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
@@ -868,6 +896,41 @@ export default function Calendrier() {
                 </div>
               </div>
               <div className="border-t border-white/[0.06] pt-2 mb-2">
+                <div className="text-[10px] font-bold text-gray-400 mb-1.5">Impact crypto attendu :</div>
+                <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-400">
+                  <div>🟢 Haussier</div>
+                  <div>🔴 Baissier</div>
+                  <div>⚡ Volatil</div>
+                  <div>⚪ Neutre</div>
+                </div>
+              </div>
+              <div className="text-[10px] text-gray-600 space-y-1">
+                <p>📡 Données macro live : ForexFactory (semaine passée → semaine prochaine)</p>
+                <p>📌 FOMC : federalreserve.gov</p>
+                <p>📌 BCE : ecb.europa.eu</p>
+                <p>📌 Données macro : bls.gov, bea.gov, eurostat</p>
+                <p>📌 BoJ : boj.or.jp · BoE : bankofengland.co.uk</p>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-cyan-500/[0.06] to-blue-500/[0.06] border border-cyan-500/20 rounded-xl p-4">
+              <h3 className="text-xs font-bold text-cyan-400 mb-2">💡 Conseils Trading</h3>
+              <ul className="space-y-1.5 text-[10px] text-gray-400">
+                <li>• 🟢 Baisse de taux FED/BCE, halving, ETF approuvé = haussier BTC/alts</li>
+                <li>• 🔴 Hausse de taux, BoJ hawkish (carry trade unwind), CPI &gt; attentes = baissier</li>
+                <li>• ⚡ FOMC, NFP, CPI, expirations options = forte volatilité — réduisez levier</li>
+                <li>• Les conférences crypto sont souvent suivies de rallyes sentimentaux</li>
+                <li>• Évitez les trades à fort levier lors des annonces majeures</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </main>
+    </div>
+  );
+}
+2">
                 <div className="text-[10px] font-bold text-gray-400 mb-1.5">Impact crypto attendu :</div>
                 <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-400">
                   <div>🟢 Haussier</div>

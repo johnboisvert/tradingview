@@ -15,6 +15,7 @@ import WhalesWidget from "@/components/terminal/widgets/WhalesWidget";
 import CommunityFeedWidget from "@/components/terminal/widgets/CommunityFeedWidget";
 import SignalsWidget from "@/components/terminal/widgets/SignalsWidget";
 import OrderBookWidget from "@/components/terminal/widgets/OrderBookWidget";
+import FundingWidget from "@/components/terminal/widgets/FundingWidget";
 import CommandBar from "@/components/terminal/CommandBar";
 import HelpModal from "@/components/terminal/HelpModal";
 import {

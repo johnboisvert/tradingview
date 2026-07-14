@@ -15,12 +15,21 @@
 import { spawnSync } from "node:child_process";
 
 const CODES = ["TS2304", "TS2305", "TS2552"];
+// Config-level errors abort type-checking entirely → the guard would pass
+// without actually checking anything. Treat them as failures too.
+const FATAL_CONFIG_CODES = ["TS2688", "TS5083", "TS18003"];
 const r = spawnSync(
   "npx",
   ["tsc", "--noEmit", "-p", "tsconfig.app.json"],
   { encoding: "utf8" }
 );
 const out = (r.stdout || "") + (r.stderr || "");
+const fatal = out.split("\n").filter((l) => FATAL_CONFIG_CODES.some((c) => l.includes(c)));
+if (fatal.length > 0) {
+  console.error("\n❌ TYPECHECK ABORTED — tsc config error prevents any real checking:\n");
+  for (const l of fatal) console.error("  " + l);
+  process.exit(1);
+}
 const lines = out
   .split("\n")
   .filter((l) => CODES.some((c) => l.includes(c)));

@@ -54,6 +54,10 @@
     "layerzero_signal": {
       "timestamp": "2026-06-25T20:16:22.864Z",
       "direction": "SHORT"
+    },
+    "injective-protocol_signal": {
+      "timestamp": "2026-07-14T13:51:12.208Z",
+      "direction": "LONG"
     }
   }
 }

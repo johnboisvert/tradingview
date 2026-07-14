@@ -38,6 +38,7 @@ COPY --from=builder /app/frontend/instrument.mjs ./instrument.mjs
 
 # Copy backend route modules (ESM refactor) and gamification seed
 COPY --from=builder /app/frontend/routes ./routes
+COPY --from=builder /app/frontend/lib ./lib
 COPY --from=builder /app/frontend/gamification_seed.js ./gamification_seed.js
 
 # Copy assets (logo for Telegram alerts)

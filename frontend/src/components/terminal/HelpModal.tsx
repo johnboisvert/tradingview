@@ -39,6 +39,8 @@ const SECTIONS = [
       { key: "@reset", desc: "Réinitialiser le chart sur BTC" },
       { key: "@sound", desc: "Toggle alertes sonores (whales)" },
       { key: "@sync", desc: "Sync cloud du layout — multi-appareils (email Elite)" },
+      { key: "@funding", desc: "Toggle widget Funding Rates (perps Binance/Bybit)" },
+      { key: "@share", desc: "Partager mon layout sur X / Discord" },
       { key: "@chart2", desc: "Afficher/masquer un second chart (multi-chart)" },
       { key: "@orderbook", desc: "Afficher/masquer le carnet d'ordres (Binance depth)" },
       { key: "@lock", desc: "Verrouiller / déverrouiller le layout drag-drop" },

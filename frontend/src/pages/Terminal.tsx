@@ -20,13 +20,13 @@ import HelpModal from "@/components/terminal/HelpModal";
 import {
   Crown, Terminal as TerminalIcon, Command as CmdIcon,
   X as XIcon, Plus, Grid as GridIcon, Lock, Unlock, RotateCcw,
-  Cloud, CloudOff,
+  Cloud, CloudOff, Share2,
 } from "lucide-react";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 // ---------- Widget registry ----------
-type WidgetId = "chart" | "chart2" | "ticker" | "signals" | "whales" | "news" | "feed" | "orderbook";
+type WidgetId = "chart" | "chart2" | "ticker" | "signals" | "whales" | "news" | "feed" | "orderbook" | "funding";
 
 interface WidgetDef {
   id: WidgetId;
@@ -45,6 +45,7 @@ const WIDGETS: Record<WidgetId, WidgetDef> = {
   news:      { id: "news",      tag: "NWS", title: "News Flash",             accent: "amber", removable: false },
   feed:      { id: "feed",      tag: "FED", title: "Community Trades",       accent: "cyan",  removable: false },
   orderbook: { id: "orderbook", tag: "OBK", title: "Order Book Depth",       accent: "amber", removable: true },
+  funding:   { id: "funding",   tag: "FND", title: "Funding Rates · Perps",  accent: "green", removable: true },
 };
 
 // ---------- Preset layouts ----------
@@ -150,6 +151,7 @@ export default function Terminal() {
   const [syncEmail, setSyncEmail] = useState<string>(() => localStorage.getItem(LS_USER_EMAIL) || "");
   const [syncState, setSyncState] = useState<"off" | "loading" | "synced" | "error">(() => (localStorage.getItem(LS_USER_EMAIL) ? "loading" : "off"));
   const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const serverLoadedRef = useRef(false);
   const stateRef = useRef({ layoutKey, items, locked, symbol, symbol2 });
   useEffect(() => { stateRef.current = { layoutKey, items, locked, symbol, symbol2 }; });
@@ -295,6 +297,11 @@ export default function Terminal() {
       if (items.find(x => x.i === "orderbook")) removeWidget("orderbook");
       else addWidget("orderbook");
     }
+    else if (name === "funding") {
+      if (items.find(x => x.i === "funding")) removeWidget("funding");
+      else addWidget("funding");
+    }
+    else if (name === "share") setShareOpen(true);
     else if (name in LAYOUT_PRESETS) applyPreset(name as LayoutKey);
     else if (name === "sound") {
       const newVal = !soundOn;
@@ -330,6 +337,7 @@ export default function Terminal() {
       case "news":      return <NewsFlashWidget />;
       case "feed":      return <CommunityFeedWidget />;
       case "orderbook": return <OrderBookWidget symbol={symbol} />;
+      case "funding":   return <FundingWidget />;
       default:          return null;
     }
   };
@@ -395,6 +403,16 @@ export default function Terminal() {
             className={`w-6 h-6 flex items-center justify-center border rounded text-[11px] font-black transition ${locked ? "border-red-500/40 text-red-300 bg-red-500/10" : "border-emerald-500/40 text-emerald-300 bg-emerald-500/10"}`}
           >
             {locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+          </button>
+          {/* Share layout */}
+          <button
+            data-testid="terminal-share-button"
+            onClick={() => setShareOpen(true)}
+            aria-label="Partager mon layout"
+            title="Partager mon setup Terminal (X/Discord)"
+            className="w-6 h-6 flex items-center justify-center border border-white/15 rounded text-white/60 hover:text-amber-300 hover:border-amber-500/40 transition"
+          >
+            <Share2 className="w-3 h-3" />
           </button>
           {/* Cloud sync */}
           <button
@@ -517,7 +535,7 @@ export default function Terminal() {
         {/* Add-widget bar (only visible when a removable widget is missing) */}
         <div className="flex items-center gap-2 mt-2 text-[10px] text-white/50 uppercase tracking-wider">
           <span className="text-white/40">+ Ajouter :</span>
-          {(["chart2", "orderbook"] as WidgetId[]).map(id => {
+          {(["chart2", "orderbook", "funding"] as WidgetId[]).map(id => {
             const active = !!items.find(x => x.i === id);
             return (
               <button
@@ -570,6 +588,16 @@ export default function Terminal() {
         />
       )}
 
+      {shareOpen && (
+        <ShareModal
+          layoutLabel={LAYOUT_LABELS[layoutKey]}
+          widgets={items.map(x => WIDGETS[x.i].tag)}
+          symbol={symbol}
+          symbol2={chart2Visible ? symbol2 : null}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
+
       {/* RGL tweaks — bloomberg aesthetics */}
       <style>{`
         .terminal-rgl .react-grid-item.react-grid-placeholder {
@@ -587,6 +615,55 @@ export default function Terminal() {
           box-shadow: 0 8px 40px rgba(245, 158, 11, 0.25);
         }
       `}</style>
+    </div>
+  );
+}
+
+// ------- Share layout modal --------
+function ShareModal({
+  layoutLabel, widgets, symbol, symbol2, onClose,
+}: { layoutLabel: string; widgets: string[]; symbol: string; symbol2: string | null; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const charts = symbol2 ? `${symbol} + ${symbol2}` : symbol;
+  const text = `Mon setup CryptoIA Terminal Pro 🖥️⚡\n\n📐 Layout : ${layoutLabel}\n📊 Charts : ${charts}\n🧩 Widgets : ${widgets.join(" · ")}\n\nTrade comme un pro sur 👉 https://www.cryptoia.ca/terminal\n#crypto #trading #Bitcoin`;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard blocked */ }
+  };
+  const shareX = () => {
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank", "noopener,width=600,height=500");
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose} data-testid="share-modal">
+      <div className="bg-[#0a0a0f] border border-amber-500/30 rounded-xl max-w-sm w-full p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 mb-1">
+          <Share2 className="w-4 h-4 text-amber-400" />
+          <h3 className="font-black text-xs uppercase tracking-[0.15em] text-amber-300">Partager mon layout</h3>
+        </div>
+        <p className="text-[10px] text-white/50 mb-3 leading-relaxed">Montre ton setup à ta commu — X (Twitter) ou copie pour Discord/Telegram.</p>
+        <pre data-testid="share-preview" className="whitespace-pre-wrap text-[10px] text-white/80 bg-black border border-white/10 rounded-lg p-3 mb-3 font-mono leading-relaxed">{text}</pre>
+        <div className="flex items-center gap-2">
+          <button
+            data-testid="share-x-button"
+            onClick={shareX}
+            className="flex-1 py-2 rounded-lg bg-white text-black text-[10px] font-black uppercase tracking-wider hover:bg-white/85 transition"
+          >
+            Partager sur 𝕏
+          </button>
+          <button
+            data-testid="share-copy-button"
+            onClick={copy}
+            className={`flex-1 py-2 rounded-lg border text-[10px] font-black uppercase tracking-wider transition ${copied ? "border-emerald-500/50 text-emerald-300 bg-emerald-500/10" : "border-amber-500/40 text-amber-300 hover:bg-amber-500/10"}`}
+          >
+            {copied ? "✓ Copié !" : "Copier (Discord)"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

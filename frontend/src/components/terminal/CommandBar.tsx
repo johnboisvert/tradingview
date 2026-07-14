@@ -29,6 +29,8 @@ const ACTIONS = [
   { name: "sync",         label: "@sync",         hint: "Sync cloud du layout (multi-appareils)" },
   { name: "chart2",       label: "@chart2",       hint: "Toggle secondary chart (multi-chart)" },
   { name: "orderbook",    label: "@orderbook",    hint: "Toggle order book depth widget" },
+  { name: "funding",      label: "@funding",      hint: "Toggle funding rates widget (perps)" },
+  { name: "share",        label: "@share",        hint: "Partager mon layout (X/Discord)" },
   { name: "lock",         label: "@lock",         hint: "Verrouiller / déverrouiller le layout" },
   { name: "reset-layout", label: "@reset-layout", hint: "Réinitialiser le layout au preset actuel" },
   { name: "layout1",      label: "@layout1",      hint: "Default layout (chart-dominant)" },

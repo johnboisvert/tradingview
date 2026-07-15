@@ -1616,65 +1616,8 @@ setInterval(async () => {
 // RANGE TRADING — Telegram Alert System (Bollinger Bands + RSI + ADX)
 // ============================================================
 
-const RANGE_COOLDOWN_MS = 60 * 60 * 1000; // 60 minutes cooldown for range
-const RANGE_COOLDOWNS_FILE = path.join(DATA_DIR, 'range_cooldowns.json');
 const RANGE_CALLS_FILE = path.join(DATA_DIR, 'range_calls.json');
-const inMemoryRangeCooldowns = new Map();
-
-function loadRangeCooldowns() {
-  try {
-    if (existsSync(RANGE_COOLDOWNS_FILE)) {
-      return JSON.parse(readFileSync(RANGE_COOLDOWNS_FILE, 'utf8'));
-    }
-  } catch (_e) { /* ignore */ }
-  return {};
-}
-
-function saveRangeCooldowns(cooldowns) {
-  try {
-    writeFileSync(RANGE_COOLDOWNS_FILE, JSON.stringify(cooldowns, null, 2));
-  } catch (err) {
-    console.error('[RangeAlert] Error saving cooldowns:', err);
-  }
-}
-
-function isRangeCooldownActive(cooldowns, symbol, direction) {
-  const now = Date.now();
-  const memKey = `${symbol}_${direction}`;
-  const memTs = inMemoryRangeCooldowns.get(memKey);
-  if (memTs && (now - memTs) < RANGE_COOLDOWN_MS) return true;
-  const fileEntry = cooldowns[memKey];
-  if (fileEntry) {
-    const elapsed = now - new Date(fileEntry.timestamp).getTime();
-    if (elapsed < RANGE_COOLDOWN_MS && fileEntry.direction === direction) {
-      inMemoryRangeCooldowns.set(memKey, new Date(fileEntry.timestamp).getTime());
-      return true;
-    }
-  }
-  return false;
-}
-
-function setRangeCooldown(cooldowns, symbol, direction) {
-  const now = Date.now();
-  const memKey = `${symbol}_${direction}`;
-  inMemoryRangeCooldowns.set(memKey, now);
-  cooldowns[memKey] = { timestamp: new Date(now).toISOString(), direction };
-}
-
-// Initialize range cooldowns from file on boot
-(function initRangeCooldownsFromFile() {
-  const cooldowns = loadRangeCooldowns();
-  const now = Date.now();
-  for (const [key, entry] of Object.entries(cooldowns)) {
-    if (entry && entry.timestamp) {
-      const elapsed = now - new Date(entry.timestamp).getTime();
-      if (elapsed < RANGE_COOLDOWN_MS) {
-        inMemoryRangeCooldowns.set(key, new Date(entry.timestamp).getTime());
-      }
-    }
-  }
-  console.log(`[RangeAlert] Loaded ${inMemoryRangeCooldowns.size} active range cooldowns from file`);
-})();
+// ─── Range cooldowns → lib/range_engine.js (Session 45 fix) ───
 
 // Range calls persistence
 function loadRangeCalls() {
@@ -1706,6 +1649,7 @@ try {
 
 // ─── Range engine extracted to lib/range_engine.js (Session 45) ───
 const rangeEngine = createRangeEngine({
+  dataDir: DATA_DIR,
   loadTelegramAlerts,
   sendTelegramMessage,
   loadRangeCalls: (...a) => loadRangeCalls(...a),

@@ -1,16 +1,78 @@
 // Range signal engine (extracted from server.js — Session 45, refactor phase 3).
 // Bollinger Bands + RSI + ADX M15 range setups, Telegram alerts, scheduler.
 // Range-calls persistence stays in server.js (resolver + API endpoints use it).
+import path from 'path';
+import fs from 'fs';
 import {
-  calcRSI, calcBollingerBands, calcADX, fetchBinanceKlines, fetchTop200USDTSymbols,
+  calcEMA, calcRSI, calcBollingerBands, calcADX, fetchBinanceKlines, fetchTop200USDTSymbols,
   formatPrice, roundPrice,
 } from './signal_primitives.js';
 
 export function createRangeEngine(deps) {
   const {
-    loadTelegramAlerts, sendTelegramMessage,
+    dataDir, loadTelegramAlerts, sendTelegramMessage,
     loadRangeCalls, saveRangeCalls, allocateRangeCallId,
   } = deps;
+
+const RANGE_COOLDOWN_MS = 60 * 60 * 1000; // 60 minutes cooldown for range
+const RANGE_COOLDOWNS_FILE = path.join(dataDir, 'range_cooldowns.json');
+const inMemoryRangeCooldowns = new Map();
+
+function loadRangeCooldowns() {
+  try {
+    if (fs.existsSync(RANGE_COOLDOWNS_FILE)) {
+      return JSON.parse(fs.readFileSync(RANGE_COOLDOWNS_FILE, 'utf8'));
+    }
+  } catch (_e) { /* ignore */ }
+  return {};
+}
+
+function saveRangeCooldowns(cooldowns) {
+  try {
+    fs.writeFileSync(RANGE_COOLDOWNS_FILE, JSON.stringify(cooldowns, null, 2));
+  } catch (err) {
+    console.error('[RangeAlert] Error saving cooldowns:', err);
+  }
+}
+
+function isRangeCooldownActive(cooldowns, symbol, direction) {
+  const now = Date.now();
+  const memKey = `${symbol}_${direction}`;
+  const memTs = inMemoryRangeCooldowns.get(memKey);
+  if (memTs && (now - memTs) < RANGE_COOLDOWN_MS) return true;
+  const fileEntry = cooldowns[memKey];
+  if (fileEntry) {
+    const elapsed = now - new Date(fileEntry.timestamp).getTime();
+    if (elapsed < RANGE_COOLDOWN_MS && fileEntry.direction === direction) {
+      inMemoryRangeCooldowns.set(memKey, new Date(fileEntry.timestamp).getTime());
+      return true;
+    }
+  }
+  return false;
+}
+
+function setRangeCooldown(cooldowns, symbol, direction) {
+  const now = Date.now();
+  const memKey = `${symbol}_${direction}`;
+  inMemoryRangeCooldowns.set(memKey, now);
+  cooldowns[memKey] = { timestamp: new Date(now).toISOString(), direction };
+}
+
+// Initialize range cooldowns from file on boot
+(function initRangeCooldownsFromFile() {
+  const cooldowns = loadRangeCooldowns();
+  const now = Date.now();
+  for (const [key, entry] of Object.entries(cooldowns)) {
+    if (entry && entry.timestamp) {
+      const elapsed = now - new Date(entry.timestamp).getTime();
+      if (elapsed < RANGE_COOLDOWN_MS) {
+        inMemoryRangeCooldowns.set(key, new Date(entry.timestamp).getTime());
+      }
+    }
+  }
+  console.log(`[RangeAlert] Loaded ${inMemoryRangeCooldowns.size} active range cooldowns from file`);
+})();
+
 
 // ─── Generate Range Setup for a single symbol ───
 async function generateRangeSetup(symbol) {

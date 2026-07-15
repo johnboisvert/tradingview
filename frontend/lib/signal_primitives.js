@@ -266,3 +266,27 @@ export async function fetchBinanceKlines(symbol, interval, limit = 100) {
     return [];
   }
 }
+
+// ─── Formatting helpers (shared by swing/scalp/range engines) ───
+// ─── Helper: format large numbers for display ───
+export function formatNumber(num) {
+  if (num >= 1e12) return `${(num / 1e12).toFixed(2)}T`;
+  if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`;
+  if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
+  if (num >= 1e3) return `${(num / 1e3).toFixed(2)}K`;
+  return num.toFixed(2);
+}
+
+// ─── Helper: format price with appropriate decimals ───
+export function formatPrice(price) {
+  if (price >= 1000) return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (price >= 1) return price.toFixed(4);
+  return price.toFixed(6);
+}
+
+export function roundPrice(value, reference) {
+  if (reference >= 1000) return Math.round(value * 100) / 100;
+  if (reference >= 1) return Math.round(value * 100) / 100;
+  if (reference >= 0.01) return Math.round(value * 10000) / 10000;
+  return Math.round(value * 1000000) / 1000000;
+}

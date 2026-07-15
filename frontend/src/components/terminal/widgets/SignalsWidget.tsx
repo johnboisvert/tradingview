@@ -10,6 +10,26 @@ interface Signals {
   updatedAt?: number;
 }
 
+interface DerivSentiment {
+  score: number;
+  label: string;
+  funding: { avg_majors: number | null; btc: number | null };
+  options: { pc_btc: number | null; pc_eth: number | null };
+}
+
+function DerivGauge({ score }: { score: number }) {
+  // -100..100 → 0..100%
+  const pct = (score + 100) / 2;
+  return (
+    <div className="mt-1 relative h-1.5 rounded-sm bg-gradient-to-r from-red-500/60 via-white/10 to-emerald-500/60 overflow-visible">
+      <div
+        className="absolute top-1/2 -translate-y-1/2 w-1.5 h-3 rounded-sm bg-white shadow-[0_0_6px_rgba(255,255,255,0.7)] transition-all duration-700"
+        style={{ left: `calc(${pct}% - 3px)` }}
+      />
+    </div>
+  );
+}
+
 function FearGreedBar({ value }: { value: number }) {
   const pct = Math.min(100, Math.max(0, value));
   let color = "bg-emerald-500";
@@ -26,7 +46,22 @@ function FearGreedBar({ value }: { value: number }) {
 
 export default function SignalsWidget({ refreshMs = 300000 }: { refreshMs?: number }) {
   const [sig, setSig] = useState<Signals>({});
+  const [deriv, setDeriv] = useState<DerivSentiment | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    async function pullDeriv() {
+      try {
+        const r = await fetch("/api/v1/derivatives/sentiment");
+        const j = await r.json();
+        if (alive && j?.ok) setDeriv(j);
+      } catch { /* keep stale */ }
+    }
+    pullDeriv();
+    const id = setInterval(pullDeriv, 180000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -77,6 +112,26 @@ export default function SignalsWidget({ refreshMs = 300000 }: { refreshMs?: numb
       {loading && <div className="text-white/40">Loading signals…</div>}
       {!loading && (
         <>
+          {deriv && (
+            <div className="pb-2 border-b border-white/5">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] uppercase text-white/50 tracking-wider">Sentiment Dérivés</span>
+                <span
+                  data-testid="deriv-sentiment-score"
+                  className={`font-black text-lg ${deriv.score >= 15 ? "text-emerald-400" : deriv.score <= -15 ? "text-red-400" : "text-amber-300"}`}
+                >
+                  {deriv.score > 0 ? "+" : ""}{deriv.score}
+                </span>
+              </div>
+              <DerivGauge score={deriv.score} />
+              <div className="flex items-center justify-between mt-0.5">
+                <span data-testid="deriv-sentiment-label" className="text-[9px] text-white/40 uppercase">{deriv.label}</span>
+                <span className="text-[8px] text-white/30 tabular-nums">
+                  FND {deriv.funding.avg_majors != null ? `${(deriv.funding.avg_majors * 100).toFixed(3)}%` : "—"} · P/C {deriv.options.pc_btc ?? "—"}
+                </span>
+              </div>
+            </div>
+          )}
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[9px] uppercase text-white/50 tracking-wider">Fear &amp; Greed</span>

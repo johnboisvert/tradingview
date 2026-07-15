@@ -22,10 +22,18 @@ export default function registerDeribitOptionsRoutes(app) {
     if (!['BTC', 'ETH'].includes(currency)) {
       return res.status(400).json({ ok: false, error: 'currency must be BTC or ETH' });
     }
-    const c = cache[currency];
-    if (c && Date.now() - c.ts < CACHE_TTL_MS) return res.json(c.payload);
+    const payload = await getOptionsSummary(currency);
+    if (payload) return res.json(payload);
+    res.status(502).json({ ok: false, error: 'deribit unavailable' });
+  });
+}
 
-    try {
+// Shared getter (used by the route above and by derivatives sentiment).
+export async function getOptionsSummary(currency) {
+  const c = cache[currency];
+  if (c && Date.now() - c.ts < CACHE_TTL_MS) return c.payload;
+
+  try {
       const r = await fetch(`https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=${currency}&kind=option`, {
         headers: { 'Accept': 'application/json', 'User-Agent': 'CryptoIA/1.0' },
         signal: AbortSignal.timeout(10000),
@@ -87,11 +95,9 @@ export default function registerDeribitOptionsRoutes(app) {
         fetched_at: new Date().toISOString(),
       };
       cache[currency] = { ts: Date.now(), payload };
-      res.json(payload);
+      return payload;
     } catch (e) {
       console.error('[Deribit] options error:', e?.message);
-      if (c?.payload) return res.json(c.payload); // stale
-      res.status(502).json({ ok: false, error: e?.message || 'deribit unavailable' });
+      return cache[currency]?.payload || null; // stale or null
     }
-  });
-}
+  }

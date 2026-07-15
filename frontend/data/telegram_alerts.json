@@ -19,19 +19,19 @@
       "coins": []
     }
   },
-  "lastCheck": "2026-06-26T01:23:31.382Z",
+  "lastCheck": "2026-07-15T18:36:14.667Z",
   "lastAlerts": [
     {
       "type": "coingecko_signal",
-      "coin": "plasma",
+      "coin": "apecoin",
       "direction": "LONG",
-      "rr": 2.5,
-      "entry": 0.1021,
-      "tp1": 0.1057,
-      "tp2": 0.1244,
-      "tp3": 0.1378,
-      "sl": 0.0932,
-      "confidence": 94
+      "rr": 0.3,
+      "entry": 0.155502,
+      "tp1": 0.1568,
+      "tp2": 0.1585,
+      "tp3": 0.1622,
+      "sl": 0.1462,
+      "confidence": 90
     }
   ],
   "cooldowns": {

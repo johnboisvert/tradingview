@@ -139,93 +139,99 @@ export default function registerBinanceMarketRoutes(app) {
   });
 
   // -----------------------------------------------------------------
-  // Perp funding rates (Terminal Pro FundingWidget)
+  // Perp funding rates (Terminal Pro FundingWidget + derivatives sentiment)
   // GET /api/binance/funding → { ok, source, rows:[{symbol, funding_rate, mark_price, next_funding_time}] }
-  // Binance futures first; Bybit linear fallback (works from US-hosted servers).
   // -----------------------------------------------------------------
   app.get('/api/binance/funding', async (req, res) => {
-    if (fundingCache.payload && Date.now() - fundingCache.ts < FUNDING_TTL_MS) {
-      return res.json(fundingCache.payload);
-    }
-    // 1) Binance futures premiumIndex
-    try {
-      const r = await fetch('https://fapi.binance.com/fapi/v1/premiumIndex', {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'CryptoIA/1.0' },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (r.ok) {
-        const arr = await r.json();
-        const rows = (Array.isArray(arr) ? arr : [])
-          .filter((x) => typeof x?.symbol === 'string' && x.symbol.endsWith('USDT') && x.lastFundingRate !== undefined)
-          .map((x) => ({
-            symbol: x.symbol,
-            funding_rate: parseFloat(x.lastFundingRate),
-            mark_price: parseFloat(x.markPrice),
-            next_funding_time: Number(x.nextFundingTime) || null,
-          }))
-          .filter((x) => Number.isFinite(x.funding_rate));
-        if (rows.length > 0) {
-          const payload = { ok: true, source: 'binance', rows, fetched_at: new Date().toISOString() };
-          fundingCache = { ts: Date.now(), payload };
-          return res.json(payload);
-        }
-      }
-    } catch (e) {
-      console.error('[Funding] Binance futures error:', e?.message);
-    }
-    // 2) Bybit linear fallback
-    try {
-      const r = await fetch('https://api.bybit.com/v5/market/tickers?category=linear', {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'CryptoIA/1.0' },
-        signal: AbortSignal.timeout(8000),
-      });
-      const j = await r.json();
-      if (j.retCode === 0 && Array.isArray(j.result?.list)) {
-        const rows = j.result.list
-          .filter((x) => typeof x?.symbol === 'string' && x.symbol.endsWith('USDT') && x.fundingRate !== '')
-          .map((x) => ({
-            symbol: x.symbol,
-            funding_rate: parseFloat(x.fundingRate),
-            mark_price: parseFloat(x.markPrice),
-            next_funding_time: Number(x.nextFundingTime) || null,
-          }))
-          .filter((x) => Number.isFinite(x.funding_rate));
-        if (rows.length > 0) {
-          const payload = { ok: true, source: 'bybit', rows, fetched_at: new Date().toISOString() };
-          fundingCache = { ts: Date.now(), payload };
-          return res.json(payload);
-        }
-      }
-    } catch (e) {
-      console.error('[Funding] Bybit fallback error:', e?.message);
-    }
-    // 3) Gate.io fallback (no geo restrictions)
-    try {
-      const r = await fetch('https://api.gateio.ws/api/v4/futures/usdt/contracts', {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'CryptoIA/1.0' },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (r.ok) {
-        const arr = await r.json();
-        const rows = (Array.isArray(arr) ? arr : [])
-          .filter((x) => typeof x?.name === 'string' && x.name.endsWith('_USDT') && x.funding_rate !== undefined && !x.in_delisting)
-          .map((x) => ({
-            symbol: x.name.replace('_', ''),
-            funding_rate: parseFloat(x.funding_rate),
-            mark_price: parseFloat(x.mark_price),
-            next_funding_time: x.funding_next_apply ? Number(x.funding_next_apply) * 1000 : null,
-          }))
-          .filter((x) => Number.isFinite(x.funding_rate));
-        if (rows.length > 0) {
-          const payload = { ok: true, source: 'gateio', rows, fetched_at: new Date().toISOString() };
-          fundingCache = { ts: Date.now(), payload };
-          return res.json(payload);
-        }
-      }
-    } catch (e) {
-      console.error('[Funding] Gate.io fallback error:', e?.message);
-    }
-    if (fundingCache.payload) return res.json(fundingCache.payload); // stale
+    const payload = await getFundingRows();
+    if (payload) return res.json(payload);
     res.status(502).json({ ok: false, error: 'funding sources unavailable' });
   });
+}
+
+// Shared getter (used by the route above and by derivatives sentiment).
+// Binance futures first; Bybit linear then Gate.io fallbacks; 60s cache + stale.
+export async function getFundingRows() {
+  if (fundingCache.payload && Date.now() - fundingCache.ts < FUNDING_TTL_MS) {
+    return fundingCache.payload;
+  }
+  // 1) Binance futures premiumIndex
+  try {
+    const r = await fetch('https://fapi.binance.com/fapi/v1/premiumIndex', {
+      headers: { 'Accept': 'application/json', 'User-Agent': 'CryptoIA/1.0' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (r.ok) {
+      const arr = await r.json();
+      const rows = (Array.isArray(arr) ? arr : [])
+        .filter((x) => typeof x?.symbol === 'string' && x.symbol.endsWith('USDT') && x.lastFundingRate !== undefined)
+        .map((x) => ({
+          symbol: x.symbol,
+          funding_rate: parseFloat(x.lastFundingRate),
+          mark_price: parseFloat(x.markPrice),
+          next_funding_time: Number(x.nextFundingTime) || null,
+        }))
+        .filter((x) => Number.isFinite(x.funding_rate));
+      if (rows.length > 0) {
+        const payload = { ok: true, source: 'binance', rows, fetched_at: new Date().toISOString() };
+        fundingCache = { ts: Date.now(), payload };
+        return payload;
+      }
+    }
+  } catch (e) {
+    console.error('[Funding] Binance futures error:', e?.message);
+  }
+  // 2) Bybit linear fallback
+  try {
+    const r = await fetch('https://api.bybit.com/v5/market/tickers?category=linear', {
+      headers: { 'Accept': 'application/json', 'User-Agent': 'CryptoIA/1.0' },
+      signal: AbortSignal.timeout(8000),
+    });
+    const j = await r.json();
+    if (j.retCode === 0 && Array.isArray(j.result?.list)) {
+      const rows = j.result.list
+        .filter((x) => typeof x?.symbol === 'string' && x.symbol.endsWith('USDT') && x.fundingRate !== '')
+        .map((x) => ({
+          symbol: x.symbol,
+          funding_rate: parseFloat(x.fundingRate),
+          mark_price: parseFloat(x.markPrice),
+          next_funding_time: Number(x.nextFundingTime) || null,
+        }))
+        .filter((x) => Number.isFinite(x.funding_rate));
+      if (rows.length > 0) {
+        const payload = { ok: true, source: 'bybit', rows, fetched_at: new Date().toISOString() };
+        fundingCache = { ts: Date.now(), payload };
+        return payload;
+      }
+    }
+  } catch (e) {
+    console.error('[Funding] Bybit fallback error:', e?.message);
+  }
+  // 3) Gate.io fallback (no geo restrictions)
+  try {
+    const r = await fetch('https://api.gateio.ws/api/v4/futures/usdt/contracts', {
+      headers: { 'Accept': 'application/json', 'User-Agent': 'CryptoIA/1.0' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (r.ok) {
+      const arr = await r.json();
+      const rows = (Array.isArray(arr) ? arr : [])
+        .filter((x) => typeof x?.name === 'string' && x.name.endsWith('_USDT') && x.funding_rate !== undefined && !x.in_delisting)
+        .map((x) => ({
+          symbol: x.name.replace('_', ''),
+          funding_rate: parseFloat(x.funding_rate),
+          mark_price: parseFloat(x.mark_price),
+          next_funding_time: x.funding_next_apply ? Number(x.funding_next_apply) * 1000 : null,
+        }))
+        .filter((x) => Number.isFinite(x.funding_rate));
+      if (rows.length > 0) {
+        const payload = { ok: true, source: 'gateio', rows, fetched_at: new Date().toISOString() };
+        fundingCache = { ts: Date.now(), payload };
+        return payload;
+      }
+    }
+  } catch (e) {
+    console.error('[Funding] Gate.io fallback error:', e?.message);
+  }
+  return fundingCache.payload || null; // stale or null
 }

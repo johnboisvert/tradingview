@@ -40,7 +40,7 @@
       "direction": "LONG"
     },
     "ether-fi_signal": {
-      "timestamp": "2026-06-25T20:16:15.168Z",
+      "timestamp": "2026-07-15T18:16:42.419Z",
       "direction": "LONG"
     },
     "jupiter-exchange-solana_signal": {
@@ -57,6 +57,10 @@
     },
     "injective-protocol_signal": {
       "timestamp": "2026-07-14T13:51:12.208Z",
+      "direction": "LONG"
+    },
+    "pendle_signal": {
+      "timestamp": "2026-07-15T18:16:44.716Z",
       "direction": "LONG"
     }
   }

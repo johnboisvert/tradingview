@@ -16,6 +16,7 @@ import CommunityFeedWidget from "@/components/terminal/widgets/CommunityFeedWidg
 import SignalsWidget from "@/components/terminal/widgets/SignalsWidget";
 import OrderBookWidget from "@/components/terminal/widgets/OrderBookWidget";
 import FundingWidget from "@/components/terminal/widgets/FundingWidget";
+import OptionsWidget from "@/components/terminal/widgets/OptionsWidget";
 import CommandBar from "@/components/terminal/CommandBar";
 import HelpModal from "@/components/terminal/HelpModal";
 import {
@@ -27,7 +28,7 @@ import {
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 // ---------- Widget registry ----------
-type WidgetId = "chart" | "chart2" | "ticker" | "signals" | "whales" | "news" | "feed" | "orderbook" | "funding";
+type WidgetId = "chart" | "chart2" | "ticker" | "signals" | "whales" | "news" | "feed" | "orderbook" | "funding" | "options";
 
 interface WidgetDef {
   id: WidgetId;
@@ -47,6 +48,7 @@ const WIDGETS: Record<WidgetId, WidgetDef> = {
   feed:      { id: "feed",      tag: "FED", title: "Community Trades",       accent: "cyan",  removable: false },
   orderbook: { id: "orderbook", tag: "OBK", title: "Order Book Depth",       accent: "amber", removable: true },
   funding:   { id: "funding",   tag: "FND", title: "Funding Rates · Perps",  accent: "green", removable: true },
+  options:   { id: "options",   tag: "OPT", title: "Options Chain · Deribit", accent: "cyan",  removable: true },
 };
 
 // ---------- Preset layouts ----------
@@ -302,6 +304,10 @@ export default function Terminal() {
       if (items.find(x => x.i === "funding")) removeWidget("funding");
       else addWidget("funding");
     }
+    else if (name === "options") {
+      if (items.find(x => x.i === "options")) removeWidget("options");
+      else addWidget("options");
+    }
     else if (name === "share") setShareOpen(true);
     else if (name in LAYOUT_PRESETS) applyPreset(name as LayoutKey);
     else if (name === "sound") {
@@ -339,6 +345,7 @@ export default function Terminal() {
       case "feed":      return <CommunityFeedWidget />;
       case "orderbook": return <OrderBookWidget symbol={symbol} />;
       case "funding":   return <FundingWidget />;
+      case "options":   return <OptionsWidget />;
       default:          return null;
     }
   };
@@ -536,7 +543,7 @@ export default function Terminal() {
         {/* Add-widget bar (only visible when a removable widget is missing) */}
         <div className="flex items-center gap-2 mt-2 text-[10px] text-white/50 uppercase tracking-wider">
           <span className="text-white/40">+ Ajouter :</span>
-          {(["chart2", "orderbook", "funding"] as WidgetId[]).map(id => {
+          {(["chart2", "orderbook", "funding", "options"] as WidgetId[]).map(id => {
             const active = !!items.find(x => x.i === id);
             return (
               <button

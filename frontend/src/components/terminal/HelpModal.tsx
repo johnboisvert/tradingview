@@ -40,6 +40,7 @@ const SECTIONS = [
       { key: "@sound", desc: "Toggle alertes sonores (whales)" },
       { key: "@sync", desc: "Sync cloud du layout — multi-appareils (email Elite)" },
       { key: "@funding", desc: "Toggle widget Funding Rates (perps Binance/Bybit)" },
+      { key: "@options", desc: "Toggle widget Options Chain BTC/ETH (Deribit)" },
       { key: "@share", desc: "Partager mon layout sur X / Discord" },
       { key: "@chart2", desc: "Afficher/masquer un second chart (multi-chart)" },
       { key: "@orderbook", desc: "Afficher/masquer le carnet d'ordres (Binance depth)" },

@@ -1,297 +1,517 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
 import {
   BarChart3,
-  RefreshCw,
-  Target,
+  Waves,
   Shield,
-  Zap,
-  Clock,
-  AlertTriangle,
-  CheckCircle2,
-  TrendingUp,
-  TrendingDown,
-  Crown,
-  Award,
-  Flame,
-  BookOpen,
-  Sparkles,
-  Printer,
+  Coins,
+  GitBranch,
   Compass,
-  Activity,
-  Globe,
-  Eye,
+  Sparkles,
+  Brain,
+  CheckCircle2,
+  Clock,
+  LayoutGrid,
+  ChevronRight,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 /* ─────────────────────────────────────────────────────────────
  * Types
  * ──────────────────────────────────────────────────────────── */
 
-interface TimeframePreset {
-  timeframe: string;
+interface IndicatorScreenshot {
+  src: string;
+  caption: string;
+}
+
+interface Indicator {
+  id: string;
   name: string;
-  winrate: number;
-  tp1: number;
-  tp3: number;
-  sl: number;
-  pnl: number;
-  worst: string;
-  badge?: "RECOMMANDÉ" | "TOP" | null;
-  accent: string; // tailwind gradient class
-}
-
-interface EntryRule {
-  condition: string;
-  action: string;
-  tone: "good" | "warn" | "bad" | "neutral";
-}
-
-interface TradeStep {
-  step: string;
-  action: string;
-}
-
-interface CapitalRow {
-  capital: string;
-  perTrade: string;
-  leverage: string;
-  tp1: string;
-  tp3: string;
-  sl: string;
-  monthly: string;
-}
-
-interface SessionRow {
-  session: string;
-  montreal: string;
-  utc: string;
-  quality: "MEILLEUR" | "BON" | "EVITER";
-}
-
-interface RoutineRow {
-  hour: string;
-  action: string;
+  tagline: string;
+  icon: LucideIcon;
+  accent: {
+    badge: string;
+    title: string;
+    border: string;
+    glow: string;
+    check: string;
+  };
+  description: string[];
+  features: string[];
+  dashboard?: string[];
+  timeframes?: string;
+  screenshots: IndicatorScreenshot[];
+  ready: boolean;
 }
 
 /* ─────────────────────────────────────────────────────────────
- * Static data (mirrors /report & /strategy content)
+ * Accent palettes
  * ──────────────────────────────────────────────────────────── */
 
-const PRESETS: TimeframePreset[] = [
-  {
-    timeframe: "5M",
-    name: "Scalp 5M",
-    winrate: 81.3,
-    tp1: 71.9,
-    tp3: 41.7,
-    sl: 16.6,
-    pnl: 0.71,
-    worst: "3-5",
-    badge: "RECOMMANDÉ",
-    accent: "from-emerald-500 via-teal-500 to-cyan-500",
+const ACCENTS = {
+  cyan: {
+    badge: "border-cyan-400/30 bg-cyan-500/10 text-cyan-200",
+    title: "from-cyan-300 via-teal-300 to-emerald-300",
+    border: "border-cyan-400/20 hover:border-cyan-400/50",
+    glow: "bg-cyan-500/20",
+    check: "text-cyan-300",
   },
-  {
-    timeframe: "15M",
-    name: "Crypto RR Safe 15min",
-    winrate: 81.0,
-    tp1: 80.4,
-    tp3: 53.3,
-    sl: 16.0,
-    pnl: 5.32,
-    worst: "1-4",
-    badge: "TOP",
-    accent: "from-violet-500 via-purple-500 to-fuchsia-500",
+  violet: {
+    badge: "border-violet-400/30 bg-violet-500/10 text-violet-200",
+    title: "from-violet-300 via-fuchsia-300 to-pink-300",
+    border: "border-violet-400/20 hover:border-violet-400/50",
+    glow: "bg-violet-500/20",
+    check: "text-violet-300",
   },
-  {
-    timeframe: "1H",
-    name: "Crypto Safe 1H",
-    winrate: 75.1,
-    tp1: 70.1,
-    tp3: 36.7,
-    sl: 22.0,
-    pnl: 4.36,
-    worst: "2-4",
-    badge: null,
-    accent: "from-sky-500 via-blue-500 to-indigo-500",
+  emerald: {
+    badge: "border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
+    title: "from-emerald-300 via-teal-300 to-cyan-300",
+    border: "border-emerald-400/20 hover:border-emerald-400/50",
+    glow: "bg-emerald-500/20",
+    check: "text-emerald-300",
   },
-  {
-    timeframe: "4H",
-    name: "Crypto Safe 4H",
-    winrate: 77.8,
-    tp1: 72.9,
-    tp3: 41.5,
-    sl: 17.7,
-    pnl: 10.80,
-    worst: "2-4",
-    badge: null,
-    accent: "from-amber-500 via-orange-500 to-rose-500",
+  amber: {
+    badge: "border-amber-400/30 bg-amber-500/10 text-amber-200",
+    title: "from-amber-300 via-orange-300 to-rose-300",
+    border: "border-amber-400/20 hover:border-amber-400/50",
+    glow: "bg-amber-500/20",
+    check: "text-amber-300",
   },
-];
+  sky: {
+    badge: "border-sky-400/30 bg-sky-500/10 text-sky-200",
+    title: "from-sky-300 via-blue-300 to-indigo-300",
+    border: "border-sky-400/20 hover:border-sky-400/50",
+    glow: "bg-sky-500/20",
+    check: "text-sky-300",
+  },
+  rose: {
+    badge: "border-rose-400/30 bg-rose-500/10 text-rose-200",
+    title: "from-rose-300 via-pink-300 to-fuchsia-300",
+    border: "border-rose-400/20 hover:border-rose-400/50",
+    glow: "bg-rose-500/20",
+    check: "text-rose-300",
+  },
+  lime: {
+    badge: "border-lime-400/30 bg-lime-500/10 text-lime-200",
+    title: "from-lime-300 via-emerald-300 to-teal-300",
+    border: "border-lime-400/20 hover:border-lime-400/50",
+    glow: "bg-lime-500/20",
+    check: "text-lime-300",
+  },
+  fuchsia: {
+    badge: "border-fuchsia-400/30 bg-fuchsia-500/10 text-fuchsia-200",
+    title: "from-fuchsia-300 via-violet-300 to-cyan-300",
+    border: "border-fuchsia-400/20 hover:border-fuchsia-400/50",
+    glow: "bg-fuchsia-500/20",
+    check: "text-fuchsia-300",
+  },
+} as const;
 
-const ENTRY_RULES: EntryRule[] = [
-  { condition: "Score 7-10 + Trend 4H confirmé", action: "Entrez FULL SIZE", tone: "good" },
-  { condition: "Score 5-6 + Trend 4H confirmé", action: "Entrez 50% de la taille", tone: "good" },
-  { condition: "Score 5+ + Trend 4H NEUTRE", action: "Entrez 50% de la taille", tone: "neutral" },
-  { condition: "Score 5+ + Trend 4H opposé", action: "SKIP — ne tradez pas", tone: "bad" },
-  { condition: "Score 1-4", action: "SKIP — signal trop faible", tone: "warn" },
-];
+/* ─────────────────────────────────────────────────────────────
+ * Indicators data
+ * ──────────────────────────────────────────────────────────── */
 
-const TRADE_STEPS: TradeStep[] = [
-  { step: "Signal reçu", action: "Entrez à E1 (market order)" },
-  { step: "TP1 touché", action: "Fermez 30% — SL au Break Even" },
-  { step: "TP2 touché", action: "Fermez 25% — laissez courir le reste" },
-  { step: "TP3 touché", action: "Fermez 20% — Trailing Stop gère le reste" },
-  { step: "TP4 / TP5", action: "Le Trailing Stop ferme automatiquement" },
-  { step: "SL touché avant TP1", action: "Acceptez la perte, passez au suivant" },
-];
-
-const CAPITAL_ROWS: CapitalRow[] = [
-  { capital: "1,000$", perTrade: "100$", leverage: "x10", tp1: "+13$", tp3: "+39$", sl: "-12$", monthly: "+360$" },
-  { capital: "5,000$", perTrade: "250$", leverage: "x10", tp1: "+33$", tp3: "+98$", sl: "-30$", monthly: "+900$" },
-  { capital: "10,000$", perTrade: "500$", leverage: "x10", tp1: "+65$", tp3: "+195$", sl: "-60$", monthly: "+1,800$" },
-  { capital: "25,000$", perTrade: "500$", leverage: "x20", tp1: "+130$", tp3: "+390$", sl: "-120$", monthly: "+3,600$" },
-];
-
-const SESSIONS: SessionRow[] = [
-  { session: "Tokyo", montreal: "19h - 3h", utc: "0h - 8h", quality: "EVITER" },
-  { session: "Londres", montreal: "3h - 5h", utc: "8h - 10h", quality: "BON" },
-  { session: "Overlap (LON+NY)", montreal: "8h - 11h", utc: "13h - 16h", quality: "MEILLEUR" },
-  { session: "New York", montreal: "8h - 16h", utc: "13h - 21h", quality: "BON" },
-];
-
-const ROUTINE: RoutineRow[] = [
-  { hour: "7h45", action: "Ouvrez TradingView, scannez vos paires Note A en 15M" },
-  { hour: "8h - 11h", action: "TRADEZ ACTIVEMENT — Overlap = meilleur moment" },
-  { hour: "11h - 14h", action: "Tradez si bon signal (Score 6+, Trend confirmé), sinon attendez" },
-  { hour: "14h - 16h", action: "Derniers trades, fermez les positions ouvertes avant 16h" },
-  { hour: "16h+", action: "STOP — Ne tradez plus. Revenez demain matin." },
-];
-
-const FEATURES: { title: string; desc: string }[] = [
+const INDICATORS: Indicator[] = [
   {
-    title: "Signaux automatiques",
-    desc: "EMA crossover + scoring IA (1-10) pour identifier les meilleures entrées LONG et SHORT.",
+    id: "riskglow",
+    name: "RiskGlow",
+    tagline: "Tendance et risque visuels en un coup d'œil",
+    icon: Shield,
+    accent: ACCENTS.cyan,
+    description: [
+      "RiskGlow Full Display est un indicateur de tendance et de risque visuel basé sur plusieurs moyennes mobiles lissées. Il utilise notamment des courbes de type HMA, JMA, WMA ainsi que des moyennes rapides et lentes.",
+      "Les courbes turquoise représentent une structure haussière, tandis que les courbes rouges représentent une structure baissière.",
+      "L'objectif est de montrer rapidement : la direction dominante, le changement de tendance, la distance du prix par rapport à une entrée potentielle, le niveau de risque et la volatilité mesurée par l'ATR.",
+      "Les signaux ont été filtrés pour éviter les répétitions inutiles et les erreurs produites par certaines conditions booléennes.",
+    ],
+    features: [
+      "Tendance haussière ou baissière",
+      "Rubans de moyennes mobiles (HMA, JMA, WMA)",
+      "Signaux d'achat et de vente",
+      "Filtre ATR",
+      "Prévention des signaux répétés",
+      "Tableau de risque intégré",
+    ],
+    dashboard: [
+      "Niveau de risque (Risk Level)",
+      "Proximité d'une entrée (Entry Distance)",
+      "Percentile de volatilité (ATR %ile)",
+      "Valeur de l'ATR",
+    ],
+    timeframes: "15 min, 1 h et 4 h",
+    screenshots: [
+      {
+        src: "/indicators/riskglow-1.png",
+        caption: "ETH/USDT 15m — Rubans turquoise (haussier) / rouge (baissier) avec tableau de risque.",
+      },
+      {
+        src: "/indicators/riskglow-2.png",
+        caption: "ZEC/USDT 1h — Changements de tendance et signaux filtrés sur timeframe supérieur.",
+      },
+    ],
+    ready: true,
   },
   {
-    title: "5 niveaux Take Profit",
-    desc: "TP1 à TP5 calculés dynamiquement avec ATR. Prise de profit progressive : 30%, 25%, 20%, 15%, 10%.",
+    id: "volume-confirmed",
+    name: "Volume Confirmed",
+    tagline: "Signaux confirmés par le volume",
+    icon: BarChart3,
+    accent: ACCENTS.emerald,
+    description: [],
+    features: [],
+    screenshots: [],
+    ready: false,
   },
   {
-    title: "Stop Loss intelligent",
-    desc: "SL dynamique basé sur ATR + passage automatique au Break Even dès que TP1 est touché.",
+    id: "waverider",
+    name: "WaveRider Divergence Oscillator",
+    tagline: "Oscillateur de divergences",
+    icon: Waves,
+    accent: ACCENTS.sky,
+    description: [],
+    features: [],
+    screenshots: [],
+    ready: false,
   },
   {
-    title: "Multi-Timeframe",
-    desc: "Presets automatiques : Scalp 5M, Intraday 15M, Swing 1H, Swing 4H. S'adapte à votre style.",
+    id: "goodguys",
+    name: "GoodGuys Spot Daily",
+    tagline: "Investissement spot long terme avec DCA automatique",
+    icon: Coins,
+    accent: ACCENTS.amber,
+    description: [
+      "GoodGuys Spot Daily est un indicateur conçu pour l'investissement spot à long terme, principalement sur le graphique journalier.",
+      "Son objectif est d'aider l'investisseur à : acheter sur des replis structurés, accumuler progressivement avec une méthode DCA, suivre son prix moyen, prendre des profits partiels et protéger les gains avec une sortie dynamique.",
+      "Les signaux Good Buy et Good Sell proviennent de pivots journaliers confirmés. Les achats peuvent être filtrés par : l'EMA50, l'EMA200, la tendance long terme, le RSI ou un régime haussier uniquement.",
+      "Le module DCA permet plusieurs méthodes : DCA temporel, DCA basé sur le prix, DCA hybride ou DCA désactivé.",
+      "L'indicateur contient également un tableau multi-timeframe pour les tendances 1D, 3D et 1W.",
+    ],
+    features: [
+      "Good Buy et Good Sell (pivots confirmés)",
+      "DCA automatique (temporel, prix, hybride)",
+      "Prix moyen et suivi du PnL",
+      "TP1, TP2 et TP3",
+      "Trailing stop",
+      "Protection EMA200",
+      "Verrouillage des gains",
+      "Tableau MTF (1D, 3D, 1W)",
+      "Alertes structurées",
+      "Conçu pour le Daily",
+    ],
+    dashboard: [
+      "Capital total contribué",
+      "Capital récupéré",
+      "Coût de la position",
+      "Valeur actuelle de la position",
+      "Unités accumulées",
+      "Prix moyen",
+      "PnL réalisé",
+      "PnL latent",
+      "Rendement global",
+    ],
+    timeframes: "graphique journalier (Daily)",
+    screenshots: [
+      {
+        src: "/indicators/goodguys-1.png",
+        caption: "ETH/USDT 1D — Signaux Good Buy / Good Sell avec DCA Auto Hybride et tableau de suivi complet.",
+      },
+      {
+        src: "/indicators/goodguys-2.png",
+        caption: "BTC/USDT 1D — Pivots confirmés et tableau multi-timeframe 1D / 3D / 1W.",
+      },
+      {
+        src: "/indicators/goodguys-3.png",
+        caption: "XRP/USDT 1D — Accumulation DCA avec prix moyen, PnL réalisé et rendement global.",
+      },
+      {
+        src: "/indicators/goodguys-4.png",
+        caption: "ESPORTS/USDT 1D — Suivi de position spot : unités accumulées, trailing et verrouillage des gains.",
+      },
+    ],
+    ready: true,
   },
   {
-    title: "Kill Zones",
-    desc: "Détection automatique des sessions Londres et New York + alerte OVERLAP pour les meilleurs moments.",
+    id: "divergx",
+    name: "DivergX One",
+    tagline: "Structure de marché, zones Premium/Discount et Fibonacci en intraday",
+    icon: GitBranch,
+    accent: ACCENTS.rose,
+    description: [
+      "DivergX One est un indicateur intraday combinant : structure de marché, zones Premium et Discount, niveaux de Fibonacci, sessions de marché, tendances multi-timeframes, signaux vectoriels et signaux de tendance.",
+      "Il détecte les principales structures : HH (Higher High), HL (Higher Low), LH (Lower High), LL (Lower Low), BOS (Break of Structure) et CHoCH (Change of Character).",
+      "L'indicateur construit une zone Premium dans la partie supérieure du dernier mouvement et une zone Discount dans la partie inférieure.",
+      "Il affiche aussi les niveaux de retracement et d'extension, notamment : 0, 0,236, 0,382, 0,5, 0,618, 0,65, 0,786, 1 ainsi que les extensions supérieures et inférieures.",
+      "L'affichage a été nettoyé pour réduire les anciennes zones, les anciennes lignes et les signaux répétés.",
+    ],
+    features: [
+      "Structure de marché (HH, HL, LH, LL)",
+      "BOS et CHoCH",
+      "Premium Zone et Discount Zone",
+      "Niveaux Fibonacci (retracements + extensions)",
+      "Sessions Asie, Londres et New York",
+      "Trend Buy et Trend Sell",
+      "Vector Buy et Vector Sell",
+      "Tendances MTF",
+      "Zones d'offre et de demande",
+      "Nettoyage automatique des anciens objets",
+    ],
+    dashboard: [
+      "Session actuelle",
+      "Tendance BTC 4 h",
+      "Tendance 15 min",
+      "Tendance 1 h",
+      "Tendance 4 h",
+      "Tendance journalière",
+    ],
+    timeframes: "trading intraday (15 min à 1 h)",
+    screenshots: [
+      {
+        src: "/indicators/divergx-1.png",
+        caption: "ESPORTS/USDT 15m — Premium/Discount Zones, niveaux Fibonacci, signaux Trend Buy/Sell et tableau MTF.",
+      },
+      {
+        src: "/indicators/divergx-2.png",
+        caption: "TAO/USDT 1h — Structure de marché (LH, LL, BOS), zones d'offre/demande et tendances multi-timeframes.",
+      },
+    ],
+    ready: true,
   },
   {
-    title: "PVSRA + Trend 4H",
-    desc: "Volume analysis (Climax/Rising) et confirmation de tendance sur le 4H pour des signaux fiables.",
+    id: "vector-confluence",
+    name: "Vector Confluence Pro™",
+    tagline: "Confluence de vecteurs multi-signaux",
+    icon: Compass,
+    accent: ACCENTS.violet,
+    description: [],
+    features: [],
+    screenshots: [],
+    ready: false,
   },
   {
-    title: "8 alertes configurables",
-    desc: "LONG, SHORT, TP1-TP5, SL. Notifications push, email, webhook.",
+    id: "magic-cycles",
+    name: "Magic JB IA Cycles",
+    tagline: "Investissement spot long terme basé sur les cycles Bitcoin",
+    icon: Sparkles,
+    accent: ACCENTS.fuchsia,
+    description: [
+      "Magic JB Cycles est un indicateur d'investissement spot à long terme basé sur les cycles historiques du marché des cryptomonnaies. Il est principalement conçu pour les graphiques Weekly et Monthly.",
+      "L'indicateur utilise Bitcoin comme référence du cycle global, même lorsqu'il est affiché sur un autre actif. Il analyse notamment : la position dans le cycle post-halving, le régime haussier ou baissier, le Mayer Multiple, le Pi Cycle Top, la capitalisation relative, l'ATH potentiel du cycle, les phases d'accumulation, les risques de sommet, les zones de vente et les périodes de forte accumulation.",
+      "Les zones Mayer servent à détecter : une zone d'achat favorable, une zone d'accumulation, une zone d'accumulation forte et une zone de surchauffe pouvant suggérer une prise de profits.",
+      "Les événements Whale Buy et Whale Dump représentent des conditions exceptionnelles de volume, de tendance ou de cycle pouvant correspondre à une accumulation importante ou à une distribution agressive.",
+      "L'indicateur contient aussi : un tableau de saisonnalité mensuelle, un tableau de DCA, des statistiques de signaux, un module Fear and Greed proxy, des niveaux TP à long terme et une estimation de l'ATH du cycle. L'historique visuel a été limité afin de garder le Weekly et le Monthly lisibles.",
+    ],
+    features: [
+      "Cycles Bitcoin et analyse post-halving",
+      "Mayer Multiple et Pi Cycle Top",
+      "Good Buy et Good Sell",
+      "Whale Buy et Whale Dump",
+      "Cycle Bottom et Cycle Top",
+      "Zones d'accumulation",
+      "DCA Cycle-Aware",
+      "Saisonnalité mensuelle",
+      "Statistiques de signaux",
+      "Fear and Greed proxy",
+      "Objectifs long terme (TP)",
+      "Tableaux Weekly et Monthly",
+      "Nettoyage automatique de l'historique",
+    ],
+    dashboard: [
+      "Nombre de mois depuis le halving",
+      "État du Bear Market",
+      "Valeur du Mayer Multiple",
+      "Niveau Pi Cycle",
+      "Situation de la capitalisation",
+      "Phase actuelle",
+      "Action suggérée",
+    ],
+    timeframes: "Weekly et Monthly",
+    screenshots: [
+      {
+        src: "/indicators/magiccycles-1.png",
+        caption: "BTC/USDT 1M — Cycle post-halving, zones Mayer, Whale Buy/Dump, saisonnalité 8 ans et tableau de cycle.",
+      },
+      {
+        src: "/indicators/magiccycles-2.png",
+        caption: "ETH/USDT 1M — Good Buy / Good Sell avec Fear & Greed proxy et statistiques de backtest.",
+      },
+      {
+        src: "/indicators/magiccycles-3.png",
+        caption: "XRP/USDT 1W — Zones d'accumulation forte, Cycle Bottom et phases d'action suggérées.",
+      },
+      {
+        src: "/indicators/magiccycles-4.png",
+        caption: "SUI/USDT 1W — Mayer Zones, Whale Buy/Dump et estimation de l'ATH du cycle.",
+      },
+    ],
+    ready: true,
   },
   {
-    title: "Dashboard Performance",
-    desc: "Indicateur séparé pour tracker winrate, TP%, profit estimé sur chaque paire.",
+    id: "crypto-ia-edge",
+    name: "Crypto IA Edge",
+    tagline: "L'avantage IA sur le marché crypto",
+    icon: Brain,
+    accent: ACCENTS.lime,
+    description: [],
+    features: [],
+    screenshots: [],
+    ready: false,
   },
-];
-
-const FAQ_ITEMS: { q: string; a: string }[] = [
-  {
-    q: "Sur quelle plateforme fonctionne Magic JB IA ?",
-    a: "Magic JB IA est un indicateur Pine Script qui fonctionne directement sur TradingView. Une fois l'accès obtenu, il suffit de l'ajouter à votre graphique en quelques clics.",
-  },
-  {
-    q: "Est-ce que ça marche sur toutes les cryptos ?",
-    a: "Oui, l'indicateur a été testé et optimisé sur plus de 100 paires crypto (BTC, ETH, SOL, altcoins majeurs…). Il fonctionne aussi sur les timeframes 5M, 15M, 1H et 4H.",
-  },
-  {
-    q: "Comment je reçois les alertes ?",
-    a: "Vous recevez les alertes directement via TradingView : notifications push mobile, email, SMS, et webhooks (Discord, Telegram, bots de trading automatisés).",
-  },
-  {
-    q: "Est-ce que je peux annuler à tout moment ?",
-    a: "Oui. Les abonnements Mensuel et Trimestriel sont sans engagement — vous pouvez annuler quand vous voulez. La licence À vie est un paiement unique, aucun renouvellement nécessaire.",
-  },
-  {
-    q: "Quel est le winrate réel ?",
-    a: "Le winrate moyen est de 81% sur backtest de plus de 100 cryptos, avec une profitabilité positive sur tous les timeframes testés. Les performances passées ne garantissent cependant pas les résultats futurs.",
-  },
-  {
-    q: "Y a-t-il un essai gratuit ?",
-    a: "Contactez-moi directement par email à cryptoia2026@gmail.com — je serai ravi de discuter de vos besoins et des options disponibles.",
-  },
-];
-
-const SCREENSHOTS: { src: string; title: string; caption: string }[] = [
-  {
-    src: "/magic-screenshots/bico-long.png",
-    title: "BICO / USDT — LONG en cours (TP1 touché)",
-    caption: "Signal LONG 15M, Score 5/10, Trend 4H BULL — TP1 atteint, SL déplacé au Break Even automatiquement.",
-  },
-  {
-    src: "/magic-screenshots/apt-short.png",
-    title: "APT / USDT — SHORT exécuté (TP2 atteint)",
-    caption: "Signal SHORT 15M, Winrate 77.5% (62W / 18L), R:R TP2 = 1:2.12 — Momentum négatif confirmé.",
-  },
-  {
-    src: "/magic-screenshots/tarifs.png",
-    title: "MASK / USDT — LONG (TP1 + SL -> BE)",
-    caption: "Signal LONG 15M, Score 7/10, Trend 4H BULL — Preset Crypto RR Safe 15min, Winrate 78.8%.",
-  },
-  {
-    src: "/magic-screenshots/fonctionnalites.png",
-    title: "Dashboard Fonctionnalités — Magic JB IA",
-    caption: "Vue d'ensemble des 8 fonctionnalités clés de l'indicateur : signaux, TP, SL, Multi-Timeframe, Kill Zones, PVSRA…",
-  },
-];
-
-const GOLDEN_RULES: string[] = [
-  "Ne risquez JAMAIS plus de 1-2% de votre capital par trade",
-  "Maximum 3 trades ouverts en même temps",
-  "Arrêtez de trader après 3 pertes d'affilée — revenez le lendemain",
-  "Ne tradez que pendant les Kill Zones (Londres + New York)",
-  "SHORT + Trend 4H BULL = SKIP. LONG + Trend 4H BEAR = SKIP",
-  "Jamais de revenge trade — si le SL est touché, attendez le prochain signal",
-  "SL au Break Even dès que TP1 touché — vous ne pouvez plus perdre",
-  "Commencez petit, augmentez progressivement quand les résultats sont confirmés en live",
 ];
 
 /* ─────────────────────────────────────────────────────────────
- * Component
+ * Components
+ * ──────────────────────────────────────────────────────────── */
+
+function IndicatorNavCard({ ind }: { ind: Indicator }) {
+  const Icon = ind.icon;
+  return (
+    <a
+      href={`#${ind.id}`}
+      data-testid={`indicator-nav-${ind.id}`}
+      className={`group relative overflow-hidden rounded-2xl border bg-[#0d1526] p-5 transition ${ind.accent.border}`}
+    >
+      <div className={`absolute -top-10 -right-10 h-28 w-28 rounded-full blur-3xl ${ind.accent.glow}`} />
+      <div className="relative flex items-start gap-4">
+        <div className={`shrink-0 h-11 w-11 rounded-xl grid place-items-center border ${ind.accent.badge}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-sm font-bold text-white leading-snug">{ind.name}</div>
+          <div className="mt-1 text-xs text-white/55 leading-relaxed">{ind.tagline}</div>
+        </div>
+        <ChevronRight className="ml-auto shrink-0 h-4 w-4 text-white/30 group-hover:text-white/70 group-hover:translate-x-0.5 transition" />
+      </div>
+    </a>
+  );
+}
+
+function ScreenshotCard({ shot, border }: { shot: IndicatorScreenshot; border: string }) {
+  return (
+    <a
+      href={shot.src}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`group relative overflow-hidden rounded-2xl border bg-[#0d1526] transition ${border}`}
+    >
+      <div className="aspect-[16/9] overflow-hidden bg-[#0a0e17]">
+        <img
+          src={shot.src}
+          alt={shot.caption}
+          loading="lazy"
+          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+        />
+      </div>
+      <div className="absolute top-3 right-3 rounded-md bg-black/60 backdrop-blur-sm px-2 py-1 text-[10px] font-semibold text-white/80 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition">
+        Agrandir ↗
+      </div>
+      <div className="px-4 py-3 border-t border-white/5">
+        <div className="text-xs text-white/60 leading-relaxed">{shot.caption}</div>
+      </div>
+    </a>
+  );
+}
+
+function IndicatorSection({ ind }: { ind: Indicator }) {
+  const Icon = ind.icon;
+  return (
+    <section
+      id={ind.id}
+      data-testid={`indicator-section-${ind.id}`}
+      className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 scroll-mt-20 border-t border-white/5"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className={`shrink-0 h-14 w-14 rounded-2xl grid place-items-center border ${ind.accent.badge}`}>
+          <Icon className="h-7 w-7" />
+        </div>
+        <div>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+            <span className={`bg-gradient-to-r ${ind.accent.title} bg-clip-text text-transparent`}>
+              {ind.name}
+            </span>
+          </h2>
+          <p className="mt-1 text-sm sm:text-base text-white/60">{ind.tagline}</p>
+        </div>
+      </div>
+
+      {!ind.ready ? (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center">
+          <Clock className="mx-auto h-6 w-6 text-white/40" />
+          <p className="mt-3 text-sm text-white/60">
+            Fiche détaillée en préparation — description complète et captures d'écran à venir.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="lg:col-span-3 space-y-4">
+              {ind.description.map((p, i) => (
+                <p key={i} className="text-sm sm:text-base leading-relaxed text-slate-300">
+                  {p}
+                </p>
+              ))}
+              {ind.timeframes && (
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/70">
+                  <Clock className="h-3.5 w-3.5" />
+                  Affichage adapté au {ind.timeframes}
+                </div>
+              )}
+            </div>
+
+            <div className="lg:col-span-2 space-y-4">
+              <div className={`rounded-2xl border bg-[#0d1526] p-5 ${ind.accent.border}`}>
+                <div className="text-xs font-bold uppercase tracking-wider text-white/50">
+                  Fonctions principales
+                </div>
+                <ul className="mt-3 space-y-2">
+                  {ind.features.map((f, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-sm text-white/80">
+                      <CheckCircle2 className={`shrink-0 mt-0.5 h-4 w-4 ${ind.accent.check}`} />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {ind.dashboard && (
+                <div className="rounded-2xl border border-white/10 bg-[#0d1526] p-5">
+                  <div className="text-xs font-bold uppercase tracking-wider text-white/50">
+                    Tableau de bord
+                  </div>
+                  <ul className="mt-3 space-y-2">
+                    {ind.dashboard.map((d, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-sm text-white/80">
+                        <LayoutGrid className={`shrink-0 mt-0.5 h-4 w-4 ${ind.accent.check}`} />
+                        {d}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {ind.screenshots.length > 0 && (
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5">
+              {ind.screenshots.map((s, i) => (
+                <ScreenshotCard key={i} shot={s} border={ind.accent.border} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+ * Page
  * ──────────────────────────────────────────────────────────── */
 
 export default function MagicStrategy() {
-  const [now, setNow] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
-
-  const updateNow = useCallback(() => {
-    const d = new Date();
-    setNow(
-      d.toLocaleString("fr-CA", {
-        timeZone: "America/Toronto",
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
-    );
-  }, []);
-
-  useEffect(() => {
-    updateNow();
-    setLoading(false);
-    const t = setInterval(updateNow, 60_000);
-    return () => clearInterval(t);
-  }, [updateNow]);
-
-  const handlePrint = () => window.print();
+  const [readyCount] = useState(() => INDICATORS.filter((i) => i.ready).length);
 
   return (
     <div className="flex min-h-screen bg-[#0a0e17] text-white">
@@ -302,1269 +522,44 @@ export default function MagicStrategy() {
 
         {/* ── Hero ───────────────────────────────────────── */}
         <section className="relative overflow-hidden border-b border-white/5">
-          {/* Glow layers */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(139,92,246,0.25),_transparent_60%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_rgba(16,185,129,0.15),_transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(34,211,238,0.18),_transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_rgba(16,185,129,0.12),_transparent_50%)]" />
           <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:48px_48px]" />
 
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-200 backdrop-blur-sm">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Magic JB IA — Stratégie officielle
-                </div>
-                <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight">
-                  <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-emerald-300 bg-clip-text text-transparent">
-                    Magic JB IA
-                  </span>
-                </h1>
-                <p className="mt-3 max-w-2xl text-base sm:text-lg text-white/70">
-                  Arretez de deviner. Arretez de perdre. L'indicateur Magic JB IA vous dit exactement quand entrer, ou sortir, et combien prendre. 81% de winrate prouve sur 100+ cryptos.
-                </p>
-                <div className="mt-3 text-xs text-white/50 flex items-center gap-2">
-                  <Clock className="h-3.5 w-3.5" />
-                  Dernière mise à jour : {now || "…"}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={updateNow}
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10 transition"
-                >
-                  <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                  Rafraîchir
-                </button>
-                <button
-                  onClick={handlePrint}
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-500/30 hover:from-violet-400 hover:to-fuchsia-400 transition"
-                >
-                  <Printer className="h-4 w-4" />
-                  Imprimer / PDF
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Fonctionnalités ───────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-cyan-300">
-              Fonctionnalités
-            </h2>
-          </div>
-
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {FEATURES.map((f, i) => (
-              <div
-                key={i}
-                className="rounded-xl border border-white/10 bg-[#0d1526] p-5 hover:border-cyan-400/30 hover:bg-[#0f182c] transition"
-              >
-                <div className="text-lg font-semibold text-cyan-300">{f.title}</div>
-                <div className="mt-2 text-sm text-white/75 leading-relaxed">{f.desc}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Preuves en direct ─────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200 backdrop-blur-sm">
-              <BarChart3 className="h-3.5 w-3.5" />
-              Preuves en direct
-            </div>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-bold tracking-tight text-emerald-300">
-              📊 L'indicateur en action
-            </h2>
-            <p className="mt-2 text-sm text-white/60 max-w-2xl mx-auto">
-              Signaux LONG/SHORT, TP/SL, Score et momentum en temps réel sur TradingView.
-            </p>
-          </div>
-
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5">
-            {SCREENSHOTS.map((s, i) => (
-              <a
-                key={i}
-                href={s.src}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group relative overflow-hidden rounded-2xl border border-emerald-400/20 bg-[#0d1526] hover:border-emerald-400/60 transition shadow-lg shadow-emerald-500/5 hover:shadow-emerald-500/20"
-              >
-                <div className="aspect-[16/10] overflow-hidden bg-[#0a0e17]">
-                  <img
-                    src={s.src}
-                    alt={s.caption}
-                    loading="lazy"
-                    className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-                  />
-                </div>
-                <div className="absolute top-3 right-3 rounded-md bg-black/60 backdrop-blur-sm px-2 py-1 text-[10px] font-semibold text-white/80 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition">
-                  Agrandir ↗
-                </div>
-                <div className="px-5 py-4 border-t border-white/5">
-                  <div className="text-sm font-semibold text-white">{s.title}</div>
-                  <div className="mt-1 text-xs text-white/60 leading-relaxed">{s.caption}</div>
-                </div>
-              </a>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Pourquoi nous choisir ? ──────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-200 backdrop-blur-sm">
               <Sparkles className="h-3.5 w-3.5" />
-              Notre approche
+              Suite d'indicateurs Crypto IA
             </div>
-            <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight">
-              <span className="bg-gradient-to-r from-cyan-300 via-emerald-300 to-cyan-300 bg-clip-text text-transparent">
-                🎯 Pourquoi nous choisir ?
+            <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight">
+              <span className="bg-gradient-to-r from-cyan-300 via-emerald-300 to-teal-300 bg-clip-text text-transparent">
+                Nos Indicateurs
               </span>
-            </h2>
-          </div>
-
-          {/* Storytelling */}
-          <div className="mt-8 max-w-3xl mx-auto rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-6 sm:p-8 backdrop-blur-sm">
-            <div className="space-y-4 text-base sm:text-lg leading-relaxed text-slate-300">
-              <p>
-                Vous avez essayé les signaux Telegram. Vous avez suivi les "gurus"
-                Twitter. Vous avez perdu de l'argent avec des indicateurs à 15$ qui
-                promettent la lune.
-              </p>
-              <p className="text-white font-bold">
-                On est passés par là aussi.
-              </p>
-              <p>
-                C'est pour ça qu'on a construit{" "}
-                <span className="font-bold text-cyan-300">Magic JB IA</span>. Pas un
-                indicateur de plus. Un système complet, testé sur 100+ cryptos,
-                optimisé bougie par bougie.
-              </p>
-              <p>
-                <span className="font-black text-emerald-300">81% de winrate.</span>{" "}
-                Pas une promesse. Un fait. Backtesté. Vérifié. Reproductible.
-              </p>
-            </div>
-          </div>
-
-          {/* Quand l'alerte sonne */}
-          <div className="mt-10">
-            <h3 className="text-center text-xl sm:text-2xl font-bold text-white">
-              Quand l'alerte sonne, vous savez exactement :
-            </h3>
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
-              {[
-                { icon: <Target className="h-5 w-5" />, label: "Où entrer", value: "E1, E2, E3", color: "emerald" },
-                { icon: <TrendingUp className="h-5 w-5" />, label: "Où prendre profit", value: "TP1 à TP5", color: "cyan" },
-                { icon: <Shield className="h-5 w-5" />, label: "Où couper", value: "SL automatique", color: "rose" },
-                { icon: <Award className="h-5 w-5" />, label: "Combien risquer", value: "Risk Calculator intégré", color: "amber" },
-              ].map((item, i) => {
-                const colorMap: Record<string, string> = {
-                  emerald: "border-emerald-400/40 bg-emerald-500/10 text-emerald-300",
-                  cyan: "border-cyan-400/40 bg-cyan-500/10 text-cyan-300",
-                  rose: "border-rose-400/40 bg-rose-500/10 text-rose-300",
-                  amber: "border-amber-400/40 bg-amber-500/10 text-amber-300",
-                };
-                return (
-                  <div
-                    key={i}
-                    className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.03] p-5 hover:bg-white/[0.05] transition"
-                  >
-                    <div className={`shrink-0 h-12 w-12 rounded-xl grid place-items-center border ${colorMap[item.color]}`}>
-                      {item.icon}
-                    </div>
-                    <div>
-                      <div className="text-xs uppercase tracking-wider text-white/50 font-semibold">
-                        {item.label}
-                      </div>
-                      <div className="mt-1 text-lg font-bold text-white">{item.value}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <p className="mt-8 text-center text-base sm:text-lg text-slate-300 max-w-3xl mx-auto leading-relaxed">
-              Vous n'avez pas besoin d'être un expert. Vous n'avez pas besoin de
-              regarder le chart 12h par jour.{" "}
-              <span className="font-bold text-cyan-300">
-                L'indicateur fait le travail. Vous exécutez.
-              </span>
+            </h1>
+            <p className="mt-3 max-w-2xl text-base sm:text-lg text-white/70">
+              {INDICATORS.length} indicateurs TradingView exclusifs conçus pour vous donner un avantage
+              réel sur le marché : tendance, volume, divergences, cycles et gestion du risque.
             </p>
           </div>
-
-          {/* Stats punchy */}
-          <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-5">
-            <div className="relative overflow-hidden rounded-2xl border border-rose-400/30 bg-gradient-to-br from-rose-500/10 via-[#0d1526] to-[#0d1526] p-6 text-center">
-              <div className="text-6xl sm:text-7xl font-black bg-gradient-to-b from-rose-300 to-rose-400 bg-clip-text text-transparent">
-                3
-              </div>
-              <div className="mt-2 text-sm font-semibold text-white/80">
-                pertes d'affilée maximum
-              </div>
-            </div>
-            <div className="relative overflow-hidden rounded-2xl border border-emerald-400/40 bg-gradient-to-br from-emerald-500/15 via-[#0d1526] to-[#0d1526] p-6 text-center shadow-lg shadow-emerald-500/10">
-              <div className="text-6xl sm:text-7xl font-black bg-gradient-to-b from-emerald-300 to-emerald-400 bg-clip-text text-transparent">
-                80%
-              </div>
-              <div className="mt-2 text-sm font-semibold text-white/80">
-                des trades touchent le TP1
-              </div>
-            </div>
-            <div className="relative overflow-hidden rounded-2xl border border-cyan-400/30 bg-gradient-to-br from-cyan-500/10 via-[#0d1526] to-[#0d1526] p-6 text-center">
-              <div className="text-4xl sm:text-5xl font-black bg-gradient-to-b from-cyan-300 to-cyan-400 bg-clip-text text-transparent leading-tight">
-                Gain moyen
-                <br />
-                <span className="text-3xl sm:text-4xl">&gt; perte moyenne</span>
-              </div>
-              <div className="mt-2 text-sm font-semibold text-white/80">
-                profitabilité positive
-              </div>
-            </div>
-          </div>
-
-          <p className="mt-6 text-center text-sm sm:text-base italic text-white/60">
-            Les chiffres ne mentent pas. Votre portefeuille non plus.
-          </p>
-
-          {/* Ce que vous obtenez */}
-          <div className="mt-14">
-            <div className="text-center">
-              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                Ce que vous obtenez en vous inscrivant :
-              </h3>
-            </div>
-
-            <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-5">
-              {/* Card 1 */}
-              <div className="relative overflow-hidden rounded-2xl border border-cyan-400/30 bg-gradient-to-b from-cyan-500/10 via-[#0d1526] to-[#0d1526] p-6 flex flex-col">
-                <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-cyan-500/20 blur-3xl" />
-                <div className="relative">
-                  <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-cyan-500/20 border border-cyan-400/40 text-2xl">
-                    🤖
-                  </div>
-                  <div className="mt-4 text-xs font-bold uppercase tracking-wider text-cyan-300">
-                    1. L'indicateur principal
-                  </div>
-                  <div className="mt-2 text-xl font-bold text-white">
-                    Magic JB IA
-                  </div>
-                  <p className="mt-3 text-sm text-white/75 leading-relaxed">
-                    Votre copilote de trading. Signaux LONG/SHORT en temps réel,
-                    5 niveaux de Take Profit, Stop Loss dynamique, Trailing Stop
-                    automatique, scoring IA de 1 à 10, confirmation Trend 4H, 8
-                    alertes push configurables, et des presets optimisés pour
-                    chaque timeframe (5M, 15M, 1H, 4H).{" "}
-                    <span className="text-cyan-300 font-semibold">
-                      Vous recevez l'alerte sur votre téléphone. Vous exécutez.
-                      C'est tout.
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Card 2 */}
-              <div className="relative overflow-hidden rounded-2xl border border-emerald-400/30 bg-gradient-to-b from-emerald-500/10 via-[#0d1526] to-[#0d1526] p-6 flex flex-col">
-                <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-500/20 blur-3xl" />
-                <div className="relative">
-                  <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-2xl">
-                    📊
-                  </div>
-                  <div className="mt-4 text-xs font-bold uppercase tracking-wider text-emerald-300">
-                    2. Votre tableau de bord
-                  </div>
-                  <div className="mt-2 text-xl font-bold text-white">
-                    Magic JB IA Performance
-                  </div>
-                  <p className="mt-3 text-sm text-white/75 leading-relaxed">
-                    Mesurez tout. Winrate, taux de TP1 à TP5, Stop Loss, gain
-                    moyen vs perte moyenne, max drawdown, meilleure et pire
-                    série — le tout par paire, par direction (Long/Short), par
-                    session (Londres, New York, Overlap). Chaque crypto reçoit
-                    une note A, B, C ou D.{" "}
-                    <span className="text-emerald-300 font-semibold">
-                      Vous tradez les A, vous ignorez le reste.
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Card 3 */}
-              <div className="relative overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-b from-amber-500/10 via-[#0d1526] to-[#0d1526] p-6 flex flex-col">
-                <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-amber-500/20 blur-3xl" />
-                <div className="relative">
-                  <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-amber-500/20 border border-amber-400/40 text-2xl">
-                    📋
-                  </div>
-                  <div className="mt-4 text-xs font-bold uppercase tracking-wider text-amber-300">
-                    3. Sélectionnées pour vous
-                  </div>
-                  <div className="mt-2 text-xl font-bold text-white">
-                    Watchlist de 100 cryptos
-                  </div>
-                  <p className="mt-3 text-sm text-white/75 leading-relaxed">
-                    Pas besoin de chercher quoi trader. Notre watchlist de 100
-                    cryptos perpétuelles est optimisée pour Magic JB IA. Chaque
-                    paire a été testée et validée.{" "}
-                    <span className="text-amber-300 font-semibold">
-                      Ajoutez la watchlist, activez vos alertes, et laissez
-                      l'indicateur scanner pour vous.
-                    </span>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
         </section>
 
-        {/* ── NOUVEAU : Lecture des 3 TOTAL (BULL / BEAR) ───────────── */}
+        {/* ── Grid nav ──────────────────────────────────── */}
         <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200 backdrop-blur-sm">
-              <Sparkles className="h-3.5 w-3.5" />
-              Nouveauté de l&apos;indicateur
-            </div>
-            <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight">
-              <span className="bg-gradient-to-r from-emerald-300 via-cyan-300 to-rose-300 bg-clip-text text-transparent">
-                📊 Lire le marché avec TOTAL, TOTAL2 &amp; TOTAL3
-              </span>
-            </h2>
-            <p className="mt-3 mx-auto max-w-3xl text-sm sm:text-base text-gray-300">
-              Le Magic JB IA affiche désormais <span className="font-bold text-white">directement sur le graphique</span> l&apos;état{" "}
-              <span className="font-bold text-emerald-300">BULL 🟢</span> ou{" "}
-              <span className="font-bold text-rose-300">BEAR 🔴</span> des trois grands indices de capitalisation crypto.
-              Vous voyez d&apos;un coup d&apos;œil où va l&apos;argent dans le marché — sans analyser quoi que ce soit vous-même.
-            </p>
-          </div>
-
-          {/* Explication des 3 TOTAL */}
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {/* TOTAL */}
-            <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-500/10 via-white/[0.02] to-transparent p-5 backdrop-blur-sm">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/20 ring-1 ring-indigo-400/30">
-                  <Globe className="h-4.5 w-4.5 text-indigo-300" />
-                </div>
-                <h3 className="text-lg font-bold text-white">TOTAL</h3>
-              </div>
-              <p className="mt-3 text-sm text-gray-300">
-                La <span className="font-semibold text-white">capitalisation totale</span> de toute la crypto :
-                BTC + ETH + alts + memecoins + stablecoins confondus.
-              </p>
-              <ul className="mt-3 space-y-1.5 text-xs text-gray-400">
-                <li className="flex gap-2"><span className="text-indigo-300">›</span> Montre où va l&apos;argent global dans la crypto</li>
-                <li className="flex gap-2"><span className="text-emerald-300">↑</span> Monte = l&apos;argent <strong className="text-white">entre</strong> dans le marché</li>
-                <li className="flex gap-2"><span className="text-rose-300">↓</span> Descend = l&apos;argent <strong className="text-white">sort</strong> vers cash / actions</li>
-              </ul>
-            </div>
-
-            {/* TOTAL2 */}
-            <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-purple-500/10 via-white/[0.02] to-transparent p-5 backdrop-blur-sm">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-500/20 ring-1 ring-purple-400/30">
-                  <BarChart3 className="h-4.5 w-4.5 text-purple-300" />
-                </div>
-                <h3 className="text-lg font-bold text-white">TOTAL2 <span className="text-xs font-normal text-gray-400">= TOTAL − BTC</span></h3>
-              </div>
-              <p className="mt-3 text-sm text-gray-300">
-                Tout le marché <span className="font-semibold text-white">sauf Bitcoin</span> : ETH + l&apos;ensemble des altcoins.
-              </p>
-              <ul className="mt-3 space-y-1.5 text-xs text-gray-400">
-                <li className="flex gap-2"><span className="text-purple-300">›</span> Mesure la <strong className="text-white">force des alts</strong> face à BTC</li>
-                <li className="flex gap-2"><span className="text-emerald-300">↑</span> Monte plus vite que TOTAL = début d&apos;altseason</li>
-                <li className="flex gap-2"><span className="text-amber-300">≈</span> Stagne pendant que BTC pump = BTC dominance forte</li>
-              </ul>
-            </div>
-
-            {/* TOTAL3 */}
-            <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-pink-500/10 via-white/[0.02] to-transparent p-5 backdrop-blur-sm">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-pink-500/20 ring-1 ring-pink-400/30">
-                  <Flame className="h-4.5 w-4.5 text-pink-300" />
-                </div>
-                <h3 className="text-lg font-bold text-white">TOTAL3 <span className="text-xs font-normal text-gray-400">= TOTAL − BTC − ETH</span></h3>
-              </div>
-              <p className="mt-3 text-sm text-gray-300">
-                Uniquement les <span className="font-semibold text-white">alts mineurs</span> : SOL, XRP, ADA, AVAX, memecoins, petites caps…
-              </p>
-              <ul className="mt-3 space-y-1.5 text-xs text-gray-400">
-                <li className="flex gap-2"><span className="text-pink-300">›</span> Mesure la <strong className="text-white">vraie altseason</strong></li>
-                <li className="flex gap-2"><span className="text-emerald-300">↑</span> Explose = moment des <strong className="text-white">petites caps</strong> et memecoins</li>
-                <li className="flex gap-2"><span className="text-rose-300">↓</span> Dégringole = les alts mineurs saignent même si BTC tient</li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Le statut BULL / BEAR en direct */}
-          <div className="mt-10 rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/[0.06] via-white/[0.02] to-rose-500/[0.06] p-6 backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/30 to-cyan-500/30 ring-1 ring-emerald-400/30">
-                <Eye className="h-5 w-5 text-emerald-200" />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-black text-white">
-                🎯 Statut <span className="text-emerald-300">BULL</span> / <span className="text-rose-300">BEAR</span> affiché en temps réel
-              </h3>
-            </div>
-            <p className="mt-3 text-sm text-gray-300 max-w-3xl">
-              Plus besoin d&apos;ouvrir 3 onglets et d&apos;analyser les graphiques un par un. L&apos;indicateur Magic JB IA détecte
-              automatiquement la tendance de chaque TOTAL et l&apos;affiche avec un badge coloré directement sur votre graphique
-              TradingView. Un coup d&apos;œil, et vous savez si le marché est porteur ou dangereux.
-            </p>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="flex items-start gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4">
-                <TrendingUp className="h-5 w-5 text-emerald-300 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-bold text-emerald-200">Badge BULL 🟢</p>
-                  <p className="text-xs text-gray-300 mt-1">
-                    Tendance haussière confirmée sur l&apos;indice. Feu vert pour chercher des <strong className="text-white">LONG</strong>.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-xl border border-rose-400/30 bg-rose-500/10 p-4">
-                <TrendingDown className="h-5 w-5 text-rose-300 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-bold text-rose-200">Badge BEAR 🔴</p>
-                  <p className="text-xs text-gray-300 mt-1">
-                    Tendance baissière confirmée. Prudence sur les longs, envisager le <strong className="text-white">cash</strong> ou les shorts.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-gray-400">
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">⚡ Gain de temps</span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">🧠 Moins d&apos;erreurs d&apos;analyse</span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">📈 Meilleures décisions de trading</span>
-            </div>
-          </div>
-
-          {/* Scénarios */}
-          <div className="mt-10">
-            <div className="flex items-center justify-center gap-2 mb-6">
-              <Compass className="h-5 w-5 text-cyan-300" />
-              <h3 className="text-2xl sm:text-3xl font-black text-white">
-                🧭 Comment lire les 3 ensemble
-              </h3>
-            </div>
-            <p className="text-center text-sm text-gray-400 max-w-2xl mx-auto mb-6">
-              Les combinaisons de statuts racontent l&apos;histoire du marché. Voici les 4 scénarios clés à reconnaître.
-            </p>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {/* Scénario 1 : BULL TOTAL */}
-              <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 to-emerald-500/[0.02] p-5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🟢</span>
-                  <h4 className="text-lg font-bold text-emerald-200">Scénario &quot;BULL TOTAL&quot; — Marché en confiance</h4>
-                </div>
-                <div className="mt-3 space-y-1.5 font-mono text-xs">
-                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
-                    <span className="text-gray-400">TOTAL</span>
-                    <span className="font-bold text-emerald-300">BULL ✅</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
-                    <span className="text-gray-400">TOTAL2</span>
-                    <span className="font-bold text-emerald-300">BULL ✅</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
-                    <span className="text-gray-400">TOTAL3</span>
-                    <span className="font-bold text-emerald-300">BULL ✅</span>
-                  </div>
-                </div>
-                <p className="mt-3 text-xs text-gray-300">
-                  <strong className="text-white">Signification :</strong> tout monte ensemble, l&apos;argent afflue dans la crypto.
-                  <br />
-                  <strong className="text-white">Stratégie :</strong> 🚀 Privilégier les <strong className="text-emerald-300">LONG</strong> sur BTC, ETH <em>et</em> alts.
-                </p>
-              </div>
-
-              {/* Scénario 2 : Bitcoin Season */}
-              <div className="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 to-amber-500/[0.02] p-5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🟢 🟡</span>
-                  <h4 className="text-lg font-bold text-amber-200">Scénario &quot;Bitcoin Season&quot;</h4>
-                </div>
-                <div className="mt-3 space-y-1.5 font-mono text-xs">
-                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
-                    <span className="text-gray-400">TOTAL</span>
-                    <span className="font-bold text-emerald-300">BULL ✅</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
-                    <span className="text-gray-400">TOTAL2</span>
-                    <span className="font-bold text-emerald-300">BULL ✅</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
-                    <span className="text-gray-400">TOTAL3</span>
-                    <span className="font-bold text-rose-300">BEAR ❌</span>
-                  </div>
-                </div>
-                <p className="mt-3 text-xs text-gray-300">
-                  <strong className="text-white">Signification :</strong> BTC et les gros alts montent, mais les petites caps souffrent.
-                  <br />
-                  <strong className="text-white">Stratégie :</strong> 👑 Rester sur <strong className="text-amber-300">BTC, ETH et top alts</strong>. Éviter les memecoins et petites caps.
-                </p>
-              </div>
-
-              {/* Scénario 3 : Altseason */}
-              <div className="rounded-2xl border border-cyan-400/30 bg-gradient-to-br from-cyan-500/10 to-purple-500/[0.05] p-5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🟢 🟢 🔥</span>
-                  <h4 className="text-lg font-bold text-cyan-200">Scénario &quot;Altseason naissante&quot;</h4>
-                </div>
-                <div className="mt-3 space-y-1.5 font-mono text-xs">
-                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
-                    <span className="text-gray-400">TOTAL</span>
-                    <span className="font-bold text-emerald-300">BULL ✅</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
-                    <span className="text-gray-400">TOTAL2</span>
-                    <span className="font-bold text-emerald-300">BULL ✅ <span className="text-[10px] text-cyan-300">(plus fort que TOTAL)</span></span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
-                    <span className="text-gray-400">TOTAL3</span>
-                    <span className="font-bold text-emerald-300">BULL ✅</span>
-                  </div>
-                </div>
-                <p className="mt-3 text-xs text-gray-300">
-                  <strong className="text-white">Signification :</strong> les alts surperforment BTC, même les petites caps décollent.
-                  <br />
-                  <strong className="text-white">Stratégie :</strong> 🔥 Moment idéal pour les <strong className="text-cyan-300">altcoins et petites caps</strong>. Rotation BTC → alts recommandée.
-                </p>
-              </div>
-
-              {/* Scénario 4 : Marché baissier */}
-              <div className="rounded-2xl border border-rose-400/30 bg-gradient-to-br from-rose-500/10 to-rose-500/[0.02] p-5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🔴</span>
-                  <h4 className="text-lg font-bold text-rose-200">Scénario &quot;Marché baissier&quot;</h4>
-                </div>
-                <div className="mt-3 space-y-1.5 font-mono text-xs">
-                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
-                    <span className="text-gray-400">TOTAL</span>
-                    <span className="font-bold text-rose-300">BEAR ❌</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
-                    <span className="text-gray-400">TOTAL2</span>
-                    <span className="font-bold text-rose-300">BEAR ❌</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-1.5">
-                    <span className="text-gray-400">TOTAL3</span>
-                    <span className="font-bold text-rose-300">BEAR ❌</span>
-                  </div>
-                </div>
-                <p className="mt-3 text-xs text-gray-300">
-                  <strong className="text-white">Signification :</strong> l&apos;argent sort du marché, tout baisse ensemble.
-                  <br />
-                  <strong className="text-white">Stratégie :</strong> 🛡️ Privilégier le <strong className="text-rose-300">cash</strong> ou les <strong className="text-rose-300">SHORTS</strong>. Éviter les longs spéculatifs.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center">
-              <p className="text-xs text-gray-400">
-                <Activity className="inline h-3.5 w-3.5 text-cyan-300 mr-1" />
-                Règle d&apos;or : <strong className="text-white">alignez toujours vos trades avec le macro affiché par les 3 TOTAL</strong>.
-                Trader contre la tendance globale = multiplier les risques inutilement.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Tarifs ────────────────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-amber-300">
-              Tarifs
-            </h2>
-          </div>
-
-          {/* 🎁 Bandeau "Déjà membre Pro ou Elite ?" */}
-          <div className="mt-6 relative overflow-hidden rounded-2xl border-2 border-violet-400/60 bg-gradient-to-r from-violet-500/15 via-fuchsia-500/10 to-violet-500/15 p-6 shadow-lg shadow-violet-500/20">
-            <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_25%_50%,rgba(139,92,246,0.45),transparent_60%),radial-gradient(circle_at_75%_50%,rgba(217,70,239,0.35),transparent_60%)]" />
-            <div className="relative flex flex-col sm:flex-row items-center justify-between gap-5 text-center sm:text-left">
-              <div className="flex items-start gap-4 flex-1">
-                <div className="shrink-0 hidden sm:grid place-items-center h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/40 ring-1 ring-white/20">
-                  <Crown className="h-7 w-7 text-white" />
-                </div>
-                <div className="flex-1">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900 shadow">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Inclus dans votre abonnement
-                  </div>
-                  <div className="mt-3 text-xl sm:text-2xl font-black text-white leading-snug">
-                    🎁 Déjà membre{" "}
-                    <span className="bg-gradient-to-r from-violet-300 to-fuchsia-300 bg-clip-text text-transparent">
-                      Pro
-                    </span>{" "}
-                    ou{" "}
-                    <span className="bg-gradient-to-r from-amber-300 to-fuchsia-300 bg-clip-text text-transparent">
-                      Elite
-                    </span>{" "}
-                    ? L&apos;indicateur est inclus <span className="underline decoration-emerald-400 decoration-2 underline-offset-4">gratuitement</span> !
-                  </div>
-                  <div className="mt-2 text-sm text-white/80 max-w-2xl">
-                    Si vous êtes abonné au plan{" "}
-                    <span className="font-bold text-violet-200">Pro</span> ou{" "}
-                    <span className="font-bold text-fuchsia-200">Elite</span> sur cryptoia.ca, l&apos;indicateur{" "}
-                    <span className="font-bold text-white">Magic JB IA</span> est inclus dans votre abonnement —{" "}
-                    <span className="font-semibold text-emerald-300">aucun paiement supplémentaire</span>. Rendez-vous dans votre espace membre pour l&apos;activer.
-                  </div>
-                </div>
-              </div>
-              <a
-                href="/abonnements"
-                className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-3 text-sm font-bold text-white hover:from-violet-400 hover:to-fuchsia-400 transition shadow-lg shadow-violet-500/40 ring-1 ring-white/20"
-              >
-                <Crown className="h-4 w-4" />
-                Voir mon abonnement
-              </a>
-            </div>
-          </div>
-
-          {/* Bandeau Prix de lancement */}
-          <div className="mt-6 relative overflow-hidden rounded-2xl border-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 p-6 shadow-lg shadow-amber-500/20">
-            <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_30%_50%,rgba(251,191,36,0.4),transparent_60%),radial-gradient(circle_at_70%_50%,rgba(16,185,129,0.3),transparent_60%)]" />
-            <div className="relative flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-              <div className="flex-1">
-                <div className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900 shadow">
-                  🚀 Offre de lancement — Durée limitée
-                </div>
-                <div className="mt-3 text-2xl sm:text-3xl font-black text-white">
-                  Prix de lancement :{" "}
-                  <span className="bg-gradient-to-r from-amber-300 to-emerald-300 bg-clip-text text-transparent">
-                    39$/mois
-                  </span>
-                </div>
-                <div className="mt-1 text-sm text-white/70">
-                  Profitez du tarif de lancement avant la hausse officielle — offre réservée aux premiers utilisateurs.
-                </div>
-              </div>
-              <a
-                href="mailto:cryptoia2026@gmail.com?subject=Prix%20de%20lancement%2039%24%2Fmois%20-%20Magic%20JB%20IA"
-                className="shrink-0 inline-flex items-center justify-center rounded-lg bg-amber-400 px-6 py-3 text-sm font-bold text-slate-900 hover:bg-amber-300 transition shadow-lg shadow-amber-500/30"
-              >
-                Je profite du lancement
-              </a>
-            </div>
-          </div>
-
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {/* Mensuel */}
-            <div className="relative rounded-2xl border border-white/10 bg-[#0d1526] p-7 text-center flex flex-col">
-              <div className="text-xl font-semibold text-white">Mensuel</div>
-              <div className="mt-6 text-5xl font-black text-white">49$</div>
-              <div className="mt-1 text-sm text-white/50">/mois</div>
-              <div className="mt-6 text-sm text-white/70 flex-1">
-                Accès complet, annulez quand vous voulez
-              </div>
-              <a
-                href="mailto:cryptoia2026@gmail.com?subject=Abonnement%20Mensuel%20-%20Magic%20JB%20IA"
-                className="mt-6 inline-flex items-center justify-center rounded-lg border-2 border-emerald-400 bg-transparent px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-400 hover:text-slate-900 transition"
-              >
-                Obtenir l'accès
-              </a>
-            </div>
-
-            {/* Trimestriel - POPULAIRE */}
-            <div className="relative rounded-2xl border-2 border-emerald-400 bg-gradient-to-b from-emerald-500/10 via-[#0d1526] to-[#0d1526] p-7 text-center flex flex-col shadow-lg shadow-emerald-500/20">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="inline-flex items-center rounded-full bg-emerald-400 px-4 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900">
-                  Populaire
-                </span>
-              </div>
-              <div className="text-xl font-semibold text-white">Trimestriel</div>
-              <div className="mt-6 text-5xl font-black text-emerald-400">130$</div>
-              <div className="mt-1 text-sm text-white/50">/3 mois</div>
-              <div className="mt-6 text-sm text-white/70 flex-1">
-                Économisez ~12% — le plus populaire
-              </div>
-              <a
-                href="mailto:cryptoia2026@gmail.com?subject=Abonnement%20Trimestriel%20-%20Magic%20JB%20IA"
-                className="mt-6 inline-flex items-center justify-center rounded-lg bg-emerald-400 px-5 py-2.5 text-sm font-bold text-slate-900 hover:bg-emerald-300 transition"
-              >
-                Obtenir l'accès
-              </a>
-            </div>
-
-            {/* Annuel */}
-            <div className="relative rounded-2xl border border-cyan-400/40 bg-gradient-to-b from-cyan-500/10 via-[#0d1526] to-[#0d1526] p-7 text-center flex flex-col shadow-lg shadow-cyan-500/10">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="inline-flex items-center rounded-full bg-cyan-400 px-4 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900">
-                  Meilleur rapport
-                </span>
-              </div>
-              <div className="text-xl font-semibold text-white">Annuel</div>
-              <div className="mt-6 text-5xl font-black text-cyan-300">450$</div>
-              <div className="mt-1 text-sm text-white/50">/an</div>
-              <div className="mt-6 text-sm text-white/70 flex-1">
-                Économisez ~23% — idéal pour les traders engagés
-              </div>
-              <a
-                href="mailto:cryptoia2026@gmail.com?subject=Abonnement%20Annuel%20-%20Magic%20JB%20IA"
-                className="mt-6 inline-flex items-center justify-center rounded-lg border-2 border-cyan-400 bg-transparent px-5 py-2.5 text-sm font-semibold text-cyan-300 hover:bg-cyan-400 hover:text-slate-900 transition"
-              >
-                Obtenir l'accès
-              </a>
-            </div>
-
-            {/* À vie */}
-            <div className="relative rounded-2xl border border-white/10 bg-[#0d1526] p-7 text-center flex flex-col">
-              <div className="text-xl font-semibold text-white">À vie</div>
-              <div className="mt-6 text-5xl font-black text-white">699$</div>
-              <div className="mt-1 text-sm text-white/50">one-time</div>
-              <div className="mt-6 text-sm text-white/70 flex-1">
-                Paiement unique, mises à jour incluses à vie
-              </div>
-              <a
-                href="mailto:cryptoia2026@gmail.com?subject=Licence%20A%20Vie%20-%20Magic%20JB%20IA"
-                className="mt-6 inline-flex items-center justify-center rounded-lg border-2 border-emerald-400 bg-transparent px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-400 hover:text-slate-900 transition"
-              >
-                Obtenir l'accès
-              </a>
-            </div>
-          </div>
-
-          {/* CTA Essai gratuit 24h */}
-          <div className="mt-8 relative overflow-hidden rounded-2xl border-2 border-emerald-400/50 bg-gradient-to-r from-emerald-500/20 via-cyan-500/15 to-emerald-500/20 p-6 sm:p-8 text-center shadow-lg shadow-emerald-500/20">
-            <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_20%_50%,rgba(16,185,129,0.5),transparent_60%),radial-gradient(circle_at_80%_50%,rgba(6,182,212,0.5),transparent_60%)]" />
-            <div className="relative">
-              <h3 className="text-2xl sm:text-3xl font-black text-white">
-                🎁 Obtenez un essai gratuit de 24h !
-              </h3>
-              <p className="mt-2 text-sm sm:text-base text-white/80">
-                Testez Magic JB IA pendant 24h gratuitement — zéro engagement, zéro carte bancaire.
-              </p>
-              <a
-                href="mailto:cryptoia2026@gmail.com?subject=Demande%20d%27essai%20gratuit%2024h%20-%20Magic%20JB%20IA&body=Bonjour%2C%0A%0AJe%20souhaite%20profiter%20de%20l%27essai%20gratuit%20de%2024h%20pour%20tester%20l%27indicateur%20Magic%20JB%20IA.%0A%0AMon%20pseudo%20TradingView%20%3A%20%0A%0AMerci%20!"
-                className="mt-5 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-8 py-3.5 text-base font-bold text-slate-900 hover:from-emerald-300 hover:to-cyan-300 transition shadow-xl shadow-emerald-500/30"
-              >
-                Contactez-nous pour l'essai gratuit →
-              </a>
-            </div>
-          </div>
-        </section>
-
-        {/* ── FAQ ──────────────────────────────────────── */}
-        <section className="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-cyan-300">
-              Questions fréquentes
-            </h2>
-          </div>
-
-          <div className="mt-8 space-y-3">
-            {FAQ_ITEMS.map((item, i) => (
-              <FAQItem key={i} question={item.q} answer={item.a} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {INDICATORS.map((ind) => (
+              <IndicatorNavCard key={ind.id} ind={ind} />
             ))}
           </div>
         </section>
 
-        {/* ── Contactez-moi ────────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-emerald-400">
-              Contactez-moi
-            </h2>
-            <p className="mt-3 text-sm text-white/60">
-              Pour obtenir l'accès ou poser vos questions :
-            </p>
-            <a
-              href="mailto:cryptoia2026@gmail.com"
-              className="mt-6 inline-flex items-center justify-center rounded-lg bg-emerald-400 px-8 py-3 text-base font-bold text-slate-900 hover:bg-emerald-300 transition shadow-lg shadow-emerald-500/20"
-            >
-              cryptoia2026@gmail.com
-            </a>
-          </div>
-        </section>
+        {/* ── Sections détaillées ───────────────────────── */}
+        {INDICATORS.map((ind) => (
+          <IndicatorSection key={ind.id} ind={ind} />
+        ))}
 
-        {/* ── Presets par Timeframe ──────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <SectionTitle
-            icon={<Crown className="h-5 w-5 text-amber-300" />}
-            eyebrow="Performance backtestée"
-            title="Meilleur preset par timeframe"
-            subtitle="Les 4 configurations qui offrent le meilleur ratio winrate / profit / drawdown."
-          />
-
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            {PRESETS.map((p) => (
-              <PresetCard key={p.timeframe} preset={p} />
-            ))}
-          </div>
-        </section>
-
-        {/* ── Règles d'entrée ───────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <SectionTitle
-            icon={<Target className="h-5 w-5 text-emerald-300" />}
-            eyebrow="Étape 1"
-            title="Règles d'entrée"
-            subtitle="Qualifiez chaque signal avant d'appuyer sur le bouton."
-          />
-
-          <div className="mt-6 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent overflow-hidden backdrop-blur-sm">
-            <div className="grid grid-cols-12 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-white/50 border-b border-white/10 bg-white/[0.02]">
-              <div className="col-span-7 sm:col-span-8">Condition</div>
-              <div className="col-span-5 sm:col-span-4 text-right">Action</div>
-            </div>
-            {ENTRY_RULES.map((r, i) => (
-              <div
-                key={i}
-                className="grid grid-cols-12 items-center px-5 py-4 border-b border-white/5 last:border-b-0 hover:bg-white/[0.03] transition"
-              >
-                <div className="col-span-7 sm:col-span-8 text-sm text-white/85">{r.condition}</div>
-                <div className="col-span-5 sm:col-span-4 flex justify-end">
-                  <ToneBadge tone={r.tone}>{r.action}</ToneBadge>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Gestion du trade ──────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <SectionTitle
-            icon={<Shield className="h-5 w-5 text-sky-300" />}
-            eyebrow="Étape 2"
-            title="Gestion du trade"
-            subtitle="Une fois dans le trade, laissez le plan piloter — pas vos émotions."
-          />
-
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {TRADE_STEPS.map((s, i) => (
-              <div
-                key={i}
-                className="group relative rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:border-emerald-400/30 hover:bg-white/[0.05] transition"
-              >
-                <div className="absolute -top-3 -left-3 h-8 w-8 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 grid place-items-center text-xs font-black text-slate-900 shadow-lg shadow-emerald-500/30">
-                  {i + 1}
-                </div>
-                <div className="pl-4">
-                  <div className="text-sm font-semibold text-white">{s.step}</div>
-                  <div className="mt-2 text-sm text-white/70 leading-relaxed">{s.action}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Capital & Leverage ────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <SectionTitle
-            icon={<Award className="h-5 w-5 text-fuchsia-300" />}
-            eyebrow="Dimensionnement"
-            title="Capital & Leverage recommandés"
-            subtitle="Projections basées sur ~2 trades/jour avec Crypto Safe 15min."
-          />
-
-          <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent backdrop-blur-sm">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-white/[0.03] text-[11px] uppercase tracking-wider text-white/50">
-                  <Th>Capital</Th>
-                  <Th>/Trade</Th>
-                  <Th>Leverage</Th>
-                  <Th className="text-emerald-300">Gain TP1</Th>
-                  <Th className="text-emerald-300">Gain TP3</Th>
-                  <Th className="text-rose-300">Perte SL</Th>
-                  <Th className="text-amber-300">Profit/Mois</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {CAPITAL_ROWS.map((r, i) => (
-                  <tr
-                    key={i}
-                    className="border-t border-white/5 hover:bg-white/[0.03] transition"
-                  >
-                    <Td className="font-semibold text-white">{r.capital}</Td>
-                    <Td>{r.perTrade}</Td>
-                    <Td>
-                      <span className="inline-flex rounded-md bg-violet-500/15 text-violet-200 px-2 py-0.5 text-xs font-semibold">
-                        {r.leverage}
-                      </span>
-                    </Td>
-                    <Td className="text-emerald-300 font-medium">{r.tp1}</Td>
-                    <Td className="text-emerald-300 font-medium">{r.tp3}</Td>
-                    <Td className="text-rose-300 font-medium">{r.sl}</Td>
-                    <Td className="text-amber-300 font-bold">{r.monthly}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* ── Horaires de trading ──────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <SectionTitle
-            icon={<Clock className="h-5 w-5 text-cyan-300" />}
-            eyebrow="Kill Zones"
-            title="Horaires de trading (Montréal / EST)"
-            subtitle="Tradez quand le marché bouge. Dormez quand il dort."
-          />
-
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {SESSIONS.map((s) => (
-              <div
-                key={s.session}
-                className={`relative overflow-hidden rounded-2xl border p-5 backdrop-blur-sm ${
-                  s.quality === "MEILLEUR"
-                    ? "border-emerald-400/40 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent"
-                    : s.quality === "BON"
-                    ? "border-sky-400/30 bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-transparent"
-                    : "border-rose-400/30 bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-transparent"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wider text-white/50">
-                      Session
-                    </div>
-                    <div className="mt-1 text-2xl font-bold text-white">{s.session}</div>
-                  </div>
-                  <QualityBadge quality={s.quality} />
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <InfoPill label="Montréal" value={s.montreal} />
-                  <InfoPill label="UTC" value={s.utc} />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <AlertCard
-              variant="danger"
-              icon={<AlertTriangle className="h-5 w-5" />}
-              title="NE TRADEZ PAS pendant Tokyo (19h - 3h EST)"
-              text="Volume faible, mouvements imprévisibles. La majorité des SL touchés arrivent pendant cette session."
-            />
-            <AlertCard
-              variant="success"
-              icon={<Flame className="h-5 w-5" />}
-              title="Sweet spot 8h - 11h EST (Overlap LON + NY)"
-              text="Volume maximum, signaux les plus fiables. C'est là que vous faites la majorité de votre profit."
-            />
-          </div>
-        </section>
-
-        {/* ── Routine quotidienne ───────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <SectionTitle
-            icon={<Zap className="h-5 w-5 text-yellow-300" />}
-            eyebrow="Discipline"
-            title="Routine quotidienne"
-            subtitle="Même journée, même rituel. C'est la constance qui paye."
-          />
-
-          <div className="mt-6 relative">
-            {/* vertical line */}
-            <div className="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-violet-400/50 via-fuchsia-400/30 to-transparent" />
-            <div className="space-y-3">
-              {ROUTINE.map((r, i) => (
-                <div key={i} className="relative flex gap-4 items-start">
-                  <div className="relative z-10 h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 grid place-items-center shadow-lg shadow-violet-500/30">
-                    <Clock className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 hover:bg-white/[0.05] transition">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-violet-300">
-                      {r.hour}
-                    </div>
-                    <div className="mt-1 text-sm text-white/85">{r.action}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── Règles d'or ───────────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <SectionTitle
-            icon={<BookOpen className="h-5 w-5 text-amber-300" />}
-            eyebrow="Commandements"
-            title="Règles d'or"
-            subtitle="Si vous ne deviez retenir que ça, retenez ça."
-          />
-
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
-            {GOLDEN_RULES.map((rule, i) => (
-              <div
-                key={i}
-                className="group flex items-start gap-3 rounded-xl border border-white/10 bg-gradient-to-br from-amber-500/[0.04] to-transparent p-4 hover:border-amber-400/30 hover:from-amber-500/[0.08] transition"
-              >
-                <CheckCircle2 className="h-5 w-5 shrink-0 text-amber-300 mt-0.5" />
-                <div className="text-sm text-white/85 leading-relaxed">{rule}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Disclaimer ────────────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-12">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-xs text-white/50 leading-relaxed">
-            <span className="font-semibold text-white/70">Magic JB IA </span>
-            — Les performances passées ne garantissent pas les résultats futurs. Les
-            projections sont basées sur le backtest historique. Tradez de manière
-            responsable et n'investissez jamais plus que ce que vous pouvez vous
-            permettre de perdre.
-          </div>
-        </section>
-
+        <div className="flex-1" />
         <Footer />
       </main>
     </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
- * Small sub-components
- * ──────────────────────────────────────────────────────────── */
-
-function SectionTitle({
-  icon,
-  eyebrow,
-  title,
-  subtitle,
-}: {
-  icon: React.ReactNode;
-  eyebrow: string;
-  title: string;
-  subtitle?: string;
-}) {
-  return (
-    <div>
-      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/70 backdrop-blur-sm">
-        {icon}
-        {eyebrow}
-      </div>
-      <h2 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight text-white">
-        {title}
-      </h2>
-      {subtitle && (
-        <p className="mt-1 text-sm text-white/60 max-w-2xl">{subtitle}</p>
-      )}
-    </div>
-  );
-}
-
-function PresetCard({ preset }: { preset: TimeframePreset }) {
-  return (
-    <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#0f1420] p-5 hover:border-white/20 transition">
-      {/* Accent glow */}
-      <div
-        className={`absolute -top-16 -right-16 h-40 w-40 rounded-full bg-gradient-to-br ${preset.accent} opacity-20 blur-3xl group-hover:opacity-30 transition`}
-      />
-
-      <div className="relative flex items-start justify-between gap-3">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
-            Timeframe
-          </div>
-          <div className="mt-1 text-3xl font-black text-white">{preset.timeframe}</div>
-        </div>
-        {preset.badge && (
-          <span
-            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-              preset.badge === "RECOMMANDÉ"
-                ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-300"
-                : "border-amber-400/40 bg-amber-500/10 text-amber-300"
-            }`}
-          >
-            <Crown className="h-3 w-3" />
-            {preset.badge}
-          </span>
-        )}
-      </div>
-
-      <div className="relative mt-3 text-sm font-semibold text-white/80 truncate">
-        {preset.name}
-      </div>
-
-      <div className="relative mt-4">
-        <div className="flex items-baseline gap-2">
-          <span
-            className={`text-4xl font-black bg-gradient-to-r ${preset.accent} bg-clip-text text-transparent`}
-          >
-            {preset.winrate.toFixed(1)}%
-          </span>
-          <span className="text-xs text-white/50">winrate</span>
-        </div>
-      </div>
-
-      <div className="relative mt-4 grid grid-cols-3 gap-2">
-        <MiniStat label="TP1" value={`${preset.tp1}%`} tone="good" />
-        <MiniStat label="TP3" value={`${preset.tp3}%`} tone="good" />
-        <MiniStat label="SL" value={`${preset.sl}%`} tone="bad" />
-      </div>
-
-      <div className="relative mt-3 flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-        <div className="text-xs text-white/60">PnL / trade</div>
-        <div
-          className={`text-sm font-bold ${
-            preset.pnl >= 0 ? "text-emerald-300" : "text-rose-300"
-          }`}
-        >
-          {preset.pnl >= 0 ? "+" : ""}
-          {preset.pnl.toFixed(2)}$
-        </div>
-      </div>
-      <div className="relative mt-2 flex items-center justify-between text-xs text-white/50">
-        <span>Worst streak</span>
-        <span className="font-semibold text-white/70">{preset.worst}</span>
-      </div>
-    </div>
-  );
-}
-
-function MiniStat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: "good" | "bad" | "neutral";
-}) {
-  const color =
-    tone === "good"
-      ? "text-emerald-300"
-      : tone === "bad"
-      ? "text-rose-300"
-      : "text-white/80";
-  return (
-    <div className="rounded-lg border border-white/5 bg-white/[0.02] px-2 py-2 text-center">
-      <div className="text-[10px] uppercase tracking-wider text-white/40">{label}</div>
-      <div className={`mt-0.5 text-sm font-bold ${color}`}>{value}</div>
-    </div>
-  );
-}
-
-function ToneBadge({
-  children,
-  tone,
-}: {
-  children: React.ReactNode;
-  tone: EntryRule["tone"];
-}) {
-  const map: Record<EntryRule["tone"], string> = {
-    good: "border-emerald-400/40 bg-emerald-500/10 text-emerald-300",
-    warn: "border-amber-400/40 bg-amber-500/10 text-amber-300",
-    bad: "border-rose-400/40 bg-rose-500/10 text-rose-300",
-    neutral: "border-sky-400/40 bg-sky-500/10 text-sky-300",
-  };
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${map[tone]}`}
-    >
-      {children}
-    </span>
-  );
-}
-
-function QualityBadge({ quality }: { quality: SessionRow["quality"] }) {
-  const map: Record<SessionRow["quality"], string> = {
-    MEILLEUR: "border-emerald-400/40 bg-emerald-500/15 text-emerald-200",
-    BON: "border-sky-400/40 bg-sky-500/15 text-sky-200",
-    EVITER: "border-rose-400/40 bg-rose-500/15 text-rose-200",
-  };
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${map[quality]}`}
-    >
-      {quality}
-    </span>
-  );
-}
-
-function InfoPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wider text-white/40">{label}</div>
-      <div className="mt-0.5 text-sm font-semibold text-white">{value}</div>
-    </div>
-  );
-}
-
-function AlertCard({
-  variant,
-  icon,
-  title,
-  text,
-}: {
-  variant: "danger" | "success";
-  icon: React.ReactNode;
-  title: string;
-  text: string;
-}) {
-  const styles =
-    variant === "danger"
-      ? "border-rose-400/30 bg-gradient-to-br from-rose-500/10 to-transparent text-rose-200"
-      : "border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 to-transparent text-emerald-200";
-  return (
-    <div className={`rounded-2xl border p-5 ${styles}`}>
-      <div className="flex items-start gap-3">
-        <div className="shrink-0">{icon}</div>
-        <div>
-          <div className="text-sm font-bold">{title}</div>
-          <div className="mt-1 text-xs text-white/70 leading-relaxed">{text}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FAQItem({ question, answer }: { question: string; answer: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="rounded-xl border border-white/10 bg-[#0d1526] overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-white/[0.02] transition"
-      >
-        <span className="text-sm sm:text-base font-semibold text-white">{question}</span>
-        <span
-          className={`shrink-0 h-6 w-6 rounded-full border border-emerald-400/40 bg-emerald-500/10 grid place-items-center text-emerald-300 text-sm font-bold transition-transform ${
-            open ? "rotate-45" : ""
-          }`}
-        >
-          +
-        </span>
-      </button>
-      {open && (
-        <div className="px-5 pb-4 text-sm text-white/70 leading-relaxed border-t border-white/5 pt-3">
-          {answer}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Th({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <th className={`text-left px-4 py-3 font-semibold ${className}`}>{children}</th>
-  );
-}
-
-function Td({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <td className={`px-4 py-3 text-sm text-white/80 ${className}`}>{children}</td>
   );
 }

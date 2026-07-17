@@ -79,7 +79,7 @@ const NAV: NavItem[] = [
   { path: "/contact", label: "Contact", section: "Outils" },
   { path: "/abonnements", label: "Abonnements", section: "Compte" },
   { path: "/affiliation", label: "Affiliation 30%", section: "Compte" },
-  { path: "/magic-strategy", label: "Indicateur Magic JB IA", section: "Compte" },
+  { path: "/magic-strategy", label: "Indicateurs", section: "Compte" },
   { path: "/admin", label: "Admin Panel", section: "Admin" },
   { path: "/admin/analytics", label: "Admin Analytics", section: "Admin" },
   { path: "/mon-compte", label: "Mon Compte", section: "Compte" },

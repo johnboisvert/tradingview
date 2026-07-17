@@ -106,7 +106,7 @@ const en: TranslationDict = {
       contact: "Contact",
       abonnements: "Subscriptions",
       affiliation: "Affiliate 30% 🎁",
-      magicStrategy: "Magic JB AI Indicator",
+      magicStrategy: "Indicators",
       adminPanel: "Admin Panel",
       monCompte: "My Account",
     },

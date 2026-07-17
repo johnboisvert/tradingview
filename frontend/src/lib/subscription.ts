@@ -226,6 +226,7 @@ const ROUTE_TO_SLUG: Record<string, string> = {
   "/abonnements": "dashboard",
   "/mon-compte": "dashboard",
   "/payment-success": "dashboard",
+  "/magic-strategy": "dashboard",
 };
 
 // Check if a route is accessible for a given plan

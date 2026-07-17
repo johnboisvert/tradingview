@@ -104,7 +104,7 @@ const fr = {
       contact: "Contact",
       abonnements: "Abonnements",
       affiliation: "Affiliation 30% 🎁",
-      magicStrategy: "Indicateur Magic JB IA",
+      magicStrategy: "Indicateurs",
       adminPanel: "Admin Panel",
       monCompte: "Mon Compte",
     },

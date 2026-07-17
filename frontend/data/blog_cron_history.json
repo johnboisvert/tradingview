@@ -1,0 +1,12 @@
+{
+  "runs": [
+    {
+      "date": "2026-07-17",
+      "ts": "2026-07-17T14:06:34.826Z",
+      "ok": false,
+      "topic": "Comment fonctionne une DEX (Decentralized Exchange) comme Uniswap",
+      "error": "EMERGENT_LLM_KEY missing"
+    }
+  ],
+  "used_topics": []
+}

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
+import { Helmet } from "react-helmet-async";
 import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
+import SEOHead from "@/components/SEOHead";
 import Footer from "@/components/Footer";
 import {
   Waves,
@@ -1101,6 +1103,42 @@ export default function MagicStrategy() {
 
   return (
     <div className="flex min-h-screen bg-[#0a0e17] text-white">
+      <SEOHead
+        title="9 Indicateurs TradingView Crypto Exclusifs — Signaux, S/R, Divergences & Cycles"
+        description="Suite de 9 indicateurs TradingView pour la crypto : signaux LONG/SHORT automatiques, supports/résistances IA, divergences, cycles Bitcoin, DCA et gestion du risque. Scalping, day trading, swing et long terme. Dès 49$/mois."
+        path="/magic-strategy"
+        image="https://www.cryptoia.ca/indicators/cryptoiaedge-1.png"
+        type="product"
+      />
+      <Helmet>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: "Suite Indicateurs CryptoIA — 9 indicateurs TradingView",
+            description:
+              "9 indicateurs TradingView exclusifs pour la crypto : signaux automatiques, supports/résistances, divergences, cycles Bitcoin, DCA et gestion du risque.",
+            image: "https://www.cryptoia.ca/indicators/cryptoiaedge-1.png",
+            brand: { "@type": "Brand", name: "CryptoIA" },
+            offers: [
+              { "@type": "Offer", name: "Mensuel", price: "49.00", priceCurrency: "CAD", url: "https://www.cryptoia.ca/magic-strategy#tarifs", availability: "https://schema.org/InStock" },
+              { "@type": "Offer", name: "Annuel", price: "399.00", priceCurrency: "CAD", url: "https://www.cryptoia.ca/magic-strategy#tarifs", availability: "https://schema.org/InStock" },
+              { "@type": "Offer", name: "Licence à vie", price: "899.00", priceCurrency: "CAD", url: "https://www.cryptoia.ca/magic-strategy#tarifs", availability: "https://schema.org/InStock" },
+            ],
+          })}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: FAQ.map((f) => ({
+              "@type": "Question",
+              name: f.q,
+              acceptedAnswer: { "@type": "Answer", text: f.a },
+            })),
+          })}
+        </script>
+      </Helmet>
       <Sidebar />
 
       <main className="flex-1 lg:ml-64 flex flex-col relative">

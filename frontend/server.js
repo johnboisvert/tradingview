@@ -2542,7 +2542,7 @@ referralModule = registerReferralRoutes(app, {
 
   // ─── Promo Codes (centralized backend storage, auto-seeds WELCOME20/FLASH30) ─
   registerPromoRoutes(app, { requireAdmin });
-  registerIndicatorAccessRoutes(app, { requireAdmin, dataDir: DATA_DIR });
+  registerIndicatorAccessRoutes(app, { requireAdmin, dataDir: DATA_DIR, getResendClient });
 
   // ─── Blog auto-publish cron (1 article/day via GPT-5.4 + IndexNow + newsletter) ─
   registerBlogCronRoutes(app, {
@@ -2678,6 +2678,40 @@ app.get('/quiz', (req, res, next) => {
     res.type('html').send(html);
   } catch (e) {
     console.error('[QuizOG-SSR] Error injecting meta tags:', e?.message);
+    next();
+  }
+});
+
+// SEO SSR — /magic-strategy (page Indicateurs) : injecte title/description/OG côté serveur
+// pour les crawlers (Google, Discord, Twitter) qui n'exécutent pas React Helmet.
+app.get('/magic-strategy', (req, res, next) => {
+  try {
+    const distIndex = path.join(__dirname, 'dist', 'index.html');
+    if (!fs.existsSync(distIndex)) return next();
+    let html = fs.readFileSync(distIndex, 'utf8');
+    const ogUrl = 'https://www.cryptoia.ca/magic-strategy';
+    const ogImage = 'https://www.cryptoia.ca/indicators/cryptoiaedge-1.png';
+    const ogTitle = '9 Indicateurs TradingView Crypto Exclusifs — Signaux, S/R, Divergences & Cycles | CryptoIA';
+    const ogDesc = "Suite de 9 indicateurs TradingView pour la crypto : signaux LONG/SHORT automatiques, supports/résistances IA, divergences, cycles Bitcoin, DCA et gestion du risque. Dès 49$/mois.";
+    const replacements = [
+      [/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(ogTitle)}" />`],
+      [/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(ogDesc)}" />`],
+      [/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:image" content="${escapeAttr(ogImage)}" />`],
+      [/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:url" content="${escapeAttr(ogUrl)}" />`],
+      [/<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:title" content="${escapeAttr(ogTitle)}" />`],
+      [/<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:description" content="${escapeAttr(ogDesc)}" />`],
+      [/<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:image" content="${escapeAttr(ogImage)}" />`],
+      [/<title>[^<]*<\/title>/i, `<title>${escapeAttr(ogTitle)}</title>`],
+      [/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i, `<meta name="description" content="${escapeAttr(ogDesc)}" />`],
+      [/<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/i, `<link rel="canonical" href="${escapeAttr(ogUrl)}" />`],
+    ];
+    for (const [re, replacement] of replacements) {
+      if (re.test(html)) html = html.replace(re, replacement);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    res.type('html').send(html);
+  } catch (e) {
+    console.error('[IndicatorsSEO-SSR] Error injecting meta tags:', e?.message);
     next();
   }
 });

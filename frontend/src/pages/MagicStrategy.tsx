@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
-import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -610,6 +609,67 @@ const INDICATORS: Indicator[] = [
   },
 ];
 
+const PRICING: {
+  id: string;
+  name: string;
+  price: string;
+  period: string;
+  desc: string;
+  perks: string[];
+  badge?: string;
+  featured?: boolean;
+}[] = [
+  {
+    id: "monthly",
+    name: "Mensuel",
+    price: "49$",
+    period: "/ mois",
+    desc: "Accès complet, sans engagement",
+    perks: ["Les 9 indicateurs inclus", "Alertes TradingView illimitées", "Mises à jour incluses", "Annulez à tout moment"],
+  },
+  {
+    id: "annual",
+    name: "Annuel",
+    price: "399$",
+    period: "/ an",
+    desc: "≈ 33$/mois — économisez 32%",
+    perks: ["Les 9 indicateurs inclus", "Alertes TradingView illimitées", "Mises à jour incluses", "2 mois offerts vs mensuel"],
+    badge: "Populaire",
+    featured: true,
+  },
+  {
+    id: "lifetime",
+    name: "À vie",
+    price: "899$",
+    period: "paiement unique",
+    desc: "Payez une fois, gardez pour toujours",
+    perks: ["Les 9 indicateurs inclus", "Mises à jour à vie", "Tous les futurs indicateurs", "Aucun renouvellement"],
+  },
+];
+
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: "Sur quelle plateforme fonctionnent les indicateurs ?",
+    a: "Tous nos indicateurs sont des scripts Pine Script qui fonctionnent directement sur TradingView (compte gratuit suffisant). Une fois l'accès obtenu, il suffit de les ajouter à votre graphique en quelques clics.",
+  },
+  {
+    q: "Comment j'obtiens l'accès après le paiement ?",
+    a: "Après votre paiement, envoyez-nous simplement votre nom d'utilisateur TradingView (par email à cryptoia2026@gmail.com). Nous vous donnons l'accès invite-only à tous les indicateurs, généralement en moins de 24 h.",
+  },
+  {
+    q: "Est-ce que ça marche sur toutes les cryptos ?",
+    a: "Oui. Les indicateurs ont été testés et optimisés sur plus de 100 paires crypto (BTC, ETH, SOL, altcoins majeurs…) et couvrent tous les styles : scalping, day trading, swing et investissement long terme.",
+  },
+  {
+    q: "Comment je reçois les alertes ?",
+    a: "Directement via TradingView : notifications push mobile, email, et webhooks (Discord, Telegram, bots de trading automatisés).",
+  },
+  {
+    q: "Est-ce que je peux annuler à tout moment ?",
+    a: "Oui. Les formules Mensuel et Annuel sont sans engagement — vous pouvez annuler quand vous voulez. La licence À vie est un paiement unique, aucun renouvellement nécessaire.",
+  },
+];
+
 /* ─────────────────────────────────────────────────────────────
  * Components
  * ──────────────────────────────────────────────────────────── */
@@ -836,6 +896,161 @@ function IndicatorSection({
   );
 }
 
+function PricingSection() {
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+  async function handleCheckout(planId: string) {
+    setLoadingPlan(planId);
+    try {
+      const res = await fetch("/api/v1/payment/create_indicators_checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ billing: planId }),
+      });
+      const j = await res.json();
+      if (j.url) {
+        window.location.href = j.url;
+        return;
+      }
+      alert(j.error || "Erreur lors de la création du paiement");
+    } catch {
+      alert("Erreur réseau — réessayez dans un instant");
+    }
+    setLoadingPlan(null);
+  }
+
+  return (
+    <section id="tarifs" data-testid="indicators-pricing-section" className="relative border-t border-white/5 overflow-hidden scroll-mt-24">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(16,185,129,0.10),_transparent_55%)]" />
+      <div className="noise-overlay" />
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+        <Reveal>
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-emerald-200">
+              <Zap className="h-3.5 w-3.5" />
+              Accès complet
+            </div>
+            <h2 className="mt-5 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter">
+              <span className="text-white">Obtenez les</span>{" "}
+              <span className="bg-gradient-to-r from-emerald-300 via-cyan-300 to-teal-300 bg-clip-text text-transparent">
+                9 indicateurs
+              </span>
+            </h2>
+            <p className="mt-4 max-w-2xl mx-auto text-base text-slate-400 leading-relaxed">
+              Un seul accès pour toute la suite : achetés séparément, ces 9 indicateurs vaudraient{" "}
+              <span className="text-white/70 line-through decoration-rose-400/70">270$/mois</span> — obtenez tout
+              pour une fraction du prix.
+            </p>
+          </div>
+        </Reveal>
+
+        <Reveal delay={100}>
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch">
+            {PRICING.map((p) => (
+              <div
+                key={p.id}
+                data-testid={`pricing-card-${p.id}`}
+                className={`relative flex flex-col rounded-3xl p-8 ${
+                  p.featured
+                    ? "border-2 border-emerald-400/70 bg-gradient-to-b from-emerald-500/10 via-[#0d1526] to-[#0d1526] shadow-2xl shadow-emerald-500/15 md:-my-3 md:py-11"
+                    : "border border-white/10 bg-[#0d1526]"
+                }`}
+              >
+                {p.badge && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.15em] text-[#0a0e17]">
+                      <Sparkles className="h-3 w-3" />
+                      {p.badge}
+                    </span>
+                  </div>
+                )}
+                <div className="font-mono text-[11px] uppercase tracking-[0.25em] text-white/40">{p.name}</div>
+                <div className="mt-4 flex items-baseline gap-2">
+                  <span className={`text-5xl font-black tracking-tighter ${p.featured ? "text-emerald-300" : "text-white"}`}>
+                    {p.price}
+                  </span>
+                  <span className="text-sm text-white/40">{p.period}</span>
+                </div>
+                <div className="mt-2 text-sm text-white/60">{p.desc}</div>
+                <ul className="mt-6 space-y-3 flex-1">
+                  {p.perks.map((perk, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-sm text-slate-300">
+                      <CheckCircle2 className={`shrink-0 mt-0.5 h-4 w-4 ${p.featured ? "text-emerald-300" : "text-white/40"}`} />
+                      {perk}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  data-testid={`pricing-cta-${p.id}`}
+                  onClick={() => handleCheckout(p.id)}
+                  disabled={loadingPlan !== null}
+                  className={`mt-8 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold transition-transform duration-300 hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0 focus:outline-none focus:ring-2 focus:ring-emerald-300 ${
+                    p.featured
+                      ? "bg-gradient-to-r from-emerald-400 to-cyan-400 text-[#0a0e17] shadow-lg shadow-emerald-500/25"
+                      : "border border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.1]"
+                  }`}
+                >
+                  {loadingPlan === p.id ? "Redirection…" : "Obtenir l'accès"}
+                  {loadingPlan !== p.id && <ArrowRight className="h-4 w-4" />}
+                </button>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+
+        <Reveal delay={160}>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-white/40">
+            <span className="inline-flex items-center gap-2">
+              <Shield className="h-3.5 w-3.5 text-emerald-300/70" />
+              Paiement sécurisé Stripe
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Clock className="h-3.5 w-3.5 text-emerald-300/70" />
+              Accès TradingView sous 24 h
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300/70" />
+              Annulez à tout moment
+            </span>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+function FaqSection() {
+  return (
+    <section data-testid="indicators-faq-section" className="relative border-t border-white/5">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
+        <Reveal>
+          <h2 className="text-center text-2xl sm:text-3xl font-black tracking-tighter text-white">
+            Questions fréquentes
+          </h2>
+        </Reveal>
+        <Reveal delay={80}>
+          <div className="mt-10 space-y-3">
+            {FAQ.map((item, i) => (
+              <details
+                key={i}
+                data-testid={`faq-item-${i}`}
+                className="group rounded-2xl border border-white/10 bg-[#0d1526] px-6 py-4 open:border-emerald-400/30"
+              >
+                <summary className="flex cursor-pointer items-center justify-between gap-4 text-sm font-semibold text-white list-none [&::-webkit-details-marker]:hidden">
+                  {item.q}
+                  <ChevronRight className="shrink-0 h-4 w-4 text-white/40 transition-transform duration-300 group-open:rotate-90" />
+                </summary>
+                <p className="mt-3 text-sm text-slate-400 leading-relaxed">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 function Lightbox({ shot, onClose }: { shot: IndicatorScreenshot; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -880,6 +1095,9 @@ function Lightbox({ shot, onClose }: { shot: IndicatorScreenshot; onClose: () =>
 
 export default function MagicStrategy() {
   const [shot, setShot] = useState<IndicatorScreenshot | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(
+    () => new URLSearchParams(window.location.search).get("payment") === "success"
+  );
 
   return (
     <div className="flex min-h-screen bg-[#0a0e17] text-white">
@@ -887,6 +1105,30 @@ export default function MagicStrategy() {
 
       <main className="flex-1 lg:ml-64 flex flex-col relative">
         <PageHeader />
+
+        {paymentSuccess && (
+          <div
+            data-testid="payment-success-banner"
+            className="relative z-10 flex items-center justify-center gap-3 border-b border-emerald-400/30 bg-emerald-500/15 px-4 py-3.5 text-sm text-emerald-100"
+          >
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" />
+            <span>
+              <strong>Paiement confirmé — merci !</strong> Envoyez votre nom d'utilisateur TradingView à{" "}
+              <a href="mailto:cryptoia2026@gmail.com" className="underline font-semibold">
+                cryptoia2026@gmail.com
+              </a>{" "}
+              pour recevoir votre accès sous 24 h.
+            </span>
+            <button
+              type="button"
+              data-testid="payment-success-close"
+              onClick={() => setPaymentSuccess(false)}
+              className="ml-2 shrink-0 text-emerald-200/70 hover:text-white transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {/* ── Hero ───────────────────────────────────────── */}
         <section className="relative overflow-hidden border-b border-white/5">
@@ -940,32 +1182,11 @@ export default function MagicStrategy() {
           <IndicatorSection key={ind.id} ind={ind} index={i} onOpenShot={setShot} />
         ))}
 
-        {/* ── CTA final ─────────────────────────────────── */}
-        <section className="relative border-t border-white/5 overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(34,211,238,0.12),_transparent_60%)]" />
-          <div className="noise-overlay" />
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 text-center">
-            <Reveal>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter">
-                <span className="bg-gradient-to-r from-cyan-300 via-emerald-300 to-teal-300 bg-clip-text text-transparent">
-                  Prêt à trader avec un avantage&nbsp;?
-                </span>
-              </h2>
-              <p className="mt-4 max-w-xl mx-auto text-base text-slate-400 leading-relaxed">
-                Accédez aux {INDICATORS.length} indicateurs exclusifs et à toute la plateforme CryptoIA
-                avec un abonnement.
-              </p>
-              <Link
-                to="/abonnements"
-                data-testid="indicators-cta-subscribe"
-                className="mt-8 inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500 px-8 py-3.5 text-sm font-bold text-[#0a0e17] shadow-lg shadow-cyan-500/20 transition-transform duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-300"
-              >
-                Voir les abonnements
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Reveal>
-          </div>
-        </section>
+        {/* ── Tarifs ────────────────────────────────────── */}
+        <PricingSection />
+
+        {/* ── FAQ ───────────────────────────────────────── */}
+        <FaqSection />
 
         <div className="flex-1" />
         <Footer />

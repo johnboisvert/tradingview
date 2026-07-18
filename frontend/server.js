@@ -683,6 +683,51 @@ app.post('/api/v1/payment/create_payment_session', async (req, res) => {
   }
 });
 
+// ─── POST /api/v1/payment/create_indicators_checkout ───
+// Suite complète des 9 indicateurs TradingView (mensuel / annuel / à vie)
+app.post('/api/v1/payment/create_indicators_checkout', async (req, res) => {
+  if (!STRIPE_SECRET_KEY) {
+    return res.status(503).json({ error: 'Stripe non configuré' });
+  }
+  try {
+    const stripe = await getStripeInstance();
+    const { billing = 'monthly' } = req.body;
+
+    // 🛡️ Prix côté serveur uniquement
+    const INDICATORS_PRICES = {
+      monthly:  { amount: 49,  mode: 'subscription', interval: 'month', label: 'Suite Indicateurs CryptoIA — 9 indicateurs TradingView (Mensuel)' },
+      annual:   { amount: 399, mode: 'subscription', interval: 'year',  label: 'Suite Indicateurs CryptoIA — 9 indicateurs TradingView (Annuel)' },
+      lifetime: { amount: 899, mode: 'payment',      interval: null,    label: 'Suite Indicateurs CryptoIA — 9 indicateurs TradingView (Licence à vie)' },
+    };
+    const cfg = INDICATORS_PRICES[billing];
+    if (!cfg) return res.status(400).json({ error: 'billing invalide (monthly, annual, lifetime)' });
+
+    const host = getFrontendHost(req);
+    const priceData = {
+      currency: 'cad',
+      product_data: { name: cfg.label },
+      unit_amount: Math.round(cfg.amount * 100),
+    };
+    if (cfg.mode === 'subscription') priceData.recurring = { interval: cfg.interval, interval_count: 1 };
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{ price_data: priceData, quantity: 1 }],
+      mode: cfg.mode,
+      success_url: `${host}/magic-strategy?payment=success&billing=${billing}`,
+      cancel_url: `${host}/magic-strategy`,
+      allow_promotion_codes: true,
+      metadata: { product: 'indicators_suite', billing },
+    });
+
+    console.log(`[Payment] Indicators checkout created: ${session.id} billing=${billing} amount=${cfg.amount}$ CAD`);
+    res.json({ session_id: session.id, url: session.url });
+  } catch (err) {
+    console.error('[Payment] Indicators checkout error:', err);
+    res.status(400).json({ error: err?.raw?.message || err?.message || 'Erreur Stripe' });
+  }
+});
+
 // ─── POST /api/v1/payment/verify_payment ───
 app.post('/api/v1/payment/verify_payment', async (req, res) => {
   if (!STRIPE_SECRET_KEY) {

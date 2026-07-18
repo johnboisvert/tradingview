@@ -48,13 +48,14 @@ export default function registerPaymentWebhookRoutes(
       try { if (_email_for_winback) winBack?.markReactivated?.(_email_for_winback); } catch { /* ignore */ }
       const email = session.customer_details?.email || session.customer_email || null;
       const amountTotal = (session.amount_total || 0) / 100; // cents → dollars
-      console.log(`[Payment] ✅ checkout.session.completed: plan=${metadata.plan}, billing=${metadata.billing_period}, email=${email}, amount=${amountTotal}`);
+      const planLabel = metadata.plan || (metadata.product === 'indicators_suite' ? `Suite Indicateurs (${metadata.billing || '?'})` : 'N/A');
+      console.log(`[Payment] ✅ checkout.session.completed: plan=${planLabel}, billing=${metadata.billing_period || metadata.billing}, email=${email}, amount=${amountTotal}`);
 
       // 💬 Discord/Slack notification (instant)
       sendChatNotification({
         title: `💰 +$${amountTotal.toFixed(2)} — Nouvelle vente !`,
         lines: [
-          `**Plan** : ${metadata.plan || 'N/A'} (${metadata.billing_period || 'monthly'})`,
+          `**Plan** : ${planLabel} (${metadata.billing_period || metadata.billing || 'monthly'})`,
           `**Client** : ${email || 'N/A'}`,
           `**Montant** : $${amountTotal.toFixed(2)} CAD`,
           metadata.promo_code ? `**Promo** : ${metadata.promo_code} (-${metadata.discount_pct || '?'}%)` : null,
@@ -106,6 +107,33 @@ export default function registerPaymentWebhookRoutes(
           console.error('[AdminAlert] error:', e?.message);
         }
       })();
+
+      // 🎯 Suite Indicateurs — email automatique au client pour obtenir son username TradingView
+      if (metadata.product === 'indicators_suite' && email) {
+        (async () => {
+          try {
+            const client = await getResendClient();
+            if (!client) return;
+            const sender = process.env.SENDER_EMAIL || 'CryptoIA <onboarding@resend.dev>';
+            const adminEmail = process.env.ADMIN_EMAIL || 'cryptoia2026@gmail.com';
+            const billingLabel = { monthly: 'Mensuel', annual: 'Annuel', lifetime: 'Licence à vie' }[metadata.billing] || metadata.billing || '';
+            const replyHref = `mailto:${adminEmail}?subject=${encodeURIComponent('Mon username TradingView — Suite Indicateurs CryptoIA')}&body=${encodeURIComponent("Bonjour,\n\nVoici mon nom d'utilisateur TradingView : \n\nMerci !")}`;
+            const indicatorsList = ['Magic JB IA', 'RiskGlow', 'WaveRider Divergence Oscillator', 'GoodGuys Spot Daily', 'DivergX One', 'Confluence Pro™', 'Magic JB IA Cycles', 'Magic JB S/R AI', 'Crypto IA Edge']
+              .map(n => `<tr><td style="padding:6px 0;color:#e2e8f0;font-size:14px;">✅ ${n}</td></tr>`).join('');
+            const html = `<!DOCTYPE html><html><body style="font-family:-apple-system,sans-serif;background:#0A0E1A;color:#e2e8f0;padding:32px;"><div style="max-width:560px;margin:0 auto;background:linear-gradient(140deg,#0f172a,#0d1f1a);border:1px solid rgba(16,185,129,0.25);border-radius:20px;padding:36px;"><div style="text-align:center;margin-bottom:24px;"><div style="display:inline-block;width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#10b981,#06b6d4);line-height:56px;font-size:26px;">🎉</div><h1 style="margin:14px 0 0;color:#fff;font-size:22px;">Merci pour votre achat !</h1><p style="margin:8px 0 0;color:#94a3b8;font-size:14px;">Suite Indicateurs CryptoIA — ${billingLabel}</p></div><div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:14px;padding:20px;margin-bottom:24px;"><p style="margin:0;color:#fff;font-weight:700;font-size:15px;">⚡ Une dernière étape pour activer votre accès :</p><p style="margin:10px 0 0;color:#cbd5e1;font-size:14px;line-height:1.6;">Répondez à cet email avec votre <strong style="color:#34d399;">nom d'utilisateur TradingView</strong> et nous vous donnerons l'accès invite-only à vos 9 indicateurs <strong>sous 24&nbsp;h</strong>.</p></div><div style="text-align:center;margin-bottom:28px;"><a href="${replyHref}" style="display:inline-block;padding:14px 28px;border-radius:999px;background:linear-gradient(135deg,#10b981,#06b6d4);color:#06251c;font-weight:900;text-decoration:none;font-size:14px;">Envoyer mon username TradingView →</a></div><p style="margin:0 0 8px;color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:2px;">Vos 9 indicateurs</p><table style="width:100%;border-spacing:0;margin-bottom:24px;">${indicatorsList}</table><p style="margin:0;color:#64748b;font-size:12px;line-height:1.6;">💡 Où trouver votre username ? Sur <a href="https://www.tradingview.com" style="color:#34d399;">TradingView.com</a>, cliquez sur votre avatar en haut à droite — votre username commence par @.</p><hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:24px 0;"><p style="margin:0;color:#475569;font-size:11px;text-align:center;">CryptoIA — cryptoia.ca · Des questions ? Répondez simplement à cet email.</p></div></body></html>`;
+            await client.emails.send({
+              from: sender,
+              to: [email],
+              replyTo: adminEmail,
+              subject: '🎉 Votre accès aux 9 indicateurs CryptoIA — une dernière étape !',
+              html,
+            });
+            console.log(`[IndicatorsSuite] Access-request email sent to ${email} (billing=${metadata.billing})`);
+          } catch (e) {
+            console.error('[IndicatorsSuite] client email error:', e?.message);
+          }
+        })();
+      }
     } else if (eventType === 'invoice.payment_succeeded') {
       const invoice = event.data?.object || {};
       console.log(`[Payment] ✅ invoice.payment_succeeded: subscription=${invoice.subscription}`);

@@ -21,6 +21,7 @@ import OnboardingTour from "@/components/OnboardingTour";
 import Testimonials from "@/components/Testimonials";
 import MiniSparkline from "@/components/MiniSparkline";
 import HomeInfluencers from "@/components/HomeInfluencers";
+import HomeIndicators from "@/components/HomeIndicators";
 
 interface CoinData {
   id: string;
@@ -439,6 +440,9 @@ export default function DashboardPage() {
 
         {/* Market Hours */}
         <MarketHours />
+
+        {/* Nos Indicateurs — vitrine publique */}
+        <HomeIndicators />
 
         {/* Top Influenceurs — social proof for the viral quiz funnel */}
         <HomeInfluencers />

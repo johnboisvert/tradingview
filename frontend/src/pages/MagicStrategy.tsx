@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Maximize2,
   X,
+  Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -112,6 +113,13 @@ const ACCENTS = {
     glow: "bg-fuchsia-500/20",
     check: "text-fuchsia-300",
   },
+  orange: {
+    badge: "border-orange-400/30 bg-orange-500/10 text-orange-200",
+    title: "from-orange-300 via-amber-300 to-yellow-300",
+    border: "border-orange-400/20 hover:border-orange-400/50",
+    glow: "bg-orange-500/20",
+    check: "text-orange-300",
+  },
 } as const;
 
 /* ─────────────────────────────────────────────────────────────
@@ -119,6 +127,54 @@ const ACCENTS = {
  * ──────────────────────────────────────────────────────────── */
 
 const INDICATORS: Indicator[] = [
+  {
+    id: "magic-jb-ia",
+    name: "Magic JB IA",
+    tagline: "Le système de trading complet : entrées, sorties et gestion automatisées",
+    icon: Zap,
+    accent: ACCENTS.orange,
+    description: [
+      "Magic JB IA est un système de trading complet qui vous dit exactement quand entrer, où sortir et combien prendre. C'est un indicateur Pine Script qui fonctionne directement sur TradingView : une fois l'accès obtenu, il suffit de l'ajouter à votre graphique en quelques clics.",
+      "Signaux automatiques : croisement d'EMA + scoring IA de 1 à 10 pour identifier les meilleures entrées LONG et SHORT.",
+      "5 niveaux de Take Profit : TP1 à TP5 calculés dynamiquement avec l'ATR, avec prise de profit progressive (30 %, 25 %, 20 %, 15 %, 10 %).",
+      "Stop Loss intelligent : SL dynamique basé sur l'ATR + passage automatique au Break Even dès que TP1 est touché.",
+      "Multi-timeframe : presets automatiques Scalp 5M, Intraday 15M, Swing 1H et Swing 4H — l'indicateur s'adapte à votre style de trading.",
+      "Kill Zones : détection automatique des sessions Londres et New York + alerte OVERLAP pour trader aux meilleurs moments de la journée.",
+      "PVSRA + Trend 4H : analyse du volume (Climax/Rising) et confirmation de tendance sur le 4H pour des signaux plus fiables.",
+      "8 alertes configurables (LONG, SHORT, TP1-TP5, SL) reçues directement via TradingView : notifications push mobile, email et webhooks (Discord, Telegram, bots de trading automatisés). Testé et optimisé sur plus de 100 paires crypto.",
+    ],
+    features: [
+      "Signaux automatiques LONG et SHORT",
+      "Scoring IA de 1 à 10",
+      "5 niveaux Take Profit dynamiques (ATR)",
+      "Stop Loss intelligent + Break Even automatique",
+      "Presets multi-timeframes (5M, 15M, 1H, 4H)",
+      "Kill Zones (Londres, New York, Overlap)",
+      "PVSRA + confirmation Trend 4H",
+      "8 alertes configurables (push, email, webhook)",
+      "Testé sur plus de 100 paires crypto",
+    ],
+    timeframes: "5M, 15M, 1H et 4H (presets automatiques)",
+    screenshots: [
+      {
+        src: "/magic-screenshots/bico-long.png",
+        caption: "BICO/USDT 15m — Signal LONG Score 5/10, Trend 4H BULL : TP1 atteint, SL déplacé au Break Even automatiquement.",
+      },
+      {
+        src: "/magic-screenshots/apt-short.png",
+        caption: "APT/USDT 15m — Signal SHORT avec TP2 atteint : momentum négatif confirmé et gestion automatique du trade.",
+      },
+      {
+        src: "/magic-screenshots/tarifs.png",
+        caption: "MASK/USDT 15m — Signal LONG Score 7/10, preset Crypto RR Safe 15min : TP1 touché puis SL au Break Even.",
+      },
+      {
+        src: "/magic-screenshots/fonctionnalites.png",
+        caption: "Vue d'ensemble des 8 fonctionnalités clés : signaux, TP, SL, Multi-Timeframe, Kill Zones, PVSRA et alertes.",
+      },
+    ],
+    ready: true,
+  },
   {
     id: "riskglow",
     name: "RiskGlow",

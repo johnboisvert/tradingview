@@ -23,6 +23,7 @@ import {
   Twitter,
   Bot,
   Wand2,
+  KeyRound,
 } from "lucide-react";
 import { adminLogout } from "@/pages/AdminLogin";
 import { getAdminSession } from "@/lib/store";
@@ -36,6 +37,7 @@ const NAV_ITEMS = [
   { path: "/admin/visitors", label: "Visiteurs & Sessions", icon: Eye },
   { path: "/admin/pricing", label: "Prix & Forfaits", icon: CreditCard },
   { path: "/admin/access", label: "Gestion Accès", icon: ShieldCheck },
+  { path: "/admin/indicator-access", label: "Accès Indicateurs", icon: KeyRound },
   { path: "/admin/promos", label: "Codes Promo", icon: Tag },
   { path: "/admin/messages", label: "Messages & Ebooks", icon: MessageSquare },
   { path: "/admin/social-kits", label: "Social Kits", icon: Sparkles },

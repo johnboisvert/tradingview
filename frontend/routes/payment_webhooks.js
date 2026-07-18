@@ -1,6 +1,7 @@
 // Payment Webhooks — Stripe + NOWPayments IPN handlers
 // Extracted from server.js (Session 19 refactor)
 // All external dependencies are passed via dependency injection.
+import { recordIndicatorPurchase } from './indicator_access.js';
 
 export default function registerPaymentWebhookRoutes(
   app,
@@ -110,6 +111,11 @@ export default function registerPaymentWebhookRoutes(
 
       // 🎯 Suite Indicateurs — email automatique au client pour obtenir son username TradingView
       if (metadata.product === 'indicators_suite' && email) {
+        try {
+          recordIndicatorPurchase({ email, billing: metadata.billing, amount: amountTotal, sessionId: session.id });
+        } catch (e) {
+          console.error('[IndicatorAccess] record error:', e?.message);
+        }
         (async () => {
           try {
             const client = await getResendClient();

@@ -51,6 +51,7 @@ import registerNewsProxyRoutes from './routes/news_proxy.js';
 import registerDeribitOptionsRoutes from './routes/deribit_options.js';
 import registerDerivativesSentimentRoutes from './routes/derivatives_sentiment.js';
 import registerTelegramConfigRoutes from './routes/telegram_routes.js';
+import registerIndicatorAccessRoutes from './routes/indicator_access.js';
 import { createScalpEngine } from './lib/scalp_engine.js';
 import { createSwingEngine } from './lib/swing_engine.js';
 import { createRangeEngine } from './lib/range_engine.js';
@@ -2541,6 +2542,7 @@ referralModule = registerReferralRoutes(app, {
 
   // ─── Promo Codes (centralized backend storage, auto-seeds WELCOME20/FLASH30) ─
   registerPromoRoutes(app, { requireAdmin });
+  registerIndicatorAccessRoutes(app, { requireAdmin, dataDir: DATA_DIR });
 
   // ─── Blog auto-publish cron (1 article/day via GPT-5.4 + IndexNow + newsletter) ─
   registerBlogCronRoutes(app, {

@@ -53,6 +53,7 @@ const AdminAnalytics = React.lazy(() => import("./pages/AdminAnalytics"));
 const AdminSocialKits = React.lazy(() => import("./pages/AdminSocialKits"));
 const AdminHealth = React.lazy(() => import("./pages/AdminHealth"));
 const AdminRecovery = React.lazy(() => import("./pages/AdminRecovery"));
+const AdminIndicatorAccess = React.lazy(() => import("./pages/AdminIndicatorAccess"));
 const AdminTwitter = React.lazy(() => import("./pages/AdminTwitter"));
 const AdminOnboarding = React.lazy(() => import("./pages/AdminOnboarding"));
 const AdminBlogCron = React.lazy(() => import("./pages/AdminBlogCron"));
@@ -254,6 +255,7 @@ function App() {
           <Route path="/admin/social-kits" element={<ProtectedAdminRoute><AdminSocialKits /></ProtectedAdminRoute>} />
           <Route path="/admin/health" element={<ProtectedAdminRoute><AdminHealth /></ProtectedAdminRoute>} />
           <Route path="/admin/recovery" element={<ProtectedAdminRoute><AdminRecovery /></ProtectedAdminRoute>} />
+          <Route path="/admin/indicator-access" element={<ProtectedAdminRoute><AdminIndicatorAccess /></ProtectedAdminRoute>} />
           <Route path="/admin/twitter" element={<ProtectedAdminRoute><AdminTwitter /></ProtectedAdminRoute>} />
           <Route path="/admin/onboarding" element={<ProtectedAdminRoute><AdminOnboarding /></ProtectedAdminRoute>} />
           <Route path="/admin/blog-cron" element={<ProtectedAdminRoute><AdminBlogCron /></ProtectedAdminRoute>} />

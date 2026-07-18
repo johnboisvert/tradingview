@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
@@ -15,6 +16,9 @@ import {
   Clock,
   LayoutGrid,
   ChevronRight,
+  ArrowRight,
+  Maximize2,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -554,144 +558,263 @@ const INDICATORS: Indicator[] = [
  * Components
  * ──────────────────────────────────────────────────────────── */
 
-function IndicatorNavCard({ ind }: { ind: Indicator }) {
+function Reveal({ children, delay = 0, className = "" }: { children: ReactNode; delay?: number; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add("is-visible");
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className={`reveal ${className}`} style={{ transitionDelay: `${delay}ms` }}>
+      {children}
+    </div>
+  );
+}
+
+function IndicatorNavCard({ ind, index }: { ind: Indicator; index: number }) {
   const Icon = ind.icon;
   return (
     <a
       href={`#${ind.id}`}
       data-testid={`indicator-nav-${ind.id}`}
-      className={`group relative overflow-hidden rounded-2xl border bg-[#0d1526] p-5 transition ${ind.accent.border}`}
+      className={`group relative overflow-hidden rounded-2xl border bg-[#0d1526] p-7 transition-transform duration-300 ease-out hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-white/40 ${ind.accent.border}`}
     >
-      <div className={`absolute -top-10 -right-10 h-28 w-28 rounded-full blur-3xl ${ind.accent.glow}`} />
-      <div className="relative flex items-start gap-4">
-        <div className={`shrink-0 h-11 w-11 rounded-xl grid place-items-center border ${ind.accent.badge}`}>
-          <Icon className="h-5 w-5" />
+      <div
+        className={`absolute -top-14 -right-14 h-36 w-36 rounded-full blur-3xl opacity-40 group-hover:opacity-90 transition-opacity duration-500 ${ind.accent.glow}`}
+      />
+      <div className="relative">
+        <div className="flex items-start justify-between">
+          <div className={`h-12 w-12 rounded-xl grid place-items-center border ${ind.accent.badge}`}>
+            <Icon className="h-[22px] w-[22px]" />
+          </div>
+          <span className="font-mono text-[11px] tracking-[0.2em] text-white/25 group-hover:text-white/50 transition-colors">
+            {String(index + 1).padStart(2, "0")}
+          </span>
         </div>
-        <div className="min-w-0">
-          <div className="text-sm font-bold text-white leading-snug">{ind.name}</div>
-          <div className="mt-1 text-xs text-white/55 leading-relaxed">{ind.tagline}</div>
+        <div className="mt-5 text-[15px] font-bold text-white leading-snug tracking-tight">{ind.name}</div>
+        <div className="mt-1.5 text-xs text-white/50 leading-relaxed line-clamp-2">{ind.tagline}</div>
+        <div className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-white/30 group-hover:text-white/70 transition-colors">
+          Découvrir
+          <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
         </div>
-        <ChevronRight className="ml-auto shrink-0 h-4 w-4 text-white/30 group-hover:text-white/70 group-hover:translate-x-0.5 transition" />
       </div>
     </a>
   );
 }
 
-function ScreenshotCard({ shot, border }: { shot: IndicatorScreenshot; border: string }) {
+function ScreenshotCard({
+  shot,
+  border,
+  onOpen,
+}: {
+  shot: IndicatorScreenshot;
+  border: string;
+  onOpen: (shot: IndicatorScreenshot) => void;
+}) {
   return (
-    <a
-      href={shot.src}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`group relative overflow-hidden rounded-2xl border bg-[#0d1526] transition ${border}`}
+    <button
+      type="button"
+      onClick={() => onOpen(shot)}
+      data-testid={`screenshot-open-${shot.src.split("/").pop()?.replace(".png", "")}`}
+      className={`group relative overflow-hidden rounded-2xl border bg-[#0d1526] text-left transition-transform duration-300 ease-out hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-white/40 ${border}`}
     >
       <div className="aspect-[16/9] overflow-hidden bg-[#0a0e17]">
         <img
           src={shot.src}
           alt={shot.caption}
           loading="lazy"
-          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
         />
       </div>
-      <div className="absolute top-3 right-3 rounded-md bg-black/60 backdrop-blur-sm px-2 py-1 text-[10px] font-semibold text-white/80 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition">
-        Agrandir ↗
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0e17]/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute top-3 right-3 h-8 w-8 rounded-lg grid place-items-center bg-black/60 backdrop-blur-sm border border-white/10 text-white/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <Maximize2 className="h-3.5 w-3.5" />
       </div>
-      <div className="px-4 py-3 border-t border-white/5">
-        <div className="text-xs text-white/60 leading-relaxed">{shot.caption}</div>
+      <div className="px-4 py-3.5 border-t border-white/5">
+        <div className="text-xs text-white/55 leading-relaxed">{shot.caption}</div>
       </div>
-    </a>
+    </button>
   );
 }
 
-function IndicatorSection({ ind }: { ind: Indicator }) {
+function IndicatorSection({
+  ind,
+  index,
+  onOpenShot,
+}: {
+  ind: Indicator;
+  index: number;
+  onOpenShot: (shot: IndicatorScreenshot) => void;
+}) {
   const Icon = ind.icon;
   return (
     <section
       id={ind.id}
       data-testid={`indicator-section-${ind.id}`}
-      className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 scroll-mt-20 border-t border-white/5"
+      className="relative border-t border-white/5 scroll-mt-24"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        <div className={`shrink-0 h-14 w-14 rounded-2xl grid place-items-center border ${ind.accent.badge}`}>
-          <Icon className="h-7 w-7" />
-        </div>
-        <div>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
-            <span className={`bg-gradient-to-r ${ind.accent.title} bg-clip-text text-transparent`}>
-              {ind.name}
-            </span>
-          </h2>
-          <p className="mt-1 text-sm sm:text-base text-white/60">{ind.tagline}</p>
-        </div>
-      </div>
-
-      {!ind.ready ? (
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center">
-          <Clock className="mx-auto h-6 w-6 text-white/40" />
-          <p className="mt-3 text-sm text-white/60">
-            Fiche détaillée en préparation — description complète et captures d'écran à venir.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <div className="lg:col-span-3 space-y-4">
-              {ind.description.map((p, i) => (
-                <p key={i} className="text-sm sm:text-base leading-relaxed text-slate-300">
-                  {p}
-                </p>
-              ))}
-              {ind.timeframes && (
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/70">
-                  <Clock className="h-3.5 w-3.5" />
-                  Affichage adapté au {ind.timeframes}
-                </div>
-              )}
-            </div>
-
-            <div className="lg:col-span-2 space-y-4">
-              <div className={`rounded-2xl border bg-[#0d1526] p-5 ${ind.accent.border}`}>
-                <div className="text-xs font-bold uppercase tracking-wider text-white/50">
-                  Fonctions principales
-                </div>
-                <ul className="mt-3 space-y-2">
-                  {ind.features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm text-white/80">
-                      <CheckCircle2 className={`shrink-0 mt-0.5 h-4 w-4 ${ind.accent.check}`} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {ind.dashboard && (
-                <div className="rounded-2xl border border-white/10 bg-[#0d1526] p-5">
-                  <div className="text-xs font-bold uppercase tracking-wider text-white/50">
-                    Tableau de bord
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
+          {/* Colonne gauche sticky */}
+          <div className="lg:col-span-4">
+            <div className="lg:sticky lg:top-24">
+              <Reveal>
+                <span className="font-mono text-xs tracking-[0.3em] text-white/25">
+                  {String(index + 1).padStart(2, "0")} / {String(INDICATORS.length).padStart(2, "0")}
+                </span>
+                <div className="relative mt-5 inline-block">
+                  <div className={`absolute inset-0 scale-150 rounded-full blur-2xl opacity-60 glow-drift ${ind.accent.glow}`} />
+                  <div className={`relative h-16 w-16 rounded-2xl grid place-items-center border ${ind.accent.badge}`}>
+                    <Icon className="h-8 w-8" />
                   </div>
-                  <ul className="mt-3 space-y-2">
-                    {ind.dashboard.map((d, i) => (
-                      <li key={i} className="flex items-start gap-2.5 text-sm text-white/80">
-                        <LayoutGrid className={`shrink-0 mt-0.5 h-4 w-4 ${ind.accent.check}`} />
-                        {d}
-                      </li>
-                    ))}
-                  </ul>
                 </div>
-              )}
+                <h2 className="mt-6 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-[1.05]">
+                  <span className={`bg-gradient-to-r ${ind.accent.title} bg-clip-text text-transparent`}>
+                    {ind.name}
+                  </span>
+                </h2>
+                <p className="mt-4 text-base text-white/60 leading-relaxed">{ind.tagline}</p>
+                {ind.timeframes && (
+                  <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.15em] text-white/60">
+                    <Clock className="h-3.5 w-3.5" />
+                    {ind.timeframes}
+                  </div>
+                )}
+              </Reveal>
             </div>
           </div>
 
-          {ind.screenshots.length > 0 && (
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5">
-              {ind.screenshots.map((s, i) => (
-                <ScreenshotCard key={i} shot={s} border={ind.accent.border} />
-              ))}
-            </div>
-          )}
-        </>
-      )}
+          {/* Colonne droite */}
+          <div className="lg:col-span-8 space-y-10">
+            {!ind.ready ? (
+              <Reveal>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-10 text-center">
+                  <Clock className="mx-auto h-6 w-6 text-white/40" />
+                  <p className="mt-3 text-sm text-white/60">
+                    Fiche détaillée en préparation — description complète et captures d'écran à venir.
+                  </p>
+                </div>
+              </Reveal>
+            ) : (
+              <>
+                <Reveal>
+                  <div className="space-y-5">
+                    {ind.description.map((p, i) => (
+                      <p
+                        key={i}
+                        className={
+                          i === 0
+                            ? "text-lg sm:text-xl leading-relaxed text-slate-200 font-medium"
+                            : "text-[15px] sm:text-base leading-relaxed text-slate-400"
+                        }
+                      >
+                        {p}
+                      </p>
+                    ))}
+                  </div>
+                </Reveal>
+
+                <Reveal delay={80}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className={`relative overflow-hidden rounded-2xl border bg-[#0d1526] p-7 ${ind.accent.border}`}>
+                      <div className={`absolute -top-16 -right-16 h-36 w-36 rounded-full blur-3xl opacity-30 ${ind.accent.glow}`} />
+                      <div className="relative">
+                        <div className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-white/40">
+                          Fonctions principales
+                        </div>
+                        <ul className="mt-5 space-y-3.5">
+                          {ind.features.map((f, i) => (
+                            <li key={i} className="flex items-start gap-3 text-sm text-slate-300 leading-relaxed">
+                              <CheckCircle2 className={`shrink-0 mt-0.5 h-[18px] w-[18px] ${ind.accent.check}`} />
+                              {f}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {ind.dashboard && (
+                      <div className="rounded-2xl border border-white/10 bg-[#0d1526] p-7">
+                        <div className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-white/40">
+                          Tableau de bord
+                        </div>
+                        <ul className="mt-5 space-y-3.5">
+                          {ind.dashboard.map((d, i) => (
+                            <li key={i} className="flex items-start gap-3 text-sm text-slate-300 leading-relaxed">
+                              <LayoutGrid className={`shrink-0 mt-0.5 h-[18px] w-[18px] ${ind.accent.check}`} />
+                              {d}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </Reveal>
+
+                {ind.screenshots.length > 0 && (
+                  <Reveal delay={120}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      {ind.screenshots.map((s, i) => (
+                        <ScreenshotCard key={i} shot={s} border={ind.accent.border} onOpen={onOpenShot} />
+                      ))}
+                    </div>
+                  </Reveal>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </section>
+  );
+}
+
+function Lightbox({ shot, onClose }: { shot: IndicatorScreenshot; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+  return (
+    <div
+      data-testid="screenshot-lightbox"
+      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 sm:p-10"
+    >
+      <button
+        type="button"
+        data-testid="lightbox-close"
+        onClick={onClose}
+        className="absolute top-5 right-5 h-11 w-11 rounded-full grid place-items-center border border-white/15 bg-white/5 text-white/80 hover:bg-white/15 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
+      >
+        <X className="h-5 w-5" />
+      </button>
+      <figure onClick={(e) => e.stopPropagation()} className="max-w-6xl w-full">
+        <img
+          src={shot.src}
+          alt={shot.caption}
+          className="mx-auto max-h-[80vh] w-auto rounded-xl border border-white/10 shadow-2xl"
+        />
+        <figcaption className="mt-4 text-center text-sm text-white/60">{shot.caption}</figcaption>
+      </figure>
+    </div>
   );
 }
 
@@ -700,55 +823,99 @@ function IndicatorSection({ ind }: { ind: Indicator }) {
  * ──────────────────────────────────────────────────────────── */
 
 export default function MagicStrategy() {
-  const [readyCount] = useState(() => INDICATORS.filter((i) => i.ready).length);
+  const [shot, setShot] = useState<IndicatorScreenshot | null>(null);
 
   return (
     <div className="flex min-h-screen bg-[#0a0e17] text-white">
       <Sidebar />
 
-      <main className="flex-1 lg:ml-64 flex flex-col">
+      <main className="flex-1 lg:ml-64 flex flex-col relative">
         <PageHeader />
 
         {/* ── Hero ───────────────────────────────────────── */}
         <section className="relative overflow-hidden border-b border-white/5">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(34,211,238,0.18),_transparent_60%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_rgba(16,185,129,0.12),_transparent_50%)]" />
-          <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:48px_48px]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(34,211,238,0.16),_transparent_55%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_rgba(16,185,129,0.10),_transparent_50%)]" />
+          <div className="absolute -top-32 left-1/4 h-72 w-72 rounded-full bg-cyan-500/15 blur-3xl glow-drift" />
+          <div className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
+          <div className="noise-overlay" />
 
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-200 backdrop-blur-sm">
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
+            <div className="hero-item inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/10 backdrop-blur-md px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-cyan-200">
               <Sparkles className="h-3.5 w-3.5" />
               Suite d'indicateurs Crypto IA
             </div>
-            <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight">
+            <h1 className="hero-item [animation-delay:120ms] mt-6 text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.02]">
+              <span className="text-white">Nos</span>{" "}
               <span className="bg-gradient-to-r from-cyan-300 via-emerald-300 to-teal-300 bg-clip-text text-transparent">
-                Nos Indicateurs
+                Indicateurs
               </span>
             </h1>
-            <p className="mt-3 max-w-2xl text-base sm:text-lg text-white/70">
+            <p className="hero-item [animation-delay:240ms] mt-6 max-w-2xl text-base sm:text-lg text-slate-400 leading-relaxed">
               {INDICATORS.length} indicateurs TradingView exclusifs conçus pour vous donner un avantage
               réel sur le marché : tendance, volume, divergences, cycles et gestion du risque.
             </p>
+            <div className="hero-item [animation-delay:360ms] mt-8 flex flex-wrap gap-2.5">
+              {["Scalping", "Day Trading", "Swing", "Investissement long terme"].map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.15em] text-slate-400"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* ── Grid nav ──────────────────────────────────── */}
-        <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {INDICATORS.map((ind) => (
-              <IndicatorNavCard key={ind.id} ind={ind} />
-            ))}
-          </div>
+        <section className="relative max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-14 lg:py-20">
+          <Reveal>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {INDICATORS.map((ind, i) => (
+                <IndicatorNavCard key={ind.id} ind={ind} index={i} />
+              ))}
+            </div>
+          </Reveal>
         </section>
 
         {/* ── Sections détaillées ───────────────────────── */}
-        {INDICATORS.map((ind) => (
-          <IndicatorSection key={ind.id} ind={ind} />
+        {INDICATORS.map((ind, i) => (
+          <IndicatorSection key={ind.id} ind={ind} index={i} onOpenShot={setShot} />
         ))}
+
+        {/* ── CTA final ─────────────────────────────────── */}
+        <section className="relative border-t border-white/5 overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(34,211,238,0.12),_transparent_60%)]" />
+          <div className="noise-overlay" />
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 text-center">
+            <Reveal>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter">
+                <span className="bg-gradient-to-r from-cyan-300 via-emerald-300 to-teal-300 bg-clip-text text-transparent">
+                  Prêt à trader avec un avantage&nbsp;?
+                </span>
+              </h2>
+              <p className="mt-4 max-w-xl mx-auto text-base text-slate-400 leading-relaxed">
+                Accédez aux {INDICATORS.length} indicateurs exclusifs et à toute la plateforme CryptoIA
+                avec un abonnement.
+              </p>
+              <Link
+                to="/abonnements"
+                data-testid="indicators-cta-subscribe"
+                className="mt-8 inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500 px-8 py-3.5 text-sm font-bold text-[#0a0e17] shadow-lg shadow-cyan-500/20 transition-transform duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-300"
+              >
+                Voir les abonnements
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Reveal>
+          </div>
+        </section>
 
         <div className="flex-1" />
         <Footer />
       </main>
+
+      {shot && <Lightbox shot={shot} onClose={() => setShot(null)} />}
     </div>
   );
 }

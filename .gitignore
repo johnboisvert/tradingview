@@ -23,3 +23,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+# runtime data (never commit)
+frontend/data/super_admin.json
+frontend/data/indicator_access.json

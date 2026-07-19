@@ -2716,6 +2716,36 @@ app.get('/magic-strategy', (req, res, next) => {
   }
 });
 
+// SEO SSR — /performance (page publique Performance des Signaux)
+app.get('/performance', (req, res, next) => {
+  try {
+    const distIndex = path.join(__dirname, 'dist', 'index.html');
+    if (!fs.existsSync(distIndex)) return next();
+    let html = fs.readFileSync(distIndex, 'utf8');
+    const ogUrl = 'https://www.cryptoia.ca/performance';
+    const ogTitle = 'Performance de nos Signaux Crypto — Résultats Réels & Vérifiables | CryptoIA';
+    const ogDesc = 'Transparence totale : chaque signal de trading CryptoIA est tracké automatiquement. Winrate réel, taux TP1/TP2/TP3, performance par niveau de confiance IA et historique complet.';
+    const replacements = [
+      [/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(ogTitle)}" />`],
+      [/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(ogDesc)}" />`],
+      [/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:url" content="${escapeAttr(ogUrl)}" />`],
+      [/<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:title" content="${escapeAttr(ogTitle)}" />`],
+      [/<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:description" content="${escapeAttr(ogDesc)}" />`],
+      [/<title>[^<]*<\/title>/i, `<title>${escapeAttr(ogTitle)}</title>`],
+      [/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i, `<meta name="description" content="${escapeAttr(ogDesc)}" />`],
+      [/<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/i, `<link rel="canonical" href="${escapeAttr(ogUrl)}" />`],
+    ];
+    for (const [re, replacement] of replacements) {
+      if (re.test(html)) html = html.replace(re, replacement);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    res.type('html').send(html);
+  } catch (e) {
+    console.error('[PerformanceSEO-SSR] Error injecting meta tags:', e?.message);
+    next();
+  }
+});
+
 app.get('{*path}', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');

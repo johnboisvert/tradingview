@@ -192,6 +192,7 @@ const BOTTOM_ITEMS = [
   { path: "/parrainage", label: "Mon Parrainage 🎁", icon: Gift, color: "emerald" },
   { path: "/affiliation", label: "Affiliation 30%", icon: Users, color: "emerald" },
   { path: "/magic-strategy", label: "Indicateurs", icon: Sparkles, color: "cyan" },
+  { path: "/performance", label: "Performance Signaux", icon: Trophy, color: "emerald" },
   { path: "/admin", label: "Admin Panel", icon: Shield, color: "amber" },
   { path: "/mon-compte", label: "Mon Compte", icon: User, color: "emerald" },
 ];

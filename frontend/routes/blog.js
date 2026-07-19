@@ -183,6 +183,7 @@ app.get('/sitemap.xml', (req, res) => {
     { path: '/affiliation',       priority: '0.7', changefreq: 'monthly' },
     { path: '/abonnements',       priority: '0.6', changefreq: 'monthly' },
     { path: '/magic-strategy',    priority: '0.9', changefreq: 'weekly' },
+    { path: '/performance',       priority: '0.9', changefreq: 'daily' },
     { path: '/contact',           priority: '0.5', changefreq: 'monthly' },
   ];
 

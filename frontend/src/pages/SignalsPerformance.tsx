@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import {
   Trophy, ShieldCheck, TrendingUp, TrendingDown, Target, Activity,
   ArrowRight, Sparkles, BarChart3, Lock, CheckCircle2, XCircle, MinusCircle, Clock,
+  Share2, Link2,
 } from "lucide-react";
 
 interface Stats {
@@ -69,9 +70,11 @@ export default function SignalsPerformance() {
   const [rangeStats, setRangeStats] = useState<Stats | null>(null);
   const [trades, setTrades] = useState<TradeCall[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    (async () => {
+    async function fetchAll() {
       try {
         const [s, sc, rg, tc] = await Promise.all([
           fetch("/api/v1/trade-calls/stats").then((r) => r.json()),
@@ -86,17 +89,42 @@ export default function SignalsPerformance() {
           .filter((c) => c.status !== "active")
           .slice(0, 15);
         setTrades(closed);
+        setLastUpdate(new Date());
       } catch (e) {
         console.error(e);
       }
       setLoading(false);
-    })();
+    }
+    fetchAll();
+    const interval = setInterval(fetchAll, 60_000);
+    return () => clearInterval(interval);
   }, []);
 
   const hc = stats?.confidence_buckets?.[">80%"];
   const totalSignals = (stats?.total_calls || 0) + (scalpStats?.total_calls || 0) + (rangeStats?.total_calls || 0);
   const weeks = (stats?.weekly_win_rate || []).slice(-12);
   const bestWeek = weeks.reduce((b, w) => (w.total >= 3 && w.win_rate > (b?.win_rate ?? -1) ? w : b), null as null | Stats["weekly_win_rate"][0]);
+
+  const shareText = `📊 ${hc?.win_rate ?? 0}% de winrate sur les signaux crypto haute confiance — résultats trackés automatiquement et 100% transparents (${totalSignals} signaux) 👇`;
+  const shareUrl = "https://www.cryptoia.ca/performance";
+
+  function shareTwitter() {
+    window.open(
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+      "_blank",
+      "noopener,width=600,height=500"
+    );
+  }
+
+  async function copyShareLink() {
+    try {
+      await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      /* clipboard indisponible */
+    }
+  }
 
   return (
     <div className="flex min-h-screen bg-[#0a0e17] text-white">
@@ -116,9 +144,19 @@ export default function SignalsPerformance() {
           <div className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
           <div className="noise-overlay" />
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-            <div className="hero-item inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 backdrop-blur-md px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-emerald-200">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Transparence totale — tracké automatiquement, non modifiable
+            <div className="hero-item inline-flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 backdrop-blur-md px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-emerald-200">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Transparence totale — tracké automatiquement, non modifiable
+              </span>
+              <span data-testid="live-badge" className="inline-flex items-center gap-2 rounded-full border border-rose-400/25 bg-rose-500/10 backdrop-blur-md px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-rose-200">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-400" />
+                </span>
+                En direct
+                {lastUpdate && <span className="text-rose-200/50 normal-case tracking-normal">· MàJ {lastUpdate.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}</span>}
+              </span>
             </div>
             <h1 className="hero-item [animation-delay:120ms] mt-6 text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.02]">
               <span className="text-white">Performance</span>{" "}
@@ -150,6 +188,29 @@ export default function SignalsPerformance() {
             <p className="hero-item [animation-delay:480ms] mt-4 text-xs text-white/30">
               * Signaux avec score de confiance IA supérieur à 80 % ({hc?.total ?? 0} trades clôturés). Win = TP1 atteint.
             </p>
+
+            {/* Partage */}
+            <div className="hero-item [animation-delay:560ms] mt-6 flex flex-wrap items-center gap-3">
+              <span className="text-xs text-white/40">Partagez ces résultats :</span>
+              <button
+                type="button"
+                data-testid="share-twitter-btn"
+                onClick={shareTwitter}
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-xs font-bold text-white hover:bg-white/[0.1] transition-colors"
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                Partager sur X
+              </button>
+              <button
+                type="button"
+                data-testid="share-copy-btn"
+                onClick={copyShareLink}
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-colors ${copied ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-300" : "border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.1]"}`}
+              >
+                {copied ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                {copied ? "Copié — collez sur Discord !" : "Copier pour Discord / Telegram"}
+              </button>
+            </div>
           </div>
         </section>
 

@@ -870,7 +870,7 @@ app.post('/api/v1/trade-calls', (req, res) => {
 
   tradeCallIdCounter++;
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+  const expiresAt = new Date(now.getTime() + 120 * 60 * 60 * 1000); // v7: 120h (TP1 is now ~7% away, 72h expired 20% of calls)
 
   const newCall = {
     id: tradeCallIdCounter,

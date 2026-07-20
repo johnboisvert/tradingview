@@ -1206,37 +1206,6 @@ async function enrichWithBinance1h(preSetups: PreSetup[]): Promise<TradeSetup[]>
   return setups.sort((a, b) => b.confidence - a.confidence);
 }
 
-/* ─── Auto-register calls to backend ─── */
-
-async function registerCallsToBackend(setups: TradeSetup[]) {
-  const qualifiedSetups = setups.filter(s => s.confidence >= 50);
-  for (const setup of qualifiedSetups) {
-    try {
-      await fetch("/api/v1/trade-calls", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          symbol: setup.symbol,
-          side: setup.side,
-          entry_price: setup.entry,
-          stop_loss: setup.stopLoss,
-          tp0: setup.tp0,
-          tp1: setup.tp1,
-          tp2: setup.tp2,
-          tp3: setup.tp3,
-          confidence: setup.confidence,
-          reason: setup.reason,
-          rsi1h: setup.rsi1h,
-          has_convergence: setup.hasConvergence,
-          rr: setup.rr,
-        }),
-      });
-    } catch {
-      // Silently ignore
-    }
-  }
-}
-
 /* ─── RSI Badge Color ─── */
 
 function rsiBadge(rsi: number | null): { text: string; color: string; bg: string } {
@@ -1293,7 +1262,8 @@ export default function Trades() {
         const updatedSignals = updateSignalsWithPrices(priceMap);
         setPerfStats(computePerformanceStats(updatedSignals));
 
-        registerCallsToBackend(enriched).catch(() => {});
+        // v7: tracking désactivé côté client — les signaux officiels sont enregistrés
+        // server-side par le moteur swing v7 (fiable, non manipulable)
       }
     } catch (e) {
       console.error("Fetch error:", e);

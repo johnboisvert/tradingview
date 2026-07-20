@@ -286,7 +286,8 @@ export function formatPrice(price) {
 
 export function roundPrice(value, reference) {
   if (reference >= 1000) return Math.round(value * 100) / 100;
-  if (reference >= 1) return Math.round(value * 100) / 100;
-  if (reference >= 0.01) return Math.round(value * 10000) / 10000;
-  return Math.round(value * 1000000) / 1000000;
+  if (reference >= 1) return Math.round(value * 10000) / 10000;
+  if (reference >= 0.01) return Math.round(value * 1000000) / 1000000;
+  // v7: micro-prices (PEPE, SHIB…) — fixed decimals destroyed SL/TP levels (6% became 3.2%)
+  return Number(value.toPrecision(5));
 }

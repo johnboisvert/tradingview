@@ -270,13 +270,14 @@ function alignTPWithSR(side, entry, slPercent, supports, resistances) {
     }
 
     const resAbove = resistances.filter(r => r.price > entry * 1.005);
-    if (resAbove.length >= 1 && resAbove[0].price > tp1 * 0.90 && resAbove[0].price < tp1 * 1.20) {
+    // v7: only snap TP to S/R if it keeps a decent reward (April bug: TP1 snapped to +0.5% resistances)
+    if (resAbove.length >= 1 && resAbove[0].price >= entry + slDistance * 0.8 && resAbove[0].price < tp1 * 1.20) {
       tp1 = resAbove[0].price * 0.998;
     }
-    if (resAbove.length >= 2 && resAbove[1].price > tp2 * 0.85 && resAbove[1].price < tp2 * 1.25) {
+    if (resAbove.length >= 2 && resAbove[1].price >= entry + slDistance * 1.8 && resAbove[1].price < tp2 * 1.25) {
       tp2 = resAbove[1].price * 0.998;
     }
-    if (resAbove.length >= 3 && resAbove[2].price > tp3 * 0.80) {
+    if (resAbove.length >= 3 && resAbove[2].price >= entry + slDistance * 3.0) {
       tp3 = resAbove[2].price * 0.998;
     }
   } else {
@@ -293,13 +294,14 @@ function alignTPWithSR(side, entry, slPercent, supports, resistances) {
     }
 
     const supBelow = supports.filter(s => s.price < entry * 0.995);
-    if (supBelow.length >= 1 && supBelow[0].price < tp1 * 1.10 && supBelow[0].price > tp1 * 0.80) {
+    // v7: only snap TP to S/R if it keeps a decent reward
+    if (supBelow.length >= 1 && supBelow[0].price <= entry - slDistance * 0.8 && supBelow[0].price > tp1 * 0.80) {
       tp1 = supBelow[0].price * 1.002;
     }
-    if (supBelow.length >= 2 && supBelow[1].price < tp2 * 1.15 && supBelow[1].price > tp2 * 0.80) {
+    if (supBelow.length >= 2 && supBelow[1].price <= entry - slDistance * 1.8 && supBelow[1].price > tp2 * 0.80) {
       tp2 = supBelow[1].price * 1.002;
     }
-    if (supBelow.length >= 3 && supBelow[2].price < tp3 * 1.20) {
+    if (supBelow.length >= 3 && supBelow[2].price <= entry - slDistance * 3.0 && supBelow[2].price > 0) {
       tp3 = supBelow[2].price * 1.002;
     }
   }
@@ -344,13 +346,14 @@ async function generateRealSetups(coins) {
     let reason;
 
     // v5: Balanced LONG/SHORT entry conditions
-    // LONG — Momentum: moderate uptrend with volume
-    if (change24h > 3 && change24h < 15 && volMcapRatio > 0.10) {
+    // LONG — Momentum continuation (v7: tightened 2.5-10% window, no pump-chasing bonus)
+    if (change24h > 2.5 && change24h < 10 && volMcapRatio > 0.10) {
       side = 'LONG';
       confidence = 45;
-      if (change24h > 6) confidence += 12; else if (change24h > 4) confidence += 8; else confidence += 5;
+      if (change24h > 6) confidence += 10; else if (change24h > 4) confidence += 8; else confidence += 5;
       if (volMcapRatio > 0.25) confidence += 12; else if (volMcapRatio > 0.15) confidence += 8; else confidence += 4;
-      if (change24h > 8) confidence += 8;
+      // v7: penalize extended moves (data: momentum >=6% → 41% SL rate, pump-chasing kills winrate)
+      if (change24h > 8) confidence -= 8;
       reason = `Momentum haussier (+${change24h.toFixed(1)}%) avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
     }
     // LONG — Oversold bounce: deep drop with volume (reversal play)
@@ -386,6 +389,25 @@ async function generateRealSetups(coins) {
 
   console.log(`[Telegram] Phase 1: ${candidates.length} CoinGecko candidates passed pre-filter`);
 
+  // ─── v7: BTC regime filter — alts follow BTC; April data: LONGs in BTC downtrend = 41% SL ───
+  let btcRegime = 'neutral';
+  try {
+    const btc4h = await fetchBinanceKlines('BTCUSDT', '4h', 60);
+    if (btc4h.length >= 30) {
+      const closes = btc4h.map(k => k.close);
+      const ema8 = calcEMA(closes, 8);
+      const ema20 = calcEMA(closes, 20);
+      const e8 = ema8[ema8.length - 1];
+      const e20 = ema20[ema20.length - 1];
+      const last = closes[closes.length - 1];
+      if (e8 > e20 && last > e20) btcRegime = 'bullish';
+      else if (e8 < e20 && last < e20) btcRegime = 'bearish';
+      console.log(`[Telegram] v7 BTC regime (4H EMA8/EMA20): ${btcRegime}`);
+    }
+  } catch (e) {
+    console.log(`[Telegram] BTC regime check failed (neutral fallback): ${e.message}`);
+  }
+
   // Phase 2: Binance 4H technical confirmation (RSI + EMA + Volume)
   const SWING_BATCH_SIZE = 5;
   for (let i = 0; i < candidates.length; i += SWING_BATCH_SIZE) {
@@ -395,6 +417,7 @@ async function generateRealSetups(coins) {
       let { confidence } = cand;
       let reason = baseReason;
       const symbol = ((c.symbol || '').toUpperCase()) + 'USDT';
+      let rsi4hValue = null; // v7: captured for server-side tracking
 
       // ─── Fetch Binance 4H klines for RSI + EMA confirmation ───
       try {
@@ -405,6 +428,7 @@ async function generateRealSetups(coins) {
           // RSI(14) on 4H
           const rsiArr = calcRSI(h4Closes, 14);
           const rsi4h = rsiArr[rsiArr.length - 1];
+          rsi4hValue = rsi4h;
 
           // v6: HARD REJECT if RSI conflicts with direction
           if (side === 'LONG' && rsi4h > 65) {
@@ -484,10 +508,12 @@ async function generateRealSetups(coins) {
 
       const nearestSupport = supports[0];
       const nearestResistance = resistances[0];
+      let hasConvergence = false; // v7: S/R convergence = strongest edge (52% vs 36% winrate on real data)
 
       if (side === 'LONG') {
         if (nearestSupport && Math.abs(price - nearestSupport.price) / price < 0.025) {
-          confidence += 8;
+          confidence += 10;
+          hasConvergence = true;
           reason += ` | Proche du support $${formatPrice(nearestSupport.price)}`;
         }
         if (nearestResistance && Math.abs(tp1 - nearestResistance.price) / tp1 < 0.02) {
@@ -495,7 +521,8 @@ async function generateRealSetups(coins) {
         }
       } else {
         if (nearestResistance && Math.abs(price - nearestResistance.price) / price < 0.025) {
-          confidence += 8;
+          confidence += 10;
+          hasConvergence = true;
           reason += ` | Proche de la résistance $${formatPrice(nearestResistance.price)}`;
         }
         if (nearestSupport && Math.abs(tp1 - nearestSupport.price) / tp1 < 0.02) {
@@ -510,8 +537,21 @@ async function generateRealSetups(coins) {
       if (supports.length >= 2) confidence += 2;
       if (resistances.length >= 2) confidence += 2;
 
-      // v6: Lowered confidence floor to 30 (let weak signals stay weak so they get filtered)
-      confidence = Math.min(98, Math.max(30, confidence));
+      // v7: BTC regime adjustment — don't fight Bitcoin
+      if (btcRegime === 'bearish' && side === 'LONG') {
+        confidence -= 12;
+        reason += ' | ⚠️ BTC 4H baissier';
+      } else if (btcRegime === 'bullish' && side === 'SHORT') {
+        confidence -= 12;
+        reason += ' | ⚠️ BTC 4H haussier';
+      } else if (btcRegime !== 'neutral') {
+        confidence += 4; // aligned with BTC
+      }
+
+      // v7: confidence recalibration — >=93 reserved for S/R convergence setups
+      // (April data: 95-100 bucket was overcrowded at 54% WR while 90-94 hit 79%)
+      const confCap = hasConvergence ? 97 : 92;
+      confidence = Math.min(confCap, Math.max(30, confidence));
 
       const riskDistance = Math.abs(price - sl);
       const rewardDistance = Math.abs(tp2 - price);
@@ -535,6 +575,8 @@ async function generateRealSetups(coins) {
         confidence,
         reason,
         triggerTime,
+        hasConvergence,
+        rsi4h: typeof rsi4hValue === 'number' ? Math.round(rsi4hValue * 10) / 10 : null,
         supports: supports.slice(0, 3),
         resistances: resistances.slice(0, 3),
       };
@@ -804,6 +846,31 @@ ${srSection}
 
       const result = await sendTelegramMessage(text);
       if (result.ok) {
+        // v7: record the signal server-side for public performance tracking
+        try {
+          await fetch(`http://127.0.0.1:${port}/api/v1/trade-calls`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              symbol: setup.symbol,
+              side: setup.side,
+              entry_price: setup.entry,
+              stop_loss: setup.stopLoss,
+              tp1: setup.tp1,
+              tp2: setup.tp2,
+              tp3: setup.tp3,
+              confidence: setup.confidence,
+              reason: setup.reason,
+              rsi4h: setup.rsi4h,
+              has_convergence: !!setup.hasConvergence,
+              rr: setup.rr,
+            }),
+          });
+          console.log(`[Telegram] 📊 Trade call recorded for ${setup.symbol} ${setup.side}`);
+        } catch (e) {
+          console.error(`[Telegram] Trade call record failed: ${e.message}`);
+        }
+
         // Send branding image after the alert message
         // Photo removed per user request
 

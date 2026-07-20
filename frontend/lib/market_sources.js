@@ -69,3 +69,31 @@ export async function fetchBybitPrice(symbol) {
   if (json.retCode !== 0 || !json.result?.list?.length) return null;
   return parseFloat(json.result.list[0].lastPrice);
 }
+
+// Shared by trade/scalp/range call resolvers: Binance price with Bybit fallback
+export async function fetchPricesForSymbols(symbols) {
+  const prices = {};
+  for (const sym of symbols) {
+    try {
+      if (BYBIT_FALLBACK_SYMBOLS.has(sym)) {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; continue; }
+      }
+      const resp = await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${sym}`, { signal: AbortSignal.timeout(8000) });
+      if (resp.ok) {
+        const data = await resp.json();
+        prices[sym] = parseFloat(data.price);
+      } else {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; BYBIT_FALLBACK_SYMBOLS.add(sym); }
+      }
+    } catch (_e) {
+      try {
+        const bybitPrice = await fetchBybitPrice(sym);
+        if (bybitPrice != null) { prices[sym] = bybitPrice; }
+      } catch (__e) { /* skip */ }
+    }
+  }
+  return prices;
+}
+

@@ -100,6 +100,15 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Version endpoint — verify which commit is deployed
+app.get('/api/version', (req, res) => {
+  res.json({
+    commit: process.env.RAILWAY_GIT_COMMIT_SHA || null,
+    swing_engine: 'v8',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // ============================================================
 // User Management — JSON file persistence
 // ============================================================
@@ -843,6 +852,27 @@ try {
   const existingCalls = loadTradeCalls();
   if (existingCalls.length > 0) {
     tradeCallIdCounter = Math.max(...existingCalls.map(c => c.id || 0));
+  }
+} catch (_e) { /* ignore */ }
+
+// One-time boot repair: v7 snapped some TP3 on distant ATH S/R (ex: ENA tp3 +1734%)
+try {
+  const calls = loadTradeCalls();
+  let repaired = 0;
+  for (const c of calls) {
+    if (c.status !== 'active' || !c.tp3 || !c.entry_price || !c.stop_loss) continue;
+    const slDist = Math.abs(c.entry_price - c.stop_loss);
+    if (c.side === 'LONG' && c.tp3 > c.entry_price * 1.6) {
+      c.tp3 = c.entry_price + slDist * 4;
+      repaired++;
+    } else if (c.side === 'SHORT' && c.tp3 < c.entry_price * 0.4) {
+      c.tp3 = Math.max(c.entry_price - slDist * 4, 0);
+      repaired++;
+    }
+  }
+  if (repaired > 0) {
+    saveTradeCalls(calls);
+    console.log(`[TradeCall] 🔧 Repaired ${repaired} aberrant v7 TP3 on active calls`);
   }
 } catch (_e) { /* ignore */ }
 

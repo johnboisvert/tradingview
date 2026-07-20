@@ -349,12 +349,11 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 ⏰ Timeframe : M15 — ${nowStr} (Montréal)
 ⚠️ <i>Range trade — Ceci n'est pas un conseil financier. DYOR.</i>`;
 
-        const result = await sendTelegramMessage(text);
-        if (result.ok) {
-          setRangeCooldown(cooldowns, setup.symbol, setup.side);
-          saveRangeCooldowns(cooldowns);
+        // v8: register the call FIRST (decoupled from Telegram delivery) so /range always has data
+        setRangeCooldown(cooldowns, setup.symbol, setup.side);
+        saveRangeCooldowns(cooldowns);
 
-          // Auto-register as range call
+        {
           const newRangeCallId = allocateRangeCallId();
           const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2h expiry
           const calls = loadRangeCalls();
@@ -377,14 +376,21 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
             expires_at: expiresAt.toISOString(),
           });
           saveRangeCalls(calls);
+        }
 
-          sentAlerts.push({
-            type: 'range_signal', symbol: setup.symbol,
-            direction: setup.side, rr: setup.rr,
-            entry: setup.entry, confidence: setup.confidence,
-          });
-          console.log(`[RangeAlert] ✅ Sent ${setup.side} range signal for ${setup.name} (confidence: ${setup.confidence}%)`);
+        sentAlerts.push({
+          type: 'range_signal', symbol: setup.symbol,
+          direction: setup.side, rr: setup.rr,
+          entry: setup.entry, confidence: setup.confidence,
+        });
+        console.log(`[RangeAlert] ✅ Registered ${setup.side} range call for ${setup.name} (confidence: ${setup.confidence}%)`);
+
+        const result = await sendTelegramMessage(text);
+        if (result.ok) {
+          console.log(`[RangeAlert] 📨 Telegram alert sent for ${setup.symbol}`);
           await new Promise(r => setTimeout(r, 2000));
+        } else {
+          console.error(`[RangeAlert] ⚠️ Telegram send failed for ${setup.symbol} (call still registered)`);
         }
       } catch (sendErr) {
         console.error(`[RangeAlert] ❌ Exception sending ${setup.symbol}:`, sendErr.message || sendErr);

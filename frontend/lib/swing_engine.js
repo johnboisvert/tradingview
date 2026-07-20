@@ -851,7 +851,7 @@ ${srSection}
               rsi4h: setup.rsi4h,
               has_convergence: !!setup.hasConvergence,
               rr: setup.rr,
-              engine: 'v7',
+              engine: 'v8',
             }),
           });
           console.log(`[Telegram] 📊 Trade call recorded for ${setup.symbol} ${setup.side}`);

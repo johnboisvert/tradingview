@@ -59,7 +59,6 @@ const NAV: NavItem[] = [
   { path: "/risk-management", label: "Risk Management", section: "Trading" },
   { path: "/watchlist", label: "Watchlist", section: "Trading" },
   { path: "/graphiques", label: "Graphiques", section: "Trading" },
-  { path: "/backtesting", label: "Backtesting", section: "Trading" },
   { path: "/portfolio-tracker", label: "Portfolio", section: "Trading" },
   { path: "/timeframe-analysis", label: "Timeframe Analysis", section: "Trading" },
   { path: "/crypto-journal", label: "Journal de Trading", section: "Trading" },

@@ -42,7 +42,10 @@ interface TradeCall {
   sl_hit: boolean;
   best_tp_reached: number;
   created_at: string;
+  engine?: string | null;
 }
+
+const V7_DATE = new Date("2026-07-20T21:00:00Z");
 
 function fmtPrice(p: number) {
   if (p >= 1000) return p.toLocaleString("fr-CA", { maximumFractionDigits: 0 });
@@ -327,6 +330,16 @@ export default function SignalsPerformance() {
             Derniers signaux <span className="bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent">clôturés</span>
           </h2>
           <p className="mt-2 text-sm text-slate-500">Résultats bruts, dans l'ordre — les pertes aussi. C'est ça, la transparence.</p>
+          <div data-testid="v7-notice" className="mt-4 flex items-start gap-3 rounded-2xl border border-cyan-400/25 bg-cyan-500/[0.07] p-4">
+            <Sparkles className="shrink-0 mt-0.5 h-4 w-4 text-cyan-300" />
+            <p className="text-sm text-cyan-100/80 leading-relaxed">
+              <strong className="text-cyan-200">Moteur v7 déployé le 20 juillet 2026</strong> — recalibrage complet basé
+              sur l'analyse de l'historique : anti pump-chasing, filtre de tendance Bitcoin, ratio TP/SL corrigé et
+              convergence supports/résistances renforcée. Les signaux du nouveau moteur portent le badge{" "}
+              <span className="inline-flex items-center rounded-full border border-cyan-400/40 bg-cyan-500/15 px-2 py-0.5 text-[10px] font-black text-cyan-300">v7</span>.
+              L'historique ci-dessous inclut l'ancien moteur.
+            </p>
+          </div>
           <div className="mt-6 rounded-2xl border border-white/10 bg-[#0d1526] overflow-hidden" data-testid="recent-trades-table">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -351,7 +364,12 @@ export default function SignalsPerformance() {
                     return (
                       <tr key={c.id} className="border-b border-white/5 hover:bg-white/[0.02]">
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(c.created_at).toLocaleDateString("fr-CA")}</td>
-                        <td className="px-4 py-3 font-bold text-white">{c.symbol.replace("USDT", "/USDT")}</td>
+                        <td className="px-4 py-3 font-bold text-white">
+                          {c.symbol.replace("USDT", "/USDT")}
+                          {(c.engine === "v7" || new Date(c.created_at) >= V7_DATE) && (
+                            <span className="ml-2 inline-flex items-center rounded-full border border-cyan-400/40 bg-cyan-500/15 px-2 py-0.5 text-[10px] font-black text-cyan-300">v7</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center gap-1 text-xs font-bold ${c.side === "LONG" ? "text-emerald-300" : "text-rose-300"}`}>
                             {c.side === "LONG" ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}

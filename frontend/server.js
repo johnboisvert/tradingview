@@ -848,7 +848,7 @@ try {
 
 // ─── POST /api/v1/trade-calls — Record a new call (with dedup) ───
 app.post('/api/v1/trade-calls', (req, res) => {
-  const { symbol, side, entry_price, stop_loss, tp0, tp1, tp2, tp3, confidence, reason, rsi4h, has_convergence, rr } = req.body;
+  const { symbol, side, entry_price, stop_loss, tp0, tp1, tp2, tp3, confidence, reason, rsi4h, has_convergence, rr, engine } = req.body;
 
   if (!symbol || !side || !entry_price) {
     return res.status(400).json({ created: false, message: 'symbol, side, entry_price requis' });
@@ -886,6 +886,7 @@ app.post('/api/v1/trade-calls', (req, res) => {
     reason: reason || '',
     rsi4h: rsi4h || null,
     has_convergence: !!has_convergence,
+    engine: engine || null,
     rr: rr || null,
     status: 'active',
     trailing_sl: stop_loss, // Initially same as stop_loss, updated when TP1/TP2 hit
@@ -1118,19 +1119,30 @@ async function resolveActiveTradeCalls() {
     }
   }
 
+// v8: PnL réaliste — plan de sortie échelonné 40% TP1 / 30% TP2 / 30% runner (trailing)
+function partialProfitPct(call, runnerExitPrice) {
+  const dir = call.side === 'LONG' ? 1 : -1;
+  const g = (p) => dir * (p - call.entry_price) / call.entry_price * 100;
+  if (!call.tp1_hit) return Math.round(g(runnerExitPrice) * 100) / 100;
+  let total = 0.4 * g(call.tp1);
+  if (call.tp2_hit) total += 0.3 * g(call.tp2) + 0.3 * g(runnerExitPrice);
+  else total += 0.6 * g(runnerExitPrice);
+  return Math.round(total * 100) / 100;
+}
+
   const now = new Date();
   let resolvedCount = 0;
   let expiredCount = 0;
 
   for (const call of activeCalls) {
-    // Check expiry — if expired and TP1 was hit, count as breakeven win
+    // Check expiry — if expired and TP1 was hit, count partial profits (v8)
     if (call.expires_at && new Date(call.expires_at) <= now) {
       call.status = 'expired';
       call.resolved_at = now.toISOString();
       if (call.tp1_hit) {
-        // TP1 was hit before expiry → trailing stop protected at breakeven
-        call.exit_price = call.entry_price;
-        call.profit_pct = 0;
+        // v8: 40% sorti au TP1 (+30% TP2 si touché), runner à breakeven
+        call.exit_price = call.trailing_sl || call.entry_price;
+        call.profit_pct = partialProfitPct(call, call.exit_price);
       }
       expiredCount++;
       console.log(`[TradeCall] Call #${call.id} ${call.symbol} expired (tp1_hit: ${call.tp1_hit})`);
@@ -1175,7 +1187,7 @@ async function resolveActiveTradeCalls() {
         call.best_tp_reached = Math.max(call.best_tp_reached, 3);
         call.status = 'resolved';
         call.exit_price = currentPrice;
-        call.profit_pct = Math.round((currentPrice - call.entry_price) / call.entry_price * 10000) / 100;
+        call.profit_pct = partialProfitPct(call, currentPrice);
         call.resolved_at = now.toISOString();
         resolvedCount++;
         console.log(`[TradeCall] Call #${call.id} ${call.symbol} LONG TP3 hit — resolved +${call.profit_pct}%`);
@@ -1188,16 +1200,16 @@ async function resolveActiveTradeCalls() {
         call.sl_hit = true;
         call.status = 'resolved';
         call.exit_price = currentPrice;
-        // If TP1 was already hit, exit at breakeven (entry) not at current price
+        // v8: si TP1 déjà touché → profits partiels sécurisés (40% TP1 / 30% TP2), runner sorti au trailing
         if (call.tp1_hit) {
-          call.profit_pct = 0; // Breakeven — trailing stop protected
-          call.exit_price = call.entry_price;
+          call.exit_price = effectiveSL;
+          call.profit_pct = partialProfitPct(call, effectiveSL);
         } else {
           call.profit_pct = Math.round((currentPrice - call.entry_price) / call.entry_price * 10000) / 100;
         }
         call.resolved_at = now.toISOString();
         resolvedCount++;
-        console.log(`[TradeCall] Call #${call.id} ${call.symbol} LONG SL hit (trailing: ${effectiveSL}) — ${call.tp1_hit ? 'breakeven' : call.profit_pct + '%'}`);
+        console.log(`[TradeCall] Call #${call.id} ${call.symbol} LONG SL hit (trailing: ${effectiveSL}) — ${call.profit_pct}%`);
         continue;
       }
     } else {
@@ -1230,7 +1242,7 @@ async function resolveActiveTradeCalls() {
         call.best_tp_reached = Math.max(call.best_tp_reached, 3);
         call.status = 'resolved';
         call.exit_price = currentPrice;
-        call.profit_pct = Math.round((call.entry_price - currentPrice) / call.entry_price * 10000) / 100;
+        call.profit_pct = partialProfitPct(call, currentPrice);
         call.resolved_at = now.toISOString();
         resolvedCount++;
         console.log(`[TradeCall] Call #${call.id} ${call.symbol} SHORT TP3 hit — resolved +${call.profit_pct}%`);
@@ -1244,14 +1256,14 @@ async function resolveActiveTradeCalls() {
         call.status = 'resolved';
         call.exit_price = currentPrice;
         if (call.tp1_hit) {
-          call.profit_pct = 0; // Breakeven
-          call.exit_price = call.entry_price;
+          call.exit_price = effectiveSL;
+          call.profit_pct = partialProfitPct(call, effectiveSL);
         } else {
           call.profit_pct = Math.round((call.entry_price - currentPrice) / call.entry_price * 10000) / 100;
         }
         call.resolved_at = now.toISOString();
         resolvedCount++;
-        console.log(`[TradeCall] Call #${call.id} ${call.symbol} SHORT SL hit (trailing: ${effectiveSL}) — ${call.tp1_hit ? 'breakeven' : call.profit_pct + '%'}`);
+        console.log(`[TradeCall] Call #${call.id} ${call.symbol} SHORT SL hit (trailing: ${effectiveSL}) — ${call.profit_pct}%`);
         continue;
       }
     }

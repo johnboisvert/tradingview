@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import React, { Suspense, useEffect } from "react";
 import LoadingSpinner from "./components/LoadingSpinner";
 import PageTracker from "./components/PageTracker";
@@ -70,7 +70,6 @@ const Promos = React.lazy(() => import("./pages/Promos"));
 const Messages = React.lazy(() => import("./pages/Messages"));
 const Users = React.lazy(() => import("./pages/Users"));
 const Contact = React.lazy(() => import("./pages/Contact"));
-const Backtesting = React.lazy(() => import("./pages/Backtesting"));
 const OnChainMetrics = React.lazy(() => import("./pages/OnChainMetrics"));
 const PortfolioTracker = React.lazy(() => import("./pages/PortfolioTracker"));
 const DefiYield = React.lazy(() => import("./pages/DefiYield"));
@@ -173,7 +172,7 @@ function App() {
           <Route path="/risk-management" element={<PlanProtected path="/risk-management"><RiskManagement /></PlanProtected>} />
           <Route path="/watchlist" element={<PlanProtected path="/watchlist"><Watchlist /></PlanProtected>} />
           <Route path="/graphiques" element={<PlanProtected path="/graphiques"><Graphiques /></PlanProtected>} />
-          <Route path="/backtesting" element={<PlanProtected path="/backtesting"><Backtesting /></PlanProtected>} />
+          <Route path="/backtesting" element={<Navigate to="/backtesting-visuel" replace />} />
           <Route path="/portfolio-tracker" element={<PlanProtected path="/portfolio-tracker"><PortfolioTracker /></PlanProtected>} />
           <Route path="/timeframe-analysis" element={<PlanProtected path="/timeframe-analysis"><TimeframeAnalysis /></PlanProtected>} />
 

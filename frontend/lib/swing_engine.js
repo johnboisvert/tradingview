@@ -277,7 +277,8 @@ function alignTPWithSR(side, entry, slPercent, supports, resistances) {
     if (resAbove.length >= 2 && resAbove[1].price >= entry + slDistance * 1.8 && resAbove[1].price < tp2 * 1.25) {
       tp2 = resAbove[1].price * 0.998;
     }
-    if (resAbove.length >= 3 && resAbove[2].price >= entry + slDistance * 3.0) {
+    // v8: cap supérieur — bug avril/juillet : TP3 snappé sur l'ATH (18-45x l'entrée)
+    if (resAbove.length >= 3 && resAbove[2].price >= entry + slDistance * 3.0 && resAbove[2].price < tp3 * 1.3) {
       tp3 = resAbove[2].price * 0.998;
     }
   } else {
@@ -301,7 +302,8 @@ function alignTPWithSR(side, entry, slPercent, supports, resistances) {
     if (supBelow.length >= 2 && supBelow[1].price <= entry - slDistance * 1.8 && supBelow[1].price > tp2 * 0.80) {
       tp2 = supBelow[1].price * 1.002;
     }
-    if (supBelow.length >= 3 && supBelow[2].price <= entry - slDistance * 3.0 && supBelow[2].price > 0) {
+    // v8: cap inférieur symétrique
+    if (supBelow.length >= 3 && supBelow[2].price <= entry - slDistance * 3.0 && supBelow[2].price > tp3 * 0.7) {
       tp3 = supBelow[2].price * 1.002;
     }
   }
@@ -364,22 +366,8 @@ async function generateRealSetups(coins) {
       if (volMcapRatio > 0.20) confidence += 8; else confidence += 4;
       reason = `Survente potentielle (${change24h.toFixed(1)}%) — rebond technique possible`;
     }
-    // SHORT — Bearish momentum: moderate downtrend with distribution volume (balanced range)
-    else if (change24h < -3 && change24h > -15 && volMcapRatio > 0.10) {
-      side = 'SHORT';
-      confidence = 45;
-      if (change24h < -8) confidence += 12; else if (change24h < -5) confidence += 8; else confidence += 5;
-      if (volMcapRatio > 0.25) confidence += 12; else if (volMcapRatio > 0.15) confidence += 8; else confidence += 4;
-      reason = `Tendance baissière (${change24h.toFixed(1)}%) avec volume de distribution (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
-    }
-    // SHORT — Overbought rejection: strong pump likely to retrace
-    else if (change24h > 15 && change24h < 40 && volMcapRatio > 0.12) {
-      side = 'SHORT';
-      confidence = 40;
-      if (change24h > 25) confidence += 12; else if (change24h > 20) confidence += 10; else confidence += 6;
-      if (volMcapRatio > 0.20) confidence += 8; else confidence += 4;
-      reason = `Surachat potentiel (+${change24h.toFixed(1)}%) — retracement probable`;
-    }
+    // v8 (backtest 180j, 120 symboles) : les branches SHORT étaient perdantes
+    // (bear_short EV -0.9%, ob_short EV -9.7%) — moteur swing LONG uniquement.
     else {
       continue;
     }
@@ -508,11 +496,11 @@ async function generateRealSetups(coins) {
 
       const nearestSupport = supports[0];
       const nearestResistance = resistances[0];
-      let hasConvergence = false; // v7: S/R convergence = strongest edge (52% vs 36% winrate on real data)
+      let hasConvergence = false; // v8: détection conservée pour stats, mais SANS bonus de confiance
+      // (backtest 180j : conv-only EV -1.27%/trade — "proche du support" = souvent un support qui casse)
 
       if (side === 'LONG') {
         if (nearestSupport && Math.abs(price - nearestSupport.price) / price < 0.025) {
-          confidence += 10;
           hasConvergence = true;
           reason += ` | Proche du support $${formatPrice(nearestSupport.price)}`;
         }
@@ -521,7 +509,6 @@ async function generateRealSetups(coins) {
         }
       } else {
         if (nearestResistance && Math.abs(price - nearestResistance.price) / price < 0.025) {
-          confidence += 10;
           hasConvergence = true;
           reason += ` | Proche de la résistance $${formatPrice(nearestResistance.price)}`;
         }
@@ -548,10 +535,8 @@ async function generateRealSetups(coins) {
         confidence += 4; // aligned with BTC
       }
 
-      // v7: confidence recalibration — >=93 reserved for S/R convergence setups
-      // (April data: 95-100 bucket was overcrowded at 54% WR while 90-94 hit 79%)
-      const confCap = hasConvergence ? 97 : 92;
-      confidence = Math.min(confCap, Math.max(30, confidence));
+      // v8: recalibration — cap unique 92 (le bonus convergence gonflait artificiellement 93-97 qui sous-performaient)
+      confidence = Math.min(92, Math.max(30, confidence));
 
       const riskDistance = Math.abs(price - sl);
       const rewardDistance = Math.abs(tp2 - price);
@@ -830,6 +815,8 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 ├ TP3 : <b>$${formatPrice(setup.tp3)}</b> (${pctTP3 >= 0 ? '+' : ''}${pctTP3.toFixed(2)}%)
 └ SL : <b>$${formatPrice(setup.stopLoss)}</b> (${pctSL >= 0 ? '+' : ''}${pctSL.toFixed(2)}%)
 
+💰 <b>Gestion :</b> sortir <b>40% au TP1</b>, <b>30% au TP2</b>, laisser courir 30% → TP3 (SL au breakeven après TP1)
+
 📐 <b>Supports &amp; Résistances :</b>
 ${srSection}
 📊 Tendance Daily : ${d1TrendEmoji}${d1Info}
@@ -864,6 +851,7 @@ ${srSection}
               rsi4h: setup.rsi4h,
               has_convergence: !!setup.hasConvergence,
               rr: setup.rr,
+              engine: 'v7',
             }),
           });
           console.log(`[Telegram] 📊 Trade call recorded for ${setup.symbol} ${setup.side}`);

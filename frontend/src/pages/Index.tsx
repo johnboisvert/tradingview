@@ -22,6 +22,7 @@ import Testimonials from "@/components/Testimonials";
 import MiniSparkline from "@/components/MiniSparkline";
 import HomeInfluencers from "@/components/HomeInfluencers";
 import HomeIndicators from "@/components/HomeIndicators";
+import HomePerformance from "@/components/HomePerformance";
 
 interface CoinData {
   id: string;
@@ -440,6 +441,9 @@ export default function DashboardPage() {
 
         {/* Market Hours */}
         <MarketHours />
+
+        {/* Performance des signaux — preuve sociale live */}
+        <HomePerformance />
 
         {/* Nos Indicateurs — vitrine publique */}
         <HomeIndicators />

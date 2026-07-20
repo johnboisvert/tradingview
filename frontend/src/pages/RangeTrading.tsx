@@ -274,11 +274,13 @@ export default function RangeTrading() {
 
           {/* No signals */}
           {!loading && filteredSetups.length === 0 && (
-            <div className="text-center py-20">
+            <div className="text-center py-20" data-testid="range-empty-state">
               <BarChart3 className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-400 mb-2">Aucun signal range détecté</h3>
-              <p className="text-sm text-gray-500">
-                Les signaux apparaissent quand le marché est en range (ADX &lt; 25) avec des conditions BB + RSI favorables.
+              <h3 className="text-lg font-semibold text-gray-400 mb-2">Aucun signal range actif pour le moment</h3>
+              <p className="text-sm text-gray-500 max-w-xl mx-auto">
+                Le scanner analyse ~200 cryptos toutes les 5 minutes. Un signal apparaît uniquement quand le marché est en range (ADX &lt; 25),
+                que le prix touche une bande de Bollinger avec un RSI extrême, et que la confiance IA atteint <span className="text-blue-400 font-semibold">80%+</span>.
+                Ces conditions strictes privilégient la qualité — les signaux sont rares mais fiables.
               </p>
             </div>
           )}

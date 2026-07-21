@@ -20,10 +20,17 @@ interface FxRow {
 
 const FLAGS: Record<string, string> = {
   EUR: "🇪🇺", USD: "🇺🇸", GBP: "🇬🇧", JPY: "🇯🇵", CHF: "🇨🇭", CAD: "🇨🇦", AUD: "🇦🇺", NZD: "🇳🇿",
-  SEK: "🇸🇪", NOK: "🇳🇴", DKK: "🇩🇰", PLN: "🇵🇱", HUF: "🇭🇺", CZK: "🇨🇿", RON: "🇷🇴", TRY: "🇹🇷",
-  ZAR: "🇿🇦", MXN: "🇲🇽", BRL: "🇧🇷", ARS: "🇦🇷", CLP: "🇨🇱", COP: "🇨🇴", SGD: "🇸🇬", HKD: "🇭🇰",
-  CNH: "🇨🇳", CNY: "🇨🇳", INR: "🇮🇳", KRW: "🇰🇷", THB: "🇹🇭", IDR: "🇮🇩", PHP: "🇵🇭", MYR: "🇲🇾",
-  TWD: "🇹🇼", VND: "🇻🇳", ILS: "🇮🇱", SAR: "🇸🇦", AED: "🇦🇪", RUB: "🇷🇺",
+  SEK: "🇸🇪", NOK: "🇳🇴", DKK: "🇩🇰", ISK: "🇮🇸", PLN: "🇵🇱", HUF: "🇭🇺", CZK: "🇨🇿", RON: "🇷🇴",
+  BGN: "🇧🇬", RSD: "🇷🇸", UAH: "🇺🇦", MDL: "🇲🇩", BYN: "🇧🇾", TRY: "🇹🇷", RUB: "🇷🇺", KZT: "🇰🇿",
+  GEL: "🇬🇪", AMD: "🇦🇲", AZN: "🇦🇿", UZS: "🇺🇿",
+  ZAR: "🇿🇦", NGN: "🇳🇬", GHS: "🇬🇭", KES: "🇰🇪", TZS: "🇹🇿", UGX: "🇺🇬", ZMW: "🇿🇲", BWP: "🇧🇼",
+  NAD: "🇳🇦", MUR: "🇲🇺", ETB: "🇪🇹", XAF: "🇨🇲", XOF: "🇸🇳", EGP: "🇪🇬", MAD: "🇲🇦", TND: "🇹🇳", DZD: "🇩🇿",
+  MXN: "🇲🇽", BRL: "🇧🇷", ARS: "🇦🇷", CLP: "🇨🇱", COP: "🇨🇴", PEN: "🇵🇪", UYU: "🇺🇾", BOB: "🇧🇴",
+  PYG: "🇵🇾", CRC: "🇨🇷", GTQ: "🇬🇹", DOP: "🇩🇴", JMD: "🇯🇲", TTD: "🇹🇹", HNL: "🇭🇳", NIO: "🇳🇮",
+  SGD: "🇸🇬", HKD: "🇭🇰", CNH: "🇨🇳", CNY: "🇨🇳", INR: "🇮🇳", KRW: "🇰🇷", THB: "🇹🇭", IDR: "🇮🇩",
+  PHP: "🇵🇭", MYR: "🇲🇾", TWD: "🇹🇼", VND: "🇻🇳", PKR: "🇵🇰", BDT: "🇧🇩", LKR: "🇱🇰", NPR: "🇳🇵",
+  BND: "🇧🇳", FJD: "🇫🇯", XPF: "🇵🇫", ILS: "🇮🇱", SAR: "🇸🇦", AED: "🇦🇪", KWD: "🇰🇼", QAR: "🇶🇦",
+  BHD: "🇧🇭", OMR: "🇴🇲", JOD: "🇯🇴", LBP: "🇱🇧",
 };
 
 const METAL_BADGE: Record<string, { sym: string; cls: string }> = {
@@ -140,6 +147,12 @@ export default function Forex() {
   const ups = rows.filter((r) => r.change_pct > 0).length;
   const downs = rows.filter((r) => r.change_pct < 0).length;
 
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: rows.length, major: 0, cross: 0, exotic: 0, metal: 0 };
+    for (const r of rows) c[r.category === "index" ? "metal" : r.category] = (c[r.category === "index" ? "metal" : r.category] || 0) + 1;
+    return c;
+  }, [rows]);
+
   return (
     <div data-testid="forex-page" className="flex min-h-screen bg-[#0a0e17] text-white">
       <SEOHead
@@ -152,7 +165,7 @@ export default function Forex() {
         <PageHeader
           icon={<DollarSign className="w-6 h-6" />}
           title="Forex, Or & Métaux"
-          subtitle="82 instruments en direct — majeures, croisées, exotiques, métaux précieux et US Dollar Index"
+          subtitle="Plus de 200 instruments en direct — majeures, croisées, exotiques, métaux précieux et US Dollar Index"
           accentColor="amber"
           steps={[
             { n: "1", title: "Choisissez une catégorie", desc: "Majeures, croisées, exotiques ou métaux précieux." },
@@ -190,7 +203,7 @@ export default function Forex() {
                     tab === t.id ? "bg-amber-400/15 text-amber-300 border border-amber-400/30" : "text-slate-400 hover:text-white border border-transparent"
                   }`}
                 >
-                  {t.label}
+                  {t.label}{counts[t.id] ? <span className="ml-1.5 text-xs opacity-60">{counts[t.id]}</span> : null}
                 </button>
               ))}
             </div>

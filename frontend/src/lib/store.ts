@@ -88,18 +88,18 @@ const DEFAULT_PLAN_PRICES: PlanPrices = {
 const DEFAULT_PLAN_ACCESS: Record<string, string[]> = {
   // Gratuit : accès basique — Score Confiance IA en lecture seule (via ai-signals limité), 3 alertes max
   free: [
-    "dashboard", "fear-greed", "heatmap", "convertisseur", "calculatrice",
+    "dashboard", "fear-greed", "heatmap", "convertisseur", "calculatrice", "forex",
   ],
   // Premium : MyCryptoIA, AlertesIA (illimitées), ScoreConfianceIA, RapportHebdomadaireIA, AssistantIA
   premium: [
-    "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance",
+    "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "forex",
     "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads",
     "strategie", "technical-analyzer", "crypto-journal",
     "ai-signals", "ai-coach",
   ],
   // Advanced : + SimulateurStrategieIA, BacktestingVisuel
   advanced: [
-    "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance",
+    "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "forex",
     "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads",
     "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun",
     "portfolio", "market-simulation", "crypto-journal", "screener-technique",
@@ -107,7 +107,7 @@ const DEFAULT_PLAN_ACCESS: Record<string, string[]> = {
   ],
   // Pro : + Gamification (badges exclusifs), PWA installable
   pro: [
-    "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance",
+    "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "forex",
     "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads",
     "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun",
     "ai-whale-tracker", "ai-news-analyzer", "crypto-pepites", "defi-yield", "onchain",
@@ -118,7 +118,7 @@ const DEFAULT_PLAN_ACCESS: Record<string, string[]> = {
   // Elite : accès complet à tout
   elite: [
     "terminal-pro",
-    "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance",
+    "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "forex",
     "convertisseur", "calculatrice", "calendrier", "nouvelles", "academy", "downloads",
     "ai-market-regime", "ai-signals", "strategie", "technical-analyzer", "bullrun",
     "ai-whale-tracker", "ai-news-analyzer", "crypto-pepites", "defi-yield", "onchain",

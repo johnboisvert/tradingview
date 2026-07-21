@@ -170,7 +170,7 @@ function App() {
           <Route path="/range/performance" element={<PlanProtected path="/range"><RangePerformance /></PlanProtected>} />
           <Route path="/magic-strategy" element={<PlanProtected path="/magic-strategy"><MagicStrategy /></PlanProtected>} />
           <Route path="/performance" element={<SignalsPerformance />} />
-          <Route path="/forex" element={<Forex />} />
+          <Route path="/forex" element={<PlanProtected path="/forex"><Forex /></PlanProtected>} />
           <Route path="/risk-management" element={<PlanProtected path="/risk-management"><RiskManagement /></PlanProtected>} />
           <Route path="/watchlist" element={<PlanProtected path="/watchlist"><Watchlist /></PlanProtected>} />
           <Route path="/graphiques" element={<PlanProtected path="/graphiques"><Graphiques /></PlanProtected>} />

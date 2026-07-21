@@ -171,6 +171,7 @@ const ROUTE_TO_SLUG: Record<string, string> = {
   "/dominance": "dominance",
   "/altcoin-season": "altcoin-season",
   "/heatmap": "heatmap",
+  "/forex": "forex",
   "/bullrun-phase": "bullrun",
   "/market-regime": "ai-market-regime",
   "/strategy": "strategie",

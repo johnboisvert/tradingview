@@ -1648,8 +1648,8 @@ app.get('/forex', (req, res, next) => {
     if (!fs.existsSync(distIndex)) return next();
     let html = fs.readFileSync(distIndex, 'utf8');
     const ogUrl = 'https://www.cryptoia.ca/forex';
-    const ogTitle = 'Forex en Direct — 75+ Paires de Devises, Or, Argent & Métaux | CryptoIA';
-    const ogDesc = 'Cours forex en temps réel : paires majeures (EUR/USD, GBP/USD, USD/JPY), croisées, exotiques, Or XAU/USD, Argent, Platine, Palladium et US Dollar Index. Données live gratuites.';
+    const ogTitle = 'Forex en Direct — 200+ Paires de Devises, Or, Argent & Métaux | CryptoIA';
+    const ogDesc = 'Cours forex en temps réel : 200+ paires majeures (EUR/USD, GBP/USD, USD/JPY), croisées, exotiques, Or XAU/USD, Argent, Platine, Palladium et US Dollar Index. Données live gratuites.';
     const replacements = [
       [/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(ogTitle)}" />`],
       [/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(ogDesc)}" />`],

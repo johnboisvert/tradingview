@@ -29,7 +29,7 @@ import { adminLogout } from "@/pages/AdminLogin";
 import { getAdminSession } from "@/lib/store";
 
 const NAV_ITEMS = [
-  { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/admin", label: "Dashboard Admin", icon: LayoutDashboard },
   { path: "/admin/health", label: "Health Monitor", icon: Activity },
   { path: "/admin/recovery", label: "Cart Recovery", icon: RotateCcw },
   { path: "/admin/analytics", label: "Analytics", icon: BarChart3 },
@@ -122,10 +122,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="p-3 border-t border-white/[0.06]">
           <Link
             to="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-indigo-400 hover:text-white hover:bg-indigo-500/10 transition-all w-full mb-2"
+            data-testid="admin-back-to-site"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-white bg-indigo-500/15 border border-indigo-500/25 hover:bg-indigo-500/25 transition-all w-full mb-2"
           >
             <ArrowLeft className="w-[18px] h-[18px]" />
-            <span>Retour au Dashboard</span>
+            <span>Retour au site (Dashboard)</span>
           </Link>
           <div className="px-3 py-3 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/5 border border-emerald-500/10 mb-3">
             <div className="flex items-center gap-2 mb-1">
@@ -169,6 +170,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex-1" />
 
           <div className="flex items-center gap-3">
+            <Link
+              to="/"
+              data-testid="admin-topbar-view-site"
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs font-semibold text-gray-300 hover:text-white hover:border-indigo-400/40 transition-colors"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Voir le site
+            </Link>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs font-semibold text-emerald-400">En ligne</span>

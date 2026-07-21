@@ -488,6 +488,28 @@ async function generateRealSetups(coins) {
 
       const { supports, resistances } = calculateSRLevels(c);
 
+      // v8.1: filtre headroom (backtest 180j/120sym: EV +0.53% → +1.57%/trade, WR 47.5% → 54.1%)
+      // Entrée collée sous une résistance (<5% de marge) = plafond immédiat → signal rejeté
+      if (side === 'LONG') {
+        const resAbove = resistances.find(r => r.price > price * 1.005);
+        if (resAbove) {
+          const headroomPct = (resAbove.price - price) / price * 100;
+          if (headroomPct < 5) {
+            console.log(`[Telegram] ❌ ${symbol} LONG rejected: résistance $${formatPrice(resAbove.price)} à seulement ${headroomPct.toFixed(1)}% (<5% headroom)`);
+            return null;
+          }
+        }
+      } else {
+        const supBelow = supports.find(s => s.price < price * 0.995);
+        if (supBelow) {
+          const headroomPct = (price - supBelow.price) / price * 100;
+          if (headroomPct < 5) {
+            console.log(`[Telegram] ❌ ${symbol} SHORT rejected: support $${formatPrice(supBelow.price)} à seulement ${headroomPct.toFixed(1)}% (<5% headroom)`);
+            return null;
+          }
+        }
+      }
+
       // v6: Wider SL for swing (6-12%)
       const rawVolatility = Math.abs(change24h);
       const slPercent = Math.max(6.0, Math.min(rawVolatility * 0.9, 12.0));
@@ -801,6 +823,20 @@ async function checkAndSendAlerts() {
       const d1TrendEmoji = setup.d1_trend === 'bullish' ? '🟢 Haussière' : setup.d1_trend === 'bearish' ? '🔴 Baissière' : '⚪ Neutre';
       const d1Info = setup.ema8_d1 != null ? ` (EMA8: $${formatPrice(setup.ema8_d1)}, EMA20: $${formatPrice(setup.ema20_d1)})` : '';
 
+      // v8.1: zone d'entrée idéale sur repli (ordres limites, meilleur prix que le marché)
+      let entryZoneLine = '';
+      const sup0 = setup.supports[0];
+      if (setup.side === 'LONG') {
+        const zLow = Math.max(sup0 ? sup0.price * 1.003 : 0, setup.entry * 0.97);
+        const zHigh = setup.entry * 0.995;
+        if (zLow < zHigh) entryZoneLine = `├ Entrée idéale (repli) : <b>$${formatPrice(zLow)} – $${formatPrice(zHigh)}</b> — ordre limite\n`;
+      } else {
+        const res0 = setup.resistances[0];
+        const zHigh = Math.min(res0 ? res0.price * 0.997 : Infinity, setup.entry * 1.03);
+        const zLow = setup.entry * 1.005;
+        if (zLow < zHigh) entryZoneLine = `├ Entrée idéale (rebond) : <b>$${formatPrice(zLow)} – $${formatPrice(zHigh)}</b> — ordre limite\n`;
+      }
+
       const text = `🔵🔵🔵 <b>🔄 SWING TRADING — SIGNAL CRYPTO</b> 🔵🔵🔵
 🌐 https://CryptoIA.ca
 📊 Entry sur le timeframe <b>H1</b> | Analyse : <b>CoinGecko 24h</b> + <b>S/R 7j</b> + <b>Confirmation H1</b>
@@ -809,8 +845,8 @@ async function checkAndSendAlerts() {
 ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 
 🎯 <b>Plan de Trade :</b>
-├ Entry : <b>$${formatPrice(setup.entry)}</b>
-├ TP1 : <b>$${formatPrice(setup.tp1)}</b> (${pctTP1 >= 0 ? '+' : ''}${pctTP1.toFixed(2)}%)
+├ Entry : <b>$${formatPrice(setup.entry)}</b> (marché)
+${entryZoneLine}├ TP1 : <b>$${formatPrice(setup.tp1)}</b> (${pctTP1 >= 0 ? '+' : ''}${pctTP1.toFixed(2)}%)
 ├ TP2 : <b>$${formatPrice(setup.tp2)}</b> (${pctTP2 >= 0 ? '+' : ''}${pctTP2.toFixed(2)}%)
 ├ TP3 : <b>$${formatPrice(setup.tp3)}</b> (${pctTP3 >= 0 ? '+' : ''}${pctTP3.toFixed(2)}%)
 └ SL : <b>$${formatPrice(setup.stopLoss)}</b> (${pctSL >= 0 ? '+' : ''}${pctSL.toFixed(2)}%)

@@ -237,6 +237,18 @@ function generateSignalAt(sym, klines1h, idx, btcRegime, P) {
   const slPercent = Math.max(P.SL_MIN, Math.min(rawVol * 0.9, P.SL_MAX));
   const { tp1, tp2, tp3, sl } = alignTPWithSR(side, price, slPercent, supports, resistances, P);
 
+  // Headroom : marge (%) jusqu'à l'obstacle S/R le plus proche dans le sens du trade
+  let headroom = null;
+  if (side === 'LONG') {
+    const rA = resistances.find(r => r.price > price * 1.005);
+    if (rA) headroom = (rA.price - price) / price * 100;
+  } else {
+    const sB = supports.find(s => s.price < price * 0.995);
+    if (sB) headroom = (price - sB.price) / price * 100;
+  }
+  if (P.HEADROOM && headroom != null && headroom < P.HEADROOM) return null;
+  if (P.HEADROOM_PEN && headroom != null && headroom < P.HEADROOM_PEN) confidence -= 10;
+
   let hasConvergence = false;
   const nearSup = supports[0], nearRes = resistances[0];
   if (side === 'LONG') {
@@ -282,7 +294,7 @@ function generateSignalAt(sym, klines1h, idx, btcRegime, P) {
   if (confidence < P.CONF_MIN) return null;
   if (P.CONV_ONLY && !hasConvergence) return null;
 
-  return { side, branch, entry: price, sl, tp1, tp2, tp3, confidence, hasConvergence, rsi4h, btcRegime, t: klines1h[idx - 1].t };
+  return { side, branch, entry: price, sl, tp1, tp2, tp3, confidence, hasConvergence, headroom, rsi4h, btcRegime, t: klines1h[idx - 1].t };
 }
 
 // ─── Simulation d'un trade sur bougies 1h (tracking identique server.js) ───
@@ -421,6 +433,7 @@ function runBacktest(dataset, P, label) {
   console.log(' Par convergence:'); by(t => t.hasConvergence ? 'conv' : 'no-conv');
   console.log(' Par confiance:'); by(t => t.confidence >= 93 ? '93+' : t.confidence >= 88 ? '88-92' : '80-87');
   console.log(' Par régime BTC:'); by(t => t.btcRegime);
+  console.log(' Par headroom:'); by(t => t.headroom == null ? 'n/a (aucun obstacle)' : t.headroom < 2 ? '<2%' : t.headroom < 4 ? '2-4%' : t.headroom < 6 ? '4-6%' : '>6%');
   console.log(' Par outcome:'); by(t => t.outcome);
   return { n, ev: evP, wr: wins / n * 100, trades };
 }
@@ -463,6 +476,24 @@ async function main() {
   }
 
   const dataset = { symbols, btcRegimes, nBars, days: DAYS };
+
+  if (args.headroom) {
+    const V8 = { ...V7, B_BEAR_SHORT: false, B_OB_SHORT: false, NO_CONV_BONUS: true };
+    runBacktest(dataset, V8, 'BASELINE v8 prod (LONG only, sans bonus conv)');
+    const hVariants = [
+      ['v8 + headroom >=2%', { ...V8, HEADROOM: 2 }],
+      ['v8 + headroom >=3%', { ...V8, HEADROOM: 3 }],
+      ['v8 + headroom >=4%', { ...V8, HEADROOM: 4 }],
+      ['v8 + headroom >=5%', { ...V8, HEADROOM: 5 }],
+      ['v8 + headroom >=6%', { ...V8, HEADROOM: 6 }],
+      ['v8 + headroom >=7%', { ...V8, HEADROOM: 7 }],
+      ['v8 + pénalité -10 si <3%', { ...V8, HEADROOM_PEN: 3 }],
+      ['v8 + pénalité -10 si <4%', { ...V8, HEADROOM_PEN: 4 }],
+    ];
+    for (const [label, P] of hVariants) runBacktest(dataset, P, label);
+    return;
+  }
+
   runBacktest(dataset, V7, 'BASELINE v7 (règles actuelles prod)');
 
   if (args.grid) {

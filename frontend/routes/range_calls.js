@@ -35,6 +35,14 @@ export function registerRangeCallRoutes(app, { dataDir }) {
     }
   } catch (_e) { /* ignore */ }
 
+  // v2: PnL réaliste — sortie 50% au TP1, 50% runner vers TP2 (SL→BE après TP1)
+  function rangePartialProfitPct(call, runnerExitPrice) {
+    const dir = call.side === 'LONG' ? 1 : -1;
+    const g = (p) => dir * (p - call.entry_price) / call.entry_price * 100;
+    if (!call.tp1_hit) return Math.round(g(runnerExitPrice) * 100) / 100;
+    return Math.round((0.5 * g(call.tp1) + 0.5 * g(runnerExitPrice)) * 100) / 100;
+  }
+
   // ─── Range call resolver ───
   async function resolveActiveRangeCalls() {
     const calls = loadRangeCalls();
@@ -51,7 +59,11 @@ export function registerRangeCallRoutes(app, { dataDir }) {
       if (call.expires_at && new Date(call.expires_at) <= now) {
         call.status = 'expired';
         call.resolved_at = now.toISOString();
-        if (call.tp1_hit) { call.exit_price = call.entry_price; call.profit_pct = 0; }
+        if (call.tp1_hit) {
+          // v2: 50% sorti au TP1, runner sorti à breakeven
+          call.exit_price = call.entry_price;
+          call.profit_pct = rangePartialProfitPct(call, call.entry_price);
+        }
         expiredCount++;
         continue;
       }
@@ -69,10 +81,11 @@ export function registerRangeCallRoutes(app, { dataDir }) {
         }
         if (currentPrice >= call.tp2) {
           call.tp2_hit = true;
+          call.tp1_hit = true;
           call.best_tp_reached = Math.max(call.best_tp_reached, 2);
           call.status = 'resolved';
           call.exit_price = currentPrice;
-          call.profit_pct = Math.round((currentPrice - call.entry_price) / call.entry_price * 10000) / 100;
+          call.profit_pct = rangePartialProfitPct(call, currentPrice);
           call.resolved_at = now.toISOString();
           resolvedCount++;
           continue;
@@ -82,7 +95,7 @@ export function registerRangeCallRoutes(app, { dataDir }) {
           call.sl_hit = true;
           call.status = 'resolved';
           call.exit_price = currentPrice;
-          if (call.tp1_hit) { call.profit_pct = 0; call.exit_price = call.entry_price; }
+          if (call.tp1_hit) { call.exit_price = effectiveSL; call.profit_pct = rangePartialProfitPct(call, effectiveSL); }
           else { call.profit_pct = Math.round((currentPrice - call.entry_price) / call.entry_price * 10000) / 100; }
           call.resolved_at = now.toISOString();
           resolvedCount++;
@@ -96,10 +109,11 @@ export function registerRangeCallRoutes(app, { dataDir }) {
         }
         if (currentPrice <= call.tp2) {
           call.tp2_hit = true;
+          call.tp1_hit = true;
           call.best_tp_reached = Math.max(call.best_tp_reached, 2);
           call.status = 'resolved';
           call.exit_price = currentPrice;
-          call.profit_pct = Math.round((call.entry_price - currentPrice) / call.entry_price * 10000) / 100;
+          call.profit_pct = rangePartialProfitPct(call, currentPrice);
           call.resolved_at = now.toISOString();
           resolvedCount++;
           continue;
@@ -109,7 +123,7 @@ export function registerRangeCallRoutes(app, { dataDir }) {
           call.sl_hit = true;
           call.status = 'resolved';
           call.exit_price = currentPrice;
-          if (call.tp1_hit) { call.profit_pct = 0; call.exit_price = call.entry_price; }
+          if (call.tp1_hit) { call.exit_price = effectiveSL; call.profit_pct = rangePartialProfitPct(call, effectiveSL); }
           else { call.profit_pct = Math.round((call.entry_price - currentPrice) / call.entry_price * 10000) / 100; }
           call.resolved_at = now.toISOString();
           resolvedCount++;

@@ -75,6 +75,10 @@ function setRangeCooldown(cooldowns, symbol, direction) {
 
 
 // ─── Generate Range Setup for a single symbol ───
+// v2 (backtest 30-60j/50 symboles) : entrée sur RÉINTÉGRATION des bandes de Bollinger
+// (bougie précédente perce la bande, bougie courante clôture à l'intérieur avec renversement),
+// filtre band-walking, rejet contre-tendance H1, SL large (0.5×range BB), scoring recalibré
+// sur les facteurs empiriquement prédictifs (H1 aligné, BB large, ADX bas, RSI qui tourne).
 async function generateRangeSetup(symbol) {
   // Fetch M15 candles (100 candles = ~25h of data)
   const m15Candles = await fetchBinanceKlines(symbol, '15m', 100);
@@ -96,25 +100,26 @@ async function generateRangeSetup(symbol) {
 
   // ─── Bollinger Bands on M15 (20, 2) ───
   const bb = calcBollingerBands(m15Closes, 20, 2);
-  if (!bb || bb.sma.length === 0) return null;
-  const bbUpper = bb.upper[bb.upper.length - 1];
-  const bbMiddle = bb.sma[bb.sma.length - 1];
-  const bbLower = bb.lower[bb.lower.length - 1];
+  if (!bb || bb.sma.length < 8) return null;
+  const bbLen = bb.sma.length;
+  const bbUpper = bb.upper[bbLen - 1];
+  const bbMiddle = bb.sma[bbLen - 1];
+  const bbLower = bb.lower[bbLen - 1];
   const bbWidth = (bbUpper - bbLower) / bbMiddle;
 
-  // Skip if BB width is too narrow (no room for profit)
-  if (bbWidth < 0.008) return null;
+  // v2: BB width min 2% — en dessous, le TP1 (mi-bande) ne couvre pas les frais
+  if (bbWidth < 0.02) return null;
 
   // ─── RSI(14) on M15 ───
   const rsiArr = calcRSI(m15Closes, 14);
   const rsiM15 = rsiArr[rsiArr.length - 1];
+  const rsiPrev = rsiArr[rsiArr.length - 2];
 
   // ─── H1 EMA 8 & EMA 20 for bias ───
   const h1Ema8 = calcEMA(h1Closes, 8);
   const h1Ema20 = calcEMA(h1Closes, 20);
   const h1Ema8Val = h1Ema8[h1Ema8.length - 1];
   const h1Ema20Val = h1Ema20[h1Ema20.length - 1];
-  const h1Price = h1Closes[h1Closes.length - 1];
 
   let h1Trend = 'neutral';
   const h1Spread = Math.abs(h1Ema8Val - h1Ema20Val) / h1Ema20Val;
@@ -122,102 +127,68 @@ async function generateRangeSetup(symbol) {
   else if (h1Ema8Val > h1Ema20Val) h1Trend = 'bullish';
   else h1Trend = 'bearish';
 
-  // ─── Price position relative to BB ───
-  const distToLower = (currentPrice - bbLower) / (bbUpper - bbLower);
-  const distToUpper = (bbUpper - currentPrice) / (bbUpper - bbLower);
+  // ─── v2: détection de RÉINTÉGRATION des bandes ───
+  const lastCandle = m15Candles[m15Candles.length - 1];
+  const prevCandle = m15Candles[m15Candles.length - 2];
+  const bbLowerPrev = bb.lower[bbLen - 2];
+  const bbUpperPrev = bb.upper[bbLen - 2];
+
+  const reentryLong = (prevCandle.close < bbLowerPrev || prevCandle.low < bbLowerPrev)
+    && lastCandle.close > bbLower && lastCandle.close > lastCandle.open;
+  const reentryShort = (prevCandle.close > bbUpperPrev || prevCandle.high > bbUpperPrev)
+    && lastCandle.close < bbUpper && lastCandle.close < lastCandle.open;
+
+  // v2: filtre band-walking — si >2 des 6 dernières clôtures sont hors bande, c'est une tendance
+  let walksBelow = 0, walksAbove = 0;
+  for (let k = 2; k <= 7 && bbLen - k >= 0; k++) {
+    const closeK = m15Closes[m15Closes.length - k];
+    if (closeK < bb.lower[bbLen - k]) walksBelow++;
+    if (closeK > bb.upper[bbLen - k]) walksAbove++;
+  }
 
   let side = null;
   let confidence = 0;
   const reasons = [];
 
-  // ─── LONG: Price near lower BB + RSI < 35 ───
-  if (distToLower < 0.15 && rsiM15 < 35) {
+  if (reentryLong && rsiM15 < 40) {
+    if (walksBelow > 2) return null; // band-walking baissier
+    if (h1Trend === 'bearish') return null; // v2: jamais contre la tendance H1
     side = 'LONG';
-    confidence = 50;
-    reasons.push(`Prix proche BB inférieure ($${formatPrice(bbLower)})`);
-    reasons.push(`RSI M15: ${rsiM15.toFixed(1)} — zone de survente`);
-
-    if (rsiM15 < 25) { confidence += 10; reasons.push('RSI extrêmement bas'); }
-    else if (rsiM15 < 30) { confidence += 6; }
-
-    if (distToLower < 0.05) { confidence += 10; reasons.push('Prix touche BB inférieure'); }
-    else if (distToLower < 0.10) { confidence += 5; }
-
-    if (adxM15 < 15) { confidence += 8; reasons.push(`ADX très bas (${adxM15.toFixed(1)}) — range fort`); }
-    else if (adxM15 < 20) { confidence += 4; reasons.push(`ADX bas (${adxM15.toFixed(1)}) — range confirmé`); }
-    else { reasons.push(`ADX: ${adxM15.toFixed(1)}`); }
-
-    if (h1Trend === 'bullish') { confidence += 5; reasons.push('H1 haussière — alignement'); }
-    else if (h1Trend === 'bearish') { confidence -= 8; reasons.push('⚠️ H1 baissière — contre-tendance'); }
-
-    // Volume confirmation
-    const recentVol = m15Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
-    const avgVol = m15Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-    if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 5; reasons.push('Volume M15 supérieur'); }
-
-    // Candle rejection (pin bar at lower BB)
-    const lastCandle = m15Candles[m15Candles.length - 1];
-    const body = Math.abs(lastCandle.close - lastCandle.open);
-    const lowerWick = Math.min(lastCandle.open, lastCandle.close) - lastCandle.low;
-    if (lowerWick > body * 2 && body > 0) { confidence += 8; reasons.push('📌 Mèche de rejet haussière'); }
-  }
-
-  // ─── SHORT: Price near upper BB + RSI > 65 ───
-  else if (distToUpper < 0.15 && rsiM15 > 65) {
+    reasons.push(`Réintégration BB inférieure ($${formatPrice(bbLower)}) — rejet confirmé`);
+    reasons.push(`RSI M15: ${rsiM15.toFixed(1)}`);
+  } else if (reentryShort && rsiM15 > 60) {
+    if (walksAbove > 2) return null; // band-walking haussier
+    if (h1Trend === 'bullish') return null;
     side = 'SHORT';
-    confidence = 50;
-    reasons.push(`Prix proche BB supérieure ($${formatPrice(bbUpper)})`);
-    reasons.push(`RSI M15: ${rsiM15.toFixed(1)} — zone de surachat`);
-
-    if (rsiM15 > 75) { confidence += 10; reasons.push('RSI extrêmement haut'); }
-    else if (rsiM15 > 70) { confidence += 6; }
-
-    if (distToUpper < 0.05) { confidence += 10; reasons.push('Prix touche BB supérieure'); }
-    else if (distToUpper < 0.10) { confidence += 5; }
-
-    if (adxM15 < 15) { confidence += 8; reasons.push(`ADX très bas (${adxM15.toFixed(1)}) — range fort`); }
-    else if (adxM15 < 20) { confidence += 4; reasons.push(`ADX bas (${adxM15.toFixed(1)}) — range confirmé`); }
-    else { reasons.push(`ADX: ${adxM15.toFixed(1)}`); }
-
-    if (h1Trend === 'bearish') { confidence += 5; reasons.push('H1 baissière — alignement'); }
-    else if (h1Trend === 'bullish') { confidence -= 8; reasons.push('⚠️ H1 haussière — contre-tendance'); }
-
-    // Volume confirmation
-    const recentVol = m15Candles.slice(-3).reduce((s, c) => s + c.volume, 0) / 3;
-    const avgVol = m15Candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-    if (avgVol > 0 && recentVol > avgVol * 1.5) { confidence += 5; reasons.push('Volume M15 supérieur'); }
-
-    // Candle rejection (pin bar at upper BB)
-    const lastCandle = m15Candles[m15Candles.length - 1];
-    const body = Math.abs(lastCandle.close - lastCandle.open);
-    const upperWick = lastCandle.high - Math.max(lastCandle.open, lastCandle.close);
-    if (upperWick > body * 2 && body > 0) { confidence += 8; reasons.push('📌 Mèche de rejet baissière'); }
+    reasons.push(`Réintégration BB supérieure ($${formatPrice(bbUpper)}) — rejet confirmé`);
+    reasons.push(`RSI M15: ${rsiM15.toFixed(1)}`);
   }
 
   if (!side) return null;
 
-  // BB bandwidth bonus
-  if (bbWidth > 0.03) { confidence += 5; reasons.push('BB large — bon potentiel de profit'); }
-  else if (bbWidth > 0.015) { confidence += 2; }
+  // ─── v2: scoring recalibré (backtest : facteurs réellement prédictifs) ───
+  confidence = 58;
+  const h1Aligned = (side === 'LONG' && h1Trend === 'bullish') || (side === 'SHORT' && h1Trend === 'bearish');
+  if (h1Aligned) { confidence += 12; reasons.push('H1 alignée avec le trade'); }
+  if (bbWidth > 0.03) { confidence += 7; reasons.push('BB large — bon potentiel de profit'); }
+  if (adxM15 < 15) { confidence += 8; reasons.push(`ADX très bas (${adxM15.toFixed(1)}) — range fort`); }
+  else if (adxM15 < 20) { confidence += 4; reasons.push(`ADX bas (${adxM15.toFixed(1)}) — range confirmé`); }
+  else { reasons.push(`ADX: ${adxM15.toFixed(1)}`); }
+  const rsiTurning = side === 'LONG' ? rsiM15 > rsiPrev : rsiM15 < rsiPrev;
+  if (rsiTurning) { confidence += 6; reasons.push('RSI en retournement'); }
+  confidence = Math.min(97, confidence);
 
-  confidence = Math.min(98, Math.max(30, confidence));
-
-  // ─── SL / TP Calculation ───
+  // ─── SL / TP Calculation — v2: SL large (0.5×range BB, borné 0.5-1.5%) ───
   let stopLoss, tp1, tp2;
   const bbRange = bbUpper - bbLower;
+  const slBuffer = Math.max(currentPrice * 0.005, Math.min(currentPrice * 0.015, bbRange * 0.5));
 
   if (side === 'LONG') {
-    // SL: 0.5-1.5% beyond lower BB
-    const slBuffer = Math.max(currentPrice * 0.005, Math.min(currentPrice * 0.015, bbRange * 0.15));
     stopLoss = bbLower - slBuffer;
-    // TP1: BB midline, TP2: upper BB
     tp1 = bbMiddle;
     tp2 = bbUpper * 0.998; // Slightly inside upper BB
   } else {
-    // SL: 0.5-1.5% beyond upper BB
-    const slBuffer = Math.max(currentPrice * 0.005, Math.min(currentPrice * 0.015, bbRange * 0.15));
     stopLoss = bbUpper + slBuffer;
-    // TP1: BB midline, TP2: lower BB
     tp1 = bbMiddle;
     tp2 = bbLower * 1.002; // Slightly inside lower BB
   }
@@ -319,7 +290,7 @@ async function checkAndSendRangeAlerts() {
 
         const text = `🔵🔵🔵 <b>📊 RANGE TRADING — SIGNAL CRYPTO</b> 🔵🔵🔵
 🌐 https://CryptoIA.ca
-📊 Entry sur le timeframe <b>M15</b> | Biais : <b>H1</b> | Stratégie : <b>Bollinger Bands + RSI + ADX</b>
+📊 Entry sur le timeframe <b>M15</b> | Biais : <b>H1</b> | Stratégie : <b>Réintégration Bollinger + RSI + ADX</b> | Plan : <b>sortie 50% au TP1, 50% vers TP2 (SL→BE)</b>
 ━━━━━━━━━━━━━━━━━━━━━
 
 ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
@@ -355,7 +326,7 @@ ${dirEmoji} — <b>${setup.name}</b> (${setup.symbol})
 
         {
           const newRangeCallId = allocateRangeCallId();
-          const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2h expiry
+          const expiresAt = new Date(now.getTime() + 8 * 60 * 60 * 1000); // v2: 8h expiry (backtest : la réversion vers la mi-bande prend 4-8h)
           const calls = loadRangeCalls();
           calls.push({
             id: newRangeCallId,

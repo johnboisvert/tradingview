@@ -43,6 +43,8 @@ interface TradeCall {
   best_tp_reached: number;
   created_at: string;
   engine?: string | null;
+  tp1?: number | null;
+  tp2?: number | null;
 }
 
 const V7_DATE = new Date("2026-07-20T21:00:00Z");
@@ -63,7 +65,12 @@ function outcome(c: TradeCall): { label: string; cls: string; icon: typeof Check
 }
 
 function effectiveProfit(c: TradeCall): number | null {
-  if (c.tp1_hit && c.sl_hit && (c.profit_pct == null || c.profit_pct < 0)) return 0;
+  // TP1 touché puis stop breakeven → profit partiel réalisé (50% au TP1, +25% au TP2)
+  if (c.tp1_hit && c.sl_hit && (c.profit_pct == null || c.profit_pct <= 0)) {
+    const dir = c.side === "SHORT" ? -1 : 1;
+    const pct = (tp?: number | null) => (tp && c.entry_price ? dir * ((tp - c.entry_price) / c.entry_price) * 100 : 0);
+    return Math.round((0.5 * pct(c.tp1) + (c.tp2_hit ? 0.25 * pct(c.tp2) : 0)) * 100) / 100;
+  }
   return c.profit_pct;
 }
 
@@ -459,6 +466,7 @@ export default function SignalsPerformance() {
           )}
           <p className="mt-4 text-xs text-white/30 leading-relaxed max-w-3xl">
             Win = TP1 atteint (dès TP1, le stop est déplacé au point d'entrée : le trade ne peut plus perdre).
+            PnL des trades « TP + BE » = profit partiel réellement encaissé (50 % de la position sortie au TP1, 25 % au TP2, le reste au point d'entrée).
             Les performances passées ne garantissent pas les résultats futurs. Ceci n'est pas un conseil financier.
           </p>
         </section>

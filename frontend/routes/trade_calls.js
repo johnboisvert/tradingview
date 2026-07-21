@@ -141,6 +141,16 @@ export function registerTradeCallRoutes(app, { dataDir }) {
     res.json(calls);
   });
 
+// Profit partiel réalisé quand TP1 touché puis stop breakeven :
+// 50% de la position sortie au TP1 (+25% au TP2 si atteint), le reste au breakeven.
+function partialRealizedPct(c) {
+  const dir = c.side === 'SHORT' ? -1 : 1;
+  const pct = (tp) => (tp && c.entry_price ? dir * ((tp - c.entry_price) / c.entry_price) * 100 : 0);
+  let realized = 0.5 * pct(c.tp1);
+  if (c.tp2_hit) realized += 0.25 * pct(c.tp2);
+  return Math.round(realized * 100) / 100;
+}
+
   // ─── GET /api/v1/trade-calls/stats — Performance statistics ───
   // ?engine=v8 → uniquement les signaux du nouveau moteur (v7/v8 ou créés après le déploiement)
   app.get('/api/v1/trade-calls/stats', (req, res) => {
@@ -179,10 +189,10 @@ export function registerTradeCallRoutes(app, { dataDir }) {
       if (c.tp3_hit) tp3Hits++;
       if (c.sl_hit) slHits++;
 
-      // Profit calculation: if TP1 hit + SL hit → breakeven (0%), not negative
+      // Profit calculation: if TP1 hit + SL hit → profit partiel réalisé (pas 0%)
       let effectiveProfit = c.profit_pct;
-      if (c.tp1_hit && c.sl_hit && (effectiveProfit == null || effectiveProfit < 0)) {
-        effectiveProfit = 0; // Trailing stop protected at breakeven
+      if (c.tp1_hit && c.sl_hit && (effectiveProfit == null || effectiveProfit <= 0)) {
+        effectiveProfit = partialRealizedPct(c);
       }
       if (effectiveProfit != null) {
         totalProfit += effectiveProfit;

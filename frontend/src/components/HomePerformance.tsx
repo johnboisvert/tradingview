@@ -6,18 +6,31 @@ import { ShieldCheck, Trophy, Activity, Target, ArrowRight } from "lucide-react"
 interface Stats {
   total_calls: number;
   tp2_rate: number;
+  resolved_calls?: number;
+  expired_calls?: number;
   confidence_buckets?: Record<string, { win_rate: number; total: number }>;
 }
 
+const V8_MIN_CLOSED = 5; // bascule auto sur les stats v8 dès 5 trades clôturés
+
 export default function HomePerformance() {
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [statsAll, setStatsAll] = useState<Stats | null>(null);
+  const [statsV8, setStatsV8] = useState<Stats | null>(null);
 
   useEffect(() => {
     fetch("/api/v1/trade-calls/stats")
       .then((r) => r.json())
-      .then(setStats)
+      .then(setStatsAll)
+      .catch(() => {});
+    fetch("/api/v1/trade-calls/stats?engine=v8")
+      .then((r) => r.json())
+      .then(setStatsV8)
       .catch(() => {});
   }, []);
+
+  const v8Closed = (statsV8?.resolved_calls || 0) + (statsV8?.expired_calls || 0);
+  const useV8 = v8Closed >= V8_MIN_CLOSED;
+  const stats = useV8 ? statsV8 : statsAll;
 
   const hc = stats?.confidence_buckets?.[">80%"];
 
@@ -29,6 +42,7 @@ export default function HomePerformance() {
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-200">
             <ShieldCheck className="h-3 w-3" />
             Transparence totale
+            {useV8 && <span className="rounded-full border border-cyan-400/40 bg-cyan-500/15 px-1.5 py-0.5 text-[9px] font-black text-cyan-300 normal-case tracking-normal">Moteur v8</span>}
             <span className="relative flex h-1.5 w-1.5 ml-1">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-400" />

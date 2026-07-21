@@ -172,6 +172,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-3">
             <Link
               to="/"
+              target="_blank"
+              rel="noopener noreferrer"
               data-testid="admin-topbar-view-site"
               className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs font-semibold text-gray-300 hover:text-white hover:border-indigo-400/40 transition-colors"
             >

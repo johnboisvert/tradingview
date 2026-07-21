@@ -142,8 +142,13 @@ export function registerTradeCallRoutes(app, { dataDir }) {
   });
 
   // ─── GET /api/v1/trade-calls/stats — Performance statistics ───
+  // ?engine=v8 → uniquement les signaux du nouveau moteur (v7/v8 ou créés après le déploiement)
   app.get('/api/v1/trade-calls/stats', (req, res) => {
-    const calls = loadTradeCalls();
+    let calls = loadTradeCalls();
+    if (req.query.engine === 'v8') {
+      const V8_CUTOFF = '2026-07-20T21:00:00Z';
+      calls = calls.filter(c => c.engine === 'v7' || c.engine === 'v8' || (c.created_at && String(c.created_at) >= V8_CUTOFF));
+    }
     const total = calls.length;
     const activeCalls = calls.filter(c => c.status === 'active').length;
     const resolvedCalls = calls.filter(c => c.status === 'resolved').length;

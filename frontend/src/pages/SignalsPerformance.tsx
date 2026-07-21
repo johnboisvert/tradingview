@@ -67,11 +67,15 @@ function effectiveProfit(c: TradeCall): number | null {
   return c.profit_pct;
 }
 
+const isV8Call = (c: TradeCall) => c.engine === "v7" || c.engine === "v8" || new Date(c.created_at) >= V7_DATE;
+
 export default function SignalsPerformance() {
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [statsAll, setStatsAll] = useState<Stats | null>(null);
+  const [statsV8, setStatsV8] = useState<Stats | null>(null);
   const [scalpStats, setScalpStats] = useState<Stats | null>(null);
   const [rangeStats, setRangeStats] = useState<Stats | null>(null);
-  const [trades, setTrades] = useState<TradeCall[]>([]);
+  const [allCalls, setAllCalls] = useState<TradeCall[]>([]);
+  const [engineView, setEngineView] = useState<"v8" | "all">("v8");
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [copied, setCopied] = useState(false);
@@ -79,19 +83,18 @@ export default function SignalsPerformance() {
   useEffect(() => {
     async function fetchAll() {
       try {
-        const [s, sc, rg, tc] = await Promise.all([
+        const [s, sv8, sc, rg, tc] = await Promise.all([
           fetch("/api/v1/trade-calls/stats").then((r) => r.json()),
+          fetch("/api/v1/trade-calls/stats?engine=v8").then((r) => r.json()),
           fetch("/api/v1/scalp-calls/stats").then((r) => r.json()).catch(() => null),
           fetch("/api/v1/range-calls/stats").then((r) => r.json()).catch(() => null),
           fetch("/api/v1/trade-calls?limit=300").then((r) => r.json()),
         ]);
-        setStats(s);
+        setStatsAll(s);
+        setStatsV8(sv8);
         setScalpStats(sc);
         setRangeStats(rg);
-        const closed = (tc as TradeCall[])
-          .filter((c) => c.status !== "active")
-          .slice(0, 15);
-        setTrades(closed);
+        setAllCalls(tc as TradeCall[]);
         setLastUpdate(new Date());
       } catch (e) {
         console.error(e);
@@ -102,6 +105,11 @@ export default function SignalsPerformance() {
     const interval = setInterval(fetchAll, 60_000);
     return () => clearInterval(interval);
   }, []);
+
+  const stats = engineView === "v8" ? statsV8 : statsAll;
+  const closedCalls = allCalls.filter((c) => c.status !== "active");
+  const trades = (engineView === "v8" ? closedCalls.filter(isV8Call) : closedCalls).slice(0, 15);
+  const activeV8 = allCalls.filter((c) => c.status === "active" && isV8Call(c));
 
   const hc = stats?.confidence_buckets?.[">80%"];
   const totalSignals = (stats?.total_calls || 0) + (scalpStats?.total_calls || 0) + (rangeStats?.total_calls || 0);
@@ -172,6 +180,26 @@ export default function SignalsPerformance() {
               enregistré à son émission et son résultat est calculé automatiquement par nos serveurs.
               Aucune retouche possible.
             </p>
+
+            {/* Sélecteur moteur */}
+            <div className="hero-item [animation-delay:300ms] mt-8 inline-flex rounded-full border border-white/10 bg-white/[0.04] p-1" data-testid="engine-toggle">
+              <button
+                type="button"
+                data-testid="engine-toggle-v8"
+                onClick={() => setEngineView("v8")}
+                className={`rounded-full px-5 py-2 text-xs font-bold transition-colors ${engineView === "v8" ? "bg-cyan-500/20 text-cyan-200 border border-cyan-400/30" : "text-white/40 hover:text-white border border-transparent"}`}
+              >
+                Moteur v8 (actuel)
+              </button>
+              <button
+                type="button"
+                data-testid="engine-toggle-all"
+                onClick={() => setEngineView("all")}
+                className={`rounded-full px-5 py-2 text-xs font-bold transition-colors ${engineView === "all" ? "bg-white/10 text-white border border-white/20" : "text-white/40 hover:text-white border border-transparent"}`}
+              >
+                Historique complet (incl. ancien moteur)
+              </button>
+            </div>
 
             {/* Stats clés */}
             <div className="hero-item [animation-delay:360ms] mt-10 grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl">
@@ -333,11 +361,13 @@ export default function SignalsPerformance() {
           <div data-testid="v7-notice" className="mt-4 flex items-start gap-3 rounded-2xl border border-cyan-400/25 bg-cyan-500/[0.07] p-4">
             <Sparkles className="shrink-0 mt-0.5 h-4 w-4 text-cyan-300" />
             <p className="text-sm text-cyan-100/80 leading-relaxed">
-              <strong className="text-cyan-200">Moteur v7 déployé le 20 juillet 2026</strong> — recalibrage complet basé
+              <strong className="text-cyan-200">Moteur v8 déployé le 20 juillet 2026</strong> — recalibrage complet basé
               sur l'analyse de l'historique : anti pump-chasing, filtre de tendance Bitcoin, ratio TP/SL corrigé et
               convergence supports/résistances renforcée. Les signaux du nouveau moteur portent le badge{" "}
-              <span className="inline-flex items-center rounded-full border border-cyan-400/40 bg-cyan-500/15 px-2 py-0.5 text-[10px] font-black text-cyan-300">v7</span>.
-              L'historique ci-dessous inclut l'ancien moteur.
+              <span className="inline-flex items-center rounded-full border border-cyan-400/40 bg-cyan-500/15 px-2 py-0.5 text-[10px] font-black text-cyan-300">v8</span>.{" "}
+              {engineView === "v8"
+                ? "Vous consultez uniquement les résultats du nouveau moteur — l'ancien historique reste consultable via « Historique complet »."
+                : "Vous consultez l'historique complet, incluant l'ancien moteur (avant le 20 juillet) — ses résultats médiocres sont la raison du recalibrage v8."}
             </p>
           </div>
           <div className="mt-6 rounded-2xl border border-white/10 bg-[#0d1526] overflow-hidden" data-testid="recent-trades-table">
@@ -358,6 +388,14 @@ export default function SignalsPerformance() {
                   {loading && (
                     <tr><td colSpan={7} className="px-4 py-8 text-center text-white/30">Chargement…</td></tr>
                   )}
+                  {!loading && trades.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-10 text-center text-white/40 text-sm" data-testid="v8-empty-state">
+                        Le moteur v8 n'a pas encore clôturé de trade — {activeV8.length} signaux actifs en cours de suivi.
+                        Les résultats s'afficheront ici automatiquement dès la première clôture.
+                      </td>
+                    </tr>
+                  )}
                   {!loading && trades.map((c) => {
                     const o = outcome(c);
                     const p = effectiveProfit(c);
@@ -366,8 +404,8 @@ export default function SignalsPerformance() {
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(c.created_at).toLocaleDateString("fr-CA")}</td>
                         <td className="px-4 py-3 font-bold text-white">
                           {c.symbol.replace("USDT", "/USDT")}
-                          {(c.engine === "v7" || new Date(c.created_at) >= V7_DATE) && (
-                            <span className="ml-2 inline-flex items-center rounded-full border border-cyan-400/40 bg-cyan-500/15 px-2 py-0.5 text-[10px] font-black text-cyan-300">v7</span>
+                          {isV8Call(c) && (
+                            <span className="ml-2 inline-flex items-center rounded-full border border-cyan-400/40 bg-cyan-500/15 px-2 py-0.5 text-[10px] font-black text-cyan-300">v8</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
@@ -396,6 +434,29 @@ export default function SignalsPerformance() {
               </table>
             </div>
           </div>
+          {engineView === "v8" && activeV8.length > 0 && (
+            <div className="mt-6" data-testid="active-v8-signals">
+              <h3 className="font-mono text-[11px] uppercase tracking-[0.25em] text-white/40">Signaux v8 en cours ({activeV8.length})</h3>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {activeV8.map((c) => (
+                  <div key={c.id} className="rounded-2xl border border-cyan-400/15 bg-[#0d1526] p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-white">{c.symbol.replace("USDT", "/USDT")}</span>
+                      <span className={`inline-flex items-center gap-1 text-xs font-bold ${c.side === "LONG" ? "text-emerald-300" : "text-rose-300"}`}>
+                        {c.side === "LONG" ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                        {c.side}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs text-white/50 font-mono">
+                      <span>Entrée ${fmtPrice(c.entry_price)}</span>
+                      <span className="text-cyan-300 font-bold">{c.confidence}%</span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-white/30">{new Date(c.created_at).toLocaleDateString("fr-CA")} · en cours</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <p className="mt-4 text-xs text-white/30 leading-relaxed max-w-3xl">
             Win = TP1 atteint (dès TP1, le stop est déplacé au point d'entrée : le trade ne peut plus perdre).
             Les performances passées ne garantissent pas les résultats futurs. Ceci n'est pas un conseil financier.

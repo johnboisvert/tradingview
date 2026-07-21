@@ -71,6 +71,7 @@ import {
   Users,
   Gift,
   Terminal as TerminalIcon,
+  DollarSign,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -96,6 +97,7 @@ const NAV_SECTIONS = [
   {
     title: "Marché",
     items: [
+      { path: "/forex", label: "Forex & Or", icon: DollarSign, badge: "NEW" },
       { path: "/heatmap", label: "Heatmap", icon: Flame },
       { path: "/fear-greed", label: "Fear & Greed", icon: Frown },
       { path: "/dominance", label: "Dominance", icon: Crown },

@@ -46,6 +46,7 @@ import registerPlanGrantsRoutes from './routes/plan_grants.js';
 import registerTerminalLayoutRoutes from './routes/terminal_layouts.js';
 import registerEconomicCalendarRoutes from './routes/economic_calendar.js';
 import registerBinanceMarketRoutes from './routes/binance_market.js';
+import registerForexMarketRoutes from './routes/forex_market.js';
 import registerUserRoutes from './routes/users.js';
 import registerNewsProxyRoutes from './routes/news_proxy.js';
 import registerDeribitOptionsRoutes from './routes/deribit_options.js';
@@ -251,6 +252,7 @@ registerCoinGeckoProxy(app);
 // ─── Binance/Bybit market helpers → lib/market_sources.js ───
 // ─── Binance market proxies (klines/depth/funding) → routes/binance_market.js ───
 registerBinanceMarketRoutes(app);
+registerForexMarketRoutes(app);
 
 // ============================================================
 // Calls stores — swing/scalp/range persistence + endpoints + resolvers
@@ -1635,6 +1637,36 @@ app.get('/magic-strategy', (req, res, next) => {
     res.type('html').send(html);
   } catch (e) {
     console.error('[IndicatorsSEO-SSR] Error injecting meta tags:', e?.message);
+    next();
+  }
+});
+
+// SEO SSR — /forex (page publique Forex, Or & Métaux)
+app.get('/forex', (req, res, next) => {
+  try {
+    const distIndex = path.join(__dirname, 'dist', 'index.html');
+    if (!fs.existsSync(distIndex)) return next();
+    let html = fs.readFileSync(distIndex, 'utf8');
+    const ogUrl = 'https://www.cryptoia.ca/forex';
+    const ogTitle = 'Forex en Direct — 75+ Paires de Devises, Or, Argent & Métaux | CryptoIA';
+    const ogDesc = 'Cours forex en temps réel : paires majeures (EUR/USD, GBP/USD, USD/JPY), croisées, exotiques, Or XAU/USD, Argent, Platine, Palladium et US Dollar Index. Données live gratuites.';
+    const replacements = [
+      [/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(ogTitle)}" />`],
+      [/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(ogDesc)}" />`],
+      [/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:url" content="${escapeAttr(ogUrl)}" />`],
+      [/<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:title" content="${escapeAttr(ogTitle)}" />`],
+      [/<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:description" content="${escapeAttr(ogDesc)}" />`],
+      [/<title>[^<]*<\/title>/i, `<title>${escapeAttr(ogTitle)}</title>`],
+      [/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i, `<meta name="description" content="${escapeAttr(ogDesc)}" />`],
+      [/<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/i, `<link rel="canonical" href="${escapeAttr(ogUrl)}" />`],
+    ];
+    for (const [re, replacement] of replacements) {
+      if (re.test(html)) html = html.replace(re, replacement);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    res.type('html').send(html);
+  } catch (e) {
+    console.error('[ForexSEO-SSR] Error injecting meta tags:', e?.message);
     next();
   }
 });

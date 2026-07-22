@@ -77,7 +77,7 @@ export default function HomePerformance() {
 
         <div className="grid grid-cols-3 gap-3 lg:w-[420px]">
           {[
-            { label: "Signaux trackés", value: stats ? `${stats.total_calls}` : "…", icon: Activity, accent: "text-cyan-300" },
+            { label: "Signaux trackés", value: stats ? `${totalSignals}` : "…", icon: Activity, accent: "text-cyan-300" },
             { label: "Winrate haute conf.", value: hc ? `${hc.win_rate}%` : "…", icon: Trophy, accent: "text-emerald-300" },
             { label: "TP2 atteint", value: stats ? `${stats.tp2_rate}%` : "…", icon: Target, accent: "text-teal-300" },
           ].map((s) => (

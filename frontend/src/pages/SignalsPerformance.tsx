@@ -211,15 +211,16 @@ export default function SignalsPerformance() {
             {/* Stats clés */}
             <div className="hero-item [animation-delay:360ms] mt-10 grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl">
               {[
-                { label: "Signaux trackés", value: loading ? "…" : `${totalSignals}`, icon: Activity, accent: "text-cyan-300" },
-                { label: "Winrate haute confiance*", value: loading ? "…" : `${hc?.win_rate ?? 0}%`, icon: Trophy, accent: "text-emerald-300" },
-                { label: "Taux TP2 atteint", value: loading ? "…" : `${stats?.tp2_rate ?? 0}%`, icon: Target, accent: "text-teal-300" },
-                { label: "Meilleure semaine", value: loading ? "…" : bestWeek ? `${bestWeek.win_rate}%` : "—", icon: TrendingUp, accent: "text-lime-300" },
+                { label: "Signaux trackés", value: loading ? "…" : `${totalSignals}`, sub: loading ? "" : `${stats?.total_calls ?? 0} swing · ${scalpStats?.total_calls ?? 0} scalp · ${rangeStats?.total_calls ?? 0} range`, icon: Activity, accent: "text-cyan-300" },
+                { label: "Winrate haute confiance*", value: loading ? "…" : `${hc?.win_rate ?? 0}%`, sub: "", icon: Trophy, accent: "text-emerald-300" },
+                { label: "Taux TP2 atteint", value: loading ? "…" : `${stats?.tp2_rate ?? 0}%`, sub: "", icon: Target, accent: "text-teal-300" },
+                { label: "Meilleure semaine", value: loading ? "…" : bestWeek ? `${bestWeek.win_rate}%` : "—", sub: "", icon: TrendingUp, accent: "text-lime-300" },
               ].map((s) => (
                 <div key={s.label} data-testid={`perf-stat-${s.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="rounded-2xl border border-white/10 bg-[#0d1526]/80 backdrop-blur-sm p-5">
                   <s.icon className={`h-4 w-4 ${s.accent}`} />
                   <div className="mt-3 text-3xl font-black tracking-tighter text-white">{s.value}</div>
                   <div className="mt-1 text-[11px] font-mono uppercase tracking-[0.15em] text-white/40">{s.label}</div>
+                  {s.sub && <div className="mt-1 text-[10px] font-mono text-white/30">{s.sub}</div>}
                 </div>
               ))}
             </div>

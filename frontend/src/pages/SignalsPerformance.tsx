@@ -501,7 +501,7 @@ export default function SignalsPerformance() {
                 className="inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.04] px-8 py-3.5 text-sm font-bold text-white hover:bg-white/[0.1] transition-colors"
               >
                 <Lock className="h-4 w-4" />
-                Nos 9 indicateurs TradingView
+                Nos 10 indicateurs TradingView
               </Link>
             </div>
           </div>

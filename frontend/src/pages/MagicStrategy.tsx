@@ -21,6 +21,7 @@ import {
   Maximize2,
   X,
   Zap,
+  Mountain,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -609,6 +610,61 @@ const INDICATORS: Indicator[] = [
     ],
     ready: true,
   },
+  {
+    id: "bottom-top-ai",
+    name: "Magic JB Bottom Top AI",
+    tagline: "Cycles, sommets et creux — lecture de marché sur Bitcoin et les Altcoins",
+    icon: Mountain,
+    accent: ACCENTS.amber,
+    description: [
+      "Magic JB Bottom & Top AI est un indicateur de lecture de marché conçu pour repérer les principales phases de cycle, les sommets, les creux et les zones de retournement potentielles sur Bitcoin et les Altcoins.",
+      "L'indicateur ne cherche pas simplement un point haut ou un point bas isolé. Il combine la tendance, la structure du prix, le momentum, le volume, les divergences et le contexte de cycle afin de distinguer les mouvements intermédiaires des véritables changements de phase.",
+      "Modèle Bitcoin : logique macro spécialement adaptée aux grands cycles historiques. Les statuts comme Bottom Watch, Early Bottom Watch ou Seeking Macro Bottom indiquent une zone de surveillance — ils ne signifient pas automatiquement que le creux définitif est confirmé.",
+      "Modèle Altcoins : les Altcoins ne suivent pas toujours le cycle de Bitcoin avec la même régularité. L'indicateur utilise donc une logique locale séparée, avec un système de nettoyage qui évite l'accumulation de plusieurs labels représentant le même sommet de cycle.",
+      "Signification des signaux : BTC Macro Cycle Top / Bottom (sommet ou creux macro confirmé dans la structure cyclique de Bitcoin), Local Cycle Top / Bottom (sommet ou creux majeur ou intermédiaire confirmé sur un Altcoin), INT. TOP / INT. BOTTOM (niveaux intermédiaires, moins importants qu'un véritable sommet ou creux de cycle) et DIV (divergence prix/momentum indiquant un affaiblissement potentiel — elle ne constitue pas à elle seule un signal d'entrée).",
+      "Utilisation recommandée : analyser la position actuelle dans un cycle, repérer une phase possible d'accumulation ou de distribution, surveiller la formation d'un bottom, identifier une zone de surchauffe, confirmer une analyse technique existante et filtrer les décisions d'investissement à moyen ou long terme. Complétez toujours les signaux avec l'analyse de la structure, les supports et résistances, le contexte macroéconomique, la gestion du risque et une confirmation sur clôture de bougie.",
+    ],
+    features: [
+      "Macro Cycle Tops et Bottoms sur Bitcoin",
+      "Local Cycle Tops et Bottoms sur les Altcoins",
+      "Phases : Macro Bull, Macro Bear, Local Bull, Local Bear",
+      "Score distinct pour le potentiel de bottom et de top",
+      "RSI quotidien, hebdomadaire et mensuel",
+      "Divergences haussières et baissières",
+      "Tendance en timeframe supérieur (HTF)",
+      "Lecture du volume relatif",
+      "Modèle dérivé de la moyenne mobile (350 jours)",
+      "Nettoyage automatique des labels redondants",
+    ],
+    dashboard: [
+      "Type de cycle utilisé et phase actuelle",
+      "Score Bottom et score Top",
+      "RSI, volume relatif et tendance HTF",
+      "État du cycle et RSI Weekly / Monthly",
+      "Modèle 350 jours et classe structurelle",
+      "Timing du cycle et progression du modèle 35/12",
+    ],
+    timeframes: "Daily — 1D (les données de timeframe supérieur conservent une lecture stable et évitent les faux signaux liés au bruit des petites unités de temps)",
+    screenshots: [
+      {
+        src: "/indicators/bottomtop-1.png",
+        caption: "ETH/USDT 1D — Local Cycle Tops et Bottoms confirmés sur plusieurs cycles, phase LOCAL BEAR et statut Seeking Local Bottom.",
+      },
+      {
+        src: "/indicators/bottomtop-2.png",
+        caption: "BTC/USDT 1D — BTC Macro Cycle Tops confirmés, Macro Bottom Watch 290 jours après le top et modèle 35/12 à 79 %.",
+      },
+      {
+        src: "/indicators/bottomtop-3.png",
+        caption: "BNB/USDT 1D — Historique complet des Local Cycle Tops et Bottoms avec dashboard Alt Cycle.",
+      },
+      {
+        src: "/indicators/bottomtop-4.png",
+        caption: "DOGE/USDT 1D — Phase LOCAL BULL, statut Seeking Local Top et divergences détectées sur le Daily.",
+      },
+    ],
+    ready: true,
+  },
 ];
 
 const PRICING: {
@@ -627,7 +683,7 @@ const PRICING: {
     price: "49$",
     period: "/ mois",
     desc: "Accès complet, sans engagement",
-    perks: ["Les 9 indicateurs inclus", "Alertes TradingView illimitées", "Mises à jour incluses", "Annulez à tout moment"],
+    perks: ["Les 10 indicateurs inclus", "Alertes TradingView illimitées", "Mises à jour incluses", "Annulez à tout moment"],
   },
   {
     id: "annual",
@@ -635,7 +691,7 @@ const PRICING: {
     price: "399$",
     period: "/ an",
     desc: "≈ 33$/mois — économisez 32%",
-    perks: ["Les 9 indicateurs inclus", "Alertes TradingView illimitées", "Mises à jour incluses", "2 mois offerts vs mensuel"],
+    perks: ["Les 10 indicateurs inclus", "Alertes TradingView illimitées", "Mises à jour incluses", "2 mois offerts vs mensuel"],
     badge: "Populaire",
     featured: true,
   },
@@ -645,7 +701,7 @@ const PRICING: {
     price: "899$",
     period: "paiement unique",
     desc: "Payez une fois, gardez pour toujours",
-    perks: ["Les 9 indicateurs inclus", "Mises à jour à vie", "Tous les futurs indicateurs", "Aucun renouvellement"],
+    perks: ["Les 10 indicateurs inclus", "Mises à jour à vie", "Tous les futurs indicateurs", "Aucun renouvellement"],
   },
 ];
 
@@ -935,12 +991,12 @@ function PricingSection() {
             <h2 className="mt-5 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter">
               <span className="text-white">Obtenez les</span>{" "}
               <span className="bg-gradient-to-r from-emerald-300 via-cyan-300 to-teal-300 bg-clip-text text-transparent">
-                9 indicateurs
+                10 indicateurs
               </span>
             </h2>
             <p className="mt-4 max-w-2xl mx-auto text-base text-slate-400 leading-relaxed">
-              Un seul accès pour toute la suite : achetés séparément, ces 9 indicateurs vaudraient{" "}
-              <span className="text-white/70 line-through decoration-rose-400/70">270$/mois</span> — obtenez tout
+              Un seul accès pour toute la suite : achetés séparément, ces 10 indicateurs vaudraient{" "}
+              <span className="text-white/70 line-through decoration-rose-400/70">300$/mois</span> — obtenez tout
               pour une fraction du prix.
             </p>
           </div>
@@ -1105,7 +1161,7 @@ export default function MagicStrategy() {
     <div className="flex min-h-screen bg-[#0a0e17] text-white">
       <SEOHead
         title="9 Indicateurs TradingView Crypto Exclusifs — Signaux, S/R, Divergences & Cycles"
-        description="Suite de 9 indicateurs TradingView pour la crypto : signaux LONG/SHORT automatiques, supports/résistances IA, divergences, cycles Bitcoin, DCA et gestion du risque. Scalping, day trading, swing et long terme. Dès 49$/mois."
+        description="Suite de 10 indicateurs TradingView pour la crypto : signaux LONG/SHORT automatiques, supports/résistances IA, divergences, cycles Bitcoin, DCA et gestion du risque. Scalping, day trading, swing et long terme. Dès 49$/mois."
         path="/magic-strategy"
         image="https://www.cryptoia.ca/indicators/cryptoiaedge-1.png"
         type="product"
@@ -1115,9 +1171,9 @@ export default function MagicStrategy() {
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Product",
-            name: "Suite Indicateurs CryptoIA — 9 indicateurs TradingView",
+            name: "Suite Indicateurs CryptoIA — 10 indicateurs TradingView",
             description:
-              "9 indicateurs TradingView exclusifs pour la crypto : signaux automatiques, supports/résistances, divergences, cycles Bitcoin, DCA et gestion du risque.",
+              "10 indicateurs TradingView exclusifs pour la crypto : signaux automatiques, supports/résistances, divergences, cycles Bitcoin, DCA et gestion du risque.",
             image: "https://www.cryptoia.ca/indicators/cryptoiaedge-1.png",
             brand: { "@type": "Brand", name: "CryptoIA" },
             offers: [

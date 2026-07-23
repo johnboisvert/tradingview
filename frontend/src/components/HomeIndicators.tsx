@@ -9,6 +9,7 @@ import {
   Sparkles,
   Layers,
   Brain,
+  Mountain,
   ArrowRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -23,6 +24,7 @@ const ITEMS: { name: string; tagline: string; icon: LucideIcon; color: string }[
   { name: "Magic JB IA Cycles", tagline: "Cycles Bitcoin, Mayer Multiple, Pi Cycle Top", icon: Sparkles, color: "text-fuchsia-300 border-fuchsia-400/25 bg-fuchsia-500/10" },
   { name: "Magic JB S/R AI", tagline: "Supports / résistances automatiques multi-TF", icon: Layers, color: "text-emerald-300 border-emerald-400/25 bg-emerald-500/10" },
   { name: "Crypto IA Edge", tagline: "Le plus complet — gestion de trade intégrée", icon: Brain, color: "text-lime-300 border-lime-400/25 bg-lime-500/10" },
+  { name: "Magic JB Bottom Top AI", tagline: "Cycles, sommets et creux — BTC & Altcoins", icon: Mountain, color: "text-teal-300 border-teal-400/25 bg-teal-500/10" },
 ];
 
 export default function HomeIndicators() {

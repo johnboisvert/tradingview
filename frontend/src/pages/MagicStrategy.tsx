@@ -22,6 +22,7 @@ import {
   X,
   Zap,
   Mountain,
+  DollarSign,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -665,6 +666,58 @@ const INDICATORS: Indicator[] = [
     ],
     ready: true,
   },
+  {
+    id: "forex-gump",
+    name: "Forex Gump — Forex & Gold Indicator",
+    tagline: "Signaux Buy/Sell complets sur le Forex et l'or — 6 presets du scalping au swing",
+    icon: DollarSign,
+    accent: ACCENTS.emerald,
+    description: [
+      "Forex Gump est un indicateur TradingView conçu pour analyser les marchés Forex et l'or à l'aide de plusieurs presets adaptés au scalping, au day trading et au swing trading.",
+      "Il affiche directement sur le graphique : les signaux Buy et Sell, le prix d'entrée, le Stop Loss, TP1, TP2 et TP3, la tendance actuelle, l'état du trade, la validation du timeframe et un dashboard complet.",
+      "Six presets sont disponibles — Scalp 1 et Scalp 2 (M1/M5), Day 1 et Day 2 (M15/H1), Swing 1 et Swing 2 (H4/Daily). Chaque preset utilise une logique différente selon le type de trading recherché, sans avoir à modifier manuellement tous les paramètres.",
+      "Utilisation recommandée : choisissez le preset correspondant à votre style de trading, puis utilisez uniquement les timeframes indiqués dans le nom du preset. L'indicateur sert d'outil d'aide à la décision — il ne garantit pas qu'un trade sera gagnant et doit toujours être utilisé avec une gestion du risque adaptée.",
+    ],
+    features: [
+      "6 presets : Scalp 1 & 2 (M1/M5), Day 1 & 2 (M15/H1), Swing 1 & 2 (H4/Daily)",
+      "Signaux Buy / Sell avec entrée, SL, TP1, TP2, TP3 affichés sur le graphique",
+      "Confirmation multi-timeframes",
+      "Signaux confirmés à la clôture de bougie",
+      "Gestion du risque par ATR et structure",
+      "Suivi automatique des objectifs (TP ✓)",
+      "Déplacement possible du SL au breakeven",
+      "Fermeture en fin de session",
+      "Alertes Buy, Sell, TP et Stop Loss",
+      "Filtrage Forex et XAUUSD (or)",
+    ],
+    dashboard: [
+      "Preset actif et timeframes recommandés",
+      "Validation du Chart TF et du marché (VALID)",
+      "Tendance actuelle (ex. H1 BEAR, BULL)",
+      "État du trade : LONG/SHORT ACTIVE, TRADE COMPLETE, STOP LOSS",
+      "Entrée, SL / TP3 et progression TP1 ✓ TP2 ✓ TP3 ✓",
+    ],
+    timeframes: "Selon le preset : M1/M5 (scalp), M15/H1 (day trading), H4/Daily (swing) — utilisez uniquement les timeframes indiqués dans le nom du preset",
+    screenshots: [
+      {
+        src: "/indicators/forexgump-1.png",
+        caption: "AUD/USD M15 — Preset Day 1 (M15/H1) : signal Sell, TP1-TP2-TP3 tous atteints, TRADE COMPLETE au dashboard.",
+      },
+      {
+        src: "/indicators/forexgump-2.png",
+        caption: "EUR/USD H1 — Preset Day 1 : Sell confirmé sous la tendance H1 BEAR, les trois objectifs touchés.",
+      },
+      {
+        src: "/indicators/forexgump-3.png",
+        caption: "USD/JPY H4 — Preset Swing 2 (H4/Daily) : LONG ACTIVE, TP1 ✓ et TP2 ✓, divergences DIV marquées sur le graphique.",
+      },
+      {
+        src: "/indicators/forexgump-4.png",
+        caption: "CAD/JPY Daily — Preset Swing 2 : exemple de trade perdant affiché en toute transparence (STOP LOSS au dashboard).",
+      },
+    ],
+    ready: true,
+  },
 ];
 
 const PRICING: {
@@ -683,7 +736,7 @@ const PRICING: {
     price: "49$",
     period: "/ mois",
     desc: "Accès complet, sans engagement",
-    perks: ["Les 10 indicateurs inclus", "Alertes TradingView illimitées", "Mises à jour incluses", "Annulez à tout moment"],
+    perks: ["Les 11 indicateurs inclus", "Alertes TradingView illimitées", "Mises à jour incluses", "Annulez à tout moment"],
   },
   {
     id: "annual",
@@ -691,7 +744,7 @@ const PRICING: {
     price: "399$",
     period: "/ an",
     desc: "≈ 33$/mois — économisez 32%",
-    perks: ["Les 10 indicateurs inclus", "Alertes TradingView illimitées", "Mises à jour incluses", "2 mois offerts vs mensuel"],
+    perks: ["Les 11 indicateurs inclus", "Alertes TradingView illimitées", "Mises à jour incluses", "2 mois offerts vs mensuel"],
     badge: "Populaire",
     featured: true,
   },
@@ -701,7 +754,7 @@ const PRICING: {
     price: "899$",
     period: "paiement unique",
     desc: "Payez une fois, gardez pour toujours",
-    perks: ["Les 10 indicateurs inclus", "Mises à jour à vie", "Tous les futurs indicateurs", "Aucun renouvellement"],
+    perks: ["Les 11 indicateurs inclus", "Mises à jour à vie", "Tous les futurs indicateurs", "Aucun renouvellement"],
   },
 ];
 
@@ -991,12 +1044,12 @@ function PricingSection() {
             <h2 className="mt-5 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter">
               <span className="text-white">Obtenez les</span>{" "}
               <span className="bg-gradient-to-r from-emerald-300 via-cyan-300 to-teal-300 bg-clip-text text-transparent">
-                10 indicateurs
+                11 indicateurs
               </span>
             </h2>
             <p className="mt-4 max-w-2xl mx-auto text-base text-slate-400 leading-relaxed">
-              Un seul accès pour toute la suite : achetés séparément, ces 10 indicateurs vaudraient{" "}
-              <span className="text-white/70 line-through decoration-rose-400/70">300$/mois</span> — obtenez tout
+              Un seul accès pour toute la suite : achetés séparément, ces 11 indicateurs vaudraient{" "}
+              <span className="text-white/70 line-through decoration-rose-400/70">330$/mois</span> — obtenez tout
               pour une fraction du prix.
             </p>
           </div>
@@ -1161,7 +1214,7 @@ export default function MagicStrategy() {
     <div className="flex min-h-screen bg-[#0a0e17] text-white">
       <SEOHead
         title="9 Indicateurs TradingView Crypto Exclusifs — Signaux, S/R, Divergences & Cycles"
-        description="Suite de 10 indicateurs TradingView pour la crypto : signaux LONG/SHORT automatiques, supports/résistances IA, divergences, cycles Bitcoin, DCA et gestion du risque. Scalping, day trading, swing et long terme. Dès 49$/mois."
+        description="Suite de 11 indicateurs TradingView pour la crypto : signaux LONG/SHORT automatiques, supports/résistances IA, divergences, cycles Bitcoin, DCA et gestion du risque. Scalping, day trading, swing et long terme. Dès 49$/mois."
         path="/magic-strategy"
         image="https://www.cryptoia.ca/indicators/cryptoiaedge-1.png"
         type="product"
@@ -1171,9 +1224,9 @@ export default function MagicStrategy() {
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Product",
-            name: "Suite Indicateurs CryptoIA — 10 indicateurs TradingView",
+            name: "Suite Indicateurs CryptoIA — 11 indicateurs TradingView",
             description:
-              "10 indicateurs TradingView exclusifs pour la crypto : signaux automatiques, supports/résistances, divergences, cycles Bitcoin, DCA et gestion du risque.",
+              "11 indicateurs TradingView exclusifs pour la crypto : signaux automatiques, supports/résistances, divergences, cycles Bitcoin, DCA et gestion du risque.",
             image: "https://www.cryptoia.ca/indicators/cryptoiaedge-1.png",
             brand: { "@type": "Brand", name: "CryptoIA" },
             offers: [

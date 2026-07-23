@@ -45,6 +45,7 @@ interface TradeCall {
   engine?: string | null;
   tp1?: number | null;
   tp2?: number | null;
+  live_pnl_pct?: number | null;
 }
 
 const V7_DATE = new Date("2026-07-20T21:00:00Z");
@@ -458,6 +459,20 @@ export default function SignalsPerformance() {
                     <div className="mt-2 flex items-center justify-between text-xs text-white/50 font-mono">
                       <span>Entrée ${fmtPrice(c.entry_price)}</span>
                       <span className="text-cyan-300 font-bold">{c.confidence}%</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      {typeof c.live_pnl_pct === "number" ? (
+                        <span data-testid={`live-pnl-${c.id}`} className={`text-sm font-mono font-black ${c.live_pnl_pct >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                          {c.live_pnl_pct >= 0 ? "+" : ""}{c.live_pnl_pct.toFixed(2)}%
+                        </span>
+                      ) : (
+                        <span className="text-xs text-white/30 font-mono">PnL —</span>
+                      )}
+                      {c.tp1_hit && (
+                        <span className="inline-flex items-center rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-black text-emerald-300">
+                          TP1 ✓ · stop au BE
+                        </span>
+                      )}
                     </div>
                     <div className="mt-1 text-[11px] text-white/30">{new Date(c.created_at).toLocaleDateString("fr-CA")} · en cours</div>
                   </div>

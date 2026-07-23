@@ -335,6 +335,11 @@ function partialRealizedPct(c) {
       const currentPrice = prices[call.symbol];
       if (currentPrice == null) continue;
 
+      // PnL live persisté pour l'affichage (rafraîchi à chaque check ~5 min)
+      call.current_price = currentPrice;
+      call.live_pnl_pct = Math.round((call.side === 'LONG' ? 1 : -1) * (currentPrice - call.entry_price) / call.entry_price * 10000) / 100;
+      call.last_checked = now.toISOString();
+
       if (call.trailing_sl == null) {
         call.trailing_sl = call.stop_loss;
       }

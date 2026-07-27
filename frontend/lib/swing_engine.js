@@ -409,7 +409,13 @@ async function generateRealSetups(coins) {
 
       // ─── Fetch Binance 4H klines for RSI + EMA confirmation ───
       try {
-        const h4Candles = await fetchBinanceKlines(symbol, '4h', 50);
+        const h4Candles = await fetchBinanceKlines(symbol, '4h', 400);
+        // v8.2: garde-fou liquidité/ancienneté — min ~60 jours d'historique 4H.
+        // Rejette les listings récents type BANK (-14.5%) qui passaient sans AUCUNE confirmation 4H.
+        if (h4Candles.length < 360) {
+          console.log(`[Telegram] ❌ ${symbol} rejected: ${h4Candles.length} bougies 4H (<360 = ~60j) — token trop récent/illiquide`);
+          return null;
+        }
         if (h4Candles.length >= 20) {
           const h4Closes = h4Candles.map(k => k.close);
 
@@ -488,14 +494,14 @@ async function generateRealSetups(coins) {
 
       const { supports, resistances } = calculateSRLevels(c);
 
-      // v8.1: filtre headroom (backtest 180j/120sym: EV +0.53% → +1.57%/trade, WR 47.5% → 54.1%)
-      // Entrée collée sous une résistance (<5% de marge) = plafond immédiat → signal rejeté
+      // v8.2: filtre headroom 6% (backtests 180j ×2 : tranche 4-6% EV -5.2%, >6% EV +4.1%)
+      // Entrée collée sous une résistance (<6% de marge) = plafond immédiat → signal rejeté
       if (side === 'LONG') {
         const resAbove = resistances.find(r => r.price > price * 1.005);
         if (resAbove) {
           const headroomPct = (resAbove.price - price) / price * 100;
-          if (headroomPct < 5) {
-            console.log(`[Telegram] ❌ ${symbol} LONG rejected: résistance $${formatPrice(resAbove.price)} à seulement ${headroomPct.toFixed(1)}% (<5% headroom)`);
+          if (headroomPct < 6) {
+            console.log(`[Telegram] ❌ ${symbol} LONG rejected: résistance $${formatPrice(resAbove.price)} à seulement ${headroomPct.toFixed(1)}% (<6% headroom)`);
             return null;
           }
         }
@@ -503,8 +509,8 @@ async function generateRealSetups(coins) {
         const supBelow = supports.find(s => s.price < price * 0.995);
         if (supBelow) {
           const headroomPct = (price - supBelow.price) / price * 100;
-          if (headroomPct < 5) {
-            console.log(`[Telegram] ❌ ${symbol} SHORT rejected: support $${formatPrice(supBelow.price)} à seulement ${headroomPct.toFixed(1)}% (<5% headroom)`);
+          if (headroomPct < 6) {
+            console.log(`[Telegram] ❌ ${symbol} SHORT rejected: support $${formatPrice(supBelow.price)} à seulement ${headroomPct.toFixed(1)}% (<6% headroom)`);
             return null;
           }
         }
@@ -546,13 +552,14 @@ async function generateRealSetups(coins) {
       if (supports.length >= 2) confidence += 2;
       if (resistances.length >= 2) confidence += 2;
 
-      // v7: BTC regime adjustment — don't fight Bitcoin
+      // v8.2: filtre BTC DUR — on ne combat pas Bitcoin.
+      // Les 7 SL du 20-24 juillet étaient tous des LONG ouverts pendant un BTC 4H baissier (le malus -12 ne suffisait pas).
       if (btcRegime === 'bearish' && side === 'LONG') {
-        confidence -= 12;
-        reason += ' | ⚠️ BTC 4H baissier';
+        console.log(`[Telegram] ❌ ${symbol} LONG rejected: BTC 4H baissier (filtre dur v8.2)`);
+        return null;
       } else if (btcRegime === 'bullish' && side === 'SHORT') {
-        confidence -= 12;
-        reason += ' | ⚠️ BTC 4H haussier';
+        console.log(`[Telegram] ❌ ${symbol} SHORT rejected: BTC 4H haussier (filtre dur v8.2)`);
+        return null;
       } else if (btcRegime !== 'neutral') {
         confidence += 4; // aligned with BTC
       }
@@ -724,15 +731,22 @@ async function checkAndSendAlerts() {
       return [];
     }
 
-    // v6: Max 10 active trade calls limit
-    const MAX_ACTIVE_TRADE_CALLS = 10;
+    // v8.2: exposition limitée — max 4 positions actives + max 3 nouveaux signaux par 24h
+    // (le 20-21 juillet, 10 LONGs corrélés ouverts en 24h ont tous pris le SL ensemble)
+    const MAX_ACTIVE_TRADE_CALLS = 4;
+    const MAX_NEW_CALLS_24H = 3;
     const currentTradeCalls = loadTradeCalls();
     const activeTradeCallCount = currentTradeCalls.filter(c => c.status === 'active').length;
+    const newCallsLast24h = currentTradeCalls.filter(c => c.created_at && (Date.now() - new Date(c.created_at).getTime()) < 24 * 3600 * 1000).length;
     if (activeTradeCallCount >= MAX_ACTIVE_TRADE_CALLS) {
       console.log(`[Telegram] ⛔ Max active trade calls reached (${activeTradeCallCount}/${MAX_ACTIVE_TRADE_CALLS}) — skipping new signals`);
       return [];
     }
-    const remainingTradeSlots = MAX_ACTIVE_TRADE_CALLS - activeTradeCallCount;
+    if (newCallsLast24h >= MAX_NEW_CALLS_24H) {
+      console.log(`[Telegram] ⛔ Max new calls per 24h reached (${newCallsLast24h}/${MAX_NEW_CALLS_24H}) — skipping new signals`);
+      return [];
+    }
+    const remainingTradeSlots = Math.min(MAX_ACTIVE_TRADE_CALLS - activeTradeCallCount, MAX_NEW_CALLS_24H - newCallsLast24h);
     console.log(`[Telegram] Active trade calls: ${activeTradeCallCount}/${MAX_ACTIVE_TRADE_CALLS} — ${remainingTradeSlots} slots available`);
 
     // Generate setups using same logic as /trades page (now async with Binance 4H confirmation)

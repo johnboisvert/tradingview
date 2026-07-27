@@ -391,7 +391,7 @@ function runBacktest(dataset, P, label) {
     }
     cands.sort((a, b) => b.sig.confidence - a.sig.confidence);
     for (const { sym, sig } of cands) {
-      if (active.length >= 10) break;
+      if (active.length >= (P.MAX_CONCURRENT || 10)) break;
       const res = simulateTrade(sig, sym.klines, idx, P);
       const pnlAoN = res.outcome === 'be' ? 0 : res.pnlFull;
       trades.push({
@@ -479,18 +479,10 @@ async function main() {
 
   if (args.headroom) {
     const V8 = { ...V7, B_BEAR_SHORT: false, B_OB_SHORT: false, NO_CONV_BONUS: true };
-    runBacktest(dataset, V8, 'BASELINE v8 prod (LONG only, sans bonus conv)');
-    const hVariants = [
-      ['v8 + headroom >=2%', { ...V8, HEADROOM: 2 }],
-      ['v8 + headroom >=3%', { ...V8, HEADROOM: 3 }],
-      ['v8 + headroom >=4%', { ...V8, HEADROOM: 4 }],
-      ['v8 + headroom >=5%', { ...V8, HEADROOM: 5 }],
-      ['v8 + headroom >=6%', { ...V8, HEADROOM: 6 }],
-      ['v8 + headroom >=7%', { ...V8, HEADROOM: 7 }],
-      ['v8 + pénalité -10 si <3%', { ...V8, HEADROOM_PEN: 3 }],
-      ['v8 + pénalité -10 si <4%', { ...V8, HEADROOM_PEN: 4 }],
-    ];
-    for (const [label, P] of hVariants) runBacktest(dataset, P, label);
+    const V81 = { ...V8, HEADROOM: 5 };
+    runBacktest(dataset, V81, 'BASELINE v8.1 prod (headroom 5%)');
+    runBacktest(dataset, { ...V81, BTC_HARD: true }, 'v8.1 + BTC HARD (aucun LONG si BTC 4H bearish)');
+    runBacktest(dataset, { ...V81, BTC_HARD: true, MAX_CONCURRENT: 4 }, 'v8.1 + BTC HARD + max 4 positions simultanées');
     return;
   }
 

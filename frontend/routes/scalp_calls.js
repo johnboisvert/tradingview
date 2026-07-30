@@ -101,7 +101,8 @@ export function registerScalpCallRoutes(app, { dataDir }) {
 
   // ─── GET /api/v1/scalp-calls/stats — Performance statistics ───
   app.get('/api/v1/scalp-calls/stats', (req, res) => {
-    const calls = loadScalpCalls();
+    let calls = loadScalpCalls();
+    if (req.query.since) calls = calls.filter(c => c.created_at && String(c.created_at) >= String(req.query.since));
     const total = calls.length;
     const activeCalls = calls.filter(c => c.status === 'active').length;
     const resolvedCalls = calls.filter(c => c.status === 'resolved').length;

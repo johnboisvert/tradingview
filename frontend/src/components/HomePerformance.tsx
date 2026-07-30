@@ -11,6 +11,8 @@ interface Stats {
   confidence_buckets?: Record<string, { win_rate: number; total: number }>;
 }
 
+const RESET_ISO = "2026-07-30T18:00:00Z"; // remise à zéro des compteurs publics (moteur v8.3)
+
 export default function HomePerformance() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [scalpTotal, setScalpTotal] = useState(0);
@@ -21,11 +23,11 @@ export default function HomePerformance() {
       .then((r) => r.json())
       .then(setStats)
       .catch(() => {});
-    fetch("/api/v1/scalp-calls/stats")
+    fetch(`/api/v1/scalp-calls/stats?since=${RESET_ISO}`)
       .then((r) => r.json())
       .then((j) => setScalpTotal(j?.total_calls || 0))
       .catch(() => {});
-    fetch("/api/v1/range-calls/stats")
+    fetch(`/api/v1/range-calls/stats?since=${RESET_ISO}`)
       .then((r) => r.json())
       .then((j) => setRangeTotal(j?.total_calls || 0))
       .catch(() => {});
@@ -44,7 +46,7 @@ export default function HomePerformance() {
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-200">
             <ShieldCheck className="h-3 w-3" />
             Transparence totale
-            <span className="rounded-full border border-cyan-400/40 bg-cyan-500/15 px-1.5 py-0.5 text-[9px] font-black text-cyan-300 normal-case tracking-normal">Moteurs v8</span>
+            <span className="rounded-full border border-cyan-400/40 bg-cyan-500/15 px-1.5 py-0.5 text-[9px] font-black text-cyan-300 normal-case tracking-normal">Moteur v8.3</span>
             <span className="relative flex h-1.5 w-1.5 ml-1">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-400" />
@@ -62,7 +64,7 @@ export default function HomePerformance() {
           </p>
           {noClosedYet && (
             <p className="mt-2 text-xs text-cyan-300/70" data-testid="home-perf-v8-note">
-              Compteurs remis à zéro le 20 juillet 2026 (nouveaux moteurs v8) — premiers trades en cours de suivi.
+              Compteurs remis à zéro le 30 juillet 2026 (moteur v8.3) — premiers trades en cours de suivi.
             </p>
           )}
           <Link

@@ -152,12 +152,12 @@ function partialRealizedPct(c) {
 }
 
   // ─── GET /api/v1/trade-calls/stats — Performance statistics ───
-  // ?engine=v8 → uniquement les signaux du nouveau moteur (v7/v8 ou créés après le déploiement)
+  // ?engine=v8 → compteurs publics remis à zéro au déploiement v8.3 (30 juillet 2026, 18h UTC)
   app.get('/api/v1/trade-calls/stats', (req, res) => {
     let calls = loadTradeCalls();
     if (req.query.engine === 'v8') {
-      const V8_CUTOFF = '2026-07-20T21:00:00Z';
-      calls = calls.filter(c => c.engine === 'v7' || c.engine === 'v8' || (c.created_at && String(c.created_at) >= V8_CUTOFF));
+      const RESET_CUTOFF = '2026-07-30T18:00:00Z';
+      calls = calls.filter(c => c.created_at && String(c.created_at) >= RESET_CUTOFF);
     }
     const total = calls.length;
     const activeCalls = calls.filter(c => c.status === 'active').length;

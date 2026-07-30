@@ -161,7 +161,8 @@ export function registerRangeCallRoutes(app, { dataDir }) {
   });
 
   app.get('/api/v1/range-calls/stats', (req, res) => {
-    const calls = loadRangeCalls();
+    let calls = loadRangeCalls();
+    if (req.query.since) calls = calls.filter(c => c.created_at && String(c.created_at) >= String(req.query.since));
     const total = calls.length;
     const activeCalls = calls.filter(c => c.status === 'active').length;
     const resolvedCalls = calls.filter(c => c.status === 'resolved').length;

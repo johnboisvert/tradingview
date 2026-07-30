@@ -109,6 +109,7 @@ const RangePerformance = React.lazy(() => import("./pages/RangePerformance"));
 const MagicStrategy = React.lazy(() => import("./pages/MagicStrategy"));
 const SignalsPerformance = React.lazy(() => import("./pages/SignalsPerformance"));
 const Forex = React.lazy(() => import("./pages/Forex"));
+const ScannerIA = React.lazy(() => import("./pages/ScannerIA"));
 const Quiz = React.lazy(() => import("./pages/Quiz"));
 const Challenge = React.lazy(() => import("./pages/Challenge"));
 const EmbedLiveFeed = React.lazy(() => import("./embeds/EmbedLiveFeed"));
@@ -171,6 +172,7 @@ function App() {
           <Route path="/magic-strategy" element={<PlanProtected path="/magic-strategy"><MagicStrategy /></PlanProtected>} />
           <Route path="/performance" element={<SignalsPerformance />} />
           <Route path="/forex" element={<PlanProtected path="/forex"><Forex /></PlanProtected>} />
+          <Route path="/scanner-ia" element={<PlanProtected path="/scanner-ia"><ScannerIA /></PlanProtected>} />
           <Route path="/risk-management" element={<PlanProtected path="/risk-management"><RiskManagement /></PlanProtected>} />
           <Route path="/watchlist" element={<PlanProtected path="/watchlist"><Watchlist /></PlanProtected>} />
           <Route path="/graphiques" element={<PlanProtected path="/graphiques"><Graphiques /></PlanProtected>} />

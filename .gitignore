@@ -26,3 +26,4 @@ npm-debug.log*
 # runtime data (never commit)
 frontend/data/super_admin.json
 frontend/data/indicator_access.json
+frontend/data/external_signal_secret.json

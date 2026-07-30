@@ -31,7 +31,7 @@ const PLAN_PRICE_ICONS: Record<string, React.ElementType> = {
 // Common routes that can be toggled per plan
 const ALL_ROUTES = [
   // ── Basique ──────────────────────────────────────────────
-  "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "forex",
+  "dashboard", "fear-greed", "heatmap", "altcoin-season", "dominance", "forex", "scanner-ia",
   "convertisseur", "calculatrice", "calendrier", "nouvelles", "support",
   // ── Trading & Stratégie ──────────────────────────────────
   "strategie", "portfolio", "market-simulation", "bullrun",
@@ -58,6 +58,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "altcoin-season": "🌊 Altcoin Season Index",
   "dominance": "₿ Dominance Bitcoin",
   "forex": "💱 Forex, Or & Métaux (200+ paires)",
+  "scanner-ia": "🤖 Scanner IA (signaux autonomes)",
   "convertisseur": "🔄 Convertisseur de devises",
   "calculatrice": "🧮 Calculatrice de trading",
   "calendrier": "📅 Calendrier économique",

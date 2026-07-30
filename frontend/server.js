@@ -47,6 +47,7 @@ import registerTerminalLayoutRoutes from './routes/terminal_layouts.js';
 import registerEconomicCalendarRoutes from './routes/economic_calendar.js';
 import registerBinanceMarketRoutes from './routes/binance_market.js';
 import registerForexMarketRoutes from './routes/forex_market.js';
+import registerExternalSignalRoutes from './routes/external_signals.js';
 import registerUserRoutes from './routes/users.js';
 import registerNewsProxyRoutes from './routes/news_proxy.js';
 import registerDeribitOptionsRoutes from './routes/deribit_options.js';
@@ -1464,6 +1465,7 @@ referralModule = registerReferralRoutes(app, {
 
   // ─── Resend Webhook (delivered / opened / clicked / bounced / complained) ─
   registerResendWebhookRoutes(app, { requireAdmin });
+  registerExternalSignalRoutes(app, { requireAdmin });
 
   // ─── Promo Codes (centralized backend storage, auto-seeds WELCOME20/FLASH30) ─
   registerPromoRoutes(app, { requireAdmin });

@@ -434,6 +434,8 @@ function runBacktest(dataset, P, label) {
   console.log(' Par confiance:'); by(t => t.confidence >= 93 ? '93+' : t.confidence >= 88 ? '88-92' : '80-87');
   console.log(' Par régime BTC:'); by(t => t.btcRegime);
   console.log(' Par headroom:'); by(t => t.headroom == null ? 'n/a (aucun obstacle)' : t.headroom < 2 ? '<2%' : t.headroom < 4 ? '2-4%' : t.headroom < 6 ? '4-6%' : '>6%');
+  const cutoff14 = Date.now() - 14 * 86400e3;
+  console.log(' Par période:'); by(t => t.t >= cutoff14 ? '14 derniers jours' : 'avant');
   console.log(' Par outcome:'); by(t => t.outcome);
   return { n, ev: evP, wr: wins / n * 100, trades };
 }
@@ -479,10 +481,9 @@ async function main() {
 
   if (args.headroom) {
     const V8 = { ...V7, B_BEAR_SHORT: false, B_OB_SHORT: false, NO_CONV_BONUS: true };
-    const V81 = { ...V8, HEADROOM: 5 };
-    runBacktest(dataset, V81, 'BASELINE v8.1 prod (headroom 5%)');
-    runBacktest(dataset, { ...V81, BTC_HARD: true }, 'v8.1 + BTC HARD (aucun LONG si BTC 4H bearish)');
-    runBacktest(dataset, { ...V81, BTC_HARD: true, MAX_CONCURRENT: 4 }, 'v8.1 + BTC HARD + max 4 positions simultanées');
+    const V82 = { ...V8, HEADROOM: 6, BTC_HARD: true, MAX_CONCURRENT: 4 };
+    runBacktest(dataset, V82, 'BASELINE v8.2 prod (headroom 6, BTC hard, max 4)');
+    runBacktest(dataset, { ...V82, B_OVERSOLD_LONG: false }, 'v8.2 SANS branche oversold/rebond');
     return;
   }
 

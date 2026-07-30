@@ -343,6 +343,10 @@ async function generateRealSetups(coins) {
     // v4: Skip low volume coins
     if (volMcapRatio < 0.05) continue;
 
+    // v8.3: plancher market cap 100M$ — l'edge backtesté ne vaut que pour les caps liquides
+    // (BANK/HOLO/PIEVERSE/MON < 100M$ ont donné -14.5%, -6.1%, -6.5%, -6.6% en live)
+    if (mcap < 100_000_000) continue;
+
     let side;
     let confidence = 0;
     let reason;
@@ -358,14 +362,8 @@ async function generateRealSetups(coins) {
       if (change24h > 8) confidence -= 8;
       reason = `Momentum haussier (+${change24h.toFixed(1)}%) avec volume élevé (${(volMcapRatio * 100).toFixed(1)}% du MCap)`;
     }
-    // LONG — Oversold bounce: deep drop with volume (reversal play)
-    else if (change24h < -10 && change24h > -25 && volMcapRatio > 0.12) {
-      side = 'LONG';
-      confidence = 40;
-      if (change24h < -18) confidence += 12; else if (change24h < -14) confidence += 10; else confidence += 6;
-      if (volMcapRatio > 0.20) confidence += 8; else confidence += 4;
-      reason = `Survente potentielle (${change24h.toFixed(1)}%) — rebond technique possible`;
-    }
+    // v8.3 (backtest 180j): branche "oversold bounce" SUPPRIMÉE — attraper les couteaux qui tombent
+    // divisait l'EV par 3 (avec: +1.52%/trade, sans: +4.23%/trade). BANK (-14.5% live) venait de cette branche.
     // v8 (backtest 180j, 120 symboles) : les branches SHORT étaient perdantes
     // (bear_short EV -0.9%, ob_short EV -9.7%) — moteur swing LONG uniquement.
     else {
@@ -750,6 +748,24 @@ async function checkAndSendAlerts() {
     console.log(`[Telegram] Active trade calls: ${activeTradeCallCount}/${MAX_ACTIVE_TRADE_CALLS} — ${remainingTradeSlots} slots available`);
 
     // Generate setups using same logic as /trades page (now async with Binance 4H confirmation)
+    // v8.3: coupe-circuit marché — aucun signal swing tant que BTC clôture sous son EMA50 daily.
+    // Validation: le backtest sur les 45 derniers jours ne prend que 2 trades (reste à l'écart) — le live doit faire pareil.
+    try {
+      const btc1d = await fetchBinanceKlines('BTCUSDT', '1d', 70);
+      if (btc1d.length >= 55) {
+        const dCloses = btc1d.map(k => k.close);
+        const ema50d = calcEMA(dCloses, 50);
+        const lastClose = dCloses[dCloses.length - 1];
+        const e50 = ema50d[ema50d.length - 1];
+        if (lastClose < e50) {
+          console.log(`[Telegram] ⛔ Coupe-circuit v8.3: BTC ${lastClose.toFixed(0)}$ < EMA50 daily ${e50.toFixed(0)}$ — marché baissier, aucun signal swing`);
+          return [];
+        }
+      }
+    } catch (e) {
+      console.error(`[Telegram] Coupe-circuit check failed: ${e.message}`);
+    }
+
     const allSetups = await generateRealSetups(coins);
     console.log(`[Telegram] Generated ${allSetups.length} trade setups`);
 

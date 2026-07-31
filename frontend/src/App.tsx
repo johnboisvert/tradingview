@@ -4,6 +4,7 @@ import LoadingSpinner from "./components/LoadingSpinner";
 import PageTracker from "./components/PageTracker";
 import ErrorBoundary from "./components/ErrorBoundary";
 import CommandPalette from "./components/CommandPalette";
+import SignalBanner from "./components/SignalBanner";
 import CookieConsentBanner from "./components/CookieConsentBanner";
 import PushNotificationPrompt from "./components/PushNotificationPrompt";
 import UpdateBanner from "./components/UpdateBanner";
@@ -133,6 +134,7 @@ function App() {
       <CookieConsentBanner />
       <PushNotificationPrompt />
       <UpdateBanner />
+      <SignalBanner />
       <NewsletterPopup />
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>

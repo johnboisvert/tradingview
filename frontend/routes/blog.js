@@ -155,8 +155,7 @@ app.get('/sitemap.xml', (req, res) => {
   // Static pages with SEO metadata (priority + change frequency tuned for crypto/trading content)
   const staticPages = [
     { path: '/',                  priority: '1.0', changefreq: 'daily' },
-    { path: '/crypto-ia',         priority: '0.9', changefreq: 'daily' },
-    { path: '/screener-technique', priority: '0.9', changefreq: 'daily' },
+    { path: '/technical-analysis', priority: '0.9', changefreq: 'daily' },
     { path: '/ai-signals',        priority: '0.9', changefreq: 'daily' },
     { path: '/heatmap',           priority: '0.8', changefreq: 'daily' },
     { path: '/fear-greed',        priority: '0.8', changefreq: 'daily' },

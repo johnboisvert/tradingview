@@ -762,21 +762,7 @@ export default function ScreenerTechnique() {
   const sellCount = coins.filter(c => c.signal === "SELL").length;
 
   return (
-    <div className="min-h-screen bg-[#070B14] text-white">
-      <Sidebar />
-      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#070B14]">
-        <PageHeader
-          icon={<Target className="w-6 h-6" />}
-          title={t("pages.screenerTechnique.title")}
-          subtitle={t("pages.screenerTechnique.subtitle")}
-          accentColor="cyan"
-          steps={[
-            { n: "1", title: t("pages.screenerTechnique.steps.1.title"), desc: t("pages.screenerTechnique.steps.1.desc") },
-            { n: "2", title: t("pages.screenerTechnique.steps.2.title"), desc: t("pages.screenerTechnique.steps.2.desc") },
-            { n: "3", title: t("pages.screenerTechnique.steps.3.title"), desc: t("pages.screenerTechnique.steps.3.desc") },
-          ]}
-        />
-
+    <div className="text-white">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between mb-6 gap-3">
           <div>
@@ -1085,8 +1071,6 @@ export default function ScreenerTechnique() {
             </div>
           )}
         </div>
-        <Footer />
-      </main>
     </div>
   );
 }

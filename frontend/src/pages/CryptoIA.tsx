@@ -486,20 +486,7 @@ export default function CryptoIA() {
     "Neutre";
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] text-white">
-      <Sidebar />
-      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
-      <PageHeader
-          icon={<Brain className="w-6 h-6" />}
-          title={t("pages.cryptoIA.title")}
-          subtitle={t("pages.cryptoIA.subtitle")}
-          accentColor="blue"
-          steps={[
-            { n: "1", title: t("pages.cryptoIA.steps.1.title"), desc: t("pages.cryptoIA.steps.1.desc") },
-            { n: "2", title: t("pages.cryptoIA.steps.2.title"), desc: t("pages.cryptoIA.steps.2.desc") },
-            { n: "3", title: t("pages.cryptoIA.steps.3.title"), desc: t("pages.cryptoIA.steps.3.desc") },
-          ]}
-        />
+    <div className="text-white">
         {/* Header */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[120px] bg-gradient-to-r from-blue-900/40 to-purple-900/40">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E1A]/90 via-[#0A0E1A]/60 to-transparent" />
@@ -1178,8 +1165,6 @@ export default function CryptoIA() {
             </div>
           </div>
         )}
-        <Footer />
-      </main>
     </div>
   );
 }

@@ -226,20 +226,7 @@ export default function TechnicalAnalysis() {
       : "bg-gray-500/20 text-gray-400 border-gray-500/30";
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] text-white">
-      <Sidebar />
-      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
-      <PageHeader
-          icon={<BarChart3 className="w-6 h-6" />}
-          title={t("pages.technicalAnalysis.title")}
-          subtitle={t("pages.technicalAnalysis.subtitle")}
-          accentColor="blue"
-          steps={[
-            { n: "1", title: t("pages.technicalAnalysis.steps.1.title"), desc: t("pages.technicalAnalysis.steps.1.desc") },
-            { n: "2", title: t("pages.technicalAnalysis.steps.2.title"), desc: t("pages.technicalAnalysis.steps.2.desc") },
-            { n: "3", title: t("pages.technicalAnalysis.steps.3.title"), desc: t("pages.technicalAnalysis.steps.3.desc") },
-          ]}
-        />
+    <div className="text-white">
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden mb-6 h-[140px]">
           <img loading="lazy" decoding="async" src={TA_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -390,8 +377,6 @@ export default function TechnicalAnalysis() {
             </div>
           </>
         )}
-        <Footer />
-      </main>
     </div>
   );
 }

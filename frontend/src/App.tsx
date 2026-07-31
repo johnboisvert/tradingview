@@ -16,7 +16,7 @@ const Redeem = React.lazy(() => import("./pages/Redeem"));
 const AdminAccess = React.lazy(() => import("./pages/AdminAccess"));
 const TokenScanner = React.lazy(() => import("./pages/TokenScanner"));
 const WhaleWatcher = React.lazy(() => import("./pages/WhaleWatcher"));
-const TechnicalAnalysis = React.lazy(() => import("./pages/TechnicalAnalysis"));
+const AnalyseTechnique = React.lazy(() => import("./pages/AnalyseTechnique"));
 const PositionSizer = React.lazy(() => import("./pages/PositionSizer"));
 const FearGreed = React.lazy(() => import("./pages/FearGreed"));
 const Dominance = React.lazy(() => import("./pages/Dominance"));
@@ -31,9 +31,7 @@ const RiskManagement = React.lazy(() => import("./pages/RiskManagement"));
 const Watchlist = React.lazy(() => import("./pages/Watchlist"));
 const AIAssistant = React.lazy(() => import("./pages/AIAssistant"));
 const PredictionIA = React.lazy(() => import("./pages/PredictionIA"));
-const CryptoIA = React.lazy(() => import("./pages/CryptoIA"));
 const CryptoJournal = React.lazy(() => import("./pages/CryptoJournal"));
-const ScreenerTechnique = React.lazy(() => import("./pages/ScreenerTechnique"));
 const MarketRegime = React.lazy(() => import("./pages/MarketRegime"));
 const StatsAvancees = React.lazy(() => import("./pages/StatsAvancees"));
 const Simulation = React.lazy(() => import("./pages/Simulation"));
@@ -77,7 +75,6 @@ const RugScamShield = React.lazy(() => import("./pages/RugScamShield"));
 const OpportunityScanner = React.lazy(() => import("./pages/OpportunityScanner"));
 const AIPatterns = React.lazy(() => import("./pages/AIPatterns"));
 const AISentiment = React.lazy(() => import("./pages/AISentiment"));
-const TimeframeAnalysis = React.lazy(() => import("./pages/TimeframeAnalysis"));
 const AISetupBuilder = React.lazy(() => import("./pages/AISetupBuilder"));
 const PepitesCrypto = React.lazy(() => import("./pages/PepitesCrypto"));
 const TradingAcademy = React.lazy(() => import("./pages/TradingAcademy"));
@@ -174,7 +171,7 @@ function App() {
           <Route path="/graphiques" element={<PlanProtected path="/graphiques"><Graphiques /></PlanProtected>} />
           <Route path="/backtesting" element={<Navigate to="/backtesting-visuel" replace />} />
           <Route path="/portfolio-tracker" element={<PlanProtected path="/portfolio-tracker"><PortfolioTracker /></PlanProtected>} />
-          <Route path="/timeframe-analysis" element={<PlanProtected path="/timeframe-analysis"><TimeframeAnalysis /></PlanProtected>} />
+          <Route path="/timeframe-analysis" element={<Navigate to="/technical-analysis" replace />} />
 
           {/* Intelligence IA */}
           <Route path="/ai-assistant" element={<PlanProtected path="/ai-assistant"><AIAssistant /></PlanProtected>} />
@@ -193,13 +190,13 @@ function App() {
           <Route path="/blog/:slug" element={<Blog />} />
           <Route path="/backtesting-visuel" element={<PlanProtected path="/backtesting-visuel"><BacktestingVisuel /></PlanProtected>} />
           <Route path="/prediction-ia" element={<PlanProtected path="/prediction-ia"><PredictionIA /></PlanProtected>} />
-          <Route path="/crypto-ia" element={<PlanProtected path="/crypto-ia"><CryptoIA /></PlanProtected>} />
+          <Route path="/crypto-ia" element={<Navigate to="/technical-analysis?tab=ia" replace />} />
           <Route path="/crypto-journal" element={<PlanProtected path="/crypto-journal"><CryptoJournal /></PlanProtected>} />
-          <Route path="/screener-technique" element={<PlanProtected path="/screener-technique"><ScreenerTechnique /></PlanProtected>} />
+          <Route path="/screener-technique" element={<Navigate to="/technical-analysis" replace />} />
           <Route path="/token-scanner" element={<PlanProtected path="/token-scanner"><TokenScanner /></PlanProtected>} />
           <Route path="/opportunity-scanner" element={<PlanProtected path="/opportunity-scanner"><OpportunityScanner /></PlanProtected>} />
           <Route path="/whale-watcher" element={<PlanProtected path="/whale-watcher"><WhaleWatcher /></PlanProtected>} />
-          <Route path="/technical-analysis" element={<PlanProtected path="/technical-analysis"><TechnicalAnalysis /></PlanProtected>} />
+          <Route path="/technical-analysis" element={<PlanProtected path="/technical-analysis"><AnalyseTechnique /></PlanProtected>} />
           <Route path="/gem-hunter" element={<Navigate to="/pepites-crypto" replace />} />
           <Route path="/position-sizer" element={<PlanProtected path="/position-sizer"><PositionSizer /></PlanProtected>} />
           <Route path="/ai-signals" element={<PlanProtected path="/ai-signals"><AISignals /></PlanProtected>} />

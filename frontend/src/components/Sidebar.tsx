@@ -80,6 +80,7 @@ const NAV_SECTIONS = [
     title: "Accueil",
     items: [
       { path: "/", label: "Dashboard", icon: LayoutDashboard },
+      { path: "/performance", label: "Performance Signaux", icon: Trophy },
     ],
   },
   {
@@ -87,8 +88,6 @@ const NAV_SECTIONS = [
     items: [
       { path: "/terminal", label: "Terminal Pro", icon: TerminalIcon, badge: "ELITE" },
       { path: "/my-cryptoia", label: "My CryptoIA", icon: User },
-      { path: "/gamification", label: "Gamification & Badges", icon: Trophy },
-      { path: "/challenge", label: "Trading Challenge", icon: Trophy, badge: "NEW" },
       { path: "/portfolio-tracker", label: "Portfolio", icon: Briefcase },
       { path: "/watchlist", label: "Watchlist", icon: Eye },
       { path: "/crypto-journal", label: "Journal de Trading", icon: BookOpen },
@@ -109,27 +108,26 @@ const NAV_SECTIONS = [
     ],
   },
   {
-    title: "Signaux IA",
+    title: "IA & Analyse",
     items: [
+      { path: "/assistant-ia", label: "Assistant IA", icon: Bot },
       { path: "/ai-signals", label: "Signaux IA", icon: Radio },
+      { path: "/technical-analysis", label: "Analyse Technique", icon: PieChart },
+      { path: "/prediction-ia", label: "Prédiction IA", icon: Sparkles },
       { path: "/ai-sentiment", label: "Sentiment IA", icon: MessageCircle },
       { path: "/ai-patterns", label: "Patterns IA", icon: Brain },
-      { path: "/whale-watcher", label: "Whale Watcher", icon: Fish },
-      { path: "/pepites-crypto", label: "Pépites Crypto", icon: Diamond },
-      { path: "/narrative-radar", label: "Narrative Radar", icon: Target },
-      { path: "/token-scanner", label: "AI Token Scanner", icon: Search },
-      { path: "/rug-scam-shield", label: "Rug Shield", icon: ShieldAlert },
+      { path: "/score-confiance-ia", label: "Score Confiance IA", icon: Shield },
+      { path: "/rapport-hebdomadaire-ia", label: "Rapport Hebdo IA", icon: FileText },
     ],
   },
   {
-    title: "Prédictions & Stratégies IA",
+    title: "Détection & Radar",
     items: [
-      { path: "/prediction-ia", label: "Prédiction IA", icon: Sparkles },
-      { path: "/score-confiance-ia", label: "Score Confiance IA", icon: Shield },
-      { path: "/rapport-hebdomadaire-ia", label: "Rapport Hebdo IA", icon: FileText },
-      { path: "/backtesting-visuel", label: "Laboratoire de Test", icon: Activity },
-      { path: "/ai-setup-builder", label: "AI Setup Builder", icon: Wrench },
-      { path: "/technical-analysis", label: "Analyse Technique", icon: PieChart },
+      { path: "/pepites-crypto", label: "Pépites Crypto", icon: Diamond },
+      { path: "/whale-watcher", label: "Whale Watcher", icon: Fish },
+      { path: "/narrative-radar", label: "Narrative Radar", icon: Target },
+      { path: "/token-scanner", label: "AI Token Scanner", icon: Search },
+      { path: "/rug-scam-shield", label: "Rug Shield", icon: ShieldAlert },
     ],
   },
   {
@@ -141,16 +139,28 @@ const NAV_SECTIONS = [
       { path: "/scalp", label: "Scalp Trading", icon: Zap },
       { path: "/range", label: "Range Trading", icon: BarChart3 },
       { path: "/dtrading-ia-pro", label: "Dtrading IA PRO", icon: Crosshair },
+    ],
+  },
+  {
+    title: "Outils du Trader",
+    items: [
+      { path: "/backtesting-visuel", label: "Laboratoire de Test", icon: Activity },
+      { path: "/ai-setup-builder", label: "AI Setup Builder", icon: Wrench },
       { path: "/position-sizer", label: "Position Sizer", icon: Crosshair },
       { path: "/risk-management", label: "Risk Management", icon: AlertTriangle },
       { path: "/calculatrice", label: "Calculatrice", icon: Calculator },
       { path: "/graphiques", label: "Graphiques", icon: LineChart },
+      { path: "/convertisseur", label: "Convertisseur", icon: ArrowLeftRight },
     ],
   },
   {
-    title: "Assistant",
+    title: "Communauté & Jeux",
     items: [
-      { path: "/assistant-ia", label: "Assistant IA", icon: Bot },
+      { path: "/gamification", label: "Gamification & Badges", icon: Trophy },
+      { path: "/challenge", label: "Trading Challenge", icon: Trophy, badge: "NEW" },
+      { path: "/leaderboard", label: "Leaderboard 🏆", icon: Crown },
+      { path: "/quiz", label: "Quiz Trader 🧠", icon: Sparkles, badge: "NEW" },
+      { path: "/success-stories", label: "Success Stories", icon: Award },
     ],
   },
   {
@@ -162,17 +172,8 @@ const NAV_SECTIONS = [
       { path: "/lexique", label: "Lexique Crypto", icon: Library, badge: "NEW" },
       { path: "/compare", label: "Comparatifs", icon: Scale, badge: "NEW" },
       { path: "/crypto", label: "Cryptos (Cours & Fiches)", icon: Coins, badge: "NEW" },
-      { path: "/success-stories", label: "Success Stories", icon: Award },
-      { path: "/leaderboard", label: "Leaderboard 🏆", icon: Crown },
-      { path: "/quiz", label: "Quiz Trader 🧠", icon: Sparkles, badge: "NEW" },
-    ],
-  },
-  {
-    title: "Outils",
-    items: [
       { path: "/stats-avancees", label: "Stats Avancées", icon: BarChart3 },
       { path: "/comparateur-frais-exchanges", label: "Comparateur Frais Exchanges", icon: Scale, badge: "NEW" },
-      { path: "/convertisseur", label: "Convertisseur", icon: ArrowLeftRight },
       { path: "/calendrier", label: "Calendrier", icon: Calendar },
       { path: "/telechargement", label: "Téléchargements", icon: Download },
       { path: "/contact", label: "Contact", icon: Mail },
@@ -184,7 +185,6 @@ const BOTTOM_ITEMS = [
   { path: "/abonnements", label: "Abonnements", icon: CreditCard, color: "indigo" },
   { path: "/parrainage", label: "Récompenses 🎁", icon: Gift, color: "emerald" },
   { path: "/magic-strategy", label: "Indicateurs", icon: Sparkles, color: "cyan" },
-  { path: "/performance", label: "Performance Signaux", icon: Trophy, color: "emerald" },
   { path: "/admin", label: "Admin Panel", icon: Shield, color: "amber" },
   { path: "/mon-compte", label: "Mon Compte", icon: User, color: "emerald" },
 ];

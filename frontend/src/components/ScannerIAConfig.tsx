@@ -14,6 +14,10 @@ Headers:
 Body JSON (exemple) :
 {"symbol":"ETHUSDT","side":"LONG","entry":1925.5,"sl":1880,"tp1":1975,"tp2":2020,"tp3":2080,"confidence":85,"note":"Cassure résistance + volume"}
 
+Équivalent PowerShell (Windows) :
+$body = @{ symbol="ETHUSDT"; side="LONG"; entry=1925.5; sl=1880; tp1=1975; tp2=2020; tp3=2080; confidence=85; note="Cassure résistance + volume" } | ConvertTo-Json
+Invoke-RestMethod -Uri "${WEBHOOK_URL}" -Method Post -ContentType "application/json" -Headers @{ "x-signal-key" = "${key}" } -Body $body
+
 Équivalent curl :
 curl -X POST ${WEBHOOK_URL} -H "Content-Type: application/json" -H "x-signal-key: ${key}" -d '{"symbol":"ETHUSDT","side":"LONG","entry":1925.5,"sl":1880,"tp1":1975,"tp2":2020,"tp3":2080,"confidence":85,"note":"Cassure résistance + volume"}'
 

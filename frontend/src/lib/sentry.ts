@@ -60,6 +60,25 @@ export function initSentry() {
       "NetworkError when attempting to fetch resource.",
       "AbortError",
       "Non-Error promise rejection captured",
+      // Bruit des extensions navigateur (wallets) des visiteurs — pas des bugs du site
+      "Failed to connect to MetaMask",
+      /MetaMask/i,
+      "ethereum is not defined",
+      "window.ethereum",
+      /Talisman extension/i,
+      /solana/i,
+      "Cannot redefine property: ethereum",
+      "Extension context invalidated",
+    ],
+
+    // Ne jamais rapporter les erreurs venant du code injecté par des extensions
+    denyUrls: [
+      /^chrome-extension:\/\//i,
+      /^moz-extension:\/\//i,
+      /^safari-(web-)?extension:\/\//i,
+      /extensions\//i,
+      /inpage\.js/i,
+      /injected/i,
     ],
   });
 }

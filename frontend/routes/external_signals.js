@@ -122,7 +122,10 @@ export default function registerExternalSignalRoutes(app, { requireAdmin } = {})
     const closed = signals.filter(s => s.status !== 'active');
     const wins = closed.filter(s => s.tp1_hit);
     const profits = closed.map(s => s.profit_pct).filter(p => typeof p === 'number');
+    const best = closed.filter(s => typeof s.profit_pct === 'number').sort((a, b) => b.profit_pct - a.profit_pct)[0] || null;
     res.json({
+      total_pnl_pct: Math.round(profits.reduce((a, b) => a + b, 0) * 100) / 100,
+      best_trade: best ? { symbol: best.symbol, profit_pct: best.profit_pct } : null,
       total_calls: signals.length,
       active_calls: signals.filter(s => s.status === 'active').length,
       resolved_calls: closed.filter(s => s.status === 'resolved').length,

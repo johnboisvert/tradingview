@@ -4,7 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import SEOHead from "@/components/SEOHead";
 import Footer from "@/components/Footer";
-import { Bot, TrendingUp, TrendingDown, Activity, Trophy, Target } from "lucide-react";
+import { Bot, TrendingUp, TrendingDown, Activity, Trophy, Target, KeyRound, Copy, Check, Sigma, Star } from "lucide-react";
 
 interface ExtSignal {
   id: number;
@@ -35,15 +35,59 @@ interface ExtStats {
   win_rate: number;
   tp2_rate: number;
   avg_profit_pct: number;
+  total_pnl_pct: number;
+  best_trade: { symbol: string; profit_pct: number } | null;
 }
 
 const fmt = (p: number | null | undefined) =>
   p == null ? "—" : p >= 500 ? p.toLocaleString("fr-CA", { maximumFractionDigits: 2 }) : p >= 1 ? p.toFixed(3) : p.toPrecision(4);
 
+const claudeInstructions = (key: string) => `Quand tu détectes un setup de trading de qualité (crypto), envoie-le automatiquement à mon site CryptoIA avec cette requête HTTP :
+
+POST https://www.cryptoia.ca/api/v1/external-signals
+Headers:
+  Content-Type: application/json
+  x-signal-key: ${key}
+
+Body JSON (exemple) :
+{
+  "symbol": "ETHUSDT",
+  "side": "LONG",
+  "entry": 1925.5,
+  "sl": 1880,
+  "tp1": 1975,
+  "tp2": 2020,
+  "tp3": 2080,
+  "timeframe": "4H",
+  "note": "Cassure résistance + volume en hausse"
+}
+
+Équivalent curl :
+curl -X POST https://www.cryptoia.ca/api/v1/external-signals -H "Content-Type: application/json" -H "x-signal-key: ${key}" -d '{"symbol":"ETHUSDT","side":"LONG","entry":1925.5,"sl":1880,"tp1":1975,"tp2":2020,"tp3":2080,"timeframe":"4H","note":"Cassure résistance + volume"}'
+
+Règles obligatoires :
+- symbol : paire crypto (ex: BTCUSDT, ETHUSDT) — le suffixe USDT est ajouté automatiquement si absent
+- side : "LONG" ou "SHORT"
+- LONG : sl < entry < tp1 | SHORT : tp1 < entry < sl (sinon rejet 400)
+- entry, sl, tp1 : obligatoires (nombres) | tp2, tp3, timeframe, note : optionnels
+- Un seul signal actif par symbole (sinon rejet 409)
+- N'envoie un signal QUE si toutes tes conditions d'analyse sont réunies (pas de signal forcé)
+
+Le site suit ensuite automatiquement le signal toutes les 5 minutes : TP1 atteint → stop au breakeven, sorties partielles 50% TP1 / 25% TP2 / 25% TP3.`;
+
 export default function ScannerIA() {
   const [signals, setSignals] = useState<ExtSignal[]>([]);
   const [stats, setStats] = useState<ExtStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [webhookKey, setWebhookKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(id);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  };
 
   const load = async () => {
     try {
@@ -60,6 +104,13 @@ export default function ScannerIA() {
   useEffect(() => {
     load();
     const iv = setInterval(load, 60000);
+    // Panneau config visible uniquement pour l'admin (401 sinon → masqué)
+    fetch("/api/v1/external-signals/key", {
+      headers: { "x-admin-auth": localStorage.getItem("admin_api_key") || "admin123" },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.key && setWebhookKey(d.key))
+      .catch(() => {});
     return () => clearInterval(iv);
   }, []);
 
@@ -89,12 +140,14 @@ export default function ScannerIA() {
 
         <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
           {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
             {[
               { label: "Signaux trackés", value: stats ? `${stats.total_calls}` : "…", icon: Activity, accent: "text-violet-300" },
               { label: "Actifs", value: stats ? `${stats.active_calls}` : "…", icon: Bot, accent: "text-cyan-300" },
               { label: "Winrate (TP1)", value: stats ? `${stats.win_rate}%` : "…", icon: Trophy, accent: "text-emerald-300" },
               { label: "Profit moyen", value: stats ? `${stats.avg_profit_pct >= 0 ? "+" : ""}${stats.avg_profit_pct}%` : "…", icon: Target, accent: "text-teal-300" },
+              { label: "PnL cumulé", value: stats ? `${(stats.total_pnl_pct ?? 0) >= 0 ? "+" : ""}${stats.total_pnl_pct ?? 0}%` : "…", icon: Sigma, accent: (stats?.total_pnl_pct ?? 0) >= 0 ? "text-emerald-300" : "text-rose-300" },
+              { label: "Meilleur trade", value: stats?.best_trade ? `+${stats.best_trade.profit_pct}%` : "—", icon: Star, accent: "text-amber-300" },
             ].map((s) => (
               <div key={s.label} data-testid={`scanner-stat-${s.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
                 <s.icon className={`h-4 w-4 ${s.accent}`} />
@@ -104,7 +157,48 @@ export default function ScannerIA() {
             ))}
           </div>
 
-          {/* Signaux actifs */}
+          {/* Panneau config admin (visible uniquement si clé admin valide) */}
+          {webhookKey && (
+            <div data-testid="scanner-admin-config" className="mt-8 rounded-2xl border border-amber-400/20 bg-amber-500/[0.04] p-5">
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-amber-300" />
+                <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-amber-300/80">Configuration webhook (admin uniquement)</h2>
+              </div>
+
+              <div className="mt-4 space-y-3 text-sm">
+                <div>
+                  <div className="text-[11px] font-mono uppercase tracking-[0.15em] text-white/40 mb-1">URL du webhook (POST)</div>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono text-xs text-cyan-300 overflow-x-auto whitespace-nowrap">https://www.cryptoia.ca/api/v1/external-signals</code>
+                    <button data-testid="copy-webhook-url" onClick={() => copy("url", "https://www.cryptoia.ca/api/v1/external-signals")} className="shrink-0 rounded-lg border border-white/10 bg-white/5 p-2 hover:bg-white/10 transition-colors">
+                      {copied === "url" ? <Check className="h-4 w-4 text-emerald-300" /> : <Copy className="h-4 w-4 text-white/60" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[11px] font-mono uppercase tracking-[0.15em] text-white/40 mb-1">Clé secrète (header x-signal-key)</div>
+                  <div className="flex items-center gap-2">
+                    <code data-testid="webhook-key-value" className="flex-1 rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono text-xs text-amber-300 overflow-x-auto whitespace-nowrap">{webhookKey}</code>
+                    <button data-testid="copy-webhook-key" onClick={() => copy("key", webhookKey)} className="shrink-0 rounded-lg border border-white/10 bg-white/5 p-2 hover:bg-white/10 transition-colors">
+                      {copied === "key" ? <Check className="h-4 w-4 text-emerald-300" /> : <Copy className="h-4 w-4 text-white/60" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-[11px] font-mono uppercase tracking-[0.15em] text-white/40">Instructions à copier dans Claude</div>
+                    <button data-testid="copy-claude-instructions" onClick={() => copy("claude", claudeInstructions(webhookKey))} className="inline-flex items-center gap-1.5 rounded-lg border border-violet-400/30 bg-violet-500/10 px-3 py-1.5 text-xs font-bold text-violet-300 hover:bg-violet-500/20 transition-colors">
+                      {copied === "claude" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copied === "claude" ? "Copié !" : "Copier les instructions"}
+                    </button>
+                  </div>
+                  <pre className="rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono text-[11px] text-white/60 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">{claudeInstructions(webhookKey)}</pre>
+                </div>
+              </div>
+            </div>
+          )}
           <h2 className="mt-10 font-mono text-[11px] uppercase tracking-[0.25em] text-white/40">Signaux actifs ({active.length})</h2>
           {!loading && active.length === 0 && (
             <p data-testid="scanner-empty-active" className="mt-3 text-sm text-white/40">
@@ -133,8 +227,10 @@ export default function ScannerIA() {
                     <span className={`text-sm font-mono font-black ${up ? "text-emerald-300" : "text-rose-300"}`}>
                       {s.live_pnl_pct == null ? "—" : `${up ? "+" : ""}${s.live_pnl_pct.toFixed(2)}%`}
                     </span>
-                    {s.tp1_hit && (
-                      <span className="inline-flex items-center rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-black text-emerald-300">TP1 ✓ · stop au BE</span>
+                    {(s.tp1_hit || s.tp2_hit) && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-black text-emerald-300">
+                        {s.tp2_hit ? "TP2 ✓" : "TP1 ✓"} · stop au BE
+                      </span>
                     )}
                   </div>
                   {s.note && <div className="mt-2 text-[11px] text-white/35 leading-relaxed">{s.note}</div>}

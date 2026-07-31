@@ -348,21 +348,8 @@ export default function BacktestingVisuel() {
     : null;
 
   return (
-    <div className="min-h-screen bg-[#030712] text-white">
-      <Sidebar />
-      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
+    <div className="text-white">
         <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-6">
-          <PageHeader
-            icon={<Activity className="w-6 h-6" />}
-            title={t("pages.backtestingVisuel.title")}
-            subtitle={`Simulez les performances historiques de 5 stratégies sur ${BINANCE_SYMBOLS.length} paires Binance. Toutes les données sont réelles — aucune simulation aléatoire.`}
-            accentColor="purple"
-            steps={[
-            { n: "2", title: t("pages.backtestingVisuel.steps.2.title"), desc: t("pages.backtestingVisuel.steps.2.desc") },
-            { n: "3", title: t("pages.backtestingVisuel.steps.3.title"), desc: t("pages.backtestingVisuel.steps.3.desc") },
-          ]}
-          />
-
           {/* ── Config Panel ── */}
           <div className="bg-slate-900/50 border border-white/[0.07] rounded-2xl p-5 mb-5">
             <div className="flex items-center gap-2 mb-4">
@@ -607,8 +594,6 @@ export default function BacktestingVisuel() {
             </div>
           )}
         </div>
-        <Footer />
-      </main>
     </div>
   );
 }

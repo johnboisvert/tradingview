@@ -485,23 +485,8 @@ export default function SimulateurStrategieIA() {
   const globalRisk = result ? computeGlobalRisk(result.allocations, result.risk) : null;
 
   return (
-    <div className="flex min-h-screen bg-[#030712]">
-      <Sidebar />
-      <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
+    <div className="text-white">
         <div className="relative z-10 max-w-[1440px] mx-auto px-6 py-6">
-          {/* Page Header */}
-          <PageHeader
-            icon={<Target className="w-6 h-6" />}
-            title={t("pages.simulateurStrategieIA.title")}
-            subtitle={t("pages.simulateurStrategieIA.subtitle")}
-            accentColor="indigo"
-            steps={[
-            { n: "1", title: t("pages.simulateurStrategieIA.steps.1.title"), desc: t("pages.simulateurStrategieIA.steps.1.desc") },
-            { n: "2", title: t("pages.simulateurStrategieIA.steps.2.title"), desc: t("pages.simulateurStrategieIA.steps.2.desc") },
-            { n: "3", title: t("pages.simulateurStrategieIA.steps.3.title"), desc: t("pages.simulateurStrategieIA.steps.3.desc") },
-          ]}
-          />
-
           <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
             {/* ── Left: Form ── */}
             <div className="space-y-4">
@@ -725,8 +710,6 @@ export default function SimulateurStrategieIA() {
             </div>
           </div>
         </div>
-        <Footer />
-      </main>
     </div>
   );
 }

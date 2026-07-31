@@ -132,20 +132,7 @@ export default function Simulation() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] text-white">
-      <Sidebar />
-      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
-      <PageHeader
-          icon={<Gamepad2 className="w-6 h-6" />}
-          title={t("pages.simulation.title")}
-          subtitle={t("pages.simulation.subtitle")}
-          accentColor="purple"
-          steps={[
-            { n: "1", title: t("pages.simulation.steps.1.title"), desc: t("pages.simulation.steps.1.desc") },
-            { n: "2", title: t("pages.simulation.steps.2.title"), desc: t("pages.simulation.steps.2.desc") },
-            { n: "3", title: t("pages.simulation.steps.3.title"), desc: t("pages.simulation.steps.3.desc") },
-          ]}
-        />
+    <div className="text-white">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-1">
@@ -363,8 +350,6 @@ export default function Simulation() {
             )}
           </div>
         </div>
-        <Footer />
-      </main>
     </div>
   );
 }

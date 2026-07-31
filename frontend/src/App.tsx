@@ -34,7 +34,7 @@ const PredictionIA = React.lazy(() => import("./pages/PredictionIA"));
 const CryptoJournal = React.lazy(() => import("./pages/CryptoJournal"));
 const CycleMarche = React.lazy(() => import("./pages/CycleMarche"));
 const StatsAvancees = React.lazy(() => import("./pages/StatsAvancees"));
-const Simulation = React.lazy(() => import("./pages/Simulation"));
+const Laboratoire = React.lazy(() => import("./pages/Laboratoire"));
 const SuccessStories = React.lazy(() => import("./pages/SuccessStories"));
 const Convertisseur = React.lazy(() => import("./pages/Convertisseur"));
 const Calendrier = React.lazy(() => import("./pages/Calendrier"));
@@ -82,12 +82,10 @@ const Login = React.lazy(() => import("./pages/Login"));
 const MyCryptoIA = React.lazy(() => import("./pages/MyCryptoIA"));
 const AlertesIA = React.lazy(() => import("./pages/AlertesIA"));
 const ScoreConfianceIA = React.lazy(() => import("./pages/ScoreConfianceIA"));
-const SimulateurStrategieIA = React.lazy(() => import("./pages/SimulateurStrategieIA"));
 const RapportHebdomadaireIA = React.lazy(() => import("./pages/RapportHebdomadaireIA"));
 const Gamification = React.lazy(() => import("./pages/Gamification"));
 const Leaderboard = React.lazy(() => import("./pages/Leaderboard"));
 const Blog = React.lazy(() => import("./pages/Blog"));
-const BacktestingVisuel = React.lazy(() => import("./pages/BacktestingVisuel"));
 const DtradingIaPro = React.lazy(() => import("./pages/DtradingIaPro"));
 const AlertesTelegram = React.lazy(() => import("./pages/AlertesTelegram"));
 const PaymentSuccess = React.lazy(() => import("./pages/PaymentSuccess"));
@@ -185,7 +183,7 @@ function App() {
           <Route path="/embed-gallery" element={<EmbedGallery />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<Blog />} />
-          <Route path="/backtesting-visuel" element={<PlanProtected path="/backtesting-visuel"><BacktestingVisuel /></PlanProtected>} />
+          <Route path="/backtesting-visuel" element={<PlanProtected path="/backtesting-visuel"><Laboratoire /></PlanProtected>} />
           <Route path="/prediction-ia" element={<PlanProtected path="/prediction-ia"><PredictionIA /></PlanProtected>} />
           <Route path="/crypto-ia" element={<Navigate to="/technical-analysis?tab=ia" replace />} />
           <Route path="/crypto-journal" element={<PlanProtected path="/crypto-journal"><CryptoJournal /></PlanProtected>} />
@@ -207,7 +205,7 @@ function App() {
 
           {/* Outils */}
           <Route path="/stats-avancees" element={<PlanProtected path="/stats-avancees"><StatsAvancees /></PlanProtected>} />
-          <Route path="/simulation" element={<PlanProtected path="/simulation"><Simulation /></PlanProtected>} />
+          <Route path="/simulation" element={<Navigate to="/backtesting-visuel?tab=simulation" replace />} />
           <Route path="/convertisseur" element={<PlanProtected path="/convertisseur"><Convertisseur /></PlanProtected>} />
           <Route path="/calendrier" element={<PlanProtected path="/calendrier"><Calendrier /></PlanProtected>} />
           <Route path="/news" element={<PlanProtected path="/news"><News /></PlanProtected>} />
@@ -222,7 +220,7 @@ function App() {
           <Route path="/my-cryptoia" element={<PlanProtected path="/my-cryptoia"><MyCryptoIA /></PlanProtected>} />
           <Route path="/alertes-ia" element={<PlanProtected path="/alertes-ia"><AlertesIA /></PlanProtected>} />
           <Route path="/score-confiance-ia" element={<PlanProtected path="/score-confiance-ia"><ScoreConfianceIA /></PlanProtected>} />
-          <Route path="/simulateur-strategie-ia" element={<PlanProtected path="/simulateur-strategie-ia"><SimulateurStrategieIA /></PlanProtected>} />
+          <Route path="/simulateur-strategie-ia" element={<Navigate to="/backtesting-visuel?tab=allocation" replace />} />
           <Route path="/rapport-hebdomadaire-ia" element={<PlanProtected path="/rapport-hebdomadaire-ia"><RapportHebdomadaireIA /></PlanProtected>} />
 
 

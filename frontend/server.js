@@ -1465,7 +1465,7 @@ referralModule = registerReferralRoutes(app, {
 
   // ─── Resend Webhook (delivered / opened / clicked / bounced / complained) ─
   registerResendWebhookRoutes(app, { requireAdmin });
-  registerExternalSignalRoutes(app, { requireAdmin });
+  registerExternalSignalRoutes(app, { requireAdmin, createTradeCall: tradeCallsStore.createTradeCall });
 
   // ─── Promo Codes (centralized backend storage, auto-seeds WELCOME20/FLASH30) ─
   registerPromoRoutes(app, { requireAdmin });

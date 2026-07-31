@@ -146,7 +146,6 @@ const NAV_SECTIONS = [
       { path: "/trades", label: "Swing Trading", icon: TrendingUp },
       { path: "/scalp", label: "Scalp Trading", icon: Zap },
       { path: "/range", label: "Range Trading", icon: BarChart3 },
-      { path: "/scanner-ia", label: "Scanner IA", icon: Bot, badge: "NEW" },
       { path: "/dtrading-ia-pro", label: "Dtrading IA PRO", icon: Crosshair },
       { path: "/screener-technique", label: "Screener Technique", icon: SlidersHorizontal },
       { path: "/position-sizer", label: "Position Sizer", icon: Crosshair },

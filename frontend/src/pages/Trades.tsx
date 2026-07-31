@@ -5,6 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import { TrendingUp, TrendingDown, RefreshCw, Filter, BarChart3, Clock, Shield, Target, ChevronDown, ChevronUp, Link2, Zap, Trophy, Info, BookOpen } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Footer from "@/components/Footer";
+import LiveSignals from "@/components/LiveSignals";
 
 const TRADES_BG =
   "https://mgx-backend-cdn.metadl.com/generate/images/966405/2026-02-18/6e7996e5-3fd7-4958-9f83-5d5f09ef989f.png";
@@ -1323,6 +1324,9 @@ export default function Trades() {
             { n: "3", title: t("pages.trades.steps.3.title"), desc: t("pages.trades.steps.3.desc") },
           ]}
         />
+
+        {/* Signaux en direct (moteur v8.3 + Scanner IA) */}
+        <LiveSignals />
 
         {/* Methodology Explanation Section — Collapsible */}
         <div className="mb-6">

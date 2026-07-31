@@ -60,12 +60,12 @@ export function registerTradeCallRoutes(app, { dataDir }) {
     }
   } catch (_e) { /* ignore */ }
 
-  // ─── POST /api/v1/trade-calls — Record a new call (with dedup) ───
-  app.post('/api/v1/trade-calls', (req, res) => {
-    const { symbol, side, entry_price, stop_loss, tp0, tp1, tp2, tp3, confidence, reason, rsi4h, has_convergence, rr, engine } = req.body;
+  // Création d'un call (dedup + compteur) — utilisée par la route POST et le webhook Scanner IA
+  function createTradeCall(payload) {
+    const { symbol, side, entry_price, stop_loss, tp0, tp1, tp2, tp3, confidence, reason, rsi4h, has_convergence, rr, engine } = payload;
 
     if (!symbol || !side || !entry_price) {
-      return res.status(400).json({ created: false, message: 'symbol, side, entry_price requis' });
+      return { created: false, error: 'symbol, side, entry_price requis' };
     }
 
     const calls = loadTradeCalls();
@@ -78,7 +78,7 @@ export function registerTradeCallRoutes(app, { dataDir }) {
     );
 
     if (dup) {
-      return res.json({ created: false, message: 'Duplicate call (same symbol/side within 4h)', id: dup.id });
+      return { created: false, message: 'Duplicate call (same symbol/side within 4h)', id: dup.id };
     }
 
     tradeCallIdCounter++;
@@ -118,9 +118,15 @@ export function registerTradeCallRoutes(app, { dataDir }) {
 
     calls.push(newCall);
     saveTradeCalls(calls);
-    console.log(`[TradeCall] Created call #${newCall.id}: ${symbol} ${side} @ ${entry_price}`);
+    console.log(`[TradeCall] Created call #${newCall.id}: ${symbol} ${side} @ ${entry_price}${engine ? ` (${engine})` : ''}`);
+    return { created: true, id: newCall.id };
+  }
 
-    res.json({ created: true, id: newCall.id });
+  // ─── POST /api/v1/trade-calls — Record a new call (with dedup) ───
+  app.post('/api/v1/trade-calls', (req, res) => {
+    const result = createTradeCall(req.body || {});
+    if (result.error) return res.status(400).json({ created: false, message: result.error });
+    res.json(result);
   });
 
   // ─── GET /api/v1/trade-calls — List calls ───
@@ -467,5 +473,5 @@ function partialRealizedPct(c) {
     }
   }, 5 * 60 * 1000);
 
-  return { loadTradeCalls, saveTradeCalls, resolveActiveTradeCalls };
+  return { loadTradeCalls, saveTradeCalls, resolveActiveTradeCalls, createTradeCall };
 }

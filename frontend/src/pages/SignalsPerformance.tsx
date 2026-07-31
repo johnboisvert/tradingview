@@ -5,6 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
 import SEOHead from "@/components/SEOHead";
 import Footer from "@/components/Footer";
+import ScannerIAConfig from "@/components/ScannerIAConfig";
 import {
   Trophy, ShieldCheck, TrendingUp, TrendingDown, Target, Activity,
   ArrowRight, Sparkles, BarChart3, Lock, CheckCircle2, XCircle, MinusCircle, Clock,
@@ -422,9 +423,11 @@ export default function SignalsPerformance() {
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(c.created_at).toLocaleDateString("fr-CA")}</td>
                         <td className="px-4 py-3 font-bold text-white">
                           {c.symbol.replace("USDT", "/USDT")}
-                          {isV8Call(c) && (
+                          {c.engine === "scanner-ia" ? (
+                            <span className="ml-2 inline-flex items-center rounded-full border border-violet-400/40 bg-violet-500/15 px-2 py-0.5 text-[10px] font-black text-violet-300">Scanner IA</span>
+                          ) : isV8Call(c) ? (
                             <span className="ml-2 inline-flex items-center rounded-full border border-cyan-400/40 bg-cyan-500/15 px-2 py-0.5 text-[10px] font-black text-cyan-300">v8.3</span>
-                          )}
+                          ) : null}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center gap-1 text-xs font-bold ${c.side === "LONG" ? "text-emerald-300" : "text-rose-300"}`}>
@@ -454,12 +457,17 @@ export default function SignalsPerformance() {
           </div>
           {engineView === "v8" && activeV8.length > 0 && (
             <div className="mt-6" data-testid="active-v8-signals">
-              <h3 className="font-mono text-[11px] uppercase tracking-[0.25em] text-white/40">Signaux v8.3 en cours ({activeV8.length})</h3>
+              <h3 className="font-mono text-[11px] uppercase tracking-[0.25em] text-white/40">Signaux en cours ({activeV8.length}) — moteur v8.3 + Scanner IA</h3>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {activeV8.map((c) => (
-                  <div key={c.id} className="rounded-2xl border border-cyan-400/15 bg-[#0d1526] p-4">
+                  <div key={c.id} className={`rounded-2xl border p-4 bg-[#0d1526] ${c.engine === "scanner-ia" ? "border-violet-400/20" : "border-cyan-400/15"}`}>
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-white">{c.symbol.replace("USDT", "/USDT")}</span>
+                      <span className="font-bold text-white">
+                        {c.symbol.replace("USDT", "/USDT")}
+                        {c.engine === "scanner-ia" && (
+                          <span className="ml-2 inline-flex items-center rounded-full border border-violet-400/40 bg-violet-500/15 px-2 py-0.5 text-[10px] font-black text-violet-300">Scanner IA</span>
+                        )}
+                      </span>
                       <span className={`inline-flex items-center gap-1 text-xs font-bold ${c.side === "LONG" ? "text-emerald-300" : "text-rose-300"}`}>
                         {c.side === "LONG" ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
                         {c.side}
@@ -494,6 +502,7 @@ export default function SignalsPerformance() {
             PnL des trades « TP + BE » = profit partiel réellement encaissé (50 % de la position sortie au TP1, 25 % au TP2, le reste au point d'entrée).
             Les performances passées ne garantissent pas les résultats futurs. Ceci n'est pas un conseil financier.
           </p>
+          <ScannerIAConfig />
         </section>
 
         {/* ── CTA ──────────────────────────────────────── */}

@@ -180,7 +180,7 @@ const ROUTE_TO_SLUG: Record<string, string> = {
   "/trades": "strategie",
   "/scalp": "strategie",
   "/range": "strategie",
-  "/scanner-ia": "scanner-ia",
+  "/scanner-ia": "strategie",
   "/risk-management": "strategie",
   "/watchlist": "strategie",
   "/graphiques": "strategie",

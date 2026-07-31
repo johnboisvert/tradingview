@@ -78,7 +78,7 @@ const PROFILES = {
     strengths: ['Vision macro', 'Recherche fondamentale', 'Gains potentiels énormes'],
     weaknesses: ['Risque de perte totale', 'Liquidité faible', 'Patience extrême'],
     tools: [
-      { name: 'Gem Hunter IA', path: '/gem-hunter', why: 'Détecter les pépites avant qu\'elles explosent' },
+      { name: 'Pépites Crypto IA', path: '/pepites-crypto', why: 'Détecter les pépites avant qu\'elles explosent' },
       { name: 'Pépites Crypto', path: '/pepites-crypto', why: 'Sélection IA de tokens à fort potentiel' },
       { name: 'Narrative Radar', path: '/narrative-radar', why: 'Anticiper les prochaines narratives qui pumpent' },
     ],

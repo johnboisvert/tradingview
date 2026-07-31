@@ -166,7 +166,7 @@ app.get('/sitemap.xml', (req, res) => {
     { path: '/whale-watcher',     priority: '0.8', changefreq: 'daily' },
     { path: '/on-chain-metrics',  priority: '0.8', changefreq: 'daily' },
     { path: '/ai-sentiment',      priority: '0.8', changefreq: 'daily' },
-    { path: '/gem-hunter',        priority: '0.8', changefreq: 'daily' },
+    { path: '/pepites-crypto',    priority: '0.8', changefreq: 'daily' },
     { path: '/alertes-ia',        priority: '0.7', changefreq: 'daily' },
     { path: '/portfolio-tracker', priority: '0.7', changefreq: 'daily' },
     { path: '/ai-assistant',      priority: '0.7', changefreq: 'weekly' },

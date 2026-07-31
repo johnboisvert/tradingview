@@ -18,7 +18,6 @@ const TokenScanner = React.lazy(() => import("./pages/TokenScanner"));
 const WhaleWatcher = React.lazy(() => import("./pages/WhaleWatcher"));
 const TechnicalAnalysis = React.lazy(() => import("./pages/TechnicalAnalysis"));
 const PositionSizer = React.lazy(() => import("./pages/PositionSizer"));
-const GemHunter = React.lazy(() => import("./pages/GemHunter"));
 const FearGreed = React.lazy(() => import("./pages/FearGreed"));
 const Dominance = React.lazy(() => import("./pages/Dominance"));
 const AltcoinSeason = React.lazy(() => import("./pages/AltcoinSeason"));
@@ -64,7 +63,6 @@ const CryptoPages = React.lazy(() => import("./pages/CryptoPages"));
 const AdminSeoContent = React.lazy(() => import("./pages/AdminSeoContent"));
 const ExchangeFeesComparator = React.lazy(() => import("./pages/ExchangeFeesComparator"));
 import NewsletterPopup from "./components/NewsletterPopup";
-const Analytics = React.lazy(() => import("./pages/Analytics"));
 const Pricing = React.lazy(() => import("./pages/Pricing"));
 const Promos = React.lazy(() => import("./pages/Promos"));
 const Messages = React.lazy(() => import("./pages/Messages"));
@@ -99,7 +97,6 @@ const BacktestingVisuel = React.lazy(() => import("./pages/BacktestingVisuel"));
 const DtradingIaPro = React.lazy(() => import("./pages/DtradingIaPro"));
 const AlertesTelegram = React.lazy(() => import("./pages/AlertesTelegram"));
 const PaymentSuccess = React.lazy(() => import("./pages/PaymentSuccess"));
-const Predictions = React.lazy(() => import("./pages/Predictions"));
 const PredictionCrypto = React.lazy(() => import("./pages/PredictionCrypto"));
 const TradesPerformance = React.lazy(() => import("./pages/TradesPerformance"));
 const ScalpTrading = React.lazy(() => import("./pages/ScalpTrading"));
@@ -203,7 +200,7 @@ function App() {
           <Route path="/opportunity-scanner" element={<PlanProtected path="/opportunity-scanner"><OpportunityScanner /></PlanProtected>} />
           <Route path="/whale-watcher" element={<PlanProtected path="/whale-watcher"><WhaleWatcher /></PlanProtected>} />
           <Route path="/technical-analysis" element={<PlanProtected path="/technical-analysis"><TechnicalAnalysis /></PlanProtected>} />
-          <Route path="/gem-hunter" element={<PlanProtected path="/gem-hunter"><GemHunter /></PlanProtected>} />
+          <Route path="/gem-hunter" element={<Navigate to="/pepites-crypto" replace />} />
           <Route path="/position-sizer" element={<PlanProtected path="/position-sizer"><PositionSizer /></PlanProtected>} />
           <Route path="/ai-signals" element={<PlanProtected path="/ai-signals"><AISignals /></PlanProtected>} />
           <Route path="/ai-patterns" element={<PlanProtected path="/ai-patterns"><AIPatterns /></PlanProtected>} />
@@ -237,7 +234,7 @@ function App() {
 
 
           {/* SEO Prediction Pages - publicly accessible for SEO */}
-          <Route path="/predictions" element={<Predictions />} />
+          <Route path="/predictions" element={<Navigate to="/prediction-ia" replace />} />
           <Route path="/prediction/:cryptoId" element={<PredictionCrypto />} />
 
           {/* Compte - always accessible */}
@@ -272,7 +269,6 @@ function App() {
           <Route path="/crypto" element={<CryptoPages />} />
           <Route path="/crypto/:symbol" element={<CryptoPages />} />
           <Route path="/comparateur-frais-exchanges" element={<ExchangeFeesComparator />} />
-          <Route path="/admin/analytics" element={<ProtectedAdminRoute><Analytics /></ProtectedAdminRoute>} />
           <Route path="/admin/pricing" element={<ProtectedAdminRoute><Pricing /></ProtectedAdminRoute>} />
           <Route path="/admin/access" element={<ProtectedAdminRoute><AdminAccess /></ProtectedAdminRoute>} />
           <Route path="/admin/promos" element={<ProtectedAdminRoute><Promos /></ProtectedAdminRoute>} />

@@ -4,7 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import SEOHead from "@/components/SEOHead";
 import Footer from "@/components/Footer";
 import ShareButtons from "@/components/ShareButtons";
-import { SEO_CRYPTOS } from "@/pages/Predictions";
+import { SEO_CRYPTOS } from "@/lib/seoCryptos";
 import { fetchTop200, type CoinMarketData } from "@/lib/cryptoApi";
 import { TrendingUp, TrendingDown, ArrowLeft, BarChart3, Activity, RefreshCw } from "lucide-react";
 import { createChart, ColorType, CandlestickSeries } from "lightweight-charts";
@@ -198,7 +198,7 @@ export default function PredictionCrypto() {
       <Sidebar />
       <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
         {/* Back link */}
-        <Link to="/predictions" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-indigo-400 transition-colors mb-6">
+        <Link to="/prediction-ia" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-indigo-400 transition-colors mb-6">
           <ArrowLeft className="w-4 h-4" /> Toutes les prédictions
         </Link>
 

@@ -156,20 +156,7 @@ export default function OpportunityScanner() {
   const filtered = filter === "ALL" ? opportunities : opportunities.filter((o) => o.type === filter);
 
   return (
-    <div className="flex min-h-screen bg-[#030712]">
-      <Sidebar />
-      <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
-      <PageHeader
-          icon={<span className="text-lg">🎯</span>}
-          title={t("pages.opportunityScanner.title")}
-          subtitle={t("pages.opportunityScanner.subtitle")}
-          accentColor="green"
-          steps={[
-            { n: "1", title: t("pages.opportunityScanner.steps.1.title"), desc: t("pages.opportunityScanner.steps.1.desc") },
-            { n: "2", title: t("pages.opportunityScanner.steps.2.title"), desc: t("pages.opportunityScanner.steps.2.desc") },
-            { n: "3", title: t("pages.opportunityScanner.steps.3.title"), desc: t("pages.opportunityScanner.steps.3.desc") },
-          ]}
-        />
+    <div className="text-white">
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-emerald-500/5 blur-[80px] top-[-200px] left-[-100px]" />
           <div className="absolute w-[500px] h-[500px] rounded-full bg-amber-500/5 blur-[80px] bottom-[-200px] right-[-100px]" />
@@ -313,8 +300,6 @@ export default function OpportunityScanner() {
             </>
           ) : null}
         </div>
-        <Footer />
-      </main>
     </div>
   );
 }

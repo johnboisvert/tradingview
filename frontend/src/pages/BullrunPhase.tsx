@@ -422,20 +422,7 @@ export default function BullrunPhase() {
   const animatedScore = useAnimatedNumber(score);
 
   return (
-    <div className="min-h-screen bg-[#030712] text-white">
-      <Sidebar />
-      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
-      <PageHeader
-          icon={<span className="text-lg">🚀</span>}
-          title={t("pages.bullrunPhase.title")}
-          subtitle={t("pages.bullrunPhase.subtitle")}
-          accentColor="amber"
-          steps={[
-            { n: "1", title: t("pages.bullrunPhase.steps.1.title"), desc: t("pages.bullrunPhase.steps.1.desc") },
-            { n: "2", title: t("pages.bullrunPhase.steps.2.title"), desc: t("pages.bullrunPhase.steps.2.desc") },
-            { n: "3", title: t("pages.bullrunPhase.steps.3.title"), desc: t("pages.bullrunPhase.steps.3.desc") },
-          ]}
-        />
+    <div className="text-white">
         <div className="fixed top-0 left-[260px] right-0 bottom-0 pointer-events-none z-0 overflow-hidden">
           <div
             className="absolute w-[600px] h-[600px] rounded-full top-[-200px] left-[-100px] opacity-[0.12] blur-[80px] animate-pulse"
@@ -710,8 +697,6 @@ export default function BullrunPhase() {
           </div>
 
         </div>
-        <Footer />
-      </main>
     </div>
   );
 }

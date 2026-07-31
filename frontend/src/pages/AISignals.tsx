@@ -102,20 +102,7 @@ export default function AISignals() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#030712]">
-      <Sidebar />
-      <main className="flex-1 md:ml-[260px] pt-14 md:pt-0 bg-[#030712]">
-      <PageHeader
-          icon={<span className="text-lg">📶</span>}
-          title={t("pages.aISignals.title")}
-          subtitle={t("pages.aISignals.subtitle")}
-          accentColor="blue"
-          steps={[
-            { n: "1", title: t("pages.aISignals.steps.1.title"), desc: t("pages.aISignals.steps.1.desc") },
-            { n: "2", title: t("pages.aISignals.steps.2.title"), desc: t("pages.aISignals.steps.2.desc") },
-            { n: "3", title: t("pages.aISignals.steps.3.title"), desc: t("pages.aISignals.steps.3.desc") },
-          ]}
-        />
+    <div className="text-white">
         <div className="relative z-10 max-w-[1440px] mx-auto p-4 md:p-6">
           {/* ===== HERO ===== */}
           <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
@@ -264,8 +251,6 @@ export default function AISignals() {
             </div>
           )}
         </div>
-        <Footer />
-      </main>
     </div>
   );
 }

@@ -32,13 +32,12 @@ const Watchlist = React.lazy(() => import("./pages/Watchlist"));
 const AIAssistant = React.lazy(() => import("./pages/AIAssistant"));
 const PredictionIA = React.lazy(() => import("./pages/PredictionIA"));
 const CryptoJournal = React.lazy(() => import("./pages/CryptoJournal"));
-const MarketRegime = React.lazy(() => import("./pages/MarketRegime"));
+const CycleMarche = React.lazy(() => import("./pages/CycleMarche"));
 const StatsAvancees = React.lazy(() => import("./pages/StatsAvancees"));
 const Simulation = React.lazy(() => import("./pages/Simulation"));
 const SuccessStories = React.lazy(() => import("./pages/SuccessStories"));
 const Convertisseur = React.lazy(() => import("./pages/Convertisseur"));
 const Calendrier = React.lazy(() => import("./pages/Calendrier"));
-const BullrunPhase = React.lazy(() => import("./pages/BullrunPhase"));
 const Graphiques = React.lazy(() => import("./pages/Graphiques"));
 
 const Abonnements = React.lazy(() => import("./pages/Abonnements"));
@@ -68,10 +67,9 @@ const Contact = React.lazy(() => import("./pages/Contact"));
 const OnChainMetrics = React.lazy(() => import("./pages/OnChainMetrics"));
 const PortfolioTracker = React.lazy(() => import("./pages/PortfolioTracker"));
 const DefiYield = React.lazy(() => import("./pages/DefiYield"));
-const AISignals = React.lazy(() => import("./pages/AISignals"));
+const SignauxIA = React.lazy(() => import("./pages/SignauxIA"));
 const NarrativeRadar = React.lazy(() => import("./pages/NarrativeRadar"));
 const RugScamShield = React.lazy(() => import("./pages/RugScamShield"));
-const OpportunityScanner = React.lazy(() => import("./pages/OpportunityScanner"));
 const AIPatterns = React.lazy(() => import("./pages/AIPatterns"));
 const AISentiment = React.lazy(() => import("./pages/AISentiment"));
 const AISetupBuilder = React.lazy(() => import("./pages/AISetupBuilder"));
@@ -148,8 +146,8 @@ function App() {
           <Route path="/dominance" element={<PlanProtected path="/dominance"><Dominance /></PlanProtected>} />
           <Route path="/altcoin-season" element={<PlanProtected path="/altcoin-season"><AltcoinSeason /></PlanProtected>} />
           <Route path="/heatmap" element={<PlanProtected path="/heatmap"><Heatmap /></PlanProtected>} />
-          <Route path="/bullrun-phase" element={<PlanProtected path="/bullrun-phase"><BullrunPhase /></PlanProtected>} />
-          <Route path="/market-regime" element={<PlanProtected path="/market-regime"><MarketRegime /></PlanProtected>} />
+          <Route path="/bullrun-phase" element={<PlanProtected path="/bullrun-phase"><CycleMarche /></PlanProtected>} />
+          <Route path="/market-regime" element={<Navigate to="/bullrun-phase?tab=regime" replace />} />
 
           {/* Trading */}
           <Route path="/strategy" element={<PlanProtected path="/strategy"><Strategy /></PlanProtected>} />
@@ -193,12 +191,12 @@ function App() {
           <Route path="/crypto-journal" element={<PlanProtected path="/crypto-journal"><CryptoJournal /></PlanProtected>} />
           <Route path="/screener-technique" element={<Navigate to="/technical-analysis" replace />} />
           <Route path="/token-scanner" element={<PlanProtected path="/token-scanner"><TokenScanner /></PlanProtected>} />
-          <Route path="/opportunity-scanner" element={<PlanProtected path="/opportunity-scanner"><OpportunityScanner /></PlanProtected>} />
+          <Route path="/opportunity-scanner" element={<Navigate to="/ai-signals?tab=opportunites" replace />} />
           <Route path="/whale-watcher" element={<PlanProtected path="/whale-watcher"><WhaleWatcher /></PlanProtected>} />
           <Route path="/technical-analysis" element={<PlanProtected path="/technical-analysis"><AnalyseTechnique /></PlanProtected>} />
           <Route path="/gem-hunter" element={<Navigate to="/pepites-crypto" replace />} />
           <Route path="/position-sizer" element={<PlanProtected path="/position-sizer"><PositionSizer /></PlanProtected>} />
-          <Route path="/ai-signals" element={<PlanProtected path="/ai-signals"><AISignals /></PlanProtected>} />
+          <Route path="/ai-signals" element={<PlanProtected path="/ai-signals"><SignauxIA /></PlanProtected>} />
           <Route path="/ai-patterns" element={<PlanProtected path="/ai-patterns"><AIPatterns /></PlanProtected>} />
           <Route path="/ai-sentiment" element={<PlanProtected path="/ai-sentiment"><AISentiment /></PlanProtected>} />
           <Route path="/ai-setup-builder" element={<PlanProtected path="/ai-setup-builder"><AISetupBuilder /></PlanProtected>} />

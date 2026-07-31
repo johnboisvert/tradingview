@@ -73,20 +73,7 @@ export default function MarketRegime() {
   const avgVol = coins.length ? coins.reduce((s, c) => s + c.volatility, 0) / coins.length : 0;
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] text-white">
-      <Sidebar />
-      <main className="md:ml-[260px] pt-14 md:pt-0 bg-[#0A0E1A]">
-      <PageHeader
-          icon={<Activity className="w-6 h-6" />}
-          title={t("pages.marketRegime.title")}
-          subtitle={t("pages.marketRegime.subtitle")}
-          accentColor="blue"
-          steps={[
-            { n: "1", title: t("pages.marketRegime.steps.1.title"), desc: t("pages.marketRegime.steps.1.desc") },
-            { n: "2", title: t("pages.marketRegime.steps.2.title"), desc: t("pages.marketRegime.steps.2.desc") },
-            { n: "3", title: t("pages.marketRegime.steps.3.title"), desc: t("pages.marketRegime.steps.3.desc") },
-          ]}
-        />
+    <div className="text-white">
         {/* ===== HERO (pure CSS) ===== */}
         <div className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]">
           <div className="absolute inset-0 bg-[#0A0E1A]" />
@@ -255,8 +242,6 @@ export default function MarketRegime() {
             </table>
           </div>
         </div>
-        <Footer />
-      </main>
     </div>
   );
 }

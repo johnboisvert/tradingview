@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import PageHeader from "@/components/PageHeader";
 import Confetti from "@/components/Confetti";
+import AffiliationContent from "./Affiliation";
 import {
   Gift, Copy, Check, Share2, Users, TrendingUp, Award, Crown,
-  Trophy, AlertCircle, Calendar, Sparkles, Mail, MessageCircle,
+  Trophy, AlertCircle, Calendar, Sparkles, Mail, MessageCircle, DollarSign,
 } from "lucide-react";
 
 type Stats = {
@@ -54,6 +55,8 @@ function getStoredUsername(): string | null {
 }
 
 export default function Parrainage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") === "affiliation" ? "affiliation" : "parrainage";
   const [username, setUsername] = useState<string>(getStoredUsername() || "");
   const [needsLogin, setNeedsLogin] = useState<boolean>(!getStoredUsername());
   const [me, setMe] = useState<Me | null>(null);
@@ -137,11 +140,44 @@ export default function Parrainage() {
         {showConfetti && <Confetti />}
         <PageHeader
           icon={<Gift className="w-6 h-6" />}
-          title="Mon Parrainage"
-          subtitle="Partage ton code unique. Chaque filleul converti = +1 mois gratuit pour toi et -20% pour lui."
+          title="Récompenses"
+          subtitle="Deux façons de gagner : parrainez vos amis (+1 mois gratuit par filleul) ou devenez affilié (30% de commission récurrente)."
           accentColor="emerald"
         />
 
+        {/* Onglets */}
+        <div data-testid="recompenses-tabs" className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            data-testid="tab-parrainage"
+            onClick={() => setSearchParams({})}
+            className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition-all ${tab === "parrainage" ? "border-emerald-400/40 bg-emerald-500/10" : "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05]"}`}
+          >
+            <div className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${tab === "parrainage" ? "bg-emerald-500/20" : "bg-white/[0.05]"}`}>
+              <Gift className={`w-4.5 h-4.5 ${tab === "parrainage" ? "text-emerald-300" : "text-gray-400"}`} />
+            </div>
+            <div>
+              <div className={`text-sm font-bold ${tab === "parrainage" ? "text-emerald-200" : "text-white"}`}>Parrainage entre amis</div>
+              <div className="text-[11px] text-gray-500 mt-0.5 leading-snug">+1 mois gratuit par filleul converti · -20% pour lui · cumulable à vie</div>
+            </div>
+          </button>
+          <button
+            data-testid="tab-affiliation"
+            onClick={() => setSearchParams({ tab: "affiliation" })}
+            className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition-all ${tab === "affiliation" ? "border-amber-400/40 bg-amber-500/10" : "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05]"}`}
+          >
+            <div className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${tab === "affiliation" ? "bg-amber-500/20" : "bg-white/[0.05]"}`}>
+              <DollarSign className={`w-4.5 h-4.5 ${tab === "affiliation" ? "text-amber-300" : "text-gray-400"}`} />
+            </div>
+            <div>
+              <div className={`text-sm font-bold ${tab === "affiliation" ? "text-amber-200" : "text-white"}`}>Affiliation Pro — 30%</div>
+              <div className="text-[11px] text-gray-500 mt-0.5 leading-snug">Pour créateurs de contenu : 30% de commission récurrente sur chaque abonnement</div>
+            </div>
+          </button>
+        </div>
+
+        {tab === "affiliation" && <div className="mt-6"><AffiliationContent /></div>}
+
+        {tab === "parrainage" && <>
         {needsLogin && (
           <div className="mt-8 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6" data-testid="login-prompt">
             <div className="flex items-start gap-3">
@@ -336,6 +372,7 @@ export default function Parrainage() {
             </section>
           </>
         )}
+        </>}
 
         <Footer />
       </main>

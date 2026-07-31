@@ -68,7 +68,7 @@ export default function Footer() {
               <span className="opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">→</span>
             </a>
             <a
-              href="/affiliation"
+              href="/parrainage?tab=affiliation"
               data-testid="footer-affiliation-link"
               className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-300/80 hover:text-emerald-200 transition-colors group"
             >

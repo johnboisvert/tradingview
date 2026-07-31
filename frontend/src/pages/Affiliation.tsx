@@ -90,17 +90,8 @@ export default function Affiliation() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] text-white">
-      <Sidebar />
+    <div className="text-white">
       <Confetti active={showConfetti} count={70} />
-      <main className="md:ml-[260px] p-4 md:p-6 pt-[72px] md:pt-6 min-h-screen">
-        <PageHeader
-          icon={<Users className="w-6 h-6" />}
-          title={t("affiliation.header")}
-          subtitle={t("affiliation.headerSub")}
-          accentColor="emerald"
-          steps={steps}
-        />
 
         <div className="max-w-[1300px] mx-auto space-y-6">
           {/* Stats row */}
@@ -287,15 +278,12 @@ export default function Affiliation() {
           </div>
         </div>
 
-        <Footer />
-
         <style>{`
           @keyframes aff-fadeUp {
             from { opacity: 0; transform: translateY(12px); }
             to { opacity: 1; transform: translateY(0); }
           }
         `}</style>
-      </main>
     </div>
   );
 }

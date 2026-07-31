@@ -72,7 +72,7 @@ const NAV: NavItem[] = [
   { path: "/telechargement", label: "Téléchargements", section: "Outils" },
   { path: "/contact", label: "Contact", section: "Outils" },
   { path: "/abonnements", label: "Abonnements", section: "Compte" },
-  { path: "/affiliation", label: "Affiliation 30%", section: "Compte" },
+  { path: "/parrainage", label: "Récompenses (Parrainage & Affiliation 30%)", section: "Compte" },
   { path: "/magic-strategy", label: "Indicateurs", section: "Compte" },
   { path: "/admin", label: "Admin Panel", section: "Admin" },
   { path: "/admin/analytics", label: "Admin Analytics", section: "Admin" },
@@ -217,7 +217,7 @@ export default function CommandPalette() {
         id: "act-affiliation",
         label: t("commandPalette.actions.affiliation"),
         icon: Sparkles,
-        run: () => navigate("/affiliation"),
+        run: () => navigate("/parrainage?tab=affiliation"),
       },
     ],
     [navigate, t]

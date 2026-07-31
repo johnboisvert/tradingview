@@ -179,7 +179,7 @@ app.get('/sitemap.xml', (req, res) => {
     { path: '/compare',           priority: '0.8', changefreq: 'weekly' },
     { path: '/crypto',            priority: '0.9', changefreq: 'daily' },
     { path: '/leaderboard',       priority: '0.7', changefreq: 'daily' },
-    { path: '/affiliation',       priority: '0.7', changefreq: 'monthly' },
+    { path: '/parrainage',        priority: '0.7', changefreq: 'monthly' },
     { path: '/abonnements',       priority: '0.6', changefreq: 'monthly' },
     { path: '/magic-strategy',    priority: '0.9', changefreq: 'weekly' },
     { path: '/performance',       priority: '0.9', changefreq: 'daily' },

@@ -45,6 +45,7 @@ import {
   Mail,
   History,
   Scan,
+  ScanSearch,
   Brain,
   MessageCircle,
   Clock,
@@ -111,6 +112,7 @@ const NAV_SECTIONS = [
     title: "IA & Analyse",
     items: [
       { path: "/assistant-ia", label: "Assistant IA", icon: Bot },
+      { path: "/analyse-ia", label: "Analyse Graphique IA", icon: ScanSearch, badge: "NEW" },
       { path: "/ai-signals", label: "Signaux IA", icon: Radio },
       { path: "/technical-analysis", label: "Analyse Technique", icon: PieChart },
       { path: "/prediction-ia", label: "Prédiction IA", icon: Sparkles },

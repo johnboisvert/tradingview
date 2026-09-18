@@ -54,6 +54,7 @@ import registerDeribitOptionsRoutes from './routes/deribit_options.js';
 import registerDerivativesSentimentRoutes from './routes/derivatives_sentiment.js';
 import registerTelegramConfigRoutes from './routes/telegram_routes.js';
 import registerIndicatorAccessRoutes from './routes/indicator_access.js';
+import registerChartAiRoutes from './routes/chart_ai.js';
 import { createScalpEngine } from './lib/scalp_engine.js';
 import { createSwingEngine } from './lib/swing_engine.js';
 import { createRangeEngine } from './lib/range_engine.js';
@@ -80,6 +81,11 @@ const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
 app.use('/api/v1/payment/stripe_webhook', express.raw({ type: 'application/json' }));
 // Resend webhook also needs raw body to verify the Svix HMAC signature
 app.use('/api/v1/webhooks/resend', express.raw({ type: '*/*', limit: '1mb' }));
+
+// ─── Chart AI (analyse de capture par IA vision) ───
+// Monté AVANT le parseur JSON global (limite 1 Mo) : cette route lit elle-même
+// son corps jusqu'à 12 Mo (image base64). Clé API côté serveur uniquement.
+registerChartAiRoutes(app, { getApiKey: () => process.env.VITE_GEMINI_API_KEY || '' });
 
 // Parse JSON bodies for all other routes
 app.use(express.json({ limit: '1mb' }));

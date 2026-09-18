@@ -4,6 +4,8 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { createHash } from 'crypto';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
+// @ts-ignore — module ESM partagé avec server.js (proxy Chart AI, clé côté serveur)
+import { createChartAiMiddleware } from './routes/chart_ai.js';
 
 // ── Dev-mode user storage helpers ──
 const DEV_DATA_DIR = path.resolve(__dirname, 'data');
@@ -206,6 +208,12 @@ function apiProxyPlugin(): Plugin {
           }
         });
       });
+
+      // ── Chart AI proxy (dev mirror of server.js /api/chart-ai) ──
+      // Même module que la prod : POST /api/chart-ai/analyze → Gemini vision.
+      server.middlewares.use('/api/chart-ai', createChartAiMiddleware({
+        getApiKey: () => process.env.VITE_GEMINI_API_KEY || '',
+      }) as any);
 
       // ── Binance Screener proxy (dev mirror of server.js /api/binance/screener) ──
       const bsCache = new Map<string, { r: any; t: number }>();

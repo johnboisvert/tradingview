@@ -18,7 +18,8 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const DEFAULT_MODELS = ['gemini-3.1-pro-preview', 'gemini-2.5-pro', 'gemini-2.0-flash'];
+// gemini-2.0-flash est déprécié côté Google → remplacé par gemini-3.6-flash.
+const DEFAULT_MODELS = ['gemini-3.1-pro-preview', 'gemini-2.5-pro', 'gemini-3.6-flash'];
 const MAX_BODY_BYTES = 12 * 1024 * 1024; // base64 d'une image ~5 Mo ≈ 6,7 Mo de texte
 const ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const CALL_TIMEOUT_MS = 150_000;
@@ -205,7 +206,7 @@ async function callGeminiVision({ apiKey, base64, mimeType, notes }) {
       { inline_data: { mime_type: mimeType, data: base64 } },
     ],
   }];
-  let lastMessage = 'erreur inconnue';
+  const errors = []; // diagnostic agrégé par modèle (visible dans upstream_error)
   for (const model of models) {
     try {
       const response = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
@@ -232,7 +233,7 @@ async function callGeminiVision({ apiKey, base64, mimeType, notes }) {
       const data = await response.json().catch(() => null);
       if (!response.ok) {
         const msg = data?.error?.message || `HTTP ${response.status}`;
-        lastMessage = msg;
+        errors.push(`${model}: ${msg}`.slice(0, 180));
         const modelUnavailable = response.status === 404
           || (response.status === 400 && /model|not found|unsupported/i.test(String(msg)));
         console.error(`[ChartAI] ${model} → HTTP ${response.status}`, modelUnavailable ? '(repli sur modèle suivant)' : msg);
@@ -243,16 +244,17 @@ async function callGeminiVision({ apiKey, base64, mimeType, notes }) {
       }
       const parts = data?.candidates?.[0]?.content?.parts;
       const text = Array.isArray(parts) ? parts.map((p) => p?.text || '').join('').trim() : '';
-      if (!text) { lastMessage = 'réponse vide du modèle'; continue; }
+      if (!text) { errors.push(`${model}: réponse vide du modèle`); continue; }
       const parsed = safeJson(text);
-      if (!parsed) { lastMessage = 'réponse IA non conforme (JSON invalide)'; continue; }
+      if (!parsed) { errors.push(`${model}: réponse IA non conforme (JSON invalide)`); continue; }
       return { ok: true, model, analysis: normalize(parsed) };
     } catch (err) {
-      lastMessage = err?.name === 'TimeoutError' ? 'délai dépassé' : (err?.message || 'erreur réseau');
-      console.error(`[ChartAI] ${model} →`, lastMessage);
+      const m = err?.name === 'TimeoutError' ? 'délai dépassé' : (err?.message || 'erreur réseau');
+      errors.push(`${model}: ${m}`.slice(0, 180));
+      console.error(`[ChartAI] ${model} →`, m);
     }
   }
-  return { ok: false, code: 'upstream_error', message: `L’analyse a échoué (${lastMessage}). Réessayez dans un instant.` };
+  return { ok: false, code: 'upstream_error', message: `L’analyse a échoué (${errors.join(' | ') || 'erreur inconnue'}). Réessayez dans un instant.` };
 }
 
 // ─── Middleware autonome (compatible Express ET connect/Vite dev) ───

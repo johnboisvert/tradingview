@@ -188,6 +188,8 @@ const ROUTE_TO_SLUG: Record<string, string> = {
   "/ai-assistant": "ai-coach",
   "/prediction-ia": "ai-signals",
   "/crypto-journal": "strategie",
+  // Screener Crypto : module PUBLIC — accessible sans abonnement (slug "dashboard")
+  "/screener-crypto": "dashboard",
   "/token-scanner": "token-scanner",
   "/whale-watcher": "ai-whale-tracker",
   "/technical-analysis": "technical-analyzer",

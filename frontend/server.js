@@ -1389,6 +1389,137 @@ registerChallengeRoutes(app, { resendClientGetter: getResendClient });
 registerPlanGrantsRoutes(app);
 registerTerminalLayoutRoutes(app);
 registerEconomicCalendarRoutes(app);
+
+// ============================================================
+// ─── Binance Screener API (données publiques du Screener Crypto) ───
+// Tickers 24h + klines horaires (Spot ou Futures perpétuels) :
+// Chg 1h, Vol chg % et note technique calculés depuis des données réelles.
+// Cache mémoire 2 min — aucune clé API requise (endpoints publics).
+// ============================================================
+const bsCache = new Map(); // key → { r, t }
+const BS_TTL = 120_000;
+const BS_STABLE_BASES = new Set(['USDC', 'BUSD', 'TUSD', 'DAI', 'FDUSD', 'USDP', 'USDD', 'GUSD', 'FRAX', 'LUSD', 'SUSD', 'EURS', 'EURT', 'USDJ', 'UST', 'AUSD', 'PYUSD', 'CRVUSD', 'EURC', 'USDE', 'EUR', 'GBP', 'AUD', 'AEUR', 'XUSD', 'USD1', 'USDR']);
+const BS_QUOTE_RE = /(USDT|USDC|BUSD|FDUSD|TUSD|DAI|EUR|GBP|AUD|BTC|ETH|BNB|TRY|BRL|ARS|COP|JPY|MXN|ZAR|RUB|UAH)$/;
+function bsBaseOf(symbol) { const b = String(symbol).replace(BS_QUOTE_RE, ''); return b || symbol; }
+function bsIsLeveraged(base) { return /^.{3,}(UP|DOWN|BULL|BEAR)$/.test(base); }
+function bsSma(a, n) { if (!a || a.length < n) return null; let s = 0; for (let i = a.length - n; i < a.length; i++) s += a[i]; return s / n; }
+function bsEmaSeries(a, n) { if (a.length < n) return []; const k = 2 / (n + 1); let e = a.slice(0, n).reduce((x, y) => x + y, 0) / n; const out = [e]; for (let i = n; i < a.length; i++) { e = a[i] * k + e * (1 - k); out.push(e); } return out; }
+function bsRsi(a, period) {
+  const p = period || 14;
+  if (!a || a.length < p + 1) return null;
+  let g = 0, l = 0;
+  for (let i = 1; i <= p; i++) { const d = a[i] - a[i - 1]; if (d > 0) g += d; else l -= d; }
+  let ag = g / p, al = l / p;
+  for (let i = p + 1; i < a.length; i++) { const d = a[i] - a[i - 1]; ag = (ag * (p - 1) + (d > 0 ? d : 0)) / p; al = (al * (p - 1) + (d < 0 ? -d : 0)) / p; }
+  if (al === 0) return 100;
+  return 100 - 100 / (1 + ag / al);
+}
+function bsMacdHist(a) {
+  if (!a || a.length < 35) return null;
+  const e12 = bsEmaSeries(a, 12), e26 = bsEmaSeries(a, 26);
+  if (!e26.length) return null;
+  const off = e12.length - e26.length;
+  const line = e26.map((v, i) => e12[i + off] - v);
+  const sig = bsEmaSeries(line, 9);
+  if (!sig.length) return null;
+  return line[line.length - 1] - sig[sig.length - 1];
+}
+// Note technique type TradingView : moyenneurs mobiles + RSI + MACD sur 1h
+function bsTechRating(closes) {
+  const price = closes[closes.length - 1];
+  const ma5 = bsSma(closes, 5), ma10 = bsSma(closes, 10), ma20 = bsSma(closes, 20), ma50 = bsSma(closes, 50);
+  const rsi = bsRsi(closes), macd = bsMacdHist(closes);
+  let buy = 0, sell = 0, neutral = 0;
+  [ma5, ma10, ma20, ma50].forEach((m) => {
+    if (m == null) { neutral++; return; }
+    if (price > m) buy++; else if (price < m) sell++; else neutral++;
+  });
+  if (rsi == null) neutral++; else if (rsi < 30) buy++; else if (rsi > 70) sell++; else neutral++;
+  if (macd == null) neutral++; else if (macd > 0) buy++; else if (macd < 0) sell++; else neutral++;
+  const total = buy + sell + neutral || 1;
+  const score = (buy - sell) / total;
+  const rating = score >= 0.6 ? 'strong_buy' : score >= 0.2 ? 'buy' : score > -0.2 ? 'neutral' : score > -0.6 ? 'sell' : 'strong_sell';
+  const round = (v) => (v == null ? null : Math.round(v * 1e6) / 1e6);
+  return { rating, buy, sell, neutral, rsi: rsi == null ? null : Math.round(rsi * 10) / 10, macd: round(macd), ma5: round(ma5), ma10: round(ma10), ma20: round(ma20), ma50: round(ma50) };
+}
+async function bsJson(url) {
+  const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(url + ' → ' + r.status);
+  return r.json();
+}
+async function binanceScreenerHandle(sp) {
+  const market = sp.get('market') === 'perp' ? 'perp' : 'spot';
+  const limit = Math.min(200, Math.max(20, parseInt(sp.get('limit') || '150', 10) || 150));
+  const key = `${market}:${limit}`;
+  const cached = bsCache.get(key);
+  if (cached && Date.now() - cached.t < BS_TTL && sp.get('refresh') !== '1') {
+    return Object.assign({}, cached.r, { cached: true });
+  }
+  const root = market === 'perp' ? 'https://fapi.binance.com/fapi/v1' : 'https://data-api.binance.vision/api/v3';
+  const tickers = await bsJson(`${root}/ticker/24hr`);
+  const picked = tickers
+    .filter((t) => String(t.symbol).endsWith('USDT') && parseFloat(t.quoteVolume) > 0)
+    .filter((t) => { const b = bsBaseOf(t.symbol); return !BS_STABLE_BASES.has(b) && !bsIsLeveraged(b); })
+    .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+    .slice(0, limit);
+
+  const rows = new Array(picked.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < picked.length) {
+      const i = cursor++;
+      const t = picked[i];
+      const row = {
+        symbol: t.symbol, base: bsBaseOf(t.symbol), market,
+        exchange: market === 'perp' ? 'Binance Futures' : 'Binance',
+        price: parseFloat(t.lastPrice), chg24h: parseFloat(t.priceChangePercent),
+        chg1h: null, volUsd: parseFloat(t.quoteVolume), volChg24h: null,
+        high24h: parseFloat(t.highPrice), low24h: parseFloat(t.lowPrice),
+        closes: [], tech: null,
+      };
+      try {
+        const k = await bsJson(`${root}/klines?symbol=${t.symbol}&interval=1h&limit=48`);
+        const closes = k.map((c) => parseFloat(c[4]));
+        const qvols = k.map((c) => parseFloat(c[7]));
+        if (closes.length >= 2 && closes[closes.length - 2] > 0) {
+          row.chg1h = ((closes[closes.length - 1] - closes[closes.length - 2]) / closes[closes.length - 2]) * 100;
+        }
+        if (qvols.length >= 48) {
+          const last24 = qvols.slice(-24).reduce((x, y) => x + y, 0);
+          const prev24 = qvols.slice(0, 24).reduce((x, y) => x + y, 0);
+          if (prev24 > 0) row.volChg24h = ((last24 - prev24) / prev24) * 100;
+        }
+        row.closes = closes.slice(-24);
+        row.tech = bsTechRating(closes);
+      } catch { /* ligne conservée sans enrichissement horaire */ }
+      rows[i] = row;
+    }
+  };
+  await Promise.all(Array.from({ length: 12 }, () => worker()));
+
+  const clean = rows.filter(Boolean).sort((a, b) => b.volUsd - a.volUsd);
+  const r = { ok: true, market, count: clean.length, updatedAt: new Date().toISOString(), cached: false, rows: clean };
+  bsCache.set(key, { r, t: Date.now() });
+  return r;
+}
+
+app.get('/api/binance/screener', async (req, res) => {
+  const u = new URL(req.url, 'http://localhost');
+  try {
+    const r = await binanceScreenerHandle(u.searchParams);
+    res.status(200).set('Content-Type', 'application/json').send(JSON.stringify(r));
+  } catch (err) {
+    console.error('Binance screener error:', err);
+    const market = u.searchParams.get('market') === 'perp' ? 'perp' : 'spot';
+    const limit = u.searchParams.get('limit') || '150';
+    const cached = bsCache.get(`${market}:${limit}`);
+    if (cached) {
+      return res.status(200).set('Content-Type', 'application/json')
+        .send(JSON.stringify(Object.assign({}, cached.r, { cached: true, stale: true })));
+    }
+    res.status(502).json({ ok: false, error: 'binance_screener_failed', message: err && err.message });
+  }
+});
 registerEmailSequenceRoutes(app, { resendClientGetter: getResendClient });
 registerPublicStatsRoutes(app);
 registerSuccessStoriesRoutes(app);

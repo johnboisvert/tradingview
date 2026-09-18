@@ -34,6 +34,7 @@ const AIAssistant = React.lazy(() => import("./pages/AIAssistant"));
 const PredictionIA = React.lazy(() => import("./pages/PredictionIA"));
 const CryptoJournal = React.lazy(() => import("./pages/CryptoJournal"));
 const CycleMarche = React.lazy(() => import("./pages/CycleMarche"));
+const ScreenerCrypto = React.lazy(() => import("./pages/ScreenerCrypto"));
 const StatsAvancees = React.lazy(() => import("./pages/StatsAvancees"));
 const Laboratoire = React.lazy(() => import("./pages/Laboratoire"));
 const SuccessStories = React.lazy(() => import("./pages/SuccessStories"));
@@ -226,6 +227,9 @@ function App() {
           <Route path="/rapport-hebdomadaire-ia" element={<PlanProtected path="/rapport-hebdomadaire-ia"><RapportHebdomadaireIA /></PlanProtected>} />
 
 
+
+          {/* Screener Crypto — PUBLIC (aucun abonnement requis, pas de PlanProtected) */}
+          <Route path="/screener-crypto" element={<ScreenerCrypto />} />
 
           {/* SEO Prediction Pages - publicly accessible for SEO */}
           <Route path="/predictions" element={<Navigate to="/prediction-ia" replace />} />

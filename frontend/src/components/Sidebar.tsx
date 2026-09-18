@@ -151,6 +151,7 @@ const NAV_SECTIONS = [
       { path: "/calculatrice", label: "Calculatrice", icon: Calculator },
       { path: "/graphiques", label: "Graphiques", icon: LineChart },
       { path: "/convertisseur", label: "Convertisseur", icon: ArrowLeftRight },
+      { path: "/screener-crypto", label: "Screener Crypto", icon: Scan },
     ],
   },
   {
